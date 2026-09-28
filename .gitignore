@@ -1,0 +1,6 @@
+# Byte-compiled e pacchetti
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.zip
