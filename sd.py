@@ -10,16 +10,16 @@ import sys
 import math
 import traceback
 from typing import List, Dict, Tuple, Any, Optional, Set
-from GBUtils import menu, key, dgt
+from GBUtils import menu, key, dgt, percorso_risorsa
 
 # --- Costanti Globali ---
 VERSIONE = "25.4.24" # fai partite per testare le nuove funzioni introdotte di scaling potenza giocatori.
 DB_GIOCATORI = "sd-players.db"
 DB_POLISPORTIVE = "sd-polisport.db"
 DB_STATO_GIOCO = "sd-gamestate.db"
-FILE_NOMI_M = "CLZ-Maschili.gbd"
-FILE_NOMI_F = "CLZ-Femminili.gbd"
-FILE_COGNOMI = "CLZ-Cognomi.gbd"
+FILE_NOMI_M = "nomi_maschili.txt"
+FILE_NOMI_F = "nomi_femminili.txt"
+FILE_COGNOMI = "cognomi.txt"
 ANNO_SIMULAZIONE_GIORNI = 108
 PROBABILITA_IPOVEDENTE_CREAZIONE = 65.0
 # --- Costanti Descrizione Fisica ---
@@ -300,10 +300,13 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 
 # --- Utility Functions ---
 def carica_nomi(filename: str) -> List[str]:
+    """Legge una collezione dalla cartella dati: una voce per riga, commenti col cancelletto."""
+    percorso = percorso_risorsa(os.path.join("dati", filename))
     try:
-        with open(filename, "rb") as f: return pickle.load(f)
-    except FileNotFoundError: print(f"ATT: File {filename} non trovato."); return []
-    except Exception as e: print(f"Errore caricamento {filename}: {e}"); return []
+        with open(percorso, encoding="utf-8") as f:
+            return [r.strip() for r in f if r.strip() and not r.lstrip().startswith("#")]
+    except FileNotFoundError: print(f"ATT: File {percorso} non trovato."); return []
+    except Exception as e: print(f"Errore caricamento {percorso}: {e}"); return []
 
 def genera_modelli(lista_nomi: List[str]) -> List[str]:
     modelli = set()
@@ -357,14 +360,15 @@ def converti_in_tempo(secondi: float) -> Tuple[int, int, int]:
 NOMI_MASCHILI = carica_nomi(FILE_NOMI_M); NOMI_FEMMINILI = carica_nomi(FILE_NOMI_F); COGNOMI = carica_nomi(FILE_COGNOMI)
 MODELLI_NOMI_M = genera_modelli(NOMI_MASCHILI); MODELLI_NOMI_F = genera_modelli(NOMI_FEMMINILI); MODELLI_COGNOMI = genera_modelli(COGNOMI)
 print("Caricamento frasi descrizione fisica...")
-FRASI_BOCCA_T = carica_nomi("CLZ-bocca_t.gbd"); FRASI_COLORI_CAPELLI_T = carica_nomi("CLZ-colori_capelli_t.gbd")
-FRASI_NASI_T = carica_nomi("CLZ-nasi_t.gbd"); FRASI_OCCHI_T = carica_nomi("CLZ-occhi_t.gbd")
-FRASI_TAGLIO_CAPELLI_F = carica_nomi("CLZ-taglio_capelli_f.gbd"); FRASI_TAGLIO_CAPELLI_M = carica_nomi("CLZ-taglio_capelli_m.gbd")
-FRASI_VISI_F = carica_nomi("CLZ-visi_f.gbd"); FRASI_VISI_M = carica_nomi("CLZ-visi_m.gbd")
+_D = "descrizioni"
+FRASI_BOCCA_T = carica_nomi(os.path.join(_D, "bocche.txt")); FRASI_COLORI_CAPELLI_T = carica_nomi(os.path.join(_D, "colori_capelli.txt"))
+FRASI_NASI_T = carica_nomi(os.path.join(_D, "nasi.txt")); FRASI_OCCHI_T = carica_nomi(os.path.join(_D, "occhi.txt"))
+FRASI_TAGLIO_CAPELLI_F = carica_nomi(os.path.join(_D, "tagli_capelli_f.txt")); FRASI_TAGLIO_CAPELLI_M = carica_nomi(os.path.join(_D, "tagli_capelli_m.txt"))
+FRASI_VISI_F = carica_nomi(os.path.join(_D, "visi_f.txt")); FRASI_VISI_M = carica_nomi(os.path.join(_D, "visi_m.txt"))
 _descrizioni_caricate = {'bocca_t': FRASI_BOCCA_T, 'colori_capelli_t': FRASI_COLORI_CAPELLI_T, 'nasi_t': FRASI_NASI_T, 'occhi_t': FRASI_OCCHI_T,
                          'taglio_capelli_f': FRASI_TAGLIO_CAPELLI_F, 'taglio_capelli_m': FRASI_TAGLIO_CAPELLI_M, 'visi_f': FRASI_VISI_F, 'visi_m': FRASI_VISI_M}
 for k, v in _descrizioni_caricate.items():
-    if not v: sys.exit(f"ERRORE CRITICO: Lista descrizione '{k}' (CLZ-{k}.gbd) è vuota o non caricata!")
+    if not v: sys.exit(f"ERRORE CRITICO: Lista descrizione '{k}' nella cartella dati è vuota o non caricata!")
 
 # --- Funzione Genera Identita ---
 def genera_identita(sesso: str) -> Tuple[str, str]:

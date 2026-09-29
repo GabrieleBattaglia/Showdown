@@ -1,0 +1,49 @@
+# Colori dei capelli di Showdown: una frase per riga, materiale di partenza per il vocabolario grammaticale. Le righe che iniziano con il cancelletto sono commenti.
+Arancione sfumato
+Azzurri
+Bianchi candidi
+Bianchi con sfumature gialle
+Bicolore gialli e rossi
+Biondi con radici più scure
+Biondo cenere
+Biondo chiarissimo
+Biondo dorato
+Biondo fragola (con sfumature rosate/rosse)
+Biondo grano
+Biondo miele
+Biondo platino
+Biondo scuro
+Blu
+Bluastri
+Castani con colpi di sole
+Castani con riflessi naturali dorati
+Castani con riflessi naturali ramati
+Castano cenere
+Castano chiaro
+Castano cioccolato
+Castano dorato
+Castano medio
+Castano ramato (auburn)
+Castano scurissimo (quasi nero)
+Castano scuro
+Fuxia
+Fuxia con sfumature rosa
+Fuxia con sfumature viola
+Grigi screziati
+Grigio acciaio
+Grigio argento
+Neri con qualche filo bianco isolato
+Neri con riflessi bluastri
+Neri corvini
+Neri intensi
+Ramati con colpi di sole
+Rosa
+Rossi con sfumature viola
+Rosso irlandese (fulvo/arancione)
+Rosso mogano (rosso-bruno scuro)
+Rosso rame
+Rosso tiziano (rosso-arancio intenso)
+Rosso violaceo (melanzana/burgundy)
+Sale e pepe (misti grigi e scuri)
+Viola
+Violetti
