@@ -37,7 +37,7 @@
         "forme": [
             "ovale", "tondo", "squadrato", "allungato", "triangolare", "a cuore", "spigoloso", "regolare",
             "affilato", "scavato", "pieno", "armonioso", "minuto", "dai lineamenti delicati", "dai tratti marcati",
-            "dai lineamenti dolci", "dai tratti decisi"
+            "dai lineamenti dolci", "dai tratti decisi", "dai lineamenti aristocratici", "dal profilo deciso"
         ],
         "tinte_sostantivi": [
             {"lemma": "carnagione", "genere": "f"},
@@ -46,7 +46,7 @@
         ],
         "tinte": [
             {"voce": "chiaro", "peso": 4}, "molto chiaro", "pallido", "latteo", {"voce": "olivastro", "peso": 3},
-            "ambrato", "dorato", "abbronzato", "scuro", "molto scuro", "bruno", "rosato", "eburneo", "color nocciola"
+            "ambrato", "dorato", "abbronzato", "scuro", "molto scuro", "bruno", "rosato", "eburneo", "color nocciola", "diafano", "bronzeo", "color caffellatte", "color porcellana"
         ],
         "qualita_pelle": [
             "liscio", "levigato", "vellutato", "lentigginoso", "delicato", "tonico", "luminoso",
@@ -74,7 +74,7 @@
             {"voce": "marrone", "peso": 6}, {"voce": "castano", "peso": 3}, {"voce": "marrone scuro", "peso": 3}, {"voce": "nero", "peso": 2},
             {"voce": "nocciola", "peso": 3}, {"voce": "azzurro", "peso": 2}, {"voce": "blu", "peso": 2}, {"voce": "verde", "peso": 2},
             {"voce": "grigio", "peso": 2}, "ambrato", "verde smeraldo", "grigio acciaio", "blu ghiaccio", "azzurro cielo", "verde chiaro",
-            "verde oliva", "marrone chiaro", "blu scuro", "grigio verde"
+            "verde oliva", "marrone chiaro", "blu scuro", "grigio verde", "verde giada", "grigio ardesia", "color ambra", "nocciola dorato"
         ],
         "forme": [
             {"voce": "a mandorla", "peso": 3}, {"voce": "grande", "peso": 3}, {"voce": "rotondo", "peso": 2}, {"voce": "allungato", "peso": 2},
@@ -83,7 +83,8 @@
         ],
         "sguardi": [
             "vivace", "dolce", "malinconico", "penetrante", "sognante", "fiero", "timido", "curioso", "calmo", "severo",
-            "gentile", "intenso", "malizioso", "assorto", "sereno", "diffidente", "franco", "enigmatico", "allegro", "attento"
+            "gentile", "intenso", "malizioso", "assorto", "sereno", "diffidente", "franco", "enigmatico", "allegro", "attento",
+            "magnetico", "ipnotico", "sfuggente", "languido", "indagatore", "sornione", "trasognato", "scintillante", "glaciale"
         ],
         "dettagli": [
             {"lemma": "ciglia", "genere": "f", "numero": "p", "aggettivi": ["lungo", "folto", "chiaro", "scuro", "corto", "rado", "curvo", "lunghissimo"]},
@@ -96,7 +97,8 @@
         "caratteri": ["delicato", "ossuto", "carnoso", "fine", "aggraziato", "regolare"],
         "dettagli": [
             "con una piccola gobba", "con la punta arrotondata", "con le narici larghe", "con le narici strette",
-            "con il setto leggermente deviato", "segnato da una piccola cicatrice", "spruzzato di lentiggini"
+            "con il setto leggermente deviato", "segnato da una piccola cicatrice", "spruzzato di lentiggini",
+            "con la punta leggermente bulbosa", "con il ponte largo", "dal profilo perfettamente dritto"
         ]
     },
     "bocca": {
@@ -113,7 +115,13 @@
             "rosso", "ramato", {"voce": "rosso rame", "peso": 0.5}, {"voce": "fulvo", "peso": 0.5}
         ],
         "colori_eta": [["brizzolato", "sale e pepe"], ["grigio", "grigio argento"], ["bianco", "candido"]],
-        "colori_tinti": ["azzurro", "blu", "rosa", "viola", "fucsia", "verde acqua", "rosso fuoco", "turchese"],
+        "colori_tinti": [
+            "azzurro", "blu", "blu elettrico", "rosa", "viola", "fucsia", "verde", "verde acqua", "rosso fuoco", "turchese", "arancione", "argentato",
+            "bicolori, metà neri e metà biondo platino", "bicolori, metà fucsia e metà viola", "bicolori, gialli e rossi",
+            {"effetto": "con ciocche blu"}, {"effetto": "con ciocche viola"}, {"effetto": "con le punte tinte di fucsia"},
+            {"effetto": "con le punte color arancione"}, {"effetto": "con i colpi di sole"}, {"effetto": "con riflessi ramati"},
+            {"effetto": "sfumati verso punte molto più chiare"}, {"effetto": "con una ciocca bianca sulla fronte"}
+        ],
         "lunghezze": {
             "m": [{"voce": "cortissimo", "peso": 2}, {"voce": "corto", "peso": 6}, {"voce": "di media lunghezza", "peso": 2}, {"voce": "lungo", "peso": 1}],
             "f": [{"voce": "corto", "peso": 1.5}, {"voce": "a caschetto", "peso": 1.5}, {"voce": "di media lunghezza", "peso": 3}, {"voce": "lungo", "peso": 4}, {"voce": "lunghissimo", "peso": 1}]
@@ -124,7 +132,7 @@
             "m": [
                 {"base": "pettinato", "dopo": "all'indietro"},
                 {"base": "pettinato", "dopo": "con la riga di lato"},
-                {"base": "rasato", "dopo": "ai lati"},
+                {"base": "rasato", "dopo": "ai lati", "lunghezze": ["cortissimo", "corto", "di media lunghezza"]},
                 {"base": "tagliato", "dopo": "a spazzola", "lunghezze": ["cortissimo", "corto"]},
                 "spettinato",
                 {"base": "raccolto", "dopo": "in un codino", "lunghezze": ["di media lunghezza", "lungo"]},
@@ -133,7 +141,13 @@
                 {"base": "sollevato", "dopo": "in un ciuffo", "lunghezze": ["corto", "di media lunghezza"]},
                 {"base": "tirato", "dopo": "all'indietro con il gel", "lunghezze": ["corto", "di media lunghezza"]},
                 {"base": "raccolto", "dopo": "in uno chignon", "lunghezze": ["lungo"]},
-                {"base": "intrecciato", "dopo": "in piccole trecce aderenti al capo", "lunghezze": ["di media lunghezza", "lungo"]}
+                {"base": "intrecciato", "dopo": "in piccole trecce aderenti al capo", "lunghezze": ["di media lunghezza", "lungo"]},
+                {"base": "tagliato", "dopo": "con un undercut, rasati sotto e più lunghi sopra", "lunghezze": ["corto", "di media lunghezza"]},
+                {"base": "tagliato", "dopo": "a mullet, corti davanti e lunghi dietro", "lunghezze": ["di media lunghezza", "lungo"]},
+                {"base": "intrecciato", "dopo": "in lunghi dreadlocks", "lunghezze": ["lungo"]},
+                {"base": "sfumato", "dopo": "alto sui lati e sulla nuca", "lunghezze": ["cortissimo", "corto"]},
+                {"base": "pettinato", "dopo": "in un ciuffo alto alla Elvis", "lunghezze": ["corto", "di media lunghezza"]},
+                {"base": "raccolto", "dopo": "in un piccolo chignon sulla sommità del capo", "lunghezze": ["lungo"]}
             ],
             "f": [
                 {"base": "raccolto", "dopo": "in una coda di cavallo", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]},
@@ -150,18 +164,88 @@
                 {"base": "tenuto", "dopo": "fermo da un fermaglio", "lunghezze": ["a caschetto", "di media lunghezza", "lungo", "lunghissimo"]},
                 {"base": "rasato", "dopo": "su un lato", "lunghezze": ["corto", "a caschetto", "di media lunghezza"]},
                 {"base": "acconciato", "dopo": "in onde morbide", "lunghezze": ["a caschetto", "di media lunghezza", "lungo", "lunghissimo"]},
-                "spettinato"
+                "spettinato",
+                {"base": "tagliato", "dopo": "a pixie, con il ciuffo spettinato", "lunghezze": ["corto"]},
+                {"base": "raccolto", "dopo": "in una treccia a corona attorno al capo", "lunghezze": ["lungo", "lunghissimo"]},
+                {"base": "cotonato", "dopo": "in uno chignon alto come negli anni Sessanta", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]},
+                {"base": "acconciato", "dopo": "in onde retrò come le dive degli anni Quaranta", "lunghezze": ["a caschetto", "di media lunghezza"]},
+                {"base": "raccolto", "dopo": "in due chignon alti e tondi", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]},
+                {"base": "portato", "dopo": "con una frangia piena e dritta sopra le sopracciglia"},
+                {"base": "portato", "dopo": "con una frangia a tendina aperta sulla fronte"},
+                {"base": "legato", "dopo": "con un foulard di seta", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]},
+                {"base": "intrecciato", "dopo": "in tante treccine afro", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]},
+                {"base": "lisciato", "dopo": "con la piastra, lucidi come seta", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]}
             ]
         }
     },
     "barba": {
         "sostantivi": [
-            {"lemma": "barba", "genere": "f", "peso": 4, "aggettivi": ["corto", "lungo", "folto", "rado", "incolto", "curato", "squadrato", "ispido", "ben curato", "di qualche giorno"]},
+            {"lemma": "barba", "genere": "f", "peso": 4, "aggettivi": ["corto", "lungo", "folto", "rado", "incolto", "curato", "squadrato", "ispido", "ben curato", "di qualche giorno", "di tre giorni", {"base": "lungo", "dopo": "e folto alla garibaldina"}]},
             {"lemma": "pizzetto", "genere": "m", "peso": 2, "aggettivi": ["curato", "sottile", "appuntito", "folto", "ben definito"]},
-            {"lemma": "baffi", "genere": "m", "numero": "p", "peso": 2, "aggettivi": ["folto", "sottile", "curato", "spiovente", "a manubrio", "ben curato", "a spazzola"]},
-            {"lemma": "basette", "genere": "f", "numero": "p", "peso": 1, "aggettivi": ["lungo", "folto"]}
+            {"lemma": "baffi", "genere": "m", "numero": "p", "peso": 2, "aggettivi": ["folto", "sottile", "curato", "spiovente", "a manubrio", "ben curato", "a spazzola", "a tricheco", {"base": "sottile", "dopo": "a matita"}]},
+            {"lemma": "basette", "genere": "f", "numero": "p", "peso": 1, "aggettivi": ["lungo", "folto"]},
+            {"lemma": "mosca", "genere": "f", "peso": 0.5, "aggettivi": ["sottile", "curato", {"base": "piccolo", "dopo": "sotto il labbro"}]}
         ],
         "senza": ["sbarbato", "ben rasato"]
+    },
+    "particolarita_nota": "Tratti che non tocca a tutti e che la descrizione mette in evidenza. Testo e' il gruppo nominale, numero dice se e' plurale, {gli} diventa gli o le secondo il sesso. Frase, se c'e', e' la frase intera. Gruppo impedisce di avere due particolarita' dello stesso tipo, esclude toglie dalla descrizione la parte che la particolarita' sostituisce.",
+    "particolarita": [
+        {"testo": "lo sguardo bicolore, con un occhio azzurro e l'altro verde", "gruppo": "occhi", "esclude": ["occhi_colore"]},
+        {"testo": "lo sguardo bicolore, con un occhio grigio e l'altro nocciola", "gruppo": "occhi", "esclude": ["occhi_colore"]},
+        {"testo": "una macchia scura nell'iride dell'occhio sinistro", "gruppo": "occhi"},
+        {"testo": "le pagliuzze dorate che si accendono negli occhi alla luce del sole", "numero": "p", "gruppo": "occhi"},
+        {"testo": "un anello scuro e netto attorno all'iride", "gruppo": "occhi"},
+        {"testo": "ciglia così lunghe da sfiorare le guance", "numero": "p", "gruppo": "occhi", "esclude": ["dettaglio_occhi"]},
+        {"testo": "le sopracciglia folte che quasi si toccano sopra il naso", "numero": "p", "gruppo": "occhi", "esclude": ["dettaglio_occhi"]},
+        {"testo": "una cicatrice lunga e sottile che {gli} attraversa la guancia", "gruppo": "viso"},
+        {"testo": "una spruzzata fittissima di lentiggini, dalla fronte al mento", "gruppo": "viso"},
+        {"testo": "un piccolo neo a forma di cuore sullo zigomo", "gruppo": "viso"},
+        {"testo": "una voglia color vino sul collo", "gruppo": "viso"},
+        {"testo": "una fossetta profonda che compare soltanto quando sorride", "gruppo": "viso"},
+        {"testo": "un incisivo leggermente scheggiato", "gruppo": "bocca"},
+        {"testo": "un leggero spazio fra i due denti davanti", "gruppo": "bocca"},
+        {"testo": "un orecchino d'argento al lobo sinistro", "gruppo": "accessorio", "eta_min": 14},
+        {"testo": "un piccolo brillante al naso", "gruppo": "accessorio", "eta_min": 16},
+        {"testo": "un tatuaggio a forma di rondine sul collo", "gruppo": "accessorio", "eta_min": 18},
+        {"testo": "un tatuaggio che {gli} sale lungo il braccio fino alla spalla", "gruppo": "accessorio", "eta_min": 18},
+        {"testo": "le mani grandi e nodose", "numero": "p", "gruppo": "corpo", "eta_min": 25},
+        {"testo": "le spalle larghe da nuotatore", "numero": "p", "gruppo": "corpo", "sesso": "m", "eta_min": 16},
+        {"testo": "la testa rasata a zero, con un tatuaggio tribale dietro l'orecchio", "gruppo": "capelli", "sesso": "m", "esclude": ["capelli"], "eta_min": 18},
+        {"testo": "una cresta alla moicana tinta di verde", "gruppo": "capelli", "sesso": "m", "esclude": ["capelli"], "eta_min": 16},
+        {"testo": "le trecce decorate con perline colorate e piccoli anelli", "numero": "p", "gruppo": "capelli", "sesso": "f", "lunghezze": ["lungo", "lunghissimo"]},
+        {"testo": "i nastri colorati intrecciati fra i capelli", "numero": "p", "gruppo": "capelli", "sesso": "f", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]},
+        {"testo": "un fiore fresco fermato fra i capelli", "gruppo": "capelli", "sesso": "f"},
+        {"testo": "una voce profonda e calda", "frase": "Ha una voce profonda e calda, che si riconosce fra mille.", "gruppo": "voce"},
+        {"testo": "una risata contagiosa", "frase": "Ha una risata contagiosa, che si sente da un capo all'altro della palestra.", "gruppo": "voce"},
+        {"testo": "una voce roca", "frase": "Parla con una voce roca e bassa, quasi un sussurro.", "gruppo": "voce"},
+        {"testo": "una voce squillante", "frase": "Ha una voce squillante, che non passa mai inosservata.", "gruppo": "voce"}
+    ],
+    "similitudini": {
+        "occhi": {
+            "nero": ["neri come l'ossidiana", "neri come il carbone"],
+            "azzurro": ["azzurri come un cielo d'estate"],
+            "azzurro cielo": ["azzurri come un cielo d'estate"],
+            "blu": ["blu come il mare profondo"],
+            "verde": ["verdi come le foglie a primavera"],
+            "verde smeraldo": ["verdi come due smeraldi"],
+            "grigio": ["grigi come un cielo di novembre"],
+            "grigio acciaio": ["grigi e freddi come l'acciaio"],
+            "marrone": ["marroni come le castagne"],
+            "marrone scuro": ["scuri come il caffè"],
+            "ambrato": ["dorati come il miele"],
+            "blu ghiaccio": ["chiari e freddi come il ghiaccio"]
+        },
+        "capelli": {
+            "nero": ["neri come l'ala di un corvo"],
+            "biondo": ["biondi come il grano maturo"],
+            "rosso": ["rossi come il fuoco"],
+            "rosso rame": ["rossi come il rame"],
+            "castano": ["castani come le castagne"],
+            "biondo miele": ["dorati come il miele"],
+            "fulvo": ["fulvi come il pelo di una volpe"],
+            "grigio": ["grigi come la cenere"],
+            "bianco": ["bianchi come la neve"]
+        }
     },
     "trucco": {
         "aggettivi": ["leggero", "discreto", "elegante", "intenso", "naturale", "curato", "appena accennato", "raffinato", "vivace"]

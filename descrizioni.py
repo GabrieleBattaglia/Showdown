@@ -3,13 +3,13 @@ Descrizioni fisiche dei giocatori di MESS, costruite col motore grammaticale.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-02 con la tappa 4 del piano, secondo la decisione D8.
 Alla nascita di un giocatore si estraggono i suoi tratti con genera_tratti: colori, forme e
-segni particolari, scritti come parole del vocabolario, e la sua posizione nelle curve di
-crescita di altezza e massa corporea. I tratti si salvano col giocatore. Il testo invece non
-si salva: descrivi lo compone ogni volta con l'età del momento, così il ragazzino cresce, i
-capelli si fanno brizzolati e poi grigi, le rughe compaiono, e l'altezza e il peso che
-calcola fisico seguono l'età. Le scelte di stile, cioè il modello di frase e i sinonimi,
-vengono da un seme salvato nei tratti: lo stesso giocatore ha sempre la stessa descrizione,
-finché non cambia la sua età.
+segni particolari, scritti come parole del vocabolario, le particolarità che non toccano a
+tutti, e la sua posizione nelle curve di crescita di altezza e massa corporea. I tratti si
+salvano col giocatore. Il testo invece non si salva: descrivi lo compone ogni volta con l'età
+del momento, così il ragazzino cresce, i capelli si fanno brizzolati e poi grigi, le rughe
+compaiono, e l'altezza e il peso che calcola fisico seguono l'età. Le scelte di stile, cioè il
+modello di frase e i sinonimi, vengono da un seme salvato nei tratti: lo stesso giocatore ha
+sempre la stessa descrizione, finché non cambia la sua età.
 """
 
 import bisect
@@ -61,24 +61,35 @@ SOGLIE_CORPORATURA = (-1.3, -0.4, 0.6, 1.5)
 # Probabilità dei tratti facoltativi, in frazioni.
 PROB_QUALITA_PELLE = 0.5
 PROB_SEGNI = ((0, 0.25), (1, 0.45), (2, 0.30))
-PROB_LUOGO_SEGNO = 0.8
 PROB_DETTAGLIO_OCCHI = 0.6
 PROB_DETTAGLIO_NASO = 0.35
 PROB_MASSA_CAPELLI = 0.4
 PROB_ACCONCIATURA = 0.65
-PROB_TINTA = {"m": 0.04, "f": 0.09}
+PROB_TINTA = {"m": 0.10, "f": 0.18}
 PROB_CALVIZIE = 0.45
 PROB_BARBA = 0.55
 PROB_TRUCCO = 0.55
+PROB_PARTICOLARITA = ((0, 0.62), (1, 0.31), (2, 0.07))
+PROB_SIMILITUDINE = 0.25
 
-# Le età in cui compaiono barba e trucco, e le distanze fra gli stadi dei capelli bianchi e
-# della calvizie, in anni dall'età estratta per ciascun giocatore.
+# Le età in cui compaiono barba, trucco e tinte, quella da cui arriva comunque qualche ruga, e
+# le distanze fra gli stadi dei capelli bianchi e della calvizie, in anni dall'età estratta per
+# ciascun giocatore.
 ETA_BARBA = 16
 ETA_TRUCCO = 14
 ETA_TINTA = 15
 ETA_QUALCHE_RUGA = 60
 ANNI_GRIGI = (0, 12, 25)
 ANNI_CALVO = 18
+
+# Come si introduce la prima particolarità, al singolare e al plurale, e come le successive.
+APERTURE = (
+    ("Colpisce subito {}.", "Colpiscono subito {}."),
+    ("Salta all'occhio {}.", "Saltano all'occhio {}."),
+    ("A colpire per prima cosa è {}.", "A colpire per prima cosa sono {}."),
+)
+SEGUITO = ("Si nota anche {}.", "Si notano anche {}.")
+NUMERO_MODELLI = 5
 
 _VOCABOLARIO = None
 
@@ -121,7 +132,8 @@ def _prepara(grezzo):
                 else:
                     visita(v, chiave)
 
-    visita({k: v for k, v in grezzo.items() if k not in ("nota", "versione", "anteposti", "persona")})
+    escluse = ("nota", "versione", "anteposti", "persona", "particolarita", "particolarita_nota", "similitudini")
+    visita({k: v for k, v in grezzo.items() if k not in escluse})
     grezzo["_aggettivi"] = indice
     return grezzo
 
@@ -154,6 +166,10 @@ def _estrai_aggettivo(rng, voci):
     return aggettivo_da_voce(_estrai(rng, voci)).chiave
 
 
+def _quanti(rng, probabilita):
+    return rng.choices([n for n, _ in probabilita], weights=[p for _, p in probabilita])[0]
+
+
 def _sostantivo(voce):
     return Sostantivo(voce["lemma"], voce["genere"], voce.get("numero", "s"))
 
@@ -178,28 +194,84 @@ def fisico(tratti, sesso, eta):
     return round(altezza), round(massa * (altezza / 100) ** 2)
 
 
+# Le radici delle parti del viso e dei segni che una descrizione non deve nominare due volte.
+PARTI_SENSIBILI = ("guanc", "zigom", "front", "mento", "labbr", "cicat", "lenti", "fosse", "vogli", "sopracc", "collo", "rugh", "neo ")
+
+
+def _radici(*testi):
+    """Le parti sensibili nominate nei testi dati: servono a non avere due cicatrici o le guance due volte."""
+    return {r for r in PARTI_SENSIBILI if any(r in f"{testo} " for testo in testi if testo)}
+
+
+def _libero(testo, radici):
+    return not any(r in f"{testo} " for r in radici)
+
+
+def _estrai_particolarita(rng, voci, sesso, lunghezza, radici):
+    """Da zero a due particolarità di gruppi diversi, fra quelle adatte al sesso, ai capelli e ai segni già scelti."""
+    quante = _quanti(rng, PROB_PARTICOLARITA)
+    adatte = [p for p in voci if p.get("sesso", sesso) == sesso and lunghezza in p.get("lunghezze", (lunghezza,))]
+    rng.shuffle(adatte)
+    scelte, gruppi, radici = [], set(), set(radici)
+    for voce in adatte:
+        if len(scelte) >= quante:
+            break
+        if voce["gruppo"] not in gruppi and _libero(voce["testo"], radici):
+            scelte.append(voce["testo"])
+            gruppi.add(voce["gruppo"])
+            radici |= _radici(voce["testo"])
+    return scelte
+
+
 def genera_tratti(sesso, rng=random):
-    """I tratti stabili di un giocatore nuovo, sesso m o f: un dizionario che si può salvare in JSON."""
+    """
+    I tratti stabili di un giocatore nuovo, sesso m o f: un dizionario che si può salvare in JSON.
+    Ogni scelta tiene conto delle parti già nominate da quelle precedenti, perché la descrizione non
+    parli due volte delle guance o delle lentiggini.
+    """
     v = vocabolario()
     viso = v["viso"]
-    segni_possibili = list(viso["segni"])
-    numero_segni = rng.choices([n for n, _ in PROB_SEGNI], weights=[p for _, p in PROB_SEGNI])[0]
-    segni = []
-    for voce in rng.sample(segni_possibili, numero_segni):
+    segni, radici = [], set()
+    for voce in rng.sample(list(viso["segni"]), _quanti(rng, PROB_SEGNI)):
+        if not _libero(voce["lemma"], radici):
+            continue
         segno = {"lemma": voce["lemma"], "aggettivo": _estrai_aggettivo(rng, voce["aggettivi"])}
-        if voce.get("luoghi") and rng.random() < PROB_LUOGO_SEGNO:
-            segno["luogo"] = rng.choice(voce["luoghi"])
+        radici |= _radici(voce["lemma"])
+        luoghi = [luogo for luogo in voce.get("luoghi", ()) if _libero(luogo, radici)]
+        if luoghi:
+            segno["luogo"] = rng.choice(luoghi)
+            radici |= _radici(segno["luogo"])
         segni.append(segno)
+    qualita = None
+    if rng.random() < PROB_QUALITA_PELLE:
+        qualita = _estrai_aggettivo(rng, [q for q in viso["qualita_pelle"] if _libero(aggettivo_da_voce(q).chiave, radici)])
+        radici |= _radici(qualita)
     occhi = v["occhi"]
     dettaglio_occhi = None
-    if rng.random() < PROB_DETTAGLIO_OCCHI:
-        voce = rng.choice(occhi["dettagli"])
+    dettagli = [d for d in occhi["dettagli"] if _libero(d["lemma"], radici)]
+    if dettagli and rng.random() < PROB_DETTAGLIO_OCCHI:
+        voce = rng.choice(dettagli)
         dettaglio_occhi = {"lemma": voce["lemma"], "aggettivo": _estrai_aggettivo(rng, voce["aggettivi"])}
+        radici |= _radici(voce["lemma"])
     naso = v["naso"]
+    dettaglio_naso = None
+    if rng.random() < PROB_DETTAGLIO_NASO:
+        dettaglio_naso = rng.choice([d for d in naso["dettagli"] if _libero(d, radici)])
+        radici |= _radici(dettaglio_naso)
     bocca = rng.choice(v["bocca"]["sostantivi"])
     capelli = v["capelli"]
     lunghezza = _estrai_aggettivo(rng, capelli["lunghezze"][sesso])
-    acconciature = [a for a in capelli["acconciature"][sesso] if not isinstance(a, dict) or lunghezza in a.get("lunghezze", (lunghezza,))]
+    acconciature = [
+        a for a in capelli["acconciature"][sesso]
+        if (not isinstance(a, dict) or lunghezza in a.get("lunghezze", (lunghezza,))) and _libero(aggettivo_da_voce(a).chiave, radici)
+    ]
+    acconciatura = _estrai_aggettivo(rng, acconciature) if acconciature and rng.random() < PROB_ACCONCIATURA else None
+    radici |= _radici(acconciatura)
+    tinta = None
+    if rng.random() < PROB_TINTA[sesso]:
+        scelta = rng.choice(capelli["colori_tinti"])
+        tinta = scelta if isinstance(scelta, dict) else aggettivo_da_voce(scelta).chiave
+        radici |= _radici(tinta.get("effetto") if isinstance(tinta, dict) else tinta)
     tratti = {
         "seme": rng.randrange(1_000_000_000),
         "z_altezza": round(max(-2.6, min(2.6, rng.gauss(0, 1))), 3),
@@ -207,7 +279,7 @@ def genera_tratti(sesso, rng=random):
         "viso": {
             "forma": _estrai_aggettivo(rng, viso["forme"]),
             "tinta": _estrai_aggettivo(rng, viso["tinte"]),
-            "qualita": _estrai_aggettivo(rng, viso["qualita_pelle"]) if rng.random() < PROB_QUALITA_PELLE else None,
+            "qualita": qualita,
             "segni": segni,
         },
         "occhi": {
@@ -219,19 +291,21 @@ def genera_tratti(sesso, rng=random):
         "naso": {
             "forma": _estrai_aggettivo(rng, naso["forme"]),
             "secondo": _estrai_aggettivo(rng, naso["misure"] + naso["caratteri"]),
-            "dettaglio": rng.choice(naso["dettagli"]) if rng.random() < PROB_DETTAGLIO_NASO else None,
+            "dettaglio": dettaglio_naso,
         },
         "bocca": {"lemma": bocca["lemma"], "aggettivo": _estrai_aggettivo(rng, bocca["aggettivi"])},
         "capelli": {
             "colore": _estrai_aggettivo(rng, capelli["colori_naturali"]),
-            "tinta": rng.choice(capelli["colori_tinti"]) if rng.random() < PROB_TINTA[sesso] else None,
+            "tinta": tinta,
             "lunghezza": lunghezza,
             "piega": _estrai_aggettivo(rng, capelli["pieghe"]),
             "massa": _estrai_aggettivo(rng, capelli["masse"]) if rng.random() < PROB_MASSA_CAPELLI else None,
-            "acconciatura": _estrai_aggettivo(rng, acconciature) if acconciature and rng.random() < PROB_ACCONCIATURA else None,
+            "acconciatura": acconciatura,
             "eta_grigi": round(rng.triangular(30, 75, 48), 1),
             "eta_calvizie": round(rng.uniform(22, 60), 1) if sesso == "m" and rng.random() < PROB_CALVIZIE else None,
         },
+        "particolarita": _estrai_particolarita(rng, v["particolarita"], sesso, lunghezza, radici),
+        "similitudine": rng.choice(("occhi", "capelli")) if rng.random() < PROB_SIMILITUDINE else None,
     }
     if sesso == "m":
         if rng.random() < PROB_BARBA:
@@ -274,9 +348,18 @@ class _Parti:
         v = vocabolario()
         anteposti = set(v["anteposti"])
         u = random.Random(tratti["seme"])
-        scelte = [u.random() for _ in range(12)]
-        self.modello = _scegli((0, 1, 2), scelte[0])
+        self.scelte = scelte = [u.random() for _ in range(16)]
+        self.modello = _scegli(range(NUMERO_MODELLI), scelte[0])
         self.persona = _sostantivo(next(p for p in v["persona"][sesso] if eta <= p["eta_max"]))
+        pronome = "gli" if sesso == "m" else "le"
+        esclusi = set()
+        self.particolarita = []
+        for testo in tratti.get("particolarita", ()):
+            voce = next((p for p in v["particolarita"] if p["testo"] == testo), None)
+            if voce is None or eta < voce.get("eta_min", 0):
+                continue
+            esclusi.update(voce.get("esclude", ()))
+            self.particolarita.append((voce["testo"].replace("{gli}", pronome), voce.get("numero", "s"), voce.get("frase")))
         fascia_statura = bisect.bisect(SOGLIE_STATURA, tratti["z_altezza"])
         fascia_corporatura = bisect.bisect(SOGLIE_CORPORATURA, tratti["z_massa"])
         statura = aggettivo_da_voce(_scegli(v["statura"][fascia_statura], scelte[1]))
@@ -290,9 +373,8 @@ class _Parti:
         self.viso_forma = _aggettivo(tv["forma"]).accorda(self.viso)
         self.tinta_sost = _sostantivo(_scegli(v["viso"]["tinte_sostantivi"], scelte[4]))
         self.tinta = _aggettivo(tv["tinta"]).accorda(self.tinta_sost)
-        pelle = Sostantivo("pelle", "f")
-        self.qualita = _aggettivo(tv["qualita"]).accorda(pelle) if tv.get("qualita") else None
-        self.sost_pelle = pelle
+        self.sost_pelle = Sostantivo("pelle", "f")
+        self.qualita = _aggettivo(tv["qualita"]).accorda(self.sost_pelle) if tv.get("qualita") else None
         self.segni = []
         numeri = []
         for segno in tv["segni"]:
@@ -307,14 +389,20 @@ class _Parti:
             self.segni.append("qualche ruga")
             numeri.append("s")
         self.segni_singolare = numeri == ["s"]
+        similitudini = v.get("similitudini", {})
         to = tratti["occhi"]
         self.occhi = Sostantivo("occhi", "m", "p")
-        self.occhi_colore = _aggettivo(to["colore"]).accorda(self.occhi)
+        self.occhi_colore = None
+        if "occhi_colore" not in esclusi:
+            self.occhi_colore = _aggettivo(to["colore"]).accorda(self.occhi)
+            immagini = similitudini.get("occhi", {}).get(to["colore"])
+            if tratti.get("similitudine") == "occhi" and immagini:
+                self.occhi_colore = _scegli(immagini, scelte[8])
         self.occhi_forma = _aggettivo(to["forma"]).accorda(self.occhi)
         self.sguardo = Sostantivo("sguardo", "m")
         self.sguardo_agg = _aggettivo(to["sguardo"]).accorda(self.sguardo)
         self.dettaglio_occhi = None
-        if to.get("dettaglio"):
+        if to.get("dettaglio") and "dettaglio_occhi" not in esclusi:
             sost = _sostantivo(_voce_con_lemma(v["occhi"]["dettagli"], to["dettaglio"]["lemma"]))
             self.dettaglio_occhi = (sost, _aggettivo(to["dettaglio"]["aggettivo"]).accorda(sost))
         tn = tratti["naso"]
@@ -325,6 +413,7 @@ class _Parti:
         self.bocca = _sostantivo(_voce_con_lemma(v["bocca"]["sostantivi"], tb["lemma"]))
         self.bocca_agg = _aggettivo(tb["aggettivo"]).accorda(self.bocca)
         tc = tratti["capelli"]
+        self.capelli_esclusi = "capelli" in esclusi
         self.capelli = Sostantivo("capelli", "m", "p")
         naturale = tc["colore"]
         for stadio, anni in reversed(list(enumerate(ANNI_GRIGI))):
@@ -332,8 +421,16 @@ class _Parti:
                 naturale = _scegli(v["capelli"]["colori_eta"][stadio], scelte[5])
                 break
         self.colore_naturale = naturale
-        colore = tc["tinta"] if tc.get("tinta") and eta >= ETA_TINTA else naturale
-        self.capelli_colore = _aggettivo(colore).accorda(self.capelli)
+        tinta = tc.get("tinta") if eta >= ETA_TINTA else None
+        if isinstance(tinta, dict):
+            self.capelli_colore = f"{_aggettivo(naturale).accorda(self.capelli)} {tinta['effetto']}"
+        elif tinta:
+            self.capelli_colore = _aggettivo(tinta).accorda(self.capelli)
+        else:
+            self.capelli_colore = _aggettivo(naturale).accorda(self.capelli)
+            immagini = similitudini.get("capelli", {}).get(naturale)
+            if tratti.get("similitudine") == "capelli" and immagini:
+                self.capelli_colore = _scegli(immagini, scelte[9])
         self.capelli_descrittori = elenco([_aggettivo(tc[k]).accorda(self.capelli) for k in ("lunghezza", "piega", "massa") if tc.get(k)])
         self.acconciatura = _aggettivo(tc["acconciatura"]).accorda(self.capelli) if tc.get("acconciatura") else None
         self.calvizie = 0
@@ -348,12 +445,26 @@ class _Parti:
                 sost = _sostantivo(_voce_con_lemma(v["barba"]["sostantivi"], barba["lemma"]))
                 agg = _aggettivo(barba["aggettivo"]).accorda(sost)
                 parti = [agg]
-                if scelte[6] < 0.5 and not agg.startswith(("di ", "a ")) and " e " not in self.colore_naturale:
-                    parti.append(_aggettivo(self.colore_naturale).accorda(sost))
+                if scelte[6] < 0.5 and not agg.startswith(("di ", "a ")) and " " not in agg and " e " not in naturale:
+                    parti.append(_aggettivo(naturale).accorda(sost))
                 self.barba = (sost, elenco(parti))
         self.trucco = None
         if tratti.get("trucco") and eta >= ETA_TRUCCO:
             self.trucco = _aggettivo(tratti["trucco"]).accorda(Sostantivo("trucco", "m"))
+
+    def frasi_particolarita(self):
+        """Le particolarità, la prima introdotta con risalto e le altre con un semplice si nota anche."""
+        frasi = []
+        apertura = _scegli(APERTURE, self.scelte[7])
+        aperta = False
+        for testo, numero, frase in self.particolarita:
+            if frase:
+                frasi.append(frase)
+                continue
+            modello = SEGUITO if aperta else apertura
+            aperta = True
+            frasi.append(modello[numero == "p"].format(testo))
+        return frasi
 
     def pelle(self, preposizione=None):
         """Le parti sulla pelle, da unire alle altre con elenco: dalla carnagione chiara e dalla pelle liscia, o la pelle olivastra e vellutata."""
@@ -368,11 +479,33 @@ class _Parti:
         """La forma del viso che comincia già con da, come dai tratti decisi, non vuole davanti il viso."""
         return self.viso_forma.startswith(("dal", "dai ", "dagli ", "dalle "))
 
+    def viso_dal(self):
+        return self.viso_forma if self.viso_con_complemento() else f"{con_determinativo(self.viso, 'da')} {self.viso_forma}"
+
+    def occhi_aggettivi(self):
+        return [a for a in (self.occhi_colore, self.occhi_forma) if a]
+
+    def dettaglio_occhi_frase(self):
+        """Le ciglia sono lunghe, come frase a sé."""
+        if not self.dettaglio_occhi:
+            return None
+        sost, agg = self.dettaglio_occhi
+        return f"{maiuscola(con_determinativo(sost))} {verbo(sost, 'è', 'sono')} {agg}."
+
     def bocca_np(self):
         return f"{con_indeterminativo(self.bocca)} {self.bocca_agg}"
 
     def bocca_predicato(self):
         return f"{con_determinativo(self.bocca)} {verbo(self.bocca, 'è', 'sono')} {self.bocca_agg}"
+
+    def naso_con_dettaglio(self, coppia=True):
+        naso = elenco(self.naso) if coppia else self.naso[0]
+        return f"{naso}, {self.naso_dettaglio}," if self.naso_dettaglio else naso
+
+    def frase_segni(self, introduzione):
+        if not self.segni:
+            return None
+        return f"{introduzione} {elenco(self.segni)}."
 
     def barba_frase(self, verbo_avere):
         """Porta una barba corta, Ha i baffi folti, È sbarbato; niente sotto l'età della barba."""
@@ -393,78 +526,144 @@ class _Parti:
     def calvo(self):
         return Aggettivo("calvo").accorda(self.persona)
 
+    def si_nota(self):
+        return "Si nota" if self.segni_singolare else "Si notano"
 
-def descrivi(tratti, sesso, eta):
-    """La descrizione fisica di un giocatore all'età data, in anni anche con i decimali."""
-    p = _Parti(tratti, sesso, eta)
-    frasi = []
-    if p.modello == 0:
-        viso = p.viso_forma if p.viso_con_complemento() else f"{con_determinativo(p.viso, 'da')} {p.viso_forma}"
-        frasi.append(f"È {p.persona_np}, {elenco([viso, *p.pelle('da')])}.")
-        if p.segni:
-            frasi.append(f"Ha {elenco(p.segni)}.")
-        occhi = f"Ha gli occhi {elenco([p.occhi_colore, p.occhi_forma])}, {con_determinativo(p.sguardo, 'da')} {p.sguardo_agg}"
-        if p.dettaglio_occhi:
-            sost, agg = p.dettaglio_occhi
-            occhi += f", e {con_determinativo(sost)} {agg}"
-        frasi.append(occhi + ".")
-        naso = f"Il naso è {elenco(p.naso)}"
-        if p.naso_dettaglio:
-            naso += f", {p.naso_dettaglio},"
-        frasi.append(f"{naso} e {p.bocca_predicato()}.")
+
+def _modello_classico(p):
+    frasi = [f"È {p.persona_np}, {elenco([p.viso_dal(), *p.pelle('da')])}."]
+    frasi += p.frasi_particolarita()
+    frasi.append(p.frase_segni("Ha"))
+    occhi = f"Ha gli occhi {elenco(p.occhi_aggettivi())}, {con_determinativo(p.sguardo, 'da')} {p.sguardo_agg}"
+    if p.dettaglio_occhi:
+        sost, agg = p.dettaglio_occhi
+        occhi += f", e {con_determinativo(sost)} {agg}"
+    frasi.append(occhi + ".")
+    frasi.append(f"Il naso è {p.naso_con_dettaglio()} e {p.bocca_predicato()}.")
+    if not p.capelli_esclusi:
         if p.calvizie == 2:
             frasi.append(f"È {p.calvo()}, con pochi capelli {p.capelli_colore} ai lati e sulla nuca.")
         else:
             frasi.append(f"Porta i capelli {p.capelli_colore}, {p.capelli_descrittori}{p.capelli_coda()}.")
-        frasi.append(p.barba_frase("Porta"))
-        if p.trucco:
-            frasi.append(f"Porta un trucco {p.trucco}.")
-    elif p.modello == 1:
+    frasi.append(p.barba_frase("Porta"))
+    if p.trucco:
+        frasi.append(f"Porta un trucco {p.trucco}.")
+    return frasi
+
+
+def _modello_presentazione(p):
+    testa = None
+    if not p.capelli_esclusi:
         testa = "dalla testa calva" if p.calvizie == 2 else f"{con_determinativo(p.capelli, 'da')} {p.capelli_colore}"
-        frasi.append(f"Si presenta come {p.persona_np}, {testa} e {con_determinativo(p.occhi, 'da')} {p.occhi_colore}.")
-        viso = f"Ha {elenco([f'{con_indeterminativo(p.viso)} {p.viso_forma}', *p.pelle()])}"
-        if p.segni:
-            viso += f", con {elenco(p.segni)}"
-        frasi.append(viso + ".")
-        occhi = f"Gli occhi, {p.occhi_forma}, hanno {con_indeterminativo(p.sguardo)} {p.sguardo_agg}"
-        if p.dettaglio_occhi:
-            sost, agg = p.dettaglio_occhi
-            occhi += f", e {con_determinativo(sost)} {verbo(sost, 'è', 'sono')} {agg}"
-        frasi.append(occhi + ".")
-        naso = f"Ha un naso {p.naso[0]}"
-        if p.naso_dettaglio:
-            naso += f", {p.naso_dettaglio},"
-        frasi.append(f"{naso} e {p.bocca_np()}.")
+    occhi_dal = f"{con_determinativo(p.occhi, 'da')} {p.occhi_colore}" if p.occhi_colore else None
+    # Dopo un colore che contiene già una virgola, come bicolori, gialli e rossi, serve un'altra virgola.
+    complementi = f"{testa}, e {occhi_dal}" if testa and occhi_dal and "," in testa else elenco([testa, occhi_dal])
+    frasi = [f"Si presenta come {p.persona_np}{', ' + complementi if complementi else ''}."]
+    frasi += p.frasi_particolarita()
+    viso = f"Ha {elenco([f'{con_indeterminativo(p.viso)} {p.viso_forma}', *p.pelle()])}"
+    if p.segni:
+        viso += f", con {elenco(p.segni)}"
+    frasi.append(viso + ".")
+    occhi = f"Gli occhi, {p.occhi_forma}, hanno {con_indeterminativo(p.sguardo)} {p.sguardo_agg}"
+    if p.dettaglio_occhi:
+        sost, agg = p.dettaglio_occhi
+        occhi += f", e {con_determinativo(sost)} {verbo(sost, 'è', 'sono')} {agg}"
+    frasi.append(occhi + ".")
+    frasi.append(f"Ha un naso {p.naso_con_dettaglio(coppia=False)} e {p.bocca_np()}.")
+    if not p.capelli_esclusi:
         if p.calvizie == 2:
             frasi.append(f"Ai lati e sulla nuca restano pochi capelli {p.capelli_colore}.")
         else:
             frasi.append(f"I capelli sono {p.capelli_descrittori}{p.capelli_coda()}.")
-        frasi.append(p.barba_frase("Porta"))
-        if p.trucco:
-            frasi.append(f"Il trucco è {p.trucco}.")
+    frasi.append(p.barba_frase("Porta"))
+    if p.trucco:
+        frasi.append(f"Il trucco è {p.trucco}.")
+    return frasi
+
+
+def _modello_aspetto(p):
+    frasi = [f"Ha l'aspetto di {p.persona_np}."]
+    frasi += p.frasi_particolarita()
+    if p.viso_con_complemento():
+        # Dal profilo deciso diventa ha un profilo deciso, dai tratti marcati diventa ha tratti marcati.
+        preposizione, resto = p.viso_forma.split(" ", 1)
+        articolo = {"dal": "un ", "dalla": "una "}.get(preposizione, "")
+        viso = f"{maiuscola(con_determinativo(p.viso))} ha {articolo}{resto}"
     else:
-        frasi.append(f"Ha l'aspetto di {p.persona_np}.")
-        if p.viso_con_complemento():
-            viso = f"{maiuscola(con_determinativo(p.viso))} ha {p.viso_forma.split(' ', 1)[1]}"
-        else:
-            viso = f"{maiuscola(con_determinativo(p.viso))} è {p.viso_forma}"
-        frasi.append(f"{viso}, {elenco(p.pelle())}.")
-        if p.segni:
-            frasi.append(f"{'Si nota' if p.segni_singolare else 'Si notano'} {elenco(p.segni)}.")
-        occhi = f"Ha occhi {p.occhi_colore}, {p.occhi_forma}, {con_determinativo(p.sguardo, 'da')} {p.sguardo_agg}"
-        if p.dettaglio_occhi:
-            sost, agg = p.dettaglio_occhi
-            occhi += f", con {sost.lemma} {agg}"
-        frasi.append(occhi + ".")
-        naso = f"Il naso è {elenco(p.naso)}"
-        if p.naso_dettaglio:
-            naso += f", {p.naso_dettaglio}"
-        frasi.append(f"{naso}. {maiuscola(p.bocca_predicato())}.")
+        viso = f"{maiuscola(con_determinativo(p.viso))} è {p.viso_forma}"
+    frasi.append(f"{viso}, {elenco(p.pelle())}.")
+    frasi.append(p.frase_segni("Ha" if p.particolarita else p.si_nota()))
+    occhi = f"Ha occhi {', '.join(p.occhi_aggettivi())}, {con_determinativo(p.sguardo, 'da')} {p.sguardo_agg}"
+    if p.dettaglio_occhi:
+        sost, agg = p.dettaglio_occhi
+        occhi += f", con {sost.lemma} {agg}"
+    frasi.append(occhi + ".")
+    naso = p.naso_con_dettaglio().rstrip(",")
+    frasi.append(f"Il naso è {naso}. {maiuscola(p.bocca_predicato())}.")
+    if not p.capelli_esclusi:
         if p.calvizie == 2:
             frasi.append(f"È {p.calvo()}, e restano pochi capelli {p.capelli_colore} ai lati e sulla nuca.")
         else:
             frasi.append(f"Ha capelli {p.capelli_colore}, {p.capelli_descrittori}{p.capelli_coda()}.")
-        frasi.append(p.barba_frase("Ha"))
-        if p.trucco:
-            frasi.append(f"Di solito usa un trucco {p.trucco}.")
-    return " ".join(f for f in frasi if f)
+    frasi.append(p.barba_frase("Ha"))
+    if p.trucco:
+        frasi.append(f"Di solito usa un trucco {p.trucco}.")
+    return frasi
+
+
+def _modello_risalto(p):
+    """Comincia da ciò che si nota per primo: una particolarità, se c'è, altrimenti gli occhi."""
+    frasi = p.frasi_particolarita()
+    sguardo = f"{con_determinativo(p.sguardo, 'da')} {p.sguardo_agg}"
+    if not frasi:
+        dettaglio = f", con {p.dettaglio_occhi[0].lemma} {p.dettaglio_occhi[1]}" if p.dettaglio_occhi else ""
+        frasi.append(f"La prima cosa che si nota sono gli occhi, {', '.join(p.occhi_aggettivi())}, {sguardo}{dettaglio}.")
+    frasi.append(f"È {p.persona_np}, {p.viso_dal()}.")
+    frasi.append(f"Ha {elenco([*p.pelle(), *p.segni])}.")
+    if p.particolarita:
+        aggettivi = elenco(p.occhi_aggettivi())
+        frasi.append(f"Gli occhi sono {aggettivi}, {sguardo}." if aggettivi else f"Lo sguardo è {p.sguardo_agg}.")
+        frasi.append(p.dettaglio_occhi_frase())
+    frasi.append(f"Il naso è {p.naso_con_dettaglio()} mentre {p.bocca_predicato()}.")
+    if not p.capelli_esclusi:
+        if p.calvizie == 2:
+            frasi.append(f"È {p.calvo()}, con pochi capelli {p.capelli_colore} ai lati.")
+        else:
+            frasi.append(f"I capelli, {p.capelli_colore}, sono {p.capelli_descrittori}{p.capelli_coda()}.")
+    frasi.append(p.barba_frase("Porta"))
+    if p.trucco:
+        frasi.append(f"Porta un trucco {p.trucco}.")
+    return frasi
+
+
+def _modello_capelli(p):
+    """Comincia dai capelli, che si riconoscono da lontano."""
+    if p.calvizie == 2:
+        frasi = [f"Si riconosce da lontano per la testa calva, con pochi capelli {p.capelli_colore} ai lati e sulla nuca."]
+    else:
+        frasi = [f"Si riconosce da lontano per i capelli {p.capelli_colore}, {p.capelli_descrittori}{p.capelli_coda()}."]
+    frasi.append(f"È {p.persona_np}.")
+    frasi += p.frasi_particolarita()
+    frasi.append(f"Ha {elenco([f'{con_indeterminativo(p.viso)} {p.viso_forma}', *p.pelle()])}.")
+    frasi.append(p.frase_segni(f"Sul {p.viso.lemma} {p.si_nota().lower()}"))
+    aggettivi = elenco(p.occhi_aggettivi())
+    frasi.append(f"Gli occhi sono {aggettivi}, e lo sguardo è {p.sguardo_agg}." if aggettivi else f"Lo sguardo è {p.sguardo_agg}.")
+    frasi.append(p.dettaglio_occhi_frase())
+    frasi.append(f"Ha un naso {p.naso_con_dettaglio(coppia=False)} e {p.bocca_np()}.")
+    frasi.append(p.barba_frase("Porta"))
+    if p.trucco:
+        frasi.append(f"Di solito porta un trucco {p.trucco}.")
+    return frasi
+
+
+MODELLI = (_modello_classico, _modello_presentazione, _modello_aspetto, _modello_risalto, _modello_capelli)
+
+
+def descrivi(tratti, sesso, eta):
+    """La descrizione fisica di un giocatore all'età data, in anni anche con i decimali."""
+    p = _Parti(tratti, sesso, eta)
+    modello = MODELLI[p.modello]
+    # Chi ha i capelli sostituiti da una particolarità non può cominciare dai capelli.
+    if modello is _modello_capelli and p.capelli_esclusi:
+        modello = _modello_classico
+    return " ".join(f for f in modello(p) if f)
