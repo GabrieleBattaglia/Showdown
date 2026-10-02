@@ -4,3 +4,6 @@ __pycache__/
 build/
 dist/
 *.zip
+
+# Campioni di descrizioni da leggere, rigenerabili con strumenti/campioni_descrizioni.py
+strumenti/campioni_descrizioni.txt
