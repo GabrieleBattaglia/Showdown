@@ -1,4 +1,6 @@
-# Manageriale e Simulatore Showdown by Gabriele Battaglia & Gemini 2.5
+# MESS, Manageriale e Simulatore Showdown.
+# Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
+# Il porting in Python fino alla versione 25.4.24 è di Gabriele Battaglia con Gemini 2.5.
 # Data concepimento: 13/04/2015 16:13 by Gabriele Battaglia
 # Inizio porting a Python 3.8.1: 31/01/2020. Ora in python 3.13.2 aprile 2025
 import time
@@ -11,9 +13,10 @@ import math
 import traceback
 from typing import List, Dict, Tuple, Any, Optional, Set
 from GBUtils import menu, key, dgt, percorso_risorsa
+from version import __version__
 
 # --- Costanti Globali ---
-VERSIONE = "25.4.24" # fai partite per testare le nuove funzioni introdotte di scaling potenza giocatori.
+VERSIONE = __version__
 DB_GIOCATORI = "sd-players.db"
 DB_POLISPORTIVE = "sd-polisport.db"
 DB_STATO_GIOCO = "sd-gamestate.db"

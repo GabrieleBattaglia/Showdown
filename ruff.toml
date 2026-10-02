@@ -1,0 +1,35 @@
+# Configurazione ruff di MESS, Manageriale e Simulatore Showdown.
+# Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
+# Nata il 2 ottobre 2026 sul modello di quella di Terminal Beast. Le regole
+# spente qui sotto portano il motivo scritto accanto: ogni segnalazione che
+# resta e' percio' un difetto vero, da correggere e non da nascondere. Il
+# vecchio sd.py ne ha ancora molte, e le toglie la tappa 2 del piano.
+# Rispetto a Terminal Beast restano accese di proposito tre regole.
+# E702, le istruzioni separate da punto e virgola: il piano le indica come un
+# problema, perche' rendono il codice difficile da seguire all'ascolto.
+# S110, le eccezioni ingoiate in silenzio: qui nessuna e' stata ancora letta.
+# DTZ, le date senza fuso: il mondo avanza con l'orologio reale, e un calcolo
+# del tempo trascorso fatto sull'ora locale guadagnerebbe o perderebbe un'ora
+# al cambio dell'ora legale.
+line-length = 200
+
+[lint]
+select = ["E", "F", "W", "B", "SIM", "UP", "I", "C4", "RET", "BLE", "S", "RUF", "DTZ"]
+ignore = [
+    # Righe lunghe: i messaggi del gioco stanno su una riga sola, spesso con
+    # la format di seguito, e spezzarli renderebbe piu' difficile ritrovarli.
+    "E501",
+    # Lo stile di Gabriele ammette l'istruzione breve dopo i due punti, sulla
+    # stessa riga.
+    "E701",
+    "E741",
+    # random senza garanzie crittografiche e' esattamente cio' che serve: qui
+    # si tirano i dadi delle partite e si generano i giocatori. E' un gioco,
+    # non un generatore di chiavi.
+    "S311",
+    # Gli if annidati restano dove separano condizioni di natura diversa.
+    "SIM102",
+    # L'operatore ternario al posto di un if else: un if esplicito si legge in
+    # modo lineare, che e' cio' che serve a chi ascolta il codice.
+    "SIM108",
+]
