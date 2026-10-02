@@ -14,6 +14,7 @@ import traceback
 from typing import List, Dict, Tuple, Any, Optional, Set
 from GBUtils import menu, key, dgt, percorso_risorsa
 from version import __version__
+import descrizioni
 
 # --- Costanti Globali ---
 VERSIONE = __version__
@@ -25,13 +26,6 @@ FILE_NOMI_F = "nomi_femminili.txt"
 FILE_COGNOMI = "cognomi.txt"
 ANNO_SIMULAZIONE_GIORNI = 108
 PROBABILITA_IPOVEDENTE_CREAZIONE = 65.0
-# --- Costanti Descrizione Fisica ---
-INIZIO_FRASE_DESC = "Ha un viso "
-CONN_VISO_OCCHI_DESC = ". Gli occhi sono "
-CONN_OCCHI_NASO_DESC = ", mentre il naso è "
-CONN_NASO_BOCCA_DESC = ". La bocca ha "
-CONN_BOCCA_CAPELLI_DESC = ", i suoi capelli "
-SEPARATORE_FINALE_DESC = "."
 # --- Costanti Poli CPU ---
 GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET = 16.5
 PROB_CREAZIONE_POLI_CPU_PER_TICK = 75.0
@@ -362,16 +356,6 @@ def converti_in_tempo(secondi: float) -> Tuple[int, int, int]:
 # --- Caricamento Nomi e Descrizioni ---
 NOMI_MASCHILI = carica_nomi(FILE_NOMI_M); NOMI_FEMMINILI = carica_nomi(FILE_NOMI_F); COGNOMI = carica_nomi(FILE_COGNOMI)
 MODELLI_NOMI_M = genera_modelli(NOMI_MASCHILI); MODELLI_NOMI_F = genera_modelli(NOMI_FEMMINILI); MODELLI_COGNOMI = genera_modelli(COGNOMI)
-print("Caricamento frasi descrizione fisica...")
-_D = "descrizioni"
-FRASI_BOCCA_T = carica_nomi(os.path.join(_D, "bocche.txt")); FRASI_COLORI_CAPELLI_T = carica_nomi(os.path.join(_D, "colori_capelli.txt"))
-FRASI_NASI_T = carica_nomi(os.path.join(_D, "nasi.txt")); FRASI_OCCHI_T = carica_nomi(os.path.join(_D, "occhi.txt"))
-FRASI_TAGLIO_CAPELLI_F = carica_nomi(os.path.join(_D, "tagli_capelli_f.txt")); FRASI_TAGLIO_CAPELLI_M = carica_nomi(os.path.join(_D, "tagli_capelli_m.txt"))
-FRASI_VISI_F = carica_nomi(os.path.join(_D, "visi_f.txt")); FRASI_VISI_M = carica_nomi(os.path.join(_D, "visi_m.txt"))
-_descrizioni_caricate = {'bocca_t': FRASI_BOCCA_T, 'colori_capelli_t': FRASI_COLORI_CAPELLI_T, 'nasi_t': FRASI_NASI_T, 'occhi_t': FRASI_OCCHI_T,
-                         'taglio_capelli_f': FRASI_TAGLIO_CAPELLI_F, 'taglio_capelli_m': FRASI_TAGLIO_CAPELLI_M, 'visi_f': FRASI_VISI_F, 'visi_m': FRASI_VISI_M}
-for k, v in _descrizioni_caricate.items():
-    if not v: sys.exit(f"ERRORE CRITICO: Lista descrizione '{k}' nella cartella dati è vuota o non caricata!")
 
 # --- Funzione Genera Identita ---
 def genera_identita(sesso: str) -> Tuple[str, str]:
@@ -465,8 +449,6 @@ class Giocatore:
 
         # Aggiustamenti finali nome/fisico
         if self.nome=="*" and self.cognome=="*": self.nome,self.cognome=genera_identita(self.sesso)
-        if 'altezza' not in kwargs: self.altezza=max(145,min(200,self.altezza+(random.randrange(0,16) if self.sesso=='m' else -random.randrange(0,16))))
-        if 'peso' not in kwargs: self.peso=max(35,min(110,self.altezza-100+random.randrange(-15,16)+(random.randrange(0,11) if self.sesso=='m' else -random.randrange(0,8))))
 
         # Fallback per attributi essenziali (incluso forza)
         for attr, default in [('forza_base', 0.0), ('forza_allenata', 0.0), # <-- AGGIUNTO FORZA
@@ -505,6 +487,7 @@ class Giocatore:
 
     def __str__(self) -> str:
         eta_vis = _formatta_eta_sim(self.eta, False); sex = "(Uomo)" if self.sesso=='m' else "(Donna)"; eta_sex = f"Età: {eta_vis} {sex}"
+        self.aggiorna_aspetto()
         stato = ["libero" if self.appartenenza=="*" else f"iscritto a {self.appartenenza}"]
         if self.ritirato: stato.append("ritirato")
         if self.infortunato: fine=f" (fino a {self.infortunio_fine_datetime:%Y-%m-%d %H:%M})" if self.infortunio_fine_datetime else " (N/D)"; stato.append("infortunato"+fine)
@@ -561,16 +544,20 @@ class Giocatore:
         self.indice_collettivo_valore = self.icv_base + self.icv_allenato + bonus
 
     def _genera_descrizione_fisica(self):
-        try:
-            frasi = {}; frasi['viso'] = random.choice(FRASI_VISI_M if self.sesso=='m' else FRASI_VISI_F)
-            frasi['occhi'] = random.choice(FRASI_OCCHI_T).lower(); frasi['naso'] = random.choice(FRASI_NASI_T).lower(); frasi['bocca'] = random.choice(FRASI_BOCCA_T).lower()
-            taglio = random.choice(FRASI_TAGLIO_CAPELLI_M if self.sesso=='m' else FRASI_TAGLIO_CAPELLI_F); colore = random.choice(FRASI_COLORI_CAPELLI_T).lower()
-            desc_c = taglio.replace("[colore]", colore) if "[colore]" in taglio else f"{taglio} {colore}"; frasi['capelli'] = desc_c.lower()
-            desc = INIZIO_FRASE_DESC + frasi.get('viso','') + CONN_VISO_OCCHI_DESC + frasi.get('occhi','') + CONN_OCCHI_NASO_DESC + frasi.get('naso','') + \
-                   CONN_NASO_BOCCA_DESC + frasi.get('bocca','') + CONN_BOCCA_CAPELLI_DESC + frasi.get('capelli','') + SEPARATORE_FINALE_DESC
-            if desc and not INIZIO_FRASE_DESC: desc = desc[0].upper() + desc[1:]
-            self.descrizione_fisica = desc.strip()
-        except Exception as e: print(f"WARN GID {self.id}: Err gen desc: {e}"); self.descrizione_fisica = "(N/D)"
+        """
+        Dalla versione 1.1.0 i tratti del giocatore vengono dal motore grammaticale di
+        descrizioni.py: altezza, peso e descrizione si ricalcolano con l'età del momento.
+        """
+        self.tratti = descrizioni.genera_tratti(self.sesso)
+        self.aggiorna_aspetto()
+
+    def aggiorna_aspetto(self):
+        """Altezza, peso e descrizione all'età attuale. I giocatori nati prima della 1.1.0 non hanno tratti e tengono i loro."""
+        tratti = getattr(self, "tratti", None)
+        if not tratti:
+            return
+        self.altezza, self.peso = descrizioni.fisico(tratti, self.sesso, self.eta_anni)
+        self.descrizione_fisica = descrizioni.descrivi(tratti, self.sesso, self.eta_anni)
 
     def _assegna_archetipo_iniziale(self):
         sugg = self._determina_archetipo_da_base()
@@ -823,6 +810,7 @@ class Simulatore:
 
     def _logga_uscita_giocatore(self, giocatore: Giocatore, motivo: str, dt_evento_sim: datetime.datetime):
         """Scrive l'uscita di un giocatore nel file di log storico 'vecchie_glorie.log'."""
+        giocatore.aggiorna_aspetto()
         try:
             eta_mom = _formatta_eta_sim(giocatore.eta, False); dt_crea_s = giocatore.datetime_creazione_sim.strftime('%Y-%m-%d %H:%M')
             dt_crea_r = giocatore.datacreazione_reale.strftime('%Y-%m-%d %H:%M'); dt_evt_s = dt_evento_sim.strftime('%Y-%m-%d %H:%M')

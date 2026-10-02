@@ -26,7 +26,7 @@ poi si mette la sua cartella in PYTHONPATH.
 
 ## Dati
 
-La cartella `dati` contiene le collezioni di nomi, cognomi e frasi descrittive, un file di testo per collezione e una voce per riga: si possono correggere o ampliare con un qualsiasi editor.
+La cartella `dati` contiene le collezioni di nomi e cognomi, un file di testo per collezione e una voce per riga, che si possono correggere o ampliare con un qualsiasi editor, e il vocabolario delle descrizioni fisiche, `vocabolario.json`, con cui il gioco compone l'aspetto di ogni giocatore.
 
 ## Autori
 
