@@ -1,0 +1,168 @@
+{
+    "nota": "Vocabolario delle descrizioni fisiche di MESS, prima bozza del 2026-10-02 ricavata dalle frasi della cartella descrizioni. Un aggettivo si scrive al maschile singolare e le altre forme si ricavano da sole; le locuzioni di piu' parole restano invariabili, tranne quelle che cominciano con un avverbio come ben o molto. Base e dopo servono per un aggettivo seguito da un complemento, dove si accorda solo la base. Peso rende una voce piu' frequente delle altre, eta_min la fa comparire solo da quell'eta' in poi, lunghezze dice con quali lunghezze dei capelli sta bene un'acconciatura.",
+    "versione": 1,
+    "anteposti": ["piccolo", "vecchio", "lieve"],
+    "persona": {
+        "m": [
+            {"lemma": "ragazzino", "genere": "m", "eta_max": 13},
+            {"lemma": "ragazzo", "genere": "m", "eta_max": 27},
+            {"lemma": "uomo", "genere": "m", "eta_max": 200}
+        ],
+        "f": [
+            {"lemma": "ragazzina", "genere": "f", "eta_max": 13},
+            {"lemma": "ragazza", "genere": "f", "eta_max": 27},
+            {"lemma": "donna", "genere": "f", "eta_max": 200}
+        ]
+    },
+    "statura": [
+        ["basso", {"base": "piccolo", "dopo": "di statura"}],
+        ["piuttosto basso", "di statura medio-bassa"],
+        ["di statura media", "di media statura"],
+        ["piuttosto alto", "di statura medio-alta"],
+        ["alto"],
+        ["molto alto", "altissimo"]
+    ],
+    "corporatura": [
+        ["esile", "gracile", "magro"],
+        ["snello", "asciutto", "slanciato"],
+        ["di corporatura normale", "ben proporzionato", "atletico"],
+        ["robusto", "massiccio", "di corporatura robusta"],
+        ["corpulento", "in carne", "decisamente robusto"]
+    ],
+    "viso": {
+        "sostantivi": [
+            {"lemma": "viso", "genere": "m"},
+            {"lemma": "volto", "genere": "m"}
+        ],
+        "forme": [
+            "ovale", "tondo", "squadrato", "allungato", "triangolare", "a cuore", "spigoloso", "regolare",
+            "affilato", "scavato", "pieno", "armonioso", "minuto", "dai lineamenti delicati", "dai tratti marcati",
+            "dai lineamenti dolci", "dai tratti decisi"
+        ],
+        "tinte_sostantivi": [
+            {"lemma": "carnagione", "genere": "f"},
+            {"lemma": "pelle", "genere": "f"},
+            {"lemma": "incarnato", "genere": "m"}
+        ],
+        "tinte": [
+            {"voce": "chiaro", "peso": 4}, "molto chiaro", "pallido", "latteo", {"voce": "olivastro", "peso": 3},
+            "ambrato", "dorato", "abbronzato", "scuro", "molto scuro", "bruno", "rosato", "eburneo", "color nocciola"
+        ],
+        "qualita_pelle": [
+            "liscio", "levigato", "vellutato", "lentigginoso", "delicato", "tonico", "luminoso",
+            {"base": "segnato", "dopo": "dal sole"}, "arrossato"
+        ],
+        "segni": [
+            {"lemma": "zigomi", "genere": "m", "numero": "p", "aggettivi": ["alto", "pronunciato", "sporgente", "marcato"]},
+            {"lemma": "fossette", "genere": "f", "numero": "p", "aggettivi": ["evidente", "delicato", "profondo", "simpatico"], "luoghi": ["sulle guance", "ai lati della bocca"]},
+            {"lemma": "fossetta", "genere": "f", "aggettivi": ["piccolo", "evidente"], "luoghi": ["sul mento"]},
+            {"lemma": "lentiggini", "genere": "f", "numero": "p", "aggettivi": ["leggero", "sparso", "fitto", "delicato", "chiaro"], "luoghi": ["sul naso", "sulle guance", "sugli zigomi"]},
+            {"lemma": "cicatrice", "genere": "f", "aggettivi": ["sottile", "piccolo", "chiaro", "vecchio", "appena visibile"], "luoghi": ["sulla guancia", "sul mento", "sopra il sopracciglio", "sulla fronte", "vicino all'orecchio"]},
+            {"lemma": "neo", "genere": "m", "aggettivi": ["piccolo", "scuro", "evidente"], "luoghi": ["sulla guancia", "sopra il labbro", "vicino all'occhio", "sul mento"]},
+            {"lemma": "voglia", "genere": "f", "aggettivi": ["piccolo", "chiaro", "rosato"], "luoghi": ["sulla tempia", "sul collo", "sulla guancia"]},
+            {"lemma": "mento", "genere": "m", "aggettivi": ["volitivo", "appuntito", "sfuggente", "pronunciato", "squadrato", "deciso"]},
+            {"lemma": "mascella", "genere": "f", "aggettivi": ["forte", "pronunciato", "squadrato", "marcato"]},
+            {"lemma": "fronte", "genere": "f", "aggettivi": ["alto", "ampio", "spazioso"]},
+            {"lemma": "guance", "genere": "f", "numero": "p", "aggettivi": ["pieno", "scavato", "roseo", "paffuto"]},
+            {"lemma": "occhiaie", "genere": "f", "numero": "p", "aggettivi": ["leggero", "scuro", "marcato"]},
+            {"lemma": "rughe", "genere": "f", "numero": "p", "aggettivi": ["sottile", "profondo", "lieve"], "luoghi": ["sulla fronte", "attorno agli occhi", "ai lati della bocca"], "eta_min": 38},
+            {"lemma": "zampe di gallina", "genere": "f", "numero": "p", "aggettivi": ["leggero", "evidente", "marcato"], "eta_min": 42}
+        ]
+    },
+    "occhi": {
+        "colori": [
+            {"voce": "marrone", "peso": 6}, {"voce": "castano", "peso": 3}, {"voce": "marrone scuro", "peso": 3}, {"voce": "nero", "peso": 2},
+            {"voce": "nocciola", "peso": 3}, {"voce": "azzurro", "peso": 2}, {"voce": "blu", "peso": 2}, {"voce": "verde", "peso": 2},
+            {"voce": "grigio", "peso": 2}, "ambrato", "verde smeraldo", "grigio acciaio", "blu ghiaccio", "azzurro cielo", "verde chiaro",
+            "verde oliva", "marrone chiaro", "blu scuro", "grigio verde"
+        ],
+        "forme": [
+            "a mandorla", "rotondo", "grande", "piccolo", "infossato", "ravvicinato", "ben distanziato", "allungato",
+            "leggermente all'ingiù", "leggermente all'insù", "sporgente", "sottile", "socchiuso"
+        ],
+        "sguardi": [
+            "vivace", "dolce", "malinconico", "penetrante", "sognante", "fiero", "timido", "curioso", "calmo", "severo",
+            "gentile", "intenso", "malizioso", "assorto", "sereno", "diffidente", "franco", "enigmatico", "allegro", "attento"
+        ],
+        "dettagli": [
+            {"lemma": "ciglia", "genere": "f", "numero": "p", "aggettivi": ["lungo", "folto", "chiaro", "scuro", "corto", "rado", "curvo", "lunghissimo"]},
+            {"lemma": "sopracciglia", "genere": "f", "numero": "p", "aggettivi": ["folto", "sottile", "arcuato", "dritto", "scuro", "chiaro", "ben curato", "marcato", "ribelle", "quasi unito"]}
+        ]
+    },
+    "naso": {
+        "forme": ["dritto", "aquilino", "all'insù", "a patata", "greco", "romano", "adunco", "leggermente storto", "schiacciato", "alla francese", "appuntito"],
+        "misure": ["piccolo", "lungo", "corto", "largo", "sottile", "prominente", "importante"],
+        "caratteri": ["delicato", "ossuto", "carnoso", "fine", "aggraziato", "regolare"],
+        "dettagli": [
+            "con una piccola gobba", "con la punta arrotondata", "con le narici larghe", "con le narici strette",
+            "con il setto leggermente deviato", "segnato da una piccola cicatrice", "spruzzato di lentiggini"
+        ]
+    },
+    "bocca": {
+        "sostantivi": [
+            {"lemma": "bocca", "genere": "f", "aggettivi": ["largo", "piccolo", "grande", "espressivo", "ben disegnato", "carnoso", "sottile", "sorridente", "imbronciato", "delicato", "morbido"]},
+            {"lemma": "labbra", "genere": "f", "numero": "p", "aggettivi": ["carnoso", "sottile", "pieno", "morbido", "screpolato", "roseo", "pallido", "ben disegnato", "sporgente", "leggermente asimmetrico"]},
+            {"lemma": "sorriso", "genere": "m", "aggettivi": ["aperto", "luminoso", "timido", "contagioso", "leggermente storto", "sincero", "rassicurante", "malizioso", "ampio", "gentile", "radioso"]}
+        ]
+    },
+    "capelli": {
+        "colori_naturali": [
+            {"voce": "nero", "peso": 3}, {"voce": "castano scuro", "peso": 4}, {"voce": "castano", "peso": 5}, {"voce": "castano chiaro", "peso": 3},
+            {"voce": "biondo", "peso": 2}, {"voce": "biondo scuro", "peso": 2}, "biondo cenere", "biondo miele", {"voce": "biondo platino", "peso": 0.5},
+            "rosso", "ramato", {"voce": "rosso rame", "peso": 0.5}, {"voce": "fulvo", "peso": 0.5}
+        ],
+        "colori_eta": [["brizzolato", "sale e pepe"], ["grigio", "grigio argento"], ["bianco", "candido"]],
+        "colori_tinti": ["azzurro", "blu", "rosa", "viola", "fucsia", "verde acqua", "rosso fuoco", "turchese"],
+        "lunghezze": {
+            "m": [{"voce": "cortissimo", "peso": 2}, {"voce": "corto", "peso": 6}, {"voce": "di media lunghezza", "peso": 2}, {"voce": "lungo", "peso": 1}],
+            "f": [{"voce": "corto", "peso": 1.5}, {"voce": "a caschetto", "peso": 1.5}, {"voce": "di media lunghezza", "peso": 3}, {"voce": "lungo", "peso": 4}, {"voce": "lunghissimo", "peso": 1}]
+        },
+        "pieghe": [{"voce": "liscio", "peso": 3}, {"voce": "mosso", "peso": 3}, "riccio", "crespo", "ondulato"],
+        "masse": ["folto", "sottile", "spesso", "ribelle", "setoso", "fine", "rado"],
+        "acconciature": {
+            "m": [
+                {"base": "pettinato", "dopo": "all'indietro"},
+                {"base": "pettinato", "dopo": "con la riga di lato"},
+                {"base": "rasato", "dopo": "ai lati"},
+                {"base": "tagliato", "dopo": "a spazzola", "lunghezze": ["cortissimo", "corto"]},
+                "spettinato",
+                {"base": "raccolto", "dopo": "in un codino", "lunghezze": ["di media lunghezza", "lungo"]},
+                {"base": "legato", "dopo": "sulla nuca", "lunghezze": ["lungo"]},
+                {"base": "portato", "dopo": "con la frangia sulla fronte", "lunghezze": ["corto", "di media lunghezza"]},
+                {"base": "sollevato", "dopo": "in un ciuffo", "lunghezze": ["corto", "di media lunghezza"]},
+                {"base": "tirato", "dopo": "all'indietro con il gel", "lunghezze": ["corto", "di media lunghezza"]},
+                {"base": "raccolto", "dopo": "in uno chignon", "lunghezze": ["lungo"]},
+                {"base": "intrecciato", "dopo": "in piccole trecce aderenti al capo", "lunghezze": ["di media lunghezza", "lungo"]}
+            ],
+            "f": [
+                {"base": "raccolto", "dopo": "in una coda di cavallo", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]},
+                {"base": "raccolto", "dopo": "in uno chignon", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]},
+                {"base": "sciolto", "dopo": "sulle spalle", "lunghezze": ["lungo", "lunghissimo"]},
+                {"base": "intrecciato", "dopo": "in una lunga treccia", "lunghezze": ["lungo", "lunghissimo"]},
+                {"base": "raccolto", "dopo": "in due trecce", "lunghezze": ["di media lunghezza", "lungo", "lunghissimo"]},
+                {"base": "raccolto", "dopo": "in una treccia a spina di pesce", "lunghezze": ["lungo", "lunghissimo"]},
+                {"base": "raccolto", "dopo": "in una mezza coda", "lunghezze": ["di media lunghezza", "lungo"]},
+                {"base": "fermato", "dopo": "da un cerchietto"},
+                {"base": "portato", "dopo": "con la frangia"},
+                {"base": "portato", "dopo": "con la riga in mezzo"},
+                {"base": "pettinato", "dopo": "all'indietro"},
+                {"base": "tenuto", "dopo": "fermo da un fermaglio", "lunghezze": ["a caschetto", "di media lunghezza", "lungo", "lunghissimo"]},
+                {"base": "rasato", "dopo": "su un lato", "lunghezze": ["corto", "a caschetto", "di media lunghezza"]},
+                {"base": "acconciato", "dopo": "in onde morbide", "lunghezze": ["a caschetto", "di media lunghezza", "lungo", "lunghissimo"]},
+                "spettinato"
+            ]
+        }
+    },
+    "barba": {
+        "sostantivi": [
+            {"lemma": "barba", "genere": "f", "peso": 4, "aggettivi": ["corto", "lungo", "folto", "rado", "incolto", "curato", "squadrato", "ispido", "ben curato", "di qualche giorno"]},
+            {"lemma": "pizzetto", "genere": "m", "peso": 2, "aggettivi": ["curato", "sottile", "appuntito", "folto", "ben definito"]},
+            {"lemma": "baffi", "genere": "m", "numero": "p", "peso": 2, "aggettivi": ["folto", "sottile", "curato", "spiovente", "a manubrio", "ben curato", "a spazzola"]},
+            {"lemma": "basette", "genere": "f", "numero": "p", "peso": 1, "aggettivi": ["lungo", "folto"]}
+        ],
+        "senza": ["sbarbato", "ben rasato"]
+    },
+    "trucco": {
+        "aggettivi": ["leggero", "discreto", "elegante", "intenso", "naturale", "curato", "appena accennato", "raffinato", "vivace"]
+    }
+}

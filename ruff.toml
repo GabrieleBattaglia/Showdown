@@ -33,3 +33,8 @@ ignore = [
     # modo lineare, che e' cio' che serve a chi ascolta il codice.
     "SIM108",
 ]
+
+[lint.per-file-ignores]
+# Nei test l'assert e' lo strumento stesso della verifica, non un controllo che sparisce
+# con l'ottimizzazione.
+"tests/*" = ["S101"]

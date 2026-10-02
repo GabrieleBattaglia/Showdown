@@ -4,7 +4,7 @@ Scritte il 2026-10-02 dalla sessione dell'ufficio, cartella utente C:\Users\GBat
 
 ## Dove sta lo stato del lavoro
 
-Piano di sviluppo, CHANGELOG.md e storia dei commit bastano: il 2026-10-02 sono state chiuse la tappa 0, col punto 0.4, e la tappa 1, col banco strumenti/banco_partite.py e il rapporto di riferimento strumenti/banco_partite_prima.txt. Il prossimo passo del piano è la tappa 2.
+Piano di sviluppo, CHANGELOG.md e storia dei commit bastano: il 2026-10-02 sono state chiuse la tappa 0, col punto 0.4, e la tappa 1, col banco strumenti/banco_partite.py e il rapporto di riferimento strumenti/banco_partite_prima.txt. Il prossimo passo del piano è la tappa 2. Nello stesso giorno, su richiesta di Gabriele, è cominciata in anticipo anche la tappa 4, le descrizioni fisiche: a che punto è lo dice la nota in fondo alla tappa 4 del piano. I test si lanciano con python -m pytest dalla radice del progetto.
 
 ## L'unica cosa che git non porta
 
