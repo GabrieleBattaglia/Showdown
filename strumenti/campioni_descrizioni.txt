@@ -1,50 +1,50 @@
-Campioni di descrizioni fisiche, seme 11: per riavere gli stessi si aggiunge --seme 11.
-1. Maschio di 25 anni, 181 centimetri e 89 chili.
-Ha l'aspetto di un ragazzo piuttosto alto e di corporatura robusta. Il volto ha lineamenti dolci, la pelle abbronzata. Ha occhi neri, ravvicinati, dallo sguardo sereno, con sopracciglia ben curate. Il naso è leggermente storto e ossuto. La bocca è larga. Ha capelli neri, cortissimi e mossi, rasati ai lati. Ha una barba squadrata e nera.
-2. Femmina di 23 anni, 165 centimetri e 63 chili.
-È una ragazza atletica e di statura media, dal volto triangolare e dalla pelle chiara e luminosa. Ha gli occhi castani e socchiusi, dallo sguardo dolce, e le ciglia corte. Il naso è greco e carnoso e la bocca è sottile. Porta i capelli castano scuro, corti, mossi e folti, spettinati.
-3. Maschio di 9 anni, 134 centimetri e 29 chili.
-Si presenta come un ragazzino ben proporzionato e di statura media, dai capelli neri e dagli occhi blu ghiaccio. Ha un viso regolare, la carnagione molto chiara e la pelle arrossata, con un mento appuntito. Gli occhi, piccoli, hanno uno sguardo enigmatico, e le sopracciglia sono chiare. Ha un naso all'insù e un sorriso malizioso. I capelli sono di media lunghezza, lisci e fini, rasati ai lati.
-4. Femmina di 25 anni, 155 centimetri e 45 chili.
-Ha l'aspetto di una ragazza bassa e asciutta. Il viso è squadrato, la pelle dorata. Si notano un mento volitivo e una fronte ampia. Ha occhi grigi, ravvicinati, dallo sguardo severo. Il naso è dritto e piccolo, con il setto leggermente deviato. Le labbra sono leggermente asimmetriche. Ha capelli castano scuro, lunghi e lisci, raccolti in due trecce.
-5. Maschio di 11 anni, 146 centimetri e 44 chili.
-Ha l'aspetto di un ragazzino robusto e di media statura. Il viso è tondo, la carnagione chiara e la pelle tonica. Ha occhi marroni, infossati, dallo sguardo enigmatico, con ciglia chiare. Il naso è appuntito e ossuto. La bocca è sottile. Ha capelli castano scuro, di media lunghezza, mossi e spessi, portati con la frangia sulla fronte.
-6. Femmina di 22 anni, 169 centimetri e 60 chili.
-È una ragazza piuttosto alta e ben proporzionata, dal viso tondo e dalla pelle olivastra e segnata dal sole. Ha gli occhi blu scuro e a mandorla, dallo sguardo severo. Il naso è dritto e ossuto e il sorriso è aperto. Porta i capelli neri, lunghi, lisci e spessi, spettinati. Porta un trucco naturale.
-7. Maschio di 28 anni, 185 centimetri e 97 chili.
-È un uomo alto e massiccio, dal viso armonioso e dall'incarnato olivastro. Ha una mascella forte. Ha gli occhi neri e rotondi, dallo sguardo malizioso. Il naso è romano e carnoso, con le narici strette, e le labbra sono screpolate. Porta i capelli castano scuro, cortissimi e lisci. Porta le basette lunghe e castano scuro.
-8. Femmina di 13 anni, 169 centimetri e 50 chili.
-Ha l'aspetto di una ragazza alta e slanciata. Il volto è spigoloso, l'incarnato olivastro. Ha occhi ambrati, sporgenti, dallo sguardo malizioso, con sopracciglia ribelli. Il naso è a patata e fine, con il setto leggermente deviato. La bocca è larga. Ha capelli biondo scuro, di media lunghezza e lisci, raccolti in uno chignon.
-9. Maschio di 17 anni, 182 centimetri e 50 chili.
-È un ragazzo piuttosto alto ed esile, dal viso armonioso, dalla carnagione chiara e dalla pelle levigata. Ha gli occhi marroni e ben distanziati, dallo sguardo sereno, e le ciglia scure. Il naso è aquilino e largo, segnato da una piccola cicatrice, e il sorriso è radioso. Porta i capelli castano chiaro, corti e lisci. Porta un pizzetto curato e castano chiaro.
-10. Femmina di 40 anni, 161 centimetri e 46 chili.
-È una donna magra e di statura media, dal viso pieno e dalla pelle scura e arrossata. Ha gli occhi grigio verde e socchiusi, dallo sguardo gentile, e le sopracciglia scure. Il naso è schiacciato e sottile e il sorriso è gentile. Porta i capelli turchesi, lunghissimi e mossi, acconciati in onde morbide.
-11. Maschio di 24 anni, 182 centimetri e 65 chili.
-È un ragazzo piuttosto alto e slanciato, dai tratti decisi e dall'incarnato olivastro. Ha gli occhi marroni e grandi, dallo sguardo gentile, e le ciglia scure. Il naso è a patata e carnoso e il sorriso è sincero. Porta i capelli biondo miele, di media lunghezza, lisci e fini. È ben rasato.
-12. Femmina di 29 anni, 156 centimetri e 55 chili.
-Si presenta come una donna piuttosto bassa e ben proporzionata, dai capelli castani e dagli occhi marroni. Ha un volto dai lineamenti delicati, l'incarnato ambrato e la pelle luminosa. Gli occhi, allungati, hanno uno sguardo calmo, e le ciglia sono corte. Ha un naso appuntito, con le narici strette, e una bocca carnosa. I capelli sono di media lunghezza e ondulati, raccolti in uno chignon. Il trucco è elegante.
-13. Maschio di 34 anni, 171 centimetri e 72 chili.
-Ha l'aspetto di un uomo ben proporzionato e di statura medio-bassa. Il volto è allungato, la pelle ambrata e lentigginosa. Si notano zigomi alti e lentiggini leggere sugli zigomi. Ha occhi nocciola, ben distanziati, dallo sguardo penetrante, con sopracciglia sottili. Il naso è all'insù e ossuto. Il sorriso è sincero. Ha capelli biondo miele, corti, crespi e fini, con una stempiatura evidente. È sbarbato.
-14. Femmina di 37 anni, 149 centimetri e 60 chili.
-Ha l'aspetto di una donna piccola di statura e di corporatura robusta. Il volto è scavato, l'incarnato scuro e la pelle tonica. Ha occhi grigio acciaio, rotondi, dallo sguardo intenso, con ciglia folte. Il naso è a patata e fine. La bocca è sorridente. Ha capelli biondi, a caschetto e ondulati. Di solito usa un trucco appena accennato.
-15. Maschio di 31 anni, 183 centimetri e 96 chili.
-Ha l'aspetto di un uomo piuttosto alto e robusto. Il viso è tondo, l'incarnato chiaro e la pelle lentigginosa. Si notano un mento appuntito e una piccola fossetta sul mento. Ha occhi neri, grandi, dallo sguardo curioso. Il naso è adunco e piccolo, con le narici strette. Il sorriso è leggermente storto. Ha capelli biondo scuro, cortissimi, lisci e ribelli, spettinati. È ben rasato.
-16. Femmina di 29 anni, 163 centimetri e 45 chili.
-Ha l'aspetto di una donna esile e di media statura. Il volto ha lineamenti delicati, la pelle olivastra. Ha occhi verde chiaro, leggermente all'insù, dallo sguardo diffidente, con sopracciglia ribelli. Il naso è schiacciato e prominente. Le labbra sono carnose. Ha capelli castani, di media lunghezza, lisci e setosi, raccolti in due trecce.
-17. Maschio di 21 anni, 177 centimetri e 72 chili.
-Ha l'aspetto di un ragazzo atletico e di media statura. Il viso è pieno, la carnagione molto scura e la pelle lentigginosa. Si nota una fronte alta. Ha occhi marroni, grandi, dallo sguardo curioso, con sopracciglia ben curate. Il naso è aquilino e largo. Il sorriso è rassicurante. Ha capelli castano chiaro, cortissimi e mossi, spettinati. È sbarbato.
-18. Femmina di 22 anni, 158 centimetri e 50 chili.
-Ha l'aspetto di una ragazza piuttosto bassa e snella. Il volto è triangolare, la pelle abbronzata. Si notano una voglia rosata e un mento pronunciato. Ha occhi marrone scuro, leggermente all'insù, dallo sguardo fiero, con sopracciglia quasi unite. Il naso è dritto e largo, con la punta arrotondata. Le labbra sono screpolate. Ha capelli verde acqua, di media lunghezza, ricci e radi.
-19. Maschio di 24 anni, 176 centimetri e 89 chili.
-Ha l'aspetto di un ragazzo corpulento e di statura media. Il volto è ovale, la carnagione olivastra e la pelle segnata dal sole. Ha occhi neri, grandi, dallo sguardo curioso. Il naso è aquilino e prominente. La bocca è sorridente. Ha capelli biondi, lunghi e ricci, rasati ai lati. Ha una barba curata.
-20. Femmina di 39 anni, 154 centimetri e 56 chili.
-È una donna piccola di statura e di corporatura normale, dal viso allungato e dall'incarnato abbronzato. Ha una fronte spaziosa. Ha gli occhi marroni e piccoli, dallo sguardo vivace, e le ciglia rade. Il naso è dritto e corto, spruzzato di lentiggini, e la bocca è larga. Porta i capelli biondi, a caschetto, mossi e ribelli, portati con la riga in mezzo.
+Campioni di descrizioni fisiche, seme 42: per riavere gli stessi si aggiunge --seme 42.
+1. Maschio di 32 anni, 167 centimetri e 66 chili.
+Ha l'aspetto di un uomo basso e atletico. Il volto è ovale, la pelle chiara e tonica. Ha occhi blu, leggermente all'insù, dallo sguardo sereno, con ciglia folte. Il naso è greco e prominente, spruzzato di lentiggini. La bocca è larga. Ha capelli biondo cenere, corti, mossi e radi, pettinati all'indietro. È sbarbato.
+2. Femmina di 35 anni, 172 centimetri e 75 chili.
+È una donna alta e di corporatura robusta, dai lineamenti delicati e dall'incarnato color nocciola. Ha una piccola voglia sulla guancia. Ha gli occhi verde chiaro e infossati, dallo sguardo severo. Il naso è alla francese e corto e le labbra sono pallide. Porta i capelli biondo scuro, lunghi e lisci, intrecciati in una lunga treccia. Porta un trucco vivace.
+3. Maschio di 33 anni, 175 centimetri e 84 chili.
+Si presenta come un uomo di media statura e di corporatura robusta, dai capelli castano chiaro e dagli occhi neri. Ha un volto dai tratti decisi, la carnagione rosata e la pelle tonica. Gli occhi, sottili, hanno uno sguardo severo, e le ciglia sono folte. Ha un naso all'insù e una bocca grande. I capelli sono di media lunghezza, mossi e radi, pettinati all'indietro. È ben rasato.
+4. Femmina di 30 anni, 163 centimetri e 46 chili.
+È una donna esile e di statura media, dal volto a cuore e dalla pelle pallida e liscia. Ha una fronte spaziosa. Ha gli occhi ambrati e leggermente all'insù, dallo sguardo attento, e le ciglia rade. Il naso è schiacciato e importante, segnato da una piccola cicatrice, e la bocca è espressiva. Porta i capelli biondi, lunghi e lisci, pettinati all'indietro. Porta un trucco elegante.
+5. Maschio di 9 anni, 147 centimetri e 41 chili.
+È un ragazzino alto e robusto, dai lineamenti delicati e dalla pelle chiara e delicata. Ha gli occhi marrone scuro e sottili, dallo sguardo calmo. Il naso è all'insù e delicato e la bocca è grande. Porta i capelli castani, di media lunghezza e mossi, pettinati con la riga di lato.
+6. Femmina di 31 anni, 162 centimetri e 70 chili.
+Ha l'aspetto di una donna di media statura e di corporatura robusta. Il viso è scavato, l'incarnato scuro. Ha occhi blu, piccoli, dallo sguardo severo. Il naso è greco e lungo. Le labbra sono morbide. Ha capelli castani, corti e lisci, fermati da un cerchietto.
+7. Maschio di 12 anni, 163 centimetri e 47 chili.
+È un ragazzino asciutto e di statura medio-alta, dai tratti marcati, dalla carnagione ambrata e dalla pelle arrossata. Ha gli occhi azzurro cielo e socchiusi, dallo sguardo allegro, e le ciglia scure. Il naso è alla francese e corto e le labbra sono piene. Porta i capelli castani, corti e mossi, sollevati in un ciuffo.
+8. Femmina di 14 anni, 162 centimetri e 50 chili.
+Ha l'aspetto di una ragazza asciutta e di statura media. Il volto ha tratti decisi, la carnagione chiara e la pelle tonica. Si notano zigomi sporgenti. Ha occhi grigi, piccoli, dallo sguardo malinconico, con sopracciglia folte. Il naso è alla francese e largo. Il sorriso è rassicurante. Ha capelli castani, di media lunghezza e mossi, tenuti fermo da un fermaglio. Di solito usa un trucco appena accennato.
+9. Maschio di 19 anni, 172 centimetri e 67 chili.
+Ha l'aspetto di un ragazzo piuttosto basso e ben proporzionato. Il volto è a cuore, la carnagione chiara e la pelle vellutata. Ha occhi nocciola, allungati, dallo sguardo timido. Il naso è appuntito e fine. La bocca è sorridente. Ha capelli castano chiaro, cortissimi e lisci, spettinati. Ha una barba squadrata.
+10. Femmina di 39 anni, 175 centimetri e 95 chili.
+Si presenta come una donna alta e decisamente robusta, dai capelli castano scuro e dagli occhi blu. Ha un volto squadrato e la carnagione olivastra, con una cicatrice appena visibile. Gli occhi, rotondi, hanno uno sguardo allegro, e le sopracciglia sono ribelli. Ha un naso leggermente storto, con le narici larghe, e una bocca sottile. I capelli sono corti e lisci.
+11. Maschio di 16 anni, 174 centimetri e 69 chili.
+È un ragazzo ben proporzionato e di media statura, dai lineamenti delicati, dall'incarnato chiaro e dalla pelle levigata. Ha gli occhi marrone chiaro e sporgenti, dallo sguardo calmo, e le sopracciglia quasi unite. Il naso è leggermente storto e carnoso, con la punta arrotondata, e il sorriso è ampio. Porta i capelli neri, cortissimi, crespi e fini, pettinati con la riga di lato. Porta una barba ben curata.
+12. Femmina di 43 anni, 176 centimetri e 94 chili.
+Ha l'aspetto di una donna alta e decisamente robusta. Il viso è allungato, la pelle color nocciola e liscia. Si notano guance rosee. Ha occhi nocciola, leggermente all'insù, dallo sguardo timido. Il naso è adunco e importante. Il sorriso è rassicurante. Ha capelli castano scuro, di media lunghezza e lisci, tenuti fermo da un fermaglio.
+13. Maschio di 22 anni, 182 centimetri e 64 chili.
+Ha l'aspetto di un ragazzo magro e di statura medio-alta. Il volto è a cuore, la pelle pallida e lentigginosa. Ha occhi marrone scuro, rotondi, dallo sguardo calmo. Il naso è appuntito e ossuto. Le labbra sono pallide. Ha capelli castani, corti, lisci e ribelli, portati con la frangia sulla fronte. Ha le basette folte e castane.
+14. Femmina di 15 anni, 162 centimetri e 50 chili.
+Ha l'aspetto di una ragazza asciutta e di media statura. Il volto è ovale, la pelle color nocciola. Ha occhi verde smeraldo, ravvicinati, dallo sguardo enigmatico, con sopracciglia folte. Il naso è adunco e carnoso. La bocca è ben disegnata. Ha capelli castano scuro, lunghi e ondulati. Di solito usa un trucco raffinato.
+15. Maschio di 34 anni, 166 centimetri e 46 chili.
+Ha l'aspetto di un uomo basso e magro. Il viso è pieno, la carnagione color nocciola. Si nota una mascella forte. Ha occhi verdi, leggermente all'insù, dallo sguardo gentile. Il naso è alla francese e delicato. Le labbra sono ben disegnate. Ha capelli castani, cortissimi e lisci. Ha una barba folta.
+16. Femmina di 18 anni, 156 centimetri e 57 chili.
+Ha l'aspetto di una ragazza di statura medio-bassa e di corporatura robusta. Il volto è regolare, la carnagione chiara e la pelle arrossata. Si nota una mascella forte. Ha occhi blu, leggermente all'insù, dallo sguardo enigmatico, con sopracciglia ben curate. Il naso è schiacciato e sottile, con le narici larghe. Il sorriso è contagioso. Ha capelli castani, a caschetto e crespi.
+17. Maschio di 26 anni, 161 centimetri e 58 chili.
+È un ragazzo piccolo di statura e asciutto, dal volto pieno, dalla carnagione abbronzata e dalla pelle lentigginosa. Ha un mento volitivo. Ha gli occhi verde chiaro e grandi, dallo sguardo fiero, e le sopracciglia marcate. Il naso è a patata e prominente, con le narici strette, e le labbra sono piene. Porta i capelli ramati, lunghi e crespi. Porta una barba di qualche giorno.
+18. Femmina di 10 anni, 153 centimetri e 50 chili.
+Ha l'aspetto di una ragazzina alta e decisamente robusta. Il viso è regolare, la pelle molto chiara e tonica. Ha occhi blu scuro, leggermente all'insù, dallo sguardo diffidente, con ciglia corte. Il naso è aquilino e sottile. La bocca è morbida. Ha capelli castano chiaro, corti e mossi, pettinati all'indietro.
+19. Maschio di 19 anni, 170 centimetri e 73 chili.
+Si presenta come un ragazzo robusto e di statura medio-bassa, dai capelli rosso rame e dagli occhi marroni. Ha un viso a cuore e la pelle rosata. Gli occhi, socchiusi, hanno uno sguardo malizioso. Ha un naso alla francese e labbra ben disegnate. I capelli sono corti e crespi, tagliati a spazzola. È sbarbato.
+20. Femmina di 19 anni, 165 centimetri e 51 chili.
+Ha l'aspetto di una ragazza snella e di statura media. Il volto ha tratti marcati, la carnagione scura e la pelle liscia. Ha occhi blu scuro, rotondi, dallo sguardo sereno, con sopracciglia ribelli. Il naso è romano e carnoso. La bocca è sorridente. Ha capelli castano chiaro, di media lunghezza, lisci e setosi, portati con la riga in mezzo. Di solito usa un trucco intenso.
 Gli stessi giocatori, più avanti negli anni.
-1. Maschio di 52 anni, 181 centimetri e 97 chili.
-Ha l'aspetto di un uomo piuttosto alto e di corporatura robusta. Il volto ha lineamenti dolci, la pelle abbronzata. Si notano rughe profonde ai lati della bocca. Ha occhi neri, ravvicinati, dallo sguardo sereno, con sopracciglia ben curate. Il naso è leggermente storto e ossuto. La bocca è larga. È calvo, e restano pochi capelli sale e pepe ai lati e sulla nuca. Ha una barba squadrata.
-6. Femmina di 61 anni, 168 centimetri e 70 chili.
-È una donna piuttosto alta e ben proporzionata, dal viso tondo e dalla pelle olivastra e segnata dal sole. Ha qualche ruga. Ha gli occhi blu scuro e a mandorla, dallo sguardo severo. Il naso è dritto e ossuto e il sorriso è aperto. Porta i capelli sale e pepe, lunghi, lisci e spessi, spettinati. Porta un trucco naturale.
-11. Maschio di 68 anni, 180 centimetri e 70 chili.
-È un uomo piuttosto alto e slanciato, dai tratti decisi e dall'incarnato olivastro. Ha qualche ruga. Ha gli occhi marroni e grandi, dallo sguardo gentile, e le ciglia scure. Il naso è a patata e carnoso e il sorriso è sincero. Porta i capelli bianchi, di media lunghezza, lisci e fini. È ben rasato.
-16. Femmina di 75 anni, 160 centimetri e 49 chili.
-Ha l'aspetto di una donna esile e di media statura. Il volto ha lineamenti delicati, la pelle olivastra. Si nota qualche ruga. Ha occhi verde chiaro, leggermente all'insù, dallo sguardo diffidente, con sopracciglia ribelli. Il naso è schiacciato e prominente. Le labbra sono carnose. Ha capelli sale e pepe, di media lunghezza, lisci e setosi, raccolti in due trecce.
+1. Maschio di 52 anni, 167 centimetri e 69 chili.
+Ha l'aspetto di un uomo basso e atletico. Il volto è ovale, la pelle chiara e tonica. Ha occhi blu, leggermente all'insù, dallo sguardo sereno, con ciglia folte. Il naso è greco e prominente, spruzzato di lentiggini. La bocca è larga. Ha capelli grigi, corti, mossi e radi, pettinati all'indietro. È sbarbato.
+6. Femmina di 61 anni, 161 centimetri e 76 chili.
+Ha l'aspetto di una donna di media statura e di corporatura robusta. Il viso è scavato, l'incarnato scuro. Si nota qualche ruga. Ha occhi blu, piccoli, dallo sguardo severo. Il naso è greco e lungo. Le labbra sono morbide. Ha capelli sale e pepe, corti e lisci, fermati da un cerchietto.
+11. Maschio di 68 anni, 175 centimetri e 85 chili.
+È un uomo ben proporzionato e di media statura, dai lineamenti delicati, dall'incarnato chiaro e dalla pelle levigata. Ha qualche ruga. Ha gli occhi marrone chiaro e sporgenti, dallo sguardo calmo, e le sopracciglia quasi unite. Il naso è leggermente storto e carnoso, con la punta arrotondata, e il sorriso è ampio. È calvo, con pochi capelli brizzolati ai lati e sulla nuca. Porta una barba ben curata.
+16. Femmina di 75 anni, 154 centimetri e 65 chili.
+Ha l'aspetto di una donna di statura medio-bassa e di corporatura robusta. Il volto è regolare, la carnagione chiara e la pelle arrossata. Si notano una mascella forte e qualche ruga. Ha occhi blu, leggermente all'insù, dallo sguardo enigmatico, con sopracciglia ben curate. Il naso è schiacciato e sottile, con le narici larghe. Il sorriso è contagioso. Ha capelli grigio argento, a caschetto e crespi.

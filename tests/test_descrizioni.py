@@ -82,3 +82,10 @@ def test_si_cresce_fino_a_diciotto_anni():
         assert altezze == sorted(altezze)
         assert pesi == sorted(pesi)
         assert altezze[-1] - altezze[0] >= 20
+
+
+def test_nessun_adulto_sotto_il_peso_minimo():
+    for sesso, tratti in giocatori(2000, seme=3):
+        for eta in (18, 30, 50):
+            altezza, peso = descrizioni.fisico(tratti, sesso, eta)
+            assert peso / (altezza / 100) ** 2 >= 16.5, (sesso, eta, altezza, peso)

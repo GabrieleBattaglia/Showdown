@@ -77,8 +77,9 @@
             "verde oliva", "marrone chiaro", "blu scuro", "grigio verde"
         ],
         "forme": [
-            "a mandorla", "rotondo", "grande", "piccolo", "infossato", "ravvicinato", "ben distanziato", "allungato",
-            "leggermente all'ingiù", "leggermente all'insù", "sporgente", "sottile", "socchiuso"
+            {"voce": "a mandorla", "peso": 3}, {"voce": "grande", "peso": 3}, {"voce": "rotondo", "peso": 2}, {"voce": "allungato", "peso": 2},
+            {"voce": "piccolo", "peso": 2}, "infossato", "ravvicinato", "ben distanziato", "sottile", {"voce": "leggermente all'ingiù", "peso": 0.5},
+            {"voce": "leggermente all'insù", "peso": 0.5}, {"voce": "sporgente", "peso": 0.5}, {"voce": "socchiuso", "peso": 0.5}
         ],
         "sguardi": [
             "vivace", "dolce", "malinconico", "penetrante", "sognante", "fiero", "timido", "curioso", "calmo", "severo",

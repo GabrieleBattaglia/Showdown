@@ -48,6 +48,9 @@ MASSA_MEDIA = {
     "f": ((9, 16.9), (11, 18.0), (13, 19.2), (15, 20.2), (17, 20.9), (20, 21.5), (25, 22.2), (30, 22.9), (40, 24.0), (50, 25.0), (60, 25.6), (80, 25.0)),
 }
 MASSA_DEVIAZIONE = ((9, 2.2), (16, 2.6), (20, 3.0), (30, 3.4))
+# La massa corporea si allontana dalla media meno verso il magro che verso il grasso: sotto la
+# media la deviazione si accorcia di questo fattore, o un adulto arriverebbe a 46 chili.
+MASSA_CODA_MAGRA = 0.6
 MASSA_LIMITI = (14.5, 42.0)
 
 # Dove finisce ciascuna fascia di statura e di corporatura, in deviazioni standard dalla media
@@ -167,7 +170,10 @@ def _interpola(curva, x):
 def fisico(tratti, sesso, eta):
     """Altezza in centimetri e peso in chili all'età data, dalla posizione del giocatore nelle curve di crescita."""
     altezza = _interpola(ALTEZZA_MEDIA[sesso], eta) + tratti["z_altezza"] * _interpola(ALTEZZA_DEVIAZIONE[sesso], eta)
-    massa = _interpola(MASSA_MEDIA[sesso], eta) + tratti["z_massa"] * _interpola(MASSA_DEVIAZIONE, eta)
+    deviazione = _interpola(MASSA_DEVIAZIONE, eta)
+    if tratti["z_massa"] < 0:
+        deviazione *= MASSA_CODA_MAGRA
+    massa = _interpola(MASSA_MEDIA[sesso], eta) + tratti["z_massa"] * deviazione
     massa = max(MASSA_LIMITI[0], min(MASSA_LIMITI[1], massa))
     return round(altezza), round(massa * (altezza / 100) ** 2)
 
