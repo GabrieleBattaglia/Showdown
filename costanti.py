@@ -12,8 +12,12 @@ from version import __version__
 
 VERSIONE = __version__
 # Il salvataggio del mondo, accanto al programma, e la sua copia di sicurezza.
-FILE_MONDO = "mess_mondo.json"
+# Dalla tappa 7 il mondo si salva compresso: lo stesso JSON firmato, otto volte più piccolo.
+FILE_MONDO = "mess_mondo.json.gz"
 FILE_MONDO_COPIA = FILE_MONDO + ".bak"
+# I nomi del salvataggio non compresso, fino alla tappa 6: si leggono ancora, e il primo salvataggio li sostituisce.
+FILE_MONDO_VECCHIO = "mess_mondo.json"
+FILE_MONDO_COPIA_VECCHIO = FILE_MONDO_VECCHIO + ".bak"
 FILE_NOMI_M = "nomi_maschili.txt"
 FILE_NOMI_F = "nomi_femminili.txt"
 FILE_COGNOMI = "cognomi.txt"

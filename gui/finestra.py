@@ -10,6 +10,9 @@ Dalla tappa 6 il mondo avanza anche a finestra aperta: ogni minuto un timer guar
 un giorno simulato, lo fa elaborare, salva il mondo e lo annuncia nella barra di stato, senza
 toccare la vista principale, dove chi legge non deve vedersi spostare il testo. Mentre è aperto
 un dialogo aspetta che si chiuda.
+Dalla tappa 7 il menu Polisportive ha le operazioni: fondazione, cambio della polisportiva
+attiva, mercato, svincolo, password e chiusura. Ogni operazione si salva subito, così l'esito di
+un'offerta resta quello che è stato.
 """
 
 import contextlib
@@ -24,7 +27,19 @@ import percorsi
 import ricerca
 import testi
 from gui import aspetto
-from gui.dialoghi import Aspetto, Caffe, Conservazione, Lettura, Ricerca, SceltaGiocatore
+from gui.dialoghi import (
+    Aspetto,
+    Caffe,
+    CambiaPolisportiva,
+    ChiediPassword,
+    Conservazione,
+    Lettura,
+    Mercato,
+    NuovaPolisportiva,
+    PasswordPolisportiva,
+    Ricerca,
+    SceltaGiocatore,
+)
 from utilita import adesso, adesso_utc
 
 TITOLO = "MESS, Manageriale e Simulatore Showdown"
@@ -94,10 +109,19 @@ class FinestraPrincipale(wx.Frame):
                 ("&Usciti di scena nella sessione", "Ctrl+Shift+U", lambda: self.mostra(testi.lista_usciti(self.mondo), "usciti di scena")),
             )),
             ("&Polisportive", (
+                ("&Nuova polisportiva...", "Ctrl+N", self.nuova_polisportiva),
+                ("&Cambia polisportiva attiva...", "Ctrl+Shift+C", self.cambia_polisportiva),
+                None,
+                ("&Mercato...", "Ctrl+K", self.mercato),
+                ("S&vincola un tesserato...", "Ctrl+Shift+S", self.svincola),
+                None,
                 ("&Scheda della polisportiva attiva", "Ctrl+M", self.scheda_polisportiva),
                 ("&Tesserati della polisportiva attiva", "Ctrl+Shift+T", lambda: self.mostra(testi.tesserati_attiva(self.mondo), "tesserati")),
-                ("&Elenco delle polisportive", "Ctrl+Shift+E", lambda: self.mostra(testi.elenco_polisportive(self.mondo), "elenco delle polisportive")),
                 ("&Diario della polisportiva attiva", "Ctrl+Shift+M", self.diario_polisportiva),
+                ("&Elenco delle polisportive", "Ctrl+Shift+E", lambda: self.mostra(testi.elenco_polisportive(self.mondo), "elenco delle polisportive")),
+                None,
+                ("&Password della polisportiva attiva...", None, self.password_polisportiva),
+                ("C&hiudi la polisportiva attiva...", None, self.chiudi_polisportiva),
             )),
             ("&Mondo", (
                 ("&Data e prossimo avanzamento", "Ctrl+D", lambda: self.mostra(testi.data_e_avanzamento(self.mondo, adesso_utc()), "data simulata")),
@@ -207,6 +231,14 @@ class FinestraPrincipale(wx.Frame):
         finally:
             self._modali -= 1
 
+    def _domanda(self, testo, titolo):
+        """Una domanda sì o no, con il no già scelto; finché è aperta, il mondo non avanza."""
+        self._modali += 1
+        try:
+            return wx.MessageBox(testo, titolo, wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self)
+        finally:
+            self._modali -= 1
+
     def vai_alla_vista(self):
         self.vista.SetFocus()
 
@@ -256,11 +288,9 @@ class FinestraPrincipale(wx.Frame):
             self.mostra(testi.diario_giocatore(g), f"diario di {testi.nome_completo(g)}")
 
     def diario_polisportiva(self):
-        p = self.mondo.miapolisportiva_attiva
-        if p is None:
-            self.mostra("Non hai una polisportiva attiva.", "nessuna polisportiva")
-            return
-        self.mostra(testi.diario_polisportiva(p), f"diario di {p.nome}")
+        p = self._attiva()
+        if p is not None:
+            self.mostra(testi.diario_polisportiva(p), f"diario di {p.nome}")
 
     def cambia_conservazione(self):
         dialogo = Conservazione(self, self.mondo.conservazione_diari)
@@ -290,11 +320,115 @@ class FinestraPrincipale(wx.Frame):
         self.mostra(testi.risultati_ricerca(self.mondo, self.ultima_ricerca, self.mondo.risultati_ultima_ricerca), "risultati della ricerca")
 
     def scheda_polisportiva(self):
+        p = self._attiva()
+        if p is not None:
+            self.mostra(testi.scheda_polisportiva(p, self.mondo), f"scheda di {p.nome}")
+
+    # Le operazioni delle polisportive.
+
+    def _attiva(self):
+        """La polisportiva attiva; se non c'è, lo dice nella vista principale e restituisce None."""
         p = self.mondo.miapolisportiva_attiva
         if p is None:
-            self.mostra("Non hai una polisportiva attiva.", "nessuna polisportiva")
+            self.mostra("Non hai una polisportiva attiva: fondane una con Ctrl+N, o sceglila con Ctrl+Maiusc+C.", "nessuna polisportiva")
+        return p
+
+    def nuova_polisportiva(self):
+        dialogo = NuovaPolisportiva(self, self.mondo)
+        try:
+            if self._modale(dialogo) != wx.ID_OK or dialogo.risultato is None:
+                return
+            nome, password, attiva = dialogo.risultato
+        finally:
+            dialogo.Destroy()
+        p = self.mondo.fonda_polisportiva(nome, password, attiva)
+        self._salva_raccogliendo()
+        self.mostra(testi.fondata(p, self.mondo), f"fondata {p.nome}")
+
+    def cambia_polisportiva(self):
+        if all(p.is_cpu_controlled for p in self.mondo.polisportive.values()):
+            self.mostra("Non hai ancora nessuna polisportiva: fondane una con Ctrl+N.", "nessuna polisportiva")
             return
-        self.mostra(testi.scheda_polisportiva(p, self.mondo), f"scheda di {p.nome}")
+        dialogo = CambiaPolisportiva(self, self.mondo)
+        try:
+            if self._modale(dialogo) != wx.ID_OK or dialogo.scelta is None:
+                return
+            p = dialogo.scelta
+        finally:
+            dialogo.Destroy()
+        self.mondo.miapolisportiva_attiva = p
+        self._salva_raccogliendo()
+        self.mostra(testi.scheda_polisportiva(p, self.mondo), f"attiva {p.nome}")
+
+    def mercato(self):
+        p = self._attiva()
+        if p is None:
+            return
+        dialogo = Mercato(self, self.mondo, p, self.impostazioni)
+        try:
+            self._modale(dialogo)
+            esiti = list(dialogo.esiti)
+        finally:
+            dialogo.Destroy()
+        if esiti:
+            self._salva_raccogliendo()
+        self.mostra(testi.riepilogo_mercato(p, self.mondo, esiti), f"mercato: {testi.conta(len(esiti), 'offerta', 'offerte')}")
+
+    def svincola(self):
+        p = self._attiva()
+        if p is None:
+            return
+        rosa = [self.mondo.giocatori[gid] for gid in p.tesserati if gid in self.mondo.giocatori]
+        if not rosa:
+            self.mostra(f"{p.nome} non ha tesserati da svincolare.", "nessun tesserato")
+            return
+        dialogo = SceltaGiocatore(self, self.mondo, f"Svincola un tesserato di {p.nome}", "S&vincola", rosa)
+        try:
+            if self._modale(dialogo) != wx.ID_OK or dialogo.scelto is None:
+                return
+            g = dialogo.scelto
+        finally:
+            dialogo.Destroy()
+        if self.mondo.mosse_rimaste(p) <= 0:
+            self.mostra(f"Per oggi {p.nome} ha finito le mosse di mercato.", "nessuna mossa")
+            return
+        domanda = f"Svincolare {testi.nome_completo(g)}? Tornerà {testi.accorda(g, 'libero')}, e userai una delle {self.mondo.mosse_rimaste(p)} mosse che ti restano oggi."
+        if self._domanda(domanda, "Svincolo") != wx.YES:
+            return
+        self.mondo.svincola(p, g)
+        self._salva_raccogliendo()
+        self.mostra(testi.svincolato(g, p, self.mondo), f"svincolato {testi.nome_completo(g)}")
+
+    def password_polisportiva(self):
+        p = self._attiva()
+        if p is None:
+            return
+        dialogo = PasswordPolisportiva(self, p)
+        try:
+            if self._modale(dialogo) != wx.ID_OK or dialogo.risultato is None:
+                return
+            p.imposta_password(dialogo.risultato)
+        finally:
+            dialogo.Destroy()
+        self._salva_raccogliendo()
+        self.mostra(testi.password_cambiata(p), "password" if p.protetta else "senza password")
+
+    def chiudi_polisportiva(self):
+        p = self._attiva()
+        if p is None:
+            return
+        if p.protetta:
+            dialogo = ChiediPassword(self, p, f"Per chiudere {p.nome} serve la sua password.")
+            try:
+                if self._modale(dialogo) != wx.ID_OK:
+                    return
+            finally:
+                dialogo.Destroy()
+        if self._domanda(testi.domanda_chiusura(p), "Chiusura") != wx.YES:
+            return
+        liberati = self.mondo.chiudi_polisportiva(p)
+        self._salva_raccogliendo()
+        self.mostra(testi.chiusa(p.nome, liberati), f"chiusa {p.nome}")
 
     def cambia_aspetto(self):
         dialogo = Aspetto(self, self.impostazioni)

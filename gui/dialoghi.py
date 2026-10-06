@@ -5,6 +5,9 @@ Nasce il 2026-10-06 con la tappa 5 del piano. Ogni dialogo segue lo schema di GB
 adattabile, controlli in un pannello che scorre, misura presa dal contenuto, così i caratteri
 grandi non lasciano niente fuori dallo schermo. Solo controlli nativi a selezione singola, e
 ogni campo ha davanti la sua etichetta, da cui lo screen reader prende il nome.
+Dalla tappa 7 ci sono i dialoghi delle polisportive: fondazione, cambio, password, e il mercato
+della decisione D20, che usa la ricerca come filtro e chiede conferma prima di ogni offerta,
+perché un'offerta costa una mossa e non si ritira.
 """
 
 import contextlib
@@ -14,8 +17,10 @@ import wx
 from GBwx import STILE_ADATTABILE, adatta_finestra, pannello_scorrevole
 
 import impostazioni as modulo_impostazioni
+import mercato
 import ricerca
 import testi
+from costanti import NOME_POLISPORTIVA_MAX, NOME_POLISPORTIVA_MIN
 from gui import aspetto
 
 PAYPAL_URL = "https://paypal.me/GabrieleBattaglia780"
@@ -59,15 +64,20 @@ class _Dialogo(wx.Dialog):
         else:
             self.SetReturnCode(codice)
 
+    def avvisa(self, testo, controllo):
+        """Un avviso che lascia il dialogo aperto, con il cursore sul campo da correggere."""
+        wx.MessageBox(testo, self.GetTitle(), wx.OK | wx.ICON_WARNING, self)
+        controllo.SetFocus()
+
 
 class SceltaGiocatore(_Dialogo):
     """La scelta di un giocatore: un campo per il numero o il nome e l'elenco, che si restringe mentre si scrive."""
 
-    def __init__(self, genitore, mondo, titolo="Scheda del giocatore", pulsante="&Mostra la scheda"):
+    def __init__(self, genitore, mondo, titolo="Scheda del giocatore", pulsante="&Mostra la scheda", giocatori=None):
         super().__init__(genitore, titolo)
         self.mondo = mondo
         self.scelto = None
-        self.tutti = sorted(mondo.giocatori.values(), key=lambda g: g.id)
+        self.tutti = sorted(mondo.giocatori.values() if giocatori is None else giocatori, key=lambda g: g.id)
         self.visibili = []
         self.etichetta("&Numero o nome del giocatore")
         self.campo = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PROCESS_ENTER))
@@ -105,38 +115,43 @@ class SceltaGiocatore(_Dialogo):
 
 
 class Ricerca(_Dialogo):
-    """La ricerca dei giocatori: dove cercare, la caratteristica, la condizione e il valore."""
+    """
+    La ricerca dei giocatori: dove cercare, la caratteristica, la condizione e il valore. Senza la
+    scelta di dove cercare è il filtro del mercato, che cerca sempre fra i liberi.
+    """
 
-    def __init__(self, genitore):
-        super().__init__(genitore, "Cerca giocatori")
+    def __init__(self, genitore, con_ambito=True, titolo="Cerca giocatori", pulsante="C&erca"):
+        super().__init__(genitore, titolo)
         self.risultato = None
-        self.etichetta("&Dove cercare")
-        self.ambito = self.aggiungi(wx.Choice(self.pannello, choices=[nome.capitalize() for _chiave, nome in ricerca.AMBITI]))
+        self.ambito = None
+        if con_ambito:
+            self.etichetta("&Dove cercare")
+            self.ambito = self.aggiungi(wx.Choice(self.pannello, choices=[nome.capitalize() for _chiave, nome in ricerca.AMBITI]))
+            self.ambito.SetSelection(0)
         self.etichetta("&Caratteristica")
         self.criterio = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome, _tipo, _leggi in ricerca.CRITERI]))
         self.etichetta("C&ondizione")
         self.condizione = self.aggiungi(wx.Choice(self.pannello))
         self.etichetta("&Valore")
         self.valore = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PROCESS_ENTER))
-        cerca, _annulla = self.pulsanti((wx.ID_OK, "C&erca"), (wx.ID_CANCEL, "Annulla"))
-        self.ambito.SetSelection(0)
+        cerca, _annulla = self.pulsanti((wx.ID_OK, pulsante), (wx.ID_CANCEL, "Annulla"))
         self.criterio.SetSelection(0)
         self.criterio.Bind(wx.EVT_CHOICE, self.al_criterio)
         self.valore.Bind(wx.EVT_TEXT_ENTER, self.conferma)
         cerca.Bind(wx.EVT_BUTTON, self.conferma)
         self.al_criterio()
         self.completa((440, 360))
-        self.ambito.SetFocus()
+        (self.ambito or self.criterio).SetFocus()
 
     def chiave_criterio(self):
         return ricerca.CRITERI[self.criterio.GetSelection()][0]
 
     def al_criterio(self, event=None):
-        """Le condizioni giuste per la caratteristica scelta; per il sì o no il valore non serve."""
+        """Le condizioni giuste per la caratteristica scelta; per il sesso e per il sì o no il valore non serve."""
         tipo = ricerca.tipo_criterio(self.chiave_criterio())
         self.condizione.Set([nome for _chiave, nome in ricerca.CONDIZIONI[tipo]])
         self.condizione.SetSelection(0)
-        self.valore.Enable(tipo != ricerca.SI_NO)
+        self.valore.Enable(tipo not in ricerca.SENZA_VALORE)
 
     def conferma(self, event=None):
         """Controlla il valore e conserva la ricerca in risultato: ambito, criterio, condizione, valore e descrizione."""
@@ -158,10 +173,12 @@ class Ricerca(_Dialogo):
                 self.valore.SetFocus()
                 return
             valore = testo
-        ambito = ricerca.AMBITI[self.ambito.GetSelection()][0]
-        descrizione = f"{ricerca.nome_ambito(ambito)}, {ricerca.nome_criterio(criterio).lower()} {ricerca.nome_condizione(criterio, condizione)}"
+        ambito = ricerca.AMBITI[self.ambito.GetSelection()][0] if self.ambito else None
+        descrizione = f"{ricerca.nome_criterio(criterio).lower()} {ricerca.nome_condizione(criterio, condizione)}"
         if valore is not None:
             descrizione += f" {testi.numero(valore) if tipo == ricerca.NUMERO else valore}"
+        if ambito is not None:
+            descrizione = f"{ricerca.nome_ambito(ambito)}, {descrizione}"
         self.risultato = (ambito, criterio, condizione, valore, descrizione)
         self.chiudi(wx.ID_OK)
 
@@ -240,6 +257,248 @@ class Conservazione(_Dialogo):
     def conferma(self, event=None):
         self.risultato = {"giocatori": self.giocatori.GetValue(), "polisportive": self.polisportive.GetValue()}
         self.chiudi(wx.ID_OK)
+
+
+class NuovaPolisportiva(_Dialogo):
+    """La fondazione di una polisportiva: il nome, la password facoltativa della decisione D3 e se renderla attiva."""
+
+    def __init__(self, genitore, mondo):
+        super().__init__(genitore, "Nuova polisportiva")
+        self.mondo = mondo
+        self.risultato = None
+        self.etichetta(f"&Nome, da {NOME_POLISPORTIVA_MIN} a {NOME_POLISPORTIVA_MAX} caratteri")
+        self.nome = self.aggiungi(wx.TextCtrl(self.pannello))
+        self.etichetta("&Password, facoltativa")
+        self.password = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
+        self.etichetta("C&onferma della password")
+        self.conferma_password = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
+        self.attiva = self.aggiungi(wx.CheckBox(self.pannello, label="&Rendila la polisportiva attiva"))
+        self.attiva.SetValue(True)
+        fonda, _annulla = self.pulsanti((wx.ID_OK, "&Fonda"), (wx.ID_CANCEL, "Annulla"))
+        fonda.Bind(wx.EVT_BUTTON, self.conferma)
+        self.completa((420, 320))
+        self.nome.SetFocus()
+
+    def conferma(self, event=None):
+        problema = self.mondo.problema_nome_polisportiva(self.nome.GetValue())
+        if problema:
+            self.avvisa(problema, self.nome)
+            return
+        if self.password.GetValue() != self.conferma_password.GetValue():
+            self.avvisa("La password e la conferma non coincidono.", self.password)
+            return
+        self.risultato = (self.nome.GetValue(), self.password.GetValue() or None, self.attiva.GetValue())
+        self.chiudi(wx.ID_OK)
+
+
+class CambiaPolisportiva(_Dialogo):
+    """La scelta della polisportiva attiva fra quelle dell'utente, con la password se è protetta."""
+
+    def __init__(self, genitore, mondo):
+        super().__init__(genitore, "Cambia polisportiva attiva")
+        self.mondo = mondo
+        self.scelta = None
+        self.mie = sorted((p for p in mondo.polisportive.values() if not p.is_cpu_controlled), key=lambda p: p.nome.casefold())
+        self.etichetta("&Le tue polisportive")
+        self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE, choices=[testi.riga_mia_polisportiva(p, mondo) for p in self.mie]), 1)
+        self.etichetta("&Password, se la polisportiva è protetta")
+        self.password = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
+        attiva, _annulla = self.pulsanti((wx.ID_OK, "&Attiva"), (wx.ID_CANCEL, "Annulla"))
+        attiva.Bind(wx.EVT_BUTTON, self.conferma)
+        self.elenco.Bind(wx.EVT_LISTBOX_DCLICK, self.conferma)
+        if self.mie:
+            self.elenco.SetSelection(self.mie.index(mondo.miapolisportiva_attiva) if mondo.miapolisportiva_attiva in self.mie else 0)
+        self.completa((440, 360))
+        self.elenco.SetFocus()
+
+    def conferma(self, event=None):
+        indice = self.elenco.GetSelection()
+        if indice == wx.NOT_FOUND:
+            wx.Bell()
+            return
+        poli = self.mie[indice]
+        if poli.protetta and not poli.verifica_password(self.password.GetValue()):
+            self.avvisa(f"La password di {poli.nome} non è giusta.", self.password)
+            return
+        self.scelta = poli
+        self.chiudi(wx.ID_OK)
+
+
+class PasswordPolisportiva(_Dialogo):
+    """La password della polisportiva: si mette, si cambia o, lasciando vuota la nuova, si toglie."""
+
+    def __init__(self, genitore, poli):
+        super().__init__(genitore, f"Password di {poli.nome}")
+        self.poli = poli
+        self.risultato = None
+        self.attuale = None
+        if poli.protetta:
+            self.etichetta("Password &attuale")
+            self.attuale = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
+        self.etichetta("&Nuova password, vuota per togliere la protezione")
+        self.nuova = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
+        self.etichetta("&Conferma della nuova password")
+        self.conferma_nuova = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
+        ok, _annulla = self.pulsanti((wx.ID_OK, "OK"), (wx.ID_CANCEL, "Annulla"))
+        ok.Bind(wx.EVT_BUTTON, self.conferma)
+        self.completa((420, 300))
+        (self.attuale or self.nuova).SetFocus()
+
+    def conferma(self, event=None):
+        if self.attuale is not None and not self.poli.verifica_password(self.attuale.GetValue()):
+            self.avvisa("La password attuale non è giusta.", self.attuale)
+            return
+        if self.nuova.GetValue() != self.conferma_nuova.GetValue():
+            self.avvisa("La nuova password e la conferma non coincidono.", self.nuova)
+            return
+        self.risultato = self.nuova.GetValue()
+        self.chiudi(wx.ID_OK)
+
+
+class ChiediPassword(_Dialogo):
+    """La password di una polisportiva protetta, prima di un'operazione che non si può annullare."""
+
+    def __init__(self, genitore, poli, perche):
+        super().__init__(genitore, f"Password di {poli.nome}")
+        self.poli = poli
+        self.sizer.Add(wx.StaticText(self.pannello, label=perche), 0, wx.ALL, 8)
+        self.etichetta("&Password")
+        self.password = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
+        ok, _annulla = self.pulsanti((wx.ID_OK, "OK"), (wx.ID_CANCEL, "Annulla"))
+        ok.Bind(wx.EVT_BUTTON, self.conferma)
+        self.completa((380, 220))
+        self.password.SetFocus()
+
+    def conferma(self, event=None):
+        if not self.poli.verifica_password(self.password.GetValue()):
+            self.avvisa(f"La password di {self.poli.nome} non è giusta.", self.password)
+            return
+        self.chiudi(wx.ID_OK)
+
+
+class Mercato(_Dialogo):
+    """
+    Il mercato della decisione D20, sul modello di Hattrick: filtri, probabilità minima e ordine
+    danno l'elenco dei liberi, ciascuno con la probabilità di accettare; a chi si sceglie si fa
+    un'offerta, dopo una domanda di conferma, e l'esito arriva in un messaggio. Il dialogo resta
+    aperto, e in esiti tiene le offerte fatte, che la finestra racconta alla chiusura.
+    """
+
+    def __init__(self, genitore, mondo, poli, impostazioni=None):
+        super().__init__(genitore, f"Mercato di {poli.nome}")
+        self.mondo = mondo
+        self.poli = poli
+        self.impostazioni = impostazioni
+        self.filtri = []
+        self.esiti = []
+        self.righe = []
+        self.info = wx.StaticText(self.pannello, label=testi.info_mercato(poli, mondo))
+        self.sizer.Add(self.info, 0, wx.ALL, 8)
+        self.etichetta("&Filtri")
+        self.elenco_filtri = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE))
+        riga = wx.BoxSizer(wx.HORIZONTAL)
+        for testo, azione in (("&Aggiungi un filtro...", self.aggiungi_filtro), ("&Togli il filtro", self.togli_filtro), ("Togli t&utti i filtri", self.togli_tutti)):
+            pulsante = wx.Button(self.pannello, label=testo)
+            pulsante.Bind(wx.EVT_BUTTON, azione)
+            riga.Add(pulsante, 0, wx.ALL, 4)
+        self.sizer.Add(riga, 0, wx.LEFT | wx.RIGHT, 4)
+        self.etichetta("Probabilità &minima di accettare, in percentuale")
+        self.minima = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=100, initial=0))
+        self.etichetta("&Ordina per")
+        self.ordine = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome in mercato.ORDINI]))
+        self.ordine.SetSelection(0)
+        self.etichetta_trovati = wx.StaticText(self.pannello, label="&Giocatori trovati")
+        self.sizer.Add(self.etichetta_trovati, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        self.trovati = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        offri, scheda, _chiudi = self.pulsanti((wx.ID_ANY, "Fai un'&offerta"), (wx.ID_ANY, "&Scheda del giocatore"), (wx.ID_CANCEL, "&Chiudi"))
+        offri.Bind(wx.EVT_BUTTON, self.offri)
+        scheda.Bind(wx.EVT_BUTTON, self.scheda)
+        self.trovati.Bind(wx.EVT_LISTBOX_DCLICK, self.offri)
+        self.minima.Bind(wx.EVT_SPINCTRL, self.aggiorna)
+        self.minima.Bind(wx.EVT_TEXT, self.aggiorna)
+        self.ordine.Bind(wx.EVT_CHOICE, self.aggiorna)
+        self.mostra_filtri()
+        self.aggiorna()
+        self.completa((680, 600))
+        self.trovati.SetFocus()
+
+    def mostra_filtri(self, posto=0):
+        """L'elenco dei filtri; senza filtri dice che compaiono tutti i liberi."""
+        self.elenco_filtri.Set([descrizione for _c, _k, _v, descrizione in self.filtri] or ["Nessun filtro: compaiono tutti i liberi."])
+        self.elenco_filtri.SetSelection(min(posto, self.elenco_filtri.GetCount() - 1))
+
+    def aggiorna(self, event=None, posto=0):
+        """Ricalcola l'elenco dei candidati con filtri, probabilità minima e ordine del momento."""
+        ordine = mercato.ORDINI[self.ordine.GetSelection()][0]
+        filtri = [(criterio, condizione, valore) for criterio, condizione, valore, _d in self.filtri]
+        self.righe = mercato.candidati(self.mondo, self.poli, filtri, self.minima.GetValue(), ordine)
+        self.trovati.Set([testi.riga_mercato(g, probabilita) for g, probabilita in self.righe])
+        if self.righe:
+            self.trovati.SetSelection(min(posto, len(self.righe) - 1))
+        self.etichetta_trovati.SetLabel(f"&Giocatori trovati: {testi.intero(len(self.righe))}")
+        self.info.SetLabel(testi.info_mercato(self.poli, self.mondo))
+        self.pannello.Layout()
+
+    def aggiungi_filtro(self, event=None):
+        dialogo = Ricerca(self, con_ambito=False, titolo="Aggiungi un filtro", pulsante="&Aggiungi")
+        try:
+            if dialogo.ShowModal() == wx.ID_OK and dialogo.risultato is not None:
+                _ambito, criterio, condizione, valore, descrizione = dialogo.risultato
+                self.filtri.append((criterio, condizione, valore, descrizione[0].upper() + descrizione[1:]))
+                self.mostra_filtri(len(self.filtri) - 1)
+                self.aggiorna()
+        finally:
+            dialogo.Destroy()
+
+    def togli_filtro(self, event=None):
+        indice = self.elenco_filtri.GetSelection()
+        if not self.filtri or indice == wx.NOT_FOUND:
+            wx.Bell()
+            return
+        del self.filtri[indice]
+        self.mostra_filtri(indice)
+        self.aggiorna()
+
+    def togli_tutti(self, event=None):
+        self.filtri.clear()
+        self.mostra_filtri()
+        self.aggiorna()
+
+    def _scelto(self):
+        indice = self.trovati.GetSelection()
+        if indice == wx.NOT_FOUND:
+            wx.Bell()
+            return None, indice
+        return self.righe[indice], indice
+
+    def offri(self, event=None):
+        """L'offerta al candidato scelto: prima i controlli e la conferma, poi l'esito in un messaggio."""
+        riga, indice = self._scelto()
+        if riga is None:
+            return
+        g, probabilita = riga
+        problema = self.mondo.problema_offerta(self.poli, g)
+        if problema:
+            wx.MessageBox(problema, "Offerta", wx.OK | wx.ICON_WARNING, self)
+            return
+        if wx.MessageBox(testi.domanda_offerta(g, self.poli, probabilita, self.mondo), "Offerta", wx.YES_NO | wx.ICON_QUESTION, self) != wx.YES:
+            return
+        accetta, probabilita = self.mondo.offerta(self.poli, g)
+        self.esiti.append((g, accetta, probabilita))
+        wx.MessageBox(testi.esito_offerta(g, self.poli, accetta, probabilita), "Esito dell'offerta", wx.OK | wx.ICON_INFORMATION, self)
+        self.aggiorna(posto=indice)
+        self.trovati.SetFocus()
+
+    def scheda(self, event=None):
+        riga, _indice = self._scelto()
+        if riga is None:
+            return
+        g = riga[0]
+        dialogo = Lettura(self, f"Scheda di {testi.nome_completo(g)}", testi.scheda_giocatore(g, self.mondo), self.impostazioni)
+        try:
+            dialogo.ShowModal()
+        finally:
+            dialogo.Destroy()
 
 
 class Lettura(_Dialogo):

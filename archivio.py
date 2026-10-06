@@ -3,14 +3,16 @@ L'archivio di MESS: il salvataggio del mondo in un file JSON firmato.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py, e lo stesso giorno la
 tappa 3, secondo la decisione D4, sostituisce i tre file pickle del vecchio programma con un solo
-file JSON leggibile, mess_mondo.json, accanto al programma. Il modello è il salvataggio di
-Terminal Beast, e quattro sono le sue garanzie.
+file JSON accanto al programma. Dalla tappa 7, per il problema P18 e per scelta di Gabriele, il
+file è compresso, mess_mondo.json.gz: un mondo di ottomila giocatori pesa 4,5 MB invece di 36, e
+resta adatto a git. Il vecchio mess_mondo.json si legge ancora, e il primo salvataggio riuscito
+lo sostituisce. Il modello è il salvataggio di Terminal Beast, e quattro sono le sue garanzie.
 La firma. Una firma HMAC-SHA256, calcolata sul contenuto in forma canonica, fa accorgere il gioco
 di una modifica fatta a mano con un editor; spazi e a capo non contano, quindi il file si può
-riformattare. La chiave sta nel codice, che è pubblico: la firma ferma chi curiosa o vuole barare
+riformattare, anche dopo averlo decompresso. La chiave sta nel codice, che è pubblico: la firma ferma chi curiosa o vuole barare
 con un editor, non chi è deciso a ricalcolarla.
 La scrittura sicura. Il mondo si scrive in un file temporaneo forzato su disco; il salvataggio
-precedente diventa la copia di sicurezza mess_mondo.json.bak; poi il file temporaneo prende il
+precedente diventa la copia di sicurezza mess_mondo.json.gz.bak; poi il file temporaneo prende il
 posto del salvataggio in un colpo solo. Un'interruzione lascia sempre un file intero.
 Il ripiego. Se il salvataggio non si legge, o la firma non torna, il mondo viene dalla copia, che
 prende il suo posto, e il file scartato si mette da parte nella cartella salvataggi_illeggibili.
@@ -26,14 +28,16 @@ alla lettura, e si riscrive nel formato nuovo al primo salvataggio.
 
 import contextlib
 import datetime
+import gzip
 import hashlib
 import hmac
 import json
 import os
 import shutil
+import zlib
 
 import percorsi
-from costanti import FILE_MONDO, FILE_MONDO_COPIA, NUM_GIOCATORI_INIZIALI, VERSIONE
+from costanti import FILE_MONDO, FILE_MONDO_COPIA, FILE_MONDO_COPIA_VECCHIO, FILE_MONDO_VECCHIO, NUM_GIOCATORI_INIZIALI, VERSIONE
 from modelli import DATA, Giocatore, Polisportiva, a_json, da_json, normalizza_nome
 from mondo import CONSERVAZIONE_PREDEFINITA
 from utilita import adesso, adesso_utc
@@ -98,12 +102,14 @@ def scrivi(mondo, percorso, percorso_copia):
     copia. Restituisce il documento scritto e gli avvisi, cioè le cose andate storte senza danno.
     """
     contenuto = componi(mondo)
-    testo = json.dumps({**contenuto, "firma": firma(contenuto)}, ensure_ascii=False, indent=1) + "\n"
+    testo = json.dumps({**contenuto, "firma": firma(contenuto)}, ensure_ascii=False, separators=(",", ":"))
+    # Con l'ora di compressione a zero, gli stessi dati danno sempre gli stessi byte.
+    dati = gzip.compress(testo.encode("utf-8"), compresslevel=6, mtime=0)
     temporaneo = percorso + ".tmp"
     avvisi = []
     try:
-        with open(temporaneo, "w", encoding="utf-8", newline="\n") as f:
-            f.write(testo)
+        with open(temporaneo, "wb") as f:
+            f.write(dati)
             f.flush()
             os.fsync(f.fileno())
         if os.path.exists(percorso):
@@ -120,12 +126,22 @@ def scrivi(mondo, percorso, percorso_copia):
 
 
 def leggi(percorso):
-    """Legge e verifica un file del mondo e restituisce il documento senza la firma; ErroreSalvataggio se non va."""
+    """
+    Legge e verifica un file del mondo e restituisce il documento senza la firma; ErroreSalvataggio
+    se non va. Il file può essere compresso, come lo scrive il gioco dalla tappa 7, oppure testo.
+    """
     try:
-        with open(percorso, encoding="utf-8") as f:
-            documento = json.load(f)
+        with open(percorso, "rb") as f:
+            dati = f.read()
     except OSError as e:
         raise ErroreSalvataggio(f"il file non si apre: {e}") from e
+    if dati[:2] == b"\x1f\x8b":
+        try:
+            dati = gzip.decompress(dati)
+        except (OSError, EOFError, zlib.error) as e:
+            raise ErroreSalvataggio(f"il file compresso è rovinato: {e}") from e
+    try:
+        documento = json.loads(dati.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
         raise ErroreSalvataggio(f"il file non è un JSON valido: {e}") from e
     if not isinstance(documento, dict) or "firma" not in documento:
@@ -314,12 +330,16 @@ def carica(mondo):
     """
     principale = percorsi.percorso(FILE_MONDO)
     copia = percorsi.percorso(FILE_MONDO_COPIA)
+    if not os.path.exists(principale) and not os.path.exists(copia):
+        # Prima della tappa 7 il salvataggio non era compresso, e aveva un altro nome.
+        principale = percorsi.percorso(FILE_MONDO_VECCHIO)
+        copia = percorsi.percorso(FILE_MONDO_COPIA_VECCHIO)
     esiste_principale = os.path.exists(principale)
     esiste_copia = os.path.exists(copia)
     if not esiste_principale and not esiste_copia:
         _fai_nascere(mondo)
         return NATO
-    motivo = f"il file {FILE_MONDO} non c'è"
+    motivo = f"il file {os.path.basename(principale)} non c'è"
     if esiste_principale:
         try:
             costruisci(leggi(principale), mondo)
@@ -376,4 +396,21 @@ def salva(mondo):
     mondo.notifica(testo)
     for avviso in avvisi:
         mondo.notifica(avviso)
+    _togli_il_vecchio(mondo)
     return True
+
+
+def _togli_il_vecchio(mondo):
+    """Dopo un salvataggio compresso riuscito, il salvataggio non compresso della tappa 6 e la sua copia non servono più."""
+    tolti = []
+    for nome in (FILE_MONDO_VECCHIO, FILE_MONDO_COPIA_VECCHIO):
+        vecchio = percorsi.percorso(nome)
+        if os.path.exists(vecchio):
+            try:
+                os.remove(vecchio)
+            except OSError as e:
+                mondo.notifica(f"Il vecchio file {nome} non si è potuto togliere: {e}.")
+            else:
+                tolti.append(nome)
+    if tolti:
+        mondo.notifica(f"Il mondo ora si salva compresso, in {FILE_MONDO}: {' e '.join(tolti)}, del formato di prima, non servono più e sono stati tolti.")

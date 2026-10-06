@@ -6,6 +6,7 @@ salvataggi, formato, identificativi che non si riusano, nascita del mondo nuovo.
 
 import copy
 import datetime
+import gzip
 import json
 import os
 import random
@@ -13,7 +14,7 @@ import random
 import pytest
 
 import archivio
-from costanti import FILE_MONDO, FILE_MONDO_COPIA
+from costanti import FILE_MONDO, FILE_MONDO_COPIA, FILE_MONDO_COPIA_VECCHIO, FILE_MONDO_VECCHIO
 from modelli import Polisportiva
 from mondo import CONSERVAZIONE_PREDEFINITA, DECESSO, Mondo
 from utilita import adesso_utc
@@ -36,6 +37,15 @@ def _mondo_popolato():
     m.giocatori[3].appartenenza = mia.nome
     m.miapolisportiva_attiva = mia
     return m
+
+
+def _testo(percorso):
+    """Il contenuto di un salvataggio, decompresso."""
+    return gzip.decompress(percorso.read_bytes()).decode("utf-8")
+
+
+def _comprimi(percorso, testo):
+    percorso.write_bytes(gzip.compress(testo.encode("utf-8")))
 
 
 def _ricarica(messaggi=None):
@@ -63,16 +73,16 @@ def test_salva_e_ricarica(cartella_di_prova):
     assert ricaricato.datetime_ultimo_run_reale == INIZIO_UTC
     assert ricaricato.prossimo_id == 13
     assert set(os.listdir(cartella_di_prova)) == {FILE_MONDO}
-    assert "segreta" not in (cartella_di_prova / FILE_MONDO).read_text(encoding="utf-8")
+    assert "segreta" not in _testo(cartella_di_prova / FILE_MONDO)
 
 
 def test_il_salvataggio_precedente_diventa_la_copia(cartella_di_prova):
     m = _mondo_popolato()
     archivio.salva(m)
-    primo = (cartella_di_prova / FILE_MONDO).read_text(encoding="utf-8")
+    primo = (cartella_di_prova / FILE_MONDO).read_bytes()
     m.giocatori[1].puntiesperienza = 77
     archivio.salva(m)
-    assert (cartella_di_prova / FILE_MONDO_COPIA).read_text(encoding="utf-8") == primo
+    assert (cartella_di_prova / FILE_MONDO_COPIA).read_bytes() == primo
     assert set(os.listdir(cartella_di_prova)) == {FILE_MONDO, FILE_MONDO_COPIA}
 
 
@@ -87,25 +97,26 @@ def _due_salvataggi(cartella):
 
 def test_la_firma_scopre_una_modifica_e_si_usa_la_copia(cartella_di_prova):
     percorso = _due_salvataggi(cartella_di_prova)
-    testo = percorso.read_text(encoding="utf-8")
-    manomesso = testo.replace('"puntiesperienza": 77', '"puntiesperienza": 9999')
+    testo = _testo(percorso)
+    manomesso = testo.replace('"puntiesperienza":77', '"puntiesperienza":9999')
     assert manomesso != testo
-    percorso.write_text(manomesso, encoding="utf-8")
+    _comprimi(percorso, manomesso)
     messaggi = []
     ricaricato = _ricarica(messaggi)
     assert ricaricato.giocatori[1].puntiesperienza == 0
     assert "la firma non corrisponde" in messaggi[0]
     assert "ha preso il suo posto" in messaggi[0]
     assert messaggi[1].startswith("Mondo caricato dalla copia:")
-    assert percorso.read_text(encoding="utf-8") == (cartella_di_prova / FILE_MONDO_COPIA).read_text(encoding="utf-8")
+    assert percorso.read_bytes() == (cartella_di_prova / FILE_MONDO_COPIA).read_bytes()
     messi_da_parte = list((cartella_di_prova / archivio.CARTELLA_QUARANTENA).iterdir())
     assert len(messi_da_parte) == 1
-    assert (messi_da_parte[0] / FILE_MONDO).read_text(encoding="utf-8") == manomesso
+    assert _testo(messi_da_parte[0] / FILE_MONDO) == manomesso
 
 
 def test_spazi_e_a_capo_non_contano(cartella_di_prova):
     percorso = _due_salvataggi(cartella_di_prova)
-    documento = json.loads(percorso.read_text(encoding="utf-8"))
+    # Anche decompresso e riformattato, con gli a capo di Windows, il salvataggio resta buono.
+    documento = json.loads(_testo(percorso))
     percorso.write_text(json.dumps(documento, indent=4, ensure_ascii=False).replace("\n", "\r\n"), encoding="utf-8")
     messaggi = []
     ricaricato = _ricarica(messaggi)
@@ -264,3 +275,28 @@ def test_l_ultimo_avanzamento_senza_fuso_non_si_accetta():
     contenuto["mondo"]["conservazione_diari"] = {"giocatori": -1, "polisportive": 0}
     with pytest.raises(archivio.ErroreSalvataggio, match="conservazione_diari"):
         archivio.costruisci(contenuto, Mondo())
+
+
+def test_il_salvataggio_e_compresso(cartella_di_prova):
+    assert archivio.salva(_mondo_popolato())
+    percorso = cartella_di_prova / FILE_MONDO
+    assert percorso.read_bytes()[:2] == b"\x1f\x8b"
+    assert "\n" not in _testo(percorso)
+    percorso.write_bytes(b"\x1f\x8b" + b"non compresso davvero")
+    with pytest.raises(archivio.ErroreSalvataggio, match="compresso è rovinato"):
+        archivio.leggi(percorso)
+
+
+def test_il_vecchio_salvataggio_si_legge_e_si_sostituisce(cartella_di_prova):
+    contenuto = archivio.componi(_mondo_popolato())
+    testo = json.dumps({**contenuto, "firma": archivio.firma(contenuto)}, ensure_ascii=False, indent=1)
+    for nome in (FILE_MONDO_VECCHIO, FILE_MONDO_COPIA_VECCHIO):
+        (cartella_di_prova / nome).write_text(testo, encoding="utf-8")
+    messaggi = []
+    m = _ricarica(messaggi)
+    assert messaggi[0].startswith("Mondo caricato:")
+    assert m.datetime_ultimo_run_reale == INIZIO_UTC
+    messaggi.clear()
+    assert archivio.salva(m)
+    assert set(os.listdir(cartella_di_prova)) == {FILE_MONDO}
+    assert messaggi[-1] == f"Il mondo ora si salva compresso, in {FILE_MONDO}: {FILE_MONDO_VECCHIO} e {FILE_MONDO_COPIA_VECCHIO}, del formato di prima, non servono più e sono stati tolti."

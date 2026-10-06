@@ -405,6 +405,83 @@ def tesserati_attiva(mondo):
     return "\n".join(righe)
 
 
+# Le polisportive dell'utente e il mercato.
+
+def riga_mia_polisportiva(p, mondo):
+    """Una polisportiva dell'utente in una riga della scelta: se è attiva, tesserati, gloria e protezione."""
+    parti = [p.nome]
+    if p is mondo.miapolisportiva_attiva:
+        parti.append("attiva")
+    parti.append(f"{len(p.tesserati)} tesserati su {p.maxtesserati}")
+    parti.append(f"gloria {p.gloria}")
+    if p.protetta:
+        parti.append("protetta da password")
+    return ", ".join(parti)
+
+
+def fondata(p, mondo):
+    """La fondazione di una polisportiva, raccontata, con la sua scheda."""
+    protetta = ", protetta da password" if p.protetta else ""
+    attiva = " È la tua polisportiva attiva." if p is mondo.miapolisportiva_attiva else ""
+    return f"Hai fondato {p.nome}{protetta}.{attiva}\n{scheda_polisportiva(p, mondo)}"
+
+
+def info_mercato(p, mondo):
+    """Gloria, posti e mosse di una polisportiva, in una frase: quello che conta al mercato."""
+    return f"{p.nome}: gloria {p.gloria}, tesserati {len(p.tesserati)} su {p.maxtesserati}, mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}."
+
+
+def riga_mercato(g, probabilita):
+    """Un candidato del mercato in una riga: chi è, quanto vale, cosa chiede e quanto è probabile che accetti."""
+    tratti = tratti_speciali(g)
+    return (f"{nome_completo(g)}, {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, chiede {intero(g.gloria_richiesta)} di gloria, "
+            f"accetta al {numero(probabilita, 0)}%{''.join(', ' + t for t in tratti)}, ID {g.id}")
+
+
+def domanda_offerta(g, p, probabilita, mondo):
+    mosse = mondo.mosse_rimaste(p)
+    quale = "l'ultima mossa che ti resta oggi" if mosse == 1 else f"una delle {mosse} mosse che ti restano oggi"
+    return f"Offrire a {nome_completo(g)} il tesseramento con {p.nome}? Accetta al {numero(probabilita, 0)}%. Userai {quale}."
+
+
+def esito_offerta(g, p, accetta, probabilita):
+    if accetta:
+        return f"{nome_completo(g)} ha accettato: ora è {accorda(g, 'tesserato')} con {p.nome}."
+    return f"{nome_completo(g)} ha rifiutato l'offerta di {p.nome}: accettava al {numero(probabilita, 0)}%."
+
+
+def riepilogo_mercato(p, mondo, esiti):
+    """Le offerte di una visita al mercato, terne di giocatore, esito e probabilità, con le mosse che restano."""
+    if not esiti:
+        righe = [f"Mercato di {p.nome}: nessuna offerta."]
+    else:
+        accettate = sum(1 for _g, accetta, _p in esiti if accetta)
+        righe = [f"Mercato di {p.nome}: {conta(len(esiti), 'offerta', 'offerte')}, {conta(accettate, 'accettata', 'accettate')}."]
+        righe.extend(esito_offerta(g, p, accetta, probabilita) for g, accetta, probabilita in esiti)
+    righe.append(info_mercato(p, mondo))
+    return "\n".join(righe)
+
+
+def svincolato(g, p, mondo):
+    return f"{nome_completo(g)} è {accorda(g, 'svincolato')} da {p.nome} e torna {accorda(g, 'libero')}. {info_mercato(p, mondo)}"
+
+
+def domanda_chiusura(p):
+    if not p.tesserati:
+        return f"Chiudere per sempre {p.nome}? Non si torna indietro."
+    tesserati = conta(len(p.tesserati), "tesserato tornerà libero", "tesserati torneranno liberi")
+    return f"Chiudere per sempre {p.nome}? I suoi {tesserati}, e non si torna indietro." if len(p.tesserati) > 1 else f"Chiudere per sempre {p.nome}? Il suo unico tesserato tornerà libero, e non si torna indietro."
+
+
+def chiusa(nome, liberati):
+    tesserati = f": {conta(liberati, 'giocatore torna libero', 'giocatori tornano liberi')}" if liberati else ", senza tesserati"
+    return f"{nome} ha chiuso per sempre{tesserati}. Non hai più una polisportiva attiva: fondane una con Ctrl+N, o scegline un'altra con Ctrl+Maiusc+C."
+
+
+def password_cambiata(p):
+    return f"{p.nome} ora è protetta da password." if p.protetta else f"{p.nome} non è protetta da password."
+
+
 # Il tempo del mondo.
 
 def data_e_avanzamento(mondo, ora):

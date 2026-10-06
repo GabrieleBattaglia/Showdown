@@ -3,6 +3,24 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.30.1] - 2026-10-06
+
+### Le polisportive nella finestra, e il mercato
+
+Il menu Polisportive ha ora tutte le operazioni. Con Ctrl+N si fonda una polisportiva: il nome resta come lo scrivi, senza maiuscole imposte, e la password è facoltativa, per chi condivide il gioco sullo stesso computer. Con Ctrl+Maiusc+C si sceglie la polisportiva attiva fra le proprie, con la password se è protetta. Dallo stesso menu si mette, si cambia o si toglie la password, e si chiude per sempre una polisportiva, dopo una domanda di conferma.
+
+Il tesseramento si fa al mercato, con Ctrl+K, come in Hattrick. Si aggiungono i filtri che servono, gli stessi della ricerca, si sceglie la probabilità minima che il giocatore accetti e l'ordine dell'elenco, e per ogni giocatore libero si leggono età, valore, gloria richiesta, probabilità di accettare e tratti speciali. A chi interessa si fa un'offerta: costa una delle cinque mosse di mercato del giorno, quindi il gioco chiede conferma, e l'esito arriva in un messaggio. Il giocatore accetta o rifiuta secondo la gloria che chiede, cioè forza, età e caratteristiche rare, e la gloria della polisportiva. Alla chiusura del mercato la vista principale riassume le offerte fatte.
+
+Con Ctrl+Maiusc+S si svincola un tesserato, che torna libero. Le operazioni sulle polisportive si salvano subito.
+
+La ricerca dei giocatori ha nuovi criteri: il sesso, la gloria richiesta e i tratti speciali, cioè mancino, ambidestro, gioco rapido e cambio di velocità.
+
+Le polisportive del computer seguono regole nuove. Scelgono per prime quelle con più gloria, provano ogni candidato una volta sola al giorno, e quando hanno la rosa piena ogni tanto provano a tesserare un libero più forte del tesserato che vale meno: se accetta, prende il suo posto. Prima, appena piene, espellevano il più debole e il giorno dopo ritesseravano, senza motivo; e se un candidato rifiutava, ci riprovavano fino a esaurire le mosse.
+
+Chi si ritira o muore lascia libero il suo posto: prima occupava per sempre uno dei quindici. Le polisportive del computer ritrovano i loro tesserati, che prima portavano scritto un nome diverso da quello della polisportiva: così ora si allenano da soli, e le polisportive del computer che vanno male possono chiudere. Gli ipovedenti chiedono il 10 per cento di gloria in meno, a tutti: prima lo sconto valeva solo per scegliere chi provare, ma non per decidere se accettava.
+
+Il mondo si salva compresso, nel file mess_mondo.json.gz: un mondo di ottomila giocatori pesa 4,5 MB invece di 36. Il vecchio mess_mondo.json si legge ancora, e il primo salvataggio lo sostituisce. Nei mondi grandi un giorno simulato si elabora quasi cinque volte più in fretta.
+
 ## [1.22.2] - 2026-10-06
 
 ### Il mondo vive anche a finestra aperta, e ognuno ha il suo diario

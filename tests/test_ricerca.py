@@ -5,7 +5,9 @@ import random
 
 import pytest
 
+import mercato
 import ricerca
+from modelli import Polisportiva
 from mondo import Mondo
 
 ORA = datetime.datetime(2026, 10, 6, 18, 0)
@@ -63,6 +65,36 @@ def test_ambiti(mondo):
 def test_caratteristiche_di_gioco(mondo):
     trovati = ricerca.cerca(mondo, "attivi", "bomba_base", "maggiore", 5)
     assert all(mondo.giocatori[g]._get_valore_totale("bomba_base") > 5 for g in trovati)
-    assert len(ricerca.CRITERI) == 29
+    assert len(ricerca.CRITERI) == 35
     with pytest.raises(ValueError):
         ricerca.cerca(mondo, "tutti", "valore", "contiene", 3)
+
+
+def test_sesso_e_tratti(mondo):
+    donne = ricerca.cerca(mondo, "tutti", "sesso", "f")
+    assert donne == [gid for gid, g in mondo.giocatori.items() if g.sesso == "f"]
+    mancini = ricerca.cerca(mondo, "tutti", "mancino", "si")
+    assert mancini == [gid for gid, g in mondo.giocatori.items() if g.mancino]
+    economici = ricerca.cerca(mondo, "tutti", "gloria_richiesta", "minore", 100)
+    assert all(mondo.giocatori[gid].gloria_richiesta < 100 for gid in economici)
+
+
+def test_filtri_insieme(mondo):
+    filtri = [("sesso", "f", None), ("eta", "minore", 40)]
+    trovati = ricerca.cerca_con_filtri(mondo, "liberi", filtri)
+    assert trovati == [gid for gid in ricerca.ids_ambito(mondo, "liberi") if mondo.giocatori[gid].sesso == "f" and mondo.giocatori[gid].eta_anni < 40]
+    assert ricerca.cerca_con_filtri(mondo, "liberi", []) == ricerca.ids_ambito(mondo, "liberi")
+
+
+def test_i_candidati_del_mercato(mondo):
+    poli = Polisportiva("Club di prova", None, ORA)
+    filtri = [("sesso", "m", None)]
+    righe = mercato.candidati(mondo, poli, filtri, 0, "probabilita")
+    assert {g.id for g, _p in righe} == set(ricerca.cerca_con_filtri(mondo, "liberi", filtri))
+    probabilita = [p for _g, p in righe]
+    assert probabilita == sorted(probabilita, reverse=True)
+    assert all(p >= 50 for _g, p in mercato.candidati(mondo, poli, (), 50))
+    eta = [g.eta for g, _p in mercato.candidati(mondo, poli, (), 0, "eta")]
+    assert eta == sorted(eta)
+    valori = [g.indice_collettivo_valore for g, _p in mercato.candidati(mondo, poli)]
+    assert valori == sorted(valori, reverse=True)

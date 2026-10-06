@@ -138,3 +138,24 @@ def test_guida_novita_e_informazioni():
     novita = testi.novita("# Changelog\n\n## [1.3.0] - 2026-10-06\n\n### Un mondo nuovo\n\nIl file `mess_mondo.json` si firma.\n")
     assert novita.splitlines() == ["Changelog.", "Versione 1.3.0 del 2026-10-06.", "Un mondo nuovo.", "Il file mess_mondo.json si firma."]
     _accessibile(testi.informazioni())
+
+
+def test_testi_del_mercato_e_delle_polisportive(mondo):
+    p = mondo.miapolisportiva_attiva
+    g = mondo.giocatori[1]
+    riga = testi.riga_mercato(g, 45.4)
+    assert riga.startswith(f"{g.nome} {g.cognome}, ") and ", accetta al 45%" in riga and riga.endswith(", ID 1")
+    assert testi.domanda_offerta(g, p, 45.4, mondo).endswith("Accetta al 45%. Userai una delle 5 mosse che ti restano oggi.")
+    p.movimenti_oggi = 4
+    assert testi.domanda_offerta(g, p, 45.4, mondo).endswith("Userai l'ultima mossa che ti resta oggi.")
+    assert testi.esito_offerta(g, p, False, 12.0) == f"{g.nome} {g.cognome} ha rifiutato l'offerta di Club Di Prova: accettava al 12%."
+    riepilogo = testi.riepilogo_mercato(p, mondo, [(g, False, 12.0), (mondo.giocatori[3], True, 80.0)])
+    _accessibile(riepilogo)
+    assert riepilogo.startswith("Mercato di Club Di Prova: 2 offerte, 1 accettata.")
+    assert riepilogo.endswith("Club Di Prova: gloria 100, tesserati 3 su 15, mosse rimaste 1 su 5.")
+    assert testi.riepilogo_mercato(p, mondo, []).startswith("Mercato di Club Di Prova: nessuna offerta.")
+    assert testi.domanda_chiusura(p) == "Chiudere per sempre Club Di Prova? I suoi 3 tesserati torneranno liberi, e non si torna indietro."
+    assert testi.chiusa("Club Di Prova", 1).startswith("Club Di Prova ha chiuso per sempre: 1 giocatore torna libero.")
+    assert testi.chiusa("Club Di Prova", 0).startswith("Club Di Prova ha chiuso per sempre, senza tesserati.")
+    assert testi.password_cambiata(p) == "Club Di Prova ora è protetta da password."
+    _accessibile(testi.fondata(p, mondo))
