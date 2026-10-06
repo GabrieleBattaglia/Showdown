@@ -1,4 +1,0 @@
-Collaudo della finestra di MESS con NVDA, versione 1.30.1.
-Prima: nella cartella E:\git\mine\Showdown lancia python Showdown.py. Al primo avvio nasce un mondo nuovo, nel file mess_mondo.json.gz, che a fine prova puoi tenere o cancellare.
-Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
-Passo 4: Ctrl+F, cerca per esempio i giocatori liberi con valore maggiore di 150.
