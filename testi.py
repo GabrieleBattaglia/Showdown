@@ -431,8 +431,7 @@ def _fatti_avanzamento(rapporto):
     ])
     mercato = unisci([
         f"hanno tesserato {conta(rapporto['tesserati_cpu'], 'giocatore', 'giocatori')}" if rapporto["tesserati_cpu"] else "",
-        f"ne hanno espulsi {rapporto['espulsi_cpu']}" if rapporto["tesserati_cpu"] and rapporto["espulsi_cpu"] else "",
-        f"hanno espulso {conta(rapporto['espulsi_cpu'], 'giocatore', 'giocatori')}" if not rapporto["tesserati_cpu"] and rapporto["espulsi_cpu"] else "",
+        f"ne hanno svincolati {rapporto['svincolati_cpu']} per fare posto" if rapporto["tesserati_cpu"] and rapporto["svincolati_cpu"] else "",
     ])
     nascite = unisci([
         ("è nata una polisportiva del computer" if rapporto["poli_create"] == 1 else f"sono nate {rapporto['poli_create']} polisportive del computer") if rapporto["poli_create"] else "",

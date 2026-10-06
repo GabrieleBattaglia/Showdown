@@ -11,12 +11,19 @@ dell'ultimo avanzamento si sposta di otto ore esatte per ogni giorno elaborato: 
 più perso. Le nascite seguono la natura, come ha deciso Gabriele: da uno a sette giocatori nuovi
 ogni giorno, senza più il tetto di cinquanta per avvio, che faceva nascere meno giocatori a chi
 apriva il gioco di rado; l'equilibrio arriva quando le morti compensano le nascite. Gli eventi
-finiscono nei diari di chi li vive, e chi esce di scena nel registro delle vecchie glorie. Restano i difetti delle polisportive del computer, problemi P4, P7 e P16, che si
-correggono alla tappa 7.
+finiscono nei diari di chi li vive, e chi esce di scena nel registro delle vecchie glorie.
+Dalla tappa 7 ogni polisportiva ha un nome solo, che è anche la sua chiave nel mondo, e chi si
+ritira o muore lascia libero il suo posto. Le polisportive del computer seguono la decisione D19:
+provano ogni candidato una volta sola al giorno, le prime a scegliere sono quelle con più gloria,
+e a rosa piena ogni tanto provano un libero più forte, che se accetta prende il posto del
+tesserato che vale meno. La vetrina dei liberi trova in fretta il primo alla portata di ciascuna,
+così le mosse reggono anche un mondo di decine di migliaia di giocatori. Qui stanno anche le
+operazioni della polisportiva dell'utente: fondazione, offerta, svincolo e chiusura.
 Il mondo non stampa: consegna i suoi messaggi alla funzione notifica, che gli passa chi lo usa.
 """
 
 import datetime
+import math
 import random
 
 import percorsi
@@ -31,14 +38,17 @@ from costanti import (
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_PROB_CHIUSURA_GIORNALIERA,
     NOME_FILE_LOG_USCITE,
+    NOME_POLISPORTIVA_MAX,
+    NOME_POLISPORTIVA_MIN,
     PROB_CHIUSURA_BASE_GIORNALIERA,
     PROB_CREAZIONE_POLI_CPU_PER_TICK,
+    PROB_SCAMBIO_CPU_GIORNALIERA,
     PROB_USCITA_PREMATURA_GIORNALIERA,
     PROBABILITA_IPOVEDENTE_CREAZIONE,
     SOGLIA_GLORIA_BASSA_CHIUSURA,
     SOGLIA_MINIMA_TESSERATI_CHIUSURA,
 )
-from modelli import Giocatore, Polisportiva, probabilita_accettazione
+from modelli import Giocatore, Polisportiva, normalizza_nome, probabilita_accettazione
 from nomi import genera_nome_casuale
 from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale
 
@@ -46,7 +56,7 @@ ORE_PER_TICK = 8
 DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
 # Le voci del riepilogo di un avanzamento, oltre all'ora in cui è avvenuto.
 CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
-                   "tesserati_cpu", "espulsi_cpu", "poli_chiuse", "poli_create")
+                   "tesserati_cpu", "svincolati_cpu", "poli_chiuse", "poli_create")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
@@ -59,6 +69,48 @@ def _silenzio(*_args, **_kwargs):
 
 def nome_completo(g):
     return f"{g.nome} {g.cognome}"
+
+
+class _Vetrina:
+    """
+    I liberi del giorno in ordine di valore, con la gloria che ciascuno chiede, in un albero dei
+    minimi: trova in un passo il primo, da un certo posto in poi, che chiede al massimo una certa
+    gloria, e toglie chi è stato tesserato. Al posto di scorrere tutti i liberi per ogni mossa di
+    ogni polisportiva, che con migliaia di giocatori costava secondi al giorno: problema P18.
+    """
+
+    def __init__(self, richieste):
+        self.quanti = len(richieste)
+        self.larghezza = 1
+        while self.larghezza < self.quanti:
+            self.larghezza *= 2
+        self.minimi = [math.inf] * (2 * self.larghezza)
+        self.minimi[self.larghezza:self.larghezza + self.quanti] = richieste
+        for nodo in range(self.larghezza - 1, 0, -1):
+            self.minimi[nodo] = min(self.minimi[2 * nodo], self.minimi[2 * nodo + 1])
+
+    def togli(self, posto):
+        nodo = self.larghezza + posto
+        self.minimi[nodo] = math.inf
+        nodo //= 2
+        while nodo:
+            self.minimi[nodo] = min(self.minimi[2 * nodo], self.minimi[2 * nodo + 1])
+            nodo //= 2
+
+    def primo(self, gloria, da=0):
+        """Il posto del primo libero, da da in poi, che chiede al massimo gloria; None se non c'è."""
+        if da >= self.quanti:
+            return None
+        return self._cerca(1, 0, self.larghezza, gloria, da)
+
+    def _cerca(self, nodo, inizio, fine, gloria, da):
+        if fine <= da or self.minimi[nodo] > gloria:
+            return None
+        if fine - inizio == 1:
+            return inizio
+        meta = (inizio + fine) // 2
+        trovato = self._cerca(2 * nodo, inizio, meta, gloria, da)
+        return trovato if trovato is not None else self._cerca(2 * nodo + 1, meta, fine, gloria, da)
 
 
 class Mondo:
@@ -94,6 +146,117 @@ class Mondo:
         """I giocatori liberi, non ritirati e vivi, dal più forte al più debole."""
         liberi = {gid: g for gid, g in self.giocatori.items() if g.appartenenza == "*" and not g.ritirato and gid not in self._ids_morti_processati_sessione}
         return dict(sorted(liberi.items(), key=lambda item: item[1].indice_collettivo_valore, reverse=True))
+
+    # La polisportiva dell'utente.
+
+    def trova_polisportiva(self, nome):
+        """La polisportiva con quel nome, maiuscole a parte, oppure None."""
+        cercato = normalizza_nome(nome).casefold()
+        return next((p for chiave, p in self.polisportive.items() if chiave.casefold() == cercato), None)
+
+    def problema_nome_polisportiva(self, nome):
+        """Perché un nome non va bene per una polisportiva nuova, oppure None se va bene."""
+        nome = normalizza_nome(nome)
+        if not NOME_POLISPORTIVA_MIN <= len(nome) <= NOME_POLISPORTIVA_MAX:
+            return f"Il nome deve avere da {NOME_POLISPORTIVA_MIN} a {NOME_POLISPORTIVA_MAX} caratteri."
+        esistente = self.trova_polisportiva(nome)
+        if esistente is not None:
+            return f"Esiste già una polisportiva che si chiama {esistente.nome}."
+        return None
+
+    def fonda_polisportiva(self, nome, password=None, attiva=True):
+        """Fonda una polisportiva dell'utente, protetta se riceve una password; ValueError se il nome non va."""
+        problema = self.problema_nome_polisportiva(nome)
+        if problema:
+            raise ValueError(problema)
+        poli = Polisportiva(nome=nome, password=password or None, datetime_creazione_sim=self.datetime_corrente_simulazione)
+        self.polisportive[poli.nome] = poli
+        if attiva:
+            self.miapolisportiva_attiva = poli
+        return poli
+
+    @staticmethod
+    def mosse_rimaste(poli):
+        return max(0, LIMITE_MOVIMENTI_PER_TICK - poli.movimenti_oggi)
+
+    @staticmethod
+    def _usa_mossa(poli):
+        poli.movimenti_oggi += 1
+        poli.datetime_ultimo_movimento = adesso()
+
+    def _senza_mosse(self, poli):
+        return f"Per oggi {poli.nome} ha finito le mosse di mercato: ne ha {LIMITE_MOVIMENTI_PER_TICK} al giorno."
+
+    def problema_offerta(self, poli, g):
+        """Perché la polisportiva non può fare un'offerta al giocatore, oppure None se può."""
+        if self.mosse_rimaste(poli) <= 0:
+            return self._senza_mosse(poli)
+        if len(poli.tesserati) >= poli.maxtesserati:
+            return f"{poli.nome} ha già {poli.maxtesserati} tesserati, il massimo."
+        if g.id in self._ids_morti_processati_sessione:
+            return f"{nome_completo(g)} è {accorda(g.sesso, 'uscito')} di scena."
+        if g.ritirato:
+            return f"{nome_completo(g)} si è {accorda(g.sesso, 'ritirato')} dall'attività."
+        if g.appartenenza != "*":
+            return f"{nome_completo(g)} è già {accorda(g.sesso, 'tesserato')} con {g.appartenenza}."
+        return None
+
+    def offerta(self, poli, g):
+        """
+        Un'offerta di tesseramento dell'utente: usa una mossa, e il giocatore accetta con la
+        probabilità data dalla gloria che chiede e da quella della polisportiva. Restituisce
+        l'esito e la probabilità; ValueError se l'offerta non si può fare.
+        """
+        problema = self.problema_offerta(poli, g)
+        if problema:
+            raise ValueError(problema)
+        self._usa_mossa(poli)
+        probabilita = probabilita_accettazione(poli.gloria, g.gloria_richiesta)
+        accetta = caso(probabilita)
+        if accetta:
+            self._tessera(poli, g)
+        else:
+            self.annota(g, f"Rifiuta l'offerta di {poli.nome}.")
+            self.annota(poli, f"{nome_completo(g)} rifiuta l'offerta.")
+        return accetta, probabilita
+
+    def _tessera(self, poli, g, data=None):
+        g.appartenenza = poli.nome
+        poli.aggiungi_tesserato(g.id, g.indice_collettivo_valore)
+        self.annota(g, f"{accorda(g.sesso, 'Tesserato')} con {poli.nome}.", data)
+        self.annota(poli, f"Tesserato {nome_completo(g)}.", data)
+
+    def _lascia(self, poli, g):
+        """Il giocatore esce dall'elenco dei tesserati e torna libero, senza voci di diario: le scrive chi chiama."""
+        poli.rimuovi_tesserato(g.id, g.indice_collettivo_valore)
+        g.appartenenza = "*"
+
+    def svincola(self, poli, g):
+        """L'utente svincola un suo tesserato, che torna libero: usa una mossa; ValueError se non si può."""
+        if g.id not in poli.tesserati:
+            raise ValueError(f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}.")
+        if self.mosse_rimaste(poli) <= 0:
+            raise ValueError(self._senza_mosse(poli))
+        self._usa_mossa(poli)
+        self._lascia(poli, g)
+        self.annota(g, f"{accorda(g.sesso, 'Svincolato')} da {poli.nome}.")
+        self.annota(poli, f"Svincolato {nome_completo(g)}.")
+
+    def chiudi_polisportiva(self, poli):
+        """Chiude per sempre una polisportiva: i tesserati tornano liberi. Restituisce quanti sono."""
+        liberati = 0
+        for gid in list(poli.tesserati):
+            g = self.giocatori.get(gid)
+            if g is not None:
+                g.appartenenza = "*"
+                self.annota(g, f"Torna {accorda(g.sesso, 'libero')}: {poli.nome} ha chiuso.")
+                liberati += 1
+        poli.tesserati.clear()
+        poli.indicecollettivotesserati = 0.
+        del self.polisportive[poli.nome]
+        if self.miapolisportiva_attiva is poli:
+            self.miapolisportiva_attiva = None
+        return liberati
 
     def nuovo_id(self):
         """
@@ -144,25 +307,23 @@ class Mondo:
         suff = 1
         base = "PoliTeam"
         while True:
-            prefix = f"{base}{suff:02d} "
-            if not any(n.startswith(prefix) for n in self.polisportive):
+            prefisso = f"{base}{suff:02d} ".casefold()
+            if not any(n.casefold().startswith(prefisso) for n in self.polisportive):
                 break
             suff += 1
             if suff > 9999:
                 self.notifica("ATT: Suffix CPU>9999.")
                 return None
-        p1 = genera_nome_casuale(["cvcv"], 'x').lower()
-        p2 = genera_nome_casuale(["cvcv"], 'x').lower()
+        p1 = genera_nome_casuale(["cvcv"], 'x').capitalize()
+        p2 = genera_nome_casuale(["cvcv"], 'x').capitalize()
         nome = f"{base}{suff:02d} {p1}-{p2}"
-        if nome in self.polisportive:
+        if self.trova_polisportiva(nome) is not None:
             self.notifica(f"ATT: Collisione nome CPU '{nome}'.")
             return None
         self.polisportive[nome] = Polisportiva(nome=nome, password=None, datetime_creazione_sim=dt_creaz, is_cpu_controlled=True)
         return nome
 
     def _chiudi_polisportiva_cpu(self, nome_p, dt_chiusura):
-        # Problema P16, tappa 7: chi chiama passa il nome ritoccato della polisportiva, che non è
-        # la sua chiave nel mondo, quindi qui non si arriva mai.
         poli = self.polisportive.get(nome_p)
         if not poli or not poli.is_cpu_controlled:
             return False
@@ -203,67 +364,59 @@ class Mondo:
         return False
 
     def _esegui_logica_cpu_polisportive(self, data=None):
-        """Le polisportive del computer tesserano i liberi più forti alla loro portata ed espellono il più debole a rosa piena."""
-        liberi = self.trova_giocatori_liberi_ordinati()
-        # La gloria che ogni libero chiede non cambia durante le mosse del giorno: si calcola una
-        # volta sola, e così la pretesa, scontata di un decimo per gli ipovedenti. Chi ha meno
-        # gloria della pretesa più bassa non trova nessuno e non fa mosse, quindi non cerca.
-        richieste = {gid: g.gloria_richiesta for gid, g in liberi.items()}
-        pretese = {gid: int(r * .9) if liberi[gid].ipovedente else r for gid, r in richieste.items()}
-        pretesa_minima = min(pretese.values(), default=None)
-        n_tess_cpu_tot = 0
-        n_esp_cpu_tot = 0
-        for nome_p in list(self.polisportive.keys()):
-            if nome_p not in self.polisportive or not self.polisportive[nome_p].is_cpu_controlled:
-                continue
-            poli = self.polisportive[nome_p]
-            while poli.movimenti_oggi < LIMITE_MOVIMENTI_PER_TICK and len(poli.tesserati) < poli.maxtesserati:
-                cand_ok = None
-                gid_t = -1
-                tent = False
-                if not liberi or poli.gloria < pretesa_minima:
+        """
+        Le mosse del giorno delle polisportive del computer, secondo la decisione D19. Scelgono per
+        prime quelle con più gloria. Ciascuna prova a tesserare il libero più forte alla sua
+        portata, cioè che non chiede più gloria di quella che ha, e ogni candidato lo prova una
+        volta sola al giorno; se rifiuta passa al successivo, finché ha mosse e posti. A rosa
+        piena, ogni tanto prova un libero più forte del tesserato che vale meno: se accetta, gli
+        prende il posto e l'altro torna libero. Restituisce quanti ne hanno tesserati e svincolati.
+        """
+        liberi = list(self.trova_giocatori_liberi_ordinati().values())
+        richieste = [g.gloria_richiesta for g in liberi]
+        vetrina = _Vetrina(richieste)
+        tesserati = svincolati = 0
+        cpu = [p for p in self.polisportive.values() if p.is_cpu_controlled]
+        for poli in sorted(cpu, key=lambda p: p.gloria, reverse=True):
+            # Il posto da cui riprende la ricerca: i liberi prima di lui sono già stati provati o non sono alla portata.
+            prossimo = 0
+            while self.mosse_rimaste(poli) > 0 and len(poli.tesserati) < poli.maxtesserati:
+                posto = vetrina.primo(poli.gloria, prossimo)
+                if posto is None:
                     break
-                for gid_c, cand in liberi.items():
-                    g_r = richieste[gid_c]
-                    if cand.appartenenza == "*" and pretese[gid_c] <= poli.gloria:
-                        poli.movimenti_oggi += 1
-                        poli.datetime_ultimo_movimento = adesso()
-                        tent = True
-                        if caso(probabilita_accettazione(poli.gloria, g_r)):
-                            cand_ok = cand
-                            gid_t = gid_c
-                        break
-                if not tent:
-                    break
-                if cand_ok:
-                    cand_ok.appartenenza = poli.nome
-                    poli.aggiungi_tesserato(gid_t, cand_ok.indice_collettivo_valore)
-                    self.annota(cand_ok, f"{accorda(cand_ok.sesso, 'Tesserato')} con {poli.nome}.", data)
-                    self.annota(poli, f"Tesserato {nome_completo(cand_ok)}.", data)
-                    del liberi[gid_t]
-                    n_tess_cpu_tot += 1
-            while poli.movimenti_oggi < LIMITE_MOVIMENTI_PER_TICK and len(poli.tesserati) >= poli.maxtesserati:
-                pegg_gid = -1
-                min_icv = float('inf')
-                tess_v = [tid for tid in poli.tesserati if tid in self.giocatori and tid not in self._ids_morti_processati_sessione]
-                if not tess_v:
-                    break
-                for tid in tess_v:
-                    icv = self.giocatori[tid].indice_collettivo_valore
-                    if icv < min_icv:
-                        min_icv = icv
-                        pegg_gid = tid
-                if pegg_gid == -1:
-                    break
-                poli.movimenti_oggi += 1
-                poli.datetime_ultimo_movimento = adesso()
-                poli.rimuovi_tesserato(pegg_gid, min_icv)
-                g_p = self.giocatori[pegg_gid]
-                g_p.appartenenza = "*"
-                self.annota(g_p, f"{accorda(g_p.sesso, 'Espulso')} da {poli.nome}.", data)
-                self.annota(poli, f"Espulso {nome_completo(g_p)}.", data)
-                n_esp_cpu_tot += 1
-        return n_tess_cpu_tot, n_esp_cpu_tot
+                prossimo = posto + 1
+                self._usa_mossa(poli)
+                if caso(probabilita_accettazione(poli.gloria, richieste[posto])):
+                    self._tessera(poli, liberi[posto], data)
+                    vetrina.togli(posto)
+                    tesserati += 1
+            if self.mosse_rimaste(poli) > 0 and len(poli.tesserati) >= poli.maxtesserati and caso(PROB_SCAMBIO_CPU_GIORNALIERA):
+                if self._scambio(poli, liberi, richieste, vetrina, prossimo, data):
+                    tesserati += 1
+                    svincolati += 1
+        return tesserati, svincolati
+
+    def _scambio(self, poli, liberi, richieste, vetrina, prossimo, data):
+        """Una polisportiva a rosa piena prova il libero più forte alla sua portata; vero se l'ha preso al posto del tesserato che vale meno."""
+        rosa = [self.giocatori[gid] for gid in poli.tesserati if gid in self.giocatori and gid not in self._ids_morti_processati_sessione]
+        posto = vetrina.primo(poli.gloria, prossimo)
+        if not rosa or posto is None:
+            return False
+        debole = min(rosa, key=lambda g: g.indice_collettivo_valore)
+        nuovo = liberi[posto]
+        if nuovo.indice_collettivo_valore <= debole.indice_collettivo_valore:
+            return False
+        self._usa_mossa(poli)
+        if not caso(probabilita_accettazione(poli.gloria, richieste[posto])):
+            return False
+        self._lascia(poli, debole)
+        nuovo.appartenenza = poli.nome
+        poli.aggiungi_tesserato(nuovo.id, nuovo.indice_collettivo_valore)
+        vetrina.togli(posto)
+        self.annota(nuovo, f"{accorda(nuovo.sesso, 'Tesserato')} con {poli.nome}.", data)
+        self.annota(debole, f"{accorda(debole.sesso, 'Svincolato')} da {poli.nome}, che al suo posto ha tesserato {nome_completo(nuovo)}.", data)
+        self.annota(poli, f"Tesserato {nome_completo(nuovo)} al posto di {nome_completo(debole)}, che torna {accorda(debole.sesso, 'libero')}.", data)
+        return True
 
     def aggiorna_stato_polisportive(self, annuncia=True):
         """Ricalcola indice dei tesserati e gloria di tutte le polisportive."""
@@ -309,11 +462,11 @@ class Mondo:
                 self.annota(self.polisportive[club], f"{nome_completo(g)} lascia il mondo dello showdown.", data)
                 self.polisportive[club].rimuovi_tesserato(gid, g.indice_collettivo_valore)
         else:
-            # Problema P4, tappa 7: il morto viene liberato ma resta fra i tesserati della sua polisportiva.
             msg = f"DECESSO (Età): {nome_completo(g)}(ID:{gid}) tra {formatta_eta_sim(eta_pre)} e {formatta_eta_sim(g.eta)} sim."
             self.annota(g, f"Muore, a {int(g.eta_anni)} anni.", data)
             if club != "*" and club in self.polisportive:
                 self.annota(self.polisportive[club], f"{nome_completo(g)} muore.", data)
+                self.polisportive[club].rimuovi_tesserato(gid, g.indice_collettivo_valore)
         self.giocatori_morti_sessione.append((gid, msg))
         self._ids_morti_processati_sessione.add(gid)
         g.ritirato = True
@@ -346,9 +499,15 @@ class Mondo:
             if not g.ritirato and g.eta >= g.etaritiro:
                 g.ritirato = True
                 self.giocatori_ritirati_sessione.append((gid, f"RITIRO: {nome_completo(g)}(ID:{gid}) a {formatta_eta_sim(g.eta)} sim."))
-                self.annota(g, f"Si ritira dall'attività, a {int(g.eta_anni)} anni.", data)
-                if g.appartenenza != "*" and g.appartenenza in self.polisportive:
-                    self.annota(self.polisportive[g.appartenenza], f"{nome_completo(g)} si ritira dall'attività.", data)
+                club = self.polisportive.get(g.appartenenza)
+                if club is not None:
+                    # Chi si ritira lascia libero il suo posto: problema P4, risolto con la tappa 7.
+                    self._lascia(club, g)
+                    self.annota(g, f"Si ritira dall'attività, a {int(g.eta_anni)} anni, e lascia {club.nome}.", data)
+                    self.annota(club, f"{nome_completo(g)} si ritira dall'attività e lascia la polisportiva.", data)
+                else:
+                    g.appartenenza = "*"
+                    self.annota(g, f"Si ritira dall'attività, a {int(g.eta_anni)} anni.", data)
                 rapporto["ritirati"] += 1
 
     # Il tempo.
@@ -423,9 +582,9 @@ class Mondo:
                     esegui_auto_allenamento(g, data)
                     if g.puntiesperienza < xp_pre:
                         rapporto["autoallenati"] += 1
-        tesserati, espulsi = self._esegui_logica_cpu_polisportive(data)
+        tesserati, svincolati = self._esegui_logica_cpu_polisportive(data)
         rapporto["tesserati_cpu"] += tesserati
-        rapporto["espulsi_cpu"] += espulsi
+        rapporto["svincolati_cpu"] += svincolati
         for nome_p in list(self.polisportive.keys()):
             if nome_p in self.polisportive and self.polisportive[nome_p].is_cpu_controlled and self._controlla_chiusura_poli_cpu(self.polisportive[nome_p], data):
                 rapporto["poli_chiuse"] += 1
@@ -449,7 +608,7 @@ class Mondo:
         self.notifica("\n--- Riepilogo Avanzamento Tick ---")
         for numero, testo in ((rapporto["ritirati"], "* Ritirati (età)"), (rapporto["usciti"], "* Usciti Prematuramente"), (rapporto["morti"], "* Deceduti (età)"),
                               (rapporto["nuovi"], "* Nuovi giocatori"), (rapporto["poli_chiuse"], "* Poli CPU chiuse"), (rapporto["poli_create"], "* Poli CPU create"),
-                              (rapporto["tesserati_cpu"], "* CPU Tesserati"), (rapporto["espulsi_cpu"], "* CPU Espulsi")):
+                              (rapporto["tesserati_cpu"], "* CPU Tesserati"), (rapporto["svincolati_cpu"], "* CPU Svincolati")):
             if numero > 0:
                 self.notifica(f"{testo}: {numero}")
         self.notifica("-" * 30)

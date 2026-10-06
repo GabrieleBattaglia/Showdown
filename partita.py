@@ -4,7 +4,7 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py. Le regole e i numeri
 sono quelli del vecchio motore, difetti compresi: la catena degli esiti che trasforma quasi ogni
 azione in fallo, il problema P1, e la resistenza del primo giocatore passata a chi batte, si
-correggono alla tappa 8, misurando prima e dopo con strumenti/banco_partite.py.
+correggono alla tappa 9, misurando prima e dopo con strumenti/banco_partite.py.
 Il motore non stampa e non chiede nulla: le righe che il vecchio sd.py stampava le consegna alla
 funzione mostra, e dove aspettava un tasto chiama la funzione pausa. Le passa chi lo usa; se non
 le passa, il motore lavora in silenzio.
@@ -226,7 +226,7 @@ class MotorePartita:
                 if modalita_output == MODALITA_OUTPUT_CONSOLE:
                     self.mostra(log_riga)
                 log_partita.append(log_riga)
-            # Difetto del vecchio motore, da correggere alla tappa 8: le resistenze passano
+            # Difetto del vecchio motore, da correggere alla tappa 9: le resistenze passano
             # sempre nell'ordine di g1 e g2, anche quando batte g2.
             vincitore_punto_id, tipo_punto, _dettaglio = self._gioca_punto(
                 g1, g2, servitore, risponditore, stats_g1, stats_g2, log_partita, modalita_output,

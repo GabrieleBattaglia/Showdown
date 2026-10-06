@@ -62,16 +62,16 @@ def test_nascita_partita_salvataggio_e_ritorno(cartella_di_prova, recita, capsys
     assert "=== PARTITA TERMINATA ===" in schermo
     assert "Mondo salvato:" in schermo
     documento = archivio.leggi(cartella_di_prova / FILE_MONDO)
-    club = documento["mondo"]["polisportive"]["Club Di Prova"]
+    club = documento["mondo"]["polisportive"]["club di prova"]
     assert club["impronta_password"] and "abc" not in club["impronta_password"]
-    assert documento["mondo"]["polisportiva_attiva"] == "Club Di Prova"
+    assert documento["mondo"]["polisportiva_attiva"] == "club di prova"
     giocati = [g for g in documento["mondo"]["giocatori"] if g["partitevinte"] + g["partiteperse"] == 1]
     assert len(giocati) == 2
 
     recita([("menu", "")])
     assert Showdown.avvia()
     schermo = capsys.readouterr().out
-    assert "Mondo caricato:" in schermo and "Polisportiva attiva: Club Di Prova." in schermo
+    assert "Mondo caricato:" in schermo and "Polisportiva attiva: club di prova." in schermo
     assert (cartella_di_prova / FILE_MONDO_COPIA).exists()
 
 

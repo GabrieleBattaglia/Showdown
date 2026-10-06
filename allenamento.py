@@ -2,7 +2,7 @@
 L'allenamento dei giocatori di MESS: costo dei punti, allenamento a mano e autoallenamento.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py, senza cambiare le
-regole: la loro revisione è la tappa 10, per il problema P8.
+regole: la loro revisione è la tappa 11, per il problema P8.
 I giocatori liberi e quelli delle polisportive del computer si allenano da soli: quattro volte
 su cinque seguono il loro archetipo, altrimenti reagiscono allo stato del momento, rinforzando
 il fisico se anziani, poi la caratteristica più debole, poi quella più forte.
@@ -170,7 +170,7 @@ def _spesa_da_archetipo(giocatore, str_spesa, skill_scelta, xp_disp):
     else:
         # Le strategie degli archetipi si chiamano percentuale, quota_fissa e obiettivo_punti, che
         # non corrispondono a nessuno dei nomi qui sopra: finiscono tutte qui, al 10 per cento.
-        # È il comportamento del vecchio sd.py, da rivedere alla tappa 10.
+        # È il comportamento del vecchio sd.py, da rivedere alla tappa 11.
         xp_spend = min(int(xp_disp * 0.1), max_xp)
     return max(0, xp_spend)
 

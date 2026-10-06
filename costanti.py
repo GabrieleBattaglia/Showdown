@@ -111,6 +111,8 @@ MAX_GLORIA_RICHIESTA = 1500
 FATTORE_GLORIA_RICHIESTA_AMBIDESTRO = 1.35
 FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO = 1.10
 FATTORE_GLORIA_RICHIESTA_CAMBIO_VEL = 1.10
+# Gli ipovedenti chiedono il 10 per cento di gloria in meno, a tutti: decisione D19 della tappa 7.
+FATTORE_GLORIA_RICHIESTA_IPOVEDENTE = 0.90
 # Probabilità che un giocatore accetti il tesseramento.
 ACCETTAZIONE_REL_DIFF_THRESHOLD = 0.30
 ACCETTAZIONE_PROB_MIN = 3.0
@@ -153,6 +155,12 @@ MAX_XP_PER_ALLENAMENTO = 15000
 MAX_TESSERATI_POLISPORTIVA = 15
 PAGINAZIONE_LISTE = 25
 LIMITE_MOVIMENTI_PER_TICK = 5
+# La probabilità, in percentuale, che in un giorno una polisportiva del computer a rosa piena provi
+# a tesserare un libero più forte del tesserato che le serve meno: decisione D19 della tappa 7.
+PROB_SCAMBIO_CPU_GIORNALIERA = 10.0
+# Quanti caratteri può avere il nome di una polisportiva.
+NOME_POLISPORTIVA_MIN = 5
+NOME_POLISPORTIVA_MAX = 50
 # La data dell'ultimo movimento di una polisportiva che non ne ha mai fatti.
 DATA_NESSUN_MOVIMENTO = datetime.datetime(1900, 1, 1)  # noqa: DTZ001 - data segnaposto, fuori da ogni fuso
 NUM_GIOCATORI_INIZIALI = 50

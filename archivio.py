@@ -18,8 +18,10 @@ Se non si legge nemmeno la copia, vanno da parte tutti e due e il mondo blocca i
 un mondo nuovo, salvato all'uscita, li coprirebbe.
 Il numero di formato, che dice come aggiornare i salvataggi vecchi. Il formato 2, della tappa 6,
 conserva in UTC l'istante dell'ultimo avanzamento, e aggiunge i diari di giocatori e polisportive,
-i giorni per cui conservarli e il registro delle vecchie glorie: un salvataggio del formato 1 si
-aggiorna da solo alla lettura, e si riscrive nel formato nuovo al primo salvataggio.
+i giorni per cui conservarli e il registro delle vecchie glorie. Il formato 3, della tappa 7,
+registra ogni polisportiva sotto il suo nome, quello che i tesserati portano scritto, e non ha più
+nei tesserati né ritirati né assenti. Un salvataggio di un formato vecchio si aggiorna da solo
+alla lettura, e si riscrive nel formato nuovo al primo salvataggio.
 """
 
 import contextlib
@@ -32,12 +34,12 @@ import shutil
 
 import percorsi
 from costanti import FILE_MONDO, FILE_MONDO_COPIA, NUM_GIOCATORI_INIZIALI, VERSIONE
-from modelli import DATA, Giocatore, Polisportiva, a_json, da_json
+from modelli import DATA, Giocatore, Polisportiva, a_json, da_json, normalizza_nome
 from mondo import CONSERVAZIONE_PREDEFINITA
 from utilita import adesso, adesso_utc
 
 APPLICAZIONE = "MESS"
-FORMATO = 2
+FORMATO = 3
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Da dove viene il mondo appena caricato.
@@ -166,7 +168,41 @@ def _dal_formato_1(documento):
     documento["formato"] = 2
 
 
-MIGRAZIONI = {1: _dal_formato_1}
+def _dal_formato_2(documento):
+    """
+    Dal formato 2 al 3: ogni polisportiva passa sotto il suo nome, senza spazi in più, che è
+    quello scritto nei suoi tesserati (problema P16); chi è ritirato, o porta il nome di una
+    polisportiva che non c'è, torna libero, e dagli elenchi dei tesserati spariscono assenti,
+    ritirati e doppioni (problema P4).
+    """
+    dati = documento["mondo"]
+    nuove = {}
+    rinomina = {}
+    for chiave, p in dati["polisportive"].items():
+        nome = normalizza_nome(p["nome"])
+        if nome in nuove:
+            raise ValueError(f"due polisportive si chiamano {nome}")
+        p["nome"] = nome
+        nuove[nome] = p
+        rinomina[chiave] = nome
+    dati["polisportive"] = nuove
+    if dati["polisportiva_attiva"] is not None:
+        dati["polisportiva_attiva"] = rinomina[dati["polisportiva_attiva"]]
+    giocatori = {g["id"]: g for g in dati["giocatori"]}
+    for g in giocatori.values():
+        if g["appartenenza"] != "*" and (g["ritirato"] or normalizza_nome(g["appartenenza"]) not in nuove):
+            g["appartenenza"] = "*"
+        elif g["appartenenza"] != "*":
+            g["appartenenza"] = normalizza_nome(g["appartenenza"])
+    for nome, p in nuove.items():
+        p["tesserati"] = list(dict.fromkeys(gid for gid in p["tesserati"] if gid in giocatori and giocatori[gid]["appartenenza"] == nome))
+    for g in giocatori.values():
+        if g["appartenenza"] != "*" and g["id"] not in nuove[g["appartenenza"]]["tesserati"]:
+            g["appartenenza"] = "*"
+    documento["formato"] = 3
+
+
+MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2}
 
 
 def _conservazione_da_json(valore):
@@ -209,6 +245,8 @@ def costruisci(documento, mondo):
         polisportive = {}
         for chiave, voce in dati["polisportive"].items():
             p = Polisportiva.da_dizionario(voce)
+            if chiave != p.nome:
+                raise ValueError(f"Polisportiva {p.nome}: è registrata sotto un altro nome, {chiave!r}")
             p.aggiorna_ict(giocatori, set())
             polisportive[chiave] = p
         attiva = dati["polisportiva_attiva"]

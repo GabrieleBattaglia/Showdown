@@ -115,12 +115,12 @@ def test_barra_di_stato(mondo):
 
 
 def test_apertura_e_avanzamento(mondo):
-    rapporto = Mondo.rapporto_vuoto(ORA) | {"ticks": 3, "giorni": 3, "nuovi": 7, "ritirati": 1, "tesserati_cpu": 4, "espulsi_cpu": 2, "poli_create": 1}
+    rapporto = Mondo.rapporto_vuoto(ORA) | {"ticks": 3, "giorni": 3, "nuovi": 7, "ritirati": 1, "tesserati_cpu": 4, "svincolati_cpu": 2, "poli_create": 1}
     testo = testi.apertura(mondo, CARICATO, ["Mondo caricato: prova."], rapporto, ADESSO - datetime.timedelta(days=1), ADESSO)
     _accessibile(testo)
     assert "Bentornato!" in testo and "1 giorno fa" in testo
     assert "7 giocatori sono nati e 1 si è ritirato." in testo
-    assert "Le polisportive del computer hanno tesserato 4 giocatori e ne hanno espulsi 2." in testo
+    assert "Le polisportive del computer hanno tesserato 4 giocatori e ne hanno svincolati 2 per fare posto." in testo
     assert "È nata una polisportiva del computer." in testo
     assert "Bentornato" not in testi.apertura(mondo, NATO, [], Mondo.rapporto_vuoto(ORA), ADESSO, ADESSO)
     assert testi.riepilogo_avanzamento(Mondo.rapporto_vuoto(ORA)) == "In questa sessione il mondo non è ancora avanzato."

@@ -7,6 +7,8 @@ agiva sull'intero mondo, si è spostata in mondo.py.
 Dalla tappa 6 giocatori e polisportive hanno un diario, sul modello di quelli di Terminal Beast:
 le voci più recenti in cima, ciascuna con la sua data simulata, e gli allenamenti consecutivi
 sulla stessa caratteristica fusi in una voce sola.
+Dalla tappa 7 il nome di una polisportiva resta come lo scrive chi la fonda, senza maiuscole
+imposte, e gli ipovedenti chiedono il 10 per cento di gloria in meno, secondo la decisione D19.
 Dalla tappa 3 ogni modello sa scriversi come dizionario per il salvataggio JSON, con a_dizionario,
 e ricostruirsi da lì, con da_dizionario, controllando ogni campo. Gli elenchi CAMPI_GIOCATORE e
 CAMPI_POLISPORTIVA dicono quali attributi si salvano e di che tipo sono: i valori che si possono
@@ -48,6 +50,7 @@ from costanti import (
     FATTORE_GLORIA_RICHIESTA_AMBIDESTRO,
     FATTORE_GLORIA_RICHIESTA_CAMBIO_VEL,
     FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO,
+    FATTORE_GLORIA_RICHIESTA_IPOVEDENTE,
     GLORIA_RICHIESTA_FISSA,
     GLORIA_RICHIESTA_MINIMA_ASSOLUTA,
     K_ICV_GLORIA_RICHIESTA,
@@ -403,7 +406,7 @@ class Giocatore:
 
     @property
     def gloria_richiesta(self):
-        """La gloria che il giocatore chiede a una polisportiva: cresce col valore, cala dopo i 17 anni."""
+        """La gloria che il giocatore chiede a una polisportiva: cresce col valore, cala dopo i 17 anni; gli ipovedenti chiedono un decimo in meno."""
         g_base = self.indice_collettivo_valore * K_ICV_GLORIA_RICHIESTA
         if ANNO_SIMULAZIONE_GIORNI <= 0:
             return GLORIA_RICHIESTA_MINIMA_ASSOLUTA
@@ -423,6 +426,8 @@ class Giocatore:
             g_calc *= FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO
         if getattr(self, 'cambiovelocita', False):
             g_calc *= FATTORE_GLORIA_RICHIESTA_CAMBIO_VEL
+        if getattr(self, 'ipovedente', False):
+            g_calc *= FATTORE_GLORIA_RICHIESTA_IPOVEDENTE
         g_fin = max(GLORIA_RICHIESTA_MINIMA_ASSOLUTA, int(g_calc))
         return min(g_fin, MAX_GLORIA_RICHIESTA)
 
@@ -576,9 +581,14 @@ class Giocatore:
             setattr(self, attr, max(0.0, getattr(self, attr, 0.0) * manten_tot))
 
 
+def normalizza_nome(nome):
+    """Il nome di una polisportiva senza spazi in più; le maiuscole restano come le ha scritte chi la fonda."""
+    return " ".join(nome.split())
+
+
 class Polisportiva:
     def __init__(self, nome, password, datetime_creazione_sim, is_cpu_controlled=False):
-        self.nome = nome.title()
+        self.nome = normalizza_nome(nome)
         # Dalla tappa 3 la password non si conserva: si conserva la sua impronta.
         self.impronta_password = crea_impronta(password) if password and not is_cpu_controlled else None
         self.datetime_creazione_sim = datetime_creazione_sim

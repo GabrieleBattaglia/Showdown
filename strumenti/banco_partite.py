@@ -5,7 +5,7 @@ Simula in memoria alcune centinaia di partite fra i giocatori di un mondo genera
 oppure di quello salvato, e conta come finiscono i punti, quanto durano scambi e set e quanto
 spesso vince il favorito. Non scrive nulla: il salvataggio dei giocatori si legge in sola
 lettura, e la funzione che a fine partita aggiorna esperienza, statistiche e infortuni viene
-sostituita da una che non fa niente. Servirà di nuovo alla tappa 8, per confrontare il motore
+sostituita da una che non fa niente. Servirà di nuovo alla tappa 9, per confrontare il motore
 prima e dopo la revisione. Dal 2026-10-06, con la tappa 2, non usa più sd.py ma i moduli
 nati dal suo smontaggio: il motore di partita.py e il generatore di mondo.py. Dalla tappa 3
 il mondo salvato si legge dal file JSON firmato, con il lettore di archivio.py, e senza un
@@ -105,7 +105,7 @@ class Banco:
     def _soglia_di_successo(self, giocatore_dif, valore_azione):
         """
         Ricalcola la soglia che _risolvi_azione_vs_dado usa senza restituirla. È una copia della
-        formula del vecchio motore, che il banco osserva e non cambia: alla tappa 8 va adattata.
+        formula del vecchio motore, che il banco osserva e non cambia: alla tappa 9 va adattata.
         """
         capacita = giocatore_dif.indice_collettivo_valore * costanti.SCALING_K_DIFESA_ICV
         meta_intervallo = costanti.SCALING_RANGE_DELTA_EFF / 2.0

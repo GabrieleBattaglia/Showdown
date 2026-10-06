@@ -243,7 +243,7 @@ def test_un_salvataggio_del_formato_1_si_aggiorna(cartella_di_prova):
     assert m.conservazione_diari == CONSERVAZIONE_PREDEFINITA
     assert m.vecchie_glorie == []
     assert archivio.salva(m)
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 2
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO
 
 
 def test_un_formato_1_rovinato_non_si_aggiorna(cartella_di_prova):

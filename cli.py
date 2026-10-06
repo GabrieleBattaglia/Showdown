@@ -5,7 +5,8 @@ Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py: qui sta
 domande all'utente e le schermate, con i testi di prima. È un'interfaccia di passaggio: dalla
 tappa 5 la sostituisce la finestra, e con lei arriveranno i testi discorsivi senza separatori,
 problema P12, e le correzioni delle liste, problema P11. Le regole del gioco non stanno qui ma
-nei moduli del motore, che questa interfaccia chiama.
+nei moduli del motore, che questa interfaccia chiama: dalla tappa 7 anche fondazione, offerte,
+svincoli e chiusura delle polisportive, con la password facoltativa e i nomi come li si scrive.
 """
 
 import datetime
@@ -30,10 +31,12 @@ from costanti import (
     MODALITA_OUTPUT_FILE,
     MODALITA_OUTPUT_RISULTATO,
     NOME_ATTR_TO_DISPLAY_MAP,
+    NOME_POLISPORTIVA_MAX,
+    NOME_POLISPORTIVA_MIN,
     PAGINAZIONE_LISTE,
     VERSIONE,
 )
-from modelli import Polisportiva, e_fisica
+from modelli import e_fisica
 from partita import MotorePartita
 from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, formatta_eta_sim
 
@@ -47,7 +50,7 @@ MAINMENU = {
 }
 POLIMENU = {
     "APR": "APRi una nuova polisportiva;", "CHI": "CHIudi la polisportiva attiva;", "CPA": "Cambia Polisportiva Attiva;",
-    "ESG": "ESpelli Giocatore dalla polisportiva attiva;", "MPP": "Modifica Password Polisportiva attiva;",
+    "ESG": "Svincola un Giocatore della polisportiva attiva;", "MPP": "Modifica, metti o togli la Password della Polisportiva attiva;",
     "TEG": "TEssera Giocatore nella polisportiva attiva;", "VGT": "Vedi Giocatori Tesserati della polisportiva attiva;",
     "VGP": "Vedi Giocatori Papabili (liberi ordinati per ICV);", "VLE": "Vedi Lista Polisportive Esistenti;",
     "VSP": "Vedi Scheda Polisportiva attiva;", "?": "Vedi Questo Menu;", "": "INVIO per tornare al menu principale;"
@@ -819,22 +822,19 @@ class InterfacciaTestuale:
     def _apri_nuova_polisportiva(self):
         print("\n--- Apertura Nuova Polisportiva ---")
         try:
-            nome = dgt("Nome (5-50)? ", "s", smin=5, smax=50).title()
-            if nome in self.polisportive or nome == "Nessuna":
-                print(f"\n\tNome '{nome}' esistente/non valido.")
+            nome = dgt(f"Nome ({NOME_POLISPORTIVA_MIN}-{NOME_POLISPORTIVA_MAX})? ", "s", smin=NOME_POLISPORTIVA_MIN, smax=NOME_POLISPORTIVA_MAX)
+            problema = self.mondo.problema_nome_polisportiva(nome)
+            if problema:
+                print(f"\n\t{problema}")
                 return
-            pwd1 = self._chiedi_password("Password: ")
-            if not pwd1:
-                print("\n\tPassword vuota.")
-                return
-            if pwd1 != self._chiedi_password("Conferma: "):
+            pwd1 = dgt("Password, facoltativa (INVIO per nessuna): ", smax=30, pwd=True)
+            if pwd1 and pwd1 != self._chiedi_password("Conferma: "):
                 print("\n\tPassword non coincidono.")
                 return
-            nuova = Polisportiva(nome=nome, password=pwd1, datetime_creazione_sim=self.data_sim, is_cpu_controlled=False)
-            self.polisportive[nome] = nuova
-            print(f"\nPoli '{nome}' creata ({self.data_sim:%Y-%m-%d %H:%M}).")
-            if key("Attivarla ora (S/n)? ").lower() != 'n':
-                self.mondo.miapolisportiva_attiva = nuova
+            attiva = key("Attivarla ora (S/n)? ").lower() != 'n'
+            nuova = self.mondo.fonda_polisportiva(nome, pwd1 or None, attiva)
+            print(f"\nPoli '{nuova.nome}' creata ({self.data_sim:%Y-%m-%d %H:%M}).")
+            if attiva:
                 print("Attivata.")
         except EOFError:
             print("\nAnnullato.")
@@ -849,16 +849,16 @@ class InterfacciaTestuale:
         for p in poli_u.values():
             print(f"- {p.sommario(self.data_sim)}")
         try:
-            nome = dgt("Nome poli da attivare: ", "s", smin=1, smax=50).title()
-            if nome in poli_u:
-                p_sel = poli_u[nome]
-                if p_sel.verifica_password(self._chiedi_password(f"Password '{nome}': ")):
-                    self.mondo.miapolisportiva_attiva = p_sel
-                    print(f"\n'{nome}' attivata.")
-                else:
-                    print("\n\tPassword errata.")
-            else:
+            nome = dgt("Nome poli da attivare: ", "s", smin=1, smax=NOME_POLISPORTIVA_MAX)
+            p_sel = self.mondo.trova_polisportiva(nome)
+            if p_sel is None or p_sel.is_cpu_controlled:
                 print(f"\n\tPoli utente '{nome}' non trovata.")
+                return
+            if p_sel.protetta and not p_sel.verifica_password(self._chiedi_password(f"Password '{p_sel.nome}': ")):
+                print("\n\tPassword errata.")
+                return
+            self.mondo.miapolisportiva_attiva = p_sel
+            print(f"\n'{p_sel.nome}' attivata.")
         except EOFError:
             print("\nAnnullato.")
 
@@ -886,29 +886,16 @@ class InterfacciaTestuale:
                 print(f"\n\tID {gid} non trovato.")
                 return
             g = self.giocatori[gid]
-            if gid in self.morti:
-                print(f"\n\t{g.nome} deceduto.")
+            problema = self.mondo.problema_offerta(poli, g)
+            if problema:
+                print(f"\n\t{problema}")
                 return
-            if g.ritirato and key(f"ATT: {g.nome} ritirato. Tesserare(s/N)? ").lower() != 's':
-                print("Annullato.")
-                return
-            if g.appartenenza != "*":
-                print(f"\n\tGià tesserato per '{g.appartenenza}'.")
-                return
-            g_rich = g.gloria_richiesta
-            g_off = poli.gloria
-            print(f"\tRich:{g_rich}. Off:{g_off}.")
-            poli.movimenti_oggi += 1
-            poli.datetime_ultimo_movimento = adesso()
+            print(f"\tRich:{g.gloria_richiesta}. Off:{poli.gloria}.")
+            accetta, prob = self.mondo.offerta(poli, g)
             print(f"Tentativo... (Mov.{poli.movimenti_oggi}/{LIMITE_MOVIMENTI_PER_TICK})")
-            prob = self.mondo.probabilita_accettazione(g_off, g_rich)
             print(f"\tProb.acc:{prob:.1f}%")
-            if caso(prob):
+            if accetta:
                 print(f"\t{g.nome} ACCETTA!")
-                g.appartenenza = poli.nome
-                poli.aggiungi_tesserato(gid, g.indice_collettivo_valore)
-                self.mondo.annota(g, f"{accorda(g.sesso, 'Tesserato')} con {poli.nome}.")
-                self.mondo.annota(poli, f"Tesserato {g.nome} {g.cognome}.")
                 print(f"\n{g.nome} tesserato!")
             else:
                 print(f"\t{g.nome} RIFIUTA!")
@@ -925,45 +912,29 @@ class InterfacciaTestuale:
             print("\n\tAttiva richiesta.")
             return
         poli = self.attiva
-        print(f"\n--- Espulsione da {poli.nome} ---")
+        print(f"\n--- Svincolo da {poli.nome} ---")
         print(f"Mov.Tick:{poli.movimenti_oggi}/{LIMITE_MOVIMENTI_PER_TICK}")
-        if not poli.tesserati:
-            print("\n\tNessun tesserato.")
-            return
         ids_val = [gid for gid in poli.tesserati if gid in self.giocatori]
         if not ids_val:
-            print("\n\tNessun tesserato valido.")
+            print("\n\tNessun tesserato.")
             return
         self.visualizza_lista(sorted(ids_val), f"Tesserati {poli.nome}", "giocatore")
         try:
-            gid = int(dgt("ID da espellere? ", "i", imin=1))
-            if gid not in poli.tesserati:
+            gid = int(dgt("ID da svincolare? ", "i", imin=1))
+            if gid not in ids_val:
                 print(f"\n\tID {gid} non tesserato qui.")
                 return
-            g_nome = f"ID {gid}"
-            g_icv = 0.
-            g_esiste = gid in self.giocatori
-            if g_esiste:
-                g = self.giocatori[gid]
-                g_nome = f"{g.nome} {g.cognome}"
-                g_icv = g.indice_collettivo_valore
-            else:
-                print(f"ATT: ID {gid} non nel DB.")
-            if key(f"Confermi espulsione {g_nome}(ID:{gid})? (s/N) ").lower() == 's':
-                if poli.movimenti_oggi >= LIMITE_MOVIMENTI_PER_TICK:
-                    print(f"\n\tLimite {LIMITE_MOVIMENTI_PER_TICK} movimenti tick.")
-                    return
-                poli.rimuovi_tesserato(gid, g_icv)
-                self.mondo.annota(poli, f"Espulso {g_nome}.")
-                if g_esiste:
-                    self.giocatori[gid].appartenenza = "*"
-                    self.mondo.annota(self.giocatori[gid], f"{accorda(self.giocatori[gid].sesso, 'Espulso')} da {poli.nome}.")
-                poli.movimenti_oggi += 1
-                poli.datetime_ultimo_movimento = adesso()
-                print(f"\n{g_nome}(ID:{gid}) espulso.")
-                print(f"Mov.tick rimasti:{LIMITE_MOVIMENTI_PER_TICK - poli.movimenti_oggi}")
-            else:
+            g = self.giocatori[gid]
+            if key(f"Confermi lo svincolo di {g.nome} {g.cognome}(ID:{gid})? (s/N) ").lower() != 's':
                 print("\nAnnullato.")
+                return
+            try:
+                self.mondo.svincola(poli, g)
+            except ValueError as e:
+                print(f"\n\t{e}")
+                return
+            print(f"\n{g.nome} {g.cognome}(ID:{gid}) svincolato.")
+            print(f"Mov.tick rimasti:{LIMITE_MOVIMENTI_PER_TICK - poli.movimenti_oggi}")
         except (ValueError, TypeError):
             print("\n\tID non valido.")
         except EOFError:
@@ -977,26 +948,14 @@ class InterfacciaTestuale:
         print(f"\n--- Chiusura Definitiva {poli.nome} ---")
         print("ATT: Irreversibile.")
         try:
-            if not poli.verifica_password(self._chiedi_password(f"Password '{poli.nome}': ")):
+            if poli.protetta and not poli.verifica_password(self._chiedi_password(f"Password '{poli.nome}': ")):
                 print("\n\tPassword errata.")
                 return
             if dgt("Scrivi 'CHIUDI': ", "s", smax=6) != "CHIUDI":
                 print("\nConferma non valida.")
                 return
-            n_lib = 0
-            for gid in list(poli.tesserati):
-                icv = 0.
-                if gid in self.giocatori:
-                    g = self.giocatori[gid]
-                    g.appartenenza = "*"
-                    icv = g.indice_collettivo_valore
-                    self.mondo.annota(g, f"Torna {accorda(g.sesso, 'libero')}: {poli.nome} ha chiuso.")
-                poli.rimuovi_tesserato(gid, icv)
-                n_lib += 1
-            nome = poli.nome
-            del self.polisportive[nome]
-            print(f"\nPoli '{nome}' chiusa. {n_lib} liberati.")
-            self.mondo.miapolisportiva_attiva = None
+            n_lib = self.mondo.chiudi_polisportiva(poli)
+            print(f"\nPoli '{poli.nome}' chiusa. {n_lib} liberati.")
             print("Nessuna poli attiva.")
         except EOFError:
             print("\nAnnullato.")
@@ -1006,19 +965,16 @@ class InterfacciaTestuale:
             print("\n\tNessuna poli attiva.")
             return
         poli = self.attiva
-        print(f"\n--- Modifica Password {poli.nome} ---")
+        print(f"\n--- Password di {poli.nome} ---")
         try:
-            if not poli.verifica_password(self._chiedi_password("Password attuale: ")):
+            if poli.protetta and not poli.verifica_password(self._chiedi_password("Password attuale: ")):
                 print("\n\tPassword attuale errata.")
                 return
-            pwd1 = self._chiedi_password("Nuova password: ")
-            if not pwd1:
-                print("\n\tPassword vuota.")
-                return
-            if pwd1 == self._chiedi_password("Conferma nuova: "):
-                poli.imposta_password(pwd1)
-                print("\nPassword modificata.")
-            else:
+            pwd1 = dgt("Nuova password (INVIO per toglierla): ", smax=30, pwd=True)
+            if pwd1 and pwd1 != self._chiedi_password("Conferma nuova: "):
                 print("\n\tNon coincidono.")
+                return
+            poli.imposta_password(pwd1)
+            print("\nPassword modificata." if pwd1 else "\nPassword tolta: la polisportiva non è più protetta.")
         except EOFError:
             print("\nAnnullato.")

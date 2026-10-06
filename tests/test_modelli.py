@@ -95,8 +95,9 @@ def test_probabilita_accettazione():
 
 
 def test_polisportiva_tesserati_e_indice():
-    p = Polisportiva("prova di club", None, NASCITA)
-    assert p.nome == "Prova Di Club"
+    # Il nome resta come lo si scrive, senza spazi in più: decisione D19.
+    p = Polisportiva("  prova   di club ", None, NASCITA)
+    assert p.nome == "prova di club"
     p.aggiungi_tesserato(3, 120.0)
     p.aggiungi_tesserato(3, 120.0)
     p.aggiungi_tesserato(4, 80.0)
