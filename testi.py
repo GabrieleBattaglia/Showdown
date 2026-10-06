@@ -542,9 +542,18 @@ def domanda_acquisto(c, p, mondo):
             f"Prende {euro(c.stipendio)} al mese. Userai {_mossa(p, mondo)}.")
 
 
+def posizione_in_rosa(posto, quanti):
+    """Il posto di un giocatore nella sua rosa, dal più forte, a parole."""
+    if quanti == 1:
+        return "È l'unico della sua rosa"
+    if posto == 1:
+        return f"È il più forte dei {quanti} della sua rosa"
+    return f"È il {posto}° più forte dei {quanti} della sua rosa"
+
+
 def domanda_offerta_d_acquisto(c, importo, p, mondo):
     posto, quanti = mondo.posizione_in_rosa(c.giocatore)
-    return (f"Offrire {euro(importo)} a {c.polisportiva.nome} per {nome_completo(c.giocatore)}? È il {posto}° più forte su {quanti} della sua rosa, "
+    return (f"Offrire {euro(importo)} a {c.polisportiva.nome} per {nome_completo(c.giocatore)}? {posizione_in_rosa(posto, quanti)}, "
             f"e prende {euro(c.stipendio)} al mese. Userai {_mossa(p, mondo)}.")
 
 

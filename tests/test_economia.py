@@ -296,3 +296,9 @@ def test_i_testi_dell_economia(mondo):
     assert "[CONTI]" in scheda_poli and f"Cassa: {_euro(poli.cassa)} | Sponsor: " in scheda_poli
     assert ", in vendita a 2.500 euro" in scheda_poli
     assert testi.riga_arretrati(g).startswith(f"{g.nome} {g.cognome}, insofferente, aspetta 300 euro")
+
+
+def test_la_posizione_in_rosa_a_parole():
+    assert testi.posizione_in_rosa(1, 1) == "È l'unico della sua rosa"
+    assert testi.posizione_in_rosa(1, 3) == "È il più forte dei 3 della sua rosa"
+    assert testi.posizione_in_rosa(2, 15) == "È il 2° più forte dei 15 della sua rosa"

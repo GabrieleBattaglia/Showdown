@@ -3,6 +3,26 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.38.2] - 2026-10-07
+
+### L'economia
+
+Ogni polisportiva ha una cassa in euro e parte con 20.000 euro. Il primo di ogni mese simulato, cioè ogni dieci giorni reali circa, incassa lo sponsor, 35 euro per ogni punto di gloria, e paga gli stipendi. Lo stipendio lo decide il giocatore, come in Hattrick: cresce con il valore, con i tratti rari e con l'esperienza, e va da poco più di 100 euro al mese a qualche migliaio per i più forti. Il bilancio della polisportiva attiva si legge con Ctrl+B, e la cassa sta nella seconda riga della barra di stato, alla lettera c, in migliaia di euro.
+
+Al mercato, con Ctrl+K, si sceglie chi mostrare: i liberi, chi è in vendita, i tesserati del computer, o tutti, e si può fissare un costo massimo. A un libero si offre un premio d'ingaggio, una tantum: il giocatore ne chiede uno secondo forza, età e tratti, e la gloria della tua polisportiva glielo fa abbassare o alzare. Scegli tu la cifra, e il gioco ti dice la probabilità che accetti: alla cifra chiesta accetta una volta su due, con un terzo in più quasi sempre. Chi è in vendita si compra al prezzo chiesto. Per un tesserato del computer si fa un'offerta d'acquisto alla sua polisportiva, che lo cede se la cifra arriva al suo valore di mercato, fino a una volta e mezza per il più forte della rosa; quanto basti, però, lo devi indovinare.
+
+Quando la cassa non basta per gli stipendi, nessuno viene pagato e gli stipendi diventano arretrati. Chi li aspetta perde pazienza, e la sua scheda dice l'umore, quanto aspetta e per quanto ancora pazienterà; con Ctrl+Maiusc+P decidi tu a chi dare i soldi che ci sono, e quanti: ricevere soldi rende la pazienza. Quanto dura dipende dalla fedeltà al club, che cresce con i mesi passati insieme: un nuovo arrivato se ne va dopo due mesi senza stipendio, un veterano dopo cinque. Un giocatore su cento è una bandiera: dopo anni nello stesso club gioca anche senza stipendio, e lo scopri solo quando succede. Quando il mondo avanza e i tuoi tesserati restano senza stipendio, la barra di stato lo dice per prima cosa.
+
+Dal menu Polisportive, alla voce Vendite dei tesserati, metti in vendita un tuo tesserato, a un prezzo che parte dal suo valore di mercato, o lo togli dalla vendita: le polisportive del computer lo comprano se il prezzo è giusto e se possono permetterselo.
+
+In una polisportiva cresce l'esperienza di carriera, che per i liberi resta ferma: un giocatore esperto costa di più. I punti esperienza che si spendono in allenamento ora si chiamano punti allenamento.
+
+Le polisportive del computer stanno nei loro conti: tesserano e comprano solo chi possono pagare, e quando non pagano mettono in vendita il loro giocatore più caro.
+
+Nel mercato le voci Ordina per e Fai un'offerta rispondevano tutte e due ad Alt+O: ora Ordina per risponde ad Alt+R.
+
+Un salvataggio della versione precedente si aggiorna da solo: ogni polisportiva riceve il capitale, e fedeltà ed esperienza dei tesserati si ricavano dai mesi passati nel club.
+
 ## [1.30.1] - 2026-10-06
 
 ### Le polisportive nella finestra, e il mercato

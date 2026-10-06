@@ -12,7 +12,7 @@ Dalla versione 1.16.0 il gioco si apre in una finestra, da qualunque cartella, c
 
     python Showdown.py
 
-Nella finestra si consulta il mondo, con schede, diari di giocatori e polisportive, elenchi, classifiche, statistiche, ricerche e il registro delle vecchie glorie, e si gestiscono le proprie polisportive: fondazione, password facoltativa, mercato con i filtri e le offerte, svincolo e chiusura. Il mondo avanza anche mentre la finestra è aperta, e la barra di stato lo annuncia. Partite e allenamento arriveranno nelle prossime tappe; fino ad allora si fanno con l'interfaccia testuale del vecchio `sd.py`, che si avvia con:
+Nella finestra si consulta il mondo, con schede, diari di giocatori e polisportive, elenchi, classifiche, statistiche, ricerche e il registro delle vecchie glorie, e si gestiscono le proprie polisportive: fondazione, password facoltativa, mercato con i filtri, ingaggi, acquisti e offerte, vendite, svincolo, bilancio, stipendi e arretrati, chiusura. Il mondo avanza anche mentre la finestra è aperta, e la barra di stato lo annuncia. Partite e allenamento arriveranno nelle prossime tappe; fino ad allora si fanno con l'interfaccia testuale del vecchio `sd.py`, che si avvia con:
 
     python Showdown.py --testo
 
