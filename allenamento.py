@@ -218,8 +218,11 @@ def _reagisci(giocatore, xp_disp):
     return skill_scelta, xp_spend
 
 
-def esegui_auto_allenamento(giocatore):
-    """Un giocatore libero o di una polisportiva del computer spende da solo la sua esperienza."""
+def esegui_auto_allenamento(giocatore, data=None):
+    """
+    Un giocatore libero o di una polisportiva del computer spende da solo la sua esperienza.
+    Con la data simulata, l'allenamento finisce anche nel suo diario.
+    """
     xp_disp = int(giocatore.puntiesperienza or 0)
     if xp_disp <= 0 or giocatore.ritirato or giocatore.infortunato:
         return
@@ -254,3 +257,5 @@ def esegui_auto_allenamento(giocatore):
         setattr(giocatore, skill_scelta, nuovo)
         giocatore.puntiesperienza = max(0, xp_disp - xp_eff)
         giocatore.aggiorna_icv()
+        if data is not None:
+            giocatore.annota_allenamento(data, skill_scelta.replace('_allenata', '_base'), v_b + v_a_att, v_b + nuovo)

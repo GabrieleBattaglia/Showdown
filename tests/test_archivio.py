@@ -4,6 +4,7 @@ copia di sicurezza, firma che scopre le modifiche, ripiego sulla copia, quarante
 salvataggi, formato, identificativi che non si riusano, nascita del mondo nuovo.
 """
 
+import copy
 import datetime
 import json
 import os
@@ -14,16 +15,19 @@ import pytest
 import archivio
 from costanti import FILE_MONDO, FILE_MONDO_COPIA
 from modelli import Polisportiva
-from mondo import Mondo
+from mondo import CONSERVAZIONE_PREDEFINITA, DECESSO, Mondo
+from utilita import adesso_utc
 
 INIZIO = datetime.datetime(2026, 3, 1, 9, 30)
+# L'istante reale dell'ultimo avanzamento, in UTC come lo conserva il formato 2.
+INIZIO_UTC = datetime.datetime(2026, 3, 1, 8, 30, tzinfo=datetime.UTC)
 
 
 def _mondo_popolato():
     random.seed(99)
     m = Mondo()
     m.datetime_corrente_simulazione = INIZIO
-    m.datetime_ultimo_run_reale = INIZIO
+    m.datetime_ultimo_run_reale = INIZIO_UTC
     m.crea_giocatori_casuali(12, INIZIO)
     m.crea_polisportiva_cpu(INIZIO)
     mia = Polisportiva("Club Di Prova", "segreta", INIZIO)
@@ -56,6 +60,7 @@ def test_salva_e_ricarica(cartella_di_prova):
     assert ricaricato.miapolisportiva_attiva is ricaricato.polisportive["Club Di Prova"]
     assert ricaricato.miapolisportiva_attiva.verifica_password("segreta")
     assert ricaricato.datetime_corrente_simulazione == INIZIO
+    assert ricaricato.datetime_ultimo_run_reale == INIZIO_UTC
     assert ricaricato.prossimo_id == 13
     assert set(os.listdir(cartella_di_prova)) == {FILE_MONDO}
     assert "segreta" not in (cartella_di_prova / FILE_MONDO).read_text(encoding="utf-8")
@@ -174,5 +179,88 @@ def test_mondo_nuovo_se_non_ci_sono_salvataggi(cartella_di_prova):
     assert m.prossimo_id == 51
     assert m.nuovi_giocatori_sessione == []
     assert messaggi[0] == "Nessun salvataggio trovato: nasce un mondo nuovo, con 50 giocatori."
-    assert m.datetime_ultimo_run_reale == m.datetime_corrente_simulazione - datetime.timedelta(hours=8)
+    # Il primo avanzamento arriva subito: l'ancora sta otto ore indietro, in UTC.
+    assert m.datetime_ultimo_run_reale.tzinfo is not None
+    assert abs(adesso_utc() - m.datetime_ultimo_run_reale - datetime.timedelta(hours=8)) < datetime.timedelta(minutes=1)
+    assert m.ticks_maturati() == 1
     assert os.listdir(cartella_di_prova) == []
+
+
+def test_diari_vecchie_glorie_e_conservazione_si_salvano(cartella_di_prova):
+    m = _mondo_popolato()
+    m.giocatori[4].annota_allenamento(INIZIO, "attacco_base", 10.0, 10.5)
+    m.annota(m.miapolisportiva_attiva, "Una voce di prova.")
+    m._uscita(m.giocatori[6], DECESSO, INIZIO, m.giocatori[6].eta)
+    m.conservazione_diari = {"giocatori": 30, "polisportive": 0}
+    assert archivio.salva(m)
+    ricaricato = _ricarica()
+    assert ricaricato.giocatori[4].diario == m.giocatori[4].diario
+    assert ricaricato.giocatori[4].diario[0] == {"data": INIZIO, "allenamento": "attacco_base", "da": 10.0, "a": 10.5}
+    assert ricaricato.miapolisportiva_attiva.diario[0]["testo"] == "Una voce di prova."
+    assert 6 not in ricaricato.giocatori
+    assert ricaricato.vecchie_glorie == m.vecchie_glorie
+    assert ricaricato.vecchie_glorie[0]["id"] == 6
+    assert ricaricato.conservazione_diari == {"giocatori": 30, "polisportive": 0}
+
+
+def test_al_salvataggio_le_voci_vecchie_si_tolgono(cartella_di_prova):
+    m = _mondo_popolato()
+    g = m.giocatori[1]
+    g.diario.clear()
+    for giorni in (20, 10, 5):
+        g.annota(INIZIO - datetime.timedelta(days=giorni), f"{giorni} giorni fa.")
+    m.conservazione_diari = {"giocatori": 10, "polisportive": 0}
+    assert archivio.salva(m)
+    assert [voce["testo"] for voce in _ricarica().giocatori[1].diario] == ["5 giorni fa.", "10 giorni fa."]
+
+
+def _al_formato_1(contenuto):
+    """Un contenuto del formato 2 riportato com'era nel formato 1: ora locale senza fuso, niente diari, conservazione e vecchie glorie."""
+    vecchio = copy.deepcopy(contenuto)
+    dati = vecchio["mondo"]
+    ultimo = datetime.datetime.fromisoformat(dati["ultimo_avanzamento"])
+    dati["ultimo_avanzamento"] = ultimo.astimezone().replace(tzinfo=None).isoformat()
+    for g in dati["giocatori"]:
+        del g["diario"]
+    for p in dati["polisportive"].values():
+        del p["diario"]
+    del dati["conservazione_diari"]
+    del dati["vecchie_glorie"]
+    vecchio["formato"] = 1
+    return vecchio
+
+
+def test_un_salvataggio_del_formato_1_si_aggiorna(cartella_di_prova):
+    contenuto = _al_formato_1(archivio.componi(_mondo_popolato()))
+    percorso = cartella_di_prova / FILE_MONDO
+    percorso.write_text(json.dumps({**contenuto, "firma": archivio.firma(contenuto)}), encoding="utf-8")
+    messaggi = []
+    m = _ricarica(messaggi)
+    assert messaggi[0].startswith("Mondo caricato:")
+    assert m.datetime_ultimo_run_reale == INIZIO_UTC
+    assert all(g.diario == [] for g in m.giocatori.values())
+    assert all(p.diario == [] for p in m.polisportive.values())
+    assert m.conservazione_diari == CONSERVAZIONE_PREDEFINITA
+    assert m.vecchie_glorie == []
+    assert archivio.salva(m)
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 2
+
+
+def test_un_formato_1_rovinato_non_si_aggiorna(cartella_di_prova):
+    contenuto = _al_formato_1(archivio.componi(_mondo_popolato()))
+    contenuto["mondo"]["ultimo_avanzamento"] = "ieri sera"
+    percorso = cartella_di_prova / FILE_MONDO
+    percorso.write_text(json.dumps({**contenuto, "firma": archivio.firma(contenuto)}), encoding="utf-8")
+    with pytest.raises(archivio.ErroreSalvataggio, match="formato 1 non si è potuto aggiornare"):
+        archivio.leggi(percorso)
+
+
+def test_l_ultimo_avanzamento_senza_fuso_non_si_accetta():
+    contenuto = archivio.componi(_mondo_popolato())
+    contenuto["mondo"]["ultimo_avanzamento"] = "2026-03-01T09:30:00"
+    with pytest.raises(archivio.ErroreSalvataggio, match="fuso"):
+        archivio.costruisci(contenuto, Mondo())
+    contenuto = archivio.componi(_mondo_popolato())
+    contenuto["mondo"]["conservazione_diari"] = {"giocatori": -1, "polisportive": 0}
+    with pytest.raises(archivio.ErroreSalvataggio, match="conservazione_diari"):
+        archivio.costruisci(contenuto, Mondo())

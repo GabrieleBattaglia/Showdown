@@ -16,7 +16,10 @@ Il ripiego. Se il salvataggio non si legge, o la firma non torna, il mondo viene
 prende il suo posto, e il file scartato si mette da parte nella cartella salvataggi_illeggibili.
 Se non si legge nemmeno la copia, vanno da parte tutti e due e il mondo blocca i salvataggi:
 un mondo nuovo, salvato all'uscita, li coprirebbe.
-Il numero di formato, che dirà alle versioni future come aggiornare i salvataggi vecchi.
+Il numero di formato, che dice come aggiornare i salvataggi vecchi. Il formato 2, della tappa 6,
+conserva in UTC l'istante dell'ultimo avanzamento, e aggiunge i diari di giocatori e polisportive,
+i giorni per cui conservarli e il registro delle vecchie glorie: un salvataggio del formato 1 si
+aggiorna da solo alla lettura, e si riscrive nel formato nuovo al primo salvataggio.
 """
 
 import contextlib
@@ -30,10 +33,11 @@ import shutil
 import percorsi
 from costanti import FILE_MONDO, FILE_MONDO_COPIA, NUM_GIOCATORI_INIZIALI, VERSIONE
 from modelli import DATA, Giocatore, Polisportiva, a_json, da_json
-from utilita import adesso
+from mondo import CONSERVAZIONE_PREDEFINITA
+from utilita import adesso, adesso_utc
 
 APPLICAZIONE = "MESS"
-FORMATO = 1
+FORMATO = 2
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Da dove viene il mondo appena caricato.
@@ -78,8 +82,10 @@ def componi(mondo):
             "ultimo_avanzamento": a_json(mondo.datetime_ultimo_run_reale, DATA),
             "prossimo_id": mondo.prossimo_id,
             "polisportiva_attiva": attiva,
+            "conservazione_diari": dict(mondo.conservazione_diari),
             "polisportive": {chiave: p.a_dizionario() for chiave, p in mondo.polisportive.items()},
             "giocatori": [g.a_dizionario() for gid, g in sorted(mondo.giocatori.items()) if gid not in morti],
+            "vecchie_glorie": list(mondo.vecchie_glorie),
         },
     }
 
@@ -132,8 +138,50 @@ def leggi(percorso):
         raise ErroreSalvataggio(f"il numero di formato non è valido: {formato!r}")
     if formato > FORMATO:
         raise ErroreSalvataggio(f"il file viene da una versione più recente del gioco, con il formato {formato}, mentre questa legge fino al {FORMATO}")
-    # Qui si applicheranno, in ordine, le migrazioni dai formati più vecchi, quando ce ne saranno.
+    while documento["formato"] < FORMATO:
+        try:
+            MIGRAZIONI[documento["formato"]](documento)
+        except (KeyError, TypeError, ValueError, AttributeError) as e:
+            raise ErroreSalvataggio(f"il salvataggio del formato {documento['formato']} non si è potuto aggiornare: {e}") from e
     return documento
+
+
+def _dal_formato_1(documento):
+    """
+    Dal formato 1 al 2: l'istante dell'ultimo avanzamento, scritto con l'ora locale senza fuso,
+    passa in UTC; giocatori e polisportive ricevono un diario vuoto; arrivano i giorni di
+    conservazione dei diari, predefiniti, e il registro delle vecchie glorie, vuoto.
+    """
+    mondo = documento["mondo"]
+    ultimo = datetime.datetime.fromisoformat(mondo["ultimo_avanzamento"])
+    if ultimo.tzinfo is None:
+        ultimo = ultimo.astimezone()
+    mondo["ultimo_avanzamento"] = ultimo.astimezone(datetime.UTC).isoformat()
+    for g in mondo["giocatori"]:
+        g.setdefault("diario", [])
+    for p in mondo["polisportive"].values():
+        p.setdefault("diario", [])
+    mondo.setdefault("conservazione_diari", dict(CONSERVAZIONE_PREDEFINITA))
+    mondo.setdefault("vecchie_glorie", [])
+    documento["formato"] = 2
+
+
+MIGRAZIONI = {1: _dal_formato_1}
+
+
+def _conservazione_da_json(valore):
+    if not isinstance(valore, dict) or set(valore) != set(CONSERVAZIONE_PREDEFINITA):
+        raise ValueError(f"Mondo: il campo conservazione_diari non è valido: {valore!r}")
+    for giorni in valore.values():
+        if not isinstance(giorni, int) or isinstance(giorni, bool) or giorni < 0:
+            raise ValueError(f"Mondo: il campo conservazione_diari non è valido: {valore!r}")
+    return dict(valore)
+
+
+def _vecchie_glorie_da_json(valore):
+    if not isinstance(valore, list) or not all(isinstance(voce, dict) and isinstance(voce.get("nome"), str) and isinstance(voce.get("data"), str) for voce in valore):
+        raise ValueError("Mondo: il registro delle vecchie glorie non è valido")
+    return list(valore)
 
 
 def costruisci(documento, mondo):
@@ -145,6 +193,10 @@ def costruisci(documento, mondo):
         dati = documento["mondo"]
         data_simulata = da_json(dati["data_simulata"], DATA, "Mondo", "data_simulata")
         ultimo_avanzamento = da_json(dati["ultimo_avanzamento"], DATA, "Mondo", "ultimo_avanzamento")
+        if ultimo_avanzamento.tzinfo is None:
+            raise ValueError("Mondo: l'istante dell'ultimo avanzamento non ha il fuso")
+        conservazione = _conservazione_da_json(dati["conservazione_diari"])
+        vecchie_glorie = _vecchie_glorie_da_json(dati["vecchie_glorie"])
         prossimo_id = da_json(dati["prossimo_id"], int, "Mondo", "prossimo_id")
         giocatori = {}
         for voce in dati["giocatori"]:
@@ -172,6 +224,8 @@ def costruisci(documento, mondo):
     mondo.polisportive = polisportive
     mondo.miapolisportiva_attiva = polisportive[attiva] if attiva is not None else None
     mondo.prossimo_id = max(prossimo_id, max(giocatori, default=0) + 1)
+    mondo.conservazione_diari = conservazione
+    mondo.vecchie_glorie = vecchie_glorie
 
 
 def _metti_da_parte(*file_da_salvare):
@@ -201,9 +255,8 @@ def _riassunto(mondo):
 
 def _fai_nascere(mondo):
     """Un mondo nuovo: la data simulata parte da oggi, e i primi giocatori nascono subito."""
-    ora = adesso()
-    mondo.datetime_corrente_simulazione = ora
-    mondo.datetime_ultimo_run_reale = ora - datetime.timedelta(hours=8)
+    mondo.datetime_corrente_simulazione = ora = adesso()
+    mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=8)
     mondo.notifica(f"Nessun salvataggio trovato: nasce un mondo nuovo, con {NUM_GIOCATORI_INIZIALI} giocatori.")
     # I messaggi della generazione ripeterebbero la frase qui sopra.
     notifica, mondo.notifica = mondo.notifica, lambda *_args: None
@@ -269,6 +322,7 @@ def salva(mondo):
     if mondo.salvataggio_bloccato:
         mondo.notifica("Salvataggio rifiutato: il salvataggio esistente non si è potuto leggere, e il gioco non lo copre.")
         return False
+    mondo.sfoltisci_diari()
     try:
         contenuto, avvisi = scrivi(mondo, percorsi.percorso(FILE_MONDO), percorsi.percorso(FILE_MONDO_COPIA))
     except (OSError, TypeError, ValueError) as e:

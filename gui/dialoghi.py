@@ -63,7 +63,7 @@ class _Dialogo(wx.Dialog):
 class SceltaGiocatore(_Dialogo):
     """La scelta di un giocatore: un campo per il numero o il nome e l'elenco, che si restringe mentre si scrive."""
 
-    def __init__(self, genitore, mondo, titolo="Scheda del giocatore"):
+    def __init__(self, genitore, mondo, titolo="Scheda del giocatore", pulsante="&Mostra la scheda"):
         super().__init__(genitore, titolo)
         self.mondo = mondo
         self.scelto = None
@@ -73,7 +73,7 @@ class SceltaGiocatore(_Dialogo):
         self.campo = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PROCESS_ENTER))
         self.etichetta("&Giocatori")
         self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
-        mostra, _annulla = self.pulsanti((wx.ID_OK, "&Mostra la scheda"), (wx.ID_CANCEL, "Annulla"))
+        mostra, _annulla = self.pulsanti((wx.ID_OK, pulsante), (wx.ID_CANCEL, "Annulla"))
         self.campo.Bind(wx.EVT_TEXT, self.filtra)
         self.campo.Bind(wx.EVT_TEXT_ENTER, self.conferma)
         self.elenco.Bind(wx.EVT_LISTBOX_DCLICK, self.conferma)
@@ -218,6 +218,27 @@ class Aspetto(_Dialogo):
 
     def conferma(self, event=None):
         self.risultato = self.valori()
+        self.chiudi(wx.ID_OK)
+
+
+class Conservazione(_Dialogo):
+    """Per quanti giorni simulati si conservano le voci dei diari, come la pulizia dei diari di Terminal Beast."""
+
+    def __init__(self, genitore, conservazione):
+        super().__init__(genitore, "Conservazione dei diari")
+        self.risultato = None
+        self.sizer.Add(wx.StaticText(self.pannello, label="Per quanti giorni simulati si conservano le voci dei diari. Zero vuol dire per sempre."), 0, wx.ALL, 8)
+        self.etichetta("Giorni per i diari dei &giocatori")
+        self.giocatori = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=3650, initial=conservazione["giocatori"]))
+        self.etichetta("Giorni per i diari delle &polisportive")
+        self.polisportive = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=3650, initial=conservazione["polisportive"]))
+        ok, _annulla = self.pulsanti((wx.ID_OK, "OK"), (wx.ID_CANCEL, "Annulla"))
+        ok.Bind(wx.EVT_BUTTON, self.conferma)
+        self.completa((400, 260))
+        self.giocatori.SetFocus()
+
+    def conferma(self, event=None):
+        self.risultato = {"giocatori": self.giocatori.GetValue(), "polisportive": self.polisportive.GetValue()}
         self.chiudi(wx.ID_OK)
 
 

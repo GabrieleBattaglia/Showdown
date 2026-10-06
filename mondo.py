@@ -4,8 +4,15 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio della classe Simulatore di sd.py:
 qui resta tutto ciò che il mondo fa da solo, cioè l'avanzamento del tempo con invecchiamento,
 guarigioni, ritiri, morti e nascite, l'autoallenamento e la vita delle polisportive del computer.
-Le regole sono quelle del vecchio file, con i loro difetti: quelli del tempo, problema P3, si
-correggono alla tappa 6, quelli delle polisportive, problemi P4 e P7, alla tappa 7.
+Dalla tappa 6, secondo la decisione D2, il tempo scorre come in Hattrick: un giorno simulato ogni
+8 ore reali, anche a programma chiuso. Il tempo trascorso si misura in UTC, che l'ora legale non
+sposta. Ogni giorno trascorso ha la sua elaborazione completa, nello stesso ordine, e l'ancora
+dell'ultimo avanzamento si sposta di otto ore esatte per ogni giorno elaborato: il resto non va
+più perso. Le nascite seguono la natura, come ha deciso Gabriele: da uno a sette giocatori nuovi
+ogni giorno, senza più il tetto di cinquanta per avvio, che faceva nascere meno giocatori a chi
+apriva il gioco di rado; l'equilibrio arriva quando le morti compensano le nascite. Gli eventi
+finiscono nei diari di chi li vive, e chi esce di scena nel registro delle vecchie glorie. Restano i difetti delle polisportive del computer, problemi P4, P7 e P16, che si
+correggono alla tappa 7.
 Il mondo non stampa: consegna i suoi messaggi alla funzione notifica, che gli passa chi lo usa.
 """
 
@@ -22,8 +29,6 @@ from costanti import (
     FATTORE_PROB_TESSERATI,
     GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET,
     LIMITE_MOVIMENTI_PER_TICK,
-    MAPPA_FLAG_SOMMARIO,
-    MAX_NUOVI_GIOCATORI_PER_AVVIO,
     MAX_PROB_CHIUSURA_GIORNALIERA,
     NOME_FILE_LOG_USCITE,
     PROB_CHIUSURA_BASE_GIORNALIERA,
@@ -35,16 +40,25 @@ from costanti import (
 )
 from modelli import Giocatore, Polisportiva, probabilita_accettazione
 from nomi import genera_nome_casuale
-from utilita import adesso, caso, converti_in_tempo, formatta_eta_sim
+from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale
 
 ORE_PER_TICK = 8
+DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
 # Le voci del riepilogo di un avanzamento, oltre all'ora in cui è avvenuto.
 CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
                    "tesserati_cpu", "espulsi_cpu", "poli_chiuse", "poli_create")
+# Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
+CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
+USCITA_PREMATURA = "Uscita Prematura"
+DECESSO = "Decesso Naturale"
 
 
 def _silenzio(*_args, **_kwargs):
     """Al posto di notifica quando chi usa il mondo non la passa."""
+
+
+def nome_completo(g):
+    return f"{g.nome} {g.cognome}"
 
 
 class Mondo:
@@ -53,9 +67,10 @@ class Mondo:
         self.giocatori = {}
         self.polisportive = {}
         self.miapolisportiva_attiva = None
-        ora = adesso()
-        self.datetime_ultimo_run_reale = ora - datetime.timedelta(days=1)
-        self.datetime_corrente_simulazione = ora
+        # L'istante reale dell'ultimo avanzamento, in UTC: l'ancora da cui si contano le 8 ore.
+        self.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(days=1)
+        # La data del calendario simulato, che avanza di un giorno per avanzamento.
+        self.datetime_corrente_simulazione = adesso()
         self.nuovi_giocatori_sessione = []
         self.giocatori_ritirati_sessione = []
         self.giocatori_morti_sessione = []
@@ -65,8 +80,11 @@ class Mondo:
         self.prossimo_id = 1
         # Diventa vero quando il salvataggio esiste ma non si legge: da lì non si salva più nulla.
         self.salvataggio_bloccato = False
+        # Chi è uscito di scena, dal più recente: il registro delle vecchie glorie, salvato col mondo.
+        self.vecchie_glorie = []
+        self.conservazione_diari = dict(CONSERVAZIONE_PREDEFINITA)
 
-    # Probabilità e ricerche.
+    # Probabilità, ricerche, diari.
 
     @staticmethod
     def probabilita_accettazione(g_off, g_rich):
@@ -87,21 +105,39 @@ class Mondo:
         self.prossimo_id = nuovo + 1
         return nuovo
 
+    def annota(self, soggetto, testo, data=None):
+        """Una voce nel diario di un giocatore o di una polisportiva, con la data simulata, di oggi se non è data."""
+        soggetto.annota(data or self.datetime_corrente_simulazione, testo)
+
+    def sfoltisci_diari(self):
+        """Toglie dai diari le voci più vecchie dei giorni simulati da conservare; restituisce quante ne ha tolte."""
+        tolte = 0
+        for chiave, soggetti in (("giocatori", self.giocatori.values()), ("polisportive", self.polisportive.values())):
+            giorni = self.conservazione_diari.get(chiave, 0)
+            if giorni <= 0:
+                continue
+            limite = self.datetime_corrente_simulazione - datetime.timedelta(days=giorni)
+            for soggetto in soggetti:
+                prima = len(soggetto.diario)
+                soggetto.diario[:] = [voce for voce in soggetto.diario if voce["data"] >= limite]
+                tolte += prima - len(soggetto.diario)
+        return tolte
+
     # Nascite e polisportive del computer.
 
-    def crea_giocatori_casuali(self, quanti, dt_creaz):
+    def crea_giocatori_casuali(self, quanti, dt_creaz, annuncia=True):
         """Crea il numero indicato di giocatori nuovi e li annota fra i nuovi della sessione."""
         if quanti <= 0:
             return
-        self.notifica(f" -> Generazione {quanti} nuovi giocatori...")
-        n_cr = 0
+        if annuncia:
+            self.notifica(f" -> Generazione {quanti} nuovi giocatori...")
         for _ in range(quanti):
             new_id = self.nuovo_id()
             is_ipo = caso(PROBABILITA_IPOVEDENTE_CREAZIONE)
             self.giocatori[new_id] = Giocatore(id_giocatore=new_id, datetime_creazione_sim=dt_creaz, ipovedente=is_ipo)
             self.nuovi_giocatori_sessione.append(new_id)
-            n_cr += 1
-        self.notifica(f" -> Creati {n_cr} nuovi giocatori.")
+        if annuncia:
+            self.notifica(f" -> Creati {quanti} nuovi giocatori.")
 
     def crea_polisportiva_cpu(self, dt_creaz):
         """Fonda una polisportiva del computer con un nome nuovo; ne restituisce il nome, o None."""
@@ -125,6 +161,8 @@ class Mondo:
         return nome
 
     def _chiudi_polisportiva_cpu(self, nome_p, dt_chiusura):
+        # Problema P16, tappa 7: chi chiama passa il nome ritoccato della polisportiva, che non è
+        # la sua chiave nel mondo, quindi qui non si arriva mai.
         poli = self.polisportive.get(nome_p)
         if not poli or not poli.is_cpu_controlled:
             return False
@@ -133,7 +171,9 @@ class Mondo:
         n_lib = 0
         for gid in list(poli.tesserati):
             if gid in self.giocatori:
-                self.giocatori[gid].appartenenza = "*"
+                g = self.giocatori[gid]
+                g.appartenenza = "*"
+                self.annota(g, f"Torna {accorda(g.sesso, 'libero')}: {poli.nome} ha chiuso.", dt_chiusura)
                 n_lib += 1
             poli.tesserati.remove(gid)
         del self.polisportive[nome_p]
@@ -162,9 +202,15 @@ class Mondo:
             return self._chiudi_polisportiva_cpu(poli.nome, dt_corr)
         return False
 
-    def _esegui_logica_cpu_polisportive(self):
+    def _esegui_logica_cpu_polisportive(self, data=None):
         """Le polisportive del computer tesserano i liberi più forti alla loro portata ed espellono il più debole a rosa piena."""
         liberi = self.trova_giocatori_liberi_ordinati()
+        # La gloria che ogni libero chiede non cambia durante le mosse del giorno: si calcola una
+        # volta sola, e così la pretesa, scontata di un decimo per gli ipovedenti. Chi ha meno
+        # gloria della pretesa più bassa non trova nessuno e non fa mosse, quindi non cerca.
+        richieste = {gid: g.gloria_richiesta for gid, g in liberi.items()}
+        pretese = {gid: int(r * .9) if liberi[gid].ipovedente else r for gid, r in richieste.items()}
+        pretesa_minima = min(pretese.values(), default=None)
         n_tess_cpu_tot = 0
         n_esp_cpu_tot = 0
         for nome_p in list(self.polisportive.keys()):
@@ -175,16 +221,11 @@ class Mondo:
                 cand_ok = None
                 gid_t = -1
                 tent = False
-                ids_lib_rim = list(liberi.keys())
-                if not ids_lib_rim:
+                if not liberi or poli.gloria < pretesa_minima:
                     break
-                for gid_c in ids_lib_rim:
-                    if gid_c not in liberi:
-                        continue
-                    cand = liberi[gid_c]
-                    g_r = cand.gloria_richiesta
-                    g_p = int(g_r * .9) if cand.ipovedente else g_r
-                    if cand.appartenenza == "*" and g_p <= poli.gloria:
+                for gid_c, cand in liberi.items():
+                    g_r = richieste[gid_c]
+                    if cand.appartenenza == "*" and pretese[gid_c] <= poli.gloria:
                         poli.movimenti_oggi += 1
                         poli.datetime_ultimo_movimento = adesso()
                         tent = True
@@ -197,6 +238,8 @@ class Mondo:
                 if cand_ok:
                     cand_ok.appartenenza = poli.nome
                     poli.aggiungi_tesserato(gid_t, cand_ok.indice_collettivo_valore)
+                    self.annota(cand_ok, f"{accorda(cand_ok.sesso, 'Tesserato')} con {poli.nome}.", data)
+                    self.annota(poli, f"Tesserato {nome_completo(cand_ok)}.", data)
                     del liberi[gid_t]
                     n_tess_cpu_tot += 1
             while poli.movimenti_oggi < LIMITE_MOVIMENTI_PER_TICK and len(poli.tesserati) >= poli.maxtesserati:
@@ -215,207 +258,198 @@ class Mondo:
                 poli.movimenti_oggi += 1
                 poli.datetime_ultimo_movimento = adesso()
                 poli.rimuovi_tesserato(pegg_gid, min_icv)
-                self.giocatori[pegg_gid].appartenenza = "*"
+                g_p = self.giocatori[pegg_gid]
+                g_p.appartenenza = "*"
+                self.annota(g_p, f"{accorda(g_p.sesso, 'Espulso')} da {poli.nome}.", data)
+                self.annota(poli, f"Espulso {nome_completo(g_p)}.", data)
                 n_esp_cpu_tot += 1
         return n_tess_cpu_tot, n_esp_cpu_tot
 
-    def aggiorna_stato_polisportive(self):
+    def aggiorna_stato_polisportive(self, annuncia=True):
         """Ricalcola indice dei tesserati e gloria di tutte le polisportive."""
-        self.notifica("Aggiornamento stato polisportive...")
-        if self.polisportive:
-            n_agg = 0
-            for nome_p in list(self.polisportive.keys()):
-                if nome_p in self.polisportive:
-                    p = self.polisportive[nome_p]
-                    p.aggiorna_ict(self.giocatori, self._ids_morti_processati_sessione)
-                    p.aggiorna_gloria(self.giocatori, self._ids_morti_processati_sessione)
-                    n_agg += 1
-            self.notifica(f"-> Stato ricalcolato per {n_agg} polisportive.")
+        if annuncia:
+            self.notifica("Aggiornamento stato polisportive...")
+        for p in self.polisportive.values():
+            p.aggiorna_ict(self.giocatori, self._ids_morti_processati_sessione)
+            p.aggiorna_gloria(self.giocatori, self._ids_morti_processati_sessione)
+        if annuncia and self.polisportive:
+            self.notifica(f"-> Stato ricalcolato per {len(self.polisportive)} polisportive.")
 
     # Uscite di scena.
 
-    def _logga_uscita_giocatore(self, giocatore, motivo, dt_evento_sim):
-        """Scrive l'uscita di un giocatore nel registro storico delle vecchie glorie."""
-        giocatore.aggiorna_aspetto()
-        eta_mom = formatta_eta_sim(giocatore.eta, False)
-        flags = ", ".join([f for a, f in MAPPA_FLAG_SOMMARIO.items() if getattr(giocatore, a, False)]) or "Nessuno"
-        log = [f"--- {motivo.upper()} - GID: {giocatore.id} ---", f"Nome: {giocatore.nome} {giocatore.cognome}", f"Età (Sim): {eta_mom}",
-               f"Sesso: {'Uomo' if giocatore.sesso == 'm' else 'Donna'}", f"Club Finale: {'Libero' if giocatore.appartenenza == '*' else giocatore.appartenenza}",
-               f"Fisico: {giocatore.altezza} cm / {giocatore.peso} kg", f"Flags: {flags}",
-               f"Scoperto (Sim): {giocatore.datetime_creazione_sim:%Y-%m-%d %H:%M}", f"Scoperto (Reale): {giocatore.datacreazione_reale:%Y-%m-%d %H:%M}",
-               f"Versione Creazione: {getattr(giocatore, 'versione', 'N/D')}", f"Evento (Sim): {dt_evento_sim:%Y-%m-%d %H:%M}",
-               f"Evento (Reale): {adesso():%Y-%m-%d %H:%M:%S}",
-               f"Stats Partite: G={giocatore.partitevinte + giocatore.partiteperse}, V={giocatore.partitevinte}",
-               f"Stats Sets: G={giocatore.setsvinti + giocatore.setspersi}, V={giocatore.setsvinti}",
-               f"Stats Goals: F={giocatore.goalsfatti}, S={giocatore.goalssubiti}", f"XP Finali: {int(giocatore.puntiesperienza or 0)}",
-               f"ICV Finale: {giocatore.indice_collettivo_valore:.2f}", "-" * 50 + "\n"]
+    def _registra_uscita(self, g, motivo, data, club):
+        """Annota l'uscita di scena nel registro delle vecchie glorie, salvato col mondo, e nel file vecchie_glorie.log."""
+        g.aggiorna_aspetto()
+        voce = {
+            "id": g.id, "nome": g.nome, "cognome": g.cognome, "sesso": g.sesso,
+            "motivo": "morte" if motivo == DECESSO else "uscita", "eta": g.eta, "data": data.isoformat(), "club": club,
+            "partite": g.partitevinte + g.partiteperse, "vittorie": g.partitevinte, "set": g.setsvinti + g.setspersi, "set_vinti": g.setsvinti,
+            "goal_fatti": g.goalsfatti, "goal_subiti": g.goalssubiti, "valore": round(g.indice_collettivo_valore, 2),
+            "scoperto": g.datetime_creazione_sim.isoformat(), "versione": getattr(g, "versione", "N/D"),
+        }
+        self.vecchie_glorie.insert(0, voce)
+        come = f"{'muore' if voce['motivo'] == 'morte' else 'lascia il mondo dello showdown'} a {int(g.eta_anni)} anni"
+        dove = f"da {accorda(g.sesso, 'tesserato')} con {club}" if club != "*" else f"da {accorda(g.sesso, 'libero')}"
+        riga = (f"{data_breve(data)}: {nome_completo(g)}, ID {g.id}, {come}, {dove}. Partite {voce['partite']}, vinte {voce['vittorie']}; "
+                f"valore finale {voce['valore']:.1f}. Annotato nel mondo reale il {adesso():%d/%m/%Y alle %H:%M}.\n")
         try:
             with open(percorsi.percorso(NOME_FILE_LOG_USCITE), "a", encoding="utf-8") as f:
-                f.write("\n".join(log))
+                f.write(riga)
         except OSError as e:
-            self.notifica(f"ERR scrittura log uscita GID {giocatore.id}: {e}")
+            self.notifica(f"ERR scrittura log uscita GID {g.id}: {e}")
+
+    def _uscita(self, g, motivo, data, eta_pre):
+        """Un giocatore esce di scena: per un'uscita prematura o per morte naturale."""
+        gid = g.id
+        club = g.appartenenza
+        if motivo == USCITA_PREMATURA:
+            msg = f"{motivo.upper()}: {nome_completo(g)}(ID:{gid}) lascia il mondo a {formatta_eta_sim(g.eta)} sim."
+            self.annota(g, f"Lascia il mondo dello showdown, a {int(g.eta_anni)} anni.", data)
+            if club != "*" and club in self.polisportive:
+                self.annota(self.polisportive[club], f"{nome_completo(g)} lascia il mondo dello showdown.", data)
+                self.polisportive[club].rimuovi_tesserato(gid, g.indice_collettivo_valore)
+        else:
+            # Problema P4, tappa 7: il morto viene liberato ma resta fra i tesserati della sua polisportiva.
+            msg = f"DECESSO (Età): {nome_completo(g)}(ID:{gid}) tra {formatta_eta_sim(eta_pre)} e {formatta_eta_sim(g.eta)} sim."
+            self.annota(g, f"Muore, a {int(g.eta_anni)} anni.", data)
+            if club != "*" and club in self.polisportive:
+                self.annota(self.polisportive[club], f"{nome_completo(g)} muore.", data)
+        self.giocatori_morti_sessione.append((gid, msg))
+        self._ids_morti_processati_sessione.add(gid)
+        g.ritirato = True
+        g.appartenenza = "*"
+        self._registra_uscita(g, motivo, data, club)
+
+    def _fai_invecchiare(self, data, rapporto):
+        """Un giorno per ogni giocatore vivo: guarigione, età, declino, uscita prematura, morte e ritiro."""
+        morti = self._ids_morti_processati_sessione
+        for gid in list(self.giocatori):
+            if gid in morti:
+                continue
+            g = self.giocatori[gid]
+            if g.infortunato and g.infortunio_fine_datetime and data >= g.infortunio_fine_datetime:
+                g.infortunato = False
+                g.infortunio_fine_datetime = None
+                rapporto["guariti"] += 1
+                self.annota(g, "Guarisce dall'infortunio.", data)
+            eta_pre = g.eta
+            g.eta += 1
+            g._applica_declino_aggregato(1)
+            if PROB_USCITA_PREMATURA_GIORNALIERA > 0 and caso(PROB_USCITA_PREMATURA_GIORNALIERA):
+                self._uscita(g, USCITA_PREMATURA, data, eta_pre)
+                rapporto["usciti"] += 1
+                continue
+            if g.eta >= g.etamorte:
+                self._uscita(g, DECESSO, data, eta_pre)
+                rapporto["morti"] += 1
+                continue
+            if not g.ritirato and g.eta >= g.etaritiro:
+                g.ritirato = True
+                self.giocatori_ritirati_sessione.append((gid, f"RITIRO: {nome_completo(g)}(ID:{gid}) a {formatta_eta_sim(g.eta)} sim."))
+                self.annota(g, f"Si ritira dall'attività, a {int(g.eta_anni)} anni.", data)
+                if g.appartenenza != "*" and g.appartenenza in self.polisportive:
+                    self.annota(self.polisportive[g.appartenenza], f"{nome_completo(g)} si ritira dall'attività.", data)
+                rapporto["ritirati"] += 1
 
     # Il tempo.
-
-    def testo_prossimo_sblocco(self):
-        """Quando arriverà il prossimo avanzamento del mondo, se non è ancora arrivato; altrimenti None."""
-        if not isinstance(self.datetime_ultimo_run_reale, datetime.datetime):
-            return None
-        ora_sblocco = self.datetime_ultimo_run_reale + datetime.timedelta(hours=ORE_PER_TICK)
-        now = adesso()
-        if now >= ora_sblocco:
-            return None
-        h, m, _s = converti_in_tempo((ora_sblocco - now).total_seconds())
-        return f"INFO: Prox aggiornamento sim alle {ora_sblocco:%H:%M:%S del %d/%m/%Y} (tra {h}h {m}m)."
-
-    def _notifica_prossimo_sblocco(self):
-        testo = self.testo_prossimo_sblocco()
-        if testo:
-            self.notifica(testo)
 
     @staticmethod
     def rapporto_vuoto(ora):
         """Il riepilogo di un avanzamento in cui non è successo niente."""
         return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora}
 
-    def processa_tempo_trascorso(self):
+    def prossimo_avanzamento(self):
+        """L'istante, in UTC, in cui maturerà il prossimo giorno simulato."""
+        return self.datetime_ultimo_run_reale + DURATA_TICK
+
+    def ticks_maturati(self, ora=None):
+        """Quanti giorni simulati sono maturati e non ancora elaborati, all'istante dato o adesso."""
+        ora = ora or adesso_utc()
+        if ora <= self.datetime_ultimo_run_reale:
+            return 0
+        return int((ora - self.datetime_ultimo_run_reale) / DURATA_TICK)
+
+    def testo_prossimo_sblocco(self, ora=None):
+        """Quando arriverà il prossimo avanzamento del mondo, se non è ancora arrivato; altrimenti None."""
+        ora = ora or adesso_utc()
+        prossimo = self.prossimo_avanzamento()
+        if ora >= prossimo:
+            return None
+        h, m, _s = converti_in_tempo((prossimo - ora).total_seconds())
+        return f"INFO: Prox aggiornamento sim alle {in_ora_locale(prossimo):%H:%M:%S del %d/%m/%Y} (tra {h}h {m}m)."
+
+    def processa_tempo_trascorso(self, ora=None):
         """
-        Fa avanzare il mondo di un giorno simulato per ogni 8 ore reali trascorse dall'ultimo
-        avanzamento. Oltre ai messaggi per notifica restituisce il riepilogo in numeri, un
-        dizionario con le chiavi di CHIAVI_RAPPORTO e l'ora dell'avanzamento: dalla tappa 5 lo usa
-        la finestra per raccontarlo a parole.
+        Fa avanzare il mondo di un giorno simulato per ogni 8 ore reali maturate dall'ultimo
+        avanzamento, un giorno alla volta, e sposta l'ancora di 8 ore per ogni giorno: il resto
+        resta per la volta dopo. Oltre ai messaggi per notifica restituisce il riepilogo in numeri,
+        un dizionario con le chiavi di CHIAVI_RAPPORTO e l'ora locale dell'avanzamento.
         """
-        now = adesso()
-        if not isinstance(self.datetime_ultimo_run_reale, datetime.datetime):
-            self.notifica("WARN: dt_ultimo_run non valido. Reset.")
-            self.datetime_ultimo_run_reale = now - datetime.timedelta(hours=ORE_PER_TICK)
-        delta_r = now - self.datetime_ultimo_run_reale
-        ticks = int(delta_r.total_seconds() // (ORE_PER_TICK * 3600)) if delta_r.total_seconds() > 0 else 0
+        ora = ora or adesso_utc()
+        ticks = self.ticks_maturati(ora)
+        rapporto = self.rapporto_vuoto(in_ora_locale(ora))
         if ticks <= 0:
-            self._notifica_prossimo_sblocco()
-            return self.rapporto_vuoto(now)
-        self.notifica(f"\n--- Processando {ticks} tick da 8h ({delta_r}) ---")
+            testo = self.testo_prossimo_sblocco(ora)
+            if testo:
+                self.notifica(testo)
+            return rapporto
+        self.notifica(f"\n--- Processando {ticks} tick da 8h ({ora - self.datetime_ultimo_run_reale}) ---")
+        inizio = self.datetime_corrente_simulazione
+        self.notifica(f"Avanzamento sim: +{ticks} giorni -> {inizio + datetime.timedelta(days=ticks):%Y-%m-%d %H:%M}")
+        rapporto["ticks"] = rapporto["giorni"] = ticks
+        for giorno in range(1, ticks + 1):
+            data = inizio + datetime.timedelta(days=giorno)
+            self.datetime_corrente_simulazione = data
+            self._un_giorno(data, rapporto)
+        self.datetime_ultimo_run_reale += DURATA_TICK * ticks
+        self._notifica_rapporto(rapporto)
+        return rapporto
+
+    def _un_giorno(self, data, rapporto):
+        """
+        Tutto ciò che il mondo fa in un giorno simulato, nell'ordine: le mosse di mercato
+        ripartono, i giocatori invecchiano, gli autonomi si allenano, le polisportive del computer
+        tesserano, espellono, chiudono e nascono, poi nascono i giocatori nuovi e si ricalcolano
+        valori e glorie.
+        """
         for p in self.polisportive.values():
             p.movimenti_oggi = 0
-        # Tre conti diversi del tempo, problema P3: un giorno per tick per età e salute, circa un
-        # decimo di giorno per tick per le date di fondazione delle polisportive nuove.
-        gg_tick = ANNO_SIMULAZIONE_GIORNI / (365.25 * 3.) if ANNO_SIMULAZIONE_GIORNI > 0 else 0.0
-        gg_sim_i = int(ticks * 1.0)
-        dt_sim_s = self.datetime_corrente_simulazione
-        dt_sim_e = dt_sim_s + datetime.timedelta(days=float(gg_sim_i))
-        self.notifica(f"Avanzamento sim: +{gg_sim_i} giorni -> {dt_sim_e:%Y-%m-%d %H:%M}")
-        ids_proc = list(self.giocatori.keys())
-        n_gua, n_rit, n_usciti_prem, n_dec = self._fai_invecchiare(ids_proc, gg_sim_i, dt_sim_e)
-        self.notifica("Esecuzione azioni aggregate...")
-        ids_vivi = [gid for gid in ids_proc if gid not in self._ids_morti_processati_sessione and gid in self.giocatori]
-        n_autoall = 0
-        for gid in ids_vivi:
-            g = self.giocatori[gid]
+        self._fai_invecchiare(data, rapporto)
+        vivi = [g for gid, g in self.giocatori.items() if gid not in self._ids_morti_processati_sessione]
+        for g in vivi:
             if not g.ritirato and not g.infortunato and int(g.puntiesperienza or 0) > 0:
                 if g.appartenenza == "*" or (g.appartenenza in self.polisportive and self.polisportive[g.appartenenza].is_cpu_controlled):
                     xp_pre = g.puntiesperienza
-                    esegui_auto_allenamento(g)
+                    esegui_auto_allenamento(g, data)
                     if g.puntiesperienza < xp_pre:
-                        n_autoall += 1
-        if n_autoall > 0:
-            self.notifica(f"-> {n_autoall} giocatori si sono auto-allenati.")
-        n_tess_cpu, n_esp_cpu = self._esegui_logica_cpu_polisportive()
-        n_chiuse = 0
-        n_cr_ciclo = 0
-        n_gioc_att = len(ids_vivi)
-        lim_poli = (n_gioc_att / GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET) if n_gioc_att > 0 and GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET > 0 else 0.
+                        rapporto["autoallenati"] += 1
+        tesserati, espulsi = self._esegui_logica_cpu_polisportive(data)
+        rapporto["tesserati_cpu"] += tesserati
+        rapporto["espulsi_cpu"] += espulsi
         for nome_p in list(self.polisportive.keys()):
-            if nome_p in self.polisportive and self.polisportive[nome_p].is_cpu_controlled and self._controlla_chiusura_poli_cpu(self.polisportive[nome_p], dt_sim_e):
-                n_chiuse += 1
-        for k in range(ticks):
-            if len(self.polisportive) < lim_poli and caso(PROB_CREAZIONE_POLI_CPU_PER_TICK):
-                dt_tick = dt_sim_s + datetime.timedelta(days=(k + 1) * gg_tick)
-                if self.crea_polisportiva_cpu(dt_tick):
-                    n_cr_ciclo += 1
-        self.datetime_corrente_simulazione = dt_sim_e
-        self.datetime_ultimo_run_reale = now
-        for gid in ids_vivi:
-            if gid in self.giocatori:
-                self.giocatori[gid].aggiorna_icv()
-        self.nuovi_giocatori_sessione.clear()
-        n_nuovi_creati_ciclo = 0
-        inf, sup = CREA_NUOVI_PER_TICK_RANGE
-        min_n = inf * ticks
-        max_n = sup * ticks
-        n_des = random.randrange(min_n, max_n + 1) if max_n >= min_n else min_n
-        n_crea = min(n_des, MAX_NUOVI_GIOCATORI_PER_AVVIO)
-        if n_crea < n_des:
-            self.notifica(f"INFO: Nuovi limitati a {MAX_NUOVI_GIOCATORI_PER_AVVIO} (desiderati: {n_des}).")
-        if n_crea > 0:
-            self.crea_giocatori_casuali(n_crea, self.datetime_corrente_simulazione)
-            n_nuovi_creati_ciclo = len(self.nuovi_giocatori_sessione)
-        self.aggiorna_stato_polisportive()
+            if nome_p in self.polisportive and self.polisportive[nome_p].is_cpu_controlled and self._controlla_chiusura_poli_cpu(self.polisportive[nome_p], data):
+                rapporto["poli_chiuse"] += 1
+        limite_poli = len(vivi) / GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET if vivi and GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET > 0 else 0.
+        if len(self.polisportive) < limite_poli and caso(PROB_CREAZIONE_POLI_CPU_PER_TICK) and self.crea_polisportiva_cpu(data):
+            rapporto["poli_create"] += 1
+        for g in vivi:
+            g.aggiorna_icv()
+        nuovi = random.randint(*CREA_NUOVI_PER_TICK_RANGE)
+        self.crea_giocatori_casuali(nuovi, data, annuncia=False)
+        rapporto["nuovi"] += nuovi
+        self.aggiorna_stato_polisportive(annuncia=False)
+
+    def _notifica_rapporto(self, rapporto):
+        """Il riepilogo dell'avanzamento nella forma dell'interfaccia testuale."""
+        for numero, testo in ((rapporto["guariti"], "guariti"), (rapporto["usciti"], "giocatori usciti prematuramente"),
+                              (rapporto["morti"], "deceduti per età"), (rapporto["ritirati"], "ritirati per età"),
+                              (rapporto["autoallenati"], "allenamenti da autonomi")):
+            if numero > 0:
+                self.notifica(f"-> {numero} {testo}.")
         self.notifica("\n--- Riepilogo Avanzamento Tick ---")
-        for numero, testo in ((n_rit, "* Ritirati (età)"), (n_usciti_prem, "* Usciti Prematuramente"), (n_dec, "* Deceduti (età)"),
-                              (n_nuovi_creati_ciclo, "* Nuovi giocatori"), (n_chiuse, "* Poli CPU chiuse"), (n_cr_ciclo, "* Poli CPU create"),
-                              (n_tess_cpu, "* CPU Tesserati"), (n_esp_cpu, "* CPU Espulsi")):
+        for numero, testo in ((rapporto["ritirati"], "* Ritirati (età)"), (rapporto["usciti"], "* Usciti Prematuramente"), (rapporto["morti"], "* Deceduti (età)"),
+                              (rapporto["nuovi"], "* Nuovi giocatori"), (rapporto["poli_chiuse"], "* Poli CPU chiuse"), (rapporto["poli_create"], "* Poli CPU create"),
+                              (rapporto["tesserati_cpu"], "* CPU Tesserati"), (rapporto["espulsi_cpu"], "* CPU Espulsi")):
             if numero > 0:
                 self.notifica(f"{testo}: {numero}")
         self.notifica("-" * 30)
-        return {"ticks": ticks, "giorni": gg_sim_i, "guariti": n_gua, "ritirati": n_rit, "usciti": n_usciti_prem, "morti": n_dec,
-                "nuovi": n_nuovi_creati_ciclo, "autoallenati": n_autoall, "tesserati_cpu": n_tess_cpu, "espulsi_cpu": n_esp_cpu,
-                "poli_chiuse": n_chiuse, "poli_create": n_cr_ciclo, "ora": now}
-
-    def _fai_invecchiare(self, ids_proc, gg_sim_i, dt_sim_e):
-        """Guarigioni, età, declino, uscite premature, morti e ritiri dei giorni trascorsi. Restituisce guariti, ritirati, usciti e morti."""
-        ids_morti_c, ids_rit_c = set(), set()
-        self.giocatori_morti_sessione.clear()
-        self.giocatori_ritirati_sessione.clear()
-        self._ids_morti_processati_sessione.clear()
-        n_gua, n_dec, n_rit, n_usciti_prem = 0, 0, 0, 0
-        for gid in ids_proc:
-            if gid not in self.giocatori:
-                continue
-            g = self.giocatori[gid]
-            eta_pre = g.eta
-            if g.infortunato and g.infortunio_fine_datetime and dt_sim_e >= g.infortunio_fine_datetime:
-                g.infortunato = False
-                g.infortunio_fine_datetime = None
-                n_gua += 1
-            g.eta += gg_sim_i
-            if gg_sim_i > 0:
-                g._applica_declino_aggregato(gg_sim_i)
-            if gg_sim_i > 0 and PROB_USCITA_PREMATURA_GIORNALIERA > 0:
-                prob_non_uscire_n = pow(1.0 - (PROB_USCITA_PREMATURA_GIORNALIERA / 100.0), gg_sim_i)
-                prob_uscire_n = (1.0 - prob_non_uscire_n) * 100.0
-                if caso(prob_uscire_n) and gid not in ids_morti_c:
-                    motivo_uscita = "Uscita Prematura"
-                    msg = f"{motivo_uscita.upper()}: {g.nome} {g.cognome}(ID:{gid}) lascia il mondo a {formatta_eta_sim(g.eta)} sim."
-                    self.giocatori_morti_sessione.append((gid, msg))
-                    self._ids_morti_processati_sessione.add(gid)
-                    ids_morti_c.add(gid)
-                    n_usciti_prem += 1
-                    g.ritirato = True
-                    if g.appartenenza != "*" and g.appartenenza in self.polisportive:
-                        self.polisportive[g.appartenenza].rimuovi_tesserato(gid, g.indice_collettivo_valore)
-                    g.appartenenza = "*"
-                    self._logga_uscita_giocatore(g, motivo_uscita, dt_sim_e)
-                    continue
-            if g.eta >= g.etamorte and gid not in ids_morti_c:
-                # Problema P4, tappa 7: il morto viene liberato ma resta fra i tesserati della sua polisportiva.
-                motivo_uscita = "Decesso Naturale"
-                msg = f"DECESSO (Età): {g.nome} {g.cognome}(ID:{gid}) tra {formatta_eta_sim(eta_pre)} e {formatta_eta_sim(g.eta)} sim."
-                self.giocatori_morti_sessione.append((gid, msg))
-                self._ids_morti_processati_sessione.add(gid)
-                ids_morti_c.add(gid)
-                n_dec += 1
-                g.ritirato = True
-                g.appartenenza = "*"
-                self._logga_uscita_giocatore(g, motivo_uscita, dt_sim_e)
-                continue
-            if not g.ritirato and g.eta >= g.etaritiro and gid not in ids_rit_c:
-                msg = f"RITIRO: {g.nome} {g.cognome}(ID:{gid}) a {formatta_eta_sim(g.eta)} sim."
-                self.giocatori_ritirati_sessione.append((gid, msg))
-                ids_rit_c.add(gid)
-                n_rit += 1
-                g.ritirato = True
-        for numero, testo in ((n_gua, "guariti"), (n_usciti_prem, "giocatori usciti prematuramente"), (n_dec, "deceduti per età"), (n_rit, "ritirati per età")):
-            if numero > 0:
-                self.notifica(f"-> {numero} {testo}.")
-        self._ids_morti_processati_sessione.update(ids_morti_c)
-        return n_gua, n_rit, n_usciti_prem, n_dec

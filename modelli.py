@@ -4,6 +4,9 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py. I nomi degli attributi
 sono quelli del vecchio file. La chiusura delle polisportive del computer, che stava qui ma
 agiva sull'intero mondo, si è spostata in mondo.py.
+Dalla tappa 6 giocatori e polisportive hanno un diario, sul modello di quelli di Terminal Beast:
+le voci più recenti in cima, ciascuna con la sua data simulata, e gli allenamenti consecutivi
+sulla stessa caratteristica fusi in una voce sola.
 Dalla tappa 3 ogni modello sa scriversi come dizionario per il salvataggio JSON, con a_dizionario,
 e ricostruirsi da lì, con da_dizionario, controllando ogni campo. Gli elenchi CAMPI_GIOCATORE e
 CAMPI_POLISPORTIVA dicono quali attributi si salvano e di che tipo sono: i valori che si possono
@@ -104,6 +107,7 @@ DATA = "data"
 DATA_O_NULLA = "data_o_nulla"
 TESTO_O_NULLA = "testo_o_nulla"
 LISTA_INTERI = "lista_interi"
+DIARIO = "diario"
 _CONTROLLI = {
     bool: lambda v: isinstance(v, bool),
     int: lambda v: isinstance(v, int) and not isinstance(v, bool),
@@ -120,7 +124,7 @@ CAMPI_GIOCATORE = (
     ("giocorapido", bool), ("cambiovelocita", bool), ("infortunato", bool), ("infortunio_fine_datetime", DATA_O_NULLA),
     ("ritirato", bool), ("partitevinte", int), ("partiteperse", int), ("setsvinti", int), ("setspersi", int),
     ("goalsfatti", int), ("goalssubiti", int), ("archetipo_allenamento", str),
-    ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int),
+    ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int), ("diario", DIARIO),
     *((nome, float) for nome in ATTRIBUTI_INVECCHIABILI),
 )
 # Per i giocatori senza tratti, che non possono ricalcolare il loro aspetto.
@@ -131,12 +135,49 @@ CAMPI_POLISPORTIVA = (
     ("tesserati", LISTA_INTERI), ("maxtesserati", int), ("gloria", int),
     ("movimenti_oggi", int), ("datetime_ultimo_movimento", DATA),
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int),
-    ("coppe_oro", int), ("coppe_argento", int), ("coppe_bronzo", int), ("coppe_legno", int),
+    ("coppe_oro", int), ("coppe_argento", int), ("coppe_bronzo", int), ("coppe_legno", int), ("diario", DIARIO),
 )
+
+
+def annota_diario(diario, data, testo):
+    """Mette in cima al diario una voce con la data simulata e il testo."""
+    diario.insert(0, {"data": data, "testo": testo})
+
+
+def annota_allenamento(diario, data, nome_base, da, a):
+    """
+    Annota un allenamento, con il valore della caratteristica prima e dopo. Se la voce in cima
+    è un allenamento della stessa caratteristica, la fonde con quella, come Terminal Beast: resta
+    il valore di partenza della prima e quello d'arrivo dell'ultima, con la data dell'ultima.
+    """
+    if diario and diario[0].get("allenamento") == nome_base:
+        diario[0]["a"] = a
+        diario[0]["data"] = data
+    else:
+        diario.insert(0, {"data": data, "allenamento": nome_base, "da": da, "a": a})
+
+
+def _voce_da_json(voce, chi):
+    """Una voce di diario letta dal salvataggio e controllata; ValueError se non va."""
+    errore = ValueError(f"{chi}: una voce del diario non è valida: {voce!r}")
+    if not isinstance(voce, dict) or not isinstance(voce.get("data"), str):
+        raise errore
+    try:
+        data = datetime.datetime.fromisoformat(voce["data"])
+    except ValueError:
+        raise errore from None
+    if set(voce) == {"data", "testo"} and isinstance(voce["testo"], str):
+        return {"data": data, "testo": voce["testo"]}
+    numeri = all(isinstance(voce.get(chiave), (int, float)) and not isinstance(voce.get(chiave), bool) for chiave in ("da", "a"))
+    if set(voce) == {"data", "allenamento", "da", "a"} and voce["allenamento"] in ATTRIBUTI_BASE_CON_ALLENABILI and numeri:
+        return {"data": data, "allenamento": voce["allenamento"], "da": float(voce["da"]), "a": float(voce["a"])}
+    raise errore
 
 
 def a_json(valore, tipo):
     """Un valore di un modello nella forma che il salvataggio JSON sa scrivere."""
+    if tipo == DIARIO:
+        return [{**voce, "data": voce["data"].isoformat()} for voce in valore]
     if tipo in (DATA, DATA_O_NULLA):
         return None if valore is None else valore.isoformat()
     if tipo == TESTO_O_NULLA:
@@ -149,6 +190,10 @@ def a_json(valore, tipo):
 def da_json(valore, tipo, chi, campo):
     """Un valore letto dal salvataggio, controllato e riportato al tipo del modello; ValueError se non va."""
     errore = ValueError(f"{chi}: il campo {campo} non è valido: {valore!r}")
+    if tipo == DIARIO:
+        if not isinstance(valore, list):
+            raise errore
+        return [_voce_da_json(voce, chi) for voce in valore]
     if tipo in (DATA, DATA_O_NULLA):
         if valore is None and tipo == DATA_O_NULLA:
             return None
@@ -221,6 +266,7 @@ class Giocatore:
         self.legni = 0
         self.forza_base = 0.0
         self.forza_allenata = 0.0
+        self.diario = []
         for nome_base in ATTRIBUTI_BASE_CON_ALLENABILI:
             nome_allenato = nome_base.replace('_base', '_allenata')
             max_val = MAX_PRECISIONE_RESISTENZA if nome_base in CARATTERISTICHE_FISICHE_BASE else MAX_SKILL_VALUE
@@ -241,6 +287,15 @@ class Giocatore:
         self.aggiorna_icv()
         if not self.descrizione_fisica:
             self._genera_descrizione_fisica()
+        self.annota(self.datetime_creazione_sim, f"Entra nel mondo dello showdown, a {int(self.eta_anni)} anni.")
+
+    def annota(self, data, testo):
+        """Una voce nuova nel diario del giocatore, con la data simulata."""
+        annota_diario(self.diario, data, testo)
+
+    def annota_allenamento(self, data, nome_base, da, a):
+        """Un allenamento nel diario, fuso con il precedente se riguarda la stessa caratteristica."""
+        annota_allenamento(self.diario, data, nome_base, da, a)
 
     def _applica_parametri(self, kwargs):
         """Applica i valori passati alla creazione, controllandone tipo e limiti."""
@@ -544,6 +599,12 @@ class Polisportiva:
         self.movimenti_oggi = 0
         self.datacreazione_reale = adesso()
         self.versione_creazione = VERSIONE
+        self.diario = []
+        self.annota(datetime_creazione_sim, "Fondata.")
+
+    def annota(self, data, testo):
+        """Una voce nuova nel diario della polisportiva, con la data simulata."""
+        annota_diario(self.diario, data, testo)
 
     @property
     def protetta(self):
@@ -606,8 +667,12 @@ class Polisportiva:
         return (f"{self.nome:<30} {len(self.tesserati):2d}/{self.maxtesserati} atl. ICT:{self.indicecollettivotesserati:7.1f} ({self.eta_sim(data_corrente_sim)}) {cpu}")
 
     def aggiorna_ict(self, giocatori, ids_morti):
-        """Ricalcola l'indice collettivo dei tesserati, morti esclusi."""
-        self.indicecollettivotesserati = sum(g.indice_collettivo_valore for gid, g in giocatori.items() if gid in self.tesserati and gid not in ids_morti)
+        """
+        Ricalcola l'indice collettivo dei tesserati, morti esclusi. Scorre i tesserati in ordine di
+        numero, che è l'ordine dei giocatori nel mondo: la somma resta identica, fino all'ultimo
+        decimale, a quando si scorreva il mondo intero per ogni polisportiva.
+        """
+        self.indicecollettivotesserati = sum(giocatori[gid].indice_collettivo_valore for gid in sorted(set(self.tesserati)) if gid in giocatori and gid not in ids_morti)
 
     def aggiungi_tesserato(self, gid, icv):
         if gid not in self.tesserati:

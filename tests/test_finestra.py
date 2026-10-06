@@ -20,7 +20,7 @@ from gui import dialoghi
 from gui.finestra import FinestraPrincipale
 from modelli import Polisportiva
 from mondo import Mondo
-from utilita import adesso
+from utilita import adesso, adesso_utc
 
 
 @pytest.fixture
@@ -29,7 +29,7 @@ def mondo():
     ora = adesso()
     m = Mondo()
     m.datetime_corrente_simulazione = ora
-    m.datetime_ultimo_run_reale = ora - datetime.timedelta(hours=2)
+    m.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=2)
     m.crea_giocatori_casuali(30, ora)
     mia = Polisportiva("Club Di Prova", "segreta", ora)
     m.polisportive[mia.nome] = mia
@@ -62,7 +62,8 @@ def test_apertura_e_barra(finestra):
 
 
 def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
-    con_dialogo = {finestra.scheda_giocatore, finestra.cerca, finestra.cambia_aspetto, finestra.caffe, finestra.esci, finestra.vai_alla_vista, finestra.vai_alla_barra}
+    con_dialogo = {finestra.scheda_giocatore, finestra.diario_giocatore, finestra.cerca, finestra.cambia_aspetto, finestra.cambia_conservazione,
+                   finestra.caffe, finestra.esci, finestra.vai_alla_vista, finestra.vai_alla_barra}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -74,8 +75,8 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
             assert finestra.vista.GetValue(), testo
             assert "\n\n" not in finestra.vista.GetValue(), testo
             provate += 1
-    assert provate == 17
-    assert finestra.comandi == 17
+    assert provate == 19
+    assert finestra.comandi == 19
 
 
 def test_i_menu_hanno_tasti_e_lettere_non_ripetuti(finestra):
@@ -111,6 +112,66 @@ def test_chiusura_salva_e_riassume(finestra, cartella_di_prova, monkeypatch):
     assert titolo == "Fine sessione"
     assert testo.startswith("Sessione di ") and "Mondo salvato:" in testo and testo.endswith("Arrivederci!")
     assert "caffè" not in testo
+    assert "Nella sessione il mondo" not in testo
+
+
+def test_il_timer_fa_avanzare_il_mondo(finestra, cartella_di_prova, monkeypatch):
+    finestra.vista.ChangeValue("Il testo che si sta leggendo.")
+    mondo = finestra.mondo
+    data_prima = mondo.datetime_corrente_simulazione
+    mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=17)
+    # Con un dialogo aperto il mondo aspetta.
+    finestra._modali = 1
+    finestra._al_minuto(None)
+    assert mondo.datetime_corrente_simulazione == data_prima
+    finestra._modali = 0
+    finestra._al_minuto(None)
+    assert mondo.datetime_corrente_simulazione == data_prima + datetime.timedelta(days=2)
+    assert finestra.ultimo_evento == "mondo avanzato di 2 giorni"
+    assert finestra.rapporto["giorni"] == finestra.rapporto_sessione["giorni"] == 2
+    assert finestra.vista.GetValue() == "Il testo che si sta leggendo."
+    assert archivio.leggi(cartella_di_prova / FILE_MONDO)["mondo"]["data_simulata"] == mondo.datetime_corrente_simulazione.isoformat()
+    finestra._al_minuto(None)
+    assert finestra.rapporto_sessione["giorni"] == 2
+    riepiloghi = []
+    originale = dialoghi.Lettura.__init__
+
+    def registra(self, genitore, titolo, testo, *args, **kwargs):
+        riepiloghi.append(testo)
+        originale(self, genitore, titolo, testo, *args, **kwargs)
+
+    monkeypatch.setattr(dialoghi.Lettura, "__init__", registra)
+    finestra.Close()
+    wx.Yield()
+    assert "Nella sessione il mondo è andato avanti di 2 giorni simulati." in riepiloghi[0]
+
+
+def test_diario_del_giocatore_e_della_polisportiva(finestra, monkeypatch):
+    def scegli(self):
+        self.conferma()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.SceltaGiocatore, "ShowModal", scegli)
+    finestra.diario_giocatore()
+    g = finestra.mondo.giocatori[1]
+    assert finestra.vista.GetValue().startswith(f"Diario di {g.nome} {g.cognome}, ID 1: 1 voce, dalla più recente.")
+    assert finestra.ultimo_evento == f"diario di {g.nome} {g.cognome}"
+    finestra.diario_polisportiva()
+    assert finestra.vista.GetValue().startswith("Diario di Club Di Prova: 1 voce, dalla più recente.")
+    assert finestra.vista.GetValue().endswith(": Fondata.")
+
+
+def test_cambia_conservazione(finestra, monkeypatch):
+    def scegli(self):
+        assert self.giocatori.GetValue() == 0
+        self.giocatori.SetValue(60)
+        self.conferma()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.Conservazione, "ShowModal", scegli)
+    finestra.cambia_conservazione()
+    assert finestra.mondo.conservazione_diari == {"giocatori": 60, "polisportive": 0}
+    assert finestra.vista.GetValue().startswith("Le voci dei diari dei giocatori si conservano per 60 giorni simulati, quelle delle polisportive per sempre.")
 
 
 def test_scelta_del_giocatore(app_wx, mondo):

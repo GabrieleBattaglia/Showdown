@@ -6,6 +6,10 @@ aree di testo, la vista principale grande e in sola lettura, dove ogni comando m
 risultato al posto del precedente, e la barra di stato di quattro righe a codici; nessun albero
 dei comandi, ma i menu, ciascuna voce con il suo tasto rapido. I menu nascono da una tabella sola,
 da cui nasce anche la guida ai comandi, così le due cose non possono andare d'accordo a metà.
+Dalla tappa 6 il mondo avanza anche a finestra aperta: ogni minuto un timer guarda se è maturato
+un giorno simulato, lo fa elaborare, salva il mondo e lo annuncia nella barra di stato, senza
+toccare la vista principale, dove chi legge non deve vedersi spostare il testo. Mentre è aperto
+un dialogo aspetta che si chiuda.
 """
 
 import contextlib
@@ -20,8 +24,8 @@ import percorsi
 import ricerca
 import testi
 from gui import aspetto
-from gui.dialoghi import Aspetto, Caffe, Lettura, Ricerca, SceltaGiocatore
-from utilita import adesso
+from gui.dialoghi import Aspetto, Caffe, Conservazione, Lettura, Ricerca, SceltaGiocatore
+from utilita import adesso, adesso_utc
 
 TITOLO = "MESS, Manageriale e Simulatore Showdown"
 RIGHE_BARRA = 4
@@ -32,6 +36,8 @@ class FinestraPrincipale(wx.Frame):
         super().__init__(None, title=TITOLO)
         self.mondo = mondo
         self.rapporto = rapporto
+        self.rapporto_sessione = rapporto
+        self._modali = 0
         self.impostazioni = modulo_impostazioni.carica()
         self.inizio = adesso()
         self.comandi = 0
@@ -46,7 +52,7 @@ class FinestraPrincipale(wx.Frame):
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self._al_minuto, self.timer)
         self.timer.Start(60_000)
-        self.mostra(testi.apertura(mondo, origine, messaggi, rapporto, ultimo_prima, adesso()))
+        self.mostra(testi.apertura(mondo, origine, messaggi, rapporto, ultimo_prima, adesso_utc()))
 
     # Costruzione.
 
@@ -74,6 +80,7 @@ class FinestraPrincipale(wx.Frame):
             ("&File", (("&Salva il mondo", "Ctrl+S", self.salva), None, ("&Esci", "Ctrl+Q", self.esci))),
             ("&Giocatori", (
                 ("&Scheda del giocatore...", "Ctrl+G", self.scheda_giocatore),
+                ("&Diario del giocatore...", "Ctrl+Shift+D", self.diario_giocatore),
                 ("&Elenco dei giocatori", "Ctrl+E", lambda: self.mostra(testi.elenco_giocatori(self.mondo), "elenco dei giocatori")),
                 ("&Classifica per valore", "Ctrl+L", lambda: self.mostra(testi.classifica(self.mondo), "classifica per valore")),
                 ("&TOP 10", "Ctrl+T", lambda: self.mostra(testi.top_10(self.mondo), "TOP 10")),
@@ -90,13 +97,15 @@ class FinestraPrincipale(wx.Frame):
                 ("&Scheda della polisportiva attiva", "Ctrl+M", self.scheda_polisportiva),
                 ("&Tesserati della polisportiva attiva", "Ctrl+Shift+T", lambda: self.mostra(testi.tesserati_attiva(self.mondo), "tesserati")),
                 ("&Elenco delle polisportive", "Ctrl+Shift+E", lambda: self.mostra(testi.elenco_polisportive(self.mondo), "elenco delle polisportive")),
+                ("&Diario della polisportiva attiva", "Ctrl+Shift+M", self.diario_polisportiva),
             )),
             ("&Mondo", (
-                ("&Data e prossimo avanzamento", "Ctrl+D", lambda: self.mostra(testi.data_e_avanzamento(self.mondo, adesso()), "data simulata")),
+                ("&Data e prossimo avanzamento", "Ctrl+D", lambda: self.mostra(testi.data_e_avanzamento(self.mondo, adesso_utc()), "data simulata")),
                 ("&Riepilogo dell'ultimo avanzamento", "Ctrl+Shift+A", lambda: self.mostra(testi.riepilogo_avanzamento(self.rapporto), "ultimo avanzamento")),
+                ("&Vecchie glorie", "Ctrl+Shift+V", lambda: self.mostra(testi.vecchie_glorie(self.mondo), "vecchie glorie")),
             )),
             ("&Visualizza", (("Vista &principale", "F5", self.vai_alla_vista), ("&Barra di stato", "F7", self.vai_alla_barra))),
-            ("&Impostazioni", (("&Aspetto, colori e caratteri...", "Ctrl+P", self.cambia_aspetto),)),
+            ("&Impostazioni", (("&Aspetto, colori e caratteri...", "Ctrl+P", self.cambia_aspetto), ("&Conservazione dei diari...", None, self.cambia_conservazione))),
             ("&Aiuto", (
                 ("&Guida ai comandi", "F1", lambda: self.mostra(testi.guida(self.voci_guida()), "guida ai comandi")),
                 ("&Novità", "F2", self.novita),
@@ -157,7 +166,7 @@ class FinestraPrincipale(wx.Frame):
 
     def aggiorna_barra(self):
         """Riscrive la barra di stato, ma solo se è cambiata: riscriverla riporta il cursore all'inizio."""
-        testo = "\n".join(testi.righe_barra(self.mondo, self.ultimo_evento, adesso()))
+        testo = "\n".join(testi.righe_barra(self.mondo, self.ultimo_evento, adesso_utc()))
         if testo == self._testo_barra:
             return
         self._testo_barra = testo
@@ -170,9 +179,33 @@ class FinestraPrincipale(wx.Frame):
         event.Skip()
 
     def _al_minuto(self, event):
-        """Ogni minuto rinfresca il tempo che manca all'avanzamento, ma non sotto il cursore di chi legge."""
+        """
+        Ogni minuto, se è maturato un giorno simulato e non c'è un dialogo aperto, fa avanzare il
+        mondo; poi rinfresca il tempo che manca all'avanzamento, ma non sotto il cursore di chi legge.
+        """
+        if not self._modali and self.mondo.ticks_maturati():
+            self.avanza()
         if not self.barra.HasFocus():
             self.aggiorna_barra()
+
+    def avanza(self):
+        """Fa avanzare il mondo dei giorni maturati, salva e lo annuncia nella barra di stato."""
+        rapporto = self.mondo.processa_tempo_trascorso()
+        if not rapporto["ticks"]:
+            return
+        self.rapporto = rapporto
+        self.rapporto_sessione = testi.somma_rapporti(self.rapporto_sessione, rapporto) if self.rapporto_sessione else rapporto
+        salvato, _messaggi = self._salva_raccogliendo()
+        giorni = "di un giorno" if rapporto["giorni"] == 1 else f"di {rapporto['giorni']} giorni"
+        self.ultimo_evento = f"mondo avanzato {giorni}" + ("" if salvato else ", non salvato")
+
+    def _modale(self, dialogo):
+        """Mostra un dialogo modale; finché resta aperto, il mondo non avanza."""
+        self._modali += 1
+        try:
+            return dialogo.ShowModal()
+        finally:
+            self._modali -= 1
 
     def vai_alla_vista(self):
         self.vista.SetFocus()
@@ -202,19 +235,46 @@ class FinestraPrincipale(wx.Frame):
     def esci(self):
         self.Close()
 
-    def scheda_giocatore(self):
-        dialogo = SceltaGiocatore(self, self.mondo)
+    def _scegli_giocatore(self, titolo, pulsante):
+        """Il giocatore scelto nel dialogo, oppure None se il dialogo è stato annullato."""
+        dialogo = SceltaGiocatore(self, self.mondo, titolo, pulsante)
         try:
-            if dialogo.ShowModal() == wx.ID_OK and dialogo.scelto is not None:
-                g = dialogo.scelto
-                self.mostra(testi.scheda_giocatore(g, self.mondo), f"scheda di {testi.nome_completo(g)}")
+            if self._modale(dialogo) == wx.ID_OK:
+                return dialogo.scelto
+            return None
+        finally:
+            dialogo.Destroy()
+
+    def scheda_giocatore(self):
+        g = self._scegli_giocatore("Scheda del giocatore", "&Mostra la scheda")
+        if g is not None:
+            self.mostra(testi.scheda_giocatore(g, self.mondo), f"scheda di {testi.nome_completo(g)}")
+
+    def diario_giocatore(self):
+        g = self._scegli_giocatore("Diario del giocatore", "&Mostra il diario")
+        if g is not None:
+            self.mostra(testi.diario_giocatore(g), f"diario di {testi.nome_completo(g)}")
+
+    def diario_polisportiva(self):
+        p = self.mondo.miapolisportiva_attiva
+        if p is None:
+            self.mostra("Non hai una polisportiva attiva.", "nessuna polisportiva")
+            return
+        self.mostra(testi.diario_polisportiva(p), f"diario di {p.nome}")
+
+    def cambia_conservazione(self):
+        dialogo = Conservazione(self, self.mondo.conservazione_diari)
+        try:
+            if self._modale(dialogo) == wx.ID_OK and dialogo.risultato is not None:
+                self.mondo.conservazione_diari = dialogo.risultato
+                self.mostra(testi.conservazione(self.mondo) + " Le voci più vecchie si tolgono a ogni salvataggio.", "conservazione dei diari")
         finally:
             dialogo.Destroy()
 
     def cerca(self):
         dialogo = Ricerca(self)
         try:
-            if dialogo.ShowModal() == wx.ID_OK and dialogo.risultato is not None:
+            if self._modale(dialogo) == wx.ID_OK and dialogo.risultato is not None:
                 ambito, criterio, condizione, valore, descrizione = dialogo.risultato
                 ids = ricerca.cerca(self.mondo, ambito, criterio, condizione, valore)
                 self.mondo.risultati_ultima_ricerca = ids
@@ -239,7 +299,7 @@ class FinestraPrincipale(wx.Frame):
     def cambia_aspetto(self):
         dialogo = Aspetto(self, self.impostazioni)
         try:
-            if dialogo.ShowModal() == wx.ID_OK and dialogo.risultato is not None:
+            if self._modale(dialogo) == wx.ID_OK and dialogo.risultato is not None:
                 self.impostazioni = dialogo.risultato
                 salvate = modulo_impostazioni.salva(self.impostazioni)
                 self.applica_aspetto()
@@ -261,7 +321,7 @@ class FinestraPrincipale(wx.Frame):
         invito = Donazione(lang="it", probabilita=100, stampa=False) or "Grazie se vorrai offrire un caffè all'autore."
         dialogo = Caffe(self, invito, self.impostazioni)
         try:
-            dialogo.ShowModal()
+            self._modale(dialogo)
         finally:
             dialogo.Destroy()
 
@@ -271,7 +331,7 @@ class FinestraPrincipale(wx.Frame):
         """Alla chiusura il mondo si salva, e una finestra riassume la sessione; poi la finestra se ne va."""
         self.timer.Stop()
         riuscito, messaggi = self._salva_raccogliendo()
-        riepilogo = testi.chiusura(adesso() - self.inizio, self.comandi, messaggi)
+        riepilogo = testi.chiusura(adesso() - self.inizio, self.comandi, messaggi, self.rapporto_sessione)
         if not riuscito:
             riepilogo += "\nIl mondo non è stato salvato: alla prossima partenza ritroverai quello dell'ultimo salvataggio riuscito."
         dialogo = Lettura(self, "Fine sessione", riepilogo, self.impostazioni)

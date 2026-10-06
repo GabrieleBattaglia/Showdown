@@ -3,6 +3,28 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.22.2] - 2026-10-06
+
+### Il mondo vive anche a finestra aperta, e ognuno ha il suo diario
+
+Il tempo del mondo scorre anche mentre la finestra è aperta. Ogni minuto il gioco controlla se sono passate le 8 ore reali di un giorno simulato: in quel caso fa avanzare il mondo, lo salva e lo annuncia nella quarta riga della barra di stato, per esempio "mondo avanzato di un giorno", senza cambiare il testo che stai leggendo. Il riepilogo completo resta nel menu Mondo, con Ctrl+Maiusc+A. Mentre è aperto un dialogo, il mondo aspetta che si chiuda.
+
+Il tempo non va più perso. Prima, a ogni avvio, il resto inferiore alle 8 ore spariva, e aprendo il gioco ogni 12 ore se ne perdevano 4 ogni volta: ora resta per la volta dopo. Il tempo si misura in UTC, e il cambio dell'ora legale non fa più guadagnare o perdere un'ora al mondo.
+
+Quando passano più giorni insieme, ciascuno ha la sua giornata completa: invecchiamento, guarigioni, ritiri, autoallenamento, mosse delle polisportive del computer e nascite. Prima i giorni contavano tutti per l'età, ma le polisportive del computer e l'autoallenamento avanzavano di un giorno solo. Le nascite non hanno più il tetto di cinquanta per avvio, che dava meno giocatori nuovi a chi apre il gioco di rado: il mondo cresce secondo natura, finché le morti compensano le nascite.
+
+Ogni giocatore e ogni polisportiva ha il suo diario, con la data simulata e le voci più recenti in cima, sul modello di Terminal Beast: l'entrata nel mondo e la fondazione, i tesseramenti, le espulsioni e gli abbandoni, le partite con il punteggio dei set, gli infortuni e le guarigioni, il ritiro e l'uscita di scena. Gli allenamenti consecutivi della stessa caratteristica si fondono in una voce sola, dal valore di partenza a quello d'arrivo. Il diario di un giocatore si apre dal menu Giocatori con Ctrl+Maiusc+D, quello della polisportiva attiva dal menu Polisportive con Ctrl+Maiusc+M.
+
+Dal menu Impostazioni, alla voce Conservazione dei diari, si sceglie per quanti giorni simulati conservare le voci, separatamente per giocatori e polisportive: zero, il valore di partenza, vuol dire per sempre. Le voci più vecchie si tolgono a ogni salvataggio.
+
+Le vecchie glorie hanno il loro registro nel mondo: chi esce di scena, per morte o perché lascia il mondo dello showdown, resta ricordato con la data, l'età, la polisportiva, le partite e il valore finale, e si legge dal menu Mondo con Ctrl+Maiusc+V. Prima la finestra mostrava soltanto gli usciti della sessione.
+
+La fine sessione racconta anche cosa è successo nel mondo durante la sessione: di quanti giorni è avanzato, quanti giocatori sono nati, si sono ritirati o sono usciti di scena.
+
+Nei mondi con migliaia di giocatori un giorno simulato si elabora circa sette volte più in fretta, con risultati identici.
+
+Un salvataggio della versione precedente si aggiorna da solo al primo caricamento.
+
 ## [1.16.0] - 2026-10-06
 
 ### MESS ha una finestra

@@ -5,12 +5,14 @@ import random
 
 import pytest
 
-import mondo as modulo_mondo
 from costanti import MODALITA_OUTPUT_FILE, NOME_FILE_LOG_PARTITE
 from mondo import Mondo
 from partita import MotorePartita
+from utilita import in_ora_locale
 
 INIZIO = datetime.datetime(2026, 1, 1, 12, 0)
+# L'istante reale dell'ultimo avanzamento, che il mondo conta in UTC.
+ANCORA = datetime.datetime(2026, 1, 1, 11, 0, tzinfo=datetime.UTC)
 
 
 @pytest.fixture
@@ -72,31 +74,33 @@ def test_resistenza_piena_nel_primo_set(mondo):
         assert 0.01 <= motore._calcola_resistenza_set(g, 5) < 1.0
 
 
-def test_avanzamento_del_tempo(mondo, monkeypatch):
-    adesso = INIZIO + datetime.timedelta(hours=17)
-    monkeypatch.setattr(modulo_mondo, "adesso", lambda: adesso)
-    mondo.datetime_ultimo_run_reale = INIZIO
+def test_avanzamento_del_tempo(mondo):
+    mondo.datetime_ultimo_run_reale = ANCORA
     eta_prima = {gid: g.eta for gid, g in mondo.giocatori.items()}
     messaggi = []
     mondo.notifica = messaggi.append
-    mondo.processa_tempo_trascorso()
+    rapporto = mondo.processa_tempo_trascorso(ANCORA + datetime.timedelta(hours=17))
+    assert rapporto["ticks"] == rapporto["giorni"] == 2
     assert mondo.datetime_corrente_simulazione == INIZIO + datetime.timedelta(days=2)
-    assert mondo.datetime_ultimo_run_reale == adesso
+    # L'ora che avanza resta per la volta dopo.
+    assert mondo.datetime_ultimo_run_reale == ANCORA + datetime.timedelta(hours=16)
     for gid, eta in eta_prima.items():
         if gid not in mondo._ids_morti_processati_sessione:
             assert mondo.giocatori[gid].eta == eta + 2
-    assert 2 <= len(mondo.nuovi_giocatori_sessione) <= 14
+    # I nuovi della sessione restano, quelli di prima compresi: si contano i nati nei due giorni.
+    assert 2 <= len([gid for gid in mondo.nuovi_giocatori_sessione if gid not in eta_prima]) <= 14
     assert any("Processando 2 tick" in m for m in messaggi)
 
 
-def test_niente_avanzamento_prima_di_otto_ore(mondo, monkeypatch):
-    monkeypatch.setattr(modulo_mondo, "adesso", lambda: INIZIO + datetime.timedelta(hours=3))
-    mondo.datetime_ultimo_run_reale = INIZIO
+def test_niente_avanzamento_prima_di_otto_ore(mondo):
+    mondo.datetime_ultimo_run_reale = ANCORA
     messaggi = []
     mondo.notifica = messaggi.append
-    mondo.processa_tempo_trascorso()
+    assert mondo.processa_tempo_trascorso(ANCORA + datetime.timedelta(hours=3))["ticks"] == 0
     assert mondo.datetime_corrente_simulazione == INIZIO
-    assert messaggi == ["INFO: Prox aggiornamento sim alle 20:00:00 del 01/01/2026 (tra 5h 0m)."]
+    assert mondo.datetime_ultimo_run_reale == ANCORA
+    prossimo = in_ora_locale(ANCORA + datetime.timedelta(hours=8))
+    assert messaggi == [f"INFO: Prox aggiornamento sim alle {prossimo:%H:%M:%S del %d/%m/%Y} (tra 5h 0m)."]
 
 
 def test_polisportive_del_computer(mondo):

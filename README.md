@@ -12,7 +12,7 @@ Dalla versione 1.16.0 il gioco si apre in una finestra, da qualunque cartella, c
 
     python Showdown.py
 
-La finestra per ora consulta il mondo: schede, elenchi, classifiche, statistiche e ricerche. Le operazioni, cioè polisportive, partite e allenamento, arriveranno nelle prossime tappe; fino ad allora si fanno con l'interfaccia testuale del vecchio `sd.py`, che si avvia con:
+La finestra per ora consulta il mondo: schede, diari di giocatori e polisportive, elenchi, classifiche, statistiche, ricerche e il registro delle vecchie glorie. Il mondo avanza anche mentre la finestra è aperta, e la barra di stato lo annuncia. Le operazioni, cioè polisportive, partite e allenamento, arriveranno nelle prossime tappe; fino ad allora si fanno con l'interfaccia testuale del vecchio `sd.py`, che si avvia con:
 
     python Showdown.py --testo
 
@@ -34,7 +34,7 @@ poi si mette la sua cartella in PYTHONPATH.
 
 La cartella `dati` contiene le collezioni di nomi e cognomi, un file di testo per collezione e una voce per riga, che si possono correggere o ampliare con un qualsiasi editor, e il vocabolario delle descrizioni fisiche, `vocabolario.json`, con cui il gioco compone l'aspetto di ogni giocatore.
 
-Il mondo si salva accanto al programma nel file `mess_mondo.json`, con la copia di sicurezza `mess_mondo.json.bak`. Il file è leggibile ma firmato: una modifica fatta a mano viene scoperta, e il gioco riprende dalla copia. I file che non si possono leggere finiscono nella cartella `salvataggi_illeggibili`. Le uscite di scena dei giocatori si annotano in `vecchie_glorie.log`, e le cronache delle partite, quando si chiede di salvarle, in `log_partite_showdown.txt`.
+Il mondo si salva accanto al programma nel file `mess_mondo.json`, con la copia di sicurezza `mess_mondo.json.bak`, e a finestra aperta si salva da solo a ogni avanzamento. Il file è leggibile ma firmato: una modifica fatta a mano viene scoperta, e il gioco riprende dalla copia. I file che non si possono leggere finiscono nella cartella `salvataggi_illeggibili`. Le uscite di scena dei giocatori restano nel registro delle vecchie glorie, dentro il salvataggio, e si annotano anche in `vecchie_glorie.log`, e le cronache delle partite, quando si chiede di salvarle, in `log_partite_showdown.txt`.
 
 ## Autori
 

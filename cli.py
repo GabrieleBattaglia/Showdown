@@ -35,7 +35,7 @@ from costanti import (
 )
 from modelli import Polisportiva, e_fisica
 from partita import MotorePartita
-from utilita import adesso, caso, converti_in_tempo, formatta_eta_sim
+from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, formatta_eta_sim
 
 MAINMENU = {
     'AGT': 'Allena Giocatori Tesserati;', 'CEG': 'CErca Giocatori;', 'CLA': 'CLAssifica Globale Giocatori (per ICV);',
@@ -122,7 +122,7 @@ class InterfacciaTestuale:
         print(f" Data Reale: {now:%Y-%m-%d %H:%M}, Data Sim: {sim_dt_str}")
         print("=" * 75)
         ultimo = self.mondo.datetime_ultimo_run_reale
-        if isinstance(ultimo, datetime.datetime) and (now - ultimo).total_seconds() < (8 * 3600 - 60):
+        if isinstance(ultimo, datetime.datetime) and (adesso_utc() - ultimo).total_seconds() < (8 * 3600 - 60):
             testo = self.mondo.testo_prossimo_sblocco()
             if testo:
                 print(testo)
@@ -544,8 +544,10 @@ class InterfacciaTestuale:
                     lasciati.append((gid, g.nome, g.cognome))
                     poli_lasc = g.appartenenza
                     g.appartenenza = "*"
+                    self.mondo.annota(g, f"Lascia {poli_lasc}, {accorda(g.sesso, 'insoddisfatto')}.")
                     if poli_lasc in self.polisportive:
                         self.polisportive[poli_lasc].rimuovi_tesserato(gid, icv_post)
+                        self.mondo.annota(self.polisportive[poli_lasc], f"{g.nome} {g.cognome} se ne va, {accorda(g.sesso, 'insoddisfatto')}.")
         poli.aggiorna_ict(self.giocatori, self.morti)
         poli.aggiorna_gloria(self.giocatori, self.morti)
         print(f"\n--- Allenamento {poli.nome} terminato ({n_allenati} allenati) ---")
@@ -616,6 +618,7 @@ class InterfacciaTestuale:
             if key(" Confermi(S/n)? ").lower() != 'n':
                 setattr(g, attr_a, n_a_f)
                 g.puntiesperienza = max(0, xp_max - xp_eff)
+                g.annota_allenamento(self.data_sim, attr_a.replace('_allenata', '_base'), val_b + val_a, val_b + n_a_f)
                 print("-> Applicato!")
             else:
                 print("-> Annullato.")
@@ -904,6 +907,8 @@ class InterfacciaTestuale:
                 print(f"\t{g.nome} ACCETTA!")
                 g.appartenenza = poli.nome
                 poli.aggiungi_tesserato(gid, g.indice_collettivo_valore)
+                self.mondo.annota(g, f"{accorda(g.sesso, 'Tesserato')} con {poli.nome}.")
+                self.mondo.annota(poli, f"Tesserato {g.nome} {g.cognome}.")
                 print(f"\n{g.nome} tesserato!")
             else:
                 print(f"\t{g.nome} RIFIUTA!")
@@ -949,8 +954,10 @@ class InterfacciaTestuale:
                     print(f"\n\tLimite {LIMITE_MOVIMENTI_PER_TICK} movimenti tick.")
                     return
                 poli.rimuovi_tesserato(gid, g_icv)
+                self.mondo.annota(poli, f"Espulso {g_nome}.")
                 if g_esiste:
                     self.giocatori[gid].appartenenza = "*"
+                    self.mondo.annota(self.giocatori[gid], f"{accorda(self.giocatori[gid].sesso, 'Espulso')} da {poli.nome}.")
                 poli.movimenti_oggi += 1
                 poli.datetime_ultimo_movimento = adesso()
                 print(f"\n{g_nome}(ID:{gid}) espulso.")
@@ -983,6 +990,7 @@ class InterfacciaTestuale:
                     g = self.giocatori[gid]
                     g.appartenenza = "*"
                     icv = g.indice_collettivo_valore
+                    self.mondo.annota(g, f"Torna {accorda(g.sesso, 'libero')}: {poli.nome} ha chiuso.")
                 poli.rimuovi_tesserato(gid, icv)
                 n_lib += 1
             nome = poli.nome

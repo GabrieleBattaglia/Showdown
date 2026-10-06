@@ -14,14 +14,39 @@ import secrets
 
 from costanti import ANNO_SIMULAZIONE_GIORNI
 
+MESI = ("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre")
+
 
 def adesso():
     """
-    L'ora dell'orologio di chi gioca, senza fuso. Va bene per le date da mostrare; per misurare
-    il tempo trascorso no, perché al cambio dell'ora legale guadagna o perde un'ora: lo corregge
-    la tappa 6 del piano, insieme agli altri difetti del tempo del problema P3.
+    L'ora dell'orologio di chi gioca, senza fuso: serve soltanto a datare e mostrare le cose a
+    chi legge. Per misurare il tempo trascorso si usa adesso_utc, che il cambio dell'ora legale
+    non sposta: fino alla tappa 6 il tempo si misurava con questa, e in quei giorni il mondo
+    guadagnava o perdeva un'ora, problema P3 del piano.
     """
-    return datetime.datetime.now()  # noqa: DTZ005 - vedi la docstring
+    return datetime.datetime.now()  # noqa: DTZ005 - solo per mostrare, vedi la docstring
+
+
+def adesso_utc():
+    """L'istante attuale in UTC, con il fuso: la misura del tempo che passa, dalla tappa 6."""
+    return datetime.datetime.now(datetime.UTC)
+
+
+def in_ora_locale(istante):
+    """Un istante con il fuso portato all'ora locale, senza fuso, per mostrarlo; uno senza fuso torna com'è."""
+    if istante.tzinfo is None:
+        return istante
+    return istante.astimezone().replace(tzinfo=None)
+
+
+def data_breve(dt):
+    """Una data a parole, senza l'ora: 7 ottobre 2026."""
+    return f"{dt.day} {MESI[dt.month - 1]} {dt.year}"
+
+
+def accorda(sesso, maschile):
+    """Una parola che finisce in o, al maschile o al femminile secondo il sesso, m o f: libero, libera."""
+    return maschile if sesso == "m" else maschile[:-1] + "a"
 
 
 # L'impronta delle password, dal 2026-10-06 con la tappa 3: PBKDF2 con SHA-256 e un sale casuale

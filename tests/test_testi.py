@@ -12,6 +12,8 @@ from modelli import Polisportiva
 from mondo import Mondo
 
 ORA = datetime.datetime(2026, 10, 6, 18, 0)
+# Lo stesso istante nel mondo reale, in UTC come lo conta il mondo.
+ADESSO = datetime.datetime(2026, 10, 6, 16, 0, tzinfo=datetime.UTC)
 
 
 @pytest.fixture
@@ -19,7 +21,7 @@ def mondo():
     random.seed(77)
     m = Mondo()
     m.datetime_corrente_simulazione = ORA
-    m.datetime_ultimo_run_reale = ORA - datetime.timedelta(hours=3)
+    m.datetime_ultimo_run_reale = ADESSO - datetime.timedelta(hours=3)
     m.crea_giocatori_casuali(40, ORA)
     mia = Polisportiva("Club Di Prova", "segreta", ORA - datetime.timedelta(days=150))
     m.polisportive[mia.nome] = mia
@@ -100,29 +102,32 @@ def test_liste_della_sessione(mondo):
 
 
 def test_barra_di_stato(mondo):
-    righe = testi.righe_barra(mondo, "mondo salvato alle 18:41", ORA)
+    righe = testi.righe_barra(mondo, "mondo salvato alle 18:41", ADESSO)
     assert len(righe) == 4
     assert all(len(r) <= 40 for r in righe)
     assert righe[0] == "s06/10/2026 18:00 a5h00m"
     assert righe[1] == "Club Di Prova g100 t3/15 m5"
     assert re.fullmatch(r"l\d+ t3 f\d+ n40 p2", righe[2])
     mondo.miapolisportiva_attiva.nome = "Un nome di polisportiva lunghissimo, ben oltre i quaranta caratteri"
-    assert len(testi.righe_barra(mondo, "x" * 60, ORA)[1]) == 40
+    assert len(testi.righe_barra(mondo, "x" * 60, ADESSO)[1]) == 40
     mondo.miapolisportiva_attiva = None
-    assert testi.righe_barra(mondo, None, ORA)[1] == "nessuna polisportiva attiva"
+    assert testi.righe_barra(mondo, None, ADESSO)[1] == "nessuna polisportiva attiva"
 
 
 def test_apertura_e_avanzamento(mondo):
     rapporto = Mondo.rapporto_vuoto(ORA) | {"ticks": 3, "giorni": 3, "nuovi": 7, "ritirati": 1, "tesserati_cpu": 4, "espulsi_cpu": 2, "poli_create": 1}
-    testo = testi.apertura(mondo, CARICATO, ["Mondo caricato: prova."], rapporto, ORA - datetime.timedelta(days=1), ORA)
+    testo = testi.apertura(mondo, CARICATO, ["Mondo caricato: prova."], rapporto, ADESSO - datetime.timedelta(days=1), ADESSO)
     _accessibile(testo)
     assert "Bentornato!" in testo and "1 giorno fa" in testo
     assert "7 giocatori sono nati e 1 si è ritirato." in testo
     assert "Le polisportive del computer hanno tesserato 4 giocatori e ne hanno espulsi 2." in testo
     assert "È nata una polisportiva del computer." in testo
-    assert "Bentornato" not in testi.apertura(mondo, NATO, [], Mondo.rapporto_vuoto(ORA), ORA, ORA)
+    assert "Bentornato" not in testi.apertura(mondo, NATO, [], Mondo.rapporto_vuoto(ORA), ADESSO, ADESSO)
     assert testi.riepilogo_avanzamento(Mondo.rapporto_vuoto(ORA)) == "In questa sessione il mondo non è ancora avanzato."
-    _accessibile(testi.data_e_avanzamento(mondo, ORA))
+    avanzamento = testi.data_e_avanzamento(mondo, ADESSO)
+    _accessibile(avanzamento)
+    assert "fra 5 ore" in avanzamento
+    assert "maturato in questo momento" in testi.data_e_avanzamento(mondo, ADESSO + datetime.timedelta(hours=6))
 
 
 def test_guida_novita_e_informazioni():

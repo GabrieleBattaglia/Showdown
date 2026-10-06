@@ -157,7 +157,6 @@ LIMITE_MOVIMENTI_PER_TICK = 5
 DATA_NESSUN_MOVIMENTO = datetime.datetime(1900, 1, 1)  # noqa: DTZ001 - data segnaposto, fuori da ogni fuso
 NUM_GIOCATORI_INIZIALI = 50
 CREA_NUOVI_PER_TICK_RANGE = (1, 7)
-MAX_NUOVI_GIOCATORI_PER_AVVIO = 50
 # Le caratteristiche allenabili, con la sigla del menu di allenamento.
 ATTRIBUTI_ALLENABILI_MAP = {
     "prc": "precisione_allenata", "rst": "resistenza_allenata", "for": "forza_allenata",

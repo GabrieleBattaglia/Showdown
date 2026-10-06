@@ -66,7 +66,7 @@ from costanti import (
     XP_VITTORIA_3_1,
     XP_VITTORIA_3_2,
 )
-from utilita import adesso, caso
+from utilita import accorda, adesso, caso, data_breve
 
 FALLI = ("FalloCritico", "Fallo")
 COLPI_A_SPONDA = ('singolaspondasx_base', 'singolaspondadx_base', 'doppiaspondasx_base', 'doppiaspondadx_base', 'triplaspondasx_base', 'triplaspondadx_base')
@@ -645,6 +645,7 @@ class MotorePartita:
         g_vinc.puntiesperienza = max(0, int(g_vinc.puntiesperienza or 0) + xp_vinc)
         g_perd.puntiesperienza = max(0, int(g_perd.puntiesperienza or 0) + xp_perd)
         self.mostra(f" -> XP Assegnati: ID {id_vincitore}: +{xp_vinc}, ID {id_perdente}: +{xp_perd}")
+        self._annota_risultato(g_vinc, g_perd, punteggio_set, id_g1_orig == id_vincitore, set_vinti_vinc, set_vinti_perd, info_torneo)
         self.mostra(" -> Controllo Infortuni...")
         for giocatore_corrente in [g_vinc, g_perd]:
             if not getattr(giocatore_corrente, 'infortunato', False):
@@ -655,6 +656,16 @@ class MotorePartita:
                     data_fine = self.mondo.datetime_corrente_simulazione + datetime.timedelta(days=giorni_durata)
                     giocatore_corrente.infortunio_fine_datetime = data_fine
                     self.mostra(f"    -> INFORTUNIO! ID {giocatore_corrente.id} ({giocatore_corrente.nome}) fuori per {giorni_durata} giorni sim (fino a {data_fine:%Y-%m-%d %H:%M}). (Prob: {prob_infortunio:.3f}%)")
+                    self.mondo.annota(giocatore_corrente, f"Si infortuna: resterà {accorda(giocatore_corrente.sesso, 'fermo')} fino al {data_breve(data_fine)}.")
+
+    def _annota_risultato(self, g_vinc, g_perd, punteggio_set, primo_ha_vinto, set_vinti_vinc, set_vinti_perd, info_torneo):
+        """Il risultato nei diari dei due giocatori, ciascuno con i set dal suo punto di vista."""
+        tipo = "la partita del torneo" if info_torneo else "l'amichevole"
+        dal_vincitore = [(a, b) if primo_ha_vinto else (b, a) for a, b in punteggio_set]
+        set_vincitore = ", ".join(f"{a} a {b}" for a, b in dal_vincitore)
+        set_perdente = ", ".join(f"{b} a {a}" for a, b in dal_vincitore)
+        self.mondo.annota(g_vinc, f"Vince {tipo} contro {g_perd.nome} {g_perd.cognome}, {set_vinti_vinc} set a {set_vinti_perd}: {set_vincitore}.")
+        self.mondo.annota(g_perd, f"Perde {tipo} contro {g_vinc.nome} {g_vinc.cognome}, {set_vinti_perd} set a {set_vinti_vinc}: {set_perdente}.")
 
     def _calcola_prob_infortunio(self, giocatore):
         """La probabilità di infortunio dopo una partita, in percentuale: cresce dai 30 anni."""

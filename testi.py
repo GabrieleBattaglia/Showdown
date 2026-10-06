@@ -29,9 +29,9 @@ from costanti import (
     MAX_TOTALE_SKILL_GIOCO,
     NOME_ATTR_TO_DISPLAY_MAP,
 )
-from utilita import converti_giorni_sim, formatta_eta_sim
+from utilita import MESI, converti_giorni_sim, data_breve, formatta_eta_sim, in_ora_locale
+from utilita import accorda as accorda_sesso
 
-MESI = ("gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre")
 # La scala degli aggettivi delle schede di Terminal Beast, da 0 a 20.
 AGGETTIVI = ("Inesistente", "Disastroso", "Tremendo", "Scarso", "Debole", "Insufficiente", "Accettabile", "Buono", "Eccellente", "Formidabile",
              "Straordinario", "Splendido", "Magnifico", "Fuoriclasse", "Sovrannaturale", "Titanico", "Extraterrestre", "Mitico", "Magico", "Utopico", "Divino")
@@ -97,7 +97,7 @@ def durata(intervallo):
 
 def accorda(g, maschile):
     """Una parola che finisce in o, al maschile o al femminile secondo il giocatore: libero, libera."""
-    return maschile if g.sesso == "m" else maschile[:-1] + "a"
+    return accorda_sesso(g.sesso, maschile)
 
 
 def nome_completo(g):
@@ -407,18 +407,15 @@ def tesserati_attiva(mondo):
 
 # Il tempo del mondo.
 
-def prossimo_avanzamento(mondo):
-    return mondo.datetime_ultimo_run_reale + datetime.timedelta(hours=8)
-
-
 def data_e_avanzamento(mondo, ora):
-    prossimo = prossimo_avanzamento(mondo)
+    """La data simulata e il prossimo avanzamento; ora è l'istante attuale in UTC."""
+    prossimo = mondo.prossimo_avanzamento()
     righe = [f"Data simulata: {data_lunga(mondo.datetime_corrente_simulazione)}."]
     if prossimo > ora:
-        righe.append(f"Il prossimo avanzamento, di un giorno simulato, è previsto per il {data_lunga(prossimo)}, fra {durata(prossimo - ora)}. Per ora il mondo avanza quando il programma si avvia: dalla tappa 6 lo farà anche a finestra aperta.")
+        righe.append(f"Il prossimo avanzamento, di un giorno simulato, è previsto per il {data_lunga(in_ora_locale(prossimo))}, fra {durata(prossimo - ora)}.")
     else:
-        righe.append("Un avanzamento è già maturato: il mondo lo farà al prossimo avvio del programma, e dalla tappa 6 anche a finestra aperta.")
-    righe.append(f"Nel mondo passa un giorno ogni 8 ore reali, anche a programma chiuso; un anno simulato dura {ANNO_SIMULAZIONE_GIORNI} giorni.")
+        righe.append("Un avanzamento è maturato in questo momento: il mondo lo farà entro un minuto.")
+    righe.append(f"Nel mondo passa un giorno ogni 8 ore reali, anche a programma chiuso e a finestra aperta; un anno simulato dura {ANNO_SIMULAZIONE_GIORNI} giorni.")
     return "\n".join(righe)
 
 
@@ -465,7 +462,7 @@ def _entro(testo, larghezza=LARGHEZZA_BARRA):
 
 def righe_barra(mondo, ultimo, ora):
     """Le quattro righe della barra di stato, a codici, ciascuna entro quaranta caratteri."""
-    mancano = prossimo_avanzamento(mondo) - ora
+    mancano = mondo.prossimo_avanzamento() - ora
     minuti = max(0, int(mancano.total_seconds() // 60))
     tempo = f"s{mondo.datetime_corrente_simulazione:%d/%m/%Y %H:%M} a{minuti // 60}h{minuti % 60:02d}m"
     p = mondo.miapolisportiva_attiva
@@ -482,6 +479,56 @@ def righe_barra(mondo, ultimo, ora):
     return [_entro(tempo), _entro(club), _entro(popolazione), _entro(ultimo or "pronto")]
 
 
+# Diari e vecchie glorie.
+
+def voce_diario(voce):
+    """Una voce di diario in una riga: la data simulata e il fatto."""
+    if "allenamento" in voce:
+        fatto = f"Allenamento di {nome_caratteristica(voce['allenamento']).lower()}, da {numero(voce['da'])} a {numero(voce['a'])}."
+    else:
+        fatto = voce["testo"]
+    return f"{data_breve(voce['data'])}: {fatto}"
+
+
+def _diario(titolo, diario):
+    if not diario:
+        return f"{titolo}: nessuna voce."
+    righe = [f"{titolo}: {conta(len(diario), 'voce', 'voci')}, dalla più recente."]
+    righe.extend(voce_diario(voce) for voce in diario)
+    return "\n".join(righe)
+
+
+def diario_giocatore(g):
+    return _diario(f"Diario di {nome_completo(g)}, ID {g.id}", g.diario)
+
+
+def diario_polisportiva(p):
+    return _diario(f"Diario di {p.nome}", p.diario)
+
+
+def vecchie_glorie(mondo):
+    """Il registro di chi è uscito di scena, dal più recente: problema P11, risolto con la tappa 6."""
+    if not mondo.vecchie_glorie:
+        return "Le vecchie glorie: ancora nessuno è uscito di scena."
+    righe = [f"Le vecchie glorie: {conta(len(mondo.vecchie_glorie), 'giocatore uscito', 'giocatori usciti')} di scena, dal più recente."]
+    for voce in mondo.vecchie_glorie:
+        quando = data_breve(datetime.datetime.fromisoformat(voce["data"]))
+        anni_uscita = voce["eta"] // ANNO_SIMULAZIONE_GIORNI
+        come = f"è {accorda_sesso(voce['sesso'], 'morto')}" if voce["motivo"] == "morte" else "ha lasciato il mondo dello showdown"
+        dove = f"da {accorda_sesso(voce['sesso'], 'tesserato')} con {voce['club']}" if voce["club"] != "*" else f"da {accorda_sesso(voce['sesso'], 'libero')}"
+        righe.append(f"{voce['nome']} {voce['cognome']}, ID {voce['id']}, {come} il {quando} a {anni_uscita} anni, {dove}: "
+                     f"{conta(voce['partite'], 'partita', 'partite')}, {voce['vittorie']} vinte, valore finale {numero(voce['valore'])}.")
+    return "\n".join(righe)
+
+
+def conservazione(mondo):
+    """Per quanto si conservano le voci dei diari, a parole."""
+    def per(giorni):
+        return "per sempre" if giorni <= 0 else f"per {conta(giorni, 'giorno simulato', 'giorni simulati')}"
+    c = mondo.conservazione_diari
+    return f"Le voci dei diari dei giocatori si conservano {per(c['giocatori'])}, quelle delle polisportive {per(c['polisportive'])}."
+
+
 # Apertura, chiusura e aiuto.
 
 def apertura(mondo, origine, messaggi, rapporto, ultimo_prima, ora):
@@ -493,11 +540,11 @@ def apertura(mondo, origine, messaggi, rapporto, ultimo_prima, ora):
     righe.extend(messaggi)
     if origine != NATO:
         assenza = ora - ultimo_prima
-        righe.append(f"Bentornato! L'ultimo avanzamento del mondo risale al {data_lunga(ultimo_prima)}, {durata(assenza)} fa.")
+        righe.append(f"Bentornato! L'ultimo avanzamento del mondo risale al {data_lunga(in_ora_locale(ultimo_prima))}, {durata(assenza)} fa.")
     if rapporto and rapporto["ticks"]:
         righe.append(f"Il mondo è andato avanti di {conta(rapporto['giorni'], 'giorno simulato', 'giorni simulati')}, fino al {data_lunga(mondo.datetime_corrente_simulazione)}. {_fatti_avanzamento(rapporto)}")
     else:
-        righe.append(f"Data simulata: {data_lunga(mondo.datetime_corrente_simulazione)}. Il prossimo avanzamento è fra {durata(max(prossimo_avanzamento(mondo) - ora, datetime.timedelta()))}.")
+        righe.append(f"Data simulata: {data_lunga(mondo.datetime_corrente_simulazione)}. Il prossimo avanzamento è fra {durata(max(mondo.prossimo_avanzamento() - ora, datetime.timedelta()))}.")
     p = mondo.miapolisportiva_attiva
     if p is None:
         righe.append("Non hai ancora una polisportiva attiva.")
@@ -516,9 +563,16 @@ def salvataggio_illeggibile(errore):
     return righe
 
 
-def chiusura(durata_sessione, comandi, messaggi):
-    """Il riepilogo della fine sessione."""
+def somma_rapporti(primo, secondo):
+    """Due riepiloghi di avanzamento sommati, con l'ora del secondo: il totale di una sessione."""
+    return {chiave: primo[chiave] + secondo[chiave] for chiave in primo if chiave != "ora"} | {"ora": secondo["ora"]}
+
+
+def chiusura(durata_sessione, comandi, messaggi, rapporto_sessione=None):
+    """Il riepilogo della fine sessione, con ciò che è successo nel mondo durante la sessione."""
     righe = [f"Sessione di {durata(durata_sessione)}, con {conta(comandi, 'comando', 'comandi')}."]
+    if rapporto_sessione and rapporto_sessione["ticks"]:
+        righe.append(f"Nella sessione il mondo è andato avanti di {conta(rapporto_sessione['giorni'], 'giorno simulato', 'giorni simulati')}. {_fatti_avanzamento(rapporto_sessione)}")
     righe.extend(messaggi)
     righe.append("Arrivederci!")
     return "\n".join(righe)
