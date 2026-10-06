@@ -1,6 +1,7 @@
 """Test della nascita dei giocatori, della gloria richiesta, della probabilità di accettazione e delle polisportive."""
 
 import datetime
+import json
 import random
 
 import pytest
@@ -108,7 +109,80 @@ def test_polisportiva_tesserati_e_indice():
 
 
 def test_polisportiva_del_computer_senza_password():
-    assert Polisportiva("PoliTeam01 abab-cdcd", "segreta", NASCITA, is_cpu_controlled=True).password is None
+    p = Polisportiva("PoliTeam01 abab-cdcd", "segreta", NASCITA, is_cpu_controlled=True)
+    assert p.impronta_password is None
+    assert not p.protetta
+
+
+def test_password_conservata_come_impronta():
+    p = Polisportiva("Club", "segreta", NASCITA)
+    assert p.protetta
+    assert "segreta" not in p.impronta_password
+    assert not hasattr(p, "password")
+    assert p.verifica_password("segreta")
+    assert not p.verifica_password("Segreta")
+    assert not p.verifica_password("")
+    p.imposta_password("nuova")
+    assert p.verifica_password("nuova") and not p.verifica_password("segreta")
+    p.imposta_password("")
+    assert not p.protetta
+    assert p.verifica_password("qualunque")
+
+
+def test_impronte_con_sale_diverso():
+    from utilita import crea_impronta, verifica_impronta
+    prima, seconda = crea_impronta("uguale"), crea_impronta("uguale")
+    assert prima != seconda
+    assert verifica_impronta("uguale", prima) and verifica_impronta("uguale", seconda)
+    assert not verifica_impronta("uguale", "rotta")
+    assert not verifica_impronta("uguale", None)
+    assert not verifica_impronta("uguale", prima.replace("pbkdf2_sha256", "md5"))
+
+
+def test_giocatore_da_e_verso_il_dizionario(giocatori):
+    for g in giocatori:
+        dati = json.loads(json.dumps(g.a_dizionario()))
+        assert "indice_collettivo_valore" not in dati and "descrizione_fisica" not in dati
+        assert vars(Giocatore.da_dizionario(dati)) == vars(g)
+
+
+def test_giocatore_senza_tratti_salva_il_suo_aspetto():
+    random.seed(2)
+    g = Giocatore(9, NASCITA, descrizione_fisica="Ha un viso tondo.", altezza=170, peso=65)
+    assert not hasattr(g, "tratti")
+    dati = json.loads(json.dumps(g.a_dizionario()))
+    assert (dati["altezza"], dati["peso"], dati["descrizione_fisica"]) == (170, 65, "Ha un viso tondo.")
+    assert vars(Giocatore.da_dizionario(dati)) == vars(g)
+
+
+@pytest.mark.parametrize(("campo", "valore"), [("eta", "dieci"), ("puntiesperienza", True), ("mancino", 1), ("forza_base", None), ("datacreazione_reale", "ieri")])
+def test_giocatore_con_un_campo_non_valido(giocatori, campo, valore):
+    dati = giocatori[0].a_dizionario()
+    dati[campo] = valore
+    with pytest.raises(ValueError, match=campo):
+        Giocatore.da_dizionario(dati)
+
+
+def test_giocatore_con_un_campo_mancante(giocatori):
+    dati = giocatori[0].a_dizionario()
+    del dati["cognome"]
+    with pytest.raises(ValueError, match="manca il campo cognome"):
+        Giocatore.da_dizionario(dati)
+
+
+def test_polisportiva_da_e_verso_il_dizionario():
+    p = Polisportiva("Club", "segreta", NASCITA)
+    p.aggiungi_tesserato(4, 80.0)
+    dati = json.loads(json.dumps(p.a_dizionario()))
+    ricostruita = Polisportiva.da_dizionario(dati)
+    assert ricostruita.tesserati == [4]
+    assert ricostruita.indicecollettivotesserati == 0.0
+    assert ricostruita.verifica_password("segreta")
+    ricostruita.indicecollettivotesserati = 80.0
+    assert vars(ricostruita) == vars(p)
+    dati["tesserati"] = [4, "cinque"]
+    with pytest.raises(ValueError, match="tesserati"):
+        Polisportiva.da_dizionario(dati)
 
 
 def test_eta_della_polisportiva():

@@ -7,3 +7,5 @@ dist/
 
 # Campioni di descrizioni da leggere, rigenerabili con strumenti/campioni_descrizioni.py
 strumenti/campioni_descrizioni.txt
+# Il file temporaneo della scrittura sicura del mondo
+*.tmp

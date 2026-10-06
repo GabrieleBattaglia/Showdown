@@ -2,8 +2,12 @@
 I modelli di MESS: il giocatore e la polisportiva.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py. I nomi degli attributi
-sono quelli del vecchio file, perché i salvataggi li registrano così. La chiusura delle
-polisportive del computer, che stava qui ma agiva sull'intero mondo, si è spostata in mondo.py.
+sono quelli del vecchio file. La chiusura delle polisportive del computer, che stava qui ma
+agiva sull'intero mondo, si è spostata in mondo.py.
+Dalla tappa 3 ogni modello sa scriversi come dizionario per il salvataggio JSON, con a_dizionario,
+e ricostruirsi da lì, con da_dizionario, controllando ogni campo. Gli elenchi CAMPI_GIOCATORE e
+CAMPI_POLISPORTIVA dicono quali attributi si salvano e di che tipo sono: i valori che si possono
+ricalcolare, come l'indice di valore o la descrizione fisica, non si salvano e si ricalcolano.
 """
 
 import contextlib
@@ -63,7 +67,7 @@ from costanti import (
     giorni_da_anni,
 )
 from nomi import genera_identita
-from utilita import adesso, caso, formatta_eta_sim
+from utilita import adesso, caso, crea_impronta, formatta_eta_sim, verifica_impronta
 
 
 def probabilita_accettazione(g_off, g_rich):
@@ -93,6 +97,84 @@ def probabilita_accettazione(g_off, g_rich):
 def e_fisica(nome_allenato):
     """Vero per le tre caratteristiche fisiche allenate: precisione, resistenza e forza."""
     return nome_allenato in ALLENATE_FISICHE
+
+
+# I tipi dei campi salvati, oltre a bool, int, float e str.
+DATA = "data"
+DATA_O_NULLA = "data_o_nulla"
+TESTO_O_NULLA = "testo_o_nulla"
+LISTA_INTERI = "lista_interi"
+_CONTROLLI = {
+    bool: lambda v: isinstance(v, bool),
+    int: lambda v: isinstance(v, int) and not isinstance(v, bool),
+    float: lambda v: isinstance(v, (int, float)) and not isinstance(v, bool),
+    str: lambda v: isinstance(v, str),
+    TESTO_O_NULLA: lambda v: v is None or isinstance(v, str),
+    LISTA_INTERI: lambda v: isinstance(v, list) and all(isinstance(x, int) and not isinstance(x, bool) for x in v),
+}
+CAMPI_GIOCATORE = (
+    ("id", int), ("nome", str), ("cognome", str), ("appartenenza", str), ("sesso", str),
+    ("eta", int), ("etaritiro", int), ("etamorte", int), ("versione", str),
+    ("datetime_creazione_sim", DATA), ("datacreazione_reale", DATA),
+    ("puntiesperienza", int), ("mancino", bool), ("ambidestro", bool), ("ipovedente", bool),
+    ("giocorapido", bool), ("cambiovelocita", bool), ("infortunato", bool), ("infortunio_fine_datetime", DATA_O_NULLA),
+    ("ritirato", bool), ("partitevinte", int), ("partiteperse", int), ("setsvinti", int), ("setspersi", int),
+    ("goalsfatti", int), ("goalssubiti", int), ("archetipo_allenamento", str),
+    ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int),
+    *((nome, float) for nome in ATTRIBUTI_INVECCHIABILI),
+)
+# Per i giocatori senza tratti, che non possono ricalcolare il loro aspetto.
+CAMPI_ASPETTO = (("altezza", int), ("peso", int), ("descrizione_fisica", str))
+CAMPI_POLISPORTIVA = (
+    ("nome", str), ("impronta_password", TESTO_O_NULLA), ("is_cpu_controlled", bool),
+    ("datetime_creazione_sim", DATA), ("datacreazione_reale", DATA), ("versione_creazione", str),
+    ("tesserati", LISTA_INTERI), ("maxtesserati", int), ("gloria", int),
+    ("movimenti_oggi", int), ("datetime_ultimo_movimento", DATA),
+    ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int),
+    ("coppe_oro", int), ("coppe_argento", int), ("coppe_bronzo", int), ("coppe_legno", int),
+)
+
+
+def a_json(valore, tipo):
+    """Un valore di un modello nella forma che il salvataggio JSON sa scrivere."""
+    if tipo in (DATA, DATA_O_NULLA):
+        return None if valore is None else valore.isoformat()
+    if tipo == TESTO_O_NULLA:
+        return None if valore is None else str(valore)
+    if tipo == LISTA_INTERI:
+        return [int(v) for v in valore]
+    return tipo(valore)
+
+
+def da_json(valore, tipo, chi, campo):
+    """Un valore letto dal salvataggio, controllato e riportato al tipo del modello; ValueError se non va."""
+    errore = ValueError(f"{chi}: il campo {campo} non è valido: {valore!r}")
+    if tipo in (DATA, DATA_O_NULLA):
+        if valore is None and tipo == DATA_O_NULLA:
+            return None
+        if not isinstance(valore, str):
+            raise errore
+        try:
+            return datetime.datetime.fromisoformat(valore)
+        except ValueError:
+            raise errore from None
+    if not _CONTROLLI[tipo](valore):
+        raise errore
+    if tipo is float:
+        return float(valore)
+    if tipo == LISTA_INTERI:
+        return list(valore)
+    return valore
+
+
+def _campi_da_dizionario(oggetto, dati, campi, chi):
+    """Imposta sull'oggetto i campi elencati, letti e controllati dal dizionario del salvataggio."""
+    if not isinstance(dati, dict):
+        raise ValueError(f"{chi}: non è un dizionario")
+    for campo, tipo in campi:
+        if campo not in dati:
+            raise ValueError(f"{chi}: manca il campo {campo}")
+        setattr(oggetto, campo, da_json(dati[campo], tipo, chi, campo))
 
 
 class Giocatore:
@@ -226,6 +308,37 @@ class Giocatore:
                 setattr(self, nome_allenato, v_a)
             if v_b + v_a > max_totale_skill:
                 setattr(self, nome_base, max(0., max_totale_skill - v_a))
+
+    def a_dizionario(self):
+        """Il giocatore come dizionario per il salvataggio JSON."""
+        dati = {campo: a_json(getattr(self, campo), tipo) for campo, tipo in CAMPI_GIOCATORE}
+        tratti = getattr(self, "tratti", None)
+        if tratti:
+            dati["tratti"] = tratti
+        else:
+            dati.update({campo: a_json(getattr(self, campo), tipo) for campo, tipo in CAMPI_ASPETTO})
+        return dati
+
+    @classmethod
+    def da_dizionario(cls, dati):
+        """Ricostruisce un giocatore dal suo dizionario, senza tirare il caso; ValueError se un campo non va."""
+        g = cls.__new__(cls)
+        chi = f"Giocatore {dati.get('id', '?') if isinstance(dati, dict) else '?'}"
+        _campi_da_dizionario(g, dati, CAMPI_GIOCATORE, chi)
+        if g.sesso not in ('m', 'f'):
+            raise ValueError(f"{chi}: il campo sesso non è valido: {g.sesso!r}")
+        tratti = dati.get("tratti")
+        if tratti is not None:
+            if not isinstance(tratti, dict):
+                raise ValueError(f"{chi}: il campo tratti non è valido")
+            g.tratti = tratti
+            g.altezza, g.peso, g.descrizione_fisica = 0, 0, ""
+        else:
+            _campi_da_dizionario(g, dati, CAMPI_ASPETTO, chi)
+        g._rispetta_tetti()
+        g.aggiorna_icv()
+        g.aggiorna_aspetto()
+        return g
 
     def _get_valore_totale(self, nome_base):
         """Il valore di una caratteristica, parte innata più parte allenata."""
@@ -411,7 +524,8 @@ class Giocatore:
 class Polisportiva:
     def __init__(self, nome, password, datetime_creazione_sim, is_cpu_controlled=False):
         self.nome = nome.title()
-        self.password = password if not is_cpu_controlled else None
+        # Dalla tappa 3 la password non si conserva: si conserva la sua impronta.
+        self.impronta_password = crea_impronta(password) if password and not is_cpu_controlled else None
         self.datetime_creazione_sim = datetime_creazione_sim
         self.is_cpu_controlled = is_cpu_controlled
         self.tesserati = []
@@ -430,6 +544,37 @@ class Polisportiva:
         self.movimenti_oggi = 0
         self.datacreazione_reale = adesso()
         self.versione_creazione = VERSIONE
+
+    @property
+    def protetta(self):
+        """Vero se la polisportiva è protetta da una password."""
+        return self.impronta_password is not None
+
+    def imposta_password(self, password):
+        """Protegge la polisportiva con una password; con una password vuota toglie la protezione."""
+        self.impronta_password = crea_impronta(password) if password else None
+
+    def verifica_password(self, password):
+        """Vero se la password è quella giusta, oppure se la polisportiva non è protetta."""
+        if self.impronta_password is None:
+            return True
+        return verifica_impronta(password, self.impronta_password)
+
+    def a_dizionario(self):
+        """La polisportiva come dizionario per il salvataggio JSON."""
+        return {campo: a_json(getattr(self, campo), tipo) for campo, tipo in CAMPI_POLISPORTIVA}
+
+    @classmethod
+    def da_dizionario(cls, dati):
+        """
+        Ricostruisce una polisportiva dal suo dizionario; ValueError se un campo non va. L'indice
+        dei tesserati riparte da zero: lo ricalcola chi carica il mondo, quando ha i giocatori.
+        """
+        p = cls.__new__(cls)
+        chi = f"Polisportiva {dati.get('nome', '?') if isinstance(dati, dict) else '?'}"
+        _campi_da_dizionario(p, dati, CAMPI_POLISPORTIVA, chi)
+        p.indicecollettivotesserati = 0.0
+        return p
 
     def __str__(self):
         dt_creaz_sim_str = f"{self.datetime_creazione_sim:%Y-%m-%d %H:%M}" if isinstance(self.datetime_creazione_sim, datetime.datetime) else "N/D"

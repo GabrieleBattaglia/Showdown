@@ -849,7 +849,7 @@ class InterfacciaTestuale:
             nome = dgt("Nome poli da attivare: ", "s", smin=1, smax=50).title()
             if nome in poli_u:
                 p_sel = poli_u[nome]
-                if self._chiedi_password(f"Password '{nome}': ") == p_sel.password:
+                if p_sel.verifica_password(self._chiedi_password(f"Password '{nome}': ")):
                     self.mondo.miapolisportiva_attiva = p_sel
                     print(f"\n'{nome}' attivata.")
                 else:
@@ -970,7 +970,7 @@ class InterfacciaTestuale:
         print(f"\n--- Chiusura Definitiva {poli.nome} ---")
         print("ATT: Irreversibile.")
         try:
-            if self._chiedi_password(f"Password '{poli.nome}': ") != poli.password:
+            if not poli.verifica_password(self._chiedi_password(f"Password '{poli.nome}': ")):
                 print("\n\tPassword errata.")
                 return
             if dgt("Scrivi 'CHIUDI': ", "s", smax=6) != "CHIUDI":
@@ -1000,7 +1000,7 @@ class InterfacciaTestuale:
         poli = self.attiva
         print(f"\n--- Modifica Password {poli.nome} ---")
         try:
-            if self._chiedi_password("Password attuale: ") != poli.password:
+            if not poli.verifica_password(self._chiedi_password("Password attuale: ")):
                 print("\n\tPassword attuale errata.")
                 return
             pwd1 = self._chiedi_password("Nuova password: ")
@@ -1008,7 +1008,7 @@ class InterfacciaTestuale:
                 print("\n\tPassword vuota.")
                 return
             if pwd1 == self._chiedi_password("Conferma nuova: "):
-                poli.password = pwd1
+                poli.imposta_password(pwd1)
                 print("\nPassword modificata.")
             else:
                 print("\n\tNon coincidono.")

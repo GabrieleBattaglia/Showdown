@@ -1,12 +1,16 @@
 """
-Piccoli strumenti di MESS: il tiro del caso e il calendario del simulatore.
+Piccoli strumenti di MESS: il tiro del caso, il calendario del simulatore, l'orologio e
+l'impronta delle password.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py. Nel simulatore un
 anno dura 108 giorni, divisi in 12 mesi da 9 giorni.
 """
 
 import datetime
+import hashlib
+import hmac
 import random
+import secrets
 
 from costanti import ANNO_SIMULAZIONE_GIORNI
 
@@ -18,6 +22,29 @@ def adesso():
     la tappa 6 del piano, insieme agli altri difetti del tempo del problema P3.
     """
     return datetime.datetime.now()  # noqa: DTZ005 - vedi la docstring
+
+
+# L'impronta delle password, dal 2026-10-06 con la tappa 3: PBKDF2 con SHA-256 e un sale casuale
+# per ogni password. La password non si conserva mai, né in memoria né nel salvataggio.
+METODO_IMPRONTA = "pbkdf2_sha256"
+ITERAZIONI_IMPRONTA = 100_000
+
+
+def crea_impronta(password):
+    """L'impronta da conservare al posto di una password: metodo, iterazioni, sale e impronta, separati dal dollaro."""
+    sale = secrets.token_hex(16)
+    calcolata = hashlib.pbkdf2_hmac("sha256", str(password).encode("utf-8"), bytes.fromhex(sale), ITERAZIONI_IMPRONTA).hex()
+    return f"{METODO_IMPRONTA}${ITERAZIONI_IMPRONTA}${sale}${calcolata}"
+
+
+def verifica_impronta(password, impronta):
+    """Vero se la password corrisponde all'impronta; falso anche se l'impronta non è leggibile."""
+    try:
+        metodo, iterazioni, sale, attesa = str(impronta).split("$")
+        calcolata = hashlib.pbkdf2_hmac("sha256", str(password).encode("utf-8"), bytes.fromhex(sale), int(iterazioni)).hex()
+    except ValueError:
+        return False
+    return metodo == METODO_IMPRONTA and hmac.compare_digest(calcolata, attesa)
 
 
 def caso(percentuale):

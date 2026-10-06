@@ -58,6 +58,10 @@ class Mondo:
         self.giocatori_morti_sessione = []
         self._ids_morti_processati_sessione = set()
         self.risultati_ultima_ricerca = []
+        # Il numero che avrà il prossimo giocatore: sale soltanto, e si salva col mondo.
+        self.prossimo_id = 1
+        # Diventa vero quando il salvataggio esiste ma non si legge: da lì non si salva più nulla.
+        self.salvataggio_bloccato = False
 
     # Probabilità e ricerche.
 
@@ -70,12 +74,15 @@ class Mondo:
         liberi = {gid: g for gid, g in self.giocatori.items() if g.appartenenza == "*" and not g.ritirato and gid not in self._ids_morti_processati_sessione}
         return dict(sorted(liberi.items(), key=lambda item: item[1].indice_collettivo_valore, reverse=True))
 
-    def trova_prossimo_id_libero(self):
-        """Il primo identificativo intero libero partendo da 1. Riusa quelli dei morti: problema P5, tappa 3."""
-        next_id = 1
-        while next_id in self.giocatori:
-            next_id += 1
-        return next_id
+    def nuovo_id(self):
+        """
+        L'identificativo di un giocatore nuovo. Il contatore sale soltanto, così il numero di chi
+        esce di scena non tocca mai a un altro, e il registro delle vecchie glorie resta univoco:
+        problema P5 del piano, risolto il 2026-10-06 con la tappa 3.
+        """
+        nuovo = max(self.prossimo_id, max(self.giocatori, default=0) + 1)
+        self.prossimo_id = nuovo + 1
+        return nuovo
 
     # Nascite e polisportive del computer.
 
@@ -86,7 +93,7 @@ class Mondo:
         self.notifica(f" -> Generazione {quanti} nuovi giocatori...")
         n_cr = 0
         for _ in range(quanti):
-            new_id = self.trova_prossimo_id_libero()
+            new_id = self.nuovo_id()
             is_ipo = caso(PROBABILITA_IPOVEDENTE_CREAZIONE)
             self.giocatori[new_id] = Giocatore(id_giocatore=new_id, datetime_creazione_sim=dt_creaz, ipovedente=is_ipo)
             self.nuovi_giocatori_sessione.append(new_id)

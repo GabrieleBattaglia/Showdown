@@ -1,230 +1,272 @@
 """
-L'archivio di MESS: caricamento e salvataggio del mondo.
+L'archivio di MESS: il salvataggio del mondo in un file JSON firmato.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
-Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py. Il formato è ancora
-quello dei tre file pickle del vecchio programma, fino alla tappa 3, che lo sostituirà con file
-JSON firmati, secondo la decisione D4. Intanto due cose cambiano. I file si cercano nella
-cartella del programma e non in quella corrente, problema P10. E il lettore accetta soltanto le
-classi del gioco e i pochi tipi che i salvataggi contengono: riporta a modelli.py le classi che
-il vecchio sd.py registrava come appartenenti a __main__, problema P2, e rifiuta tutto il resto,
-così un file costruito apposta non può eseguire nulla.
+Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py, e lo stesso giorno la
+tappa 3, secondo la decisione D4, sostituisce i tre file pickle del vecchio programma con un solo
+file JSON leggibile, mess_mondo.json, accanto al programma. Il modello è il salvataggio di
+Terminal Beast, e quattro sono le sue garanzie.
+La firma. Una firma HMAC-SHA256, calcolata sul contenuto in forma canonica, fa accorgere il gioco
+di una modifica fatta a mano con un editor; spazi e a capo non contano, quindi il file si può
+riformattare. La chiave sta nel codice, che è pubblico: la firma ferma chi curiosa o vuole barare
+con un editor, non chi è deciso a ricalcolarla.
+La scrittura sicura. Il mondo si scrive in un file temporaneo forzato su disco; il salvataggio
+precedente diventa la copia di sicurezza mess_mondo.json.bak; poi il file temporaneo prende il
+posto del salvataggio in un colpo solo. Un'interruzione lascia sempre un file intero.
+Il ripiego. Se il salvataggio non si legge, o la firma non torna, il mondo viene dalla copia, che
+prende il suo posto, e il file scartato si mette da parte nella cartella salvataggi_illeggibili.
+Se non si legge nemmeno la copia, vanno da parte tutti e due e il mondo blocca i salvataggi:
+un mondo nuovo, salvato all'uscita, li coprirebbe.
+Il numero di formato, che dirà alle versioni future come aggiornare i salvataggi vecchi.
 """
 
+import contextlib
 import datetime
-import pickle
-import time
+import hashlib
+import hmac
+import json
+import os
+import shutil
 
 import percorsi
-from costanti import DATA_NESSUN_MOVIMENTO, DB_GIOCATORI, DB_POLISPORTIVE, DB_STATO_GIOCO, NUM_GIOCATORI_INIZIALI
-from modelli import Giocatore, Polisportiva
+from costanti import FILE_MONDO, FILE_MONDO_COPIA, NUM_GIOCATORI_INIZIALI, VERSIONE
+from modelli import DATA, Giocatore, Polisportiva, a_json, da_json
 from utilita import adesso
 
-CLASSI_DEL_GIOCO = {"Giocatore": Giocatore, "Polisportiva": Polisportiva}
-MODULI_DEL_GIOCO = ("__main__", "sd", "modelli")
-TIPI_AMMESSI = {
-    ("datetime", "datetime"),
-    ("datetime", "date"),
-    ("datetime", "timedelta"),
-    ("builtins", "set"),
-    ("builtins", "frozenset"),
-}
-ERRORI_DI_LETTURA = (OSError, pickle.UnpicklingError, AttributeError, ValueError, TypeError, KeyError, IndexError)
+APPLICAZIONE = "MESS"
+FORMATO = 1
+CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
+CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 
 
-class LettoreSalvataggi(pickle.Unpickler):
-    """Ricostruisce soltanto le classi del gioco e i tipi elencati in TIPI_AMMESSI."""
-
-    def find_class(self, module, name):
-        if module in MODULI_DEL_GIOCO and name in CLASSI_DEL_GIOCO:
-            return CLASSI_DEL_GIOCO[name]
-        if (module, name) in TIPI_AMMESSI:
-            return super().find_class(module, name)
-        raise pickle.UnpicklingError(f"Classe non ammessa nel salvataggio: {module}.{name}")
+class ErroreSalvataggio(Exception):
+    """Un file del mondo che non si può usare: illeggibile, modificato fuori dal gioco, o di un formato sconosciuto."""
 
 
-def _come_datetime(valore):
-    """Le date dei salvataggi più vecchi diventano date con l'ora, a mezzanotte."""
-    if isinstance(valore, datetime.date) and not isinstance(valore, datetime.datetime):
-        return datetime.datetime.combine(valore, datetime.time.min)
-    return valore
+class SalvataggioIllegibile(Exception):
+    """
+    Il salvataggio esiste ma non si legge, e nemmeno la sua copia di sicurezza. Diverso dal file
+    assente, quando nasce un mondo nuovo: qui no, perché lo coprirebbe. L'attributo cartella dice
+    dove sono state messe da parte le copie dei file, oppure è None se la copia non è riuscita.
+    """
+
+    def __init__(self, motivo, cartella=None):
+        super().__init__(motivo)
+        self.cartella = cartella
 
 
-def _carica_stato(mondo):
-    """La data simulata e quella dell'ultimo avanzamento; restituisce la data da usare per le nascite."""
-    notifica = mondo.notifica
-    dt_sim_per_creazione = adesso()
-    stato_ok = False
+def firma(documento):
+    """La firma di un documento, cioè di un salvataggio senza la sua firma, calcolata sulla forma canonica."""
+    canonico = json.dumps(documento, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return hmac.new(CHIAVE_FIRMA, canonico, hashlib.sha256).hexdigest()
+
+
+def componi(mondo):
+    """Il mondo come documento da salvare, senza firma. I giocatori usciti di scena nella sessione non ci sono più."""
+    morti = mondo._ids_morti_processati_sessione
+    attiva = next((chiave for chiave, p in mondo.polisportive.items() if p is mondo.miapolisportiva_attiva), None)
+    return {
+        "applicazione": APPLICAZIONE,
+        "formato": FORMATO,
+        "versione": VERSIONE,
+        "salvato": a_json(adesso(), DATA),
+        "mondo": {
+            "data_simulata": a_json(mondo.datetime_corrente_simulazione, DATA),
+            "ultimo_avanzamento": a_json(mondo.datetime_ultimo_run_reale, DATA),
+            "prossimo_id": mondo.prossimo_id,
+            "polisportiva_attiva": attiva,
+            "polisportive": {chiave: p.a_dizionario() for chiave, p in mondo.polisportive.items()},
+            "giocatori": [g.a_dizionario() for gid, g in sorted(mondo.giocatori.items()) if gid not in morti],
+        },
+    }
+
+
+def scrivi(mondo, percorso, percorso_copia):
+    """
+    Scrive il mondo nel file indicato con la scrittura sicura, e il salvataggio precedente nella
+    copia. Restituisce il documento scritto e gli avvisi, cioè le cose andate storte senza danno.
+    """
+    contenuto = componi(mondo)
+    testo = json.dumps({**contenuto, "firma": firma(contenuto)}, ensure_ascii=False, indent=1) + "\n"
+    temporaneo = percorso + ".tmp"
+    avvisi = []
     try:
-        with open(percorsi.percorso(DB_STATO_GIOCO), "rb") as f:
-            stato = LettoreSalvataggi(f).load()
-        dt_sim = _come_datetime(stato.get('datetime_corrente_simulazione'))
-        dt_run = _come_datetime(stato.get('datetime_ultimo_run_reale'))
-        if isinstance(dt_sim, datetime.datetime) and isinstance(dt_run, datetime.datetime):
-            if dt_sim < dt_run:
-                notifica("*" * 75 + "\nATTENZIONE: INCOERENZA TEMPORALE CARICATA!\n" + f"  Data Sim ({dt_sim:%Y-%m-%d %H:%M}) < Ultimo Run ({dt_run:%Y-%m-%d %H:%M})\n" + "  Proseguo con date caricate.\n" + "*" * 75)
-            mondo.datetime_corrente_simulazione, mondo.datetime_ultimo_run_reale = dt_sim, dt_run
-            dt_sim_per_creazione = dt_sim
-            stato_ok = True
-            notifica(f"Stato caricato. Sim: {dt_sim:%Y-%m-%d %H:%M}, Ult Run: {dt_run:%Y-%m-%d %H:%M}.")
-        else:
-            notifica("WARN: Dati tempo stato non validi.")
-    except FileNotFoundError:
-        notifica(f"File stato '{DB_STATO_GIOCO}' non trovato.")
-    except (*ERRORI_DI_LETTURA, EOFError) as e:
-        notifica(f"ERR caricamento stato: {e}")
-    if not stato_ok:
-        mondo.datetime_corrente_simulazione = dt_sim_per_creazione
-        mondo.datetime_ultimo_run_reale = dt_sim_per_creazione - datetime.timedelta(hours=8)
-        notifica(f"Nuovo stato inizializzato. Data/Ora Sim: {mondo.datetime_corrente_simulazione:%Y-%m-%d %H:%M}")
-    return dt_sim_per_creazione
+        with open(temporaneo, "w", encoding="utf-8", newline="\n") as f:
+            f.write(testo)
+            f.flush()
+            os.fsync(f.fileno())
+        if os.path.exists(percorso):
+            try:
+                shutil.copy2(percorso, percorso_copia)
+            except OSError as e:
+                avvisi.append(f"La copia di sicurezza non si è potuta aggiornare: {e}.")
+        os.replace(temporaneo, percorso)
+    finally:
+        if os.path.exists(temporaneo):
+            with contextlib.suppress(OSError):
+                os.remove(temporaneo)
+    return contenuto, avvisi
 
 
-def _mezzanotte(data):
-    """La data dei campi più vecchi, giorno soltanto, portata a mezzanotte come faceva sd.py."""
-    return datetime.datetime.combine(data, datetime.time.min)
-
-
-def _ripara_giocatore(g, data_simulata):
-    """Aggiunge ai giocatori dei salvataggi vecchi gli attributi nati dopo, e corregge i tipi delle date."""
-    if hasattr(g, 'datacreazione') and isinstance(g.datacreazione, datetime.date):
-        g.datetime_creazione_sim = _mezzanotte(g.datacreazione)
-    if not isinstance(getattr(g, 'datetime_creazione_sim', None), datetime.datetime):
-        g.datetime_creazione_sim = data_simulata
-    if not isinstance(getattr(g, 'datacreazione_reale', None), datetime.datetime):
-        g.datacreazione_reale = g.datetime_creazione_sim
-    if hasattr(g, 'infortunio_fine_data') and isinstance(g.infortunio_fine_data, datetime.date):
-        g.infortunio_fine_datetime = _mezzanotte(g.infortunio_fine_data)
-    if hasattr(g, 'infortunio_fine_datetime') and not isinstance(g.infortunio_fine_datetime, datetime.datetime):
-        g.infortunio_fine_datetime = None
-    if not hasattr(g, 'archetipo_allenamento'):
-        g.archetipo_allenamento = "Non Definito"
-    if not hasattr(g, 'descrizione_fisica'):
-        g.descrizione_fisica = ''
-    if not hasattr(g, 'ori'):
-        g.ori, g.argenti, g.bronzi, g.legni = 0, 0, 0, 0
-    if not hasattr(g, 'forza_base'):
-        g.forza_base = 0.0
-    if not hasattr(g, 'forza_allenata'):
-        g.forza_allenata = 0.0
-
-
-def _carica_giocatori(mondo, dt_sim_per_creazione):
-    notifica = mondo.notifica
-    gioc_ok = False
+def leggi(percorso):
+    """Legge e verifica un file del mondo e restituisce il documento senza la firma; ErroreSalvataggio se non va."""
     try:
-        with open(percorsi.percorso(DB_GIOCATORI), "rb") as f:
-            grezzi = LettoreSalvataggi(f).load()
-        mondo.giocatori = {gid: g for gid, g in grezzi.items() if gid is not None and isinstance(gid, int)}
-        num_filtrati = len(grezzi) - len(mondo.giocatori)
-        if num_filtrati > 0:
-            notifica(f"WARN: Filtrate {num_filtrati} voci ID non valido da '{DB_GIOCATORI}'.")
-        notifica(f"Caricati {len(mondo.giocatori)} giocatori validi.")
-        gioc_ok = True
-        for g in mondo.giocatori.values():
-            _ripara_giocatore(g, mondo.datetime_corrente_simulazione)
-    except FileNotFoundError:
-        notifica(f"File giocatori '{DB_GIOCATORI}' non trovato.")
-    except (*ERRORI_DI_LETTURA, EOFError) as e:
-        notifica(f"ERR caricamento giocatori: {e}")
-    if not gioc_ok:
-        notifica(f"\nPopolamento iniziale con {NUM_GIOCATORI_INIZIALI} giocatori...")
-        mondo.nuovi_giocatori_sessione.clear()
-        mondo.crea_giocatori_casuali(NUM_GIOCATORI_INIZIALI, dt_sim_per_creazione)
-        notifica("Popolamento completato.")
-        mondo.nuovi_giocatori_sessione.clear()
+        with open(percorso, encoding="utf-8") as f:
+            documento = json.load(f)
+    except OSError as e:
+        raise ErroreSalvataggio(f"il file non si apre: {e}") from e
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise ErroreSalvataggio(f"il file non è un JSON valido: {e}") from e
+    if not isinstance(documento, dict) or "firma" not in documento:
+        raise ErroreSalvataggio("il file non è un salvataggio di MESS")
+    firma_scritta = documento.pop("firma")
+    if not isinstance(firma_scritta, str) or not firma_scritta.isascii() or not hmac.compare_digest(firma_scritta, firma(documento)):
+        raise ErroreSalvataggio("la firma non corrisponde al contenuto: il file è stato modificato fuori dal gioco, oppure si è rovinato")
+    if documento.get("applicazione") != APPLICAZIONE:
+        raise ErroreSalvataggio("il file non è un salvataggio di MESS")
+    formato = documento.get("formato")
+    if not isinstance(formato, int) or isinstance(formato, bool) or formato < 1:
+        raise ErroreSalvataggio(f"il numero di formato non è valido: {formato!r}")
+    if formato > FORMATO:
+        raise ErroreSalvataggio(f"il file viene da una versione più recente del gioco, con il formato {formato}, mentre questa legge fino al {FORMATO}")
+    # Qui si applicheranno, in ordine, le migrazioni dai formati più vecchi, quando ce ne saranno.
+    return documento
 
 
-def _ripara_polisportiva(p, data_simulata, notifica):
-    """Aggiunge alle polisportive dei salvataggi vecchi gli attributi nati dopo, e corregge i tipi delle date."""
-    nome_p = getattr(p, 'nome', '?')
-    if hasattr(p, 'datacreazione') and isinstance(p.datacreazione, datetime.date):
-        p.datetime_creazione_sim = _mezzanotte(p.datacreazione)
-    if not isinstance(getattr(p, 'datetime_creazione_sim', None), datetime.datetime):
-        notifica(f"WARN: Fix dt_creaz_sim Poli '{nome_p}'.")
-        p.datetime_creazione_sim = data_simulata
-    if hasattr(p, 'data_ultimo_movimento') and isinstance(p.data_ultimo_movimento, datetime.date):
-        p.datetime_ultimo_movimento = _mezzanotte(p.data_ultimo_movimento)
-    if not isinstance(getattr(p, 'datetime_ultimo_movimento', None), datetime.datetime):
-        p.datetime_ultimo_movimento = DATA_NESSUN_MOVIMENTO
-    if not hasattr(p, 'movimenti_oggi'):
-        p.movimenti_oggi = 0
-    if not isinstance(getattr(p, 'datacreazione_reale', None), datetime.datetime):
-        notifica(f"WARN: Fix dt_creaz_real Poli '{nome_p}'.")
-        p.datacreazione_reale = p.datetime_creazione_sim
-    if not isinstance(getattr(p, 'versione_creazione', None), str):
-        notifica(f"WARN: Fix vers_creaz Poli '{nome_p}'.")
-        p.versione_creazione = 'N/D'
-    if not hasattr(p, 'ori'):
-        p.ori, p.argenti, p.bronzi, p.legni = 0, 0, 0, 0
-    if not hasattr(p, 'coppe_oro'):
-        p.coppe_oro, p.coppe_argento, p.coppe_bronzo, p.coppe_legno = 0, 0, 0, 0
-
-
-def _carica_polisportive(mondo):
-    notifica = mondo.notifica
+def costruisci(documento, mondo):
+    """
+    Porta nel mondo il contenuto di un documento letto e verificato. Se un dato non va solleva
+    ErroreSalvataggio, e il mondo resta com'era: lo si tocca soltanto quando tutto è stato letto.
+    """
     try:
-        with open(percorsi.percorso(DB_POLISPORTIVE), "rb") as f:
-            lettore = LettoreSalvataggi(f)
-            mondo.polisportive = lettore.load()
-            nome_att = lettore.load()
-        if not isinstance(mondo.polisportive, dict):
-            raise ValueError("Formato file polisportive non valido")
-        notifica(f"Caricate {len(mondo.polisportive)} polisportive.")
-        for p in mondo.polisportive.values():
-            _ripara_polisportiva(p, mondo.datetime_corrente_simulazione, notifica)
-        if nome_att != "Nessuna" and nome_att in mondo.polisportive:
-            mondo.miapolisportiva_attiva = mondo.polisportive[nome_att]
-            notifica(f"Poli attiva: {nome_att}")
-        else:
-            mondo.miapolisportiva_attiva = None
-            notifica("Nessuna poli attiva.")
-    except FileNotFoundError:
-        notifica(f"File polisportive '{DB_POLISPORTIVE}' non trovato.")
-    except EOFError:
-        notifica(f"File polisportive '{DB_POLISPORTIVE}' incompleto.")
-    except ERRORI_DI_LETTURA as e:
-        notifica(f"ERR caricamento polisportive: {e}")
-        mondo.polisportive = {}
+        dati = documento["mondo"]
+        data_simulata = da_json(dati["data_simulata"], DATA, "Mondo", "data_simulata")
+        ultimo_avanzamento = da_json(dati["ultimo_avanzamento"], DATA, "Mondo", "ultimo_avanzamento")
+        prossimo_id = da_json(dati["prossimo_id"], int, "Mondo", "prossimo_id")
+        giocatori = {}
+        for voce in dati["giocatori"]:
+            g = Giocatore.da_dizionario(voce)
+            if g.id in giocatori:
+                raise ValueError(f"Giocatore {g.id}: identificativo ripetuto")
+            giocatori[g.id] = g
+        if not isinstance(dati["polisportive"], dict):
+            raise ValueError("Mondo: il campo polisportive non è valido")
+        polisportive = {}
+        for chiave, voce in dati["polisportive"].items():
+            p = Polisportiva.da_dizionario(voce)
+            p.aggiorna_ict(giocatori, set())
+            polisportive[chiave] = p
+        attiva = dati["polisportiva_attiva"]
+        if attiva is not None and attiva not in polisportive:
+            raise ValueError(f"Mondo: la polisportiva attiva {attiva!r} non esiste")
+    except KeyError as e:
+        raise ErroreSalvataggio(f"manca il dato {e}") from e
+    except (TypeError, ValueError, AttributeError) as e:
+        raise ErroreSalvataggio(f"un dato non è valido: {e}") from e
+    mondo.datetime_corrente_simulazione = data_simulata
+    mondo.datetime_ultimo_run_reale = ultimo_avanzamento
+    mondo.giocatori = giocatori
+    mondo.polisportive = polisportive
+    mondo.miapolisportiva_attiva = polisportive[attiva] if attiva is not None else None
+    mondo.prossimo_id = max(prossimo_id, max(giocatori, default=0) + 1)
+
+
+def _metti_da_parte(*file_da_salvare):
+    """Copia i file indicati in una cartella datata dentro salvataggi_illeggibili; ne restituisce il percorso, o None."""
+    cartella = percorsi.percorso(os.path.join(CARTELLA_QUARANTENA, adesso().strftime("%Y-%m-%d_%H-%M-%S")))
+    try:
+        os.makedirs(cartella, exist_ok=True)
+        for origine in file_da_salvare:
+            if os.path.exists(origine):
+                shutil.copy2(origine, cartella)
+    except OSError:
+        return None
+    return cartella
+
+
+def _riassunto(mondo):
+    testo = f"{len(mondo.giocatori)} giocatori e {len(mondo.polisportive)} polisportive, data simulata {mondo.datetime_corrente_simulazione:%d/%m/%Y %H:%M}."
+    if mondo.miapolisportiva_attiva is not None:
+        testo += f" Polisportiva attiva: {mondo.miapolisportiva_attiva.nome}."
+    return testo
+
+
+def _fai_nascere(mondo):
+    """Un mondo nuovo: la data simulata parte da oggi, e i primi giocatori nascono subito."""
+    ora = adesso()
+    mondo.datetime_corrente_simulazione = ora
+    mondo.datetime_ultimo_run_reale = ora - datetime.timedelta(hours=8)
+    mondo.notifica(f"Nessun salvataggio trovato: nasce un mondo nuovo, con {NUM_GIOCATORI_INIZIALI} giocatori.")
+    mondo.crea_giocatori_casuali(NUM_GIOCATORI_INIZIALI, ora)
+    mondo.nuovi_giocatori_sessione.clear()
 
 
 def carica(mondo):
-    """Carica nel mondo lo stato, i giocatori e le polisportive; crea i giocatori iniziali se non ce ne sono."""
-    mondo.notifica("\n--- Caricamento Dati ---")
-    dt_sim_per_creazione = _carica_stato(mondo)
-    _carica_giocatori(mondo, dt_sim_per_creazione)
-    _carica_polisportive(mondo)
-    mondo.notifica("--- Fine Caricamento ---")
+    """
+    Carica il mondo dal salvataggio, oppure dalla copia di sicurezza se il salvataggio non si
+    può usare; se non c'è nessuno dei due, fa nascere un mondo nuovo. Se i file ci sono ma
+    nessuno dei due si legge, blocca i salvataggi del mondo e solleva SalvataggioIllegibile.
+    """
+    principale = percorsi.percorso(FILE_MONDO)
+    copia = percorsi.percorso(FILE_MONDO_COPIA)
+    esiste_principale = os.path.exists(principale)
+    esiste_copia = os.path.exists(copia)
+    if not esiste_principale and not esiste_copia:
+        _fai_nascere(mondo)
+        return
+    motivo = f"il file {FILE_MONDO} non c'è"
+    if esiste_principale:
+        try:
+            costruisci(leggi(principale), mondo)
+        except ErroreSalvataggio as e:
+            motivo = str(e)
+        else:
+            mondo.notifica(f"Mondo caricato: {_riassunto(mondo)}")
+            return
+    if esiste_copia:
+        try:
+            costruisci(leggi(copia), mondo)
+        except ErroreSalvataggio as e:
+            motivo = f"{motivo}; e la copia di sicurezza nemmeno, perché {e}"
+        else:
+            _annuncia_ripiego(mondo, motivo, principale, copia, esiste_principale)
+            return
+    mondo.salvataggio_bloccato = True
+    raise SalvataggioIllegibile(motivo, _metti_da_parte(principale, copia))
+
+
+def _annuncia_ripiego(mondo, motivo, principale, copia, esiste_principale):
+    """Il mondo viene dalla copia: la copia prende il posto del salvataggio, che va messo da parte."""
+    cartella = _metti_da_parte(principale) if esiste_principale else None
+    messaggio = f"Il salvataggio non si può usare: {motivo}. Il mondo viene dalla copia di sicurezza"
+    try:
+        shutil.copy2(copia, principale)
+        messaggio += ", che ha preso il suo posto."
+    except OSError as e:
+        messaggio += f", che però non ha potuto prendere il suo posto: {e}."
+    if cartella:
+        messaggio += f" Il file scartato è stato messo da parte nella cartella {cartella}."
+    mondo.notifica(messaggio)
+    mondo.notifica(f"Mondo caricato dalla copia: {_riassunto(mondo)}")
 
 
 def salva(mondo):
-    """Salva giocatori, polisportive e stato del mondo. I morti della sessione non vengono salvati."""
-    notifica = mondo.notifica
-    notifica("\nSalvataggio databases...")
-    inizio = time.time()
-    successo = True
+    """Salva il mondo; restituisce vero se è riuscito. Non salva mai sopra un salvataggio che non si è potuto leggere."""
+    if mondo.salvataggio_bloccato:
+        mondo.notifica("Salvataggio rifiutato: il salvataggio esistente non si è potuto leggere, e il gioco non lo copre.")
+        return False
     try:
-        giocatori_da_salvare = {gid: g for gid, g in mondo.giocatori.items() if gid not in mondo._ids_morti_processati_sessione}
-        n_rimossi = len(mondo.giocatori) - len(giocatori_da_salvare)
-        if n_rimossi:
-            notifica(f"  (Rimuovendo {n_rimossi} giocatori morti/usciti)")
-        with open(percorsi.percorso(DB_GIOCATORI), "wb") as f:
-            pickle.dump(giocatori_da_salvare, f, pickle.HIGHEST_PROTOCOL)
-        notifica(f" -> {len(giocatori_da_salvare)} giocatori salvati in '{DB_GIOCATORI}'.")
-        with open(percorsi.percorso(DB_POLISPORTIVE), "wb") as f:
-            pickle.dump(mondo.polisportive, f, pickle.HIGHEST_PROTOCOL)
-            nome_attiva = mondo.miapolisportiva_attiva.nome if mondo.miapolisportiva_attiva else "Nessuna"
-            pickle.dump(nome_attiva, f, pickle.HIGHEST_PROTOCOL)
-        notifica(f" -> {len(mondo.polisportive)} polisportive salvate in '{DB_POLISPORTIVE}'.")
-        stato = {'datetime_corrente_simulazione': mondo.datetime_corrente_simulazione, 'datetime_ultimo_run_reale': mondo.datetime_ultimo_run_reale}
-        with open(percorsi.percorso(DB_STATO_GIOCO), "wb") as f:
-            pickle.dump(stato, f, pickle.HIGHEST_PROTOCOL)
-        notifica(f" -> Stato gioco salvato in '{DB_STATO_GIOCO}'.")
-    except (OSError, pickle.PickleError) as e:
-        notifica(f"\nERRORE FATALE salvataggio: {e}")
-        successo = False
-    tempo_impiegato = time.time() - inizio
-    if successo:
-        notifica(f"Salvataggio completato ({tempo_impiegato:.5f}s).")
-    else:
-        notifica(f"Salvataggio fallito ({tempo_impiegato:.5f}s).")
-    return successo
+        contenuto, avvisi = scrivi(mondo, percorsi.percorso(FILE_MONDO), percorsi.percorso(FILE_MONDO_COPIA))
+    except (OSError, TypeError, ValueError) as e:
+        mondo.notifica(f"Salvataggio non riuscito: {e}. Il salvataggio precedente è rimasto com'era.")
+        return False
+    salvato = contenuto["mondo"]
+    testo = f"Mondo salvato: {len(salvato['giocatori'])} giocatori e {len(salvato['polisportive'])} polisportive."
+    usciti = len(mondo.giocatori) - len(salvato["giocatori"])
+    if usciti == 1:
+        testo += " Il giocatore uscito di scena in questa sessione non ne fa più parte."
+    elif usciti > 1:
+        testo += f" I {usciti} giocatori usciti di scena in questa sessione non ne fanno più parte."
+    mondo.notifica(testo)
+    for avviso in avvisi:
+        mondo.notifica(avviso)
+    return True

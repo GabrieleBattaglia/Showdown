@@ -11,9 +11,9 @@ import datetime
 from version import __version__
 
 VERSIONE = __version__
-DB_GIOCATORI = "sd-players.db"
-DB_POLISPORTIVE = "sd-polisport.db"
-DB_STATO_GIOCO = "sd-gamestate.db"
+# Il salvataggio del mondo, accanto al programma, e la sua copia di sicurezza.
+FILE_MONDO = "mess_mondo.json"
+FILE_MONDO_COPIA = FILE_MONDO + ".bak"
 FILE_NOMI_M = "nomi_maschili.txt"
 FILE_NOMI_F = "nomi_femminili.txt"
 FILE_COGNOMI = "cognomi.txt"
@@ -158,22 +158,7 @@ DATA_NESSUN_MOVIMENTO = datetime.datetime(1900, 1, 1)  # noqa: DTZ001 - data seg
 NUM_GIOCATORI_INIZIALI = 50
 CREA_NUOVI_PER_TICK_RANGE = (1, 7)
 MAX_NUOVI_GIOCATORI_PER_AVVIO = 50
-# Gli attributi del giocatore.
-ATTRIBUTI_BASE = {
-    'id', 'nome', 'cognome', 'appartenenza', 'sesso', 'eta', 'etaritiro', 'etamorte',
-    'versione', 'datetime_creazione_sim', 'datacreazione_reale', 'descrizione_fisica',
-    'mancino', 'ambidestro', 'infortunato', 'infortunio_fine_datetime', 'ipovedente',
-    'altezza', 'peso', 'giocorapido', 'cambiovelocita', 'ritirato', 'puntiesperienza',
-    'partitevinte', 'partiteperse', 'setsvinti', 'setspersi', 'goalsfatti', 'goalssubiti',
-    'precisione_base', 'resistenza_base', 'forza_base',
-    'difesa_base', 'tenutapaletta_base',
-    'chiusurasx_base', 'chiusuradx_base', 'bloccosx_base', 'bloccodx_base',
-    'controllopalla_base', 'attacco_base', 'battutasx_base', 'battutadx_base', 'bomba_base',
-    'lungolineasx_base', 'lungolineadx_base', 'diagonalesx_base', 'diagonaledx_base',
-    'singolaspondasx_base', 'singolaspondadx_base', 'doppiaspondasx_base', 'doppiaspondadx_base',
-    'triplaspondasx_base', 'triplaspondadx_base', 'icv_base', 'icv_allenato',
-    'indice_collettivo_valore', 'archetipo_allenamento', 'ori', 'argenti', 'bronzi', 'legni'
-}
+# Le caratteristiche allenabili, con la sigla del menu di allenamento.
 ATTRIBUTI_ALLENABILI_MAP = {
     "prc": "precisione_allenata", "rst": "resistenza_allenata", "for": "forza_allenata",
     "dfa": "difesa_allenata",
@@ -185,11 +170,13 @@ ATTRIBUTI_ALLENABILI_MAP = {
     "ssd": "singolaspondadx_allenata", "dpsa": "doppiaspondasx_allenata", "dpda": "doppiaspondadx_allenata",
     "tpsa": "triplaspondasx_allenata", "tpda": "triplaspondadx_allenata",
 }
-# L'ordine in cui questi insiemi vengono percorsi decide quali tiri del caso toccano a quali
-# caratteristiche alla nascita di un giocatore: vanno costruiti sempre così.
-ATTRIBUTI_ALLENABILI: set[str] = set(ATTRIBUTI_ALLENABILI_MAP.values())
-ATTRIBUTI_BASE_CON_ALLENABILI: set[str] = {attr.replace('_allenata', '_base') for attr in ATTRIBUTI_ALLENABILI}
-ATTRIBUTI_INVECCHIABILI: set[str] = ATTRIBUTI_BASE_CON_ALLENABILI.union(ATTRIBUTI_ALLENABILI)
+# Elenchi ordinati e non insiemi: l'ordine in cui vengono percorsi decide quali tiri del caso
+# toccano a quali caratteristiche alla nascita di un giocatore, e l'ordine di un insieme di
+# stringhe cambia da un avvio all'altro di Python. Con questi elenchi lo stesso seme dà sempre
+# lo stesso mondo, problema P17 del piano, risolto il 2026-10-06 con la tappa 3.
+ATTRIBUTI_ALLENABILI: tuple[str, ...] = tuple(ATTRIBUTI_ALLENABILI_MAP.values())
+ATTRIBUTI_BASE_CON_ALLENABILI: tuple[str, ...] = tuple(attr.replace('_allenata', '_base') for attr in ATTRIBUTI_ALLENABILI)
+ATTRIBUTI_INVECCHIABILI: tuple[str, ...] = ATTRIBUTI_BASE_CON_ALLENABILI + ATTRIBUTI_ALLENABILI
 # Le caratteristiche fisiche, compresa la forza, e i gruppi di quelle di gioco.
 ALLENATE_FISICHE = ("precisione_allenata", "resistenza_allenata", "forza_allenata")
 CARATTERISTICHE_FISICHE_BASE = ["precisione_base", "resistenza_base", "forza_base"]

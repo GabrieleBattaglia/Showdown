@@ -1,18 +1,20 @@
 """
 Banco di prova del motore di partita di MESS, tappa 1 del piano di sviluppo.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
-Simula in memoria alcune centinaia di partite fra i giocatori del mondo salvato, oppure di un
-mondo generato apposta, e conta come finiscono i punti, quanto durano scambi e set e quanto
+Simula in memoria alcune centinaia di partite fra i giocatori di un mondo generato apposta,
+oppure di quello salvato, e conta come finiscono i punti, quanto durano scambi e set e quanto
 spesso vince il favorito. Non scrive nulla: il salvataggio dei giocatori si legge in sola
 lettura, e la funzione che a fine partita aggiorna esperienza, statistiche e infortuni viene
 sostituita da una che non fa niente. Servirà di nuovo alla tappa 8, per confrontare il motore
 prima e dopo la revisione. Dal 2026-10-06, con la tappa 2, non usa più sd.py ma i moduli
-nati dal suo smontaggio: il motore di partita.py, il generatore di mondo.py e il lettore dei
-salvataggi di archivio.py, che rifiuta qualunque classe estranea al gioco.
+nati dal suo smontaggio: il motore di partita.py e il generatore di mondo.py. Dalla tappa 3
+il mondo salvato si legge dal file JSON firmato, con il lettore di archivio.py, e senza un
+mondo salvato il banco ne genera uno: è diventata la prova predefinita.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/banco_partite.py
     python strumenti/banco_partite.py --partite 1000 --set 5 --seme 42
-    python strumenti/banco_partite.py --mondo nuovo --giocatori 250
+    python strumenti/banco_partite.py --giocatori 250
+    python strumenti/banco_partite.py --mondo salvato
     python strumenti/banco_partite.py --rapporto banco_prima.txt
 """
 
@@ -26,12 +28,12 @@ from collections import Counter
 from pathlib import Path
 
 RADICE = Path(__file__).resolve().parent.parent
-FILE_GIOCATORI = RADICE / "sd-players.db"
 if str(RADICE) not in sys.path:
     sys.path.insert(0, str(RADICE))
 
+import archivio  # noqa: E402
 import costanti  # noqa: E402
-from archivio import LettoreSalvataggi  # noqa: E402
+import percorsi  # noqa: E402
 from mondo import Mondo  # noqa: E402
 from partita import MotorePartita  # noqa: E402
 from version import __version__  # noqa: E402
@@ -44,11 +46,14 @@ ESITI_DADO = ("FalloCritico", "Fallo", "Successo", "Perfetto")
 FASCE_DISTACCO = ((0.05, "meno del 5 per cento"), (0.15, "fra il 5 e il 15 per cento"), (0.30, "fra il 15 e il 30 per cento"), (None, "oltre il 30 per cento"))
 
 
-def carica_mondo_salvato():
-    """I giocatori del mondo salvato, letti in sola lettura."""
-    with FILE_GIOCATORI.open("rb") as f:
-        giocatori = LettoreSalvataggi(f).load()
-    return {gid: g for gid, g in giocatori.items() if isinstance(gid, int)}
+def carica_mondo_salvato(mondo):
+    """Porta nel mondo i giocatori del mondo salvato, letti in sola lettura, senza ripiegare sulla copia."""
+    percorso = percorsi.percorso(costanti.FILE_MONDO)
+    try:
+        archivio.costruisci(archivio.leggi(percorso), mondo)
+    except archivio.ErroreSalvataggio as e:
+        sys.exit(f"Il mondo salvato in {percorso} non si può usare: {e}. Senza --mondo salvato il banco genera un mondo apposta.")
+    return mondo.giocatori
 
 
 def genera_mondo_nuovo(mondo, quanti):
@@ -273,7 +278,7 @@ def main():
     parser = argparse.ArgumentParser(description="Banco di prova del motore di partita di MESS: simula partite in memoria, senza scrivere nulla.")
     parser.add_argument("--partite", type=int, default=300, help="quante partite simulare, 300 se non indicato")
     parser.add_argument("--set", type=int, choices=(3, 5), default=3, help="partite al meglio dei 3 o dei 5 set, 3 se non indicato")
-    parser.add_argument("--mondo", choices=("salvato", "nuovo"), default="salvato", help="i giocatori del mondo salvato, oppure un mondo generato apposta")
+    parser.add_argument("--mondo", choices=("nuovo", "salvato"), default="nuovo", help="un mondo generato apposta, oppure i giocatori del mondo salvato")
     parser.add_argument("--giocatori", type=int, default=250, help="quanti giocatori generare con --mondo nuovo, 250 se non indicato")
     parser.add_argument("--seme", type=int, default=None, help="il seme del generatore casuale, per ripetere una prova identica")
     parser.add_argument("--rapporto", type=Path, default=None, help="salva il rapporto anche in questo file")
@@ -282,11 +287,11 @@ def main():
     random.seed(seme)
     sim = Mondo()
     if argomenti.mondo == "salvato":
-        sim.giocatori = carica_mondo_salvato()
-        descrizione_mondo = f"Mondo salvato in {FILE_GIOCATORI.name}"
+        carica_mondo_salvato(sim)
+        descrizione_mondo = f"Mondo salvato in {costanti.FILE_MONDO}"
     else:
         genera_mondo_nuovo(sim, argomenti.giocatori)
-        descrizione_mondo = "Mondo generato apposta dal vecchio generatore"
+        descrizione_mondo = "Mondo generato apposta"
     disponibili = [gid for gid, g in sim.giocatori.items() if not g.ritirato and not g.infortunato]
     if len(disponibili) < 2:
         sys.exit("Servono almeno due giocatori non ritirati e non infortunati.")

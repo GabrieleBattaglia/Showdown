@@ -34,13 +34,16 @@ def carica_nomi(nome_file):
 
 
 def genera_modelli(lista_nomi):
-    """Gli schemi di vocali, consonanti e spazi dei nomi di una collezione."""
+    """
+    Gli schemi di vocali, consonanti e spazi dei nomi di una collezione, in ordine alfabetico:
+    un insieme cambierebbe ordine da un avvio all'altro, e con lui il nome estratto dallo stesso seme.
+    """
     modelli = set()
     for nome in lista_nomi:
         modello = "".join(["v" if c in VOCALI else "c" if c in CONSONANTI else "s" if c == ' ' else '' for c in nome.lower()])
         if modello:
             modelli.add(modello)
-    return list(modelli)
+    return sorted(modelli)
 
 
 def genera_nome_casuale(modelli, tipo=None):
