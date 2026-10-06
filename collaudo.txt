@@ -1,45 +1,4 @@
 Collaudo della finestra di MESS con NVDA, versione 1.30.1.
 Prima: nella cartella E:\git\mine\Showdown lancia python Showdown.py. Al primo avvio nasce un mondo nuovo, nel file mess_mondo.json.gz, che a fine prova puoi tenere o cancellare.
 Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
-PROVA 1, apertura e barra di stato.
-Passo 1: all'apertura leggi la vista principale.
-Domanda 1: il testo di apertura si legge bene, partendo dall'inizio?
-Passo 2: premi F7 e scorri le quattro righe della barra di stato con le frecce; la legenda dei codici sta nella guida, F1.
-Domanda 2: le righe si capiscono e stanno nel display braille?
-Passo 3: premi F5, poi Tab più volte.
-Domanda 3: il fuoco passa fra vista principale e barra di stato, e NVDA le nomina?
-Esito:
-PROVA 2, menu e consultazione.
-Passo 1: apri i menu con Alt e scorrili con le frecce.
-Domanda 1: ogni voce si legge bene, con la sua lettera e il suo tasto rapido?
-Passo 2: Ctrl+G, scrivi un pezzo di cognome, scegli un giocatore dall'elenco e premi Invio.
-Domanda 2: l'elenco si restringe mentre scrivi, e la scheda si legge bene?
-Passo 3: Ctrl+Maiusc+D sullo stesso giocatore, poi Ctrl+Maiusc+V.
-Domanda 3: diario e vecchie glorie si leggono bene?
 Passo 4: Ctrl+F, cerca per esempio i giocatori liberi con valore maggiore di 150.
-Domanda 4: il dialogo della ricerca si usa bene?
-Esito:
-PROVA 3, una polisportiva tua.
-Passo 1: Ctrl+N, scrivi un nome, lascia vuote le password, premi Invio.
-Domanda 1: le etichette dei campi si sentono, e la fondazione arriva nella vista principale?
-Passo 2: Ctrl+K per il mercato; con Alt+A aggiungi un filtro, per esempio età in anni minore di 40; poi scegli una probabilità minima di accettare.
-Domanda 2: filtri, probabilità minima, ordine ed elenco dei giocatori si raggiungono con Tab e si leggono bene?
-Passo 3: nell'elenco scegli un giocatore con una probabilità alta, premi Invio e rispondi Sì.
-Domanda 3: la domanda di conferma e l'esito dell'offerta si leggono bene, e dopo il fuoco torna sull'elenco?
-Passo 4: chiudi il mercato con Esc.
-Domanda 4: il riepilogo delle offerte arriva nella vista principale?
-Passo 5: se hai tesserato qualcuno, Ctrl+Maiusc+S, scegli il tesserato e conferma.
-Domanda 5: lo svincolo si capisce?
-Passo 6: dal menu Polisportive, Password della polisportiva attiva: metti una password. Poi Ctrl+N per una seconda polisportiva, e Ctrl+Maiusc+C per tornare alla prima, scrivendo la password.
-Domanda 6: i campi della password e la scelta della polisportiva si capiscono?
-Passo 7: dal menu Polisportive, Chiudi la polisportiva attiva.
-Domanda 7: la richiesta della password e la domanda di chiusura si capiscono?
-Esito:
-PROVA 4, impostazioni e chiusura.
-Passo 1: Ctrl+P, cambia la dimensione dei caratteri e premi OK.
-Domanda 1: il dialogo dell'aspetto si usa bene, e la finestra si adatta?
-Passo 2: dal menu Impostazioni, Conservazione dei diari.
-Domanda 2: i due campi si leggono con le loro etichette?
-Passo 3: Alt+F4.
-Domanda 3: la fine sessione si legge bene, e Invio la chiude?
-Esito:
