@@ -22,8 +22,10 @@ Il numero di formato, che dice come aggiornare i salvataggi vecchi. Il formato 2
 conserva in UTC l'istante dell'ultimo avanzamento, e aggiunge i diari di giocatori e polisportive,
 i giorni per cui conservarli e il registro delle vecchie glorie. Il formato 3, della tappa 7,
 registra ogni polisportiva sotto il suo nome, quello che i tesserati portano scritto, e non ha più
-nei tesserati né ritirati né assenti. Un salvataggio di un formato vecchio si aggiorna da solo
-alla lettura, e si riscrive nel formato nuovo al primo salvataggio.
+nei tesserati né ritirati né assenti. Il formato 4, della tappa 8, aggiunge l'economia: cassa,
+vendite e bilanci delle polisportive, esperienza, fedeltà, pazienza, arretrati e bandiera dei
+giocatori. Un salvataggio di un formato vecchio si aggiorna da solo alla lettura, e si riscrive
+nel formato nuovo al primo salvataggio.
 """
 
 import contextlib
@@ -37,13 +39,25 @@ import shutil
 import zlib
 
 import percorsi
-from costanti import FILE_MONDO, FILE_MONDO_COPIA, FILE_MONDO_COPIA_VECCHIO, FILE_MONDO_VECCHIO, NUM_GIOCATORI_INIZIALI, VERSIONE
-from modelli import DATA, Giocatore, Polisportiva, a_json, da_json, normalizza_nome
+from costanti import (
+    CAPITALE_INIZIALE,
+    ESPERIENZA_MASSIMA,
+    ESPERIENZA_PER_MESE,
+    FEDELTA_MASSIMA,
+    FEDELTA_PER_MESE,
+    FILE_MONDO,
+    FILE_MONDO_COPIA,
+    FILE_MONDO_COPIA_VECCHIO,
+    FILE_MONDO_VECCHIO,
+    NUM_GIOCATORI_INIZIALI,
+    VERSIONE,
+)
+from modelli import DATA, VOCI_CONTI, Giocatore, Polisportiva, a_json, da_json, normalizza_nome
 from mondo import CONSERVAZIONE_PREDEFINITA
 from utilita import adesso, adesso_utc
 
 APPLICAZIONE = "MESS"
-FORMATO = 3
+FORMATO = 4
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Da dove viene il mondo appena caricato.
@@ -218,7 +232,44 @@ def _dal_formato_2(documento):
     documento["formato"] = 3
 
 
-MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2}
+def _mesi_nel_club(g, oggi):
+    """I mesi passati da quando il giocatore è entrato nel suo club, letti nel diario; zero se è libero o non si sa."""
+    club = g["appartenenza"]
+    if club == "*":
+        return 0.
+    for voce in g["diario"]:
+        testo = voce.get("testo", "")
+        if testo.startswith("Tesserat") and (testo.endswith(f" con {club}.") or f" con {club}," in testo):
+            return max(0, (oggi - datetime.datetime.fromisoformat(voce["data"])).days) / 30
+    return 0.
+
+
+def _dal_formato_3(documento):
+    """
+    Dal formato 3 al 4, con la tappa 8: l'economia. Ogni polisportiva riceve il capitale iniziale,
+    nessun tesserato in vendita, nessun bilancio e i conti del mese a zero. Ogni giocatore riceve
+    pazienza piena e nessun arretrato; fedeltà ed esperienza vengono dai mesi passati nel club di
+    adesso, contati dal diario. La bandiera si decide con un conto fisso sul numero del giocatore,
+    uno su cento, così la migrazione non tocca il caso.
+    """
+    dati = documento["mondo"]
+    oggi = datetime.datetime.fromisoformat(dati["data_simulata"])
+    for p in dati["polisportive"].values():
+        p.setdefault("cassa", CAPITALE_INIZIALE)
+        p.setdefault("in_vendita", {})
+        p.setdefault("bilanci", [])
+        p.setdefault("conti_del_mese", dict.fromkeys(VOCI_CONTI, 0))
+    for g in dati["giocatori"]:
+        mesi = _mesi_nel_club(g, oggi)
+        g.setdefault("esperienza", round(min(ESPERIENZA_MASSIMA, mesi * ESPERIENZA_PER_MESE), 2))
+        g.setdefault("fedelta", round(min(FEDELTA_MASSIMA, mesi * FEDELTA_PER_MESE), 2))
+        g.setdefault("pazienza", 100.)
+        g.setdefault("arretrati", 0)
+        g.setdefault("bandiera", g["id"] % 100 == 0)
+    documento["formato"] = 4
+
+
+MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3}
 
 
 def _conservazione_da_json(valore):

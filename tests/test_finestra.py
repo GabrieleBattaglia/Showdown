@@ -79,8 +79,8 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
             assert finestra.vista.GetValue(), testo
             assert "\n\n" not in finestra.vista.GetValue(), testo
             provate += 1
-    assert provate == 19
-    assert finestra.comandi == 19
+    assert provate == 22
+    assert finestra.comandi == 22
 
 
 def test_i_menu_hanno_tasti_e_lettere_non_ripetuti(finestra):
@@ -334,47 +334,127 @@ def test_mercato(finestra, monkeypatch):
     messaggi = []
     monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: messaggi.append(testo) or wx.YES)
     monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
+    cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(mondo.datetime_corrente_simulazione)]
+    for gid in (10, 11):
+        mondo._tessera(cpu, mondo.giocatori[gid])
+    mondo.metti_in_vendita(cpu, mondo.giocatori[11], 500)
     dialogo = dialoghi.Mercato(finestra, mondo, poli)
     try:
         liberi = [g for g in mondo.giocatori.values() if g.appartenenza == "*" and not g.ritirato]
-        assert len(dialogo.righe) == len(liberi)
-        valori = [g.indice_collettivo_valore for g, _p in dialogo.righe]
+        assert len(dialogo.righe) == len(liberi) + 1
+        valori = [c.giocatore.indice_collettivo_valore for c in dialogo.righe]
         assert valori == sorted(valori, reverse=True)
-        assert dialogo.etichetta_trovati.GetLabel() == f"&Giocatori trovati: {len(liberi)}"
-        assert dialogo.elenco_filtri.GetString(0) == "Nessun filtro: compaiono tutti i liberi."
-        dialogo.filtri.append(("sesso", "f", None, "Sesso donna"))
-        dialogo.mostra_filtri()
+        assert dialogo.etichetta_trovati.GetLabel() == f"&Giocatori trovati: {len(liberi) + 1}"
+        assert dialogo.elenco_filtri.GetString(0) == "Nessun filtro: compaiono tutti."
+        dialogo.scelta.SetSelection(3)
         dialogo.aggiorna()
-        assert dialogo.righe and all(g.sesso == "f" for g, _p in dialogo.righe)
-        assert dialogo.elenco_filtri.GetString(0) == "Sesso donna"
-        dialogo.togli_tutti()
-        dialogo.minima.SetValue(97)
+        assert [c.giocatore.id for c in dialogo.righe] == [10]
+        dialogo.scelta.SetSelection(2)
         dialogo.aggiorna()
-        assert all(p >= 97 for _g, p in dialogo.righe)
-        dialogo.minima.SetValue(0)
-        dialogo.aggiorna()
-        primo = dialogo.righe[0][0]
+        assert [c.giocatore.id for c in dialogo.righe] == [11]
+        # Chi è in vendita si compra al prezzo chiesto, dopo la conferma.
         dialogo.trovati.SetSelection(0)
         dialogo.offri()
-        assert primo.appartenenza == poli.nome
-        assert [(g, accetta) for g, accetta, _p in dialogo.esiti] == [(primo, True)]
-        assert messaggi[0].startswith(f"Offrire a {_nome(primo)} il tesseramento con Club Di Prova? Accetta al ")
-        assert messaggi[0].endswith("Userai una delle 5 mosse che ti restano oggi.")
-        assert messaggi[1].startswith(f"{_nome(primo)} ha accettato: ora è tesserat")
-        assert primo not in [g for g, _p in dialogo.righe]
-        assert dialogo.info.GetLabel() == "Club Di Prova: gloria 100, tesserati 3 su 15, mosse rimaste 4 su 5."
+        assert mondo.giocatori[11].appartenenza == poli.nome
+        assert messaggi[-2].startswith(f"Comprare {_nome(mondo.giocatori[11])} da {cpu.nome} per 500 euro?")
+        assert dialogo.esiti[-1] == (messaggi[-1], True)
+        # A un libero si offre l'ingaggio scelto nel dialogo della cifra.
+        dialogo.scelta.SetSelection(1)
+        dialogo.aggiorna()
+        candidato = dialogo.righe[0]
+
+        def ingaggio_chiesto(self):
+            self.valore = candidato.costo
+            return wx.ID_OK
+
+        monkeypatch.setattr(dialoghi.Cifra, "ShowModal", ingaggio_chiesto)
+        dialogo.trovati.SetSelection(0)
+        dialogo.offri()
+        assert candidato.giocatore.appartenenza == poli.nome
+        assert messaggi[-2].startswith(f"Offrire a {_nome(candidato.giocatore)} un ingaggio di ")
+        assert messaggi[-1].startswith(f"{_nome(candidato.giocatore)} ha accettato l'ingaggio di ")
+        assert dialogo.info.GetLabel().startswith(f"Club Di Prova: cassa {testi.euro(poli.cassa)}, gloria 100, tesserati 4 su 15, mosse rimaste 3 su 5.")
     finally:
         dialogo.Destroy()
+
+    def cento_euro(self):
+        self.valore = 100
+        return wx.ID_OK
 
     def un_offerta(self):
         self.trovati.SetSelection(0)
         self.offri()
         return wx.ID_CANCEL
 
+    monkeypatch.setattr(dialoghi.Cifra, "ShowModal", cento_euro)
     monkeypatch.setattr(dialoghi.Mercato, "ShowModal", un_offerta)
     finestra.mercato()
-    assert finestra.vista.GetValue().startswith("Mercato di Club Di Prova: 1 offerta, 1 accettata.")
+    assert finestra.vista.GetValue().startswith("Mercato di Club Di Prova: 1 offerta, 1 riuscita.")
     assert finestra.ultimo_evento == "mercato: 1 offerta"
+
+
+def test_cifra(app_wx, monkeypatch):
+    avvisi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo))
+    dialogo = dialoghi.Cifra(None, "Ingaggio", "Spiegazione.", "&Ingaggio", 500, 300, lambda cifra: f"Nota per {cifra}.")
+    try:
+        assert dialogo.cifra.GetValue() == 300 and dialogo.cifra.GetMax() == 300
+        assert dialogo.nota.GetLabel() == "Nota per 300."
+        dialogo.cifra.SetValue(0)
+        dialogo.conferma()
+        assert dialogo.valore is None and avvisi == ["La cifra deve essere di almeno 1 euro."]
+        dialogo.cifra.SetValue(120)
+        dialogo.conferma()
+        assert dialogo.valore == 120
+    finally:
+        dialogo.Destroy()
+
+
+def test_arretrati_e_vendite(finestra, monkeypatch):
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    g = mondo.giocatori[2]
+    g.arretrati = 300
+    g.pazienza = 40.
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: wx.OK)
+
+    def paga_tutto(self):
+        assert self.debitori == [g] and self.cifra.GetValue() == 300
+        self.paga()
+        return wx.ID_CANCEL
+
+    monkeypatch.setattr(dialoghi.PagaArretrati, "ShowModal", paga_tutto)
+    finestra.paga_arretrati()
+    assert g.arretrati == 0 and poli.cassa == 20_000 - 300
+    assert finestra.vista.GetValue().startswith(f"Pagati 300 euro a {_nome(g)}.")
+    finestra.paga_arretrati()
+    assert finestra.vista.GetValue().startswith("Nessun tesserato di Club Di Prova aspetta arretrati.")
+
+    def vendi_il_primo(self):
+        self.prezzo.SetValue(1500)
+        self.metti()
+        return wx.ID_CANCEL
+
+    monkeypatch.setattr(dialoghi.Vendite, "ShowModal", vendi_il_primo)
+    finestra.vendite()
+    primo = max((mondo.giocatori[gid] for gid in poli.tesserati), key=lambda x: x.indice_collettivo_valore)
+    assert poli.in_vendita == {primo.id: 1500}
+    assert finestra.vista.GetValue() == f"{_nome(primo)} è in vendita a 1.500 euro."
+    finestra.bilancio()
+    assert finestra.vista.GetValue().startswith(f"Bilancio di Club Di Prova: in cassa {testi.euro(poli.cassa)}.")
+
+
+def test_avviso_degli_stipendi_non_pagati(finestra):
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    poli.cassa = 0
+    poli.gloria = 1
+    mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 31, 12, 0)
+    mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=9)
+    finestra._al_minuto(None)
+    assert mondo.datetime_corrente_simulazione.day == 1
+    assert finestra.ultimo_evento == "stipendi non pagati, vedi il bilancio"
+    assert finestra.barra.GetValue().splitlines()[3] == "stipendi non pagati, vedi il bilancio"
 
 
 def test_svincolo(finestra, monkeypatch):

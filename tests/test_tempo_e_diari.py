@@ -160,14 +160,14 @@ def test_l_uscita_prematura(mondo, monkeypatch):
 def test_le_polisportive_del_computer_scrivono_nei_diari(mondo):
     poli = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
     poli.gloria = 10_000
-    tesserati, _espulsi = mondo._esegui_logica_cpu_polisportive(INIZIO)
+    tesserati, _svincolati, _comprati = mondo._esegui_logica_cpu_polisportive(INIZIO)
     assert tesserati == len(poli.tesserati) > 0
     for gid in poli.tesserati:
         g = mondo.giocatori[gid]
-        # Il nome ritoccato, non la chiave: problema P16, tappa 7.
-        assert g.diario[0] == {"data": INIZIO, "testo": f"{testi.accorda(g, 'Tesserato')} con {poli.nome}."}
-    nomi = {f"Tesserato {mondo.giocatori[gid].nome} {mondo.giocatori[gid].cognome}." for gid in poli.tesserati}
-    assert {voce["testo"] for voce in poli.diario[:tesserati]} == nomi
+        assert g.diario[0]["data"] == INIZIO
+        assert g.diario[0]["testo"].startswith(f"{testi.accorda(g, 'Tesserato')} con {poli.nome}, con un ingaggio di ")
+    nomi = {f"Tesserato {mondo.giocatori[gid].nome} {mondo.giocatori[gid].cognome}" for gid in poli.tesserati}
+    assert {voce["testo"].split(",")[0] for voce in poli.diario[:tesserati]} == nomi
 
 
 def test_la_partita_finisce_nei_diari(mondo):

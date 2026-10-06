@@ -15,6 +15,8 @@ percentuale.
 
 import datetime
 
+import economia
+import mercato
 import version
 from archivio import NATO
 from costanti import (
@@ -24,6 +26,7 @@ from costanti import (
     CARATTERISTICHE_CONTROLLO_BASE,
     CARATTERISTICHE_DIFESA_BASE,
     CARATTERISTICHE_FISICHE_BASE,
+    ESPERIENZA_MASSIMA,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
     MAX_TOTALE_SKILL_GIOCO,
@@ -47,7 +50,7 @@ LARGHEZZA_BARRA = 40
 LEGENDA_BARRA = (
     "La barra di stato ha quattro righe, ciascuna entro quaranta caratteri, scritte a codici: una lettera e un numero. "
     "Prima riga, il tempo: s è la data simulata, a il tempo che manca al prossimo avanzamento del mondo. "
-    "Seconda riga, la polisportiva attiva: prima il nome, poi g la gloria, t i tesserati sul massimo, m le mosse di mercato rimaste oggi. "
+    "Seconda riga, la polisportiva attiva: prima il nome, poi g la gloria, t i tesserati sul massimo, m le mosse di mercato rimaste oggi, c la cassa in migliaia di euro. "
     "Terza riga, la popolazione: l i giocatori liberi, t i tesserati, f quelli fermi perché ritirati o infortunati, n il totale, p le polisportive. "
     "Quarta riga, a parole, l'ultima cosa successa."
 )
@@ -213,12 +216,13 @@ def scheda_giocatore(g, mondo):
     righe = [
         f"[{etichetta}] ID: {g.id} | {nome_completo(g)} | {'Uomo' if g.sesso == 'm' else 'Donna'}, {anni(g)} anni | Valore: {numero(g.indice_collettivo_valore)}",
         f"Descrizione: {g.descrizione_fisica}",
-        f"Fisico: {g.altezza} cm e {g.peso} kg | Tendenza: {tendenza(g)} | Esperienza: {intero(g.puntiesperienza or 0)} punti | Gloria richiesta: {intero(g.gloria_richiesta)}",
+        f"Fisico: {g.altezza} cm e {g.peso} kg | Tendenza: {tendenza(g)} | Punti allenamento: {intero(g.puntiesperienza or 0)} | Gloria richiesta: {intero(g.gloria_richiesta)}",
     ]
     tratti = f"Tratti: {unisci(tratti_speciali(g)) or 'nessuno in particolare'}"
     if g.infortunato and g.infortunio_fine_datetime:
         tratti += f" | {accorda(g, 'Infortunato')} fino al {data_lunga(g.infortunio_fine_datetime)}"
     righe.append(tratti)
+    righe.extend(_economia_del_giocatore(g, mondo))
     for titolo, gruppo in GRUPPI:
         righe.append(f"[{titolo}]")
         valori = [valore_caratteristica(g, nome) for nome in gruppo]
@@ -235,6 +239,51 @@ def scheda_giocatore(g, mondo):
     righe.append(f"Età: {formatta_eta_sim(g.eta)} simulati | Prossimo compleanno fra {conta(al_compleanno, 'giorno', 'giorni')}")
     righe.append(f"Scoperto il {data_lunga(g.datetime_creazione_sim)} nel mondo simulato e il {data_lunga(g.datacreazione_reale)} nel mondo reale, con la versione {g.versione}.")
     return "\n".join(righe)
+
+
+def euro(importo):
+    return economia.scritta_in_euro(importo)
+
+
+def umore(g):
+    """L'umore di un tesserato, dalla pazienza che gli resta quando aspetta degli arretrati."""
+    if not g.arretrati:
+        return "sereno"
+    if economia.bandiera_attiva(g):
+        return "paziente, da bandiera"
+    if g.pazienza >= 75:
+        return "un po' preoccupato" if g.sesso == "m" else "un po' preoccupata"
+    if g.pazienza >= 50:
+        return accorda(g, "preoccupato")
+    if g.pazienza >= 25:
+        return "insofferente"
+    return "pronto ad andarsene" if g.sesso == "m" else "pronta ad andarsene"
+
+
+def attesa(g):
+    """Cosa aspetta un tesserato non pagato, e per quanto ancora pazienterà."""
+    if economia.bandiera_attiva(g):
+        return f"aspetta {euro(g.arretrati)} di stipendi arretrati, ma da bandiera non se ne andrà"
+    mesi = economia.mesi_rimasti(g)
+    quanto = "meno di un mese" if mesi < 1 else f"circa {conta(round(mesi), 'mese', 'mesi')}"
+    return f"aspetta {euro(g.arretrati)} di stipendi arretrati, e pazienterà ancora {quanto}"
+
+
+def _economia_del_giocatore(g, mondo):
+    """Le righe dell'economia nella scheda: stipendio, valore, esperienza e, per un tesserato, fedeltà e umore."""
+    righe = [f"Stipendio: {euro(economia.stipendio(g))} al mese | Valore di mercato: {euro(economia.valore_di_mercato(g))} | "
+             f"Esperienza di carriera: {aggettivo(g.esperienza, ESPERIENZA_MASSIMA)} ({numero(g.esperienza)})"]
+    club = mondo.polisportive.get(g.appartenenza)
+    if club is not None:
+        riga = f"Fedeltà a {club.nome}: {numero(g.fedelta, 0)} su 100 | Umore: {umore(g)}"
+        if g.arretrati:
+            riga += f", {attesa(g)}"
+        righe.append(riga)
+        if economia.bandiera_attiva(g):
+            righe.append(f"Bandiera di {club.nome}: gioca per il club anche senza stipendio.")
+        if g.id in club.in_vendita:
+            righe.append(f"In vendita a {euro(club.in_vendita[g.id])}.")
+    return righe
 
 
 def elenco_giocatori(mondo):
@@ -360,6 +409,12 @@ def scheda_polisportiva(p, mondo):
     if not p.is_cpu_controlled:
         mosse += " | Protetta da password" if p.protetta else " | Senza password"
     righe.append(mosse)
+    righe.append("[CONTI]")
+    arretrati = sum(mondo.giocatori[gid].arretrati for gid in p.tesserati if gid in mondo.giocatori)
+    conti = f"Cassa: {euro(p.cassa)} | Sponsor: {euro(economia.sponsor_mensile(p))} al mese | Stipendi: {euro(mondo.monte_stipendi(p))} al mese"
+    if arretrati:
+        conti += f" | Arretrati da pagare: {euro(arretrati)}"
+    righe.append(conti)
     righe.append("[PALMARÈS]")
     if any((p.coppe_oro, p.coppe_argento, p.coppe_bronzo, p.coppe_legno, p.ori, p.argenti, p.bronzi, p.legni)):
         righe.append(f"Coppe: Oro:{p.coppe_oro} | Argento:{p.coppe_argento} | Bronzo:{p.coppe_bronzo} | Legno:{p.coppe_legno}")
@@ -374,12 +429,45 @@ def scheda_polisportiva(p, mondo):
         ipovedenti = sum(1 for g in presenti if g.ipovedente)
         righe.append(f"{conta(uomini, 'uomo', 'uomini')} e {conta(len(presenti) - uomini, 'donna', 'donne')}, età media {eta_media} anni, {conta(ipovedenti, 'ipovedente', 'ipovedenti')}.")
         for g in sorted(presenti, key=lambda x: x.indice_collettivo_valore, reverse=True):
-            righe.append(f"{nome_completo(g)} (ID {g.id}), {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, {tendenza(g)}, {stato(g, mondo)}")
+            riga = f"{nome_completo(g)} (ID {g.id}), {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio(g))}, {tendenza(g)}, {stato(g, mondo)}"
+            if g.arretrati:
+                riga += f", {attesa(g)}"
+            if g.id in p.in_vendita:
+                riga += f", in vendita a {euro(p.in_vendita[g.id])}"
+            righe.append(riga)
     else:
         righe.append("Nessun tesserato.")
     assenti = [gid for gid in p.tesserati if gid not in mondo.giocatori]
     if assenti:
         righe.append(f"Risultano tesserati anche {unisci([str(gid) for gid in assenti])}, che non fanno più parte del mondo.")
+    return "\n".join(righe)
+
+
+def _voci_di_un_mese(conti):
+    """Le voci diverse da zero dei conti di un mese, a parole."""
+    nomi = (("sponsor", "sponsor"), ("vendite", "vendite"), ("stipendi", "stipendi"), ("arretrati", "arretrati pagati"),
+            ("ingaggi", "ingaggi"), ("acquisti", "acquisti"))
+    return unisci([f"{nome} {euro(conti[voce])}" for voce, nome in nomi if conti[voce]]) or "nessun movimento"
+
+
+def bilancio(p, mondo):
+    """Il bilancio di una polisportiva: cassa, entrate e uscite di ogni mese, arretrati, vendite e mesi passati."""
+    sponsor = economia.sponsor_mensile(p)
+    monte = mondo.monte_stipendi(p)
+    saldo = sponsor - monte
+    righe = [f"Bilancio di {p.nome}: in cassa {euro(p.cassa)}."]
+    righe.append(f"Ogni mese entrano {euro(sponsor)} di sponsor ed escono {euro(monte)} di stipendi: "
+                 + (f"restano {euro(saldo)}." if saldo >= 0 else f"mancano {euro(-saldo)}."))
+    debitori = [mondo.giocatori[gid] for gid in p.tesserati if gid in mondo.giocatori and mondo.giocatori[gid].arretrati]
+    if debitori:
+        righe.append(f"Arretrati da pagare: {euro(sum(g.arretrati for g in debitori))}, a {conta(len(debitori), 'tesserato', 'tesserati')}.")
+        righe.extend(f"{nome_completo(g)}, {umore(g)}, {attesa(g)}." for g in sorted(debitori, key=lambda g: g.pazienza))
+    if p.in_vendita:
+        righe.append("In vendita: " + unisci([f"{nome_completo(mondo.giocatori[gid])} a {euro(prezzo)}" for gid, prezzo in p.in_vendita.items() if gid in mondo.giocatori]) + ".")
+    righe.append(f"Questo mese, finora: {_voci_di_un_mese(p.conti_del_mese)}.")
+    if p.bilanci:
+        righe.append("I mesi passati, dal più recente:")
+        righe.extend(f"{data_breve(voce['data'])}: {_voci_di_un_mese(voce)}; in cassa {euro(voce['cassa'])}." for voce in p.bilanci)
     return "\n".join(righe)
 
 
@@ -427,39 +515,81 @@ def fondata(p, mondo):
 
 
 def info_mercato(p, mondo):
-    """Gloria, posti e mosse di una polisportiva, in una frase: quello che conta al mercato."""
-    return f"{p.nome}: gloria {p.gloria}, tesserati {len(p.tesserati)} su {p.maxtesserati}, mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}."
+    """Cassa, gloria, posti e mosse di una polisportiva, in una frase: quello che conta al mercato."""
+    return f"{p.nome}: cassa {euro(p.cassa)}, gloria {p.gloria}, tesserati {len(p.tesserati)} su {p.maxtesserati}, mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}."
 
 
-def riga_mercato(g, probabilita):
-    """Un candidato del mercato in una riga: chi è, quanto vale, cosa chiede e quanto è probabile che accetti."""
-    tratti = tratti_speciali(g)
-    return (f"{nome_completo(g)}, {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, chiede {intero(g.gloria_richiesta)} di gloria, "
-            f"accetta al {numero(probabilita, 0)}%{''.join(', ' + t for t in tratti)}, ID {g.id}")
+def riga_mercato(c):
+    """Un candidato del mercato in una riga: chi è, quanto vale, quanto prende al mese e quanto costa averlo."""
+    g = c.giocatore
+    if c.tipo == mercato.LIBERO:
+        costo = f"chiede {euro(c.costo)} d'ingaggio"
+    elif c.tipo == mercato.IN_VENDITA:
+        costo = f"in vendita da {c.polisportiva.nome} a {euro(c.costo)}"
+    else:
+        costo = f"{accorda(g, 'tesserato')} con {c.polisportiva.nome}, valore di mercato {euro(c.costo)}"
+    tratti = "".join(", " + t for t in tratti_speciali(g))
+    return f"{nome_completo(g)}, {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(c.stipendio)}, {costo}{tratti}, ID {g.id}"
 
 
-def domanda_offerta(g, p, probabilita, mondo):
+def _mossa(p, mondo):
     mosse = mondo.mosse_rimaste(p)
-    quale = "l'ultima mossa che ti resta oggi" if mosse == 1 else f"una delle {mosse} mosse che ti restano oggi"
-    return f"Offrire a {nome_completo(g)} il tesseramento con {p.nome}? Accetta al {numero(probabilita, 0)}%. Userai {quale}."
+    return "l'ultima mossa che ti resta oggi" if mosse == 1 else f"una delle {mosse} mosse che ti restano oggi"
 
 
-def esito_offerta(g, p, accetta, probabilita):
+def domanda_acquisto(c, p, mondo):
+    return (f"Comprare {nome_completo(c.giocatore)} da {c.polisportiva.nome} per {euro(c.costo)}? "
+            f"Prende {euro(c.stipendio)} al mese. Userai {_mossa(p, mondo)}.")
+
+
+def domanda_offerta_d_acquisto(c, importo, p, mondo):
+    posto, quanti = mondo.posizione_in_rosa(c.giocatore)
+    return (f"Offrire {euro(importo)} a {c.polisportiva.nome} per {nome_completo(c.giocatore)}? È il {posto}° più forte su {quanti} della sua rosa, "
+            f"e prende {euro(c.stipendio)} al mese. Userai {_mossa(p, mondo)}.")
+
+
+def domanda_ingaggio(c, importo, probabilita, p, mondo):
+    return (f"Offrire a {nome_completo(c.giocatore)} un ingaggio di {euro(importo)}, per tesserarsi con {p.nome}? "
+            f"Accetta al {numero(probabilita, 0)}%, e poi prende {euro(c.stipendio)} al mese. Userai {_mossa(p, mondo)}.")
+
+
+def esito_ingaggio(g, p, accetta, importo, probabilita):
     if accetta:
-        return f"{nome_completo(g)} ha accettato: ora è {accorda(g, 'tesserato')} con {p.nome}."
-    return f"{nome_completo(g)} ha rifiutato l'offerta di {p.nome}: accettava al {numero(probabilita, 0)}%."
+        return f"{nome_completo(g)} ha accettato l'ingaggio di {euro(importo)}: ora è {accorda(g, 'tesserato')} con {p.nome}."
+    return f"{nome_completo(g)} ha rifiutato l'ingaggio di {euro(importo)}: accettava al {numero(probabilita, 0)}%."
+
+
+def esito_acquisto(g, venditore, p, prezzo):
+    return f"{nome_completo(g)} è {accorda(g, 'comprato')} da {venditore.nome} per {euro(prezzo)}: ora è {accorda(g, 'tesserato')} con {p.nome}."
+
+
+def esito_offerta_d_acquisto(g, venditore, p, accettata, importo):
+    if accettata:
+        return esito_acquisto(g, venditore, p, importo)
+    return f"{venditore.nome} ha rifiutato {euro(importo)} per {nome_completo(g)}."
 
 
 def riepilogo_mercato(p, mondo, esiti):
-    """Le offerte di una visita al mercato, terne di giocatore, esito e probabilità, con le mosse che restano."""
+    """Le operazioni di una visita al mercato, coppie di testo dell'esito e riuscita, con cassa e mosse che restano."""
     if not esiti:
         righe = [f"Mercato di {p.nome}: nessuna offerta."]
     else:
-        accettate = sum(1 for _g, accetta, _p in esiti if accetta)
-        righe = [f"Mercato di {p.nome}: {conta(len(esiti), 'offerta', 'offerte')}, {conta(accettate, 'accettata', 'accettate')}."]
-        righe.extend(esito_offerta(g, p, accetta, probabilita) for g, accetta, probabilita in esiti)
+        riuscite = sum(1 for _testo, riuscita in esiti if riuscita)
+        righe = [f"Mercato di {p.nome}: {conta(len(esiti), 'offerta', 'offerte')}, {conta(riuscite, 'riuscita', 'riuscite')}."]
+        righe.extend(testo for testo, _riuscita in esiti)
     righe.append(info_mercato(p, mondo))
     return "\n".join(righe)
+
+
+def riga_arretrati(g):
+    """Un tesserato che aspetta arretrati, in una riga della finestra dei pagamenti."""
+    return f"{nome_completo(g)}, {umore(g)}, {attesa(g)}; prende {euro(economia.stipendio(g))} al mese"
+
+
+def riga_vendita(g, p):
+    """Un tesserato nella finestra delle vendite: quanto vale, e se è già in vendita."""
+    riga = f"{nome_completo(g)}, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio(g))}, valore di mercato {euro(economia.valore_di_mercato(g))}"
+    return riga + (f", in vendita a {euro(p.in_vendita[g.id])}" if g.id in p.in_vendita else "")
 
 
 def svincolato(g, p, mondo):
@@ -509,12 +639,21 @@ def _fatti_avanzamento(rapporto):
     mercato = unisci([
         f"hanno tesserato {conta(rapporto['tesserati_cpu'], 'giocatore', 'giocatori')}" if rapporto["tesserati_cpu"] else "",
         f"ne hanno svincolati {rapporto['svincolati_cpu']} per fare posto" if rapporto["tesserati_cpu"] and rapporto["svincolati_cpu"] else "",
+        f"ne hanno comprati {rapporto['vendite']}" if rapporto["vendite"] else "",
+        f"ne hanno persi {rapporto['partiti']} che non pagavano" if rapporto["partiti"] > rapporto["tuoi_partiti"] else "",
     ])
     nascite = unisci([
         ("è nata una polisportiva del computer" if rapporto["poli_create"] == 1 else f"sono nate {rapporto['poli_create']} polisportive del computer") if rapporto["poli_create"] else "",
         ("una polisportiva del computer ha chiuso" if rapporto["poli_chiuse"] == 1 else f"{rapporto['poli_chiuse']} polisportive del computer hanno chiuso") if rapporto["poli_chiuse"] else "",
     ])
     frasi = []
+    tuoi = unisci([
+        conta(rapporto["tuoi_non_pagati"], "tuo tesserato aspetta lo stipendio", "tuoi tesserati aspettano lo stipendio") if rapporto["tuoi_non_pagati"] else "",
+        conta(rapporto["tuoi_partiti"], "tuo tesserato se n'è andato senza stipendio", "tuoi tesserati se ne sono andati senza stipendio") if rapporto["tuoi_partiti"] else "",
+        conta(rapporto["tuoi_venduti"], "tuo giocatore in vendita è stato comprato", "tuoi giocatori in vendita sono stati comprati") if rapporto["tuoi_venduti"] else "",
+    ])
+    if tuoi:
+        frasi.append(tuoi[0].upper() + tuoi[1:] + ".")
     if persone:
         frasi.append(persone[0].upper() + persone[1:] + ".")
     if mercato:
@@ -545,7 +684,7 @@ def righe_barra(mondo, ultimo, ora):
     if p is None:
         club = "nessuna polisportiva attiva"
     else:
-        codici = f" g{p.gloria} t{len(p.tesserati)}/{p.maxtesserati} m{LIMITE_MOVIMENTI_PER_TICK - p.movimenti_oggi}"
+        codici = f" g{p.gloria} t{len(p.tesserati)}/{p.maxtesserati} m{LIMITE_MOVIMENTI_PER_TICK - p.movimenti_oggi} c{p.cassa // 1000}"
         club = p.nome[:LARGHEZZA_BARRA - len(codici)] + codici
     morti = mondo._ids_morti_processati_sessione
     vivi = [g for gid, g in mondo.giocatori.items() if gid not in morti]

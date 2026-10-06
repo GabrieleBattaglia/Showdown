@@ -108,8 +108,8 @@ def test_polisportive_del_computer(mondo):
     assert nome.startswith("PoliTeam01 ")
     assert mondo.polisportive[nome].is_cpu_controlled
     assert mondo.crea_polisportiva_cpu(INIZIO).startswith("PoliTeam02 ")
-    tesserati, espulsi = mondo._esegui_logica_cpu_polisportive()
-    assert espulsi == 0
+    tesserati, svincolati, comprati = mondo._esegui_logica_cpu_polisportive()
+    assert svincolati == comprati == 0
     assert tesserati == sum(len(p.tesserati) for p in mondo.polisportive.values())
     for p in mondo.polisportive.values():
         for gid in p.tesserati:

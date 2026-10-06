@@ -7,6 +7,7 @@ tappa 5 la sostituisce la finestra, e con lei arriveranno i testi discorsivi sen
 problema P12, e le correzioni delle liste, problema P11. Le regole del gioco non stanno qui ma
 nei moduli del motore, che questa interfaccia chiama: dalla tappa 7 anche fondazione, offerte,
 svincoli e chiusura delle polisportive, con la password facoltativa e i nomi come li si scrive.
+Dalla tappa 8 il tesseramento chiede la cifra dell'ingaggio; il resto dell'economia sta nella finestra.
 """
 
 import datetime
@@ -36,6 +37,7 @@ from costanti import (
     PAGINAZIONE_LISTE,
     VERSIONE,
 )
+from economia import ingaggio_richiesto, stipendio
 from modelli import e_fisica
 from partita import MotorePartita
 from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, formatta_eta_sim
@@ -890,8 +892,13 @@ class InterfacciaTestuale:
             if problema:
                 print(f"\n\t{problema}")
                 return
-            print(f"\tRich:{g.gloria_richiesta}. Off:{poli.gloria}.")
-            accetta, prob = self.mondo.offerta(poli, g)
+            richiesta = ingaggio_richiesto(g, poli)
+            print(f"\tChiede {richiesta} euro d'ingaggio e {stipendio(g)} euro al mese. Cassa: {poli.cassa} euro.")
+            if poli.cassa <= 0:
+                print("\n\tCassa vuota.")
+                return
+            ingaggio = int(dgt("Ingaggio da offrire? ", "i", imin=1, imax=poli.cassa, default=min(richiesta, poli.cassa)))
+            accetta, prob = self.mondo.offerta(poli, g, ingaggio)
             print(f"Tentativo... (Mov.{poli.movimenti_oggi}/{LIMITE_MOVIMENTI_PER_TICK})")
             print(f"\tProb.acc:{prob:.1f}%")
             if accetta:

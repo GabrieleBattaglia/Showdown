@@ -102,15 +102,15 @@ def test_offerte_mosse_e_diari(mondo, monkeypatch):
     primo, secondo = mondo.giocatori[1], mondo.giocatori[2]
     monkeypatch.setattr(modulo_mondo, "caso", lambda p: False)
     accetta, probabilita = mondo.offerta(poli, primo)
-    assert not accetta and 3 <= probabilita <= 97
+    assert not accetta and probabilita == pytest.approx(50.)
     assert poli.movimenti_oggi == 1 and primo.appartenenza == "*"
-    assert primo.diario[0]["testo"] == "Rifiuta l'offerta di Club di prova."
-    assert poli.diario[0]["testo"] == f"{_nome(primo)} rifiuta l'offerta."
+    assert primo.diario[0]["testo"].startswith("Rifiuta l'offerta di Club di prova, con un ingaggio di ")
+    assert poli.diario[0]["testo"].startswith(f"{_nome(primo)} rifiuta l'offerta, con un ingaggio di ")
     monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
     assert mondo.offerta(poli, secondo)[0]
     assert secondo.appartenenza == "Club di prova" and poli.tesserati == [2]
-    assert secondo.diario[0]["testo"].endswith(" con Club di prova.")
-    assert poli.diario[0]["testo"] == f"Tesserato {_nome(secondo)}."
+    assert secondo.diario[0]["testo"].startswith("Tesserat")
+    assert poli.diario[0]["testo"].startswith(f"Tesserato {_nome(secondo)}, con un ingaggio di ")
     assert mondo.problema_offerta(poli, secondo).startswith(f"{_nome(secondo)} è già tesserat")
     mondo.giocatori[3].ritirato = True
     assert mondo.problema_offerta(poli, mondo.giocatori[3]).endswith("dall'attività.")
@@ -174,7 +174,7 @@ def test_il_computer_prova_ogni_candidato_una_volta_al_giorno(mondo, monkeypatch
     _solo_i_primi_liberi(mondo, 3)
     poli = _cpu_con_gloria(mondo)
     monkeypatch.setattr(modulo_mondo, "caso", lambda p: False)
-    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0)
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
     assert poli.movimenti_oggi == 3
     assert poli.tesserati == []
 
@@ -184,7 +184,7 @@ def test_sceglie_prima_chi_ha_piu_gloria(mondo, monkeypatch):
     piccola = _cpu_con_gloria(mondo, 5_000)
     grande = _cpu_con_gloria(mondo, 10_000)
     monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
-    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (1, 0)
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (1, 0, 0)
     assert grande.tesserati == [1] and piccola.tesserati == []
     assert piccola.movimenti_oggi == 0
 
@@ -203,7 +203,7 @@ def _rosa_piena(mondo, valore_tesserati, valore_liberi):
 def test_a_rosa_piena_ogni_tanto_ne_prova_uno_piu_forte(mondo, monkeypatch):
     poli = _rosa_piena(mondo, 100, 100)
     monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
-    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (1, 1)
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (1, 1, 0)
     forte, debole = mondo.giocatori[40], mondo.giocatori[1]
     assert 40 in poli.tesserati and 1 not in poli.tesserati
     assert len(poli.tesserati) == MAX_TESSERATI_POLISPORTIVA
@@ -216,14 +216,14 @@ def test_a_rosa_piena_ogni_tanto_ne_prova_uno_piu_forte(mondo, monkeypatch):
 def test_nessuno_scambio_senza_un_libero_piu_forte(mondo, monkeypatch):
     poli = _rosa_piena(mondo, 200, 100)
     monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
-    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0)
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
     assert poli.movimenti_oggi == 0
 
 
 def test_nessuno_scambio_quando_non_tocca(mondo, monkeypatch):
     poli = _rosa_piena(mondo, 100, 100)
     monkeypatch.setattr(modulo_mondo, "PROB_SCAMBIO_CPU_GIORNALIERA", 0)
-    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0)
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
     assert poli.movimenti_oggi == 0
 
 
@@ -262,7 +262,7 @@ def test_un_salvataggio_del_formato_2_si_aggiorna(mondo, cartella_di_prova):
     assert ricaricato.miapolisportiva_attiva is ricaricato.polisportive["Club di prova"]
     assert ricaricato.polisportive["Club di prova"].tesserati == [4]
     assert archivio.salva(ricaricato)
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 3
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO
 
 
 def test_una_polisportiva_sotto_un_altro_nome_non_si_accetta(mondo):

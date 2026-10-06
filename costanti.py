@@ -165,6 +165,40 @@ PROB_SCAMBIO_CPU_GIORNALIERA = 10.0
 # Quanti caratteri può avere il nome di una polisportiva.
 NOME_POLISPORTIVA_MIN = 5
 NOME_POLISPORTIVA_MAX = 50
+# L'economia, tappa 8, decisione D22. Cifre in euro; quelle di partenza si tarano con la simulazione lunga.
+CAPITALE_INIZIALE = 20_000
+SPONSOR_PER_GLORIA = 35
+STIPENDIO_DI_RIFERIMENTO = 200
+VALORE_DI_RIFERIMENTO = 140
+SCALA_STIPENDIO = 40
+STIPENDIO_MINIMO = 50
+AUMENTO_STIPENDIO_PER_ESPERIENZA = 0.03
+MESI_DI_INGAGGIO = 2
+REPUTAZIONE_MINIMA = 0.5
+REPUTAZIONE_MASSIMA = 2.0
+MESI_DI_VALORE = 6
+# Fedeltà ed esperienza crescono ogni mese passato in una polisportiva; la fedeltà va da 0 a 100.
+FEDELTA_PER_MESE = 2.0
+FEDELTA_MASSIMA = 100.0
+ESPERIENZA_PER_MESE = 0.1
+ESPERIENZA_MASSIMA = 20.0
+# Ogni 25 punti di fedeltà, un mese di pazienza in più oltre al primo.
+FEDELTA_PER_MESE_DI_PAZIENZA = 25.0
+# Un giocatore su cento nasce bandiera, e lo diventa davvero quando la fedeltà al club arriva qui.
+PROBABILITA_BANDIERA_CREAZIONE = 1.0
+FEDELTA_BANDIERA = 80.0
+# Quanti bilanci mensili tiene una polisportiva.
+BILANCI_CONSERVATI = 12
+# Il computer offre il 15 per cento in più dell'ingaggio chiesto, tiene in cassa un mese di
+# stipendi, e si permette un monte stipendi pari allo sponsor più un ventiquattresimo della cassa.
+RIALZO_CPU = 1.15
+MESI_DI_RISERVA_CPU = 1
+PARTI_DI_CASSA_PER_STIPENDI = 24
+# Quanti candidati troppo cari il computer scorre in un giorno, prima di lasciar perdere.
+SCARTI_MASSIMI_CPU = 30
+# Un'offerta d'acquisto per un tesserato del computer, decisione D23: la polisportiva vuole il suo
+# valore di mercato, e fino a metà in più per il più forte della rosa.
+IMPORTANZA_MASSIMA = 0.5
 # La data dell'ultimo movimento di una polisportiva che non ne ha mai fatti.
 DATA_NESSUN_MOVIMENTO = datetime.datetime(1900, 1, 1)  # noqa: DTZ001 - data segnaposto, fuori da ogni fuso
 NUM_GIOCATORI_INIZIALI = 50

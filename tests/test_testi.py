@@ -6,6 +6,7 @@ import re
 
 import pytest
 
+import mercato
 import testi
 from archivio import CARICATO, NATO
 from modelli import Polisportiva
@@ -106,7 +107,7 @@ def test_barra_di_stato(mondo):
     assert len(righe) == 4
     assert all(len(r) <= 40 for r in righe)
     assert righe[0] == "s06/10/2026 18:00 a5h00m"
-    assert righe[1] == "Club Di Prova g100 t3/15 m5"
+    assert righe[1] == "Club Di Prova g100 t3/15 m5 c20"
     assert re.fullmatch(r"l\d+ t3 f\d+ n40 p2", righe[2])
     mondo.miapolisportiva_attiva.nome = "Un nome di polisportiva lunghissimo, ben oltre i quaranta caratteri"
     assert len(testi.righe_barra(mondo, "x" * 60, ADESSO)[1]) == 40
@@ -142,17 +143,21 @@ def test_guida_novita_e_informazioni():
 
 def test_testi_del_mercato_e_delle_polisportive(mondo):
     p = mondo.miapolisportiva_attiva
+    cpu = next(q for q in mondo.polisportive.values() if q.is_cpu_controlled)
     g = mondo.giocatori[1]
-    riga = testi.riga_mercato(g, 45.4)
-    assert riga.startswith(f"{g.nome} {g.cognome}, ") and ", accetta al 45%" in riga and riga.endswith(", ID 1")
-    assert testi.domanda_offerta(g, p, 45.4, mondo).endswith("Accetta al 45%. Userai una delle 5 mosse che ti restano oggi.")
+    libero = mercato.Candidato(g, mercato.LIBERO, 450, 210)
+    riga = testi.riga_mercato(libero)
+    assert riga.startswith(f"{g.nome} {g.cognome}, ") and ", stipendio 210 euro, chiede 450 euro d'ingaggio" in riga and riga.endswith(", ID 1")
+    in_vendita = mercato.Candidato(mondo.giocatori[3], mercato.IN_VENDITA, 1200, 300, cpu)
+    assert f", in vendita da {cpu.nome} a 1.200 euro" in testi.riga_mercato(in_vendita)
+    assert testi.domanda_ingaggio(libero, 450, 50.0, p, mondo).endswith("Accetta al 50%, e poi prende 210 euro al mese. Userai una delle 5 mosse che ti restano oggi.")
     p.movimenti_oggi = 4
-    assert testi.domanda_offerta(g, p, 45.4, mondo).endswith("Userai l'ultima mossa che ti resta oggi.")
-    assert testi.esito_offerta(g, p, False, 12.0) == f"{g.nome} {g.cognome} ha rifiutato l'offerta di Club Di Prova: accettava al 12%."
-    riepilogo = testi.riepilogo_mercato(p, mondo, [(g, False, 12.0), (mondo.giocatori[3], True, 80.0)])
+    assert testi.domanda_acquisto(in_vendita, p, mondo).endswith("Userai l'ultima mossa che ti resta oggi.")
+    assert testi.esito_ingaggio(g, p, False, 450, 12.0) == f"{g.nome} {g.cognome} ha rifiutato l'ingaggio di 450 euro: accettava al 12%."
+    riepilogo = testi.riepilogo_mercato(p, mondo, [("Primo esito.", False), ("Secondo esito.", True)])
     _accessibile(riepilogo)
-    assert riepilogo.startswith("Mercato di Club Di Prova: 2 offerte, 1 accettata.")
-    assert riepilogo.endswith("Club Di Prova: gloria 100, tesserati 3 su 15, mosse rimaste 1 su 5.")
+    assert riepilogo.startswith("Mercato di Club Di Prova: 2 offerte, 1 riuscita.\nPrimo esito.\nSecondo esito.")
+    assert riepilogo.endswith("Club Di Prova: cassa 20.000 euro, gloria 100, tesserati 3 su 15, mosse rimaste 1 su 5.")
     assert testi.riepilogo_mercato(p, mondo, []).startswith("Mercato di Club Di Prova: nessuna offerta.")
     assert testi.domanda_chiusura(p) == "Chiudere per sempre Club Di Prova? I suoi 3 tesserati torneranno liberi, e non si torna indietro."
     assert testi.chiusa("Club Di Prova", 1).startswith("Club Di Prova ha chiuso per sempre: 1 giocatore torna libero.")

@@ -19,6 +19,11 @@ e a rosa piena ogni tanto provano un libero più forte, che se accetta prende il
 tesserato che vale meno. La vetrina dei liberi trova in fretta il primo alla portata di ciascuna,
 così le mosse reggono anche un mondo di decine di migliaia di giocatori. Qui stanno anche le
 operazioni della polisportiva dell'utente: fondazione, offerta, svincolo e chiusura.
+Dalla tappa 8 il mondo fa i conti, secondo la decisione D22: il primo di ogni mese ogni
+polisportiva incassa lo sponsor e paga gli stipendi; chi non viene pagato aspetta, perde
+pazienza e alla fine se ne va, salvo le bandiere; le offerte sono premi d'ingaggio; i tesserati
+si mettono in vendita e si comprano. Il computer tessera e compra solo chi può pagare, a rosa
+piena scambia solo se ci sta nei conti, e quando non paga vende il suo giocatore più caro.
 Il mondo non stampa: consegna i suoi messaggi alla funzione notifica, che gli passa chi lo usa.
 """
 
@@ -30,25 +35,49 @@ import percorsi
 from allenamento import esegui_auto_allenamento
 from costanti import (
     ANNO_SIMULAZIONE_GIORNI,
+    BILANCI_CONSERVATI,
     CREA_NUOVI_PER_TICK_RANGE,
+    ESPERIENZA_MASSIMA,
+    ESPERIENZA_PER_MESE,
     ETA_MINIMA_CHIUSURA_CPU_ANNI,
     FATTORE_PROB_GLORIA,
     FATTORE_PROB_TESSERATI,
+    FEDELTA_BANDIERA,
+    FEDELTA_MASSIMA,
+    FEDELTA_PER_MESE,
     GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET,
+    IMPORTANZA_MASSIMA,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_PROB_CHIUSURA_GIORNALIERA,
+    MESI_DI_INGAGGIO,
+    MESI_DI_RISERVA_CPU,
     NOME_FILE_LOG_USCITE,
     NOME_POLISPORTIVA_MAX,
     NOME_POLISPORTIVA_MIN,
+    PARTI_DI_CASSA_PER_STIPENDI,
     PROB_CHIUSURA_BASE_GIORNALIERA,
     PROB_CREAZIONE_POLI_CPU_PER_TICK,
     PROB_SCAMBIO_CPU_GIORNALIERA,
     PROB_USCITA_PREMATURA_GIORNALIERA,
     PROBABILITA_IPOVEDENTE_CREAZIONE,
+    REPUTAZIONE_MINIMA,
+    RIALZO_CPU,
+    SCARTI_MASSIMI_CPU,
     SOGLIA_GLORIA_BASSA_CHIUSURA,
     SOGLIA_MINIMA_TESSERATI_CHIUSURA,
 )
-from modelli import Giocatore, Polisportiva, normalizza_nome, probabilita_accettazione
+from economia import (
+    arrotonda,
+    bandiera_attiva,
+    ingaggio_richiesto,
+    mesi_di_pazienza,
+    pazienza_per_euro,
+    scritta_in_euro,
+    sponsor_mensile,
+    stipendio,
+    valore_di_mercato,
+)
+from modelli import Giocatore, Polisportiva, conti_vuoti, normalizza_nome, probabilita_accettazione
 from nomi import genera_nome_casuale
 from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale
 
@@ -56,7 +85,8 @@ ORE_PER_TICK = 8
 DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
 # Le voci del riepilogo di un avanzamento, oltre all'ora in cui è avvenuto.
 CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
-                   "tesserati_cpu", "svincolati_cpu", "poli_chiuse", "poli_create")
+                   "tesserati_cpu", "svincolati_cpu", "poli_chiuse", "poli_create", "partiti", "vendite",
+                   "tuoi_non_pagati", "tuoi_partiti", "tuoi_venduti")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
@@ -187,8 +217,10 @@ class Mondo:
     def _senza_mosse(self, poli):
         return f"Per oggi {poli.nome} ha finito le mosse di mercato: ne ha {LIMITE_MOVIMENTI_PER_TICK} al giorno."
 
-    def problema_offerta(self, poli, g):
-        """Perché la polisportiva non può fare un'offerta al giocatore, oppure None se può."""
+    def problema_offerta(self, poli, g, ingaggio=None):
+        """Perché la polisportiva non può offrire al giocatore l'ingaggio dato, oppure None se può."""
+        if ingaggio is not None and ingaggio > poli.cassa:
+            return f"La cassa di {poli.nome} ha {scritta_in_euro(poli.cassa)}: non bastano per offrirne {scritta_in_euro(ingaggio)}."
         if self.mosse_rimaste(poli) <= 0:
             return self._senza_mosse(poli)
         if len(poli.tesserati) >= poli.maxtesserati:
@@ -201,35 +233,204 @@ class Mondo:
             return f"{nome_completo(g)} è già {accorda(g.sesso, 'tesserato')} con {g.appartenenza}."
         return None
 
-    def offerta(self, poli, g):
+    def offerta(self, poli, g, ingaggio=None):
         """
-        Un'offerta di tesseramento dell'utente: usa una mossa, e il giocatore accetta con la
-        probabilità data dalla gloria che chiede e da quella della polisportiva. Restituisce
+        Un'offerta di tesseramento dell'utente, con un premio d'ingaggio, per default quello che il
+        giocatore chiede: usa una mossa, e il giocatore accetta con una probabilità che cresce con
+        l'offerta rispetto alla richiesta. Se accetta, l'ingaggio esce dalla cassa. Restituisce
         l'esito e la probabilità; ValueError se l'offerta non si può fare.
         """
-        problema = self.problema_offerta(poli, g)
+        richiesta = ingaggio_richiesto(g, poli)
+        ingaggio = richiesta if ingaggio is None else int(ingaggio)
+        problema = self.problema_offerta(poli, g, ingaggio)
         if problema:
             raise ValueError(problema)
         self._usa_mossa(poli)
-        probabilita = probabilita_accettazione(poli.gloria, g.gloria_richiesta)
+        probabilita = probabilita_accettazione(ingaggio, richiesta)
         accetta = caso(probabilita)
         if accetta:
-            self._tessera(poli, g)
+            self._paga_ingaggio(poli, ingaggio)
+            self._tessera(poli, g, ingaggio=ingaggio)
         else:
-            self.annota(g, f"Rifiuta l'offerta di {poli.nome}.")
-            self.annota(poli, f"{nome_completo(g)} rifiuta l'offerta.")
+            self.annota(g, f"Rifiuta l'offerta di {poli.nome}, con un ingaggio di {scritta_in_euro(ingaggio)}.")
+            self.annota(poli, f"{nome_completo(g)} rifiuta l'offerta, con un ingaggio di {scritta_in_euro(ingaggio)}.")
         return accetta, probabilita
 
-    def _tessera(self, poli, g, data=None):
+    @staticmethod
+    def _paga_ingaggio(poli, ingaggio):
+        poli.cassa -= ingaggio
+        poli.conti_del_mese["ingaggi"] += ingaggio
+
+    def _entra(self, poli, g):
+        """Il giocatore entra nella polisportiva: la fedeltà riparte da zero, la pazienza è piena, nessun arretrato."""
         g.appartenenza = poli.nome
         poli.aggiungi_tesserato(g.id, g.indice_collettivo_valore)
-        self.annota(g, f"{accorda(g.sesso, 'Tesserato')} con {poli.nome}.", data)
-        self.annota(poli, f"Tesserato {nome_completo(g)}.", data)
+        g.fedelta = 0.
+        g.pazienza = 100.
+        g.arretrati = 0
+
+    def _tessera(self, poli, g, data=None, ingaggio=None):
+        self._entra(poli, g)
+        con_ingaggio = f", con un ingaggio di {scritta_in_euro(ingaggio)}" if ingaggio else ""
+        self.annota(g, f"{accorda(g.sesso, 'Tesserato')} con {poli.nome}{con_ingaggio}.", data)
+        self.annota(poli, f"Tesserato {nome_completo(g)}{con_ingaggio}.", data)
 
     def _lascia(self, poli, g):
-        """Il giocatore esce dall'elenco dei tesserati e torna libero, senza voci di diario: le scrive chi chiama."""
+        """
+        Il giocatore esce dall'elenco dei tesserati e torna libero, senza voci di diario: le
+        scrive chi chiama. Esce anche dalla vendita, e i suoi arretrati non li aspetta più.
+        """
         poli.rimuovi_tesserato(g.id, g.indice_collettivo_valore)
+        poli.in_vendita.pop(g.id, None)
         g.appartenenza = "*"
+        g.fedelta = 0.
+        g.pazienza = 100.
+        g.arretrati = 0
+
+    # Arretrati, vendite e acquisti.
+
+    def monte_stipendi(self, poli):
+        """Quanto la polisportiva paga ogni mese di stipendi, a chi ha oggi."""
+        return sum(stipendio(self.giocatori[gid]) for gid in poli.tesserati if gid in self.giocatori and gid not in self._ids_morti_processati_sessione)
+
+    def paga(self, poli, g, importo):
+        """
+        L'utente paga al tesserato una parte dei suoi arretrati, che escono dalla cassa: ricevere
+        soldi gli rende pazienza, un mese per ogni stipendio. ValueError se non si può.
+        """
+        importo = int(importo)
+        if g.id not in poli.tesserati:
+            raise ValueError(f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}.")
+        if not 0 < importo <= g.arretrati:
+            raise ValueError(f"{nome_completo(g)} aspetta {scritta_in_euro(g.arretrati)}: si paga da 1 euro fino a quella cifra.")
+        if importo > poli.cassa:
+            raise ValueError(f"La cassa di {poli.nome} ha {scritta_in_euro(poli.cassa)}.")
+        self._paga_arretrati(poli, g, importo)
+        self.annota(g, f"Riceve da {poli.nome} {scritta_in_euro(importo)} di stipendi arretrati.")
+
+    @staticmethod
+    def _paga_arretrati(poli, g, importo):
+        poli.cassa -= importo
+        poli.conti_del_mese["arretrati"] += importo
+        g.pazienza = min(100., g.pazienza + importo * pazienza_per_euro(g))
+        g.arretrati -= importo
+
+    def metti_in_vendita(self, poli, g, prezzo):
+        """Mette in vendita un tesserato al prezzo dato, o glielo cambia; ValueError se non si può."""
+        prezzo = int(prezzo)
+        if g.id not in poli.tesserati:
+            raise ValueError(f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}.")
+        if prezzo <= 0:
+            raise ValueError("Il prezzo deve essere di almeno 1 euro.")
+        poli.in_vendita[g.id] = prezzo
+        self.annota(poli, f"Mette in vendita {nome_completo(g)} a {scritta_in_euro(prezzo)}.")
+        self.annota(g, f"{accorda(g.sesso, 'Messo')} in vendita da {poli.nome} a {scritta_in_euro(prezzo)}.")
+
+    def togli_dalla_vendita(self, poli, g):
+        if poli.in_vendita.pop(g.id, None) is None:
+            raise ValueError(f"{nome_completo(g)} non è in vendita.")
+        self.annota(poli, f"Toglie {nome_completo(g)} dalla vendita.")
+
+    def venditore(self, g):
+        """La polisportiva che ha in vendita il giocatore, oppure None."""
+        poli = self.polisportive.get(g.appartenenza)
+        return poli if poli is not None and g.id in poli.in_vendita else None
+
+    def problema_acquisto(self, poli, g):
+        """Perché la polisportiva non può comprare il giocatore, oppure None se può."""
+        venditore = self.venditore(g)
+        if venditore is None:
+            return f"{nome_completo(g)} non è in vendita."
+        if venditore is poli:
+            return f"{nome_completo(g)} è già di {poli.nome}."
+        if self.mosse_rimaste(poli) <= 0:
+            return self._senza_mosse(poli)
+        if len(poli.tesserati) >= poli.maxtesserati:
+            return f"{poli.nome} ha già {poli.maxtesserati} tesserati, il massimo."
+        prezzo = venditore.in_vendita[g.id]
+        if prezzo > poli.cassa:
+            return f"Costa {scritta_in_euro(prezzo)}, e la cassa di {poli.nome} ne ha {scritta_in_euro(poli.cassa)}."
+        return None
+
+    def acquista(self, poli, g):
+        """L'utente compra un giocatore in vendita al prezzo chiesto: usa una mossa. Restituisce il prezzo; ValueError se non si può."""
+        problema = self.problema_acquisto(poli, g)
+        if problema:
+            raise ValueError(problema)
+        venditore = self.venditore(g)
+        prezzo = venditore.in_vendita[g.id]
+        self._usa_mossa(poli)
+        self._vendi(venditore, poli, g, prezzo)
+        return prezzo
+
+    def soglia_di_vendita(self, poli, g):
+        """
+        Quanto vuole una polisportiva del computer per lasciar andare un suo tesserato che non ha
+        messo in vendita, decisione D23: il valore di mercato, che sale fino a metà in più per il
+        più forte della rosa. La cifra resta nascosta all'utente, che la deve indovinare.
+        """
+        rosa = self._rosa(poli)
+        if len(rosa) <= 1:
+            posizione = 1.
+        else:
+            posizione = sum(1 for altro in rosa if altro.indice_collettivo_valore < g.indice_collettivo_valore) / (len(rosa) - 1)
+        return arrotonda(valore_di_mercato(g) * (1 + IMPORTANZA_MASSIMA * posizione), 100)
+
+    def posizione_in_rosa(self, g):
+        """Il posto del giocatore nella sua rosa, dal più forte, e quanti sono: 1 e 15 per il più forte di quindici."""
+        rosa = self._rosa(self.polisportive[g.appartenenza])
+        return 1 + sum(1 for altro in rosa if altro.indice_collettivo_valore > g.indice_collettivo_valore), len(rosa)
+
+    def problema_offerta_d_acquisto(self, compratore, g, importo=None):
+        """Perché la polisportiva non può offrire la cifra per il tesserato del computer, oppure None se può."""
+        venditore = self.polisportive.get(g.appartenenza)
+        if venditore is None or not venditore.is_cpu_controlled:
+            return f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con una polisportiva del computer."
+        if self.mosse_rimaste(compratore) <= 0:
+            return self._senza_mosse(compratore)
+        if len(compratore.tesserati) >= compratore.maxtesserati:
+            return f"{compratore.nome} ha già {compratore.maxtesserati} tesserati, il massimo."
+        if importo is not None and importo <= 0:
+            return "L'offerta deve essere di almeno 1 euro."
+        if importo is not None and importo > compratore.cassa:
+            return f"La cassa di {compratore.nome} ha {scritta_in_euro(compratore.cassa)}: non bastano per offrirne {scritta_in_euro(importo)}."
+        return None
+
+    def offerta_d_acquisto(self, compratore, g, importo):
+        """
+        L'utente offre una cifra alla polisportiva del computer per un suo tesserato: usa una mossa,
+        e se la cifra arriva alla soglia di vendita il giocatore passa al compratore. Restituisce
+        vero se l'offerta è stata accettata; ValueError se non si può fare.
+        """
+        importo = int(importo)
+        problema = self.problema_offerta_d_acquisto(compratore, g, importo)
+        if problema:
+            raise ValueError(problema)
+        venditore = self.polisportive[g.appartenenza]
+        self._usa_mossa(compratore)
+        if importo < self.soglia_di_vendita(venditore, g):
+            self.annota(compratore, f"Offre {scritta_in_euro(importo)} a {venditore.nome} per {nome_completo(g)}: offerta rifiutata.")
+            return False
+        self._vendi(venditore, compratore, g, importo)
+        return True
+
+    def _vendi(self, venditore, compratore, g, prezzo, data=None):
+        """
+        Il passaggio di un giocatore da una polisportiva all'altra: il compratore paga, il venditore
+        incassa e dal prezzo salda gli arretrati che il giocatore aspettava.
+        """
+        saldati = min(g.arretrati, prezzo)
+        compratore.cassa -= prezzo
+        compratore.conti_del_mese["acquisti"] += prezzo
+        venditore.cassa += prezzo - saldati
+        venditore.conti_del_mese["vendite"] += prezzo
+        venditore.conti_del_mese["arretrati"] += saldati
+        self._lascia(venditore, g)
+        self._entra(compratore, g)
+        cifra = scritta_in_euro(prezzo)
+        self.annota(g, f"{accorda(g.sesso, 'Venduto')} da {venditore.nome} a {compratore.nome} per {cifra}.", data)
+        self.annota(venditore, f"Venduto {nome_completo(g)} a {compratore.nome} per {cifra}.", data)
+        self.annota(compratore, f"Comprato {nome_completo(g)} da {venditore.nome} per {cifra}.", data)
 
     def svincola(self, poli, g):
         """L'utente svincola un suo tesserato, che torna libero: usa una mossa; ValueError se non si può."""
@@ -248,7 +449,7 @@ class Mondo:
         for gid in list(poli.tesserati):
             g = self.giocatori.get(gid)
             if g is not None:
-                g.appartenenza = "*"
+                self._lascia(poli, g)
                 self.annota(g, f"Torna {accorda(g.sesso, 'libero')}: {poli.nome} ha chiuso.")
                 liberati += 1
         poli.tesserati.clear()
@@ -333,10 +534,11 @@ class Mondo:
         for gid in list(poli.tesserati):
             if gid in self.giocatori:
                 g = self.giocatori[gid]
-                g.appartenenza = "*"
+                self._lascia(poli, g)
                 self.annota(g, f"Torna {accorda(g.sesso, 'libero')}: {poli.nome} ha chiuso.", dt_chiusura)
                 n_lib += 1
-            poli.tesserati.remove(gid)
+            if gid in poli.tesserati:
+                poli.tesserati.remove(gid)
         del self.polisportive[nome_p]
         self.notifica(f" --> Chiusa. {n_lib} liberati.")
         return True
@@ -365,58 +567,210 @@ class Mondo:
 
     def _esegui_logica_cpu_polisportive(self, data=None):
         """
-        Le mosse del giorno delle polisportive del computer, secondo la decisione D19. Scelgono per
-        prime quelle con più gloria. Ciascuna prova a tesserare il libero più forte alla sua
-        portata, cioè che non chiede più gloria di quella che ha, e ogni candidato lo prova una
-        volta sola al giorno; se rifiuta passa al successivo, finché ha mosse e posti. A rosa
-        piena, ogni tanto prova un libero più forte del tesserato che vale meno: se accetta, gli
-        prende il posto e l'altro torna libero. Restituisce quanti ne hanno tesserati e svincolati.
+        Le mosse del giorno delle polisportive del computer, secondo le decisioni D19 e D22.
+        Scelgono per prime quelle con più gloria. Ciascuna prova a tesserare il libero più forte
+        che si può permettere: lo stipendio deve stare nei suoi conti, e l'ingaggio, che offre un
+        poco sopra la richiesta, nella cassa, tenendo da parte un mese di stipendi; ogni candidato
+        lo prova una volta sola al giorno. A rosa piena ogni tanto prova un libero più forte del
+        tesserato che vale meno, che se accetta gli prende il posto. Poi ognuna può comprare uno dei
+        giocatori in vendita, se le conviene. Restituisce quanti ne hanno tesserati, svincolati e comprati.
         """
         liberi = list(self.trova_giocatori_liberi_ordinati().values())
-        richieste = [g.gloria_richiesta for g in liberi]
-        vetrina = _Vetrina(richieste)
-        tesserati = svincolati = 0
-        cpu = [p for p in self.polisportive.values() if p.is_cpu_controlled]
-        for poli in sorted(cpu, key=lambda p: p.gloria, reverse=True):
-            # Il posto da cui riprende la ricerca: i liberi prima di lui sono già stati provati o non sono alla portata.
+        stipendi = [stipendio(g) for g in liberi]
+        vetrina = _Vetrina(stipendi)
+        tesserati = svincolati = comprati = 0
+        cpu = sorted((p for p in self.polisportive.values() if p.is_cpu_controlled), key=lambda p: p.gloria, reverse=True)
+        for poli in cpu:
+            monte = self.monte_stipendi(poli)
+            # Il posto da cui riprende la ricerca: i liberi prima di lui sono già stati provati o sono troppo cari.
             prossimo = 0
-            while self.mosse_rimaste(poli) > 0 and len(poli.tesserati) < poli.maxtesserati:
-                posto = vetrina.primo(poli.gloria, prossimo)
+            scartati = 0
+            while self.mosse_rimaste(poli) > 0 and len(poli.tesserati) < poli.maxtesserati and scartati < SCARTI_MASSIMI_CPU:
+                spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU
+                posto = vetrina.primo(self._stipendio_massimo(poli, monte, spendibile), prossimo)
                 if posto is None:
                     break
                 prossimo = posto + 1
+                g = liberi[posto]
+                richiesta = ingaggio_richiesto(g, poli)
+                offerta = arrotonda(richiesta * RIALZO_CPU)
+                if offerta > spendibile:
+                    scartati += 1
+                    continue
                 self._usa_mossa(poli)
-                if caso(probabilita_accettazione(poli.gloria, richieste[posto])):
-                    self._tessera(poli, liberi[posto], data)
+                if caso(probabilita_accettazione(offerta, richiesta)):
+                    self._paga_ingaggio(poli, offerta)
+                    self._tessera(poli, g, data, offerta)
                     vetrina.togli(posto)
+                    monte += stipendi[posto]
                     tesserati += 1
             if self.mosse_rimaste(poli) > 0 and len(poli.tesserati) >= poli.maxtesserati and caso(PROB_SCAMBIO_CPU_GIORNALIERA):
-                if self._scambio(poli, liberi, richieste, vetrina, prossimo, data):
+                if self._scambio(poli, liberi, vetrina, prossimo, monte, data):
                     tesserati += 1
                     svincolati += 1
-        return tesserati, svincolati
+        for poli in cpu:
+            if self._compra_dal_mercato(poli, data):
+                comprati += 1
+        return tesserati, svincolati, comprati
 
-    def _scambio(self, poli, liberi, richieste, vetrina, prossimo, data):
-        """Una polisportiva a rosa piena prova il libero più forte alla sua portata; vero se l'ha preso al posto del tesserato che vale meno."""
-        rosa = [self.giocatori[gid] for gid in poli.tesserati if gid in self.giocatori and gid not in self._ids_morti_processati_sessione]
-        posto = vetrina.primo(poli.gloria, prossimo)
-        if not rosa or posto is None:
+    def _stipendio_massimo(self, poli, monte, spendibile):
+        """
+        Lo stipendio più alto che una polisportiva del computer può aggiungere: deve stare nello
+        sponsor più una parte della cassa, e l'ingaggio più basso possibile deve stare nella cassa.
+        """
+        nei_conti = sponsor_mensile(poli) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
+        nella_cassa = spendibile / (MESI_DI_INGAGGIO * REPUTAZIONE_MINIMA * RIALZO_CPU)
+        return min(nei_conti, nella_cassa)
+
+    def _rosa(self, poli):
+        return [self.giocatori[gid] for gid in poli.tesserati if gid in self.giocatori and gid not in self._ids_morti_processati_sessione]
+
+    def _scambio(self, poli, liberi, vetrina, prossimo, monte, data):
+        """Una polisportiva a rosa piena prova il libero più forte che si può permettere; vero se l'ha preso al posto del tesserato che vale meno."""
+        rosa = self._rosa(poli)
+        if not rosa:
             return False
         debole = min(rosa, key=lambda g: g.indice_collettivo_valore)
+        spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU
+        posto = vetrina.primo(self._stipendio_massimo(poli, monte - stipendio(debole), spendibile), prossimo)
+        if posto is None:
+            return False
         nuovo = liberi[posto]
         if nuovo.indice_collettivo_valore <= debole.indice_collettivo_valore:
             return False
+        richiesta = ingaggio_richiesto(nuovo, poli)
+        offerta = arrotonda(richiesta * RIALZO_CPU)
+        if offerta > spendibile:
+            return False
         self._usa_mossa(poli)
-        if not caso(probabilita_accettazione(poli.gloria, richieste[posto])):
+        if not caso(probabilita_accettazione(offerta, richiesta)):
             return False
         self._lascia(poli, debole)
-        nuovo.appartenenza = poli.nome
-        poli.aggiungi_tesserato(nuovo.id, nuovo.indice_collettivo_valore)
+        self._paga_ingaggio(poli, offerta)
+        self._entra(poli, nuovo)
         vetrina.togli(posto)
-        self.annota(nuovo, f"{accorda(nuovo.sesso, 'Tesserato')} con {poli.nome}.", data)
+        self.annota(nuovo, f"{accorda(nuovo.sesso, 'Tesserato')} con {poli.nome}, con un ingaggio di {scritta_in_euro(offerta)}.", data)
         self.annota(debole, f"{accorda(debole.sesso, 'Svincolato')} da {poli.nome}, che al suo posto ha tesserato {nome_completo(nuovo)}.", data)
         self.annota(poli, f"Tesserato {nome_completo(nuovo)} al posto di {nome_completo(debole)}, che torna {accorda(debole.sesso, 'libero')}.", data)
         return True
+
+    def _compra_dal_mercato(self, poli, data):
+        """
+        Una polisportiva del computer compra il più forte dei giocatori in vendita, se il prezzo non
+        supera di molto il suo valore di mercato e se ci sta nei conti; a rosa piena solo se è più
+        forte del tesserato che vale meno, che lascia libero. Al massimo un acquisto al giorno.
+        """
+        if self.mosse_rimaste(poli) <= 0:
+            return False
+        rosa = self._rosa(poli)
+        piena = len(poli.tesserati) >= poli.maxtesserati
+        if piena and not rosa:
+            return False
+        debole = min(rosa, key=lambda g: g.indice_collettivo_valore) if piena else None
+        monte = self.monte_stipendi(poli) - (stipendio(debole) if debole else 0)
+        spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU
+        massimo = sponsor_mensile(poli) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
+        scelta = None
+        for venditore in self.polisportive.values():
+            if venditore is poli:
+                continue
+            for gid, prezzo in venditore.in_vendita.items():
+                g = self.giocatori.get(gid)
+                if g is None or prezzo > spendibile or prezzo > valore_di_mercato(g) * RIALZO_CPU or stipendio(g) > massimo:
+                    continue
+                if debole is not None and g.indice_collettivo_valore <= debole.indice_collettivo_valore:
+                    continue
+                if scelta is None or g.indice_collettivo_valore > scelta[0].indice_collettivo_valore:
+                    scelta = (g, venditore, prezzo)
+        if scelta is None:
+            return False
+        g, venditore, prezzo = scelta
+        self._usa_mossa(poli)
+        if debole is not None:
+            self._lascia(poli, debole)
+            self.annota(debole, f"{accorda(debole.sesso, 'Svincolato')} da {poli.nome}, che al suo posto ha comprato {nome_completo(g)}.", data)
+        self._vendi(venditore, poli, g, prezzo, data)
+        return True
+
+    # I conti del mese.
+
+    def _primo_del_mese(self, data, rapporto):
+        """
+        I conti del primo del mese, decisione D22. Chi è in una polisportiva guadagna fedeltà ed
+        esperienza. Ogni polisportiva incassa lo sponsor e paga gli stipendi: se la cassa basta,
+        paga tutto, arretrati compresi; altrimenti gli stipendi del mese diventano arretrati, e chi
+        li aspetta perde un mese di pazienza. Per l'utente, che decide lui a chi dare i soldi che
+        ci sono, il mondo non paga nessuno; il computer paga per primi i meno pazienti, e mette in
+        vendita il suo giocatore più caro. Chi ha finito la pazienza se ne va, salvo le bandiere.
+        """
+        for poli in list(self.polisportive.values()):
+            rosa = self._rosa(poli)
+            self._fedelta_ed_esperienza(poli, rosa, data)
+            sponsor = sponsor_mensile(poli)
+            poli.cassa += sponsor
+            poli.conti_del_mese["sponsor"] += sponsor
+            dovuti = {g.id: stipendio(g) for g in rosa}
+            if sum(dovuti.values()) + sum(g.arretrati for g in rosa) <= poli.cassa:
+                for g in rosa:
+                    if g.arretrati:
+                        self._paga_arretrati(poli, g, g.arretrati)
+                    poli.cassa -= dovuti[g.id]
+                    poli.conti_del_mese["stipendi"] += dovuti[g.id]
+            else:
+                for g in rosa:
+                    g.arretrati += dovuti[g.id]
+                    if not bandiera_attiva(g):
+                        g.pazienza = max(0., g.pazienza - 100 / mesi_di_pazienza(g))
+                if poli.is_cpu_controlled:
+                    self._paga_i_meno_pazienti(poli, rosa)
+                else:
+                    rapporto["tuoi_non_pagati"] += sum(1 for g in rosa if g.arretrati)
+                for g in rosa:
+                    if g.arretrati and g.pazienza <= 0 and not bandiera_attiva(g):
+                        self._se_ne_va(poli, g, data, rapporto)
+                if poli.is_cpu_controlled:
+                    self._vende_il_piu_caro(poli, data)
+            poli.bilanci.insert(0, {"data": data, "cassa": poli.cassa, **poli.conti_del_mese})
+            del poli.bilanci[BILANCI_CONSERVATI:]
+            poli.conti_del_mese = conti_vuoti()
+
+    def _fedelta_ed_esperienza(self, poli, rosa, data):
+        """Un mese in più nel club: fedeltà ed esperienza crescono, e una bandiera si accende quando la fedeltà arriva alla soglia."""
+        for g in rosa:
+            prima = g.fedelta
+            g.fedelta = min(FEDELTA_MASSIMA, g.fedelta + FEDELTA_PER_MESE)
+            g.esperienza = min(ESPERIENZA_MASSIMA, g.esperienza + ESPERIENZA_PER_MESE)
+            if g.bandiera and prima < FEDELTA_BANDIERA <= g.fedelta:
+                self.annota(g, f"Diventa una bandiera di {poli.nome}: giocherà per il club anche senza stipendio.", data)
+                self.annota(poli, f"{nome_completo(g)} diventa una bandiera del club.", data)
+
+    def _paga_i_meno_pazienti(self, poli, rosa):
+        """Il computer, quando la cassa non basta, paga gli arretrati partendo da chi ha meno pazienza."""
+        for g in sorted(rosa, key=lambda g: (bandiera_attiva(g), g.pazienza)):
+            importo = min(g.arretrati, poli.cassa)
+            if importo > 0:
+                self._paga_arretrati(poli, g, importo)
+
+    def _se_ne_va(self, poli, g, data, rapporto):
+        """Un tesserato che ha finito la pazienza lascia la polisportiva, e i suoi arretrati con lui."""
+        aspettava = scritta_in_euro(g.arretrati)
+        self._lascia(poli, g)
+        self.annota(g, f"Lascia {poli.nome}: aspettava {aspettava} di stipendi.", data)
+        self.annota(poli, f"{nome_completo(g)} se ne va: aspettava {aspettava} di stipendi.", data)
+        rapporto["partiti"] += 1
+        if not poli.is_cpu_controlled:
+            rapporto["tuoi_partiti"] += 1
+
+    def _vende_il_piu_caro(self, poli, data):
+        """Una polisportiva del computer che non riesce a pagare mette in vendita il suo tesserato più caro, al valore di mercato."""
+        in_vendita = [g for g in self._rosa(poli) if g.id not in poli.in_vendita]
+        if not in_vendita or not any(g.arretrati for g in self._rosa(poli)):
+            return
+        caro = max(in_vendita, key=stipendio)
+        prezzo = valore_di_mercato(caro)
+        poli.in_vendita[caro.id] = prezzo
+        self.annota(poli, f"Mette in vendita {nome_completo(caro)} a {scritta_in_euro(prezzo)}.", data)
+        self.annota(caro, f"{accorda(caro.sesso, 'Messo')} in vendita da {poli.nome} a {scritta_in_euro(prezzo)}.", data)
 
     def aggiorna_stato_polisportive(self, annuncia=True):
         """Ricalcola indice dei tesserati e gloria di tutte le polisportive."""
@@ -567,13 +921,15 @@ class Mondo:
     def _un_giorno(self, data, rapporto):
         """
         Tutto ciò che il mondo fa in un giorno simulato, nell'ordine: le mosse di mercato
-        ripartono, i giocatori invecchiano, gli autonomi si allenano, le polisportive del computer
-        tesserano, espellono, chiudono e nascono, poi nascono i giocatori nuovi e si ricalcolano
-        valori e glorie.
+        ripartono, i giocatori invecchiano, il primo del mese si fanno i conti, gli autonomi si
+        allenano, le polisportive del computer tesserano, scambiano, comprano, chiudono e nascono,
+        poi nascono i giocatori nuovi e si ricalcolano valori e glorie.
         """
         for p in self.polisportive.values():
             p.movimenti_oggi = 0
         self._fai_invecchiare(data, rapporto)
+        if data.day == 1:
+            self._primo_del_mese(data, rapporto)
         vivi = [g for gid, g in self.giocatori.items() if gid not in self._ids_morti_processati_sessione]
         for g in vivi:
             if not g.ritirato and not g.infortunato and int(g.puntiesperienza or 0) > 0:
@@ -582,9 +938,12 @@ class Mondo:
                     esegui_auto_allenamento(g, data)
                     if g.puntiesperienza < xp_pre:
                         rapporto["autoallenati"] += 1
-        tesserati, svincolati = self._esegui_logica_cpu_polisportive(data)
+        venduti_tuoi = sum(len(p.in_vendita) for p in self.polisportive.values() if not p.is_cpu_controlled)
+        tesserati, svincolati, comprati = self._esegui_logica_cpu_polisportive(data)
         rapporto["tesserati_cpu"] += tesserati
         rapporto["svincolati_cpu"] += svincolati
+        rapporto["vendite"] += comprati
+        rapporto["tuoi_venduti"] += venduti_tuoi - sum(len(p.in_vendita) for p in self.polisportive.values() if not p.is_cpu_controlled)
         for nome_p in list(self.polisportive.keys()):
             if nome_p in self.polisportive and self.polisportive[nome_p].is_cpu_controlled and self._controlla_chiusura_poli_cpu(self.polisportive[nome_p], data):
                 rapporto["poli_chiuse"] += 1

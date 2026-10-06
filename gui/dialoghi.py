@@ -8,6 +8,10 @@ ogni campo ha davanti la sua etichetta, da cui lo screen reader prende il nome.
 Dalla tappa 7 ci sono i dialoghi delle polisportive: fondazione, cambio, password, e il mercato
 della decisione D20, che usa la ricerca come filtro e chiede conferma prima di ogni offerta,
 perché un'offerta costa una mossa e non si ritira.
+Dalla tappa 8 c'è l'economia della decisione D22: al mercato si offre un ingaggio ai liberi, si
+compra chi è in vendita e si fa un'offerta d'acquisto per i tesserati del computer, scegliendo la
+cifra in un dialogo che, per l'ingaggio, dice anche la probabilità che il giocatore accetti; poi
+ci sono i dialoghi per pagare gli arretrati, a chi e quanto, e per mettere in vendita i tesserati.
 """
 
 import contextlib
@@ -16,12 +20,14 @@ import webbrowser
 import wx
 from GBwx import STILE_ADATTABILE, adatta_finestra, pannello_scorrevole
 
+import economia
 import impostazioni as modulo_impostazioni
 import mercato
 import ricerca
 import testi
 from costanti import NOME_POLISPORTIVA_MAX, NOME_POLISPORTIVA_MIN
 from gui import aspetto
+from modelli import probabilita_accettazione
 
 PAYPAL_URL = "https://paypal.me/GabrieleBattaglia780"
 
@@ -376,12 +382,50 @@ class ChiediPassword(_Dialogo):
         self.chiudi(wx.ID_OK)
 
 
+class Cifra(_Dialogo):
+    """
+    Una cifra in euro da scegliere, fino alla cassa, con una spiegazione davanti; se serve, una
+    nota dopo il campo segue la cifra, come la probabilità che un giocatore accetti un ingaggio.
+    """
+
+    def __init__(self, genitore, titolo, spiegazione, etichetta, iniziale, massimo, nota=None):
+        super().__init__(genitore, titolo)
+        self.valore = None
+        self.calcola_nota = nota
+        self.sizer.Add(wx.StaticText(self.pannello, label=spiegazione), 0, wx.ALL, 8)
+        self.etichetta(etichetta)
+        self.cifra = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=max(0, massimo), initial=max(0, min(iniziale, massimo))))
+        self.nota = wx.StaticText(self.pannello, label="")
+        self.sizer.Add(self.nota, 0, wx.ALL, 8)
+        ok, _annulla = self.pulsanti((wx.ID_OK, "OK"), (wx.ID_CANCEL, "Annulla"))
+        ok.Bind(wx.EVT_BUTTON, self.conferma)
+        self.cifra.Bind(wx.EVT_SPINCTRL, self.aggiorna)
+        self.cifra.Bind(wx.EVT_TEXT, self.aggiorna)
+        self.aggiorna()
+        self.completa((440, 280))
+        self.cifra.SetFocus()
+
+    def aggiorna(self, event=None):
+        if self.calcola_nota:
+            self.nota.SetLabel(self.calcola_nota(self.cifra.GetValue()))
+            self.pannello.Layout()
+
+    def conferma(self, event=None):
+        if self.cifra.GetValue() <= 0:
+            self.avvisa("La cifra deve essere di almeno 1 euro.", self.cifra)
+            return
+        self.valore = self.cifra.GetValue()
+        self.chiudi(wx.ID_OK)
+
+
 class Mercato(_Dialogo):
     """
-    Il mercato della decisione D20, sul modello di Hattrick: filtri, probabilità minima e ordine
-    danno l'elenco dei liberi, ciascuno con la probabilità di accettare; a chi si sceglie si fa
-    un'offerta, dopo una domanda di conferma, e l'esito arriva in un messaggio. Il dialogo resta
-    aperto, e in esiti tiene le offerte fatte, che la finestra racconta alla chiusura.
+    Il mercato delle decisioni D20, D22 e D23, sul modello di Hattrick: filtri, chi mostrare, costo
+    massimo e ordine danno l'elenco dei candidati. A un libero si offre un ingaggio, scegliendo la
+    cifra e sentendo la probabilità che accetti; chi è in vendita si compra al suo prezzo; per un
+    tesserato del computer si offre una cifra alla sua polisportiva. Ogni offerta chiede conferma,
+    perché costa una mossa e non si ritira, e l'esito arriva in un messaggio. Il dialogo resta
+    aperto, e in esiti tiene i testi degli esiti, che la finestra racconta alla chiusura.
     """
 
     def __init__(self, genitore, mondo, poli, impostazioni=None):
@@ -402,37 +446,42 @@ class Mercato(_Dialogo):
             pulsante.Bind(wx.EVT_BUTTON, azione)
             riga.Add(pulsante, 0, wx.ALL, 4)
         self.sizer.Add(riga, 0, wx.LEFT | wx.RIGHT, 4)
-        self.etichetta("Probabilità &minima di accettare, in percentuale")
-        self.minima = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=100, initial=0))
-        self.etichetta("&Ordina per")
+        self.etichetta("Mo&stra")
+        self.scelta = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome, _tipi in mercato.SCELTE]))
+        self.scelta.SetSelection(0)
+        self.etichetta("Costo &massimo in euro, zero per nessun limite")
+        self.massimo = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=100_000_000, initial=0))
+        self.etichetta("O&rdina per")
         self.ordine = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome in mercato.ORDINI]))
         self.ordine.SetSelection(0)
         self.etichetta_trovati = wx.StaticText(self.pannello, label="&Giocatori trovati")
         self.sizer.Add(self.etichetta_trovati, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         self.trovati = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
-        offri, scheda, _chiudi = self.pulsanti((wx.ID_ANY, "Fai un'&offerta"), (wx.ID_ANY, "&Scheda del giocatore"), (wx.ID_CANCEL, "&Chiudi"))
+        offri, scheda, _chiudi = self.pulsanti((wx.ID_ANY, "Fai un'&offerta"), (wx.ID_ANY, "Sc&heda del giocatore"), (wx.ID_CANCEL, "&Chiudi"))
         offri.Bind(wx.EVT_BUTTON, self.offri)
         scheda.Bind(wx.EVT_BUTTON, self.scheda)
         self.trovati.Bind(wx.EVT_LISTBOX_DCLICK, self.offri)
-        self.minima.Bind(wx.EVT_SPINCTRL, self.aggiorna)
-        self.minima.Bind(wx.EVT_TEXT, self.aggiorna)
+        self.scelta.Bind(wx.EVT_CHOICE, self.aggiorna)
+        self.massimo.Bind(wx.EVT_SPINCTRL, self.aggiorna)
+        self.massimo.Bind(wx.EVT_TEXT, self.aggiorna)
         self.ordine.Bind(wx.EVT_CHOICE, self.aggiorna)
         self.mostra_filtri()
         self.aggiorna()
-        self.completa((680, 600))
+        self.completa((700, 620))
         self.trovati.SetFocus()
 
     def mostra_filtri(self, posto=0):
-        """L'elenco dei filtri; senza filtri dice che compaiono tutti i liberi."""
-        self.elenco_filtri.Set([descrizione for _c, _k, _v, descrizione in self.filtri] or ["Nessun filtro: compaiono tutti i liberi."])
+        """L'elenco dei filtri; senza filtri dice che compaiono tutti."""
+        self.elenco_filtri.Set([descrizione for _c, _k, _v, descrizione in self.filtri] or ["Nessun filtro: compaiono tutti."])
         self.elenco_filtri.SetSelection(min(posto, self.elenco_filtri.GetCount() - 1))
 
     def aggiorna(self, event=None, posto=0):
-        """Ricalcola l'elenco dei candidati con filtri, probabilità minima e ordine del momento."""
+        """Ricalcola l'elenco dei candidati con filtri, scelta, costo massimo e ordine del momento."""
+        mostra = mercato.SCELTE[self.scelta.GetSelection()][0]
         ordine = mercato.ORDINI[self.ordine.GetSelection()][0]
         filtri = [(criterio, condizione, valore) for criterio, condizione, valore, _d in self.filtri]
-        self.righe = mercato.candidati(self.mondo, self.poli, filtri, self.minima.GetValue(), ordine)
-        self.trovati.Set([testi.riga_mercato(g, probabilita) for g, probabilita in self.righe])
+        self.righe = mercato.candidati(self.mondo, self.poli, filtri, mostra, self.massimo.GetValue(), ordine)
+        self.trovati.Set([testi.riga_mercato(c) for c in self.righe])
         if self.righe:
             self.trovati.SetSelection(min(posto, len(self.righe) - 1))
         self.etichetta_trovati.SetLabel(f"&Giocatori trovati: {testi.intero(len(self.righe))}")
@@ -471,34 +520,237 @@ class Mercato(_Dialogo):
             return None, indice
         return self.righe[indice], indice
 
+    def _avviso(self, testo):
+        wx.MessageBox(testo, "Mercato", wx.OK | wx.ICON_WARNING, self)
+
+    def _conferma(self, domanda):
+        return wx.MessageBox(domanda, "Mercato", wx.YES_NO | wx.ICON_QUESTION, self) == wx.YES
+
+    def _cifra(self, titolo, spiegazione, etichetta, iniziale, nota=None):
+        """La cifra scelta dall'utente, oppure None se ha annullato."""
+        dialogo = Cifra(self, titolo, spiegazione, etichetta, iniziale, self.poli.cassa, nota)
+        try:
+            return dialogo.valore if dialogo.ShowModal() == wx.ID_OK else None
+        finally:
+            dialogo.Destroy()
+
     def offri(self, event=None):
-        """L'offerta al candidato scelto: prima i controlli e la conferma, poi l'esito in un messaggio."""
-        riga, indice = self._scelto()
-        if riga is None:
+        """L'offerta al candidato scelto, secondo il tipo: ingaggio, acquisto al prezzo, offerta d'acquisto."""
+        c, indice = self._scelto()
+        if c is None:
             return
-        g, probabilita = riga
-        problema = self.mondo.problema_offerta(self.poli, g)
-        if problema:
-            wx.MessageBox(problema, "Offerta", wx.OK | wx.ICON_WARNING, self)
+        if self.poli.cassa <= 0:
+            self._avviso(f"La cassa di {self.poli.nome} è vuota.")
             return
-        if wx.MessageBox(testi.domanda_offerta(g, self.poli, probabilita, self.mondo), "Offerta", wx.YES_NO | wx.ICON_QUESTION, self) != wx.YES:
-            return
-        accetta, probabilita = self.mondo.offerta(self.poli, g)
-        self.esiti.append((g, accetta, probabilita))
-        wx.MessageBox(testi.esito_offerta(g, self.poli, accetta, probabilita), "Esito dell'offerta", wx.OK | wx.ICON_INFORMATION, self)
-        self.aggiorna(posto=indice)
+        if c.tipo == mercato.LIBERO:
+            esito = self._ingaggio(c)
+        elif c.tipo == mercato.IN_VENDITA:
+            esito = self._acquisto(c)
+        else:
+            esito = self._offerta_d_acquisto(c)
+        if esito is not None:
+            self.esiti.append(esito)
+            wx.MessageBox(esito[0], "Esito", wx.OK | wx.ICON_INFORMATION, self)
+            self.aggiorna(posto=indice)
         self.trovati.SetFocus()
 
+    def _ingaggio(self, c):
+        g = c.giocatore
+        problema = self.mondo.problema_offerta(self.poli, g)
+        if problema:
+            self._avviso(problema)
+            return None
+        richiesta = c.costo
+        importo = self._cifra("Ingaggio", f"{testi.nome_completo(g)} chiede {testi.euro(richiesta)} d'ingaggio: più offri, più è probabile che accetti.",
+                              "&Ingaggio da offrire, in euro", richiesta,
+                              lambda cifra: f"Accetterebbe al {testi.numero(probabilita_accettazione(cifra, richiesta), 0)}%.")
+        if importo is None:
+            return None
+        problema = self.mondo.problema_offerta(self.poli, g, importo)
+        if problema:
+            self._avviso(problema)
+            return None
+        if not self._conferma(testi.domanda_ingaggio(c, importo, probabilita_accettazione(importo, richiesta), self.poli, self.mondo)):
+            return None
+        accetta, probabilita = self.mondo.offerta(self.poli, g, importo)
+        return testi.esito_ingaggio(g, self.poli, accetta, importo, probabilita), accetta
+
+    def _acquisto(self, c):
+        g = c.giocatore
+        problema = self.mondo.problema_acquisto(self.poli, g)
+        if problema:
+            self._avviso(problema)
+            return None
+        if not self._conferma(testi.domanda_acquisto(c, self.poli, self.mondo)):
+            return None
+        prezzo = self.mondo.acquista(self.poli, g)
+        return testi.esito_acquisto(g, c.polisportiva, self.poli, prezzo), True
+
+    def _offerta_d_acquisto(self, c):
+        g = c.giocatore
+        problema = self.mondo.problema_offerta_d_acquisto(self.poli, g)
+        if problema:
+            self._avviso(problema)
+            return None
+        importo = self._cifra("Offerta d'acquisto", f"{testi.nome_completo(g)} vale {testi.euro(c.costo)} sul mercato: {c.polisportiva.nome} lo cede se l'offerta le basta.",
+                              "&Cifra da offrire, in euro", c.costo)
+        if importo is None:
+            return None
+        problema = self.mondo.problema_offerta_d_acquisto(self.poli, g, importo)
+        if problema:
+            self._avviso(problema)
+            return None
+        if not self._conferma(testi.domanda_offerta_d_acquisto(c, importo, self.poli, self.mondo)):
+            return None
+        accettata = self.mondo.offerta_d_acquisto(self.poli, g, importo)
+        return testi.esito_offerta_d_acquisto(g, c.polisportiva, self.poli, accettata, importo), accettata
+
     def scheda(self, event=None):
-        riga, _indice = self._scelto()
-        if riga is None:
+        c, _indice = self._scelto()
+        if c is None:
             return
-        g = riga[0]
+        g = c.giocatore
         dialogo = Lettura(self, f"Scheda di {testi.nome_completo(g)}", testi.scheda_giocatore(g, self.mondo), self.impostazioni)
         try:
             dialogo.ShowModal()
         finally:
             dialogo.Destroy()
+
+
+class PagaArretrati(_Dialogo):
+    """
+    Gli arretrati della polisportiva, decisione D22: chi aspetta, dal meno paziente, con il suo
+    umore, e quanto dare a ciascuno, perché quando la cassa non basta decide l'utente. In pagati
+    restano i pagamenti fatti, che la finestra racconta alla chiusura.
+    """
+
+    def __init__(self, genitore, mondo, poli):
+        super().__init__(genitore, f"Arretrati di {poli.nome}")
+        self.mondo = mondo
+        self.poli = poli
+        self.pagati = []
+        self.debitori = []
+        self.info = wx.StaticText(self.pannello, label="")
+        self.sizer.Add(self.info, 0, wx.ALL, 8)
+        self.etichetta("&Chi aspetta")
+        self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        self.etichetta("C&ifra da pagare, in euro")
+        self.cifra = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=0, initial=0))
+        paga, _chiudi = self.pulsanti((wx.ID_ANY, "&Paga"), (wx.ID_CANCEL, "C&hiudi"))
+        paga.Bind(wx.EVT_BUTTON, self.paga)
+        self.elenco.Bind(wx.EVT_LISTBOX, self.al_giocatore)
+        self.aggiorna()
+        self.completa((600, 460))
+        self.elenco.SetFocus()
+
+    def aggiorna(self, posto=0):
+        rosa = [self.mondo.giocatori[gid] for gid in self.poli.tesserati if gid in self.mondo.giocatori]
+        self.debitori = sorted((g for g in rosa if g.arretrati), key=lambda g: g.pazienza)
+        self.elenco.Set([testi.riga_arretrati(g) for g in self.debitori] or ["Nessuno aspetta arretrati."])
+        self.elenco.SetSelection(min(posto, self.elenco.GetCount() - 1))
+        self.info.SetLabel(f"In cassa {testi.euro(self.poli.cassa)}; arretrati da pagare {testi.euro(sum(g.arretrati for g in self.debitori))}.")
+        self.al_giocatore()
+        self.pannello.Layout()
+
+    def al_giocatore(self, event=None):
+        """Per il tesserato scelto, la cifra parte da tutto quello che aspetta, fin dove arriva la cassa."""
+        indice = self.elenco.GetSelection()
+        if not self.debitori or indice == wx.NOT_FOUND:
+            self.cifra.SetRange(0, 0)
+            self.cifra.SetValue(0)
+            return
+        massimo = min(self.debitori[indice].arretrati, self.poli.cassa)
+        self.cifra.SetRange(0, max(0, massimo))
+        self.cifra.SetValue(max(0, massimo))
+
+    def paga(self, event=None):
+        indice = self.elenco.GetSelection()
+        if not self.debitori or indice == wx.NOT_FOUND:
+            wx.Bell()
+            return
+        g = self.debitori[indice]
+        try:
+            self.mondo.paga(self.poli, g, self.cifra.GetValue())
+        except ValueError as e:
+            wx.MessageBox(str(e), "Arretrati", wx.OK | wx.ICON_WARNING, self)
+            return
+        self.pagati.append((g, self.cifra.GetValue()))
+        wx.MessageBox(f"Pagati {testi.euro(self.cifra.GetValue())} a {testi.nome_completo(g)}: ora è {testi.umore(g)}.", "Arretrati", wx.OK | wx.ICON_INFORMATION, self)
+        self.aggiorna(indice)
+        self.elenco.SetFocus()
+
+
+class Vendite(_Dialogo):
+    """
+    Le vendite della polisportiva, decisione D22: i tesserati con il loro valore di mercato, il
+    prezzo a cui metterne uno in vendita, o cambiarlo, e il ritiro dalla vendita. In fatte restano
+    i testi delle operazioni, che la finestra racconta alla chiusura.
+    """
+
+    def __init__(self, genitore, mondo, poli):
+        super().__init__(genitore, f"Vendite di {poli.nome}")
+        self.mondo = mondo
+        self.poli = poli
+        self.fatte = []
+        self.rosa = sorted((mondo.giocatori[gid] for gid in poli.tesserati if gid in mondo.giocatori), key=lambda g: -g.indice_collettivo_valore)
+        self.etichetta("&Tesserati")
+        self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        self.etichetta("&Prezzo, in euro")
+        self.prezzo = self.aggiungi(wx.SpinCtrl(self.pannello, min=1, max=100_000_000, initial=1))
+        metti, togli, _chiudi = self.pulsanti((wx.ID_ANY, "&Metti in vendita"), (wx.ID_ANY, "To&gli dalla vendita"), (wx.ID_CANCEL, "C&hiudi"))
+        metti.Bind(wx.EVT_BUTTON, self.metti)
+        togli.Bind(wx.EVT_BUTTON, self.togli)
+        self.elenco.Bind(wx.EVT_LISTBOX, self.al_giocatore)
+        self.aggiorna()
+        self.completa((600, 460))
+        self.elenco.SetFocus()
+
+    def aggiorna(self, posto=0):
+        self.elenco.Set([testi.riga_vendita(g, self.poli) for g in self.rosa])
+        if self.rosa:
+            self.elenco.SetSelection(min(posto, len(self.rosa) - 1))
+        self.al_giocatore()
+
+    def al_giocatore(self, event=None):
+        """Il prezzo parte da quello di vendita, se il tesserato è già in vendita, o dal suo valore di mercato."""
+        indice = self.elenco.GetSelection()
+        if indice == wx.NOT_FOUND:
+            return
+        g = self.rosa[indice]
+        self.prezzo.SetValue(self.poli.in_vendita.get(g.id, max(1, economia.valore_di_mercato(g))))
+
+    def _scelto(self):
+        indice = self.elenco.GetSelection()
+        if indice == wx.NOT_FOUND:
+            wx.Bell()
+            return None, indice
+        return self.rosa[indice], indice
+
+    def metti(self, event=None):
+        g, indice = self._scelto()
+        if g is None:
+            return
+        self.mondo.metti_in_vendita(self.poli, g, self.prezzo.GetValue())
+        testo = f"{testi.nome_completo(g)} è in vendita a {testi.euro(self.prezzo.GetValue())}."
+        self.fatte.append(testo)
+        wx.MessageBox(testo, "Vendite", wx.OK | wx.ICON_INFORMATION, self)
+        self.aggiorna(indice)
+        self.elenco.SetFocus()
+
+    def togli(self, event=None):
+        g, indice = self._scelto()
+        if g is None:
+            return
+        try:
+            self.mondo.togli_dalla_vendita(self.poli, g)
+        except ValueError as e:
+            wx.MessageBox(str(e), "Vendite", wx.OK | wx.ICON_WARNING, self)
+            return
+        testo = f"{testi.nome_completo(g)} non è più in vendita."
+        self.fatte.append(testo)
+        wx.MessageBox(testo, "Vendite", wx.OK | wx.ICON_INFORMATION, self)
+        self.aggiorna(indice)
+        self.elenco.SetFocus()
 
 
 class Lettura(_Dialogo):

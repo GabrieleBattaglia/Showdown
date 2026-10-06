@@ -13,6 +13,8 @@ un dialogo aspetta che si chiuda.
 Dalla tappa 7 il menu Polisportive ha le operazioni: fondazione, cambio della polisportiva
 attiva, mercato, svincolo, password e chiusura. Ogni operazione si salva subito, così l'esito di
 un'offerta resta quello che è stato.
+Dalla tappa 8 ci sono il bilancio, gli arretrati da pagare e le vendite, e quando il mondo avanza
+la barra di stato dice prima di tutto se i tuoi tesserati sono rimasti senza stipendio.
 """
 
 import contextlib
@@ -36,9 +38,11 @@ from gui.dialoghi import (
     Lettura,
     Mercato,
     NuovaPolisportiva,
+    PagaArretrati,
     PasswordPolisportiva,
     Ricerca,
     SceltaGiocatore,
+    Vendite,
 )
 from utilita import adesso, adesso_utc
 
@@ -113,9 +117,12 @@ class FinestraPrincipale(wx.Frame):
                 ("&Cambia polisportiva attiva...", "Ctrl+Shift+C", self.cambia_polisportiva),
                 None,
                 ("&Mercato...", "Ctrl+K", self.mercato),
-                ("S&vincola un tesserato...", "Ctrl+Shift+S", self.svincola),
+                ("&Vendite dei tesserati...", None, self.vendite),
+                ("Sv&incola un tesserato...", "Ctrl+Shift+S", self.svincola),
+                ("Pa&ga gli arretrati...", "Ctrl+Shift+P", self.paga_arretrati),
                 None,
                 ("&Scheda della polisportiva attiva", "Ctrl+M", self.scheda_polisportiva),
+                ("&Bilancio della polisportiva attiva", "Ctrl+B", self.bilancio),
                 ("&Tesserati della polisportiva attiva", "Ctrl+Shift+T", lambda: self.mostra(testi.tesserati_attiva(self.mondo), "tesserati")),
                 ("&Diario della polisportiva attiva", "Ctrl+Shift+M", self.diario_polisportiva),
                 ("&Elenco delle polisportive", "Ctrl+Shift+E", lambda: self.mostra(testi.elenco_polisportive(self.mondo), "elenco delle polisportive")),
@@ -222,6 +229,13 @@ class FinestraPrincipale(wx.Frame):
         salvato, _messaggi = self._salva_raccogliendo()
         giorni = "di un giorno" if rapporto["giorni"] == 1 else f"di {rapporto['giorni']} giorni"
         self.ultimo_evento = f"mondo avanzato {giorni}" + ("" if salvato else ", non salvato")
+        # Quello che riguarda le tue polisportive viene prima: è la cosa da sapere subito.
+        if rapporto["tuoi_partiti"]:
+            self.ultimo_evento = f"{testi.conta(rapporto['tuoi_partiti'], 'tesserato andato via', 'tesserati andati via')}, non pagati"
+        elif rapporto["tuoi_non_pagati"]:
+            self.ultimo_evento = "stipendi non pagati, vedi il bilancio"
+        elif rapporto["tuoi_venduti"]:
+            self.ultimo_evento = f"{testi.conta(rapporto['tuoi_venduti'], 'tuo giocatore venduto', 'tuoi giocatori venduti')}"
 
     def _modale(self, dialogo):
         """Mostra un dialogo modale; finché resta aperto, il mondo non avanza."""
@@ -373,6 +387,46 @@ class FinestraPrincipale(wx.Frame):
         if esiti:
             self._salva_raccogliendo()
         self.mostra(testi.riepilogo_mercato(p, self.mondo, esiti), f"mercato: {testi.conta(len(esiti), 'offerta', 'offerte')}")
+
+    def bilancio(self):
+        p = self._attiva()
+        if p is not None:
+            self.mostra(testi.bilancio(p, self.mondo), f"bilancio di {p.nome}")
+
+    def paga_arretrati(self):
+        p = self._attiva()
+        if p is None:
+            return
+        if not any(self.mondo.giocatori[gid].arretrati for gid in p.tesserati if gid in self.mondo.giocatori):
+            self.mostra(f"Nessun tesserato di {p.nome} aspetta arretrati. {testi.info_mercato(p, self.mondo)}", "nessun arretrato")
+            return
+        dialogo = PagaArretrati(self, self.mondo, p)
+        try:
+            self._modale(dialogo)
+            pagati = list(dialogo.pagati)
+        finally:
+            dialogo.Destroy()
+        if pagati:
+            self._salva_raccogliendo()
+        righe = [f"Pagati {testi.euro(importo)} a {testi.nome_completo(g)}." for g, importo in pagati] or ["Nessun pagamento."]
+        self.mostra("\n".join([*righe, testi.bilancio(p, self.mondo)]), f"arretrati: {testi.conta(len(pagati), 'pagamento', 'pagamenti')}")
+
+    def vendite(self):
+        p = self._attiva()
+        if p is None:
+            return
+        if not p.tesserati:
+            self.mostra(f"{p.nome} non ha tesserati da vendere.", "nessun tesserato")
+            return
+        dialogo = Vendite(self, self.mondo, p)
+        try:
+            self._modale(dialogo)
+            fatte = list(dialogo.fatte)
+        finally:
+            dialogo.Destroy()
+        if fatte:
+            self._salva_raccogliendo()
+        self.mostra("\n".join(fatte or ["Nessuna vendita cambiata."]), f"vendite: {testi.conta(len(fatte), 'modifica', 'modifiche')}")
 
     def svincola(self):
         p = self._attiva()

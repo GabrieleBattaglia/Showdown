@@ -9,6 +9,9 @@ le voci più recenti in cima, ciascuna con la sua data simulata, e gli allenamen
 sulla stessa caratteristica fusi in una voce sola.
 Dalla tappa 7 il nome di una polisportiva resta come lo scrive chi la fonda, senza maiuscole
 imposte, e gli ipovedenti chiedono il 10 per cento di gloria in meno, secondo la decisione D19.
+Dalla tappa 8 c'è l'economia della decisione D22: il giocatore ha esperienza di carriera,
+fedeltà e pazienza verso il suo club, stipendi arretrati e forse il tratto della bandiera; la
+polisportiva ha una cassa, i tesserati in vendita, i bilanci mensili e i conti del mese.
 Dalla tappa 3 ogni modello sa scriversi come dizionario per il salvataggio JSON, con a_dizionario,
 e ricostruirsi da lì, con da_dizionario, controllando ogni campo. Gli elenchi CAMPI_GIOCATORE e
 CAMPI_POLISPORTIVA dicono quali attributi si salvano e di che tipo sono: i valori che si possono
@@ -34,6 +37,7 @@ from costanti import (
     ATTRIBUTI_ALLENABILI,
     ATTRIBUTI_BASE_CON_ALLENABILI,
     ATTRIBUTI_INVECCHIABILI,
+    CAPITALE_INIZIALE,
     CARATTERISTICHE_ATTACCO_BASE,
     CARATTERISTICHE_CONTROLLO_BASE,
     CARATTERISTICHE_DIFESA_BASE,
@@ -69,6 +73,7 @@ from costanti import (
     MIN_FATTORE_ETA_GLORIA,
     NOME_ATTR_TO_DISPLAY_MAP,
     PROB_ARCHETIPO_CASUALE_CREAZIONE,
+    PROBABILITA_BANDIERA_CREAZIONE,
     VERSIONE,
     giorni_da_anni,
 )
@@ -111,6 +116,12 @@ DATA_O_NULLA = "data_o_nulla"
 TESTO_O_NULLA = "testo_o_nulla"
 LISTA_INTERI = "lista_interi"
 DIARIO = "diario"
+# Dalla tappa 8: i giocatori in vendita con il loro prezzo, i bilanci mensili e i conti del mese in corso.
+VENDITE = "vendite"
+BILANCI = "bilanci"
+CONTI = "conti"
+# Le voci dei conti di un mese: entrate e uscite della polisportiva, in euro.
+VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti")
 _CONTROLLI = {
     bool: lambda v: isinstance(v, bool),
     int: lambda v: isinstance(v, int) and not isinstance(v, bool),
@@ -128,6 +139,7 @@ CAMPI_GIOCATORE = (
     ("ritirato", bool), ("partitevinte", int), ("partiteperse", int), ("setsvinti", int), ("setspersi", int),
     ("goalsfatti", int), ("goalssubiti", int), ("archetipo_allenamento", str),
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int), ("diario", DIARIO),
+    ("esperienza", float), ("fedelta", float), ("pazienza", float), ("arretrati", int), ("bandiera", bool),
     *((nome, float) for nome in ATTRIBUTI_INVECCHIABILI),
 )
 # Per i giocatori senza tratti, che non possono ricalcolare il loro aspetto.
@@ -139,7 +151,17 @@ CAMPI_POLISPORTIVA = (
     ("movimenti_oggi", int), ("datetime_ultimo_movimento", DATA),
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int),
     ("coppe_oro", int), ("coppe_argento", int), ("coppe_bronzo", int), ("coppe_legno", int), ("diario", DIARIO),
+    ("cassa", int), ("in_vendita", VENDITE), ("bilanci", BILANCI), ("conti_del_mese", CONTI),
 )
+
+
+def conti_vuoti():
+    """I conti di un mese appena cominciato: ogni voce a zero."""
+    return dict.fromkeys(VOCI_CONTI, 0)
+
+
+def _intero(valore):
+    return isinstance(valore, int) and not isinstance(valore, bool)
 
 
 def annota_diario(diario, data, testo):
@@ -179,6 +201,12 @@ def _voce_da_json(voce, chi):
 
 def a_json(valore, tipo):
     """Un valore di un modello nella forma che il salvataggio JSON sa scrivere."""
+    if tipo == VENDITE:
+        return {str(gid): int(prezzo) for gid, prezzo in sorted(valore.items())}
+    if tipo == BILANCI:
+        return [{**voce, "data": voce["data"].isoformat()} for voce in valore]
+    if tipo == CONTI:
+        return {voce: int(valore[voce]) for voce in VOCI_CONTI}
     if tipo == DIARIO:
         return [{**voce, "data": voce["data"].isoformat()} for voce in valore]
     if tipo in (DATA, DATA_O_NULLA):
@@ -193,6 +221,26 @@ def a_json(valore, tipo):
 def da_json(valore, tipo, chi, campo):
     """Un valore letto dal salvataggio, controllato e riportato al tipo del modello; ValueError se non va."""
     errore = ValueError(f"{chi}: il campo {campo} non è valido: {valore!r}")
+    if tipo == VENDITE:
+        if not isinstance(valore, dict) or not all(chiave.isdigit() and _intero(prezzo) and prezzo >= 0 for chiave, prezzo in valore.items()):
+            raise errore
+        return {int(chiave): prezzo for chiave, prezzo in valore.items()}
+    if tipo == CONTI:
+        if not isinstance(valore, dict) or set(valore) != set(VOCI_CONTI) or not all(_intero(v) for v in valore.values()):
+            raise errore
+        return dict(valore)
+    if tipo == BILANCI:
+        if not isinstance(valore, list):
+            raise errore
+        bilanci = []
+        for voce in valore:
+            if not isinstance(voce, dict) or set(voce) != {"data", "cassa", *VOCI_CONTI} or not all(_intero(voce[v]) for v in ("cassa", *VOCI_CONTI)):
+                raise errore
+            try:
+                bilanci.append({**voce, "data": datetime.datetime.fromisoformat(voce["data"])})
+            except (TypeError, ValueError):
+                raise errore from None
+        return bilanci
     if tipo == DIARIO:
         if not isinstance(valore, list):
             raise errore
@@ -290,6 +338,14 @@ class Giocatore:
         self.aggiorna_icv()
         if not self.descrizione_fisica:
             self._genera_descrizione_fisica()
+        # L'economia della tappa 8: esperienza di carriera, fedeltà e pazienza verso il club,
+        # stipendi arretrati, e il tratto raro della bandiera, tirato per ultimo perché la
+        # sequenza del caso alla nascita non cambi nel resto.
+        self.esperienza = 0.0
+        self.fedelta = 0.0
+        self.pazienza = 100.0
+        self.arretrati = 0
+        self.bandiera = caso(PROBABILITA_BANDIERA_CREAZIONE)
         self.annota(self.datetime_creazione_sim, f"Entra nel mondo dello showdown, a {int(self.eta_anni)} anni.")
 
     def annota(self, data, testo):
@@ -610,6 +666,12 @@ class Polisportiva:
         self.datacreazione_reale = adesso()
         self.versione_creazione = VERSIONE
         self.diario = []
+        # L'economia della tappa 8: la cassa, i tesserati in vendita con il loro prezzo, i
+        # bilanci dei mesi passati, dal più recente, e i conti del mese in corso.
+        self.cassa = CAPITALE_INIZIALE
+        self.in_vendita = {}
+        self.bilanci = []
+        self.conti_del_mese = conti_vuoti()
         self.annota(datetime_creazione_sim, "Fondata.")
 
     def annota(self, data, testo):

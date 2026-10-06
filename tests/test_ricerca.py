@@ -89,12 +89,13 @@ def test_filtri_insieme(mondo):
 def test_i_candidati_del_mercato(mondo):
     poli = Polisportiva("Club di prova", None, ORA)
     filtri = [("sesso", "m", None)]
-    righe = mercato.candidati(mondo, poli, filtri, 0, "probabilita")
-    assert {g.id for g, _p in righe} == set(ricerca.cerca_con_filtri(mondo, "liberi", filtri))
-    probabilita = [p for _g, p in righe]
-    assert probabilita == sorted(probabilita, reverse=True)
-    assert all(p >= 50 for _g, p in mercato.candidati(mondo, poli, (), 50))
-    eta = [g.eta for g, _p in mercato.candidati(mondo, poli, (), 0, "eta")]
+    righe = mercato.candidati(mondo, poli, filtri, "liberi", 0, "costo")
+    assert {c.giocatore.id for c in righe} == set(ricerca.cerca_con_filtri(mondo, "liberi", filtri))
+    costi = [c.costo for c in righe]
+    assert costi == sorted(costi)
+    assert all(c.tipo == mercato.LIBERO for c in righe)
+    eta = [c.giocatore.eta for c in mercato.candidati(mondo, poli, (), "liberi", 0, "eta")]
     assert eta == sorted(eta)
-    valori = [g.indice_collettivo_valore for g, _p in mercato.candidati(mondo, poli)]
+    valori = [c.giocatore.indice_collettivo_valore for c in mercato.candidati(mondo, poli)]
     assert valori == sorted(valori, reverse=True)
+    assert all(c.costo <= 500 for c in mercato.candidati(mondo, poli, (), "liberi", 500))
