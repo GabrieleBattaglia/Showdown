@@ -9,3 +9,5 @@ dist/
 strumenti/campioni_descrizioni.txt
 # Il file temporaneo della scrittura sicura del mondo
 *.tmp
+# Le impostazioni d'aspetto descrivono la macchina, non il mondo
+mess_impostazioni.json

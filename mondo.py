@@ -38,6 +38,9 @@ from nomi import genera_nome_casuale
 from utilita import adesso, caso, converti_in_tempo, formatta_eta_sim
 
 ORE_PER_TICK = 8
+# Le voci del riepilogo di un avanzamento, oltre all'ora in cui è avvenuto.
+CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
+                   "tesserati_cpu", "espulsi_cpu", "poli_chiuse", "poli_create")
 
 
 def _silenzio(*_args, **_kwargs):
@@ -270,8 +273,18 @@ class Mondo:
         if testo:
             self.notifica(testo)
 
+    @staticmethod
+    def rapporto_vuoto(ora):
+        """Il riepilogo di un avanzamento in cui non è successo niente."""
+        return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora}
+
     def processa_tempo_trascorso(self):
-        """Fa avanzare il mondo di un giorno simulato per ogni 8 ore reali trascorse dall'ultimo avanzamento."""
+        """
+        Fa avanzare il mondo di un giorno simulato per ogni 8 ore reali trascorse dall'ultimo
+        avanzamento. Oltre ai messaggi per notifica restituisce il riepilogo in numeri, un
+        dizionario con le chiavi di CHIAVI_RAPPORTO e l'ora dell'avanzamento: dalla tappa 5 lo usa
+        la finestra per raccontarlo a parole.
+        """
         now = adesso()
         if not isinstance(self.datetime_ultimo_run_reale, datetime.datetime):
             self.notifica("WARN: dt_ultimo_run non valido. Reset.")
@@ -280,7 +293,7 @@ class Mondo:
         ticks = int(delta_r.total_seconds() // (ORE_PER_TICK * 3600)) if delta_r.total_seconds() > 0 else 0
         if ticks <= 0:
             self._notifica_prossimo_sblocco()
-            return
+            return self.rapporto_vuoto(now)
         self.notifica(f"\n--- Processando {ticks} tick da 8h ({delta_r}) ---")
         for p in self.polisportive.values():
             p.movimenti_oggi = 0
@@ -292,7 +305,7 @@ class Mondo:
         dt_sim_e = dt_sim_s + datetime.timedelta(days=float(gg_sim_i))
         self.notifica(f"Avanzamento sim: +{gg_sim_i} giorni -> {dt_sim_e:%Y-%m-%d %H:%M}")
         ids_proc = list(self.giocatori.keys())
-        n_rit, n_usciti_prem, n_dec = self._fai_invecchiare(ids_proc, gg_sim_i, dt_sim_e)
+        n_gua, n_rit, n_usciti_prem, n_dec = self._fai_invecchiare(ids_proc, gg_sim_i, dt_sim_e)
         self.notifica("Esecuzione azioni aggregate...")
         ids_vivi = [gid for gid in ids_proc if gid not in self._ids_morti_processati_sessione and gid in self.giocatori]
         n_autoall = 0
@@ -344,9 +357,12 @@ class Mondo:
             if numero > 0:
                 self.notifica(f"{testo}: {numero}")
         self.notifica("-" * 30)
+        return {"ticks": ticks, "giorni": gg_sim_i, "guariti": n_gua, "ritirati": n_rit, "usciti": n_usciti_prem, "morti": n_dec,
+                "nuovi": n_nuovi_creati_ciclo, "autoallenati": n_autoall, "tesserati_cpu": n_tess_cpu, "espulsi_cpu": n_esp_cpu,
+                "poli_chiuse": n_chiuse, "poli_create": n_cr_ciclo, "ora": now}
 
     def _fai_invecchiare(self, ids_proc, gg_sim_i, dt_sim_e):
-        """Guarigioni, età, declino, uscite premature, morti e ritiri dei giorni trascorsi. Restituisce i conteggi."""
+        """Guarigioni, età, declino, uscite premature, morti e ritiri dei giorni trascorsi. Restituisce guariti, ritirati, usciti e morti."""
         ids_morti_c, ids_rit_c = set(), set()
         self.giocatori_morti_sessione.clear()
         self.giocatori_ritirati_sessione.clear()
@@ -402,4 +418,4 @@ class Mondo:
             if numero > 0:
                 self.notifica(f"-> {numero} {testo}.")
         self._ids_morti_processati_sessione.update(ids_morti_c)
-        return n_rit, n_usciti_prem, n_dec
+        return n_gua, n_rit, n_usciti_prem, n_dec

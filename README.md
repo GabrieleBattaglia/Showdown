@@ -8,11 +8,15 @@ Il mondo contiene giocatori generati a caso, ciascuno con nome, aspetto fisico d
 
 MESS è in fase di rifacimento. Il lavoro segue le tappe del file `piano_di_sviluppo.txt`, che elenca i problemi del vecchio programma, le decisioni prese e l'ordine dei lavori. Il punto d'arrivo è la versione 2.0.0, con un'interfaccia a finestra accessibile.
 
-Fino ad allora il programma è quello a riga di comando del vecchio `sd.py`, diviso in moduli dalla versione 1.1.3, che si avvia da qualunque cartella con:
+Dalla versione 1.16.0 il gioco si apre in una finestra, da qualunque cartella, con:
 
     python Showdown.py
 
-Salvataggi e registri stanno accanto al programma. La cartella `strumenti` contiene il banco di prova del motore di partita e lo script che scrive descrizioni fisiche di prova; la cartella `tests` la suite di pytest.
+La finestra per ora consulta il mondo: schede, elenchi, classifiche, statistiche e ricerche. Le operazioni, cioè polisportive, partite e allenamento, arriveranno nelle prossime tappe; fino ad allora si fanno con l'interfaccia testuale del vecchio `sd.py`, che si avvia con:
+
+    python Showdown.py --testo
+
+Salvataggi e registri stanno accanto al programma, e così le impostazioni d'aspetto, nel file `mess_impostazioni.json`. La cartella `strumenti` contiene il banco di prova del motore di partita e lo script che scrive descrizioni fisiche di prova; la cartella `tests` la suite di pytest.
 
 ## Accessibilità
 

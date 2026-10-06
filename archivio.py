@@ -36,6 +36,10 @@ APPLICAZIONE = "MESS"
 FORMATO = 1
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
+# Da dove viene il mondo appena caricato.
+NATO = "nato"
+CARICATO = "caricato"
+DALLA_COPIA = "dalla_copia"
 
 
 class ErroreSalvataggio(Exception):
@@ -183,8 +187,13 @@ def _metti_da_parte(*file_da_salvare):
     return cartella
 
 
+def _quanti(giocatori, polisportive):
+    """Giocatori e polisportive contati, con il singolare quando serve."""
+    return f"{giocatori} {'giocatore' if giocatori == 1 else 'giocatori'} e {polisportive} {'polisportiva' if polisportive == 1 else 'polisportive'}"
+
+
 def _riassunto(mondo):
-    testo = f"{len(mondo.giocatori)} giocatori e {len(mondo.polisportive)} polisportive, data simulata {mondo.datetime_corrente_simulazione:%d/%m/%Y %H:%M}."
+    testo = f"{_quanti(len(mondo.giocatori), len(mondo.polisportive))}, data simulata {mondo.datetime_corrente_simulazione:%d/%m/%Y %H:%M}."
     if mondo.miapolisportiva_attiva is not None:
         testo += f" Polisportiva attiva: {mondo.miapolisportiva_attiva.nome}."
     return testo
@@ -196,15 +205,21 @@ def _fai_nascere(mondo):
     mondo.datetime_corrente_simulazione = ora
     mondo.datetime_ultimo_run_reale = ora - datetime.timedelta(hours=8)
     mondo.notifica(f"Nessun salvataggio trovato: nasce un mondo nuovo, con {NUM_GIOCATORI_INIZIALI} giocatori.")
-    mondo.crea_giocatori_casuali(NUM_GIOCATORI_INIZIALI, ora)
+    # I messaggi della generazione ripeterebbero la frase qui sopra.
+    notifica, mondo.notifica = mondo.notifica, lambda *_args: None
+    try:
+        mondo.crea_giocatori_casuali(NUM_GIOCATORI_INIZIALI, ora)
+    finally:
+        mondo.notifica = notifica
     mondo.nuovi_giocatori_sessione.clear()
 
 
 def carica(mondo):
     """
     Carica il mondo dal salvataggio, oppure dalla copia di sicurezza se il salvataggio non si
-    può usare; se non c'è nessuno dei due, fa nascere un mondo nuovo. Se i file ci sono ma
-    nessuno dei due si legge, blocca i salvataggi del mondo e solleva SalvataggioIllegibile.
+    può usare; se non c'è nessuno dei due, fa nascere un mondo nuovo. Restituisce da dove viene il
+    mondo: NATO, CARICATO o DALLA_COPIA. Se i file ci sono ma nessuno dei due si legge, blocca i
+    salvataggi del mondo e solleva SalvataggioIllegibile.
     """
     principale = percorsi.percorso(FILE_MONDO)
     copia = percorsi.percorso(FILE_MONDO_COPIA)
@@ -212,7 +227,7 @@ def carica(mondo):
     esiste_copia = os.path.exists(copia)
     if not esiste_principale and not esiste_copia:
         _fai_nascere(mondo)
-        return
+        return NATO
     motivo = f"il file {FILE_MONDO} non c'è"
     if esiste_principale:
         try:
@@ -221,7 +236,7 @@ def carica(mondo):
             motivo = str(e)
         else:
             mondo.notifica(f"Mondo caricato: {_riassunto(mondo)}")
-            return
+            return CARICATO
     if esiste_copia:
         try:
             costruisci(leggi(copia), mondo)
@@ -229,7 +244,7 @@ def carica(mondo):
             motivo = f"{motivo}; e la copia di sicurezza nemmeno, perché {e}"
         else:
             _annuncia_ripiego(mondo, motivo, principale, copia, esiste_principale)
-            return
+            return DALLA_COPIA
     mondo.salvataggio_bloccato = True
     raise SalvataggioIllegibile(motivo, _metti_da_parte(principale, copia))
 
@@ -260,7 +275,7 @@ def salva(mondo):
         mondo.notifica(f"Salvataggio non riuscito: {e}. Il salvataggio precedente è rimasto com'era.")
         return False
     salvato = contenuto["mondo"]
-    testo = f"Mondo salvato: {len(salvato['giocatori'])} giocatori e {len(salvato['polisportive'])} polisportive."
+    testo = f"Mondo salvato: {_quanti(len(salvato['giocatori']), len(salvato['polisportive']))}."
     usciti = len(mondo.giocatori) - len(salvato["giocatori"])
     if usciti == 1:
         testo += " Il giocatore uscito di scena in questa sessione non ne fa più parte."

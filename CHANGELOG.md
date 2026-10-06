@@ -3,6 +3,26 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.16.0] - 2026-10-06
+
+### MESS ha una finestra
+
+Il gioco si apre ora in una finestra, sul modello di Terminal Beast e di Tornello. Ha due aree di testo: la vista principale, grande e in sola lettura, dove ogni comando mostra il suo risultato al posto del precedente con il cursore all'inizio, e la barra di stato, di quattro righe da quaranta caratteri, pensate per il display braille. Tutti i comandi stanno nei menu, ciascuno con il suo tasto rapido; Tab passa da un'area all'altra, F5 porta sulla vista principale e F7 sulla barra di stato. Le finestre si adattano ai caratteri grandi di Windows.
+
+La barra di stato è scritta a codici, una lettera e un numero, come in meditimer: la data simulata e il tempo che manca al prossimo avanzamento; la polisportiva attiva con gloria, tesserati e mosse di mercato rimaste; i giocatori liberi, tesserati, fermi e in tutto, con il numero delle polisportive; e l'ultima cosa successa. La legenda è nella guida ai comandi, con F1.
+
+La scheda del giocatore segue quelle dei mostri di Terminal Beast: l'intestazione in una riga, la descrizione, i tratti speciali, le caratteristiche due per riga con un aggettivo alla Hattrick, da Inesistente a Divino, e il valore fra parentesi, la carriera e tre classifiche, generale, del proprio sesso e della propria tendenza, con la posizione e la percentuale. Il giocatore si sceglie scrivendone il numero o il nome: l'elenco si restringe mentre si scrive.
+
+C'è anche la scheda della polisportiva attiva, con palmarès e tesserati, e poi l'elenco di tutti i giocatori, la classifica per valore, la TOP 10, le statistiche del mondo, le liste dei nuovi arrivati, dei ritirati e degli usciti di scena della sessione, l'elenco delle polisportive, la data simulata con il prossimo avanzamento e il riepilogo dell'ultimo avanzamento.
+
+La ricerca si fa scegliendo dove cercare, una caratteristica, una condizione e un valore; "minore di" ora vuol dire davvero minore, e non più minore o uguale.
+
+All'apertura il gioco dà il bentornato, dice quanto tempo è passato dall'ultimo avanzamento e racconta a parole cosa è successo nel frattempo: nascite, ritiri, uscite di scena, guarigioni e mosse delle polisportive del computer. Alla chiusura il mondo si salva e una finestra riassume la sessione.
+
+Dal menu Impostazioni si scelgono la dimensione dei caratteri e i colori del testo e dello sfondo, che il gioco ricorda sul computer in uso. Il menu Aiuto ha la guida ai comandi, le novità, le informazioni sul gioco e la voce Offrimi un caffè, l'unico posto in cui compare l'invito.
+
+L'interfaccia testuale di prima resta disponibile avviando il gioco con `python Showdown.py --testo`, per le operazioni che nella finestra non sono ancora arrivate: polisportive, partite e allenamento.
+
 ## [1.3.0] - 2026-10-06
 
 ### Un mondo nuovo, in un salvataggio che si protegge da solo
