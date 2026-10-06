@@ -6,7 +6,9 @@ mondo generato apposta, e conta come finiscono i punti, quanto durano scambi e s
 spesso vince il favorito. Non scrive nulla: il salvataggio dei giocatori si legge in sola
 lettura, e la funzione che a fine partita aggiorna esperienza, statistiche e infortuni viene
 sostituita da una che non fa niente. Servirà di nuovo alla tappa 8, per confrontare il motore
-prima e dopo la revisione.
+prima e dopo la revisione. Dal 2026-10-06, con la tappa 2, non usa più sd.py ma i moduli
+nati dal suo smontaggio: il motore di partita.py, il generatore di mondo.py e il lettore dei
+salvataggi di archivio.py, che rifiuta qualunque classe estranea al gioco.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/banco_partite.py
     python strumenti/banco_partite.py --partite 1000 --set 5 --seme 42
@@ -15,10 +17,7 @@ Uso, dalla cartella del progetto o da qualunque altra:
 """
 
 import argparse
-import contextlib
 import datetime
-import io
-import pickle
 import random
 import statistics
 import sys
@@ -28,19 +27,14 @@ from pathlib import Path
 
 RADICE = Path(__file__).resolve().parent.parent
 FILE_GIOCATORI = RADICE / "sd-players.db"
+if str(RADICE) not in sys.path:
+    sys.path.insert(0, str(RADICE))
 
-# Le sole classi che il lettore dei vecchi salvataggi accetta di ricostruire.
-CLASSI_AMMESSE = {
-    ("__main__", "Giocatore"),
-    ("sd", "Giocatore"),
-    ("__main__", "Polisportiva"),
-    ("sd", "Polisportiva"),
-    ("datetime", "datetime"),
-    ("datetime", "date"),
-    ("datetime", "timedelta"),
-    ("builtins", "set"),
-    ("builtins", "frozenset"),
-}
+import costanti  # noqa: E402
+from archivio import LettoreSalvataggi  # noqa: E402
+from mondo import Mondo  # noqa: E402
+from partita import MotorePartita  # noqa: E402
+from version import __version__  # noqa: E402
 
 # Le azioni del motore, nell'ordine in cui avvengono in uno scambio.
 AZIONI = ("Battuta", "Attacco", "Difesa", "Blocco", "Controllo")
@@ -50,49 +44,21 @@ ESITI_DADO = ("FalloCritico", "Fallo", "Successo", "Perfetto")
 FASCE_DISTACCO = ((0.05, "meno del 5 per cento"), (0.15, "fra il 5 e il 15 per cento"), (0.30, "fra il 15 e il 30 per cento"), (None, "oltre il 30 per cento"))
 
 
-def importa_sd():
-    """Importa il vecchio sd.py zittendo le stampe che fa all'importazione, problema P10 del piano."""
-    if str(RADICE) not in sys.path:
-        sys.path.insert(0, str(RADICE))
-    with contextlib.redirect_stdout(io.StringIO()):
-        import sd
-    return sd
-
-
-class LettoreVecchiSalvataggi(pickle.Unpickler):
-    """
-    Rilegge i .db del vecchio sd.py, che registrano le classi come appartenenti a __main__,
-    problema P2 del piano: le riporta al modulo sd, e rifiuta qualunque classe fuori dalla
-    lista, così un file costruito apposta non può eseguire nulla.
-    """
-
-    def __init__(self, file, sd):
-        super().__init__(file)
-        self.sd = sd
-
-    def find_class(self, module, name):
-        if (module, name) not in CLASSI_AMMESSE:
-            raise pickle.UnpicklingError(f"Classe non ammessa nel salvataggio: {module}.{name}")
-        if module in ("__main__", "sd"):
-            return getattr(self.sd, name)
-        return super().find_class(module, name)
-
-
-def carica_mondo_salvato(sd):
+def carica_mondo_salvato():
+    """I giocatori del mondo salvato, letti in sola lettura."""
     with FILE_GIOCATORI.open("rb") as f:
-        giocatori = LettoreVecchiSalvataggi(f, sd).load()
+        giocatori = LettoreSalvataggi(f).load()
     return {gid: g for gid, g in giocatori.items() if isinstance(gid, int)}
 
 
-def genera_mondo_nuovo(sim, quanti):
-    """Popola il simulatore con giocatori nuovi, creati dal generatore del vecchio sd.py."""
-    sim.giocatori = {}
-    sim.nuovi_giocatori_sessione = []
+def genera_mondo_nuovo(mondo, quanti):
+    """Popola il mondo con giocatori nuovi, creati dal generatore di mondo.py."""
+    mondo.giocatori = {}
+    mondo.nuovi_giocatori_sessione = []
     # La data di creazione non conta per il banco, perché l'età si estrae a parte, e resta
-    # senza fuso come tutte le date del vecchio motore, con cui potrebbe essere confrontata.
-    with contextlib.redirect_stdout(io.StringIO()):
-        sim._crea_giocatori_casuali(quanti, datetime.datetime.min)  # noqa: DTZ901
-    return sim.giocatori
+    # senza fuso come tutte le date del motore, con cui potrebbe essere confrontata.
+    mondo.crea_giocatori_casuali(quanti, datetime.datetime.min)  # noqa: DTZ901
+    return mondo.giocatori
 
 
 def numero(valore, decimali=1):
@@ -108,9 +74,8 @@ def percentuale(parte, totale):
 class Banco:
     """I contatori del banco e gli involucri che li alimentano, messi attorno ai metodi del motore."""
 
-    def __init__(self, sd, sim):
-        self.sd = sd
-        self.sim = sim
+    def __init__(self, motore):
+        self.motore = motore
         self.esiti_dado = Counter()
         self.somme_soglia = Counter()
         self.soglie_al_minimo = Counter()
@@ -123,10 +88,10 @@ class Banco:
         self._attacchi_punto = 0
         self._ultimo_esito = None
         self._punti_giocati = 0
-        sim._risolvi_azione_vs_dado = self._involucro_dado(sim._risolvi_azione_vs_dado)
-        sim._gioca_punto = self._involucro_punto(sim._gioca_punto)
-        sim._gioca_set = self._involucro_set(sim._gioca_set)
-        sim._aggiorna_statistiche_post_partita = self._nessun_aggiornamento
+        motore._risolvi_azione_vs_dado = self._involucro_dado(motore._risolvi_azione_vs_dado)
+        motore._gioca_punto = self._involucro_punto(motore._gioca_punto)
+        motore._gioca_set = self._involucro_set(motore._gioca_set)
+        motore._aggiorna_statistiche_post_partita = self._nessun_aggiornamento
 
     @staticmethod
     def _nessun_aggiornamento(*_args, **_kwargs):
@@ -137,11 +102,10 @@ class Banco:
         Ricalcola la soglia che _risolvi_azione_vs_dado usa senza restituirla. È una copia della
         formula del vecchio motore, che il banco osserva e non cambia: alla tappa 8 va adattata.
         """
-        sd = self.sd
-        capacita = giocatore_dif.indice_collettivo_valore * sd.SCALING_K_DIFESA_ICV
-        meta_intervallo = sd.SCALING_RANGE_DELTA_EFF / 2.0
+        capacita = giocatore_dif.indice_collettivo_valore * costanti.SCALING_K_DIFESA_ICV
+        meta_intervallo = costanti.SCALING_RANGE_DELTA_EFF / 2.0
         delta_norm = max(-1.0, min(1.0, (valore_azione - capacita) / meta_intervallo)) if meta_intervallo else 0.0
-        soglia = max(5.0, min(95.0, sd.SCALING_SOGLIA_BASE + delta_norm * sd.SCALING_MODIFICATORE_MAX))
+        soglia = max(5.0, min(95.0, costanti.SCALING_SOGLIA_BASE + delta_norm * costanti.SCALING_MODIFICATORE_MAX))
         return capacita, soglia, delta_norm <= -1.0
 
     def _involucro_dado(self, originale):
@@ -213,10 +177,9 @@ class Banco:
         return gioca_set
 
     def gioca(self, id1, id2, num_set):
-        g1 = self.sim.giocatori[id1]
-        g2 = self.sim.giocatori[id2]
-        with contextlib.redirect_stdout(io.StringIO()):
-            risultato = self.sim.gioca_partita(id1, id2, num_set)
+        g1 = self.motore.giocatori[id1]
+        g2 = self.motore.giocatori[id2]
+        risultato = self.motore.gioca_partita(id1, id2, num_set)
         if risultato.get("error"):
             raise RuntimeError(f"Partita {id1} contro {id2} non giocata: {risultato['error']}")
         set_vinti_1 = sum(1 for a, b in risultato["punteggio_set"] if a > b)
@@ -283,10 +246,10 @@ def rapporto(banco, intestazione):
             f"soglia di successo media {numero(soglia)}, al minimo di 10 nel {percentuale(banco.soglie_al_minimo[azione], tiri)} dei tiri."
         )
     set_totali = len(banco.punteggi_set)
-    al_limite = sum(1 for a, b in banco.punteggi_set if max(a, b) >= banco.sd.PUNTI_LIMITE_SET and abs(a - b) < banco.sd.PUNTI_VANTAGGIO_NECESSARI)
-    ai_vantaggi = sum(1 for a, b in banco.punteggi_set if min(a, b) >= banco.sd.PUNTI_VITTORIA_SET_BASE - 1)
+    al_limite = sum(1 for a, b in banco.punteggi_set if max(a, b) >= costanti.PUNTI_LIMITE_SET and abs(a - b) < costanti.PUNTI_VANTAGGIO_NECESSARI)
+    ai_vantaggi = sum(1 for a, b in banco.punteggi_set if min(a, b) >= costanti.PUNTI_VITTORIA_SET_BASE - 1)
     righe.append(f"Set giocati {set_totali}, in media {numero(statistics.fmean(banco.punti_giocati_per_set))} punti giocati per set.")
-    righe.append(f"Set arrivati ai vantaggi, con entrambi almeno a {banco.sd.PUNTI_VITTORIA_SET_BASE - 1}: {ai_vantaggi}, {percentuale(ai_vantaggi, set_totali)}. Chiusi dal limite dei {banco.sd.PUNTI_LIMITE_SET} punti senza due di scarto: {al_limite}, {percentuale(al_limite, set_totali)}.")
+    righe.append(f"Set arrivati ai vantaggi, con entrambi almeno a {costanti.PUNTI_VITTORIA_SET_BASE - 1}: {ai_vantaggi}, {percentuale(ai_vantaggi, set_totali)}. Chiusi dal limite dei {costanti.PUNTI_LIMITE_SET} punti senza due di scarto: {al_limite}, {percentuale(al_limite, set_totali)}.")
     punteggi = Counter(f"{max(a, b)} a {min(a, b)}" for a, b in banco.punteggi_set)
     righe.append("Punteggi di set più frequenti: " + descrivi_contatore(Counter(dict(punteggi.most_common(6))), set_totali) + ".")
     partite = banco.partite
@@ -317,10 +280,9 @@ def main():
     argomenti = parser.parse_args()
     seme = argomenti.seme if argomenti.seme is not None else random.randrange(1_000_000)
     random.seed(seme)
-    sd = importa_sd()
-    sim = sd.Simulatore.__new__(sd.Simulatore)
+    sim = Mondo()
     if argomenti.mondo == "salvato":
-        sim.giocatori = carica_mondo_salvato(sd)
+        sim.giocatori = carica_mondo_salvato()
         descrizione_mondo = f"Mondo salvato in {FILE_GIOCATORI.name}"
     else:
         genera_mondo_nuovo(sim, argomenti.giocatori)
@@ -329,14 +291,14 @@ def main():
     if len(disponibili) < 2:
         sys.exit("Servono almeno due giocatori non ritirati e non infortunati.")
     indici = sorted(sim.giocatori[gid].indice_collettivo_valore for gid in disponibili)
-    banco = Banco(sd, sim)
+    banco = Banco(MotorePartita(sim))
     inizio = time.perf_counter()
     for _ in range(argomenti.partite):
         id1, id2 = random.sample(disponibili, 2)
         banco.gioca(id1, id2, argomenti.set)
     durata = time.perf_counter() - inizio
     intestazione = [
-        f"Banco di prova del motore di partita, sd.py versione {sd.VERSIONE}, {time.strftime('%Y-%m-%d %H:%M')}.",
+        f"Banco di prova del motore di partita, MESS versione {__version__}, {time.strftime('%Y-%m-%d %H:%M')}.",
         f"{descrizione_mondo}: {len(sim.giocatori)} giocatori, {len(disponibili)} disponibili, cioè non ritirati e non infortunati.",
         f"Indice di valore dei disponibili: minimo {numero(indici[0], 0)}, mediana {numero(statistics.median(indici), 0)}, massimo {numero(indici[-1], 0)}.",
         f"{argomenti.partite} partite al meglio dei {argomenti.set} set fra coppie estratte a caso, giocate in {numero(durata)} secondi, con il seme {seme}: per ripetere la prova identica si aggiunge --seme {seme}.",

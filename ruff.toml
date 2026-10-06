@@ -36,5 +36,6 @@ ignore = [
 
 [lint.per-file-ignores]
 # Nei test l'assert e' lo strumento stesso della verifica, non un controllo che sparisce
-# con l'ottimizzazione.
-"tests/*" = ["S101"]
+# con l'ottimizzazione. Le date restano senza fuso come quelle del motore che
+# verificano, finche' la tappa 6 non le cambiera' tutte insieme.
+"tests/*" = ["S101", "DTZ001"]

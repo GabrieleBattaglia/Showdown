@@ -1,0 +1,505 @@
+"""
+I modelli di MESS: il giocatore e la polisportiva.
+Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
+Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py. I nomi degli attributi
+sono quelli del vecchio file, perché i salvataggi li registrano così. La chiusura delle
+polisportive del computer, che stava qui ma agiva sull'intero mondo, si è spostata in mondo.py.
+"""
+
+import contextlib
+import datetime
+import math
+import random
+
+import descrizioni
+from costanti import (
+    ACCETTAZIONE_PROB_MAX,
+    ACCETTAZIONE_PROB_MID,
+    ACCETTAZIONE_PROB_MIN,
+    ACCETTAZIONE_REL_DIFF_THRESHOLD,
+    AGING_PEAK_AGE_GIORNI,
+    AGING_START_AGE_GIORNI,
+    ALLENATE_FISICHE,
+    ANNO_SIMULAZIONE_GIORNI,
+    ARCHETIPI_ALLENAMENTO,
+    ATTRIBUTI_ALLENABILI,
+    ATTRIBUTI_BASE_CON_ALLENABILI,
+    ATTRIBUTI_INVECCHIABILI,
+    CARATTERISTICHE_ATTACCO_BASE,
+    CARATTERISTICHE_CONTROLLO_BASE,
+    CARATTERISTICHE_DIFESA_BASE,
+    CARATTERISTICHE_FISICHE_BASE,
+    DATA_NESSUN_MOVIMENTO,
+    ETA_MAX_CREAZIONE_ANNI,
+    ETA_MAX_MORTE_GIORNI,
+    ETA_MAX_RITIRO_GIORNI,
+    ETA_MIN_CREAZIONE_ANNI,
+    ETA_MIN_MORTE_GIORNI,
+    ETA_MIN_RITIRO_GIORNI,
+    ETA_MINIMO_RICHIESTA_GLORIA_ANNI,
+    ETA_PICCO_RICHIESTA_GLORIA_ANNI,
+    FATTORE_GLORIA_RICHIESTA_AMBIDESTRO,
+    FATTORE_GLORIA_RICHIESTA_CAMBIO_VEL,
+    FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO,
+    GLORIA_RICHIESTA_FISSA,
+    GLORIA_RICHIESTA_MINIMA_ASSOLUTA,
+    K_ICV_GLORIA_RICHIESTA,
+    LIMITE_MOVIMENTI_PER_TICK,
+    MAPPA_FLAG_SOMMARIO,
+    MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM,
+    MAX_ALLENATO_FISICO,
+    MAX_ALLENATO_SKILL,
+    MAX_FATTORE_ETA_GLORIA,
+    MAX_GLORIA_RICHIESTA,
+    MAX_PRECISIONE_RESISTENZA,
+    MAX_SKILL_VALUE,
+    MAX_TESSERATI_POLISPORTIVA,
+    MAX_TOTALE_PRECISIONE_RESISTENZA,
+    MAX_TOTALE_SKILL_GIOCO,
+    MIN_FATTORE_ETA_GLORIA,
+    NOME_ATTR_TO_DISPLAY_MAP,
+    PROB_ARCHETIPO_CASUALE_CREAZIONE,
+    VERSIONE,
+    giorni_da_anni,
+)
+from nomi import genera_identita
+from utilita import adesso, caso, formatta_eta_sim
+
+
+def probabilita_accettazione(g_off, g_rich):
+    """
+    La probabilità, in percentuale, che un giocatore che chiede g_rich di gloria accetti una
+    polisportiva che ne offre g_off: cresce in linea retta fra il minimo e il massimo quando
+    l'offerta passa dal 30 per cento in meno al 30 per cento in più della richiesta.
+    """
+    if g_rich <= 0:
+        return ACCETTAZIONE_PROB_MAX
+    th = ACCETTAZIONE_REL_DIFF_THRESHOLD
+    d_min = -th * g_rich
+    d_max = th * g_rich
+    d_range = d_max - d_min
+    diff = float(g_off - g_rich)
+    if diff <= d_min:
+        return ACCETTAZIONE_PROB_MIN
+    if diff >= d_max:
+        return ACCETTAZIONE_PROB_MAX
+    if d_range <= 0:
+        return ACCETTAZIONE_PROB_MID
+    pos = (diff - d_min) / d_range
+    prob = ACCETTAZIONE_PROB_MIN + pos * (ACCETTAZIONE_PROB_MAX - ACCETTAZIONE_PROB_MIN)
+    return max(ACCETTAZIONE_PROB_MIN, min(prob, ACCETTAZIONE_PROB_MAX))
+
+
+def e_fisica(nome_allenato):
+    """Vero per le tre caratteristiche fisiche allenate: precisione, resistenza e forza."""
+    return nome_allenato in ALLENATE_FISICHE
+
+
+class Giocatore:
+    def __init__(self, id_giocatore, datetime_creazione_sim, **kwargs):
+        self.id = id_giocatore
+        self.nome = "*"
+        self.cognome = "*"
+        self.appartenenza = "*"
+        self.sesso = random.choice(('m', 'f'))
+        eta_anni_casuale = random.uniform(ETA_MIN_CREAZIONE_ANNI, ETA_MAX_CREAZIONE_ANNI)
+        self.eta = giorni_da_anni(eta_anni_casuale)
+        self.etaritiro = int(random.uniform(ETA_MIN_RITIRO_GIORNI, ETA_MAX_RITIRO_GIORNI))
+        self.etamorte = int(random.uniform(ETA_MIN_MORTE_GIORNI, ETA_MAX_MORTE_GIORNI))
+        self.versione = VERSIONE
+        self.descrizione_fisica = ""
+        self.datetime_creazione_sim = datetime_creazione_sim
+        self.datacreazione_reale = adesso()
+        self.puntiesperienza = 0
+        self.mancino = caso(8.5)
+        self.ambidestro = caso(4.25) if not self.mancino else False
+        self.infortunato = False
+        self.infortunio_fine_datetime = None
+        self.ipovedente = False
+        # Altezza e peso li calcola poi aggiorna_aspetto dall'età; il tiro resta perché la
+        # sequenza del caso alla nascita non cambi.
+        self.altezza = random.randrange(160, 186)
+        self.peso = 70
+        self.giocorapido = caso(12.0)
+        self.cambiovelocita = caso(15.0)
+        self.ritirato = False
+        self.partitevinte = 0
+        self.partiteperse = 0
+        self.setsvinti = 0
+        self.setspersi = 0
+        self.goalsfatti = 0
+        self.goalssubiti = 0
+        self.icv_base = 0.0
+        self.icv_allenato = 0.0
+        self.indice_collettivo_valore = 0.0
+        self.archetipo_allenamento = "Non Definito"
+        self.ori = 0
+        self.argenti = 0
+        self.bronzi = 0
+        self.legni = 0
+        self.forza_base = 0.0
+        self.forza_allenata = 0.0
+        for nome_base in ATTRIBUTI_BASE_CON_ALLENABILI:
+            nome_allenato = nome_base.replace('_base', '_allenata')
+            max_val = MAX_PRECISIONE_RESISTENZA if nome_base in CARATTERISTICHE_FISICHE_BASE else MAX_SKILL_VALUE
+            setattr(self, nome_base, random.uniform(0, max_val * 0.6))
+            setattr(self, nome_allenato, 0.0)
+        self._applica_parametri(kwargs)
+        self._rispetta_tetti()
+        if self.nome == "*" and self.cognome == "*":
+            self.nome, self.cognome = genera_identita(self.sesso)
+        for attr, default in [('forza_base', 0.0), ('forza_allenata', 0.0),
+                              ('ipovedente', False), ('infortunato', False), ('infortunio_fine_datetime', None),
+                              ('archetipo_allenamento', "Non Definito"), ('datacreazione_reale', self.datetime_creazione_sim),
+                              ('descrizione_fisica', ''), ('ori', 0), ('argenti', 0), ('bronzi', 0), ('legni', 0)]:
+            if not hasattr(self, attr) or (getattr(self, attr, None) is None and default is not None):
+                setattr(self, attr, default)
+        if self.archetipo_allenamento == "Non Definito":
+            self._assegna_archetipo_iniziale()
+        self.aggiorna_icv()
+        if not self.descrizione_fisica:
+            self._genera_descrizione_fisica()
+
+    def _applica_parametri(self, kwargs):
+        """Applica i valori passati alla creazione, controllandone tipo e limiti."""
+        eta_giorni = kwargs.pop('eta', None)
+        if 'ipovedente' in kwargs:
+            valore = kwargs.pop('ipovedente')
+            self.ipovedente = valore if isinstance(valore, bool) else str(valore).lower() in ['s', 'true', '1', 'yes', 'vero']
+        for chiave, valore in kwargs.items():
+            if chiave == 'nascita':
+                continue
+            if chiave in ATTRIBUTI_ALLENABILI:
+                try:
+                    val_f = float(valore)
+                except (TypeError, ValueError):
+                    setattr(self, chiave, 0.0)
+                    continue
+                lim_a = MAX_ALLENATO_FISICO if e_fisica(chiave) else MAX_ALLENATO_SKILL
+                setattr(self, chiave, max(0.0, min(val_f, lim_a)))
+            elif chiave == 'datetime_creazione_sim':
+                if isinstance(valore, datetime.datetime):
+                    self.datetime_creazione_sim = valore
+            elif chiave == 'datacreazione_reale':
+                if isinstance(valore, datetime.datetime):
+                    self.datacreazione_reale = valore
+            elif chiave == 'infortunio_fine_datetime':
+                self.infortunio_fine_datetime = valore if isinstance(valore, datetime.datetime) else None
+            elif chiave == 'archetipo_allenamento':
+                self.archetipo_allenamento = valore if isinstance(valore, str) else "Non Definito"
+            elif chiave == 'descrizione_fisica':
+                self.descrizione_fisica = valore[:500] if isinstance(valore, str) else ""
+            elif hasattr(self, chiave):
+                self._imposta_attributo(chiave, valore)
+        if eta_giorni is not None:
+            with contextlib.suppress(TypeError, ValueError):
+                self.eta = int(eta_giorni)
+
+    def _imposta_attributo(self, chiave, valore):
+        """Imposta un attributo esistente convertendo il valore al tipo che ha già, se si può."""
+        nuovo = valore
+        if chiave == 'puntiesperienza' and not isinstance(valore, int):
+            try:
+                nuovo = int(valore)
+            except (TypeError, ValueError):
+                setattr(self, chiave, valore)
+                return
+        elif chiave in ['etaritiro', 'etamorte'] and not isinstance(valore, int):
+            try:
+                nuovo = giorni_da_anni(float(valore) / 10.)
+            except (TypeError, ValueError):
+                return
+        try:
+            setattr(self, chiave, type(getattr(self, chiave))(nuovo))
+        except (TypeError, ValueError):
+            setattr(self, chiave, valore)
+
+    def _rispetta_tetti(self):
+        """Riporta ogni caratteristica entro il tetto del totale fra parte innata e allenata."""
+        for nome_base in ATTRIBUTI_BASE_CON_ALLENABILI:
+            nome_allenato = nome_base.replace('_base', '_allenata')
+            max_totale_skill = MAX_TOTALE_PRECISIONE_RESISTENZA if nome_base in CARATTERISTICHE_FISICHE_BASE else MAX_TOTALE_SKILL_GIOCO
+            v_b = getattr(self, nome_base, 0.0)
+            v_a = getattr(self, nome_allenato, 0.0)
+            if v_b + v_a > max_totale_skill:
+                v_a = max(0., max_totale_skill - v_b)
+                setattr(self, nome_allenato, v_a)
+            if v_b + v_a > max_totale_skill:
+                setattr(self, nome_base, max(0., max_totale_skill - v_a))
+
+    def _get_valore_totale(self, nome_base):
+        """Il valore di una caratteristica, parte innata più parte allenata."""
+        if not nome_base.endswith('_base'):
+            return 0.0
+        return getattr(self, nome_base, 0.0) + getattr(self, nome_base.replace('_base', '_allenata'), 0.0)
+
+    @property
+    def gloria_richiesta(self):
+        """La gloria che il giocatore chiede a una polisportiva: cresce col valore, cala dopo i 17 anni."""
+        g_base = self.indice_collettivo_valore * K_ICV_GLORIA_RICHIESTA
+        if ANNO_SIMULAZIONE_GIORNI <= 0:
+            return GLORIA_RICHIESTA_MINIMA_ASSOLUTA
+        eta_p_gg = giorni_da_anni(ETA_PICCO_RICHIESTA_GLORIA_ANNI)
+        eta_m_gg = giorni_da_anni(ETA_MINIMO_RICHIESTA_GLORIA_ANNI)
+        range_eta = max(1, eta_m_gg - eta_p_gg)
+        fatt_eta = MAX_FATTORE_ETA_GLORIA
+        if self.eta >= eta_m_gg:
+            fatt_eta = MIN_FATTORE_ETA_GLORIA
+        elif self.eta > eta_p_gg:
+            prog = (self.eta - eta_p_gg) / range_eta
+            fatt_eta = MAX_FATTORE_ETA_GLORIA - prog * (MAX_FATTORE_ETA_GLORIA - MIN_FATTORE_ETA_GLORIA)
+        g_calc = (g_base * fatt_eta) + GLORIA_RICHIESTA_FISSA
+        if getattr(self, 'ambidestro', False):
+            g_calc *= FATTORE_GLORIA_RICHIESTA_AMBIDESTRO
+        if getattr(self, 'giocorapido', False):
+            g_calc *= FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO
+        if getattr(self, 'cambiovelocita', False):
+            g_calc *= FATTORE_GLORIA_RICHIESTA_CAMBIO_VEL
+        g_fin = max(GLORIA_RICHIESTA_MINIMA_ASSOLUTA, int(g_calc))
+        return min(g_fin, MAX_GLORIA_RICHIESTA)
+
+    @property
+    def eta_anni(self):
+        return self.eta / ANNO_SIMULAZIONE_GIORNI if ANNO_SIMULAZIONE_GIORNI > 0 else 0.0
+
+    def _riga_caratteristica(self, nome_b):
+        tot = self._get_valore_totale(nome_b)
+        nome_d = NOME_ATTR_TO_DISPLAY_MAP.get(nome_b, nome_b.replace('_base', '').replace('_', ' ').title())
+        max_t = MAX_TOTALE_PRECISIONE_RESISTENZA if nome_b in CARATTERISTICHE_FISICHE_BASE else MAX_TOTALE_SKILL_GIOCO
+        perc = f"({(tot * 100. / max_t if max_t > 0 else 0.):.0f}%)"
+        v_b = getattr(self, nome_b, 0.)
+        v_a = getattr(self, nome_b.replace('_base', '_allenata'), 0.)
+        return f"  - {nome_d:<25}: {v_b:5.2f} + {v_a:5.2f} = {tot:5.2f} {perc}"
+
+    def __str__(self):
+        eta_vis = formatta_eta_sim(self.eta, False)
+        sex = "(Uomo)" if self.sesso == 'm' else "(Donna)"
+        eta_sex = f"Età: {eta_vis} {sex}"
+        self.aggiorna_aspetto()
+        stato = ["libero" if self.appartenenza == "*" else f"iscritto a {self.appartenenza}"]
+        if self.ritirato:
+            stato.append("ritirato")
+        if self.infortunato:
+            fine = f" (fino a {self.infortunio_fine_datetime:%Y-%m-%d %H:%M})" if self.infortunio_fine_datetime else " (N/D)"
+            stato.append("infortunato" + fine)
+        flags_estesi = [nome_attr.replace('_', ' ').capitalize() for nome_attr in MAPPA_FLAG_SOMMARIO if getattr(self, nome_attr, False)]
+        if flags_estesi:
+            stato.append(f"Flags: {', '.join(flags_estesi)}")
+        stato_str = ", ".join(stato)
+        compl = "Compleanno N/D"
+        if ANNO_SIMULAZIONE_GIORNI > 0:
+            gg_eta = self.eta
+            anni_c, gg_dopo = divmod(gg_eta, ANNO_SIMULAZIONE_GIORNI)
+            gg_manc = (ANNO_SIMULAZIONE_GIORNI - gg_dopo) % ANNO_SIMULAZIONE_GIORNI
+            anni_prox = anni_c + 1
+            if gg_dopo == 0 and gg_eta > 0:
+                compl = f"Prossimo Compleanno (sim): tra {ANNO_SIMULAZIONE_GIORNI} giorni (compirà {anni_prox} anni sim)"
+            elif gg_manc == 0 and gg_eta == 0:
+                compl = f"Prossimo Compleanno (sim): tra {ANNO_SIMULAZIONE_GIORNI} giorni (compirà 1 anno sim)"
+            else:
+                compl = f"Prossimo Compleanno (sim): tra {gg_manc} giorni (compirà {anni_prox} anni sim)"
+        out = [f"\n--- Scheda Giocatore ID: {self.id} ---", f"{self.nome} {self.cognome}", eta_sex, f"Stato: {stato_str}",
+               f"Descrizione: {getattr(self, 'descrizione_fisica', '(N/D)')}",
+               f"Scoperto (sim): {self.datetime_creazione_sim:%Y-%m-%d %H:%M}", f"Scoperto (reale): {self.datacreazione_reale:%Y-%m-%d %H:%M}",
+               f"Versione Creazione: {self.versione}", f"{compl}", f"Altezza: {self.altezza} cm, Peso: {self.peso} kg",
+               f"XP: {self.puntiesperienza}", f"ICV Tot: {self.indice_collettivo_valore:.2f} (B: {self.icv_base:.2f}, A: {self.icv_allenato:.2f})",
+               f"Gloria Rich: {self.gloria_richiesta}"]
+        for titolo, gruppo in (("\nCaratteristiche Fisiche:", CARATTERISTICHE_FISICHE_BASE), ("\nCaratteristiche Difensive:", CARATTERISTICHE_DIFESA_BASE),
+                               ("\nCaratteristiche Offensive:", CARATTERISTICHE_ATTACCO_BASE), ("\nPolivalenti:", CARATTERISTICHE_CONTROLLO_BASE)):
+            out.append(titolo)
+            out.extend(self._riga_caratteristica(nb) for nb in gruppo)
+        out.append("\n--- Carriera e Palmarès ---")
+        pt = self.partitevinte + self.partiteperse
+        pv = f"({self.partitevinte * 100. / pt:.1f}%)" if pt else "(0%)"
+        out.append(f"  Partite Giocate: {pt} (Vinte: {self.partitevinte} {pv})")
+        st = self.setsvinti + self.setspersi
+        sv = f"({self.setsvinti * 100. / st:.1f}%)" if st else "(0%)"
+        out.append(f"  Sets Giocati: {st} (Vinti: {self.setsvinti} {sv})")
+        gf, gs = self.goalsfatti, self.goalssubiti
+        rapp_str = ""
+        if gs > 0:
+            rapp_str = f" (Rapp GF/GS: {(gf * 100. / gs):.1f}%)"
+        elif gf > 0:
+            rapp_str = " (Rapp GF/GS: Inf)"
+        out.append(f"  Goals: Fatti={gf}, Subiti={gs}{rapp_str}")
+        oro = getattr(self, 'ori', 0)
+        arg = getattr(self, 'argenti', 0)
+        bro = getattr(self, 'bronzi', 0)
+        leg = getattr(self, 'legni', 0)
+        if oro > 0 or arg > 0 or bro > 0 or leg > 0:
+            out.append(f"  Medaglie: Oro={oro}, Argento={arg}, Bronzo={bro}, Legno={leg}")
+        else:
+            out.append("  Medaglie: Nessuna")
+        out.append("-" * 75)
+        return "\n".join(out)
+
+    def sommario(self):
+        """Il giocatore in una riga."""
+        eta_vis = formatta_eta_sim(self.eta, formato_breve=True)
+        sesso = "(U)" if self.sesso == 'm' else "(D)"
+        stato = "Ritirato" if self.ritirato else "Libero" if self.appartenenza == "*" else f"({self.appartenenza[:10]})"
+        flags = "".join([f for a, f in MAPPA_FLAG_SOMMARIO.items() if getattr(self, a, False)])
+        flags_str = f" [{flags}]" if flags else ""
+        xp = int(self.puntiesperienza or 0)
+        return (f"ID:{self.id:<4d} {self.nome[:15]:<15} {self.cognome[:15]:<15} "
+                f"{eta_vis:<8} {sesso} ICV:{self.indice_collettivo_valore:6.1f} XP:{xp:<5} {stato}{flags_str}")
+
+    def aggiorna_icv(self):
+        """Ricalcola l'indice collettivo di valore: tutte le caratteristiche più 33 punti per ogni tratto speciale."""
+        self.icv_base = sum(getattr(self, attr, 0.0) for attr in ATTRIBUTI_BASE_CON_ALLENABILI)
+        self.icv_allenato = sum(getattr(self, attr, 0.0) for attr in ATTRIBUTI_ALLENABILI)
+        bonus = sum(33 for flag in ['ambidestro', 'giocorapido', 'cambiovelocita'] if getattr(self, flag, False))
+        self.indice_collettivo_valore = self.icv_base + self.icv_allenato + bonus
+
+    def _genera_descrizione_fisica(self):
+        """
+        Dalla versione 1.1.0 i tratti del giocatore vengono dal motore grammaticale di
+        descrizioni.py: altezza, peso e descrizione si ricalcolano con l'età del momento.
+        """
+        self.tratti = descrizioni.genera_tratti(self.sesso)
+        self.aggiorna_aspetto()
+
+    def aggiorna_aspetto(self):
+        """Altezza, peso e descrizione all'età attuale. I giocatori nati prima della 1.1.0 non hanno tratti e tengono i loro."""
+        tratti = getattr(self, "tratti", None)
+        if not tratti:
+            return
+        self.altezza, self.peso = descrizioni.fisico(tratti, self.sesso, self.eta_anni)
+        self.descrizione_fisica = descrizioni.descrivi(tratti, self.sesso, self.eta_anni)
+
+    def _assegna_archetipo_iniziale(self):
+        sugg = self._determina_archetipo_da_base()
+        if sugg and sugg in ARCHETIPI_ALLENAMENTO and not caso(PROB_ARCHETIPO_CASUALE_CREAZIONE):
+            self.archetipo_allenamento = sugg
+        else:
+            validi = list(ARCHETIPI_ALLENAMENTO.keys())
+            self.archetipo_allenamento = random.choice(validi) if validi else "TuttofareBilanciato"
+
+    def _determina_archetipo_da_base(self):
+        """L'archetipo di allenamento che meglio si adatta alle caratteristiche innate, o None."""
+        stats = {'fis': CARATTERISTICHE_FISICHE_BASE, 'att': CARATTERISTICHE_ATTACCO_BASE, 'dif': CARATTERISTICHE_DIFESA_BASE, 'ctrl': CARATTERISTICHE_CONTROLLO_BASE,
+                 'bloc': ['bloccosx_base', 'bloccodx_base'], 'batt': ['battutasx_base', 'battutadx_base']}
+        medie = {k: sum(getattr(self, s, 0.) for s in v) / len(v) if v else 0. for k, v in stats.items()}
+        pesi = {"MuroFisico": medie['fis'] * 2.5, "AttaccantePuro": medie['att'], "DifensoreRoccioso": medie['dif'],
+                "SpecialistaBlocchiDifesa": medie['bloc'] * 1.5 + medie['dif'] * .5, "SpecialistaBlocchiAttacco": medie['bloc'] * 1.5 + medie['att'] * .5,
+                "SpecialistaBlocchiControllo": medie['bloc'] * 1.5 + medie['ctrl'] * .5, "SpecialistaBattutaBlocco": medie['batt'] * 1.5 + medie['bloc'] * .5,
+                "CecchinoPreciso": medie['ctrl']}
+        soglia = 5.
+        validi = {k: v for k, v in pesi.items() if v >= soglia}
+        if not validi:
+            return None
+        sugg = max(validi, key=validi.get)
+        if medie['dif'] > 8. and medie['bloc'] > 8.:
+            sugg = "SpecialistaBlocchiDifesa"
+        return sugg if sugg in ARCHETIPI_ALLENAMENTO else None
+
+    def _applica_declino_aggregato(self, giorni_passati):
+        """Il declino dovuto all'età per i giorni trascorsi, dai 50 anni in poi."""
+        if giorni_passati <= 0 or self.eta < AGING_START_AGE_GIORNI or ANNO_SIMULAZIONE_GIORNI <= 0:
+            return
+        prog_eta = max(0, self.eta - AGING_START_AGE_GIORNI)
+        range_decl = max(1, AGING_PEAK_AGE_GIORNI - AGING_START_AGE_GIORNI)
+        aging_f = min(1.0, prog_eta / range_decl)
+        reduc_ann = aging_f * MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM
+        manten_ann = max(0.0, 1.0 - reduc_ann)
+        manten_giorn = pow(manten_ann, 1.0 / ANNO_SIMULAZIONE_GIORNI)
+        manten_tot = pow(manten_giorn, giorni_passati)
+        for attr in ATTRIBUTI_INVECCHIABILI:
+            setattr(self, attr, max(0.0, getattr(self, attr, 0.0) * manten_tot))
+
+
+class Polisportiva:
+    def __init__(self, nome, password, datetime_creazione_sim, is_cpu_controlled=False):
+        self.nome = nome.title()
+        self.password = password if not is_cpu_controlled else None
+        self.datetime_creazione_sim = datetime_creazione_sim
+        self.is_cpu_controlled = is_cpu_controlled
+        self.tesserati = []
+        self.indicecollettivotesserati = 0.0
+        self.ori = 0
+        self.argenti = 0
+        self.bronzi = 0
+        self.legni = 0
+        self.coppe_oro = 0
+        self.coppe_argento = 0
+        self.coppe_bronzo = 0
+        self.coppe_legno = 0
+        self.maxtesserati = MAX_TESSERATI_POLISPORTIVA
+        self.gloria = 100
+        self.datetime_ultimo_movimento = DATA_NESSUN_MOVIMENTO
+        self.movimenti_oggi = 0
+        self.datacreazione_reale = adesso()
+        self.versione_creazione = VERSIONE
+
+    def __str__(self):
+        dt_creaz_sim_str = f"{self.datetime_creazione_sim:%Y-%m-%d %H:%M}" if isinstance(self.datetime_creazione_sim, datetime.datetime) else "N/D"
+        reale = getattr(self, 'datacreazione_reale', None)
+        dt_creaz_real_str = reale.strftime('%Y-%m-%d %H:%M') if isinstance(reale, datetime.datetime) else "N/D"
+        versione_creaz = getattr(self, 'versione_creazione', 'N/D')
+        num_tesserati = len(self.tesserati)
+        ic_medio_str = f"{(self.indicecollettivotesserati / num_tesserati):.2f}" if num_tesserati > 0 else "0.00"
+        cpu = " [CPU]" if self.is_cpu_controlled else ""
+        mov_rimasti = LIMITE_MOVIMENTI_PER_TICK - self.movimenti_oggi
+        eta_poli_str = "(Vedi Sommario/Statistiche per Età)"
+        out = [f"\n--- Scheda Polisportiva: {self.nome}{cpu} ---", f"Fondata: (Reale: {dt_creaz_real_str}, Sim: {dt_creaz_sim_str}, Versione: {versione_creaz})",
+               f"Tesserati: {num_tesserati}/{self.maxtesserati}, ICT: {self.indicecollettivotesserati:.2f}, IC Medio: {ic_medio_str}",
+               f"Gloria: {self.gloria}, Movimenti Oggi Rimanenti: {mov_rimasti}/{LIMITE_MOVIMENTI_PER_TICK}",
+               "\n--- Palmarès e Attività ---", f"Età Polisportiva (Sim): {eta_poli_str}", "Coppe (Squadra):",
+               f"  Oro={self.coppe_oro}, Argento={self.coppe_argento}, Bronzo={self.coppe_bronzo}, Legno={self.coppe_legno}",
+               "Medaglie (Individuali Tesserati):", f"  Oro={self.ori}, Argento={self.argenti}, Bronzo={self.bronzi}, Legno={self.legni}"]
+        return "\n".join(out)
+
+    def eta_sim(self, data_corrente_sim):
+        """L'età della polisportiva in forma breve, oppure Età N/D se non si può calcolare."""
+        if data_corrente_sim and isinstance(self.datetime_creazione_sim, datetime.datetime):
+            return formatta_eta_sim(int((data_corrente_sim - self.datetime_creazione_sim).total_seconds() / (24 * 3600)), True) + " sim"
+        return "Età N/D"
+
+    def sommario(self, data_corrente_sim=None):
+        """La polisportiva in una riga."""
+        cpu = " [CPU]" if self.is_cpu_controlled else ""
+        return (f"{self.nome:<30} {len(self.tesserati):2d}/{self.maxtesserati} atl. ICT:{self.indicecollettivotesserati:7.1f} ({self.eta_sim(data_corrente_sim)}) {cpu}")
+
+    def aggiorna_ict(self, giocatori, ids_morti):
+        """Ricalcola l'indice collettivo dei tesserati, morti esclusi."""
+        self.indicecollettivotesserati = sum(g.indice_collettivo_valore for gid, g in giocatori.items() if gid in self.tesserati and gid not in ids_morti)
+
+    def aggiungi_tesserato(self, gid, icv):
+        if gid not in self.tesserati:
+            self.tesserati.append(gid)
+            self.indicecollettivotesserati += icv
+
+    def rimuovi_tesserato(self, gid, icv):
+        if gid in self.tesserati:
+            self.tesserati.remove(gid)
+            self.indicecollettivotesserati = max(0., self.indicecollettivotesserati - icv)
+
+    def aggiorna_gloria(self, giocatori, ids_morti):
+        """Ricalcola la gloria da coppe, medaglie, valore, età e numero dei tesserati attivi."""
+        base = 60.
+        c_o, c_a, c_b, c_l = 100, 50, 20, 5
+        m_o, m_a, m_b, m_l = 30, 15, 5, 1
+        k_c, k_m, k_icv, eta_ref, k_eta, k_num = 12., 8., 0.4, 35., 1.5, 15.
+        p_c = self.coppe_oro * c_o + self.coppe_argento * c_a + self.coppe_bronzo * c_b + self.coppe_legno * c_l
+        v_c = math.sqrt(max(0., p_c)) * k_c
+        p_m = self.ori * m_o + self.argenti * m_a + self.bronzi * m_b + self.legni * m_l
+        v_m = math.sqrt(max(0., p_m)) * k_m
+        v_icv = 0.
+        v_eta = 0.
+        v_num = 0.
+        n_val = 0
+        eta_gg = 0
+        icv_tot = 0.
+        for gid in self.tesserati:
+            if gid in giocatori and gid not in ids_morti and not giocatori[gid].ritirato:
+                n_val += 1
+                eta_gg += giocatori[gid].eta
+                icv_tot += giocatori[gid].indice_collettivo_valore
+        if n_val > 0 and ANNO_SIMULAZIONE_GIORNI > 0:
+            icv_m = icv_tot / n_val
+            eta_m_a = eta_gg / n_val / ANNO_SIMULAZIONE_GIORNI
+            v_icv = icv_m * k_icv
+            v_eta = max(0., eta_ref - eta_m_a) * k_eta
+        if self.maxtesserati > 0:
+            v_num = (len(self.tesserati) / self.maxtesserati) * k_num
+        self.gloria = max(1, int(base + v_c + v_m + v_icv + v_eta + v_num))
