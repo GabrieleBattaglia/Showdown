@@ -1,0 +1,459 @@
+"""
+La taratura del valore complessivo di MESS sul motore di partita, problema P14.
+Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Nasce il 2026-10-07 con la tappa 9, secondo il punto 15 del progetto del motore. Il vecchio indice
+sommava alla pari tutte le caratteristiche e dava 33 punti a ogni tratto raro; qui i pesi si
+misurano su quanto ogni caratteristica conta davvero nelle partite. Lo strumento non scrive nulla
+nel progetto: alla fine stampa il blocco da copiare in costanti.py.
+Il metodo, in quattro passi.
+Primo, il rating: una popolazione di prova di 3200 giocatori gioca contro quarantotto sparring
+fissi, nati da un'altra popolazione, un incontro al meglio dei 3 set ciascuno, in modalità essenziale; il rating
+è il logaritmo del rapporto fra i punti fatti e quelli subiti. Nella popolazione della regressione
+i tratti sono ridistribuiti, uno su cinque per ciascuno: nati con le frequenze vere, i mancini
+sarebbero un centinaio e gli ambidestri una sessantina, e il loro peso uscirebbe dal rumore.
+Secondo, la regressione: i minimi quadrati del rating sulle caratteristiche del valore, prese per
+ruolo come in valore.py, e sui quattro tratti, con tre regressori di controllo, temperamento,
+lettura del gioco e fattore d'età della stanchezza, che si misurano ma non entrano nell'indice.
+I colpi e le battute speculari, come il lungolinea sinistro e il destro, hanno un peso solo: la
+differenza fra i due lati nasce dalla popolazione, quasi tutta destrimana, ed è più piccola del
+rumore della misura, che da un seme all'altro la rovescia. Chiusure e blocchi invece restano
+divisi fra dritto e rovescio, perché lì la differenza c'è sempre, e nello stesso verso.
+I pesi non possono essere negativi: si risolve, si azzera il più negativo, si risolve di nuovo.
+Una seconda popolazione, nata da un altro seme, verifica il risultato.
+Terzo, la scala: il mondo maturo di una simulazione lunga, dieci anni in una cartella temporanea,
+fissa A e B perché il valore nuovo conservi due cose del valore della tappa 8, su cui contano
+stipendi e gloria della decisione D22: la mediana, e la media del fattore dello stipendio, cioè e
+elevato alla differenza fra il valore e 140, divisa per 40. Il progetto chiedeva la stessa
+distanza fra decimo e novantesimo percentile, ma il valore di prima aveva una coda lunga, i 33
+punti di ogni tratto, e con la stessa distanza fra i percentili il monte stipendi calava di un
+decimo: nella simulazione lunga le casse del computer salivano da 5000 a 18000 euro di mediana.
+Con la media del fattore, il monte stipendi resta quello di prima e la cassa torna sui 5000 euro;
+il valore nuovo ha però un terzo di dispersione in più fra decimo e novantesimo percentile.
+Quarto, il rapporto: i pesi in punti di valore, le caratteristiche quasi inerti, l'effetto di
+temperamento ed esperienza, la curva del favorito su una terza popolazione e il blocco da copiare.
+Uso, dalla cartella del progetto o da qualunque altra:
+    python strumenti/taratura_valore.py
+    python strumenti/taratura_valore.py --seme 9 --mondo salvato --rapporto taratura_valore.txt
+"""
+
+import argparse
+import math
+import os
+import random
+import statistics
+import sys
+import time
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+
+RADICE = Path(__file__).resolve().parent.parent
+if str(RADICE) not in sys.path:
+    sys.path.insert(0, str(RADICE))
+STRUMENTI = Path(__file__).resolve().parent
+if str(STRUMENTI) not in sys.path:
+    sys.path.insert(0, str(STRUMENTI))
+
+from popolazione_di_prova import genera  # noqa: E402
+from simulazione_lunga import in_attivita, simula  # noqa: E402
+
+import archivio  # noqa: E402
+import costanti  # noqa: E402
+import percorsi  # noqa: E402
+import valore  # noqa: E402
+from mondo import Mondo  # noqa: E402
+from motore import ESSENZIALE, SINGOLARE_3, TARATURA, simula_incontro  # noqa: E402
+from motore.campo import lettura_possibile, temperamento_relativo  # noqa: E402
+from motore.taratura import carica_taratura  # noqa: E402
+
+# L'indice della tappa 8, su cui sono tarate le cifre dell'economia: è la scala da conservare.
+PESI_TAPPA_8 = dict.fromkeys(costanti.CARATTERISTICHE_VALORE, 1.0)
+TRATTI_TAPPA_8 = {"mancino": 0.0, "ambidestro": 33.0, "giocorapido": 33.0, "cambiovelocita": 33.0}
+CONTROLLI = ("temperamento", "lettura", "fattore_eta")
+# Le caratteristiche fisiche vanno da 0 a 10, le altre da 0 a 40.
+FISICHE = ("precisione", "forza", "resistenza")
+FASCE_DISTACCO = ((0.05, "meno del 5 per cento", (50, 58)), (0.15, "fra il 5 e il 15 per cento", (58, 70)),
+                  (0.30, "fra il 15 e il 30 per cento", (70, 85)), (None, "oltre il 30 per cento", (85, 96)))
+
+
+def numero(valore_numerico, decimali=1):
+    return f"{valore_numerico:.{decimali}f}".replace(".", ",")
+
+
+def percentile(valori, quota):
+    ordinati = sorted(valori)
+    return ordinati[min(len(ordinati) - 1, int(len(ordinati) * quota))]
+
+
+def massimo_di(nome):
+    return 10.0 if nome in FISICHE else 40.0
+
+
+def fattore_eta(g, t=TARATURA):
+    anni = g.eta_anni
+    return 1.0 + max(0.0, anni - t.ETA_INIZIO_FATICA) / t.ANNI_FATICA + max(0.0, t.ETA_FATICA_GIOVANI - anni) * t.FATICA_GIOVANI_PER_ANNO
+
+
+def _gruppi():
+    """Le colonne delle caratteristiche: le coppie speculari di colpi e battute insieme, le altre da sole."""
+    nomi = costanti.CARATTERISTICHE_VALORE
+    gruppi = []
+    for nome in nomi:
+        if nome.endswith("dx") and nome[:-2] + "sx" in nomi:
+            continue
+        if nome.endswith("sx") and nome[:-2] + "dx" in nomi:
+            gruppi.append((nome, nome[:-2] + "dx"))
+        else:
+            gruppi.append((nome,))
+    return tuple(gruppi)
+
+
+GRUPPI = _gruppi()
+
+
+def regressori(g):
+    """Le caratteristiche del valore, i tratti e i controlli di un giocatore, nell'ordine delle colonne."""
+    caratteristiche = valore.caratteristiche(g, "totale")
+    tratti = valore.tratti(g)
+    riga = [sum(caratteristiche[nome] for nome in gruppo) for gruppo in GRUPPI]
+    riga += [1.0 if tratti[nome] else 0.0 for nome in valore.TRATTI]
+    riga += [temperamento_relativo(g), lettura_possibile(g, TARATURA), fattore_eta(g)]
+    riga.append(1.0)
+    return riga
+
+
+COLONNE = (*(" e ".join(gruppo) for gruppo in GRUPPI), *valore.TRATTI, *CONTROLLI, "costante")
+VINCOLATE = frozenset(range(len(GRUPPI) + len(valore.TRATTI)))
+
+
+def ridistribuisci_tratti(giocatori, quota, seme):
+    """
+    Ridà a ogni giocatore i quattro tratti, ciascuno con la probabilità indicata, mancino e
+    ambidestro esclusi a vicenda come alla nascita; poi ricalcola il valore.
+    """
+    rng = random.Random(f"tratti-{seme}")
+    for g in giocatori:
+        g.mancino = rng.random() < quota
+        g.ambidestro = not g.mancino and rng.random() < quota
+        g.giocorapido = rng.random() < quota
+        g.cambiovelocita = rng.random() < quota
+        g.aggiorna_icv()
+    return giocatori
+
+
+def _rating_di_un_gruppo(giocatori, sparring, seme, taratura):
+    """I rating di una parte dei giocatori: ognuno ha il suo generatore, così l'esito non dipende da come si dividono."""
+    risultati = {}
+    for g in giocatori:
+        rng = random.Random(f"rating-{seme}-{g.id}")
+        fatti = subiti = 0
+        for indice, s in enumerate(sparring):
+            primo = indice % 2 == 0
+            a, b = (g, s) if primo else (s, g)
+            r = simula_incontro(a, b, SINGOLARE_3, seme=rng.getrandbits(63), dettaglio=ESSENZIALE, taratura=taratura)
+            punti_a = sum(x for x, _y in r.set)
+            punti_b = sum(y for _x, y in r.set)
+            fatti += punti_a if primo else punti_b
+            subiti += punti_b if primo else punti_a
+        risultati[g.id] = math.log(max(1, fatti) / max(1, subiti))
+    return risultati
+
+
+def rating(giocatori, sparring, seme, taratura=TARATURA, processi=1):
+    """
+    Il rating di ogni giocatore contro gli sparring: il logaritmo del rapporto fra punti fatti e
+    subiti in un incontro al meglio dei 3 set contro ciascuno, a parti alternate. Con più
+    processi i giocatori si dividono fra loro; il risultato è identico.
+    """
+    if processi <= 1:
+        return _rating_di_un_gruppo(giocatori, sparring, seme, taratura)
+    # I processi figli ricevono la funzione per nome: la si prende dal modulo importato col suo
+    # nome, perché quella dello script lanciato direttamente si chiama __main__ e i figli non la
+    # ritroverebbero.
+    from taratura_valore import _rating_di_un_gruppo as lavoro
+    gruppi = [giocatori[i::processi] for i in range(processi)]
+    risultati = {}
+    with ProcessPoolExecutor(max_workers=processi) as esecutore:
+        for parziale in esecutore.map(lavoro, gruppi, [sparring] * processi, [seme] * processi, [taratura] * processi):
+            risultati.update(parziale)
+    return risultati
+
+
+def _risolvi(matrice, termini):
+    """Risolve un sistema lineare con l'eliminazione di Gauss e il pivot parziale."""
+    n = len(termini)
+    a = [[*riga, termini[i]] for i, riga in enumerate(matrice)]
+    for colonna in range(n):
+        pivot = max(range(colonna, n), key=lambda r: abs(a[r][colonna]))
+        if abs(a[pivot][colonna]) < 1e-12:
+            raise ValueError("Il sistema della regressione è singolare: servono più giocatori.")
+        a[colonna], a[pivot] = a[pivot], a[colonna]
+        for riga in range(colonna + 1, n):
+            fattore = a[riga][colonna] / a[colonna][colonna]
+            if fattore:
+                for k in range(colonna, n + 1):
+                    a[riga][k] -= fattore * a[colonna][k]
+    soluzione = [0.0] * n
+    for riga in range(n - 1, -1, -1):
+        somma = a[riga][n] - sum(a[riga][k] * soluzione[k] for k in range(riga + 1, n))
+        soluzione[riga] = somma / a[riga][riga]
+    return soluzione
+
+
+def minimi_quadrati(righe, y, vincolate=VINCOLATE):
+    """
+    I minimi quadrati con i pesi vincolati non negativi, col metodo dell'insieme attivo: si risolve
+    sulle colonne ammesse, si azzera la vincolata più negativa e si risolve di nuovo.
+    Restituisce i coefficienti, zero per le colonne escluse, e le colonne escluse in ordine.
+    """
+    n = len(righe[0])
+    xtx = [[0.0] * n for _ in range(n)]
+    xty = [0.0] * n
+    for riga, valore_y in zip(righe, y, strict=True):
+        for i in range(n):
+            ri = riga[i]
+            if ri:
+                xty[i] += ri * valore_y
+                riga_xtx = xtx[i]
+                for j in range(n):
+                    riga_xtx[j] += ri * riga[j]
+    attive = list(range(n))
+    escluse = []
+    while True:
+        soluzione = _risolvi([[xtx[i][j] for j in attive] for i in attive], [xty[i] for i in attive])
+        coefficienti = [0.0] * n
+        for indice, colonna in enumerate(attive):
+            coefficienti[colonna] = soluzione[indice]
+        negative = [(coefficienti[c], c) for c in attive if c in vincolate and coefficienti[c] < 0]
+        if not negative:
+            return coefficienti, escluse
+        _peggiore, colonna = min(negative)
+        attive.remove(colonna)
+        escluse.append(colonna)
+
+
+def previsione(coefficienti, riga):
+    return sum(c * x for c, x in zip(coefficienti, riga, strict=True))
+
+
+def r_quadro(coefficienti, righe, y):
+    media = statistics.fmean(y)
+    residui = sum((v - previsione(coefficienti, r)) ** 2 for r, v in zip(righe, y, strict=True))
+    totale = sum((v - media) ** 2 for v in y)
+    return 1.0 - residui / totale
+
+
+def correlazione(x, y):
+    mx, my = statistics.fmean(x), statistics.fmean(y)
+    sxy = sum((a - mx) * (b - my) for a, b in zip(x, y, strict=True))
+    sxx = sum((a - mx) ** 2 for a in x)
+    syy = sum((b - my) ** 2 for b in y)
+    return sxy / math.sqrt(sxx * syy)
+
+
+def pesi_dai_coefficienti(coefficienti):
+    """
+    I pesi del valore, normalizzati perché la media delle caratteristiche di gioco, quelle da 0 a
+    40, valga 1 come nel valore di prima; i tratti nella stessa unità.
+    """
+    n = len(GRUPPI)
+    grezzi = {nome: coefficienti[indice] for indice, gruppo in enumerate(GRUPPI) for nome in gruppo}
+    di_gioco = [grezzi[nome] for nome in costanti.CARATTERISTICHE_VALORE if nome not in FISICHE]
+    unita = statistics.fmean(di_gioco)
+    pesi = {nome: grezzi[nome] / unita for nome in costanti.CARATTERISTICHE_VALORE}
+    tratti = {nome: coefficienti[n + i] / unita for i, nome in enumerate(valore.TRATTI)}
+    return pesi, tratti, unita
+
+
+def fattore_stipendio(indice):
+    """Il fattore dello stipendio della decisione D22 per un valore: uno al valore di riferimento."""
+    return math.exp((indice - costanti.VALORE_DI_RIFERIMENTO) / costanti.SCALA_STIPENDIO)
+
+
+def scala(giocatori, pesi, tratti):
+    """
+    A e B: la mediana del valore della tappa 8, e la media del suo fattore di stipendio, cioè il
+    monte stipendi. Con A legato a B dalla mediana, la media del fattore cresce con B, e B si
+    trova per bisezione.
+    """
+    vecchi = [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in giocatori]
+    somme = [valore.indice(g, pesi, tratti, 0.0, 1.0) for g in giocatori]
+    mediana_vecchia, mediana_somme = statistics.median(vecchi), statistics.median(somme)
+    obiettivo = statistics.fmean(fattore_stipendio(v) for v in vecchi)
+
+    def media_del_fattore(b):
+        a = mediana_vecchia - b * mediana_somme
+        return statistics.fmean(fattore_stipendio(a + b * s) for s in somme)
+
+    basso, alto = 0.0, 10.0
+    for _passo in range(60):
+        b = (basso + alto) / 2.0
+        if media_del_fattore(b) < obiettivo:
+            basso = b
+        else:
+            alto = b
+    b = (basso + alto) / 2.0
+    return mediana_vecchia - b * mediana_somme, b
+
+
+def descrivi_distribuzione(nome, valori):
+    return (f"{nome}: mediana {numero(statistics.median(valori))}, decimo percentile {numero(percentile(valori, 0.1))}, "
+            f"novantesimo {numero(percentile(valori, 0.9))}, da {numero(min(valori))} a {numero(max(valori))}.")
+
+
+def curva_del_favorito(giocatori, indice_di, quante, seme, taratura=TARATURA):
+    """Quante partite vince il favorito per fasce di distacco dell'indice, su coppie estratte a caso."""
+    rng = random.Random(seme)
+    esiti = []
+    for _ in range(quante):
+        a, b = rng.sample(giocatori, 2)
+        ia, ib = indice_di[a.id], indice_di[b.id]
+        if ia == ib:
+            continue
+        r = simula_incontro(a, b, SINGOLARE_3, seme=rng.getrandbits(63), dettaglio=ESSENZIALE, taratura=taratura)
+        distacco = (max(ia, ib) - min(ia, ib)) / max(1.0, min(ia, ib))
+        esiti.append((distacco, (r.vincitore == "A") == (ia > ib)))
+    righe = []
+    minimo = 0.0
+    for limite, nome, intervallo in FASCE_DISTACCO:
+        massimo = limite if limite is not None else float("inf")
+        fascia = [vinta for distacco, vinta in esiti if minimo <= distacco < massimo]
+        minimo = massimo
+        if fascia:
+            quota = 100.0 * sum(fascia) / len(fascia)
+            esito = "dentro" if intervallo[0] <= quota <= intervallo[1] else "FUORI"
+            righe.append(f"Con un distacco {nome}: {len(fascia)} partite, il favorito ne vince il {numero(quota)} per cento, bersaglio da {intervallo[0]} a {intervallo[1]}, {esito}.")
+    return righe
+
+
+def mondo_salvato():
+    """I giocatori in attività del mondo salvato, letti in sola lettura."""
+    mondo = Mondo()
+    archivio.costruisci(archivio.leggi(percorsi.percorso(costanti.FILE_MONDO)), mondo)
+    return [g for g in mondo.giocatori.values() if not g.ritirato]
+
+
+def blocco_costanti(pesi, tratti, a, b):
+    righe = ["PESI_VALORE = {"]
+    voci = [f'"{nome}": {pesi[nome]:.2f}' for nome in costanti.CARATTERISTICHE_VALORE]
+    for inizio in range(0, len(voci), 6):
+        righe.append("    " + ", ".join(voci[inizio:inizio + 6]) + ",")
+    righe.append("}")
+    righe.append("PESI_TRATTI = {" + ", ".join(f'"{nome}": {tratti[nome]:.1f}' for nome in valore.TRATTI) + "}")
+    righe.append(f"SCALA_VALORE_A = {a:.2f}")
+    righe.append(f"SCALA_VALORE_B = {b:.4f}")
+    return righe
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Misura i pesi del valore complessivo di MESS sul motore di partita, senza scrivere nulla nel progetto.")
+    parser.add_argument("--giocatori", type=int, default=3200, help="quanti giocatori nella popolazione della regressione, 3200 se non indicato")
+    parser.add_argument("--verifica", type=int, default=400, help="quanti giocatori nella popolazione di verifica, 400 se non indicato")
+    parser.add_argument("--sparring", type=int, default=48, help="quanti sparring fissi, 48 se non indicato")
+    parser.add_argument("--quota-tratti", type=float, default=0.2, help="la frequenza di ogni tratto nelle popolazioni della regressione, 0,2 se non indicata")
+    parser.add_argument("--curva", type=int, default=3000, help="quante partite per la curva del favorito, 3000 se non indicato")
+    parser.add_argument("--seme", type=int, default=9, help="il seme della taratura, 9 se non indicato")
+    parser.add_argument("--anni", type=int, default=10, help="gli anni della simulazione lunga per il mondo maturo, 10 se non indicato")
+    parser.add_argument("--mondo", choices=("nuovo", "salvato"), default="nuovo", help="con salvato aggiunge il controllo sul mondo salvato, letto in sola lettura")
+    parser.add_argument("--taratura", type=Path, default=None, help="un file JSON di sostituzioni della taratura del motore")
+    parser.add_argument("--processi", type=int, default=min(8, os.cpu_count() or 1), help="quanti processi giocano le partite del rating, fino a 8 se il computer li ha")
+    parser.add_argument("--rapporto", type=Path, default=None, help="salva il rapporto anche in questo file")
+    argomenti = parser.parse_args()
+    seme = argomenti.seme
+    taratura = carica_taratura(argomenti.taratura) if argomenti.taratura else TARATURA
+    inizio = time.perf_counter()
+    righe = [f"Taratura del valore complessivo sul motore di partita, {time.strftime('%Y-%m-%d %H:%M')}, seme {seme}."]
+    if argomenti.taratura:
+        righe.append(f"Taratura del motore letta da {argomenti.taratura}.")
+
+    # Primo passo: il rating dalle partite contro gli sparring.
+    popolazione = genera(argomenti.giocatori, seme, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=1)
+    sparring = genera(argomenti.sparring, seme + 1, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=500_001)
+    verifica = genera(argomenti.verifica, seme + 2, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=600_001)
+    ridistribuisci_tratti(popolazione, argomenti.quota_tratti, seme)
+    ridistribuisci_tratti(verifica, argomenti.quota_tratti, seme + 2)
+    terza = genera(800, seme + 3, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=700_001)
+    rating_pop = rating(popolazione, sparring, seme * 1000 + 1, taratura, argomenti.processi)
+    rating_ver = rating(verifica, sparring, seme * 1000 + 2, taratura, argomenti.processi)
+    partite = (len(popolazione) + len(verifica)) * len(sparring)
+    righe.append(f"Primo passo: {len(popolazione)} giocatori, e {len(verifica)} per la verifica, contro {len(sparring)} sparring fissi, "
+                 f"{partite} incontri al meglio dei 3 set in {numero(time.perf_counter() - inizio)} secondi, con {argomenti.processi} processi.")
+
+    # Secondo passo: la regressione con i pesi non negativi.
+    righe_x = [regressori(g) for g in popolazione]
+    y = [rating_pop[g.id] for g in popolazione]
+    coefficienti, escluse = minimi_quadrati(righe_x, y)
+    righe_v = [regressori(g) for g in verifica]
+    y_v = [rating_ver[g.id] for g in verifica]
+    pesi, tratti, unita = pesi_dai_coefficienti(coefficienti)
+    righe.append(f"Secondo passo: la regressione spiega il {numero(100 * r_quadro(coefficienti, righe_x, y))} per cento della varianza del rating, "
+                 f"e il {numero(100 * r_quadro(coefficienti, righe_v, y_v))} per cento nella popolazione di verifica.")
+    if escluse:
+        righe.append("Pesi azzerati perché sarebbero negativi: " + ", ".join(COLONNE[c] for c in escluse) + ".")
+    vecchio_v = [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in verifica]
+    nuovo_v = [valore.indice(g, pesi, tratti, 0.0, 1.0) for g in verifica]
+    righe.append(f"Nella verifica il rating si lega al valore della tappa 8 con una correlazione di {numero(correlazione(vecchio_v, y_v), 3)}, "
+                 f"e al valore nuovo con {numero(correlazione(nuovo_v, y_v), 3)}.")
+
+    # Terzo passo: la scala sul mondo maturo.
+    inizio_mondo = time.perf_counter()
+    maturo, _racconto = simula(argomenti.anni, seme, stampa=None)
+    attivi = in_attivita(maturo)
+    a, b = scala(attivi, pesi, tratti)
+    righe.append(f"Terzo passo: il mondo maturo di {argomenti.anni} anni simulati, {len(attivi)} giocatori in attività, in {numero(time.perf_counter() - inizio_mondo)} secondi. "
+                 f"La scala che conserva la mediana del valore di prima e il monte stipendi: A {numero(a, 2)}, B {numero(b, 4)}.")
+    vecchi = [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in attivi]
+    nuovi = [valore.indice(g, pesi, tratti, a, b) for g in attivi]
+    righe.append(descrivi_distribuzione("Il valore di prima nel mondo maturo", vecchi))
+    righe.append(descrivi_distribuzione("Il valore nuovo nel mondo maturo", nuovi))
+    righe.append(f"Fra i due valori, nel mondo maturo, la correlazione è {numero(correlazione(vecchi, nuovi), 3)}. La media del fattore di stipendio è "
+                 f"{numero(statistics.fmean(fattore_stipendio(v) for v in vecchi), 3)} col valore di prima e {numero(statistics.fmean(fattore_stipendio(v) for v in nuovi), 3)} col nuovo.")
+    if argomenti.mondo == "salvato":
+        salvati = mondo_salvato()
+        righe.append(descrivi_distribuzione(f"Il valore di prima nel mondo salvato, {len(salvati)} giocatori", [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in salvati]))
+        righe.append(descrivi_distribuzione("Il valore nuovo nel mondo salvato", [valore.indice(g, pesi, tratti, a, b) for g in salvati]))
+    neonati = genera(1000, seme + 4, quota_allenati=0.0, esperienza=(0, 0), primo_id=800_001)
+    righe.append(descrivi_distribuzione("Il valore nuovo di mille neonati", [valore.indice(g, pesi, tratti, a, b) for g in neonati]))
+
+    # Quarto passo: il rapporto.
+    righe.append("Quarto passo, i pesi in punti di valore: per ogni punto della caratteristica, e fra parentesi da zero al massimo della scala.")
+    voci = []
+    for nome in costanti.CARATTERISTICHE_VALORE:
+        voci.append(f"{nome} {numero(b * pesi[nome], 2)} ({numero(b * pesi[nome] * massimo_di(nome), 0)})")
+    righe.append("; ".join(voci) + ".")
+    righe.append("I tratti in punti di valore: " + "; ".join(f"{nome} {numero(b * tratti[nome])}" for nome in valore.TRATTI) + ".")
+    pieni = {nome: pesi[nome] * massimo_di(nome) for nome in costanti.CARATTERISTICHE_VALORE}
+    media_gioco = statistics.fmean(pieni[nome] for nome in costanti.CARATTERISTICHE_VALORE if nome not in FISICHE)
+    inerti = [nome for nome, peso in pieni.items() if peso < costanti.SOGLIA_PESO_INERTE * media_gioco]
+    if inerti:
+        righe.append(f"Caratteristiche quasi inerti, sotto {numero(costanti.SOGLIA_PESO_INERTE, 2)} volte il peso medio di gioco sulla scala piena: "
+                     + ", ".join(inerti) + ". È un difetto da correggere nel motore, non nel valore.")
+    else:
+        righe.append("Nessuna caratteristica è quasi inerte: tutte pesano almeno un quarto della media di quelle di gioco.")
+    n = len(GRUPPI) + len(valore.TRATTI)
+    effetto_temperamento = coefficienti[n] * 1.6 / unita * b
+    effetto_lettura = coefficienti[n + 1] * (lettura_possibile(_Esperto(12.0), TARATURA)) / unita * b
+    effetto_eta = coefficienti[n + 2] / unita * b
+    righe.append(f"Il temperamento, dal calmissimo di tau meno 0,8 all'impetuoso di tau 0,8, vale {numero(effetto_temperamento)} punti di valore, bersaglio entro 5.")
+    righe.append(f"L'esperienza di carriera, da 0 a 12, vale {numero(effetto_lettura)} punti di valore; un punto di fattore d'età della stanchezza ne vale {numero(effetto_eta)}.")
+    righe.append("La curva del favorito, col valore nuovo, su una terza popolazione:")
+    indice_terza = {g.id: valore.indice(g, pesi, tratti, a, b) for g in terza}
+    righe.extend(curva_del_favorito(terza, indice_terza, argomenti.curva, seme * 1000 + 3, taratura))
+    righe.append("Il blocco da copiare in costanti.py:")
+    righe.extend(blocco_costanti(pesi, tratti, a, b))
+    righe.append(f"Taratura completata in {numero(time.perf_counter() - inizio)} secondi.")
+    testo = "\n".join(righe)
+    print(testo)
+    if argomenti.rapporto:
+        argomenti.rapporto.write_text(testo + "\n", encoding="utf-8")
+        print(f"Rapporto salvato in {argomenti.rapporto}.")
+
+
+class _Esperto:
+    """Un segnaposto con la sola esperienza, per la lettura del gioco possibile."""
+
+    def __init__(self, esperienza):
+        self.esperienza = esperienza
+
+
+if __name__ == "__main__":
+    main()

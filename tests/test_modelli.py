@@ -1,6 +1,6 @@
 """
 Test della nascita dei giocatori, della gloria richiesta, della probabilità di accettazione e delle polisportive.
-Dalla tappa 9 l'indice di valore si confronta con valore.indice, che con i pesi iniziali dà la formula di prima.
+Dalla tappa 9 l'indice di valore si confronta con valore.indice, che con i pesi della tappa 8 dà la formula di prima.
 """
 
 import datetime
@@ -15,6 +15,7 @@ from costanti import (
     ATTRIBUTI_ALLENABILI,
     ATTRIBUTI_BASE_CON_ALLENABILI,
     CARATTERISTICHE_FISICHE_BASE,
+    CARATTERISTICHE_VALORE,
     ETA_MAX_CREAZIONE_GIORNI,
     ETA_MIN_CREAZIONE_GIORNI,
     GLORIA_RICHIESTA_MINIMA_ASSOLUTA,
@@ -51,12 +52,14 @@ def test_nascita_dentro_i_limiti(giocatori):
 
 
 def test_indice_di_valore(giocatori):
-    # Dalla tappa 9 l'indice lo calcola valore.py; con i pesi iniziali è la formula di prima.
+    # Dalla tappa 9 l'indice lo calcola valore.py; con i pesi della tappa 8 è la formula di prima.
+    pesi_di_prima = dict.fromkeys(CARATTERISTICHE_VALORE, 1.0)
+    tratti_di_prima = {"mancino": 0.0, "ambidestro": 33.0, "giocorapido": 33.0, "cambiovelocita": 33.0}
     for g in giocatori:
         bonus = 33 * sum(bool(getattr(g, f)) for f in ("ambidestro", "giocorapido", "cambiovelocita"))
         somma = sum(getattr(g, a) for a in ATTRIBUTI_BASE_CON_ALLENABILI)
         assert g.indice_collettivo_valore == pytest.approx(valore.indice(g))
-        assert g.indice_collettivo_valore == pytest.approx(somma + bonus)
+        assert valore.indice(g, pesi_di_prima, tratti_di_prima, 0.0, 1.0) == pytest.approx(somma + bonus)
 
 
 def test_parametri_alla_nascita():

@@ -10,6 +10,9 @@ Ogni colpo ha la sua riga nella tabella COLPI, nel riferimento di chi colpisce: 
 dire che la pallina va verso la sinistra di chi colpisce, o vi tocca la prima sponda. La zona è
 quella d'arrivo vista da chi difende, le sponde sono in ordine, e la partenza è in centimetri dalla
 sponda sinistra di chi colpisce. Invertire un colpo costa una riga.
+I valori sono quelli della taratura fatta col banco il 2026-10-07, a fine tappa 9: dove si
+allontanano dal progetto il commento accanto dice il valore di partenza e il motivo, e il racconto
+dei passi sta in strumenti/banco_partite_dopo.txt.
 """
 
 import dataclasses
@@ -32,18 +35,23 @@ class Colpo(NamedTuple):
 
 def _colpi_iniziali():
     """La tabella dei colpi del punto 21.2 del progetto, con zone, sponde e partenze del punto 3.4."""
+    # La taratura ha tolto un ventesimo ai falli di base, e di più a tripla sponda e bomba, che si
+    # sceglievano troppo poco perché il loro peso nel valore si potesse misurare; le quote di
+    # schermo sono salite di qualche punto, per centrare il bersaglio dello schermo centrale. I
+    # valori del progetto erano 0,060, 0,065, 0,055, 0,070, 0,095 e 0,090 per i falli, 0,60,
+    # 0,65, 0,50, 0,40, 0,35 e 0,85 per lo schermo.
     righe = (
-        ("lungolineasx", "dx", (), 25.0, 0.60, 0.0, 0.060, 0.60, 600.0),
-        ("lungolineadx", "sx", (), 97.0, 0.60, 0.0, 0.060, 0.60, 600.0),
-        ("diagonalesx", "dx", (), 90.0, 0.70, 0.05, 0.065, 0.65, 650.0),
-        ("diagonaledx", "sx", (), 32.0, 0.70, 0.05, 0.065, 0.65, 650.0),
-        ("singolaspondasx", "dx", ("sinistra",), 61.0, 0.50, 0.0, 0.055, 0.50, 560.0),
-        ("singolaspondadx", "sx", ("destra",), 61.0, 0.50, 0.0, 0.055, 0.50, 560.0),
-        ("doppiaspondasx", "sx", ("sinistra", "destra"), 61.0, 0.45, 0.05, 0.070, 0.40, 540.0),
-        ("doppiaspondadx", "dx", ("destra", "sinistra"), 61.0, 0.45, 0.05, 0.070, 0.40, 540.0),
-        ("triplaspondasx", "dx", ("sinistra", "destra", "sinistra"), 61.0, 0.40, 0.10, 0.095, 0.35, 520.0),
-        ("triplaspondadx", "sx", ("destra", "sinistra", "destra"), 61.0, 0.40, 0.10, 0.095, 0.35, 520.0),
-        ("bomba", "centro", (), 61.0, 1.00, 0.15, 0.090, 0.85, 850.0),
+        ("lungolineasx", "dx", (), 25.0, 0.60, 0.0, 0.057, 0.64, 600.0),
+        ("lungolineadx", "sx", (), 97.0, 0.60, 0.0, 0.057, 0.64, 600.0),
+        ("diagonalesx", "dx", (), 90.0, 0.70, 0.05, 0.061, 0.69, 650.0),
+        ("diagonaledx", "sx", (), 32.0, 0.70, 0.05, 0.061, 0.69, 650.0),
+        ("singolaspondasx", "dx", ("sinistra",), 61.0, 0.50, 0.0, 0.052, 0.55, 560.0),
+        ("singolaspondadx", "sx", ("destra",), 61.0, 0.50, 0.0, 0.052, 0.55, 560.0),
+        ("doppiaspondasx", "sx", ("sinistra", "destra"), 61.0, 0.45, 0.05, 0.066, 0.45, 540.0),
+        ("doppiaspondadx", "dx", ("destra", "sinistra"), 61.0, 0.45, 0.05, 0.066, 0.45, 540.0),
+        ("triplaspondasx", "dx", ("sinistra", "destra", "sinistra"), 61.0, 0.40, 0.10, 0.084, 0.40, 520.0),
+        ("triplaspondadx", "sx", ("destra", "sinistra", "destra"), 61.0, 0.40, 0.10, 0.084, 0.40, 520.0),
+        ("bomba", "centro", (), 61.0, 1.00, 0.15, 0.082, 0.87, 850.0),
         # Le battute partono fra 61 e 100 centimetri, la sinistra, e fra 22 e 61, la destra: la
         # regia estrae il punto, qui c'è il centro dell'intervallo.
         ("battutasx", "sx", ("sinistra",), 80.5, 0.50, 0.0, 0.0, 0.0, 450.0),
@@ -68,32 +76,46 @@ class Taratura:
     PESI_CHIUSURA: tuple = (0.55, 0.25, 0.20)
     PESI_BLOCCO: tuple = (0.60, 0.20, 0.20)
     PESI_CONTROLLO: tuple = (0.55, 0.25, 0.20)
-    Q0: float = 10.0
+    # Q0 era 10: schiacciava i rapporti fra pressione e difesa dei giocatori poco allenati, che
+    # sono il mondo vero, e lì il favorito vinceva poco più di otto volte su dieci anche con un
+    # distacco oltre il 30 per cento.
+    Q0: float = 5.0
     # La difesa: logit di goal, fallo, fuori e ribattuta rispetto alla fermata, che vale zero.
-    G0: float = -2.0
-    KG: float = 2.6
+    # G0 era -2,0: più goal, perché i giocatori veri del mondo, poco allenati, segnassero almeno
+    # quanto sbagliano. KG era 2,6: col valore nuovo il favorito vinceva quasi sempre, il 98 per
+    # cento oltre il 30 per cento di distacco, e la pendenza si è abbassata fino alla banda.
+    G0: float = -1.7
+    KG: float = 1.6
     F0: float = -3.9
     KF: float = 1.0
     O0: float = -4.2
     KO: float = 1.0
     R0: float = -0.7
     KR: float = 0.6
+    # Quanto il blocco conta accanto alla chiusura nel decidere se la pallina passa: zero vuol dire
+    # soltanto la chiusura, come nel progetto; la taratura del valore ha mostrato che allora il
+    # blocco, che sceglie solo fra ribattuta e fermata, non pesava quasi nulla.
+    PESO_BLOCCO_PARATA: float = 0.3
     CAUSE_DIFESA: tuple = (("body_touch", 70), ("difesa_irregolare", 25), ("invasione_mano_libera", 4), ("invasione_tavola_contatto", 1))
     CAUSE_DIFESA_CRITICHE: tuple = (("paletta_caduta", 60), ("body_touch_pieno", 40))
     CAUSE_DIFESA_CRITICHE_CENTRO: tuple = (("paletta_caduta", 80), ("body_touch_pieno", 20))
     QUOTA_DIFESA_IRREGOLARE_IN_PORTA: float = 0.5
-    # La battuta.
-    P_BATTUTA_IRREGOLARE: float = 0.035
+    # La battuta. P_BATTUTA_IRREGOLARE era 0,035: col fallo meno legato all'abilità le battute
+    # irregolari erano scese al 4 per cento, il bordo della banda.
+    P_BATTUTA_IRREGOLARE: float = 0.042
     PRESSIONE_BATTUTA: float = 0.80
     QUOTA_BATTUTA_LATERALE: float = 0.55
     CAUSE_BATTUTA: tuple = (("battuta_senza_rimbalzo", 34), ("battuta_due_rimbalzi", 26), ("battuta_strisciata", 14), ("battuta_oltre_due_secondi", 7),
                             ("battuta_prima_del_fischio", 7), ("battuta_a_vuoto", 6), ("battuta_doppio_tocco", 6))
     CAUSE_BATTUTA_CRITICHE: tuple = (("battuta_a_vuoto", 30), ("battuta_doppio_tocco", 25), ("out_volo", 25), ("schermo_sopra", 20))
     K_TEMP_CAUSE_BATTUTA: float = 0.5
-    # L'attacco.
-    K_SKILL_FALLI: float = 0.8
+    # L'attacco. K_SKILL_FALLI era 0,8: con quel valore i giocatori del mondo vero, quasi tutti
+    # sotto 30 di qualità, facevano sei punti su dieci con i falli. K_TEMPO_FALLI era 0,6: il
+    # tempo del controllo deve contare, perché il controllo palla non resti una caratteristica
+    # quasi inerte nel valore.
+    K_SKILL_FALLI: float = 0.4
     RISCHIO_POTENZA: float = 0.3
-    K_TEMPO_FALLI: float = 0.6
+    K_TEMPO_FALLI: float = 1.0
     P_FALLO_MASSIMA: float = 0.5
     P_COLPO_DEBOLE: float = 0.0006
     QUOTA_SCHERMO_SOPRA: float = 0.15
@@ -111,17 +133,23 @@ class Taratura:
     QUOTA_AUTOGOAL: float = 0.04
     QUOTA_PALLINA_FERMA: float = 0.03
     TEMPO_DOPO_RECUPERO: float = 0.25
-    TEMPO_BASE: float = 0.55
-    TEMPO_SCALA: float = 0.45
-    TEMPO_MEZZO: float = 15.0
+    # Il tempo del controllo riuscito: erano 0,55, 0,45 e 15, e il tempo restava fra 0,85 e 0,95
+    # per tutti, bravi e meno bravi; ora va da 0,7 a 0,9 col controllo, e quel che resta lo fa il
+    # caso del tiro.
+    TEMPO_BASE: float = 0.5
+    TEMPO_SCALA: float = 0.8
+    TEMPO_MEZZO: float = 60.0
     PRESSIONE_RIBATTUTA: float = 0.35
     P_RIBATTUTA_LENTA: float = 0.002
-    # La pressione dell'attacco.
-    PRESSIONE_TEMPERAMENTO: float = 0.22
-    PRESSIONE_TEMPO_BASE: float = 0.7
+    # La pressione dell'attacco. PRESSIONE_TEMPERAMENTO era 0,22: con la pendenza dei goal più
+    # bassa l'impetuoso valeva sei punti meno del calmo, e il temperamento deve essere uno stile,
+    # non una forza. PRESSIONE_TEMPO_BASE era 0,7, e TEMPO_GIOCO_RAPIDO 0,8, che col tempo nuovo
+    # quasi nessuno raggiungeva.
+    PRESSIONE_TEMPERAMENTO: float = 0.26
+    PRESSIONE_TEMPO_BASE: float = 0.5
     BONUS_CAMBIO_VELOCITA: float = 0.05
     BONUS_GIOCO_RAPIDO: float = 0.04
-    TEMPO_GIOCO_RAPIDO: float = 0.8
+    TEMPO_GIOCO_RAPIDO: float = 0.75
     # La pressione sulla palla set: spenta finché Gabriele non decide.
     PRESSIONE_PALLA_SET: float = 0.0
     PRESSIONE_PALLA_SET_TEMPERAMENTO: float = 0.5
@@ -136,9 +164,10 @@ class Taratura:
     RESISTENZA_BASE: float = 0.6
     RESISTENZA_PER_PUNTO: float = 0.08
     K_FATICA_FALLI: float = 1.5
-    # Lettura del gioco, esperienza e temperamento.
+    # Lettura del gioco, esperienza e temperamento. K_ESP_FALLI era 0,35: gli esperti facevano
+    # dal 14 al 22 per cento di falli in meno secondo il seme, al bordo della banda.
     K_LETTURA: float = 6.0
-    K_ESP_FALLI: float = 0.35
+    K_ESP_FALLI: float = 0.45
     K_TEMP_FALLI: float = 0.25
     # La scelta del colpo.
     T0: float = 0.15
@@ -147,14 +176,19 @@ class Taratura:
     PESO_DEBOLEZZA: float = 1.5
     PESO_POTENZA: float = 0.25
     PESO_RISCHIO: float = 2.0
-    PRIORE_ROVESCIO: float = 0.08
-    PRIORE_ALTRE_ZONE: float = -0.04
-    COLPI_PER_CAPIRE: float = 30.0
+    # I priori erano 0,08 e meno 0,04: tutti tiravano sul rovescio sei volte su dieci, e i colpi
+    # verso il dritto pesavano nel valore un quarto degli altri. Il vantaggio del mancino che ne
+    # nasceva era comunque sotto il punto di valore. COLPI_PER_CAPIRE era 30: gli esperti
+    # mandavano sul lato debole poco più del 60 per cento degli attacchi laterali.
+    PRIORE_ROVESCIO: float = 0.03
+    PRIORE_ALTRE_ZONE: float = -0.015
+    COLPI_PER_CAPIRE: float = 20.0
     # La mano.
     MALUS_ROVESCIO: float = 0.10
     COSTO_CAMBIO_MANO: float = 0.03
-    # Gli imprevisti a palla ferma.
-    P_SANZIONE: float = 0.0010
+    # Gli imprevisti a palla ferma. P_SANZIONE era 0,0010, e le ammonizioni stavano al bordo
+    # basso della banda.
+    P_SANZIONE: float = 0.0014
     K_TEMP_SANZIONI: float = 1.0
     K_ESP_SANZIONI: float = 0.4
     CAUSE_AMMONIZIONE: tuple = (("raschiare_paletta", 22), ("muovere_tavolo", 18), ("parlare", 18), ("mano_libera_al_tavolo", 12), ("non_dal_fondo", 10),
@@ -204,7 +238,8 @@ class Taratura:
     FATTORE_CONTROLLO_GIOCO_RAPIDO: float = 0.7
     DURATA_CONTROLLO: tuple = (0.4, 1.4)
     DURATA_TRATTENUTA: tuple = (2.3, 3.0)
-    PAUSA_FRA_PUNTI: float = 1.5
+    # Era 1,5: l'incontro al meglio dei 3 durava meno di 12 minuti simulati.
+    PAUSA_FRA_PUNTI: float = 3.5
     DURATA_SOSTITUZIONE: float = 30.0
     DURATA_CAMBIO_ATTREZZO: float = 30.0
     INTERVALLO_RISCALDAMENTO: tuple = (2.0, 3.5)

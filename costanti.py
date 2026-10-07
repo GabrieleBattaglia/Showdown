@@ -325,15 +325,27 @@ NOME_ATTR_TO_DISPLAY_MAP = {
 MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'ipovedente': 'P', 'giocorapido': 'R', 'cambiovelocita': 'V'}
 # Il valore complessivo, dalla tappa 9 (problema P14): le caratteristiche entrano per ruolo, con
 # chiusure e blocchi di dritto e di rovescio, così un mancino specchiato vale quanto il destrimano
-# di partenza; ciascuna ha un peso, e i tratti hanno il loro. Con i pesi iniziali, tutti a 1 e 33
-# punti per ambidestro, gioco rapido e cambio di velocità, l'indice è quello di prima; i pesi
-# misurati sul motore nuovo li darà strumenti/taratura_valore.py.
+# di partenza; ciascuna ha un peso, e i tratti hanno il loro. Fino alla tappa 8 i pesi erano tutti
+# a 1, con 33 punti per ambidestro, gioco rapido e cambio di velocità. Quelli qui sotto li ha
+# misurati sul motore nuovo strumenti/taratura_valore.py, il 2026-10-07, col seme 9: sono in punti
+# di caratteristica, con la media delle caratteristiche di gioco a 1, e A e B riportano la somma
+# sulla scala di prima, con la mediana a 137 e lo stesso monte stipendi nel mondo maturo, perché
+# l'economia della decisione D22 non cambi; la distanza fra decimo e novantesimo percentile è di
+# circa il 30 per cento più larga di prima, che aveva la coda lunga dei 33 punti di ogni tratto,
+# e nel mondo maturo va da 99 a 176. Le coppie speculari di colpi hanno un peso solo; le fisiche,
+# che vanno da 0 a 10, pesano per punto quattro volte tanto, e la precisione, che entra in tutte
+# le qualità, più di tutte.
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
-PESI_VALORE = dict.fromkeys(CARATTERISTICHE_VALORE, 1.0)
-PESI_TRATTI = {"mancino": 0.0, "ambidestro": 33.0, "giocorapido": 33.0, "cambiovelocita": 33.0}
-SCALA_VALORE_A = 0.0
-SCALA_VALORE_B = 1.0
+PESI_VALORE = {
+    "lungolineasx": 0.49, "lungolineadx": 0.49, "diagonalesx": 0.49, "diagonaledx": 0.49, "singolaspondasx": 0.54, "singolaspondadx": 0.54,
+    "doppiaspondasx": 0.49, "doppiaspondadx": 0.49, "triplaspondasx": 0.37, "triplaspondadx": 0.37, "bomba": 0.26, "battutasx": 0.82,
+    "battutadx": 0.82, "chiusura_dritto": 2.11, "chiusura_rovescio": 2.58, "blocco_dritto": 1.05, "blocco_rovescio": 1.39, "difesa": 3.65,
+    "tenutapaletta": 1.30, "controllopalla": 0.79, "attacco": 1.47, "precisione": 22.12, "forza": 6.11, "resistenza": 3.41,
+}
+PESI_TRATTI = {"mancino": 1.3, "ambidestro": 5.0, "giocorapido": 1.8, "cambiovelocita": 4.9}
+SCALA_VALORE_A = -39.16
+SCALA_VALORE_B = 1.0091
 SOGLIA_PESO_INERTE = 0.25
 
 

@@ -103,6 +103,34 @@ def test_ribattuta_lenta_e_ribattuta_in_porta():
     assert ricevitore.stats.goal == 1
 
 
+def _probabilita_della_parata(blocco, taratura):
+    """Le fasce della parata di una battuta, contro un ricevitore con il blocco indicato su entrambi i lati."""
+    battitore = InCampo(giocatore(1), "A", taratura)
+    ricevitore = InCampo(giocatore(2, bloccosx_base=blocco, bloccodx_base=blocco), "B", taratura)
+    battitore.prepara_punto(ricevitore)
+    ricevitore.prepara_punto(battitore)
+    passi = []
+    gioca_punto(battitore, ricevitore, DadoScritto([*_inizio_regolare(), (0, 0.5)]), taratura, passi)
+    return next(p.prob for p in passi if p.tipo == "parata")
+
+
+def test_senza_il_suo_peso_il_blocco_sceglie_soltanto_fra_ribattuta_e_fermata():
+    # Regressione della taratura: in un softmax unico il blocco migliore toglieva peso alla
+    # ribattuta e lo spargeva anche su goal e falli, e allenarlo faceva perdere punti.
+    taratura = dataclasses.replace(TARATURA, PESO_BLOCCO_PARATA=0.0)
+    debole, forte = _probabilita_della_parata(4.0, taratura), _probabilita_della_parata(30.0, taratura)
+    assert forte[:3] == pytest.approx(debole[:3])
+    assert forte[3] < debole[3] and forte[4] > debole[4]
+    assert forte[3] + forte[4] == pytest.approx(debole[3] + debole[4])
+
+
+def test_col_suo_peso_il_blocco_ferma_anche_i_goal():
+    debole, forte = _probabilita_della_parata(4.0, TARATURA), _probabilita_della_parata(30.0, TARATURA)
+    assert TARATURA.PESO_BLOCCO_PARATA > 0
+    assert forte[0] < debole[0] and forte[3] < debole[3]
+    assert sum(forte) == pytest.approx(1.0) and sum(debole) == pytest.approx(1.0)
+
+
 def test_controllo_trattenuto_e_paletta_caduta():
     esito, *_resto = _gioca([*_inizio_regolare(), FERMATA, (0, 0.5)])
     assert (esito.esito, esito.causa, esito.critico, esito.punti, esito.a_chi, esito.origine) == ("fallo", "pallina_trattenuta", False, 1, "A", "controllo")

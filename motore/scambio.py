@@ -8,7 +8,11 @@ non ci sono rami irraggiungibili come nel vecchio motore, dove quasi ogni azione
 uno stato imprevisto solleva ErroreMotore invece di assegnare un punto a caso.
 La battuta è un colpo come gli altri: se è regolare, chi riceve la para, e il goal di battuta nasce
 solo da una parata che non arriva. La parata confronta la pressione dell'attacco con la chiusura e
-il blocco di chi difende: ne escono goal, fallo, fuori, ribattuta o fermata. Il tiro critico vale
+il blocco di chi difende: ne escono goal, fallo, fuori, ribattuta o fermata. Se la pallina passa lo
+decide la chiusura, con una parte del blocco, PESO_BLOCCO_PARATA; il contatto, ribattuta o
+fermata, pesa sempre come alla pari, e il blocco sceglie soltanto come finisce: è la correzione
+venuta dalla taratura del valore, perché nel softmax unico del progetto un blocco migliore
+spostava peso anche su goal e falli, e allenarlo faceva perdere punti. Il tiro critico vale
 sempre un punto, e sceglie soltanto una causa più clamorosa.
 Con l'elenco passi la catena annota ogni passo, per la regia che ne farà eventi e posizioni; senza,
 in modalità essenziale, non crea nulla. Le statistiche dei giocatori le aggiorna la catena stessa,
@@ -80,6 +84,8 @@ def gioca_punto(battitore, ricevitore, dado, taratura, passi=None, rottura_al_co
     colpi_tabella = t.COLPI
     log = math.log
     exp = math.exp
+    e_r0 = exp(t.R0)
+    peso_blocco = t.PESO_BLOCCO_PARATA
     annota = passi.append if passi is not None else None
 
     # La battuta.
@@ -116,15 +122,24 @@ def gioca_punto(battitore, ricevitore, dado, taratura, passi=None, rottura_al_co
         eff = difensore.eff
         d *= eff
         b *= eff
-        r = log((pressione + q0) / (d + q0))
+        # Se la pallina passa lo decide soprattutto la chiusura, ma anche il blocco: una pallina
+        # toccata e non fermata può finire in porta lo stesso.
+        r = log((pressione + q0) / (d + peso_blocco * (b - d) + q0))
         rb = log((pressione + q0) / (b + q0))
         ln_mf = difensore.ln_mf
         e_goal = exp(t.G0 + t.KG * r)
         e_fallo = exp(t.F0 + t.KF * r + ln_mf)
         e_fuori = exp(t.O0 + t.KO * r + ln_mf)
         e_ribattuta = exp(t.R0 + t.KR * rb)
-        totale = e_goal + e_fallo + e_fuori + e_ribattuta + 1.0
-        probabilita = (e_goal / totale, e_fallo / totale, e_fuori / totale, e_ribattuta / totale, 1.0 / totale)
+        # Il contatto, cioè ribattuta o fermata, pesa sempre quanto alla pari: la chiusura decide se
+        # la pallina passa, il blocco soltanto come finisce il contatto. In un softmax unico un
+        # blocco migliore toglieva peso alla ribattuta e lo spargeva anche su goal e falli: la
+        # taratura del valore l'ha scoperto, perché allenare il blocco faceva perdere punti.
+        contatto = 1.0 + e_r0
+        totale = e_goal + e_fallo + e_fuori + contatto
+        p_contatto = contatto / totale
+        p_ribattuta = p_contatto * e_ribattuta / (1.0 + e_ribattuta)
+        probabilita = (e_goal / totale, e_fallo / totale, e_fuori / totale, p_ribattuta, p_contatto - p_ribattuta)
         esito_parata, residuo = fascia(probabilita)
         if esito_parata == 0:
             causa = {"battuta": "goal_battuta", "ribattuta": "goal_ribattuta"}.get(origine, "goal_scambio")

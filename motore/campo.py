@@ -223,8 +223,10 @@ class InCampo:
             b[self.rovescio] *= 1.0 - t.MALUS_ROVESCIO
         self.D = d
         self.B = b
-        # Le qualità di difesa con il rovescio ma senza la stanchezza: quelle che l'avversario può capire.
-        self.Dp = dict(d)
+        # Le qualità di parata con il rovescio ma senza la stanchezza, quelle che l'avversario può
+        # capire: la chiusura, con la parte del blocco che decide anch'essa se la pallina passa.
+        peso = t.PESO_BLOCCO_PARATA
+        self.Dp = {zona: d[zona] + peso * (b[zona] - d[zona]) for zona in ZONE}
 
     def conta_azione(self):
         self.azioni += 1

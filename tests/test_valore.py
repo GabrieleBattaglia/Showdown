@@ -1,16 +1,32 @@
 """
-Test del valore complessivo della tappa 9: con i pesi iniziali è l'indice di prima, le due parti
-sommano al totale, i pesi non sono negativi, e un mancino specchiato vale quanto il destrimano.
+Test del valore complessivo della tappa 9: con i pesi della tappa 8 è l'indice di prima, le due
+parti sommano al totale, i pesi non sono negativi, un mancino specchiato vale quanto il
+destrimano, e con i pesi misurati dalla taratura un mondo appena nato ha la mediana attorno a 140
+e lo stesso monte stipendi di prima, perché l'economia della decisione D22 non cambi.
 """
 
 import datetime
+import math
 import random
 
 import pytest
 
 import valore
-from costanti import ATTRIBUTI_ALLENABILI, ATTRIBUTI_BASE_CON_ALLENABILI, CARATTERISTICHE_VALORE, PESI_TRATTI, PESI_VALORE, SCALA_VALORE_B
+from costanti import (
+    ATTRIBUTI_ALLENABILI,
+    ATTRIBUTI_BASE_CON_ALLENABILI,
+    CARATTERISTICHE_VALORE,
+    PESI_TRATTI,
+    PESI_VALORE,
+    SCALA_STIPENDIO,
+    SCALA_VALORE_B,
+    VALORE_DI_RIFERIMENTO,
+)
 from modelli import Giocatore
+
+# I pesi della tappa 8, con cui il valore nuovo deve ridare la formula di prima.
+PESI_TAPPA_8 = dict.fromkeys(CARATTERISTICHE_VALORE, 1.0)
+TRATTI_TAPPA_8 = {"mancino": 0.0, "ambidestro": 33.0, "giocorapido": 33.0, "cambiovelocita": 33.0}
 
 NASCITA = datetime.datetime(2026, 1, 1)
 
@@ -33,9 +49,9 @@ def _formula_di_prima(g):
     return somma + 33 * sum(bool(getattr(g, tratto)) for tratto in ("ambidestro", "giocorapido", "cambiovelocita"))
 
 
-def test_con_i_pesi_iniziali_l_indice_e_quello_di_prima(giocatori):
+def test_con_i_pesi_della_tappa_8_l_indice_e_quello_di_prima(giocatori):
     for g in giocatori:
-        assert valore.indice(g) == pytest.approx(_formula_di_prima(g))
+        assert valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) == pytest.approx(_formula_di_prima(g))
         assert g.indice_collettivo_valore == pytest.approx(valore.indice(g))
 
 
@@ -84,3 +100,23 @@ def test_l_ambidestro_fa_la_media_dei_lati(giocatori):
     assert c["chiusura_dritto"] == c["chiusura_rovescio"] == pytest.approx((g._get_valore_totale("chiusurasx_base") + g._get_valore_totale("chiusuradx_base")) / 2)
     with pytest.raises(ValueError, match="Parte sconosciuta"):
         valore.caratteristiche(g, "media")
+
+
+def test_un_mondo_appena_nato_resta_sulla_scala_di_prima():
+    # La taratura del 2026-10-07 conserva la mediana del valore di prima e la media del fattore
+    # dello stipendio, cioè il monte stipendi della decisione D22: su mille neonati la mediana è
+    # 139. La tolleranza è di 8 punti sulla mediana e di un decimo sul fattore.
+    stato = random.getstate()
+    random.seed(2026)
+    try:
+        neonati = [Giocatore(i, NASCITA) for i in range(1, 801)]
+    finally:
+        random.setstate(stato)
+    nuovi = sorted(g.indice_collettivo_valore for g in neonati)
+    vecchi = [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in neonati]
+    assert 132 <= nuovi[len(nuovi) // 2] <= 148
+
+    def fattore(indici):
+        return sum(math.exp((i - VALORE_DI_RIFERIMENTO) / SCALA_STIPENDIO) for i in indici) / len(indici)
+
+    assert fattore(nuovi) == pytest.approx(fattore(vecchi), rel=0.1)

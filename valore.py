@@ -6,11 +6,11 @@ caratteristiche fisiche e tecniche e aggiungeva 33 punti per ogni tratto special
 caratteristica ha un peso, e chiusure e blocchi entrano per ruolo, di dritto e di rovescio: per il
 destrimano il rovescio è il lato sinistro, per il mancino il destro, per l'ambidestro si prende la
 media dei due lati. Così un mancino specchiato vale quanto il destrimano da cui viene.
-L'indice è A più B per la somma pesata, più i pesi dei tratti presenti. Con i pesi iniziali, tutti
-a 1, 33 punti per ambidestro, gioco rapido e cambio di velocità, zero per il mancino, A 0 e B 1,
-l'indice è quello di prima; i pesi misurati sul motore nuovo li darà la taratura del valore,
-strumenti/taratura_valore.py, e la scala li riporterà alla mediana di 140 su cui conta l'economia,
-decisione D22. Esperienza, età, temperamento e ipovedente restano fuori dal valore.
+L'indice è A più B per la somma pesata, più i pesi dei tratti presenti. Con i pesi della tappa 8,
+tutti a 1, 33 punti per ambidestro, gioco rapido e cambio di velocità, zero per il mancino, A 0 e
+B 1, l'indice è quello di prima; i pesi di costanti.py li ha misurati sul motore nuovo la taratura
+del valore, strumenti/taratura_valore.py, e la scala li riporta alla mediana di 140 su cui conta
+l'economia, decisione D22. Esperienza, età, temperamento e ipovedente restano fuori dal valore.
 """
 
 from costanti import CARATTERISTICHE_VALORE, COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA, PESI_TRATTI, PESI_VALORE, SCALA_VALORE_A, SCALA_VALORE_B

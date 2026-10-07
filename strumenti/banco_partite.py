@@ -10,7 +10,10 @@ Il rapporto tiene le frasi di prima, senza separatori, per il confronto con banc
 e aggiunge le misure dei bersagli della taratura: cause dei falli, goal di battuta e da scambio,
 lunghezza degli scambi, set oltre i 12 punti, partite fra forti alla pari, palle morte, sanzioni,
 time-out, temperamento, esperienza, lettura del gioco, stanchezza, squadre, infortuni e tempo per
-partita. Accanto a ogni bersaglio dice se la misura ci sta dentro.
+partita. Accanto a ogni bersaglio dice se la misura ci sta dentro. Al meglio dei 5 aggiunge la
+sonda della stanchezza, un trentenne resistente e un sessantenne poco resistente, che la
+popolazione di prova da sola non contiene. I rapporti di prima e dopo la taratura della tappa 9
+stanno accanto, in banco_partite_prima.txt e banco_partite_dopo.txt.
 Il mondo predefinito è una popolazione di prova di strumenti/popolazione_di_prova.py, col 60 per
 cento di allenati e l'esperienza fino a 12; con --mondo salvato si leggono in sola lettura i
 giocatori del mondo salvato.
@@ -24,6 +27,7 @@ Uso, dalla cartella del progetto o da qualunque altra:
 """
 
 import argparse
+import copy
 import math
 import random
 import statistics
@@ -226,7 +230,7 @@ def percentile(valori, quota):
     return ordinati[indice]
 
 
-def rapporto(banco, intestazione, pari_forti):
+def rapporto(banco, intestazione, pari_forti, set_al_meglio=3):
     righe = list(intestazione)
     punti = banco.punti
     giocati = len(punti)
@@ -278,9 +282,12 @@ def rapporto(banco, intestazione, pari_forti):
                  f"novantesimo percentile {percentile(attacchi, 0.9)}, al massimo {max(attacchi)}.")
     righe.append("Punti per numero di attacchi: " + descrivi_contatore(classi, giocati, ordine) + ".")
     bersagli.append(("Punti finiti sulla battuta", per_cento(classi["finito sulla battuta"], giocati), (12, 22)))
-    bersagli.append(("Attacchi per punto, media", media, (2.5, 5)))
-    bersagli.append(("Attacchi per punto, mediana", statistics.median(attacchi), (2, 3)))
-    bersagli.append(("Attacchi per punto, novantesimo percentile", percentile(attacchi, 0.9), (6, 12)))
+    if not pari_forti:
+        # Fra pari forti gli scambi devono essere più lunghi di quelli del mondo, di almeno un
+        # decimo: le bande del mondo lì non valgono, e il confronto si fa fra i due rapporti.
+        bersagli.append(("Attacchi per punto, media", media, (2.5, 5)))
+        bersagli.append(("Attacchi per punto, mediana", statistics.median(attacchi), (2, 3)))
+        bersagli.append(("Attacchi per punto, novantesimo percentile", percentile(attacchi, 0.9), (6, 12)))
     set_totali = len(banco.set)
     per_set = giocati / set_totali if set_totali else 0
     ai_vantaggi = sum(1 for a, b in banco.set if min(a, b) >= costanti.PUNTI_VITTORIA_SET_BASE - 1)
@@ -354,7 +361,9 @@ def rapporto(banco, intestazione, pari_forti):
         nuova = statistics.fmean(p for p, _ in banco.infortuni)
         vecchia = statistics.fmean(v for _, v in banco.infortuni)
         righe.append(f"Infortuni, chi non è ambidestro: probabilità media per partita {numero(nuova, 3)} per cento, contro {numero(vecchia, 3)} del vecchio calcolo.")
-        bersagli.append(("Infortuni rispetto a prima, per cento", 100 * nuova / vecchia if vecchia else 0, (90, 110)))
+        if set_al_meglio == 3:
+            # Il bersaglio vale al meglio dei 3: al meglio dei 5 il carico è più alto, e gli infortuni anche.
+            bersagli.append(("Infortuni rispetto a prima, per cento", 100 * nuova / vecchia if vecchia else 0, (90, 110)))
     if banco.durate:
         righe.append(f"Durata simulata: in media {numero(statistics.fmean(banco.durate) / 60)} minuti, da {numero(min(banco.durate) / 60)} a {numero(max(banco.durate) / 60)}; "
                      f"incontri con le invarianti violate: {banco.invarianti}.")
@@ -362,6 +371,30 @@ def rapporto(banco, intestazione, pari_forti):
     righe.append("I bersagli della taratura:")
     for nome, valore, intervallo in bersagli:
         righe.append(f"{nome}: {numero(valore, 2)}, bersaglio da {numero(intervallo[0], 2)} a {numero(intervallo[1], 2)}, {esito_bersaglio(valore, intervallo)}.")
+    return righe
+
+
+def sonda_fatica(giocatori, quante, rng, opzioni):
+    """
+    La stanchezza a fine incontro al meglio di 5 del punto 18.16 del progetto: un trentenne con
+    resistenza 5 e un sessantenne con resistenza 2, ricavati da giocatori a caso cambiando età e
+    resistenza, contro avversari a caso. La popolazione di prova nasce fra 9 e 45 anni, e senza la
+    sonda i sessantenni non ci sarebbero.
+    """
+    righe = []
+    for anni, resistenza, intervallo in ((30, 5.0, (0.86, 0.93)), (60, 2.0, (0.72, 0.82))):
+        efficienze = []
+        for _ in range(quante):
+            g, avversario = rng.sample(giocatori, 2)
+            g = copy.copy(g)
+            g.eta = costanti.giorni_da_anni(anni)
+            g.resistenza_base, g.resistenza_allenata = resistenza, 0.0
+            risultato = simula_incontro(g, avversario, formato_singolare(5), seme=rng.getrandbits(63), **opzioni)
+            efficienze.append(risultato.statistiche[g.id].eff_finale)
+        media = statistics.fmean(efficienze)
+        righe.append(f"Sonda della stanchezza, {anni} anni con resistenza {numero(resistenza, 0)}, {quante} incontri al meglio di 5: efficienza finale media "
+                     f"{numero(media, 3)}, minima {numero(min(efficienze), 3)}, bersaglio da {numero(intervallo[0], 2)} a {numero(intervallo[1], 2)}, "
+                     f"{esito_bersaglio(media, intervallo)}; mai sotto 0,6: {'sì' if min(efficienze) >= 0.6 else 'NO'}.")
     return righe
 
 
@@ -447,7 +480,9 @@ def main():
     ]
     if argomenti.taratura:
         intestazione.append(f"Taratura letta da {argomenti.taratura}.")
-    righe = rapporto(banco, intestazione, argomenti.pari_forti)
+    righe = rapporto(banco, intestazione, argomenti.pari_forti, argomenti.set)
+    if argomenti.set == 5:
+        righe.extend(sonda_fatica(disponibili, 200, rng, opzioni))
     if argomenti.squadre:
         righe.extend(gioca_squadre(disponibili, argomenti.squadre, rng, opzioni))
     testo = "\n".join(righe)
