@@ -5,10 +5,12 @@ Nasce il 2026-10-07 con la decisione D24, sul modello dell'ascolto di PokerMachi
 i suoni prima di sentirli nel gioco. I gruppi sono quelli di suoni.GRUPPI, nell'ordine: le quattro
 famiglie, applicazione, mondo, polisportive ed economia, divise in gruppi piccoli.
 Prima di suonare aspetta il via, poi lascia qualche secondo di silenzio. Ogni gruppo si annuncia e
-si può saltare; per ogni evento scrive il nome, il preset e la descrizione, e lo suona al volume di
-progetto, 50, quello a cui i suoni sono stati pensati, qualunque sia il volume scelto nel gioco. La
-probabilità d'ingaggio si sente tre volte, al 10, al 50 e al 90 per cento, perché la sua altezza
-cambia con la percentuale.
+si può saltare; per ogni evento scrive il nome, il preset e la descrizione e aspetta un tasto, come
+l'ascolto di PokerMachine, scelta di Gabriele del 7 ottobre 2026: così NVDA legge la descrizione
+prima che parta il suono. Invio lo fa sentire, poi spazio lo ripete e Invio passa al successivo;
+Escape chiude il gruppo e porta al suo menu. I suoni si sentono al volume di progetto, 50, quello a
+cui sono stati pensati, qualunque sia il volume scelto nel gioco. La probabilità d'ingaggio si sente
+tre volte, al 10, al 50 e al 90 per cento, perché la sua altezza cambia con la percentuale.
 Ogni gruppo si chiude con il menu comune dei collaudi, quello di collaudo_comune di GBUtils: r
 riascolta il gruppo, c lascia un commento, Invio lo dà per superato, Escape lo chiude senza
 giudizio. Le impressioni vanno nel file ascolto_suoni.txt, nella cartella del programma, una riga
@@ -21,7 +23,7 @@ import sys
 import time
 
 from collaudo_comune import Esiti, gruppo
-from GBUtils import Acusticator, enter_escape
+from GBUtils import Acusticator, enter_escape, key
 
 import percorsi
 import suoni
@@ -29,7 +31,8 @@ from testi import conta
 
 FILE_DEGLI_ESITI = "ascolto_suoni.txt"
 SILENZIO_INIZIALE = 3.0
-PAUSA_FRA_I_SUONI = 1.2
+# La pausa fra le tre altezze della probabilità d'ingaggio.
+PAUSA_FRA_I_SUONI = 0.6
 PERCENTUALI_DI_PROVA = (10, 50, 90)
 
 
@@ -41,18 +44,38 @@ class Annotazioni(Esiti):
             f.write(f"{titolo}, {time.strftime('%Y-%m-%d %H:%M')}: {commento or 'nessun commento'}\n")
 
 
+def suona_evento(evento):
+    """Il suono di un evento al volume di progetto; la probabilità d'ingaggio alle sue tre altezze di prova."""
+    if evento != "probabilita_ingaggio":
+        suoni.suona(evento, sync=True, volume=suoni.VOLUME_DI_PROGETTO)
+        return
+    for percentuale in PERCENTUALI_DI_PROVA:
+        suoni.suona(evento, sync=True, volume=suoni.VOLUME_DI_PROGETTO, semitoni=suoni.probabilita_in_semitoni(percentuale))
+        time.sleep(PAUSA_FRA_I_SUONI)
+
+
 def ascolta(eventi):
-    """Fa sentire gli eventi di un gruppo uno dopo l'altro, ciascuno con il nome, il preset e la descrizione."""
+    """
+    Fa sentire gli eventi di un gruppo uno dopo l'altro. Di ognuno scrive il nome, il preset e la
+    descrizione, e aspetta Invio prima di suonarlo; poi spazio lo ripete e Invio passa oltre.
+    Escape, in qualunque momento, chiude il gruppo.
+    """
     for numero, (evento, preset) in enumerate(eventi.items(), 1):
         print(f"{numero} di {len(eventi)}: {evento}, preset {preset}. {Acusticator.descrizione(preset) or 'Senza descrizione.'}")
         if evento == "probabilita_ingaggio":
             print(f"Lo senti {conta(len(PERCENTUALI_DI_PROVA), 'volta', 'volte')}: al {', al '.join(map(str, PERCENTUALI_DI_PROVA))} per cento.")
-            for percentuale in PERCENTUALI_DI_PROVA:
-                suoni.suona(evento, sync=True, volume=suoni.VOLUME_DI_PROGETTO, semitoni=suoni.probabilita_in_semitoni(percentuale))
-                time.sleep(PAUSA_FRA_I_SUONI / 2)
-        else:
-            suoni.suona(evento, sync=True, volume=suoni.VOLUME_DI_PROGETTO)
-        time.sleep(PAUSA_FRA_I_SUONI)
+        tasto = key("\rInvio per sentirlo, Escape chiude il gruppo.\r")
+        print()
+        if tasto == "\x1b":
+            return
+        while True:
+            suona_evento(evento)
+            tasto = key("\rSpazio ripete, Invio prosegue, Escape chiude il gruppo.\r")
+            print()
+            if tasto == "\x1b":
+                return
+            if tasto != " ":
+                break
 
 
 def main():
@@ -63,7 +86,8 @@ def main():
         return 1
     quanti = sum(len(eventi) for _titolo, eventi in gruppi)
     print(f"Ascolto degli effetti sonori di MESS: {conta(len(gruppi), 'gruppo', 'gruppi')}, {conta(quanti, 'suono', 'suoni')}, al volume di progetto.")
-    print("Ogni gruppo si annuncia e si può saltare. A fine gruppo: r riascolta, c commenta, Invio lo dà per superato, Escape lo chiude senza giudizio.")
+    print("Ogni gruppo si annuncia e si può saltare. Per ogni suono: Invio lo fa sentire, spazio lo ripete, Invio passa al successivo, Escape chiude il gruppo.")
+    print("A fine gruppo: r riascolta, c commenta, Invio lo dà per superato, Escape lo chiude senza giudizio.")
     print(f"Le impressioni vanno nel file {FILE_DEGLI_ESITI}, una riga per voce.")
     if not enter_escape("\rInvio per cominciare, Escape per uscire\r"):
         print()

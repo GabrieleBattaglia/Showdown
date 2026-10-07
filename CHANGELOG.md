@@ -3,7 +3,7 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
-## [Prossima] - 2026-10-07
+## [1.39.3] - 2026-10-07
 
 ### Gli effetti sonori
 
@@ -19,7 +19,7 @@ Nel dialogo della cifra d'ingaggio, a ogni ritocco della cifra, un tic breve fa 
 
 Un errore imprevisto in un comando, che prima finiva soltanto sulla console, ora suona un allarme e lo dice in un messaggio. Pagare gli arretrati con la cassa vuota ora dice che la cassa è vuota, invece di parlare della cifra.
 
-Per ascoltare tutti i suoni con calma, gruppo per gruppo, c'è ascolta_suoni.py, da lanciare dalla cartella del programma: le impressioni finiscono in ascolto_suoni.txt, una riga per voce.
+Per ascoltare tutti i suoni con calma, gruppo per gruppo, c'è ascolta_suoni.py, da lanciare dalla cartella del programma: di ogni suono scrive nome e descrizione e aspetta Invio per farlo sentire, spazio lo ripete; le impressioni finiscono in ascolto_suoni.txt, una riga per voce.
 
 ## [1.38.2] - 2026-10-07
 

@@ -133,16 +133,42 @@ def test_ogni_suono_del_codice_e_un_evento():
     assert not sconosciuti, f"suoni che non sono eventi della mappa: {sconosciuti}"
 
 
+def _tastiera(monkeypatch, tasti):
+    """Al posto di key di GBUtils: scrive il prompt come quella vera e risponde dal copione."""
+    copione = iter(tasti)
+
+    def finta(prompt=""):
+        print(prompt, end="")
+        return next(copione)
+
+    monkeypatch.setattr(ascolta_suoni, "key", finta)
+
+
 def test_l_ascolto_guidato_suona_ogni_evento_del_gruppo(suonati, monkeypatch, capsys):
     monkeypatch.setattr(ascolta_suoni.time, "sleep", lambda _secondi: None)
     eventi = next(g for _titolo, g in suoni.GRUPPI if "probabilita_ingaggio" in g)
+    # Un tasto per suono, scelta di Gabriele: Invio lo fa sentire e Invio passa oltre; il primo si ripete con lo spazio.
+    _tastiera(monkeypatch, ["\r", " ", "\r"] + ["\r", "\r"] * (len(eventi) - 1))
     ascolta_suoni.ascolta(eventi)
-    attesi = [e for evento in eventi for e in ([evento] * len(ascolta_suoni.PERCENTUALI_DI_PROVA) if evento == "probabilita_ingaggio" else [evento])]
+    volte = {evento: len(ascolta_suoni.PERCENTUALI_DI_PROVA) if evento == "probabilita_ingaggio" else 1 for evento in eventi}
+    primo = next(iter(eventi))
+    volte[primo] *= 2
+    attesi = [e for evento in eventi for e in [evento] * volte[evento]]
     assert suonati == attesi
     assert all(d["sync"] is True and d["fattore"] == 1.0 for d in suonati.dettagli)
     scritto = capsys.readouterr().out
     assert f"1 di {len(eventi)}: " in scritto
     assert "\n\n" not in scritto
+
+
+def test_escape_chiude_il_gruppo_dell_ascolto(suonati, monkeypatch):
+    eventi = suoni.GRUPPI[0][1]
+    _tastiera(monkeypatch, ["\r", "\x1b"])
+    ascolta_suoni.ascolta(eventi)
+    assert suonati == [next(iter(eventi))]
+    _tastiera(monkeypatch, ["\x1b"])
+    ascolta_suoni.ascolta(eventi)
+    assert suonati == [next(iter(eventi))]
 
 
 def test_l_ascolto_aspetta_il_via_e_filtra_i_gruppi(suonati, monkeypatch, capsys):
