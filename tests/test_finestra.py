@@ -9,6 +9,7 @@ senza suonarli: le prove in fondo controllano che i comandi facciano sentire il 
 import datetime
 import json
 import random
+from pathlib import Path
 
 import pytest
 import wx
@@ -855,3 +856,11 @@ def test_il_suono_di_prova_aspetta_che_ci_si_fermi(app_wx, suonati):
         assert suonati.dettagli[0]["fattore"] == pytest.approx(1.6)
     finally:
         dialogo.Destroy()
+
+
+def test_ogni_domanda_si_o_no_ha_il_no_gia_scelto():
+    # Un Invio di troppo non deve mai confermare un'operazione: vale anche al mercato, dalla 1.39.6.
+    radice = Path(__file__).resolve().parent.parent / "gui"
+    senza = [f"{p.name}:{n}" for p in sorted(radice.glob("*.py")) for n, riga in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
+             if "wx.YES_NO" in riga and "wx.NO_DEFAULT" not in riga]
+    assert not senza, f"domande con il Sì già scelto: {senza}"

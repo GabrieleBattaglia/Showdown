@@ -653,7 +653,8 @@ class Mercato(_Dialogo):
 
     def _conferma(self, domanda):
         suoni.suona("domanda")
-        if wx.MessageBox(domanda, "Mercato", wx.YES_NO | wx.ICON_QUESTION, self) == wx.YES:
+        # Il No già scelto, come in tutta la finestra: un'offerta costa una mossa e non si ritira (Gabriele, 1.39.6).
+        if wx.MessageBox(domanda, "Mercato", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES:
             return True
         suoni.suona("annullato")
         return False
