@@ -12,11 +12,11 @@ Dalla versione 1.16.0 il gioco si apre in una finestra, da qualunque cartella, c
 
     python Showdown.py
 
-Nella finestra si consulta il mondo, con schede, diari di giocatori e polisportive, elenchi, classifiche, statistiche, ricerche e il registro delle vecchie glorie, e si gestiscono le proprie polisportive: fondazione, password facoltativa, mercato con i filtri, ingaggi, acquisti e offerte, vendite, svincolo, bilancio, stipendi e arretrati, chiusura. Il mondo avanza anche mentre la finestra è aperta, e la barra di stato lo annuncia. Partite e allenamento arriveranno nelle prossime tappe; fino ad allora si fanno con l'interfaccia testuale del vecchio `sd.py`, che si avvia con:
+Nella finestra si consulta il mondo, con schede, diari di giocatori e polisportive, elenchi, classifiche, statistiche, ricerche e il registro delle vecchie glorie, e si gestiscono le proprie polisportive: fondazione, password facoltativa, mercato con i filtri, ingaggi, acquisti e offerte, vendite, svincolo, bilancio, stipendi e arretrati, chiusura. Il mondo avanza anche mentre la finestra è aperta, e la barra di stato lo annuncia. Ogni evento della finestra ha il suo effetto sonoro, preso dalla collezione condivisa di GBUtils, e il volume degli effetti si regola dal menu Impostazioni, da 0, che li spegne, a 100; `ascolta_suoni.py` li fa sentire tutti, gruppo per gruppo. Partite e allenamento arriveranno nelle prossime tappe; fino ad allora si fanno con l'interfaccia testuale del vecchio `sd.py`, che si avvia con:
 
     python Showdown.py --testo
 
-Salvataggi e registri stanno accanto al programma, e così le impostazioni d'aspetto, nel file `mess_impostazioni.json`. La cartella `strumenti` contiene il banco di prova del motore di partita e lo script che scrive descrizioni fisiche di prova; la cartella `tests` la suite di pytest.
+Salvataggi e registri stanno accanto al programma, e così le impostazioni d'aspetto e il volume degli effetti, nel file `mess_impostazioni.json`. La cartella `strumenti` contiene il banco di prova del motore di partita e lo script che scrive descrizioni fisiche di prova; la cartella `tests` la suite di pytest.
 
 ## Accessibilità
 

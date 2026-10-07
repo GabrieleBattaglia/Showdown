@@ -26,6 +26,8 @@ nei tesserati né ritirati né assenti. Il formato 4, della tappa 8, aggiunge l'
 vendite e bilanci delle polisportive, esperienza, fedeltà, pazienza, arretrati e bandiera dei
 giocatori. Un salvataggio di un formato vecchio si aggiorna da solo alla lettura, e si riscrive
 nel formato nuovo al primo salvataggio.
+Dal 2026-10-07, per gli effetti sonori della decisione D24, salva_con_avvisi restituisce a parte
+gli avvisi di un salvataggio riuscito, perché la finestra li faccia sentire con un suono loro.
 """
 
 import contextlib
@@ -428,15 +430,24 @@ def _annuncia_ripiego(mondo, motivo, principale, copia, esiste_principale):
 
 def salva(mondo):
     """Salva il mondo; restituisce vero se è riuscito. Non salva mai sopra un salvataggio che non si è potuto leggere."""
+    return salva_con_avvisi(mondo)[0]
+
+
+def salva_con_avvisi(mondo):
+    """
+    Salva il mondo come salva, e restituisce l'esito insieme agli avvisi, cioè le cose andate
+    storte senza danno: la copia di sicurezza non aggiornata, o il vecchio file non compresso che
+    non si è potuto togliere. Gli avvisi arrivano anche per notifica, come gli altri messaggi.
+    """
     if mondo.salvataggio_bloccato:
         mondo.notifica("Salvataggio rifiutato: il salvataggio esistente non si è potuto leggere, e il gioco non lo copre.")
-        return False
+        return False, []
     mondo.sfoltisci_diari()
     try:
         contenuto, avvisi = scrivi(mondo, percorsi.percorso(FILE_MONDO), percorsi.percorso(FILE_MONDO_COPIA))
     except (OSError, TypeError, ValueError) as e:
         mondo.notifica(f"Salvataggio non riuscito: {e}. Il salvataggio precedente è rimasto com'era.")
-        return False
+        return False, []
     salvato = contenuto["mondo"]
     testo = f"Mondo salvato: {_quanti(len(salvato['giocatori']), len(salvato['polisportive']))}."
     usciti = len(mondo.giocatori) - len(salvato["giocatori"])
@@ -447,21 +458,26 @@ def salva(mondo):
     mondo.notifica(testo)
     for avviso in avvisi:
         mondo.notifica(avviso)
-    _togli_il_vecchio(mondo)
-    return True
+    return True, avvisi + _togli_il_vecchio(mondo)
 
 
 def _togli_il_vecchio(mondo):
-    """Dopo un salvataggio compresso riuscito, il salvataggio non compresso della tappa 6 e la sua copia non servono più."""
+    """
+    Dopo un salvataggio compresso riuscito, il salvataggio non compresso della tappa 6 e la sua copia
+    non servono più. Restituisce gli avvisi dei file che non si sono potuti togliere.
+    """
     tolti = []
+    avvisi = []
     for nome in (FILE_MONDO_VECCHIO, FILE_MONDO_COPIA_VECCHIO):
         vecchio = percorsi.percorso(nome)
         if os.path.exists(vecchio):
             try:
                 os.remove(vecchio)
             except OSError as e:
-                mondo.notifica(f"Il vecchio file {nome} non si è potuto togliere: {e}.")
+                avvisi.append(f"Il vecchio file {nome} non si è potuto togliere: {e}.")
+                mondo.notifica(avvisi[-1])
             else:
                 tolti.append(nome)
     if tolti:
         mondo.notifica(f"Il mondo ora si salva compresso, in {FILE_MONDO}: {' e '.join(tolti)}, del formato di prima, non servono più e sono stati tolti.")
+    return avvisi

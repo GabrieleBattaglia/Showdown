@@ -9,6 +9,9 @@ Tornello hanno preso il primo piano sullo schermo di Gabriele, e NVDA gli leggev
 Perciò, prima che wx crei qualunque finestra, il thread principale passa su un desktop tutto suo,
 che nessuno vede. Se il passaggio non riesce la suite non parte: meglio nessuna prova che
 finestre sul desktop vero. Fuori da Windows non serve.
+Dal 2026-10-07, con gli effetti sonori della decisione D24, nessuna prova suona: il motore dei
+suoni è sostituito da un registratore, che tiene l'elenco degli eventi che avrebbero suonato, così
+le prove possono controllarli e le casse di chi lancia la suite restano mute.
 """
 
 import os
@@ -74,6 +77,36 @@ def cartella_di_prova(tmp_path, monkeypatch):
     import percorsi
     monkeypatch.setattr(percorsi, "cartella", lambda: str(tmp_path))
     return tmp_path
+
+
+class Registro(list):
+    """Gli eventi che avrebbero suonato, in ordine; in dettagli, per ciascuno, preset, attesa, fattore del volume e semitoni."""
+
+    def __init__(self):
+        super().__init__()
+        self.dettagli = []
+
+
+@pytest.fixture(autouse=True)
+def suonati(monkeypatch):
+    """
+    Nessuna prova suona: il motore di suoni.suona diventa un registratore, e la prova riceve
+    l'elenco degli eventi che avrebbero suonato, nell'ordine. Il volume torna a quello delle
+    impostazioni di ogni prova, e nessun suono risulta in corso.
+    """
+    import suoni
+
+    registrati = Registro()
+
+    def registra(evento, preset, sync=False, fattore=1.0, semitoni=0.0):
+        registrati.append(evento)
+        registrati.dettagli.append({"preset": preset, "sync": sync, "fattore": fattore, "semitoni": semitoni})
+        return True
+
+    monkeypatch.setattr(suoni, "_riproduci", registra)
+    monkeypatch.setattr(suoni, "_VOLUME", [None])
+    monkeypatch.setattr(suoni, "_FINE_DELL_ULTIMO", [0.0])
+    return registrati
 
 
 @pytest.fixture(scope="session")

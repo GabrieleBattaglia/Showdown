@@ -8,6 +8,9 @@ mondo, lo si carica, lo si fa avanzare col tempo trascorso e si apre l'interfacc
 3, se il salvataggio c'è ma non si legge, il gioco si ferma senza salvare nulla. Con la tappa 5
 si apre la finestra; l'interfaccia testuale resta, con l'opzione --testo, per le operazioni che
 nella finestra non sono ancora arrivate, e se ne andrà quando le avrà tutte.
+Dal 2026-10-07, con la decisione D24, la finestra suona: all'avvio, e quando il salvataggio non
+si legge; e un errore imprevisto, che finirebbe soltanto su una console che chi non vede non legge,
+ha il suo allarme e un messaggio.
 """
 
 import sys
@@ -15,6 +18,7 @@ import traceback
 
 import archivio
 import nomi
+import suoni
 import testi
 from cli import InterfacciaTestuale
 from mondo import Mondo
@@ -57,15 +61,40 @@ def avvia_finestra():
     try:
         origine = archivio.carica(mondo)
     except archivio.SalvataggioIllegibile as errore:
+        # Il gioco si ferma qui: il suono aspetta di finire, come all'uscita, prima della spiegazione.
+        suoni.suona("salvataggio_illeggibile", sync=suoni.ATTESA_USCITA)
         wx.MessageBox("\n".join(testi.salvataggio_illeggibile(errore)), "MESS", wx.OK | wx.ICON_ERROR)
         return False
     # L'avanzamento lo racconta la finestra, dal suo riepilogo in numeri.
     mondo.notifica = lambda *_args: None
     ultimo_prima = mondo.datetime_ultimo_run_reale
     rapporto = mondo.processa_tempo_trascorso()
-    FinestraPrincipale(mondo, origine, messaggi, rapporto, ultimo_prima).Show()
+    finestra = FinestraPrincipale(mondo, origine, messaggi, rapporto, ultimo_prima, avvisi_all_avvio=bool(nomi.avvisi))
+    _rete_per_gli_errori(finestra)
+    finestra.Show()
+    wx.CallAfter(finestra.suoni_d_avvio)
     app.MainLoop()
     return True
+
+
+def _rete_per_gli_errori(finestra):
+    """
+    Le eccezioni che sfuggono a un comando della finestra: wx le passa a sys.excepthook, che stampa
+    la traccia sulla console, e il comando muore in silenzio. La traccia resta dov'era, e in più la
+    finestra fa sentire l'allarme e mostra un messaggio; se la finestra non c'è più, resta l'allarme.
+    """
+    import wx
+
+    precedente = sys.excepthook
+
+    def gancio(tipo, valore, traccia):
+        precedente(tipo, valore, traccia)
+        if finestra:
+            wx.CallAfter(finestra.errore_imprevisto, tipo, valore)
+        else:
+            suoni.suona("errore_imprevisto")
+
+    sys.excepthook = gancio
 
 
 def main():
@@ -77,6 +106,7 @@ def main():
         print(f"Msg: {errore}")
         traceback.print_exc()
         print("\nProgramma terminato.")
+        suoni.suona("errore_imprevisto", sync=suoni.ATTESA_USCITA)
         sys.exit(1)
     if not riuscito:
         sys.exit(1)

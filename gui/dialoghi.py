@@ -12,6 +12,11 @@ Dalla tappa 8 c'è l'economia della decisione D22: al mercato si offre un ingagg
 compra chi è in vendita e si fa un'offerta d'acquisto per i tesserati del computer, scegliendo la
 cifra in un dialogo che, per l'ingaggio, dice anche la probabilità che il giocatore accetti; poi
 ci sono i dialoghi per pagare gli arretrati, a chi e quanto, e per mettere in vendita i tesserati.
+Dal 2026-10-07, con la decisione D24, i dialoghi suonano: ogni esito ha il suo effetto, gli avvisi
+che lasciano aperto il dialogo dicono a orecchio di che errore si tratta, e un elenco che si svuota
+o torna pieno mentre si scrive lo fa sentire, perché lo screen reader non lo legge. Il suono
+sostituisce il campanello di Windows, che diceva soltanto che qualcosa non andava. C'è anche il
+dialogo del volume degli effetti, che fa sentire il suono di prova a ogni ritocco.
 """
 
 import contextlib
@@ -24,12 +29,16 @@ import economia
 import impostazioni as modulo_impostazioni
 import mercato
 import ricerca
+import suoni
 import testi
 from costanti import NOME_POLISPORTIVA_MAX, NOME_POLISPORTIVA_MIN
 from gui import aspetto
 from modelli import probabilita_accettazione
 
 PAYPAL_URL = "https://paypal.me/GabrieleBattaglia780"
+# Quanto aspettano, dopo l'ultima cifra scritta o l'ultima freccia, il suono di prova del volume e il
+# tic della probabilità d'ingaggio: così non suonano a ogni cifra.
+RITARDO_DEL_SUONO_AL_VOLO = 350
 
 
 class _Dialogo(wx.Dialog):
@@ -39,6 +48,7 @@ class _Dialogo(wx.Dialog):
         super().__init__(genitore, title=titolo, style=STILE_ADATTABILE)
         self.pannello = pannello_scorrevole(self)
         self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self._timer_del_suono = None
 
     def etichetta(self, testo):
         self.sizer.Add(wx.StaticText(self.pannello, label=testo), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
@@ -70,10 +80,44 @@ class _Dialogo(wx.Dialog):
         else:
             self.SetReturnCode(codice)
 
-    def avvisa(self, testo, controllo):
-        """Un avviso che lascia il dialogo aperto, con il cursore sul campo da correggere."""
+    def avvisa(self, testo, controllo, suono="campo_da_correggere"):
+        """Un avviso che lascia il dialogo aperto, con il cursore sul campo da correggere; il suono dice di che errore si tratta."""
+        suoni.suona(suono)
         wx.MessageBox(testo, self.GetTitle(), wx.OK | wx.ICON_WARNING, self)
         controllo.SetFocus()
+
+    def suona_fra_poco(self, funzione):
+        """
+        Chiama funzione poco dopo l'ultima richiesta: è per i suoni che seguono un campo mentre lo si
+        cambia, che così suonano una volta sola quando ci si ferma, e non a ogni cifra o freccia.
+        """
+        if self._timer_del_suono is not None and self._timer_del_suono.IsRunning():
+            self._timer_del_suono.Restart(RITARDO_DEL_SUONO_AL_VOLO)
+        else:
+            self._timer_del_suono = wx.CallLater(RITARDO_DEL_SUONO_AL_VOLO, self._suono_rimandato, funzione)
+
+    @staticmethod
+    def _suono_rimandato(funzione):
+        # Se nel frattempo il dialogo si è chiuso, i suoi controlli non ci sono più: niente suono.
+        with contextlib.suppress(RuntimeError):
+            funzione()
+
+
+class _ElencoCheSiRestringe:
+    """
+    Ricorda se un elenco era vuoto e dice quale suono fa il suo cambiamento: elenco_svuotato quando
+    da pieno resta vuoto, elenco_ripopolato quando da vuoto torna ad avere qualcosa, altrimenti
+    niente. Lo screen reader non legge un elenco che cambia mentre si scrive in un altro campo.
+    """
+
+    def __init__(self):
+        self.pieno = None
+
+    def passaggio(self, pieno):
+        prima, self.pieno = self.pieno, pieno
+        if prima is None or prima == pieno:
+            return None
+        return "elenco_ripopolato" if pieno else "elenco_svuotato"
 
 
 class SceltaGiocatore(_Dialogo):
@@ -85,6 +129,7 @@ class SceltaGiocatore(_Dialogo):
         self.scelto = None
         self.tutti = sorted(mondo.giocatori.values() if giocatori is None else giocatori, key=lambda g: g.id)
         self.visibili = []
+        self.elenco_vuoto = _ElencoCheSiRestringe()
         self.etichetta("&Numero o nome del giocatore")
         self.campo = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PROCESS_ENTER))
         self.etichetta("&Giocatori")
@@ -110,11 +155,14 @@ class SceltaGiocatore(_Dialogo):
         self.elenco.Set([f"{g.id}, {testi.nome_completo(g)}, {testi.anni(g)} anni, {testi.stato(g, self.mondo)}" for g in self.visibili])
         if self.visibili:
             self.elenco.SetSelection(0)
+        passaggio = self.elenco_vuoto.passaggio(bool(self.visibili))
+        if passaggio:
+            suoni.suona(passaggio)
 
     def conferma(self, event=None):
         indice = self.elenco.GetSelection()
         if indice == wx.NOT_FOUND:
-            wx.Bell()
+            suoni.suona("nessuna_selezione")
             return
         self.scelto = self.visibili[indice]
         self.chiudi(wx.ID_OK)
@@ -170,13 +218,11 @@ class Ricerca(_Dialogo):
             try:
                 valore = ricerca.leggi_numero(testo)
             except ValueError:
-                wx.MessageBox("Il valore deve essere un numero, per esempio 150 o 12,5.", "Cerca giocatori", wx.OK | wx.ICON_WARNING, self)
-                self.valore.SetFocus()
+                self.avvisa("Il valore deve essere un numero, per esempio 150 o 12,5.", self.valore)
                 return
         elif tipo == ricerca.TESTO:
             if not testo:
-                wx.MessageBox("Scrivi il testo da cercare.", "Cerca giocatori", wx.OK | wx.ICON_WARNING, self)
-                self.valore.SetFocus()
+                self.avvisa("Scrivi il testo da cercare.", self.valore)
                 return
             valore = testo
         ambito = ricerca.AMBITI[self.ambito.GetSelection()][0] if self.ambito else None
@@ -195,6 +241,8 @@ class Aspetto(_Dialogo):
     def __init__(self, genitore, impostazioni):
         super().__init__(genitore, "Aspetto")
         self.risultato = None
+        # Le impostazioni che questo dialogo non tocca, come il volume degli effetti, restano com'erano.
+        self.altre = dict(impostazioni)
         self.etichetta("Anteprima")
         self.anteprima = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2,
                                                    value="MESS, Manageriale e Simulatore Showdown.\nCosì appare il testo della finestra."))
@@ -223,6 +271,7 @@ class Aspetto(_Dialogo):
 
     def valori(self):
         return modulo_impostazioni.valide({
+            **self.altre,
             "dimensione": self.dimensione.GetValue(),
             "colore_testo": [c.GetValue() for c in self.testo],
             "colore_sfondo": [c.GetValue() for c in self.sfondo],
@@ -232,12 +281,14 @@ class Aspetto(_Dialogo):
         aspetto.applica(self.anteprima, self.valori())
 
     def ai_predefiniti(self, event=None):
+        """Dimensione e colori tornano ai predefiniti, ancora da confermare; lo screen reader resta sul pulsante, e il suono lo dice."""
         predefinite = modulo_impostazioni.valide(None)
         self.dimensione.SetValue(predefinite["dimensione"])
         for controlli, valori in ((self.testo, predefinite["colore_testo"]), (self.sfondo, predefinite["colore_sfondo"])):
             for controllo, valore in zip(controlli, valori, strict=True):
                 controllo.SetValue(valore)
         self.aggiorna()
+        suoni.suona("aspetto_predefiniti")
 
     def conferma(self, event=None):
         self.risultato = self.valori()
@@ -262,6 +313,37 @@ class Conservazione(_Dialogo):
 
     def conferma(self, event=None):
         self.risultato = {"giocatori": self.giocatori.GetValue(), "polisportive": self.polisportive.GetValue()}
+        self.chiudi(wx.ID_OK)
+
+
+class EffettiSonori(_Dialogo):
+    """
+    Il volume degli effetti sonori, da 0 a 100, decisione D24: a ogni ritocco, quando ci si ferma,
+    suona il campione al volume scelto, così si sente subito il livello; a zero tace.
+    """
+
+    def __init__(self, genitore, volume):
+        super().__init__(genitore, "Effetti sonori")
+        self.risultato = None
+        self.sizer.Add(wx.StaticText(self.pannello, label="Il volume degli effetti sonori, da 0 a 100: a 50 i suoni sono come sono stati pensati, a zero tacciono."), 0, wx.ALL, 8)
+        self.etichetta("&Volume degli effetti")
+        self.volume = self.aggiungi(wx.SpinCtrl(self.pannello, min=modulo_impostazioni.VOLUME_MINIMO, max=modulo_impostazioni.VOLUME_MASSIMO, initial=volume))
+        ok, _annulla = self.pulsanti((wx.ID_OK, "OK"), (wx.ID_CANCEL, "Annulla"))
+        ok.Bind(wx.EVT_BUTTON, self.conferma)
+        self.volume.Bind(wx.EVT_SPINCTRL, self.al_volume)
+        self.volume.Bind(wx.EVT_TEXT, self.al_volume)
+        self.completa((400, 220))
+        self.volume.SetFocus()
+
+    def al_volume(self, event=None):
+        self.suona_fra_poco(self.prova)
+
+    def prova(self):
+        """Il suono di prova al volume scritto nel campo, non a quello salvato."""
+        suoni.suona("prova_volume_effetti", volume=self.volume.GetValue())
+
+    def conferma(self, event=None):
+        self.risultato = self.volume.GetValue()
         self.chiudi(wx.ID_OK)
 
 
@@ -291,7 +373,7 @@ class NuovaPolisportiva(_Dialogo):
             self.avvisa(problema, self.nome)
             return
         if self.password.GetValue() != self.conferma_password.GetValue():
-            self.avvisa("La password e la conferma non coincidono.", self.password)
+            self.avvisa("La password e la conferma non coincidono.", self.password, "password_non_coincidono")
             return
         self.risultato = (self.nome.GetValue(), self.password.GetValue() or None, self.attiva.GetValue())
         self.chiudi(wx.ID_OK)
@@ -320,11 +402,11 @@ class CambiaPolisportiva(_Dialogo):
     def conferma(self, event=None):
         indice = self.elenco.GetSelection()
         if indice == wx.NOT_FOUND:
-            wx.Bell()
+            suoni.suona("nessuna_selezione")
             return
         poli = self.mie[indice]
         if poli.protetta and not poli.verifica_password(self.password.GetValue()):
-            self.avvisa(f"La password di {poli.nome} non è giusta.", self.password)
+            self.avvisa(f"La password di {poli.nome} non è giusta.", self.password, "password_sbagliata")
             return
         self.scelta = poli
         self.chiudi(wx.ID_OK)
@@ -352,10 +434,10 @@ class PasswordPolisportiva(_Dialogo):
 
     def conferma(self, event=None):
         if self.attuale is not None and not self.poli.verifica_password(self.attuale.GetValue()):
-            self.avvisa("La password attuale non è giusta.", self.attuale)
+            self.avvisa("La password attuale non è giusta.", self.attuale, "password_sbagliata")
             return
         if self.nuova.GetValue() != self.conferma_nuova.GetValue():
-            self.avvisa("La nuova password e la conferma non coincidono.", self.nuova)
+            self.avvisa("La nuova password e la conferma non coincidono.", self.nuova, "password_non_coincidono")
             return
         self.risultato = self.nuova.GetValue()
         self.chiudi(wx.ID_OK)
@@ -377,7 +459,7 @@ class ChiediPassword(_Dialogo):
 
     def conferma(self, event=None):
         if not self.poli.verifica_password(self.password.GetValue()):
-            self.avvisa(f"La password di {self.poli.nome} non è giusta.", self.password)
+            self.avvisa(f"La password di {self.poli.nome} non è giusta.", self.password, "password_sbagliata")
             return
         self.chiudi(wx.ID_OK)
 
@@ -386,12 +468,16 @@ class Cifra(_Dialogo):
     """
     Una cifra in euro da scegliere, fino alla cassa, con una spiegazione davanti; se serve, una
     nota dopo il campo segue la cifra, come la probabilità che un giocatore accetti un ingaggio.
+    La nota è un testo che lo screen reader non legge quando cambia: se il dialogo riceve anche la
+    probabilità, a ogni ritocco della cifra, quando ci si ferma, un tic la fa sentire con la sua
+    altezza, più acuto quanto più è probabile che il giocatore accetti.
     """
 
-    def __init__(self, genitore, titolo, spiegazione, etichetta, iniziale, massimo, nota=None):
+    def __init__(self, genitore, titolo, spiegazione, etichetta, iniziale, massimo, nota=None, probabilita=None):
         super().__init__(genitore, titolo)
         self.valore = None
         self.calcola_nota = nota
+        self.calcola_probabilita = probabilita
         self.sizer.Add(wx.StaticText(self.pannello, label=spiegazione), 0, wx.ALL, 8)
         self.etichetta(etichetta)
         self.cifra = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=max(0, massimo), initial=max(0, min(iniziale, massimo))))
@@ -409,6 +495,13 @@ class Cifra(_Dialogo):
         if self.calcola_nota:
             self.nota.SetLabel(self.calcola_nota(self.cifra.GetValue()))
             self.pannello.Layout()
+        if event is not None and self.calcola_probabilita:
+            self.suona_fra_poco(self.tic_della_probabilita)
+
+    def tic_della_probabilita(self):
+        """Il tic della probabilità d'ingaggio, all'altezza della cifra scritta nel campo."""
+        percentuale = self.calcola_probabilita(self.cifra.GetValue())
+        suoni.suona("probabilita_ingaggio", semitoni=suoni.probabilita_in_semitoni(percentuale))
 
     def conferma(self, event=None):
         if self.cifra.GetValue() <= 0:
@@ -426,6 +519,9 @@ class Mercato(_Dialogo):
     tesserato del computer si offre una cifra alla sua polisportiva. Ogni offerta chiede conferma,
     perché costa una mossa e non si ritira, e l'esito arriva in un messaggio. Il dialogo resta
     aperto, e in esiti tiene i testi degli esiti, che la finestra racconta alla chiusura.
+    Ogni azione ha il suo suono, e ogni esito di un'offerta il suo, così accettata e rifiutata si
+    distinguono prima di leggere il messaggio. Quando un'azione svuota l'elenco dei candidati, o lo
+    riempie di nuovo, al posto del suo suono si sente quello del passaggio.
     """
 
     def __init__(self, genitore, mondo, poli, impostazioni=None):
@@ -436,6 +532,7 @@ class Mercato(_Dialogo):
         self.filtri = []
         self.esiti = []
         self.righe = []
+        self.elenco_vuoto = _ElencoCheSiRestringe()
         self.info = wx.StaticText(self.pannello, label=testi.info_mercato(poli, mondo))
         self.sizer.Add(self.info, 0, wx.ALL, 8)
         self.etichetta("&Filtri")
@@ -461,10 +558,10 @@ class Mercato(_Dialogo):
         offri.Bind(wx.EVT_BUTTON, self.offri)
         scheda.Bind(wx.EVT_BUTTON, self.scheda)
         self.trovati.Bind(wx.EVT_LISTBOX_DCLICK, self.offri)
-        self.scelta.Bind(wx.EVT_CHOICE, self.aggiorna)
+        self.scelta.Bind(wx.EVT_CHOICE, lambda event: self.aggiorna(suono="mercato_scelta_cambiata"))
         self.massimo.Bind(wx.EVT_SPINCTRL, self.aggiorna)
         self.massimo.Bind(wx.EVT_TEXT, self.aggiorna)
-        self.ordine.Bind(wx.EVT_CHOICE, self.aggiorna)
+        self.ordine.Bind(wx.EVT_CHOICE, lambda event: self.aggiorna(suono="mercato_ordine_cambiato"))
         self.mostra_filtri()
         self.aggiorna()
         self.completa((700, 620))
@@ -475,8 +572,12 @@ class Mercato(_Dialogo):
         self.elenco_filtri.Set([descrizione for _c, _k, _v, descrizione in self.filtri] or ["Nessun filtro: compaiono tutti."])
         self.elenco_filtri.SetSelection(min(posto, self.elenco_filtri.GetCount() - 1))
 
-    def aggiorna(self, event=None, posto=0):
-        """Ricalcola l'elenco dei candidati con filtri, scelta, costo massimo e ordine del momento."""
+    def aggiorna(self, event=None, posto=0, suono=None):
+        """
+        Ricalcola l'elenco dei candidati con filtri, scelta, costo massimo e ordine del momento, e
+        suona il suono dell'azione, o quello del passaggio dell'elenco da pieno a vuoto o ritorno. Se
+        il mercato si apre già vuoto, lo dice dopo il suono dell'apertura.
+        """
         mostra = mercato.SCELTE[self.scelta.GetSelection()][0]
         ordine = mercato.ORDINI[self.ordine.GetSelection()][0]
         filtri = [(criterio, condizione, valore) for criterio, condizione, valore, _d in self.filtri]
@@ -487,50 +588,85 @@ class Mercato(_Dialogo):
         self.etichetta_trovati.SetLabel(f"&Giocatori trovati: {testi.intero(len(self.righe))}")
         self.info.SetLabel(testi.info_mercato(self.poli, self.mondo))
         self.pannello.Layout()
+        apertura = self.elenco_vuoto.pieno is None
+        passaggio = self.elenco_vuoto.passaggio(bool(self.righe))
+        if apertura and not self.righe:
+            suoni.in_coda("elenco_svuotato")
+        elif passaggio or suono:
+            suoni.suona(passaggio or suono)
 
     def aggiungi_filtro(self, event=None):
         dialogo = Ricerca(self, con_ambito=False, titolo="Aggiungi un filtro", pulsante="&Aggiungi")
         try:
+            suoni.suona("dialogo_filtro_mercato")
             if dialogo.ShowModal() == wx.ID_OK and dialogo.risultato is not None:
                 _ambito, criterio, condizione, valore, descrizione = dialogo.risultato
                 self.filtri.append((criterio, condizione, valore, descrizione[0].upper() + descrizione[1:]))
                 self.mostra_filtri(len(self.filtri) - 1)
-                self.aggiorna()
+                self.aggiorna(suono="filtro_aggiunto")
+            else:
+                suoni.suona("annullato")
         finally:
             dialogo.Destroy()
 
     def togli_filtro(self, event=None):
         indice = self.elenco_filtri.GetSelection()
         if not self.filtri or indice == wx.NOT_FOUND:
-            wx.Bell()
+            suoni.suona("nessuna_selezione")
             return
         del self.filtri[indice]
         self.mostra_filtri(indice)
-        self.aggiorna()
+        self.aggiorna(suono="filtro_tolto")
 
     def togli_tutti(self, event=None):
+        if not self.filtri:
+            suoni.suona("nessuna_selezione")
+            return
         self.filtri.clear()
         self.mostra_filtri()
-        self.aggiorna()
+        self.aggiorna(suono="filtri_tutti_tolti")
 
     def _scelto(self):
         indice = self.trovati.GetSelection()
         if indice == wx.NOT_FOUND:
-            wx.Bell()
+            suoni.suona("nessuna_selezione")
             return None, indice
         return self.righe[indice], indice
 
-    def _avviso(self, testo):
+    def _avviso(self, testo, suono):
+        suoni.suona(suono)
         wx.MessageBox(testo, "Mercato", wx.OK | wx.ICON_WARNING, self)
 
-    def _conferma(self, domanda):
-        return wx.MessageBox(domanda, "Mercato", wx.YES_NO | wx.ICON_QUESTION, self) == wx.YES
+    def _suono_del_problema(self, costo=None):
+        """
+        Il suono di un'offerta che non si può fare, nell'ordine in cui il mondo controlla: le mosse
+        del giorno finite, la rosa piena, la cassa che non basta per il costo. Gli altri problemi,
+        come un giocatore che nel frattempo non è più disponibile, sono un tasto premuto a vuoto.
+        """
+        if self.mondo.mosse_rimaste(self.poli) <= 0:
+            return "mosse_finite"
+        if len(self.poli.tesserati) >= self.poli.maxtesserati:
+            return "rosa_piena"
+        if costo is not None and costo > self.poli.cassa:
+            return "cassa_insufficiente"
+        return "nessuna_selezione"
 
-    def _cifra(self, titolo, spiegazione, etichetta, iniziale, nota=None):
-        """La cifra scelta dall'utente, oppure None se ha annullato."""
-        dialogo = Cifra(self, titolo, spiegazione, etichetta, iniziale, self.poli.cassa, nota)
+    def _conferma(self, domanda):
+        suoni.suona("domanda")
+        if wx.MessageBox(domanda, "Mercato", wx.YES_NO | wx.ICON_QUESTION, self) == wx.YES:
+            return True
+        suoni.suona("annullato")
+        return False
+
+    def _cifra(self, titolo, spiegazione, etichetta, iniziale, suono, nota=None, probabilita=None):
+        """La cifra scelta dall'utente, oppure None se ha annullato; suono è quello dell'apertura."""
+        dialogo = Cifra(self, titolo, spiegazione, etichetta, iniziale, self.poli.cassa, nota, probabilita)
         try:
-            return dialogo.valore if dialogo.ShowModal() == wx.ID_OK else None
+            suoni.suona(suono)
+            if dialogo.ShowModal() == wx.ID_OK:
+                return dialogo.valore
+            suoni.suona("annullato")
+            return None
         finally:
             dialogo.Destroy()
 
@@ -540,16 +676,20 @@ class Mercato(_Dialogo):
         if c is None:
             return
         if self.poli.cassa <= 0:
-            self._avviso(f"La cassa di {self.poli.nome} è vuota.")
+            self._avviso(f"La cassa di {self.poli.nome} è vuota.", "cassa_insufficiente")
             return
         if c.tipo == mercato.LIBERO:
             esito = self._ingaggio(c)
+            suono = "ingaggio_accettato" if esito and esito[1] else "ingaggio_rifiutato"
         elif c.tipo == mercato.IN_VENDITA:
             esito = self._acquisto(c)
+            suono = "acquisto_fatto"
         else:
             esito = self._offerta_d_acquisto(c)
+            suono = "offerta_d_acquisto_accettata" if esito and esito[1] else "offerta_d_acquisto_rifiutata"
         if esito is not None:
             self.esiti.append(esito)
+            suoni.suona(suono)
             wx.MessageBox(esito[0], "Esito", wx.OK | wx.ICON_INFORMATION, self)
             self.aggiorna(posto=indice)
         self.trovati.SetFocus()
@@ -558,17 +698,18 @@ class Mercato(_Dialogo):
         g = c.giocatore
         problema = self.mondo.problema_offerta(self.poli, g)
         if problema:
-            self._avviso(problema)
+            self._avviso(problema, self._suono_del_problema())
             return None
         richiesta = c.costo
         importo = self._cifra("Ingaggio", f"{testi.nome_completo(g)} chiede {testi.euro(richiesta)} d'ingaggio: più offri, più è probabile che accetti.",
-                              "&Ingaggio da offrire, in euro", richiesta,
-                              lambda cifra: f"Accetterebbe al {testi.numero(probabilita_accettazione(cifra, richiesta), 0)}%.")
+                              "&Ingaggio da offrire, in euro", richiesta, "dialogo_cifra_ingaggio",
+                              lambda cifra: f"Accetterebbe al {testi.numero(probabilita_accettazione(cifra, richiesta), 0)}%.",
+                              lambda cifra: probabilita_accettazione(cifra, richiesta))
         if importo is None:
             return None
         problema = self.mondo.problema_offerta(self.poli, g, importo)
         if problema:
-            self._avviso(problema)
+            self._avviso(problema, self._suono_del_problema(importo))
             return None
         if not self._conferma(testi.domanda_ingaggio(c, importo, probabilita_accettazione(importo, richiesta), self.poli, self.mondo)):
             return None
@@ -579,7 +720,7 @@ class Mercato(_Dialogo):
         g = c.giocatore
         problema = self.mondo.problema_acquisto(self.poli, g)
         if problema:
-            self._avviso(problema)
+            self._avviso(problema, self._suono_del_problema(c.costo))
             return None
         if not self._conferma(testi.domanda_acquisto(c, self.poli, self.mondo)):
             return None
@@ -590,15 +731,15 @@ class Mercato(_Dialogo):
         g = c.giocatore
         problema = self.mondo.problema_offerta_d_acquisto(self.poli, g)
         if problema:
-            self._avviso(problema)
+            self._avviso(problema, self._suono_del_problema())
             return None
         importo = self._cifra("Offerta d'acquisto", f"{testi.nome_completo(g)} vale {testi.euro(c.costo)} sul mercato: {c.polisportiva.nome} lo cede se l'offerta le basta.",
-                              "&Cifra da offrire, in euro", c.costo)
+                              "&Cifra da offrire, in euro", c.costo, "dialogo_cifra_offerta_d_acquisto")
         if importo is None:
             return None
         problema = self.mondo.problema_offerta_d_acquisto(self.poli, g, importo)
         if problema:
-            self._avviso(problema)
+            self._avviso(problema, self._suono_del_problema(importo))
             return None
         if not self._conferma(testi.domanda_offerta_d_acquisto(c, importo, self.poli, self.mondo)):
             return None
@@ -612,6 +753,7 @@ class Mercato(_Dialogo):
         g = c.giocatore
         dialogo = Lettura(self, f"Scheda di {testi.nome_completo(g)}", testi.scheda_giocatore(g, self.mondo), self.impostazioni)
         try:
+            suoni.suona("mercato_scheda_giocatore")
             dialogo.ShowModal()
         finally:
             dialogo.Destroy()
@@ -664,17 +806,30 @@ class PagaArretrati(_Dialogo):
         self.cifra.SetValue(max(0, massimo))
 
     def paga(self, event=None):
+        """
+        Paga al tesserato scelto la cifra del campo. Il suono dice com'è andata: pagato in parte,
+        saldato mentre altri aspettano ancora, o saldato l'ultimo debito.
+        """
         indice = self.elenco.GetSelection()
         if not self.debitori or indice == wx.NOT_FOUND:
-            wx.Bell()
+            suoni.suona("nessuna_selezione")
+            return
+        if self.poli.cassa <= 0:
+            self.avvisa(f"La cassa di {self.poli.nome} è vuota.", self.elenco, "cassa_insufficiente")
             return
         g = self.debitori[indice]
         try:
             self.mondo.paga(self.poli, g, self.cifra.GetValue())
         except ValueError as e:
-            wx.MessageBox(str(e), "Arretrati", wx.OK | wx.ICON_WARNING, self)
+            self.avvisa(str(e), self.cifra)
             return
         self.pagati.append((g, self.cifra.GetValue()))
+        if g.arretrati:
+            suoni.suona("arretrati_pagati_in_parte")
+        elif any(altro.arretrati for altro in self.debitori):
+            suoni.suona("arretrati_saldati")
+        else:
+            suoni.suona("arretrati_tutti_saldati")
         wx.MessageBox(f"Pagati {testi.euro(self.cifra.GetValue())} a {testi.nome_completo(g)}: ora è {testi.umore(g)}.", "Arretrati", wx.OK | wx.ICON_INFORMATION, self)
         self.aggiorna(indice)
         self.elenco.SetFocus()
@@ -722,15 +877,21 @@ class Vendite(_Dialogo):
     def _scelto(self):
         indice = self.elenco.GetSelection()
         if indice == wx.NOT_FOUND:
-            wx.Bell()
+            suoni.suona("nessuna_selezione")
             return None, indice
         return self.rosa[indice], indice
 
     def metti(self, event=None):
+        """
+        Mette in vendita il tesserato scelto, o gli cambia il prezzo: il messaggio è lo stesso, e
+        solo il suono dice se era già in vendita.
+        """
         g, indice = self._scelto()
         if g is None:
             return
+        suono = "prezzo_di_vendita_cambiato" if g.id in self.poli.in_vendita else "messo_in_vendita"
         self.mondo.metti_in_vendita(self.poli, g, self.prezzo.GetValue())
+        suoni.suona(suono)
         testo = f"{testi.nome_completo(g)} è in vendita a {testi.euro(self.prezzo.GetValue())}."
         self.fatte.append(testo)
         wx.MessageBox(testo, "Vendite", wx.OK | wx.ICON_INFORMATION, self)
@@ -744,10 +905,12 @@ class Vendite(_Dialogo):
         try:
             self.mondo.togli_dalla_vendita(self.poli, g)
         except ValueError as e:
+            suoni.suona("vendita_non_attiva")
             wx.MessageBox(str(e), "Vendite", wx.OK | wx.ICON_WARNING, self)
             return
         testo = f"{testi.nome_completo(g)} non è più in vendita."
         self.fatte.append(testo)
+        suoni.suona("tolto_dalla_vendita")
         wx.MessageBox(testo, "Vendite", wx.OK | wx.ICON_INFORMATION, self)
         self.aggiorna(indice)
         self.elenco.SetFocus()
@@ -789,6 +952,7 @@ class Caffe(Lettura):
         self.bottoni[-1].SetDefault()
 
     def dona(self, event=None):
+        suoni.suona("caffe_paypal")
         with contextlib.suppress(webbrowser.Error):
             webbrowser.open(PAYPAL_URL)
         self.chiudi(wx.ID_OK)

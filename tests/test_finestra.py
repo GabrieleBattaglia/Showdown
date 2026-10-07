@@ -2,7 +2,8 @@
 Test della finestra e dei dialoghi, sul desktop nascosto del conftest: ogni voce dei menu, la
 barra di stato, il salvataggio, la chiusura con il riepilogo, la scelta del giocatore, la
 ricerca, l'aspetto e l'invito al caffè. Le finestre modali vengono sostituite, perché una prova
-che aspetta un tasto non finirebbe mai.
+che aspetta un tasto non finirebbe mai. Dal 2026-10-07 anche i suoni, che il conftest registra
+senza suonarli: le prove in fondo controllano che i comandi facciano sentire il loro evento.
 """
 
 import datetime
@@ -16,6 +17,7 @@ import archivio
 import impostazioni
 import mondo as modulo_mondo
 import ricerca
+import suoni
 import testi
 from costanti import FILE_MONDO
 from gui import dialoghi
@@ -67,7 +69,8 @@ def test_apertura_e_barra(finestra):
 def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
     con_dialogo = {finestra.scheda_giocatore, finestra.diario_giocatore, finestra.cerca, finestra.cambia_aspetto, finestra.cambia_conservazione,
                    finestra.caffe, finestra.esci, finestra.vai_alla_vista, finestra.vai_alla_barra, finestra.nuova_polisportiva,
-                   finestra.cambia_polisportiva, finestra.mercato, finestra.svincola, finestra.password_polisportiva, finestra.chiudi_polisportiva}
+                   finestra.cambia_polisportiva, finestra.mercato, finestra.svincola, finestra.password_polisportiva, finestra.chiudi_polisportiva,
+                   finestra.cambia_effetti}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -122,7 +125,8 @@ def test_chiusura_salva_e_riassume(finestra, cartella_di_prova, monkeypatch):
 def test_il_timer_fa_avanzare_il_mondo(finestra, cartella_di_prova, monkeypatch):
     finestra.vista.ChangeValue("Il testo che si sta leggendo.")
     mondo = finestra.mondo
-    data_prima = mondo.datetime_corrente_simulazione
+    # Una data a metà mese: un primo del mese nei due giorni avrebbe il suo avviso nella barra.
+    mondo.datetime_corrente_simulazione = data_prima = datetime.datetime(2026, 10, 10, 12, 0)
     mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=17)
     # Con un dialogo aperto il mondo aspetta.
     finestra._modali = 1
@@ -234,13 +238,14 @@ def test_ricerca(app_wx, monkeypatch):
 
 
 def test_aspetto(app_wx):
-    dialogo = dialoghi.Aspetto(None, {"dimensione": 20, "colore_testo": [100, 100, 100], "colore_sfondo": [0, 0, 50]})
+    dialogo = dialoghi.Aspetto(None, {"dimensione": 20, "colore_testo": [100, 100, 100], "colore_sfondo": [0, 0, 50], "volume_effetti": 30})
     try:
-        assert dialogo.valori() == {"dimensione": 20, "colore_testo": [100, 100, 100], "colore_sfondo": [0, 0, 50]}
+        assert dialogo.valori() == {"dimensione": 20, "colore_testo": [100, 100, 100], "colore_sfondo": [0, 0, 50], "volume_effetti": 30}
         dialogo.ai_predefiniti()
-        assert dialogo.valori() == impostazioni.valide(None)
+        # I predefiniti dell'aspetto non toccano il volume degli effetti.
+        assert dialogo.valori() == impostazioni.valide({"volume_effetti": 30})
         dialogo.conferma()
-        assert dialogo.risultato == impostazioni.valide(None)
+        assert dialogo.risultato == impostazioni.valide({"volume_effetti": 30})
     finally:
         dialogo.Destroy()
 
@@ -521,3 +526,332 @@ def test_chiudere_una_protetta_con_la_password(finestra, monkeypatch):
     monkeypatch.setattr(dialoghi.ChiediPassword, "ShowModal", giusta)
     finestra.chiudi_polisportiva()
     assert "Club Di Prova" not in finestra.mondo.polisportive
+
+
+# Gli effetti sonori, decisione D24: il conftest li registra senza suonarli.
+
+def _guasto(*_args):
+    raise OSError("disco pieno")
+
+
+def test_i_comandi_suonano_il_loro_evento(finestra, suonati):
+    voci = {voce[0]: voce[2] for _titolo, elenco in finestra.voci_menu() for voce in filter(None, elenco)}
+    for testo in ("&Guida ai comandi", "&Informazioni", "&Novità", "&TOP 10", "&Classifica per valore", "Vista &principale", "&Barra di stato",
+                  "R&isultati della ricerca", "&Riepilogo dell'ultimo avanzamento", "&Scheda della polisportiva attiva", "&Bilancio della polisportiva attiva",
+                  "&Tesserati della polisportiva attiva", "&Elenco delle polisportive", "&Vecchie glorie"):
+        finestra._esegui(voci[testo])
+    assert suonati == ["guida", "informazioni", "novita", "top_10", "classifica", "fuoco_vista", "fuoco_barra", "nessuna_ricerca", "nessun_avanzamento",
+                       "scheda_polisportiva", "bilancio", "tesserati_polisportiva", "elenco_polisportive", "vecchie_glorie"]
+    finestra.mondo.miapolisportiva_attiva = None
+    finestra._esegui(voci["&Tesserati della polisportiva attiva"])
+    assert suonati[-1] == "nessuna_polisportiva_attiva"
+    assert finestra.vista.GetValue().startswith("Non hai una polisportiva attiva: fondane una con Ctrl+N")
+
+
+def test_annullare_un_dialogo_suona(finestra, suonati):
+    finestra.scheda_giocatore()
+    finestra.cerca()
+    finestra.cambia_aspetto()
+    finestra.cambia_effetti()
+    assert suonati == ["dialogo_scheda_giocatore", "annullato", "dialogo_ricerca", "annullato", "dialogo_aspetto", "annullato", "dialogo_effetti_sonori", "annullato"]
+
+
+@pytest.mark.parametrize(("origine", "avvisi", "atteso"), [
+    (archivio.CARICATO, False, "avvio"), (archivio.NATO, False, "avvio_mondo_nuovo"), (archivio.DALLA_COPIA, True, "avvio_dalla_copia"),
+    (archivio.CARICATO, True, "avvio_con_avvisi"), (archivio.NATO, True, "avvio_con_avvisi"),
+])
+def test_il_suono_dell_avvio(app_wx, mondo, suonati, origine, avvisi, atteso):
+    rapporto = Mondo.rapporto_vuoto(adesso()) | {"ticks": 3, "giorni": 3}
+    f = FinestraPrincipale(mondo, origine, [], rapporto, mondo.datetime_ultimo_run_reale, avvisi_all_avvio=avvisi)
+    try:
+        f.suoni_d_avvio()
+        if origine == archivio.NATO:
+            # Il mondo appena nato avanza subito di un giorno, e quel giorno non suona.
+            assert suonati == [atteso]
+            assert f.ultimo_evento == "mondo pronto"
+        else:
+            assert suonati == [atteso, "mondo_avanzato_piu_giorni"]
+            assert f.ultimo_evento == "mondo avanzato di 3 giorni"
+    finally:
+        f.timer.Stop()
+        f.Destroy()
+        wx.Yield()
+
+
+def test_i_tre_esiti_del_salvataggio(finestra, suonati, monkeypatch):
+    finestra.salva()
+    scrivi = archivio.scrivi
+    monkeypatch.setattr(archivio, "scrivi", lambda *args: (scrivi(*args)[0], ["La copia di sicurezza non si è potuta aggiornare: prova."]))
+    finestra.salva()
+    assert "La copia di sicurezza non si è potuta aggiornare: prova." in finestra.vista.GetValue()
+    monkeypatch.setattr(archivio, "scrivi", _guasto)
+    finestra.salva()
+    assert suonati == ["salvataggio_riuscito", "salvataggio_con_avviso", "salvataggio_non_riuscito"]
+    assert finestra.ultimo_evento == "salvataggio non riuscito"
+
+
+def test_un_operazione_che_non_si_salva(finestra, suonati, monkeypatch):
+    def fonda(self):
+        self.nome.ChangeValue("Circolo dei ciechi")
+        self.conferma()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.NuovaPolisportiva, "ShowModal", fonda)
+    monkeypatch.setattr(archivio, "scrivi", _guasto)
+    finestra.nuova_polisportiva()
+    assert suonati == ["dialogo_nuova_polisportiva", "polisportiva_fondata", "salvataggio_non_riuscito"]
+    assert finestra.vista.GetValue().startswith("Hai fondato Circolo dei ciechi.")
+    assert finestra.vista.GetValue().endswith("Salvataggio non riuscito: disco pieno. Il salvataggio precedente è rimasto com'era.")
+
+
+def test_l_avanzamento_suona_una_volta_sola(finestra, suonati, monkeypatch):
+    mondo = finestra.mondo
+    mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 10, 12, 0)
+    mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=9)
+    finestra._modali = 1
+    finestra._al_minuto(None)
+    assert suonati == []
+    finestra._modali = 0
+    finestra._al_minuto(None)
+    evento, testo = suoni.evento_avanzamento(finestra.rapporto, True, True)
+    assert suonati == [evento]
+    assert finestra.ultimo_evento == testo
+    assert finestra.barra.GetValue().splitlines()[3] == testo
+    # Senza giorni maturati il timer tace.
+    finestra._al_minuto(None)
+    assert suonati == [evento]
+    mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=9)
+    monkeypatch.setattr(archivio, "scrivi", _guasto)
+    finestra._al_minuto(None)
+    assert suonati == [evento, "salvataggio_non_riuscito"]
+    assert finestra.ultimo_evento == "mondo avanzato di un giorno, non salvato"
+
+
+def test_gli_stipendi_non_pagati_suonano(finestra, suonati):
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    poli.cassa = 0
+    poli.gloria = 1
+    mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 31, 12, 0)
+    mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=9)
+    finestra._al_minuto(None)
+    assert finestra.rapporto["mesi"] == 1
+    assert suonati == ["stipendi_non_pagati"]
+
+
+@pytest.mark.parametrize(("guasto", "atteso"), [(False, "uscita"), (True, "uscita_senza_salvataggio")])
+def test_l_uscita_aspetta_il_suo_suono(finestra, suonati, monkeypatch, guasto, atteso):
+    if guasto:
+        monkeypatch.setattr(archivio, "scrivi", _guasto)
+    finestra.Close()
+    wx.Yield()
+    assert suonati == [atteso]
+    assert suonati.dettagli[0]["sync"] == suoni.ATTESA_USCITA
+
+
+def test_l_elenco_che_si_svuota_e_si_riempie(app_wx, mondo, suonati):
+    dialogo = dialoghi.SceltaGiocatore(None, mondo)
+    try:
+        dialogo.campo.ChangeValue("2")
+        dialogo.filtra()
+        dialogo.campo.ChangeValue("zzzz")
+        dialogo.filtra()
+        dialogo.campo.ChangeValue("zzzzz")
+        dialogo.filtra()
+        dialogo.campo.ChangeValue("")
+        dialogo.filtra()
+        dialogo.campo.ChangeValue("zzzz")
+        dialogo.filtra()
+        dialogo.conferma()
+        assert suonati == ["elenco_svuotato", "elenco_ripopolato", "elenco_svuotato", "nessuna_selezione"]
+        assert dialogo.scelto is None
+    finally:
+        dialogo.Destroy()
+
+
+def test_i_suoni_delle_password(finestra, suonati, monkeypatch):
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: wx.OK)
+    dialogo = dialoghi.PasswordPolisportiva(finestra, finestra.mondo.miapolisportiva_attiva)
+    try:
+        dialogo.attuale.ChangeValue("sbagliata")
+        dialogo.conferma()
+        dialogo.attuale.ChangeValue("segreta")
+        dialogo.nuova.ChangeValue("nuova")
+        dialogo.conferma()
+    finally:
+        dialogo.Destroy()
+    nuova = dialoghi.NuovaPolisportiva(finestra, finestra.mondo)
+    try:
+        nuova.nome.ChangeValue("x")
+        nuova.conferma()
+    finally:
+        nuova.Destroy()
+    assert suonati == ["password_sbagliata", "password_non_coincidono", "campo_da_correggere"]
+
+
+def test_i_suoni_del_mercato(finestra, suonati, monkeypatch):
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: wx.YES)
+    monkeypatch.setattr(modulo_mondo, "caso", lambda p: False)
+    valori = ["1000000", "0"]
+
+    def filtro(self):
+        self.valore.ChangeValue(valori.pop(0))
+        self.conferma()
+        return wx.ID_OK
+
+    def cifra(self):
+        self.valore = self.cifra.GetValue()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.Ricerca, "ShowModal", filtro)
+    monkeypatch.setattr(dialoghi.Cifra, "ShowModal", cifra)
+    dialogo = dialoghi.Mercato(finestra, mondo, poli)
+    try:
+        assert suonati == []
+        dialogo.scelta.SetSelection(2)
+        dialogo.aggiorna(suono="mercato_scelta_cambiata")
+        dialogo.ordine.SetSelection(1)
+        dialogo.aggiorna(suono="mercato_ordine_cambiato")
+        dialogo.scelta.SetSelection(1)
+        dialogo.aggiorna(suono="mercato_scelta_cambiata")
+        dialogo.togli_tutti()
+        # Un filtro che non lascia nessuno suona come l'elenco che si svuota, e toglierlo come l'elenco che torna pieno.
+        dialogo.aggiungi_filtro()
+        dialogo.togli_filtro()
+        dialogo.aggiungi_filtro()
+        dialogo.togli_tutti()
+        dialogo.trovati.SetSelection(0)
+        dialogo.offri()
+        assert suonati == ["elenco_svuotato", "mercato_ordine_cambiato", "elenco_ripopolato", "nessuna_selezione",
+                           "dialogo_filtro_mercato", "elenco_svuotato", "elenco_ripopolato", "dialogo_filtro_mercato", "filtro_aggiunto", "filtri_tutti_tolti",
+                           "dialogo_cifra_ingaggio", "domanda", "ingaggio_rifiutato"]
+        poli.movimenti_oggi = 5
+        dialogo.offri()
+        assert suonati[-1] == "mosse_finite"
+        poli.cassa = 0
+        dialogo.offri()
+        assert suonati[-1] == "cassa_insufficiente"
+    finally:
+        dialogo.Destroy()
+
+
+def test_il_mercato_che_si_apre_vuoto(finestra, suonati, monkeypatch):
+    monkeypatch.setattr(dialoghi.mercato, "candidati", lambda *a, **k: [])
+    finestra.mercato()
+    assert suonati == ["dialogo_mercato", "elenco_svuotato", "lavoro_concluso"]
+
+
+def test_i_tre_esiti_del_pagamento(finestra, suonati, monkeypatch):
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    primo, secondo = mondo.giocatori[2], mondo.giocatori[5]
+    primo.arretrati, secondo.arretrati = 300, 200
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: wx.OK)
+    dialogo = dialoghi.PagaArretrati(finestra, mondo, poli)
+
+    def scegli(g, cifra=None):
+        dialogo.elenco.SetSelection(dialogo.debitori.index(g))
+        dialogo.al_giocatore()
+        if cifra is not None:
+            dialogo.cifra.SetValue(cifra)
+        dialogo.paga()
+
+    try:
+        scegli(primo, 100)
+        scegli(primo)
+        scegli(secondo)
+        dialogo.paga()
+        assert suonati == ["arretrati_pagati_in_parte", "arretrati_saldati", "arretrati_tutti_saldati", "nessuna_selezione"]
+        secondo.arretrati = 50
+        poli.cassa = 0
+        dialogo.aggiorna()
+        dialogo.paga()
+        assert suonati[-1] == "cassa_insufficiente"
+    finally:
+        dialogo.Destroy()
+
+
+def test_i_suoni_delle_vendite(finestra, suonati, monkeypatch):
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: wx.OK)
+    dialogo = dialoghi.Vendite(finestra, finestra.mondo, finestra.mondo.miapolisportiva_attiva)
+    try:
+        dialogo.metti()
+        dialogo.metti()
+        dialogo.togli()
+        dialogo.togli()
+    finally:
+        dialogo.Destroy()
+    assert suonati == ["messo_in_vendita", "prezzo_di_vendita_cambiato", "tolto_dalla_vendita", "vendita_non_attiva"]
+
+
+def test_il_volume_degli_effetti(finestra, suonati, monkeypatch, cartella_di_prova):
+    def scegli(volume):
+        def mostra(self):
+            self.volume.SetValue(volume)
+            self.prova()
+            self.conferma()
+            return wx.ID_OK
+        return mostra
+
+    monkeypatch.setattr(dialoghi.EffettiSonori, "ShowModal", scegli(80))
+    finestra.cambia_effetti()
+    assert suonati == ["dialogo_effetti_sonori", "prova_volume_effetti", "effetti_sonori_applicati"]
+    assert [d["fattore"] for d in suonati.dettagli] == [1.0, 1.6, 1.6]
+    assert impostazioni.carica()["volume_effetti"] == 80
+    assert finestra.ultimo_evento == "volume degli effetti 80"
+    # A zero tacciono la prova e la conferma; l'aspetto, salvato dopo, non cambia il volume.
+    monkeypatch.setattr(dialoghi.EffettiSonori, "ShowModal", scegli(0))
+    finestra.cambia_effetti()
+    assert suonati == ["dialogo_effetti_sonori", "prova_volume_effetti", "effetti_sonori_applicati", "dialogo_effetti_sonori"]
+    assert suoni.volume_effetti() == 0
+
+    def ok(self):
+        self.conferma()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.Aspetto, "ShowModal", ok)
+    finestra.cambia_aspetto()
+    assert impostazioni.carica()["volume_effetti"] == 0
+    assert len(suonati) == 4
+
+
+def test_il_tic_della_probabilita(app_wx, suonati):
+    dialogo = dialoghi.Cifra(None, "Ingaggio", "Spiegazione.", "&Ingaggio", 500, 1000, lambda cifra: f"Nota per {cifra}.", lambda cifra: cifra / 10)
+    try:
+        dialogo.aggiorna()
+        assert suonati == []
+        dialogo.cifra.SetValue(900)
+        dialogo.tic_della_probabilita()
+        assert suonati == ["probabilita_ingaggio"]
+        assert suonati.dettagli[0]["semitoni"] == pytest.approx(suoni.probabilita_in_semitoni(90))
+    finally:
+        dialogo.Destroy()
+
+
+def test_l_errore_imprevisto(finestra, suonati, monkeypatch):
+    messaggi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: messaggi.append(testo))
+    finestra.errore_imprevisto(ValueError, ValueError("prova"))
+    assert suonati == ["errore_imprevisto"]
+    assert messaggi == ["Il comando si è interrotto per un errore imprevisto: ValueError, prova. La traccia completa è sulla console."]
+    assert finestra._modali == 0
+
+
+def test_il_suono_di_prova_aspetta_che_ci_si_fermi(app_wx, suonati):
+    # Tre ritocchi di fila danno un suono solo, al volume dell'ultimo, quando ci si ferma.
+    dialogo = dialoghi.EffettiSonori(None, 50)
+    try:
+        for valore in (60, 70, 80):
+            dialogo.volume.SetValue(valore)
+            dialogo.al_volume()
+        assert suonati == []
+        # I timer di wx scattano soltanto dentro un ciclo degli eventi: qui ne gira uno per un secondo.
+        ciclo = wx.GUIEventLoop()
+        wx.CallLater(1000, ciclo.Exit)
+        ciclo.Run()
+        assert suonati == ["prova_volume_effetti"]
+        assert suonati.dettagli[0]["fattore"] == pytest.approx(1.6)
+    finally:
+        dialogo.Destroy()
