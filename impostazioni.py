@@ -1,11 +1,13 @@
 """
-Le impostazioni d'aspetto di MESS: dimensione dei caratteri e colori del testo e dello sfondo.
+Le impostazioni di MESS: dimensione dei caratteri, colori del testo e dello sfondo, volume degli effetti.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 5 del piano, secondo la decisione D12, sul modello di Terminal
 Beast e di Tornello: i colori sono percentuali di rosso, verde e blu, da 0 a 100, e il valore
 predefinito è il verde su nero a 12 punti degli altri due programmi. Si salvano nel file
 mess_impostazioni.json accanto al programma, fuori da git come in Tornello, perché descrivono la
 macchina e non il mondo. Un file mancante o rovinato non ferma niente: valgono i predefiniti.
+Dal 2026-10-07, con la decisione D24, c'è anche il volume degli effetti sonori, da 0 a 100: a 50,
+il predefinito, i suoni sono come li ha pensati chi li ha fatti, e a zero tacciono.
 """
 
 import contextlib
@@ -17,7 +19,9 @@ import percorsi
 FILE_IMPOSTAZIONI = "mess_impostazioni.json"
 DIMENSIONE_MINIMA = 8
 DIMENSIONE_MASSIMA = 72
-PREDEFINITE = {"dimensione": 12, "colore_testo": [0, 100, 0], "colore_sfondo": [0, 0, 0]}
+VOLUME_MINIMO = 0
+VOLUME_MASSIMO = 100
+PREDEFINITE = {"dimensione": 12, "colore_testo": [0, 100, 0], "colore_sfondo": [0, 0, 0], "volume_effetti": 50}
 
 
 def _colore_valido(valore):
@@ -35,6 +39,9 @@ def valide(dati):
     for chiave in ("colore_testo", "colore_sfondo"):
         if _colore_valido(dati.get(chiave)):
             risultato[chiave] = list(dati[chiave])
+    volume = dati.get("volume_effetti")
+    if isinstance(volume, int) and not isinstance(volume, bool) and VOLUME_MINIMO <= volume <= VOLUME_MASSIMO:
+        risultato["volume_effetti"] = volume
     return risultato
 
 

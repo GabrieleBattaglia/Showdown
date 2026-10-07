@@ -3,6 +3,24 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [Prossima] - 2026-10-07
+
+### Gli effetti sonori
+
+La finestra ora suona. Ogni evento ha il suo effetto, e nessun suono serve due eventi: l'avvio e l'uscita, i salvataggi, i comandi dei menu, l'apertura di ogni dialogo e il suo esito, gli avvisi che lasciano aperto un dialogo, le notizie del mondo che avanza. Gli esiti diversi della stessa azione si distinguono a orecchio prima di leggere il messaggio: un ingaggio accettato e uno rifiutato, la password giusta e quella sbagliata, un salvataggio riuscito, uno riuscito con un avviso e uno fallito. I suoni vengono dalla collezione condivisa di GBUtils, 39 che c'erano già e 81 fatti apposta per MESS; nessuno è un'onda quadra, salvo quello dell'invito al caffè, come negli altri programmi.
+
+Quando il mondo avanza a finestra aperta suona un solo suono, quello della notizia più importante, insieme alla riga della barra di stato che la dice: è il segnale per premere F7. Vengono prima un salvataggio non riuscito e le notizie delle tue polisportive, cioè tesserati andati via senza stipendio, stipendi non pagati, giocatori venduti, tesserati usciti di scena, ritirati o diventati bandiere; poi il primo del mese, se hai una polisportiva; poi, se il mondo è avanzato di un giorno solo, le morti, le polisportive del computer che chiudono, le uscite premature, i ritiri e le polisportive del computer che nascono. Il giorno qualunque ha il suo suono, un'alba, e le notizie del giorno sono la stessa alba con una coda diversa; un avanzamento di più giorni ha un suono suo. Anche all'avvio, dopo il suono di benvenuto, si sente quello del mondo avanzato mentre il programma era chiuso.
+
+Se il salvataggio automatico dopo un'operazione sulle polisportive non riesce, dopo il suono dell'operazione si sente quello del salvataggio fallito, e la vista principale ne dice il motivo: prima il fallimento passava sotto silenzio.
+
+Nel menu Impostazioni, alla voce Effetti sonori, si sceglie il volume degli effetti, da 0 a 100: a 50 i suoni sono come sono stati pensati, a zero tacciono. Mentre lo si cambia, appena ci si ferma, si sente il suono di prova al volume scelto.
+
+Nel dialogo della cifra d'ingaggio, a ogni ritocco della cifra, un tic breve fa sentire la probabilità che il giocatore accetti, più acuto quanto più è probabile: la nota sotto il campo lo screen reader non la legge quando cambia. Gli elenchi che si restringono mentre si scrive, nella scelta del giocatore e nel mercato, suonano quando restano vuoti e quando tornano ad avere qualcuno. Il campanello di Windows dei pulsanti premuti a vuoto è diventato un suono di MESS, e il pulsante Predefiniti del dialogo Aspetto, su cui lo screen reader non dice niente, ora si sente.
+
+Un errore imprevisto in un comando, che prima finiva soltanto sulla console, ora suona un allarme e lo dice in un messaggio. Pagare gli arretrati con la cassa vuota ora dice che la cassa è vuota, invece di parlare della cifra.
+
+Per ascoltare tutti i suoni con calma, gruppo per gruppo, c'è ascolta_suoni.py, da lanciare dalla cartella del programma: le impressioni finiscono in ascolto_suoni.txt, una riga per voce.
+
 ## [1.38.2] - 2026-10-07
 
 ### L'economia

@@ -25,6 +25,9 @@ pazienza e alla fine se ne va, salvo le bandiere; le offerte sono premi d'ingagg
 si mettono in vendita e si comprano. Il computer tessera e compra solo chi può pagare, a rosa
 piena scambia solo se ci sta nei conti, e quando non paga vende il suo giocatore più caro.
 Il mondo non stampa: consegna i suoi messaggi alla funzione notifica, che gli passa chi lo usa.
+Dal 2026-10-07 il riepilogo di un avanzamento conta anche i primi del mese e, delle polisportive
+dell'utente, i tesserati ritirati, quelli usciti di scena e le bandiere nuove: la finestra ne fa
+sentire il suono, secondo la decisione D24.
 """
 
 import datetime
@@ -86,7 +89,7 @@ DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
 # Le voci del riepilogo di un avanzamento, oltre all'ora in cui è avvenuto.
 CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
                    "tesserati_cpu", "svincolati_cpu", "poli_chiuse", "poli_create", "partiti", "vendite",
-                   "tuoi_non_pagati", "tuoi_partiti", "tuoi_venduti")
+                   "tuoi_non_pagati", "tuoi_partiti", "tuoi_venduti", "mesi", "tuoi_ritirati", "tuoi_usciti", "tue_bandiere")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
@@ -703,9 +706,10 @@ class Mondo:
         ci sono, il mondo non paga nessuno; il computer paga per primi i meno pazienti, e mette in
         vendita il suo giocatore più caro. Chi ha finito la pazienza se ne va, salvo le bandiere.
         """
+        rapporto["mesi"] += 1
         for poli in list(self.polisportive.values()):
             rosa = self._rosa(poli)
-            self._fedelta_ed_esperienza(poli, rosa, data)
+            self._fedelta_ed_esperienza(poli, rosa, data, rapporto)
             sponsor = sponsor_mensile(poli)
             poli.cassa += sponsor
             poli.conti_del_mese["sponsor"] += sponsor
@@ -734,7 +738,7 @@ class Mondo:
             del poli.bilanci[BILANCI_CONSERVATI:]
             poli.conti_del_mese = conti_vuoti()
 
-    def _fedelta_ed_esperienza(self, poli, rosa, data):
+    def _fedelta_ed_esperienza(self, poli, rosa, data, rapporto=None):
         """Un mese in più nel club: fedeltà ed esperienza crescono, e una bandiera si accende quando la fedeltà arriva alla soglia."""
         for g in rosa:
             prima = g.fedelta
@@ -743,6 +747,8 @@ class Mondo:
             if g.bandiera and prima < FEDELTA_BANDIERA <= g.fedelta:
                 self.annota(g, f"Diventa una bandiera di {poli.nome}: giocherà per il club anche senza stipendio.", data)
                 self.annota(poli, f"{nome_completo(g)} diventa una bandiera del club.", data)
+                if rapporto is not None and not poli.is_cpu_controlled:
+                    rapporto["tue_bandiere"] += 1
 
     def _paga_i_meno_pazienti(self, poli, rosa):
         """Il computer, quando la cassa non basta, paga gli arretrati partendo da chi ha meno pazienza."""
@@ -842,18 +848,22 @@ class Mondo:
             eta_pre = g.eta
             g.eta += 1
             g._applica_declino_aggregato(1)
+            club = self.polisportive.get(g.appartenenza)
+            tuo = club is not None and not club.is_cpu_controlled
             if PROB_USCITA_PREMATURA_GIORNALIERA > 0 and caso(PROB_USCITA_PREMATURA_GIORNALIERA):
                 self._uscita(g, USCITA_PREMATURA, data, eta_pre)
                 rapporto["usciti"] += 1
+                rapporto["tuoi_usciti"] += tuo
                 continue
             if g.eta >= g.etamorte:
                 self._uscita(g, DECESSO, data, eta_pre)
                 rapporto["morti"] += 1
+                rapporto["tuoi_usciti"] += tuo
                 continue
             if not g.ritirato and g.eta >= g.etaritiro:
                 g.ritirato = True
                 self.giocatori_ritirati_sessione.append((gid, f"RITIRO: {nome_completo(g)}(ID:{gid}) a {formatta_eta_sim(g.eta)} sim."))
-                club = self.polisportive.get(g.appartenenza)
+                rapporto["tuoi_ritirati"] += tuo
                 if club is not None:
                     # Chi si ritira lascia libero il suo posto: problema P4, risolto con la tappa 7.
                     self._lascia(club, g)
