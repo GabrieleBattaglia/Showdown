@@ -243,6 +243,8 @@ class Taratura:
     DURATA_SOSTITUZIONE: float = 30.0
     DURATA_CAMBIO_ATTREZZO: float = 30.0
     INTERVALLO_RISCALDAMENTO: tuple = (2.0, 3.5)
+    # La lettura delle formazioni dopo il sorteggio della gara a squadre, regola IBSA 22.5.
+    DURATA_FORMAZIONI: float = 12.0
 
 
 TARATURA = Taratura()

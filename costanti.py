@@ -65,7 +65,8 @@ SOSTITUZIONI_SQUADRE = 1
 RISCALDAMENTO_SINGOLARE = 60
 RISCALDAMENTO_SQUADRE = 90
 AVVISI_RISCALDAMENTO_SINGOLARE = (45,)
-AVVISI_RISCALDAMENTO_SQUADRE = (30, 60, 75)
+# Nella gara a squadre l'arbitro chiama 30 secondi ogni 30 secondi, regola IBSA 22.3.
+AVVISI_RISCALDAMENTO_SQUADRE = (30, 60)
 DURATA_PAUSA = 60
 AVVISO_PAUSA = 45
 # Il tavolo IBSA, in centimetri: 366 per 122, lo schermo a metà, le porte alle testate.
@@ -113,7 +114,11 @@ INFORTUNIO_DURATA_MIN_GIORNI = 3
 INFORTUNIO_DURATA_MAX_GIORNI_ETA = 35
 INFORTUNIO_MALUS_MAX_RESISTENZA = 10
 FATTORE_INFORTUNIO_AMBIDESTRO = 0.8
-AZIONI_RIFERIMENTO_INFORTUNIO = 130
+# Le azioni di un incontro al meglio dei 3 per cui il carico vale 1. Era 130, tarato sulla sola
+# popolazione di prova allenata, dove le partite sono corte; nel mondo salvato e fra giocatori mai
+# allenati le partite sono più lunghe, e gli infortuni uscivano dal 10 per cento in più di prima.
+# Con 150 stanno nella banda in tutti e tre i mondi.
+AZIONI_RIFERIMENTO_INFORTUNIO = 150
 CARICO_INFORTUNIO_MINIMO = 0.7
 CARICO_INFORTUNIO_MASSIMO = 1.5
 # Le sedi degli infortuni: codice, frase con l'articolo, braccio, peso per il destrimano e fattore

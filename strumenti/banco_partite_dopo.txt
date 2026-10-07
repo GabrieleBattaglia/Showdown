@@ -19,11 +19,15 @@ Fra pari forti, tre semi: un set oltre i 12 punti ogni 6,95 partite, da 6,6 a 7,
 In modalità completa le invarianti non sono mai state violate. L'incontro al meglio dei 3 dura 12,2 minuti simulati nella popolazione di prova, 15,1 fra pari forti e 14,7 nel mondo salvato; al meglio dei 5 dura 19,4 minuti. La sonda della stanchezza al meglio dei 5 dà 0,891 di efficienza finale al trentenne con resistenza 5 e 0,764 al sessantenne con resistenza 2, mai sotto 0,6. Le gare a squadre segnano 52,8 punti a gara, con 33,5 punti giocati.
 Le prestazioni, misurate da sole: 1,14 millisecondi a partita al meglio dei 3 in modalità essenziale, 1,78 al meglio dei 5, 6,2 in modalità completa; il banco da 1000 partite dura poco più di un secondo. Per la tappa 12, 2500 partite al giorno sono circa 3 secondi per giorno simulato.
 Restano da decidere con Gabriele: se tenere la scala che conserva il monte stipendi, con gli stipendi bassi a 100 o 110 euro, o tornare a quella del progetto e ritoccare lo sponsor della decisione D22; se il vantaggio del mancino, che il motore dà da 1 a 1,5 punti di valore, basta così; se accendere la pressione sulla palla set, che porterebbe i set oltre il 12 fra pari forti a una partita su otto; e le due correzioni del motore del passo 2, che il progetto non prevedeva.
-I rapporti del banco dopo la taratura: popolazione di prova col seme 1, pari forti col seme 2, mondo salvato col seme 3, modalità completa col seme 6, al meglio dei 5 con le squadre col seme 8.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 00:11.
+Passo 13, le correzioni dopo la revisione dell'8 ottobre 2026. Due revisori hanno letto il motore contro la decisione D25 e il regolamento IBSA, e un terzo ha ripassato i numeri del banco. Le correzioni non cambiano nessun punto del singolare: con lo stesso seme gli esiti punto per punto sono identici a prima, e nei rapporti qui sotto cambiano soltanto le righe del temperamento, degli infortuni, dei giudizi sugli eventi rari e delle gare a squadre, dove contano le ammonizioni di squadra e la sostituzione corretta. Nel motore: il cambio campo del set decisivo, e quello a 16 punti delle squadre, scatta subito anche quando la soglia la passa una penalità a palla ferma, prima della battuta seguente; nella gara a squadre l'ammonizione vale per tutta la squadra, regola 22.15, il sorteggio fa tenere o cedere il primo servizio dopo la lettura delle formazioni, regole 22.5 e 22.7, e nel riscaldamento l'arbitro chiama 30 secondi ogni 30 secondi, regola 22.3; la sostituzione non fa più entrare una riserva che vale meno di chi esce quando la riserva forte non può prendere il posto del più debole, e se per il distacco nessuno può entrare conta la stanchezza. Nella regia: la battuta regolare tocca la sponda una volta sola prima dello schermo anche quando finisce in porta, sul corpo o nell'area di porta, perché il battitore si mette dove la sua battuta arriverà davvero, e le invarianti ora lo controllano; la battuta irregolare ha un volo suo, secondo la causa, perché nella partita live il fallo si distingua dal suono della pallina; alla rottura il fischio arriva subito, prima dei 30 secondi del cambio dell'attrezzo. Nella cronaca: il colpo debole si ferma prima di arrivare all'avversario, non prima dello schermo; il cambio campo a metà dell'ultimo set compare anche nella sintetica; la penalità che chiude un set resta nel testo del suo set; la cronaca delle squadre si salva su file. Nelle statistiche il goal dopo una difesa irregolare conta come fallo subito da chi segna, così falli fatti e subiti tornano.
+Gli infortuni: AZIONI_RIFERIMENTO_INFORTUNIO passa da 130 a 150. Con 130, tarato sulla sola popolazione di prova allenata, gli infortuni erano il 101 per cento di prima in quella popolazione, ma il 110 nel mondo salvato e il 115 fra giocatori mai allenati, dove le partite sono più equilibrate e più lunghe; con 150 sono il 95, il 103 e il 108 per cento, con 1500 partite sui semi 7101, 7505 e 7606, e nei rapporti qui sotto il 98 per cento col seme 1, il 104 nel mondo salvato e il 100 in modalità completa.
+Il banco: il temperamento si misura ora con una sonda a coppie, gli stessi giocatori con temperamento 83 e 17, i valori medi dei gruppi da 75 in su e fino a 25, contro gli stessi avversari e con gli stessi semi. L'impetuoso fa da 1,58 a 1,69 volte i falli del calmo secondo il seme, dentro la banda da 1,35 a 1,7, e segna di più. Il confronto fra i gruppi resta come informazione, perché mescola il temperamento con le altre differenze fra i giocatori: con tutti i temperamenti portati a 50 il suo rapporto restava 1,12 invece di 1. Le bande del favorito e dei time-out si controllano soltanto al meglio dei 3, quella degli infortuni soltanto fra coppie a caso al meglio dei 3, e rotture e penalità, che in mille partite sono poche, con l'intervallo di Poisson: con una rottura ogni 312 partite se ne aspettano 3,2 in mille, e contarne 2 o 6 è soltanto il caso.
+In modalità completa le invarianti non sono mai violate, compreso il controllo nuovo della battuta; l'incontro al meglio dei 3 dura sempre 12,2 minuti simulati. Le gare a squadre segnano 52,3 punti a gara, con 33,2 punti giocati.
+I rapporti del banco dopo la taratura e le correzioni della revisione: popolazione di prova col seme 1, pari forti col seme 2, mondo salvato col seme 3, modalità completa col seme 6, al meglio dei 5 con le squadre col seme 8.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
 Popolazione di prova con il 60 per cento di allenati e l'esperienza fino a 12: 400 giocatori, 400 disponibili, cioè che possono giocare.
 Indice di valore dei disponibili: minimo 43, mediana 188, massimo 453.
-1000 partite al meglio dei 3 set fra coppie estratte a caso, in modalità essenziale, giocate in 1,1 secondi, cioè 1,14 millisecondi a partita, con il seme 1: per ripetere la prova identica si aggiunge --seme 1.
+1000 partite al meglio dei 3 set fra coppie estratte a caso, in modalità essenziale, giocate in 1,2 secondi, cioè 1,17 millisecondi a partita, con il seme 1: per ripetere la prova identica si aggiunge --seme 1.
 Punti giocati 23527: 23216 assegnati e 311 palle morte o rotture, che si ripetono.
 Dei punti assegnati, 13368 sono goal, 57,6 per cento, e 9848 sono falli, 42,4 per cento.
 Come nascono i goal: goal da scambio: 9289, 69,5 per cento; goal di battuta: 2452, 18,3 per cento; goal su una palla tornata piano: 1402, 10,5 per cento; autogoal: 122, 0,9 per cento; goal dopo una difesa irregolare: 103, 0,8 per cento.
@@ -44,11 +48,12 @@ Con un distacco fra il 5 e il 15 per cento: 105 partite, il favorito ne vince 64
 Con un distacco fra il 15 e il 30 per cento: 150 partite, il favorito ne vince 101, 67,3 per cento.
 Con un distacco oltre il 30 per cento: 687 partite, il favorito ne vince 661, 96,2 per cento.
 Imprevisti: 4 rotture, 49 ammonizioni, 1 penalità di cui 1 per la mascherina, 632 time-out, in 1000 partite.
-Temperamento, ogni 100 attacchi: gli impetuosi fanno 16,6 falli e 22,6 goal, i calmi 11,3 falli e 15,2 goal.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 16,6 falli e 22,6 goal, i calmi 11,3 falli e 15,2 goal; il rapporto dei falli, 1,47, mescola il temperamento con le altre differenze fra i giocatori.
 Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 3,06 falli, chi è sotto 1 ne fa 4,25.
 Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 64,8 per cento degli attacchi laterali.
 Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 45,7 per cento degli attacchi laterali.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,650 per cento, contro 0,618 del vecchio calcolo.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,608 per cento, contro 0,618 del vecchio calcolo.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 17, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,8 falli e 20,0 goal, il calmo 10,5 falli e 15,7 goal.
 I bersagli della taratura:
 Goal sui punti giocati: 56,82, bersaglio da 45,00 a 60,00, dentro.
 Goal di battuta sui goal: 18,34, bersaglio da 12,00 a 25,00, dentro.
@@ -72,19 +77,19 @@ Vittorie del favorito con un distacco meno del 5 per cento: 70,69, bersaglio da 
 Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 60,95, bersaglio da 58,00 a 70,00, dentro.
 Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 67,33, bersaglio da 70,00 a 85,00, FUORI.
 Vittorie del favorito con un distacco oltre il 30 per cento: 96,22, bersaglio da 85,00 a 96,00, FUORI.
-Partite per una rottura: 250,00, bersaglio da 150,00 a 400,00, dentro.
+Partite per una rottura: 250,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
 Ammonizioni ogni 100 partite: 4,90, bersaglio da 3,00 a 10,00, dentro.
-Penalità ogni 100 partite: 0,10, bersaglio da 0,00 a 1,50, dentro.
+Penalità ogni 100 partite: 0,10, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
 Time-out a partita: 0,63, bersaglio da 0,30 a 0,80, dentro.
-Falli degli impetuosi su quelli dei calmi: 1,47, bersaglio da 1,35 a 1,70, dentro.
 Falli in meno degli esperti, per cento: 28,08, bersaglio da 18,00 a 35,00, dentro.
 Attacchi laterali sul lato debole, esperti: 64,77, bersaglio da 60,00 a 100,00, dentro.
 Attacchi laterali sul lato debole, inesperti: 45,65, bersaglio da 35,00 a 55,00, dentro.
-Infortuni rispetto a prima, per cento: 105,14, bersaglio da 90,00 a 110,00, dentro.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 00:11.
+Infortuni rispetto a prima, per cento: 98,39, bersaglio da 90,00 a 110,00, dentro.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,69, bersaglio da 1,35 a 1,70, dentro.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
 Popolazione di prova con il 60 per cento di allenati e l'esperienza fino a 12: 400 giocatori, 400 disponibili, cioè che possono giocare.
 Indice di valore dei disponibili: minimo 40, mediana 190, massimo 506.
-1000 partite al meglio dei 3 set fra coppie di forti alla pari, in modalità essenziale, giocate in 1,4 secondi, cioè 1,42 millisecondi a partita, con il seme 2: per ripetere la prova identica si aggiunge --seme 2.
+1000 partite al meglio dei 3 set fra coppie di forti alla pari, in modalità essenziale, giocate in 1,4 secondi, cioè 1,43 millisecondi a partita, con il seme 2: per ripetere la prova identica si aggiunge --seme 2.
 Punti giocati 28790: 28414 assegnati e 376 palle morte o rotture, che si ripetono.
 Dei punti assegnati, 16154 sono goal, 56,9 per cento, e 12260 sono falli, 43,1 per cento.
 Come nascono i goal: goal da scambio: 11600, 71,8 per cento; goal di battuta: 2768, 17,1 per cento; goal su una palla tornata piano: 1444, 8,9 per cento; goal dopo una difesa irregolare: 184, 1,1 per cento; autogoal: 158, 1,0 per cento.
@@ -102,11 +107,12 @@ Partite con almeno un set oltre i 12 punti: 140, una ogni 7,1. Set chiusi con 2 
 Il favorito, cioè il giocatore con l'indice di valore più alto, vince 563 partite su 1000, 56,3 per cento.
 Con un distacco meno del 5 per cento: 1000 partite, il favorito ne vince 563, 56,3 per cento.
 Imprevisti: 2 rotture, 56 ammonizioni, 10 penalità di cui 7 per la mascherina, 617 time-out, in 1000 partite.
-Temperamento, ogni 100 attacchi: gli impetuosi fanno 17,8 falli e 18,1 goal, i calmi 10,0 falli e 15,8 goal.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 17,8 falli e 18,1 goal, i calmi 10,0 falli e 15,8 goal; il rapporto dei falli, 1,79, mescola il temperamento con le altre differenze fra i giocatori.
 Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 2,68 falli, chi è sotto 1 ne fa 3,89.
 Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 67,1 per cento degli attacchi laterali.
 Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 55,7 per cento degli attacchi laterali.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,937 per cento, contro 0,790 del vecchio calcolo.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,876 per cento, contro 0,790 del vecchio calcolo.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 17, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,4 falli e 21,6 goal, il calmo 10,7 falli e 16,9 goal.
 I bersagli della taratura:
 Goal sui punti giocati: 56,11, bersaglio da 50,00 a 70,00, dentro.
 Goal di battuta sui goal: 17,14, bersaglio da 12,00 a 25,00, dentro.
@@ -127,16 +133,15 @@ Partite ogni set oltre i 12, fra pari forti: 7,14, bersaglio da 5,50 a 9,00, den
 Set con 2 o 3 punti di scarto, fra pari forti: 34,51, bersaglio da 30,00 a 100,00, dentro.
 Scarto medio dei set, fra pari forti: 5,04, bersaglio da 0,00 a 5,50, dentro.
 Vittorie del favorito con un distacco meno del 5 per cento: 56,30, bersaglio da 50,00 a 58,00, dentro.
-Partite per una rottura: 500,00, bersaglio da 150,00 a 400,00, FUORI.
+Partite per una rottura: 500,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
 Ammonizioni ogni 100 partite: 5,60, bersaglio da 3,00 a 10,00, dentro.
-Penalità ogni 100 partite: 1,00, bersaglio da 0,00 a 1,50, dentro.
+Penalità ogni 100 partite: 1,00, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
 Time-out a partita: 0,62, bersaglio da 0,30 a 0,80, dentro.
-Falli degli impetuosi su quelli dei calmi: 1,79, bersaglio da 1,35 a 1,70, FUORI.
 Falli in meno degli esperti, per cento: 31,25, bersaglio da 18,00 a 35,00, dentro.
 Attacchi laterali sul lato debole, esperti: 67,09, bersaglio da 60,00 a 100,00, dentro.
 Attacchi laterali sul lato debole, inesperti: 55,66, bersaglio da 35,00 a 55,00, FUORI.
-Infortuni rispetto a prima, per cento: 118,56, bersaglio da 90,00 a 110,00, FUORI.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 00:11.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,62, bersaglio da 1,35 a 1,70, dentro.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
 Mondo salvato in mess_mondo.json.gz: 61 giocatori, 61 disponibili, cioè che possono giocare.
 Indice di valore dei disponibili: minimo 78, mediana 139, massimo 207.
 1000 partite al meglio dei 3 set fra coppie estratte a caso, in modalità essenziale, giocate in 1,4 secondi, cioè 1,37 millisecondi a partita, con il seme 3: per ripetere la prova identica si aggiunge --seme 3.
@@ -160,8 +165,9 @@ Con un distacco fra il 5 e il 15 per cento: 250 partite, il favorito ne vince 15
 Con un distacco fra il 15 e il 30 per cento: 248 partite, il favorito ne vince 175, 70,6 per cento.
 Con un distacco oltre il 30 per cento: 372 partite, il favorito ne vince 323, 86,8 per cento.
 Imprevisti: 2 rotture, 80 ammonizioni, 8 penalità di cui 4 per la mascherina, 611 time-out, in 1000 partite.
-Temperamento, ogni 100 attacchi: gli impetuosi fanno 25,9 falli e 16,6 goal, i calmi 14,3 falli e 13,1 goal.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,882 per cento, contro 0,793 del vecchio calcolo.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 25,9 falli e 16,6 goal, i calmi 14,3 falli e 13,1 goal; il rapporto dei falli, 1,81, mescola il temperamento con le altre differenze fra i giocatori.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,822 per cento, contro 0,793 del vecchio calcolo.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 84 e 15, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 24,0 falli e 18,3 goal, il calmo 14,6 falli e 13,8 goal.
 I bersagli della taratura:
 Goal sui punti giocati: 45,60, bersaglio da 45,00 a 60,00, dentro.
 Goal di battuta sui goal: 22,03, bersaglio da 12,00 a 25,00, dentro.
@@ -185,16 +191,16 @@ Vittorie del favorito con un distacco meno del 5 per cento: 53,08, bersaglio da 
 Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 60,80, bersaglio da 58,00 a 70,00, dentro.
 Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 70,56, bersaglio da 70,00 a 85,00, dentro.
 Vittorie del favorito con un distacco oltre il 30 per cento: 86,83, bersaglio da 85,00 a 96,00, dentro.
-Partite per una rottura: 500,00, bersaglio da 150,00 a 400,00, FUORI.
+Partite per una rottura: 500,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
 Ammonizioni ogni 100 partite: 8,00, bersaglio da 3,00 a 10,00, dentro.
-Penalità ogni 100 partite: 0,80, bersaglio da 0,00 a 1,50, dentro.
+Penalità ogni 100 partite: 0,80, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
 Time-out a partita: 0,61, bersaglio da 0,30 a 0,80, dentro.
-Falli degli impetuosi su quelli dei calmi: 1,81, bersaglio da 1,35 a 1,70, FUORI.
-Infortuni rispetto a prima, per cento: 111,18, bersaglio da 90,00 a 110,00, FUORI.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 00:11.
+Infortuni rispetto a prima, per cento: 103,60, bersaglio da 90,00 a 110,00, dentro.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,64, bersaglio da 1,35 a 1,70, dentro.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
 Popolazione di prova con il 60 per cento di allenati e l'esperienza fino a 12: 400 giocatori, 400 disponibili, cioè che possono giocare.
 Indice di valore dei disponibili: minimo 65, mediana 187, massimo 588.
-400 partite al meglio dei 3 set fra coppie estratte a caso, in modalità completo, giocate in 2,5 secondi, cioè 6,21 millisecondi a partita, con il seme 6: per ripetere la prova identica si aggiunge --seme 6.
+400 partite al meglio dei 3 set fra coppie estratte a caso, in modalità completo, giocate in 2,6 secondi, cioè 6,41 millisecondi a partita, con il seme 6: per ripetere la prova identica si aggiunge --seme 6.
 Punti giocati 9482: 9361 assegnati e 121 palle morte o rotture, che si ripetono.
 Dei punti assegnati, 5311 sono goal, 56,7 per cento, e 4050 sono falli, 43,3 per cento.
 Come nascono i goal: goal da scambio: 3635, 68,4 per cento; goal di battuta: 1022, 19,2 per cento; goal su una palla tornata piano: 550, 10,4 per cento; goal dopo una difesa irregolare: 58, 1,1 per cento; autogoal: 46, 0,9 per cento.
@@ -215,12 +221,13 @@ Con un distacco fra il 5 e il 15 per cento: 50 partite, il favorito ne vince 36,
 Con un distacco fra il 15 e il 30 per cento: 62 partite, il favorito ne vince 51, 82,3 per cento.
 Con un distacco oltre il 30 per cento: 262 partite, il favorito ne vince 248, 94,7 per cento.
 Imprevisti: 1 rotture, 29 ammonizioni, 0 penalità di cui 0 per la mascherina, 263 time-out, in 400 partite.
-Temperamento, ogni 100 attacchi: gli impetuosi fanno 16,8 falli e 18,3 goal, i calmi 11,6 falli e 16,6 goal.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 16,8 falli e 18,3 goal, i calmi 11,6 falli e 16,6 goal; il rapporto dei falli, 1,45, mescola il temperamento con le altre differenze fra i giocatori.
 Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 3,07 falli, chi è sotto 1 ne fa 4,02.
 Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 73,2 per cento degli attacchi laterali.
 Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 49,0 per cento degli attacchi laterali.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,769 per cento, contro 0,717 del vecchio calcolo.
-Durata simulata: in media 12,2 minuti, da 6,3 a 25,0; incontri con le invarianti violate: 0.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,720 per cento, contro 0,717 del vecchio calcolo.
+Durata simulata: in media 12,2 minuti, da 6,4 a 25,2; incontri con le invarianti violate: 0.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 18, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,8 falli e 19,9 goal, il calmo 11,1 falli e 16,6 goal.
 I bersagli della taratura:
 Goal sui punti giocati: 56,01, bersaglio da 45,00 a 60,00, dentro.
 Goal di battuta sui goal: 19,24, bersaglio da 12,00 a 25,00, dentro.
@@ -243,20 +250,20 @@ Punti segnati per set: 16,49, bersaglio da 15,00 a 19,00, dentro.
 Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 72,00, bersaglio da 58,00 a 70,00, FUORI.
 Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 82,26, bersaglio da 70,00 a 85,00, dentro.
 Vittorie del favorito con un distacco oltre il 30 per cento: 94,66, bersaglio da 85,00 a 96,00, dentro.
-Partite per una rottura: 400,00, bersaglio da 150,00 a 400,00, dentro.
+Partite per una rottura: 400,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
 Ammonizioni ogni 100 partite: 7,25, bersaglio da 3,00 a 10,00, dentro.
-Penalità ogni 100 partite: 0,00, bersaglio da 0,00 a 1,50, dentro.
+Penalità ogni 100 partite: 0,00, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
 Time-out a partita: 0,66, bersaglio da 0,30 a 0,80, dentro.
-Falli degli impetuosi su quelli dei calmi: 1,45, bersaglio da 1,35 a 1,70, dentro.
 Falli in meno degli esperti, per cento: 23,70, bersaglio da 18,00 a 35,00, dentro.
 Attacchi laterali sul lato debole, esperti: 73,24, bersaglio da 60,00 a 100,00, dentro.
 Attacchi laterali sul lato debole, inesperti: 48,99, bersaglio da 35,00 a 55,00, dentro.
-Infortuni rispetto a prima, per cento: 107,19, bersaglio da 90,00 a 110,00, dentro.
-Durata simulata media in minuti: 12,18, bersaglio da 12,00 a 20,00, dentro.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 00:11.
+Infortuni rispetto a prima, per cento: 100,32, bersaglio da 90,00 a 110,00, dentro.
+Durata simulata media in minuti: 12,19, bersaglio da 12,00 a 20,00, dentro.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,61, bersaglio da 1,35 a 1,70, dentro.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
 Popolazione di prova con il 60 per cento di allenati e l'esperienza fino a 12: 400 giocatori, 400 disponibili, cioè che possono giocare.
 Indice di valore dei disponibili: minimo 63, mediana 182, massimo 475.
-1000 partite al meglio dei 5 set fra coppie estratte a caso, in modalità essenziale, giocate in 1,8 secondi, cioè 1,78 millisecondi a partita, con il seme 8: per ripetere la prova identica si aggiunge --seme 8.
+1000 partite al meglio dei 5 set fra coppie estratte a caso, in modalità essenziale, giocate in 1,8 secondi, cioè 1,82 millisecondi a partita, con il seme 8: per ripetere la prova identica si aggiunge --seme 8.
 Punti giocati 38325: 37860 assegnati e 465 palle morte o rotture, che si ripetono.
 Dei punti assegnati, 20959 sono goal, 55,4 per cento, e 16901 sono falli, 44,6 per cento.
 Come nascono i goal: goal da scambio: 14332, 68,4 per cento; goal di battuta: 3982, 19,0 per cento; goal su una palla tornata piano: 2188, 10,4 per cento; goal dopo una difesa irregolare: 230, 1,1 per cento; autogoal: 227, 1,1 per cento.
@@ -277,12 +284,13 @@ Con un distacco fra il 5 e il 15 per cento: 124 partite, il favorito ne vince 72
 Con un distacco fra il 15 e il 30 per cento: 153 partite, il favorito ne vince 129, 84,3 per cento.
 Con un distacco oltre il 30 per cento: 655 partite, il favorito ne vince 634, 96,8 per cento.
 Imprevisti: 4 rotture, 83 ammonizioni, 12 penalità di cui 10 per la mascherina, 987 time-out, in 1000 partite.
-Temperamento, ogni 100 attacchi: gli impetuosi fanno 18,7 falli e 20,0 goal, i calmi 10,5 falli e 15,4 goal.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 18,7 falli e 20,0 goal, i calmi 10,5 falli e 15,4 goal; il rapporto dei falli, 1,77, mescola il temperamento con le altre differenze fra i giocatori.
 Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 3,37 falli, chi è sotto 1 ne fa 4,41.
 Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 72,9 per cento degli attacchi laterali.
 Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 57,4 per cento degli attacchi laterali.
 Stanchezza a fine incontro al meglio di 5, giovani resistenti: efficienza media 0,876, minima 0,795, su 17 incontri.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,820 per cento, contro 0,652 del vecchio calcolo.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,780 per cento, contro 0,652 del vecchio calcolo.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 18, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 19,0 falli e 19,9 goal, il calmo 11,5 falli e 15,9 goal.
 I bersagli della taratura:
 Goal sui punti giocati: 54,69, bersaglio da 45,00 a 60,00, dentro.
 Goal di battuta sui goal: 19,00, bersaglio da 12,00 a 25,00, dentro.
@@ -302,23 +310,18 @@ Attacchi per punto, media: 4,47, bersaglio da 2,50 a 5,00, dentro.
 Attacchi per punto, mediana: 3,00, bersaglio da 2,00 a 3,00, dentro.
 Attacchi per punto, novantesimo percentile: 11,00, bersaglio da 6,00 a 12,00, dentro.
 Punti segnati per set: 16,63, bersaglio da 15,00 a 19,00, dentro.
-Vittorie del favorito con un distacco meno del 5 per cento: 57,35, bersaglio da 50,00 a 58,00, dentro.
-Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 58,06, bersaglio da 58,00 a 70,00, dentro.
-Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 84,31, bersaglio da 70,00 a 85,00, dentro.
-Vittorie del favorito con un distacco oltre il 30 per cento: 96,79, bersaglio da 85,00 a 96,00, FUORI.
-Partite per una rottura: 250,00, bersaglio da 150,00 a 400,00, dentro.
+Partite per una rottura: 250,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
 Ammonizioni ogni 100 partite: 8,30, bersaglio da 3,00 a 10,00, dentro.
-Penalità ogni 100 partite: 1,20, bersaglio da 0,00 a 1,50, dentro.
-Time-out a partita: 0,99, bersaglio da 0,30 a 0,80, FUORI.
-Falli degli impetuosi su quelli dei calmi: 1,77, bersaglio da 1,35 a 1,70, FUORI.
+Penalità ogni 100 partite: 1,20, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
 Falli in meno degli esperti, per cento: 23,53, bersaglio da 18,00 a 35,00, dentro.
 Attacchi laterali sul lato debole, esperti: 72,89, bersaglio da 60,00 a 100,00, dentro.
 Attacchi laterali sul lato debole, inesperti: 57,42, bersaglio da 35,00 a 55,00, FUORI.
 Efficienza finale, giovani resistenti: 0,88, bersaglio da 0,86 a 0,93, dentro.
-Sonda della stanchezza, 30 anni con resistenza 5, 200 incontri al meglio di 5: efficienza finale media 0,891, minima 0,775, bersaglio da 0,86 a 0,93, dentro; mai sotto 0,6: sì.
-Sonda della stanchezza, 60 anni con resistenza 2, 200 incontri al meglio di 5: efficienza finale media 0,764, minima 0,671, bersaglio da 0,72 a 0,82, dentro; mai sotto 0,6: sì.
-Squadre: 300 gare, in media 33,5 punti giocati, da 21 a 47; 205 sostituzioni e 320 time-out.
-Punti segnati per gara a squadre, la somma del punteggio: 52,81, bersaglio da 50 a 75, dentro.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,65, bersaglio da 1,35 a 1,70, dentro.
+Sonda della stanchezza, 30 anni con resistenza 5, 200 incontri al meglio di 5: efficienza finale media 0,895, minima 0,792, bersaglio da 0,86 a 0,93, dentro; mai sotto 0,6: sì.
+Sonda della stanchezza, 60 anni con resistenza 2, 200 incontri al meglio di 5: efficienza finale media 0,761, minima 0,668, bersaglio da 0,72 a 0,82, dentro; mai sotto 0,6: sì.
+Squadre: 300 gare, in media 33,2 punti giocati, da 19 a 47; 198 sostituzioni e 311 time-out.
+Punti segnati per gara a squadre, la somma del punteggio: 52,34, bersaglio da 50 a 75, dentro.
 Il rapporto della taratura del valore, strumenti/taratura_valore.py col seme 9 e il controllo sulla copia del mondo salvato:
 Taratura del valore complessivo sul motore di partita, 2026-10-08 00:03, seme 9.
 Primo passo: 3200 giocatori, e 400 per la verifica, contro 48 sparring fissi, 172800 incontri al meglio dei 3 set in 64,3 secondi, con 8 processi.

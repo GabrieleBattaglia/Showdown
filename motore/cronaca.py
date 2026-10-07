@@ -167,12 +167,39 @@ def _sorteggio(evento, nomi, livello):
     d = evento.dati
     chiama, vince = d["chiama"], d["vince"]
     altro = _altra(vince)
-    testo = f"Sorteggio: {_n(nomi, chiama)} chiama {d['faccia_chiamata']}, esce {d['faccia_uscita']}. Vince {_n(nomi, vince)}, "
+    testo = f"Sorteggio: {_n(nomi, chiama)} chiama {d['faccia_chiamata']}, esce {d['faccia_uscita']}. Vince {_n(nomi, vince)}"
+    if d["scelta"] in ("tiene", "cede"):
+        # Nella gara a squadre la scelta arriva dopo la lettura delle formazioni.
+        return testo + "."
     if d["scelta"] == "battuta":
-        testo += f"che sceglie la battuta; {_n(nomi, altro)} sceglie il lato del tavolo."
+        return testo + f", che sceglie la battuta; {_n(nomi, altro)} sceglie il lato del tavolo."
+    return testo + f", che sceglie il lato del tavolo: batte {_n(nomi, altro)}."
+
+
+def _elenco(parole):
+    """Le parole in fila, con la e prima dell'ultima: Rossi, Verdi e Neri."""
+    parole = list(parole)
+    if len(parole) <= 1:
+        return "".join(parole)
+    return ", ".join(parole[:-1]) + " e " + parole[-1]
+
+
+def _formazioni(evento, nomi, livello):
+    """La lettura delle formazioni nella gara a squadre, e la scelta di chi ha vinto il sorteggio."""
+    d = evento.dati
+    squadre = []
+    for parte in ("A", "B"):
+        testo = f"{_n(nomi, parte)} con {_elenco(_n(nomi, gid) for gid in d['formazioni'][parte])}"
+        riserve = d.get("riserve", {}).get(parte) or []
+        if riserve:
+            testo += f", in riserva {_elenco(_n(nomi, gid) for gid in riserve)}"
+        squadre.append(testo)
+    vince = d["vince"]
+    if d["scelta"] == "tiene":
+        scelta = f"{_n(nomi, vince)} tiene il primo servizio."
     else:
-        testo += f"che sceglie il lato del tavolo: batte {_n(nomi, altro)}."
-    return testo
+        scelta = f"{_n(nomi, vince)} cede il primo servizio: batte {_n(nomi, _altra(vince))}."
+    return f"L'arbitro legge le formazioni: {squadre[0]}; {squadre[1]}. {scelta}"
 
 
 def _riscaldamento_inizio(evento, nomi, livello):
@@ -191,6 +218,8 @@ def _riscaldamento_colpo(evento, nomi, livello):
 def _avviso_tempo(evento, nomi, livello):
     if livello != TECNICA:
         return None
+    if evento.chiamata:
+        return f"L'arbitro avvisa: {CHIAMATE.get(evento.chiamata, evento.chiamata)}."
     restano = (evento.dati or {}).get("restano", 15)
     return f"L'arbitro avvisa: {restano} secondi."
 
@@ -209,7 +238,7 @@ def _inizio_set(evento, nomi, livello):
 def _recupero(evento, nomi, livello):
     if livello != TECNICA:
         return None
-    da = {"tasca": "dalla tasca", "terra": "da terra", "tavolo": "dal tavolo", "battitore": "dal battitore"}.get((evento.dati or {}).get("da"), "dal tavolo")
+    da = {"tasca": "dalla tasca", "terra": "da terra"}.get((evento.dati or {}).get("da"), "dal tavolo")
     return f"L'arbitro recupera la pallina {da}."
 
 
@@ -422,10 +451,10 @@ def _timeout_fine(evento, nomi, livello):
 
 
 def _cambio_campo_inizio(evento, nomi, livello):
-    if livello == SINTETICA:
-        return None
+    # Nella sintetica il cambio campo fra i set lo dice già la fine del set; quello a metà
+    # dell'ultimo set, invece, compare accanto alla riga del punto.
     if (evento.dati or {}).get("fra_set"):
-        return "Cambio campo: un minuto di pausa."
+        return None if livello == SINTETICA else "Cambio campo: un minuto di pausa."
     a, b = evento.punteggio
     return f"Cambio campo, sul {a} a {b}."
 
@@ -461,7 +490,7 @@ def _sostituzione(evento, nomi, livello):
 
 
 _FRASI = {
-    E.INIZIO_INCONTRO: _inizio_incontro, E.SORTEGGIO: _sorteggio, E.RISCALDAMENTO_INIZIO: _riscaldamento_inizio, E.RISCALDAMENTO_COLPO: _riscaldamento_colpo,
+    E.INIZIO_INCONTRO: _inizio_incontro, E.SORTEGGIO: _sorteggio, E.FORMAZIONI: _formazioni, E.RISCALDAMENTO_INIZIO: _riscaldamento_inizio, E.RISCALDAMENTO_COLPO: _riscaldamento_colpo,
     E.AVVISO_TEMPO: _avviso_tempo, E.RISCALDAMENTO_FINE: _riscaldamento_fine, E.INIZIO_SET: _inizio_set, E.RECUPERO: _recupero, E.CONSEGNA: _consegna,
     E.ANNUNCIO: _annuncio, E.DOMANDA_PRONTO: _domanda_pronto, E.FISCHIO: _fischio, E.CHIAMATA: _chiamata, E.CAMBIO_BATTITORE: _cambio_battitore,
     E.FINE_SET: _fine_set, E.FINE_INCONTRO: _fine_incontro, E.BATTUTA: _battuta, E.VOLO: _volo, E.PARATA: _parata, E.CAMBIO_MANO: _cambio_mano,
@@ -537,7 +566,9 @@ def data_a_parole(dt):
 def intestazione(risultato, nomi, istante_reale, data_simulata):
     """Le prime righe del file della cronaca: chi gioca, il formato, quando, e il seme per rigiocarla."""
     righe = [f"Cronaca dell'incontro fra {_n(nomi, 'A')} e {_n(nomi, 'B')}, {risultato.formato.nome}."]
-    quando = f"Giocato il {data_a_parole(istante_reale)} alle {istante_reale:%H:%M}"
+    # L'articolo si elide davanti all'8 e all'11: l'8 ottobre, l'11 marzo.
+    articolo = "l'" if istante_reale.day in (8, 11) else "il "
+    quando = f"Giocato {articolo}{data_a_parole(istante_reale)} alle {istante_reale:%H:%M}"
     if data_simulata is not None:
         quando += f", data simulata {data_a_parole(data_simulata)}"
     righe.append(quando + ".")

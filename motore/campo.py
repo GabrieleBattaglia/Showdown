@@ -125,11 +125,9 @@ class InCampo:
         "parte",
         "pesi_cause_battuta",
         "pi",
-        "prob_battute",
         "prob_colpi",
         "ritmo",
         "rovescio",
-        "serie_persi",
         "stats",
         "tar",
         "tau",
@@ -152,7 +150,6 @@ class InCampo:
         self._calcola_qualita(g, t)
         self.azioni = 0
         self.osservati = 0
-        self.serie_persi = 0
         self.eff = 1.0
         self.mf = 1.0
         self.ln_mf = 0.0
@@ -161,7 +158,6 @@ class InCampo:
         self.cum_colpi = ()
         self.cum_battute = ()
         self.prob_colpi = ()
-        self.prob_battute = ()
         self.stats = StatisticheGiocatore()
         # Le cause della battuta irregolare piegate dal temperamento e dal gioco rapido, una volta
         # per incontro: il temperamento non cambia durante una partita.
@@ -280,7 +276,7 @@ class InCampo:
         for indice, nome in enumerate(COLPI_DI_BATTUTA):
             colpo = colpi[nome]
             utilita_b.append(math.log(self.QB[indice] * eff + q0) + t.PESO_DEBOLEZZA * percepita[colpo.zona] + termine_potenza * colpo.potenza)
-        self.prob_battute, self.cum_battute = _softmax_cumulata(utilita_b, temperatura)
+        _probabilita, self.cum_battute = _softmax_cumulata(utilita_b, temperatura)
 
     def debolezza_vera(self, avversario):
         """Quanto ogni zona dell'avversario è più debole della sua media, senza la stanchezza."""

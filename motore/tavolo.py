@@ -196,10 +196,6 @@ def partenza_massima_battuta(u_arrivo, v_arrivo, v_partenza=25.0, rimbalzo_massi
     return (f * (u_arrivo - 2.0 * SPONDA_SINISTRA_A) + SPONDA_SINISTRA_A) / (1.0 - f)
 
 
-def durata_volo(volo):
-    return volo[-1].t - volo[0].t
-
-
 def posizione_al_tempo(volo, t):
     """Dove sta la pallina all'istante t del volo, con il rallentamento uniforme di ogni tratto."""
     if t <= volo[0].t:

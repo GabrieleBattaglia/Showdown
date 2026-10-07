@@ -84,6 +84,8 @@ def test_difesa_irregolare_che_entra_e_goal_da_due():
     esito, battitore, ricevitore, _passi = _gioca([*_inizio_regolare(), (1, 0.5), 0.75, 0.1])
     assert (esito.esito, esito.causa, esito.punti, esito.a_chi, esito.chi_commette) == ("goal", "goal_dopo_difesa_irregolare", 2, "A", ricevitore.id)
     assert battitore.stats.goal == 1 and ricevitore.stats.falli["goal_dopo_difesa_irregolare"] == 1
+    # Il fallo fatto da chi difende è anche un fallo subito da chi segna: i due conti tornano.
+    assert battitore.stats.falli_subiti == sum(ricevitore.stats.falli.values()) == 1
     esito, *_resto = _gioca([*_inizio_regolare(), (1, 0.5), 0.75, 0.9])
     assert (esito.esito, esito.causa, esito.punti) == ("fallo", "difesa_irregolare", 1)
 

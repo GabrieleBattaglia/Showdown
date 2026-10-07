@@ -159,12 +159,23 @@ class Regia:
         return [self._arbitro(E.INIZIO_INCONTRO, 0.0, dati={"formato": self.formato.nome, "al_tavolo": list(ids)})]
 
     def sorteggio(self, info):
+        """
+        Il lancio della moneta; nella gara a squadre, subito dopo, l'arbitro legge le formazioni e
+        chiede alla squadra che ha vinto se tiene il primo servizio o lo cede.
+        """
         self.arbitro_a_sinistra = info["arbitro_a_sinistra_di_a"]
-        evento = self._arbitro(E.SORTEGGIO, 8.0, dati=dict(info))
-        return [evento]
+        eventi = [self._arbitro(E.SORTEGGIO, 8.0, dati=dict(info))]
+        if "formazioni" in info:
+            dati = {chiave: info[chiave] for chiave in ("formazioni", "riserve", "vince", "scelta", "batte")}
+            eventi.append(self._arbitro(E.FORMAZIONI, self.tar.DURATA_FORMAZIONI / self.velocita, dati=dati))
+        return eventi
 
     def riscaldamento(self, ids):
-        """Il riscaldamento: colpi liberi a turno, gli avvisi del tempo e il fischio di fine."""
+        """
+        Il riscaldamento: colpi liberi a turno, gli avvisi del tempo e il fischio di fine. Nel
+        singolare l'arbitro chiama 15 secondi prima della fine; nella gara a squadre, regola IBSA
+        22.3, chiama 30 secondi ogni 30 secondi.
+        """
         self.fase = E.RISCALDAMENTO
         durata = float(self.formato.riscaldamento)
         eventi = [self._arbitro(E.RISCALDAMENTO_INIZIO, 0.0, dati={"durata": durata})]
@@ -175,7 +186,10 @@ class Regia:
             trascorso = self.t - inizio
             while avvisi and trascorso >= avvisi[0]:
                 restano = round(durata - avvisi.pop(0))
-                chiamata = "quindici_secondi" if restano == 15 else None
+                if self.formato.tipo == "squadre":
+                    chiamata = "trenta_secondi"
+                else:
+                    chiamata = "quindici_secondi" if restano == 15 else None
                 eventi.append(self._arbitro(E.AVVISO_TEMPO, 0.0, chiamata=chiamata, dati={"restano": restano}))
             if trascorso >= durata - 2.0:
                 break
@@ -205,19 +219,25 @@ class Regia:
         self.pallina = "arbitro"
         return [self._arbitro(E.INIZIO_SET, 0.0, dati={"apre": battitore.id})]
 
-    def ripresa(self, battitore, ricevitore, numero_servizio, punteggio_visto, lunga, passo_battuta, punteggio):
-        """La pallina recuperata, portata al battitore, l'annuncio, la domanda di pronto alle riprese lunghe e il fischio."""
+    def ripresa(self, battitore, ricevitore, numero_servizio, punteggio_visto, lunga, passi, punteggio):
+        """
+        La pallina recuperata, portata al battitore, l'annuncio, la domanda di pronto alle riprese
+        lunghe e il fischio. Riceve tutti i passi del punto, perché il battitore si mette dove la
+        sua battuta, regolare, arriverà davvero: alla parata, in porta, nell'area di porta o sul
+        corpo di chi riceve.
+        """
         self.fase = E.GIOCO
         self.punto_n += 1
         self.punteggio = punteggio
         t = self.tar
+        passo_battuta = passi[0]
         eventi = []
         if self.pallina != "arbitro":
             durata = {"tasca": t.RECUPERO_TASCA, "terra": t.RECUPERO_TERRA}.get(self.pallina, t.RECUPERO_TAVOLO) / self.velocita
             eventi.append(self._evento(E.RECUPERO, durata, None, self.pos_pallina or self._pos_arbitro(), dati={"da": self.pallina}))
         # La pallina va dal bordo dalla parte dell'arbitro, a metà tavolo, alla mano del battitore.
         bordo = (0.0 if self.arbitro_a_sinistra else float(LARGHEZZA_TAVOLO), float(META_TAVOLO))
-        mano = self._partenza_battuta(battitore.id, passo_battuta)
+        mano = self._partenza_battuta(battitore.id, passi)
         self._mano_battuta = mano
         distanza = math.hypot(mano[0] - bordo[0], mano[1] - bordo[1])
         durata = distanza / t.VELOCITA_CONSEGNA
@@ -243,25 +263,48 @@ class Regia:
             self._attesa(attesa)
         return eventi
 
-    def _partenza_battuta(self, chi, passo):
+    def _partenza_battuta(self, chi, passi):
         """
-        Dove il battitore colpisce, scelto insieme all'arrivo perché la sponda cada prima dello
-        schermo: con l'arrivo a u dalla sponda, la partenza più lontana possibile mette il rimbalzo
-        a 175 cm dalla linea, e si sceglie fra 61 cm e quella.
+        Dove il battitore colpisce. Per la battuta regolare si sceglie insieme all'arrivo vero,
+        perché l'unica sponda cada prima dello schermo: con l'arrivo a u dalla sponda, la
+        partenza più lontana possibile mette il rimbalzo a 175 cm dalla linea. Di solito si
+        sceglie fra 61 cm e quella; quando l'arrivo sta verso il centro, come la porta, la
+        partenza più lontana scende sotto 61, e il battitore si sposta verso la sua sponda. La
+        battuta irregolare parte fra 61 e 100 cm, come una battuta qualunque.
         """
         c = self.campo[chi]
+        passo = passi[0]
         nome = passo.colpo
-        zona = passo.zona
-        arrivo_u, arrivo_v = self._arrivo_battuta(nome, zona)
-        self._arrivo_battuta_locale = (arrivo_u, arrivo_v)
         # Nel riferimento specchiato la battuta destra diventa sinistra.
         destra = nome == "battutadx"
-        u_a = LARGHEZZA_TAVOLO - arrivo_u if destra else arrivo_u
-        u_max = partenza_massima_battuta(u_a, arrivo_v)
-        u_s = self._uniforme(61.0, max(61.0, min(100.0, u_max)))
+        if passo.esito == "regolare":
+            arrivo_u, arrivo_v = self._arrivo_vero_battuta(c, passi)
+            self._arrivo_battuta_locale = (arrivo_u, arrivo_v)
+            u_a = LARGHEZZA_TAVOLO - arrivo_u if destra else arrivo_u
+            alto = min(100.0, partenza_massima_battuta(u_a, arrivo_v))
+            basso = 61.0 if alto > 61.0 else max(MARGINE_GIOCO, alto - 25.0)
+            u_s = self._uniforme(basso, alto)
+        else:
+            self._arrivo_battuta_locale = None
+            u_s = self._uniforme(61.0, 100.0)
         if destra:
             u_s = LARGHEZZA_TAVOLO - u_s
         return locale_in_assoluto(c.parte, u_s, 25.0)
+
+    def _arrivo_vero_battuta(self, battitore, passi):
+        """
+        L'arrivo della battuta regolare nel riferimento del battitore: nella zona di chi riceve,
+        alla distanza di parata, e poi spostato dove lo porta la parata che segue, con le stesse
+        regole degli altri colpi.
+        """
+        parata = self._prossima_parata(passi, 0)
+        if parata is None:
+            raise ErroreMotore("Una battuta regolare senza la parata che segue.")
+        u, v = self._arrivo_battuta(passi[0].colpo, parata.zona)
+        assoluto = locale_in_assoluto(battitore.parte, u, v)
+        assoluto = self._arrivo_dopo_la_parata(parata, assoluto)
+        # Lo specchio è l'inverso di sé stesso: la stessa funzione riporta al riferimento del battitore.
+        return locale_in_assoluto(battitore.parte, *assoluto)
 
     def _arrivo_battuta(self, nome, zona):
         """L'arrivo della battuta nel riferimento del battitore: nella zona di chi riceve, alla distanza di parata."""
@@ -300,6 +343,8 @@ class Regia:
                                            dati={"qualita": round(p.valore, 1), "prob": _arrotonda(p.prob)}))
                 if p.esito == "regolare":
                     pos = self._vola_verso_parata(eventi, chi, pos, p, passi, i, colpo_n)
+                else:
+                    pos = self._volo_battuta_irregolare(eventi, chi, pos, p)
             elif p.tipo == "cambio_mano":
                 self.mani[chi] = "sinistra" if self.mani[chi] == "destra" else "destra"
                 eventi.append(self._evento(E.CAMBIO_MANO, 0.0, chi, pos, mano=self.mani[chi], colpo_n=colpo_n))
@@ -355,13 +400,12 @@ class Regia:
             i += 1
         if decisivo is None:
             raise ErroreMotore("Un punto senza passo decisivo.")
-        # Il fischio, la chiamata, e il punto o la ripetizione. Per una rottura non c'è chiamata:
-        # l'arbitro ferma il gioco e fa ripetere il servizio.
+        # Il fischio, la chiamata, e il punto o la ripetizione. Per una rottura il fischio è già
+        # arrivato, nell'istante stesso della rottura, e non c'è chiamata: l'arbitro ha fatto
+        # cambiare l'attrezzo e fa ripetere il servizio.
         causa = CAUSE[esito.causa]
         variante = E.DOPPIO if esito.esito == "goal" else E.SINGOLO
-        if causa.chiamata == "si_ripete":
-            eventi.append(self._fischio(variante))
-        else:
+        if causa.chiamata != "si_ripete":
             eventi.extend(self._fischio_e_chiamata(variante, causa.chiamata, causa=esito.causa))
         if esito.punti:
             eventi.append(self._arbitro(E.PUNTO, 0.0, punti=esito.punti, a_chi=esito.a_chi, esito=esito.esito, causa=esito.causa))
@@ -391,34 +435,24 @@ class Regia:
         if parata is None:
             raise ErroreMotore("Un colpo senza la parata che segue.")
         difensore = parata.chi.id
-        parte_dif = parata.chi.parte
         zona = parata.zona
+        causa = parata.causa
         if p.tipo == "battuta":
+            # L'arrivo vero della battuta è già stato scelto alla ripresa, insieme alla partenza.
             u, v = self._arrivo_battuta_locale
             arrivo = locale_in_assoluto(self.campo[chi].parte, u, v)
             sponde = self._sponde(chi, p.colpo)
             v0 = self._velocita(chi, self.tar.COLPI[p.colpo].velocita)
-        elif ribattuta:
-            arrivo = self._punto_parata(difensore, zona)
-            sponde = ()
-            v0 = self.tar.VELOCITA_RIBATTUTA * (1.0 + self._uniforme(-0.1, 0.1))
         else:
-            arrivo = self._punto_parata(difensore, zona)
-            sponde = self._sponde(chi, p.colpo)
-            v0 = self._velocita(chi, self.tar.COLPI[p.colpo].velocita)
-        causa = parata.causa
-        if parata.esito == "goal" or (parata.esito == "fallo" and causa == "difesa_irregolare"):
-            # Verso la porta: il goal entra a non più di 12 cm dal centro della tasca, la difesa
-            # irregolare tocca la pallina dentro l'area di porta.
-            porta = centro_porta(parte_dif)
-            raggio = self._uniforme(2.0, 12.0 if parata.esito == "goal" else RAGGIO_AREA_PORTA - 1.0)
-            angolo = self._uniforme(0.15 * math.pi, 0.85 * math.pi)
-            verso_il_tavolo = 1.0 if porta[1] == 0 else -1.0
-            arrivo = (porta[0] + raggio * math.cos(angolo), porta[1] + verso_il_tavolo * raggio * math.sin(angolo))
-            sponde = self._sponde_compatibili(sponde, pos, arrivo)
-        elif parata.esito == "fallo" and causa in ("body_touch", "body_touch_pieno"):
-            d = self._uniforme(5.0, 25.0)
-            arrivo = (arrivo[0], d if parte_dif == "A" else LUNGHEZZA_TAVOLO - d)
+            if ribattuta:
+                sponde = ()
+                v0 = self.tar.VELOCITA_RIBATTUTA * (1.0 + self._uniforme(-0.1, 0.1))
+            else:
+                sponde = self._sponde(chi, p.colpo)
+                v0 = self._velocita(chi, self.tar.COLPI[p.colpo].velocita)
+            arrivo = self._arrivo_dopo_la_parata(parata, self._punto_parata(difensore, zona))
+            if parata.esito == "goal" or (parata.esito == "fallo" and causa == "difesa_irregolare"):
+                sponde = self._sponde_compatibili(sponde, pos, arrivo)
         tipo_arrivo = "paletta"
         if parata.esito == "goal":
             tipo_arrivo = "porta"
@@ -440,6 +474,25 @@ class Regia:
             quasi = posizione_al_tempo(volo, self.t)
             self.t = max(self.t, volo[0].t)
             return quasi
+        return arrivo
+
+    def _arrivo_dopo_la_parata(self, parata, arrivo):
+        """
+        Dove arriva davvero la pallina, dato l'arrivo alla parata: per un goal entra a non più di
+        12 cm dal centro della tasca, per una difesa irregolare è toccata dentro l'area di porta,
+        per un body touch colpisce il corpo fra 5 e 25 cm dalla linea; altrimenti resta dov'era.
+        """
+        parte_dif = parata.chi.parte
+        causa = parata.causa
+        if parata.esito == "goal" or (parata.esito == "fallo" and causa == "difesa_irregolare"):
+            porta = centro_porta(parte_dif)
+            raggio = self._uniforme(2.0, 12.0 if parata.esito == "goal" else RAGGIO_AREA_PORTA - 1.0)
+            angolo = self._uniforme(0.15 * math.pi, 0.85 * math.pi)
+            verso_il_tavolo = 1.0 if porta[1] == 0 else -1.0
+            return porta[0] + raggio * math.cos(angolo), porta[1] + verso_il_tavolo * raggio * math.sin(angolo)
+        if parata.esito == "fallo" and causa in ("body_touch", "body_touch_pieno"):
+            d = self._uniforme(5.0, 25.0)
+            return arrivo[0], d if parte_dif == "A" else LUNGHEZZA_TAVOLO - d
         return arrivo
 
     def _sponde_compatibili(self, sponde, partenza, arrivo):
@@ -511,15 +564,77 @@ class Regia:
             y = pos[1] + avanti * self._uniforme(120.0, 300.0)
             bordo = CENTRO_X + lato * CENTRO_X
             punti = [((bordo, y), "fuori"), ((bordo + lato * 35.0, y + avanti * 20.0), "terra")]
+        return self._tappe_a_mano(pos, punti, v0)
+
+    def _tappe_a_mano(self, pos, punti, v0, rallenta=0.8):
+        """Un volo per punti fissi, ciascuno col suo tipo: ogni tratto a velocità costante, che poi cala."""
         tappe = [Tappa(self.t, pos[0], pos[1], v0, "partenza")]
         t, prima, v = self.t, pos, v0
         for punto, tipo in punti:
             lunghezza = math.hypot(punto[0] - prima[0], punto[1] - prima[1])
             t += lunghezza / max(v, 50.0)
-            v *= 0.8
+            v *= rallenta
             tappe.append(Tappa(t, punto[0], punto[1], v if tipo not in E.TAPPE_TERMINALI else 0.0, tipo))
             prima = punto
         return tuple(tappe)
+
+    def _volo_battuta_irregolare(self, eventi, chi, pos, p):
+        """
+        Il volo della battuta irregolare, secondo la causa, perché nella partita live il fallo si
+        distingua dal suono di ciò che fa la pallina. Senza rimbalzo: dritta sotto lo schermo,
+        senza sponde. Due rimbalzi: due sponde prima dello schermo. Strisciata: la pallina tocca la
+        sponda e la percorre fin oltre lo schermo. Fuori in volo e sopra lo schermo, le cause
+        critiche: il volo che lascia il tavolo. Il colpo a vuoto, la battuta prima del fischio e
+        quella oltre i due secondi non hanno volo, perché il fallo è di chi batte, nel momento in
+        cui batte; il doppio tocco fa fare alla pallina pochi centimetri. Il fallo si segna
+        nell'ultimo punto del volo che sta sul tavolo, o nella mano di chi batte.
+        """
+        causa = p.causa
+        if causa in ("battuta_a_vuoto", "battuta_prima_del_fischio", "battuta_oltre_due_secondi"):
+            return pos
+        parte = self.campo[chi].parte
+        destra = p.colpo == "battutadx"
+        v0 = self._velocita(chi, self.tar.COLPI[p.colpo].velocita)
+
+        def locale(u, v):
+            # Dal riferimento della battuta sinistra a quello assoluto: la destra è lo specchio.
+            return locale_in_assoluto(parte, LARGHEZZA_TAVOLO - u if destra else u, v)
+
+        u_s, v_s = locale_in_assoluto(parte, *pos)
+        if destra:
+            u_s = LARGHEZZA_TAVOLO - u_s
+        dati = None
+        if causa in ("out_volo", "schermo_sopra"):
+            volo = self._volo_aereo(pos, causa, parte, v0)
+        elif causa == "battuta_doppio_tocco":
+            arrivo = locale(min(LARGHEZZA_TAVOLO - MARGINE_GIOCO, max(MARGINE_GIOCO, u_s + self._uniforme(-6.0, 6.0))), v_s + self._uniforme(10.0, 30.0))
+            volo = self._volo(pos, arrivo, (), self._uniforme(80.0, 150.0), "arrivo")
+        elif causa == "battuta_senza_rimbalzo":
+            arrivo = locale(self._uniforme(20.0, LARGHEZZA_TAVOLO - 20.0), self._uniforme(220.0, 320.0))
+            volo = self._volo(pos, arrivo, (), v0, "arrivo")
+        elif causa == "battuta_due_rimbalzi":
+            # Due sponde prima dello schermo: sinistra e poi destra, viste dalla battuta sinistra.
+            # Col metodo delle immagini il secondo rimbalzo sta prima di 175 cm dalla linea se
+            # l'arrivo non va oltre v_massima.
+            u_a = self._uniforme(MARGINE_GIOCO + 4.0, 40.0)
+            orizzontale = (u_s - SPONDA_SINISTRA_A) + (SPONDA_DESTRA_A - SPONDA_SINISTRA_A) + (SPONDA_DESTRA_A - u_a)
+            v_massima = v_s + (175.0 - v_s) * orizzontale / (u_s - SPONDA_SINISTRA_A + SPONDA_DESTRA_A - SPONDA_SINISTRA_A)
+            arrivo = locale(u_a, self._uniforme(META_TAVOLO + 12.0, min(280.0, v_massima)))
+            nomi_sponde = ("destra", "sinistra") if destra else ("sinistra", "destra")
+            volo = self._volo(pos, arrivo, tuple(sponda_assoluta(parte, s) for s in nomi_sponde), v0, "arrivo")
+        elif causa == "battuta_strisciata":
+            # La pallina tocca la sponda presto e la percorre, strisciando, fin oltre lo schermo.
+            sponda_u = SPONDA_SINISTRA_A
+            punti = [(locale(sponda_u, self._uniforme(60.0, 120.0)), "sponda"), (locale(sponda_u, META_TAVOLO), "sotto_schermo"),
+                     (locale(sponda_u + self._uniforme(0.0, 4.0), self._uniforme(220.0, 280.0)), "arrivo")]
+            volo = self._tappe_a_mano(pos, punti, v0, rallenta=0.7)
+            dati = {"strisciata": True}
+        else:
+            raise ErroreMotore(f"Volo di una battuta irregolare sconosciuto: {causa}")
+        evento = self._evento_volo(chi, volo, p.colpo, dati)
+        eventi.append(evento)
+        dentro = [tappa for tappa in volo if _dentro((tappa.x, tappa.y))]
+        return (dentro[-1].x, dentro[-1].y)
 
     def _esito_finale(self, eventi, p, pos, esito, punteggio, passi, i, colpo_n):
         """L'evento decisivo del punto, con la sua posizione, e dove resta la pallina."""
@@ -548,8 +663,6 @@ class Regia:
             eventi.append(self._evento(E.GOAL, 0.0, chi, pos, fischio=E.DOPPIO, **comuni))
             self.pallina = "tasca"
         elif p.tipo == "fallo":
-            if pos is None:
-                pos = locale_in_assoluto(p.chi.parte, CENTRO_X, 30.0)
             eventi.append(self._evento(E.FALLO, 0.0, chi, pos, fischio=E.SINGOLO, **comuni))
             ultimo_volo = next((e for e in reversed(eventi) if e.tipo == E.VOLO), None)
             fuori = ultimo_volo is not None and ultimo_volo.volo[-1].tipo == "terra"
@@ -557,16 +670,15 @@ class Regia:
         elif p.tipo == "palla_morta":
             if p.causa == "ribattuta_lenta":
                 pos = self._volo_ribattuta_lenta(eventi, chi, pos, colpo_n)
-            elif p.causa == "limite_tecnico" and pos is None:
-                pos = (CENTRO_X, META_TAVOLO / 2)
             if p.causa in ("pallina_ferma", "colpo_debole", "ribattuta_lenta"):
                 self._attesa(2.0)
             eventi.append(self._evento(E.PALLA_MORTA, 0.0, chi, pos, fischio=E.SINGOLO, **comuni))
             self.pallina = "tavolo"
         else:
-            if pos is None:
-                pos = locale_in_assoluto(p.chi.parte, CENTRO_X, 30.0)
+            # La rottura, regole IBSA 15.9.3 e 15.10.2: il fischio singolo ferma il gioco subito,
+            # poi l'attrezzo si cambia, e alla fine si ripete il servizio.
             eventi.append(self._evento(E.ROTTURA, 0.0, chi, pos, fischio=E.SINGOLO, **comuni))
+            eventi.append(self._fischio(E.SINGOLO))
             eventi.append(self._evento(E.SOSTITUZIONE_ATTREZZO, self.tar.DURATA_CAMBIO_ATTREZZO / self.velocita, None, self._pos_arbitro(),
                                        causa=p.causa, dati={"attrezzo": "paletta" if p.causa == "paletta_rotta" else "pallina", "di": chi}))
             self.pallina = "arbitro"
@@ -604,7 +716,6 @@ class Regia:
         self._attesa(max(0.0, self.tar.RITARDO_CHIAMATA - self.tar.FISCHIO_SINGOLO))
         eventi.append(self._evento(tipo_evento, self.tar.DURATA_CHIAMATA, g.id, pos, causa=causa, chiamata=tipo, punti=punti,
                                    a_chi=altra(g.parte) if punti else None, dati={"seconda_infrazione": seconda}))
-        self.pallina = "arbitro" if self.pallina == "arbitro" else self.pallina
         return eventi
 
     def timeout(self, g):
@@ -673,7 +784,8 @@ def controlla_invarianti(eventi):
     I problemi di una sequenza di eventi, in una lista vuota se va tutto bene: progressivi
     crescenti e istanti che non tornano indietro, coordinate dentro il tavolo, voli coerenti, lati
     uguali alla posizione, un solo punto o una sola ripetizione per punto, il fischio doppio per
-    ogni goal e quello singolo per ogni fallo.
+    ogni goal e quello singolo per ogni fallo, la battuta regolare con una sponda sola prima dello
+    schermo, e il fischio singolo nell'istante stesso di una rottura.
     """
     problemi = []
     precedente = None
@@ -704,10 +816,28 @@ def controlla_invarianti(eventi):
                 problemi.append(f"Evento {ev.n} {ev.tipo}: il fischio non è {atteso}.")
             if ev.causa not in CAUSE:
                 problemi.append(f"Evento {ev.n} {ev.tipo}: causa sconosciuta {ev.causa}.")
+        seguente = eventi[indice + 1] if indice + 1 < len(eventi) else None
+        if ev.tipo == E.BATTUTA and ev.esito == "regolare":
+            problemi.extend(_controlla_battuta(ev, seguente))
+        if ev.tipo == E.ROTTURA and (seguente is None or seguente.tipo != E.FISCHIO or seguente.fischio != E.SINGOLO or abs(seguente.t - ev.t) > 1e-6):
+            problemi.append(f"Evento {ev.n}: la rottura non è seguita subito dal fischio singolo.")
     for chiave, quanti in esiti_per_punto.items():
         if quanti != 1:
             problemi.append(f"Set {chiave[0]}, punto {chiave[1]}: {quanti} eventi di punto o ripetizione.")
     return problemi
+
+
+def _controlla_battuta(battuta, volo):
+    """La battuta regolare, regola IBSA 15.3.7: il suo volo tocca una sponda sola prima dello schermo, e passa sotto."""
+    if volo is None or volo.tipo != E.VOLO or volo.volo is None:
+        return [f"Evento {battuta.n}: la battuta regolare non ha il suo volo."]
+    tipi = [tappa.tipo for tappa in volo.volo]
+    if "sotto_schermo" not in tipi:
+        return [f"Evento {volo.n}: la battuta regolare non passa sotto lo schermo."]
+    sponde = sum(1 for tipo in tipi[:tipi.index("sotto_schermo")] if tipo in ("sponda", "curva"))
+    if sponde != 1:
+        return [f"Evento {volo.n}: la battuta regolare tocca {sponde} sponde prima dello schermo invece di una."]
+    return []
 
 
 def _dentro(pos):

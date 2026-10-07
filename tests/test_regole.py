@@ -1,11 +1,13 @@
 """
 Test delle regole dell'arbitro, decisione D25: punteggio e fine del set senza tetto, servizi, palle
 morte e rotture che ripetono il servizio, ammonizioni e penalità, cambi campo, time-out, sorteggio
-e formato. I punti li decide un copione al posto della catena degli esiti; sorteggio e imprevisti
-li decide un DadoTruccato. Le lettere del copione: A e B un goal di quella parte, a e b un fallo
-dell'altra che dà un punto a quella parte, M una palla morta, X una rottura.
+e formato; il cambio campo che scatta subito anche dopo una penalità, e lo stato finito col
+risultato già pronto. I punti li decide un copione al posto della catena degli esiti; sorteggio
+e imprevisti li decide un DadoTruccato. Le lettere del copione: A e B un goal di quella parte,
+a e b un fallo dell'altra che dà un punto a quella parte, M una palla morta, X una rottura.
 """
 
+import dataclasses
 import itertools
 import random
 from collections import Counter
@@ -15,7 +17,8 @@ from aiuti_motore import giocatore
 
 import motore.incontro
 from motore.dado import DadoTruccato
-from motore.incontro import ESSENZIALE, SINGOLARE_3, SINGOLARE_5, Incontro, formato_singolare
+from motore.incontro import COMPLETO, ESSENZIALE, SINGOLARE_3, SINGOLARE_5, Incontro, formato_singolare
+from motore.regia import controlla_invarianti
 from motore.scambio import EsitoPunto
 
 NIENTE = 0.9999
@@ -174,3 +177,54 @@ def test_formato_solo_3_o_5():
     for n in (1, 2, 4, 7):
         with pytest.raises(ValueError, match=r"Il numero di set deve essere 3 o 5\."):
             formato_singolare(n)
+
+
+def test_il_cambio_campo_scatta_subito_dopo_una_penalita(monkeypatch):
+    # Nel set decisivo A arriva a 4, poi la mascherina toccata da B gli dà due punti: si cambia
+    # campo sul 6 a 0, prima della battuta seguente, non sull'8 a 0 dopo il punto giocato.
+    lettere = "A" * 6 + "B" * 6 + "A" * 5
+    tiri = [*A_BATTE, *([NIENTE] * 12), NIENTE, NIENTE, _banda(3), NIENTE, NIENTE]
+    incontro, _copione = _incontro(monkeypatch, lettere, tiri)
+    risultato = incontro.gioca()
+    assert risultato.set == [(12, 0), (0, 12), (12, 0)]
+    assert risultato.incontro.cambi_campo == [(1, "fine set"), (2, "fine set"), (3, (6, 0))]
+
+
+class _PenalitaForzata(Incontro):
+    """Una penalità a B, per la mascherina, la prima volta che A è a 4 o 5 punti nell'ultimo set possibile."""
+
+    fatta = False
+
+    def _fasce_imprevisti(self, battitore, ricevitore):
+        fasce = super()._fasce_imprevisti(battitore, ricevitore)
+        if not self.fatta and self.set_n == self.formato.set_al_meglio and self.punteggio[0] in (4, 5) and self.punteggio[1] < 6:
+            self.fatta = True
+            return [0.0, 0.0, 0.0, 1.0] + [0.0] * (len(fasce) - 4)
+        return fasce
+
+
+def test_il_cambio_campo_dopo_una_penalita_negli_eventi():
+    un_set = dataclasses.replace(SINGOLARE_3, nome="singolare a un set", set_al_meglio=1)
+    visti = 0
+    for seme in range(20):
+        risultato = _PenalitaForzata(giocatore(1, valore=25.0), giocatore(2, valore=12.0), un_set, seme=seme, dettaglio=COMPLETO).gioca()
+        tipi = [e.tipo for e in risultato.eventi]
+        if "PENALITA" not in tipi:
+            continue
+        visti += 1
+        penalita = tipi.index("PENALITA")
+        battuta = tipi.index("BATTUTA", penalita)
+        assert "CAMBIO_CAMPO_INIZIO" in tipi[penalita:battuta]
+        assert risultato.incontro.cambi_campo[0][1] == risultato.eventi[penalita].punteggio
+        assert controlla_invarianti(risultato.eventi) == []
+    assert visti > 5
+
+
+def test_lo_stato_finito_trova_il_risultato_pronto():
+    incontro = Incontro(giocatore(1), giocatore(2), SINGOLARE_3, seme=4, dettaglio=COMPLETO)
+    momenti = incontro.momenti()
+    while not incontro.stato().finito:
+        next(momenti)
+    assert incontro.risultato is not None
+    assert incontro.risultato.momenti[-1].genere == "chiusura"
+    assert incontro.risultato.set_vinti in ((2, 0), (2, 1), (0, 2), (1, 2))

@@ -4,8 +4,8 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nasce il 2026-10-07 con la tappa 9, decisione D25, e chiude il problema P1. La catena decide che
 cosa succede, con probabilità pure, senza geometria e senza testi: battuta, parata, controllo,
 attacco, e di nuovo parata, finché qualcuno segna o sbaglia. Ogni dado ha fasce esaustive, quindi
-non ci sono rami irraggiungibili come nel vecchio motore, dove quasi ogni azione diventava un fallo;
-uno stato imprevisto solleva ErroreMotore invece di assegnare un punto a caso.
+non ci sono rami irraggiungibili come nel vecchio motore, dove quasi ogni azione diventava un fallo,
+e nessun ramo assegna un punto a caso.
 La battuta è un colpo come gli altri: se è regolare, chi riceve la para, e il goal di battuta nasce
 solo da una parata che non arriva. La parata confronta la pressione dell'attacco con la chiusura e
 il blocco di chi difende: ne escono goal, fallo, fuori, ribattuta o fermata. Se la pallina passa lo
@@ -24,7 +24,6 @@ from typing import NamedTuple
 
 from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA, PUNTI_PER_FALLO_AVVERSARIO, PUNTI_PER_GOAL
 from motore.campo import scegli
-from motore.eventi import ErroreMotore
 
 
 class Passo(NamedTuple):
@@ -315,8 +314,10 @@ def _goal(segna, subisce, causa, chi_commette, colpi, origine, colpo, zona):
         segna.stats.goal_battuta += 1
     subisce.stats.goal_subiti += 1
     if causa == "goal_dopo_difesa_irregolare":
-        # La difesa irregolare resta un fallo di chi difende, anche se il punto è un goal.
+        # La difesa irregolare resta un fallo di chi difende, anche se il punto è un goal: un
+        # fallo fatto da lui e subito da chi segna, perché i due conti tornino.
         subisce.stats.falli[causa] += 1
+        segna.stats.falli_subiti += 1
     return EsitoPunto("goal", causa, False, chi_commette, segna.parte, PUNTI_PER_GOAL, colpi, origine, colpo, zona)
 
 
@@ -329,9 +330,3 @@ def _fallo(commette, subisce, causa, critico, colpi, origine, colpo, zona):
 def _palla_morta(chi, causa, colpi, origine, colpo, zona):
     return EsitoPunto("palla_morta", causa, False, chi.id, None, 0, colpi, origine, colpo, zona)
 
-
-def verifica_esito(esito):
-    """Controlla che un esito sia coerente; ErroreMotore se no. Lo usano le prove."""
-    if esito.esito not in ("goal", "fallo", "palla_morta", "rottura"):
-        raise ErroreMotore(f"Esito sconosciuto: {esito.esito}")
-    return esito

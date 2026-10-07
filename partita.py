@@ -37,7 +37,7 @@ from costanti import (
     XP_VITTORIA_3_1,
     XP_VITTORIA_3_2,
 )
-from motore import COMPLETO, ESSENZIALE, SQUADRE, TARATURA, Incontro, formato_singolare
+from motore import COMPLETO, ESSENZIALE, SQUADRE, TARATURA, Incontro, Squadra, formato_singolare
 from motore import cronaca as C
 from motore import eventi as E
 from utilita import adesso
@@ -81,8 +81,11 @@ class MotorePartita:
         return None
 
     def nomi(self, risultato):
-        """I nomi della cronaca per un incontro singolare giocato fra giocatori del mondo."""
+        """I nomi della cronaca per un incontro fra giocatori del mondo: un singolare, o una gara a squadre col nome delle squadre."""
         a, b = risultato.parti
+        if risultato.formato.tipo == "squadre":
+            squadre = tuple(Squadra(nome, tuple(self.giocatori[gid] for gid in ids)) for nome, ids in zip(risultato.nomi_squadre, (a, b), strict=True))
+            return C.nomi_dei_giocatori([*squadre[0].giocatori, *squadre[1].giocatori], squadre=squadre)
         return C.nomi_dei_giocatori([self.giocatori[a], self.giocatori[b]])
 
     # La vecchia firma.

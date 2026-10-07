@@ -1,7 +1,9 @@
 """
 Test della cronaca: una frase per ogni tipo d'evento al livello tecnico, nessun separatore grafico e
 nessuna riga vuota, le chiamate FISPIC, l'annuncio dal punto di vista di chi batte, il file nella
-cartella delle cronache con il suffisso per i nomi doppi, e i testi un punto alla volta.
+cartella delle cronache con il suffisso per i nomi doppi, e i testi un punto alla volta, anche
+quando una penalità chiude il set; il cambio campo a metà set nella sintetica, la frase del colpo
+debole e la data con l'articolo giusto.
 """
 
 import datetime
@@ -16,7 +18,8 @@ from costanti import CARTELLA_CRONACHE
 from motore import cronaca as C
 from motore import eventi as E
 from motore.eventi import Evento, Tappa
-from motore.incontro import COMPLETO, SINGOLARE_3, SQUADRE, StatoIncontro, simula_incontro
+from motore.incontro import COMPLETO, SINGOLARE_3, SQUADRE, Momento, StatoIncontro, simula_incontro
+from motore.scambio import EsitoPunto
 from motore.squadre import Squadra
 
 SEPARATORI = re.compile(r"[=_*#~-]{3,}")
@@ -33,6 +36,7 @@ def partita():
 _DATI = {
     E.INIZIO_INCONTRO: {"formato": "singolare al meglio dei 3 set"},
     E.SORTEGGIO: {"chiama": "A", "faccia_chiamata": "testa", "faccia_uscita": "croce", "vince": "B", "scelta": "lato", "batte": "A"},
+    E.FORMAZIONI: {"formazioni": {"A": [1], "B": [2]}, "riserve": {"A": [3], "B": []}, "vince": "B", "scelta": "cede", "batte": "A"},
     E.RISCALDAMENTO_INIZIO: {"durata": 60},
     E.AVVISO_TEMPO: {"restano": 15},
     E.INIZIO_SET: {"apre": 1},
@@ -153,3 +157,55 @@ def test_la_cronaca_delle_squadre():
     assert righe[0] == "Inizio della gara a squadre: Leoni contro Tigri, un set a 31 punti."
     assert any(riga.startswith("Cambio al tavolo: esce ") for riga in righe)
     assert righe[-1].startswith("Fine dell'incontro: vince ")
+
+
+def test_il_cambio_campo_a_meta_set_nella_sintetica():
+    nomi = {1: C.Nome("Rossi", "m"), 2: C.Nome("Bianchi", "f"), "A": C.Nome("Rossi", "m"), "B": C.Nome("Bianchi", "f")}
+    evento = Evento(n=5, t=1.0, tipo=E.CAMBIO_CAMPO_INIZIO, fase=E.PAUSA, punteggio=(6, 3), dati={"fra_set": False})
+    assert C.frase(evento, nomi, C.SINTETICA) == "Cambio campo, sul 6 a 3."
+    fra_set = Evento(n=6, t=1.0, tipo=E.CAMBIO_CAMPO_INIZIO, fase=E.PAUSA, punteggio=(11, 8), dati={"fra_set": True})
+    assert C.frase(fra_set, nomi, C.SINTETICA) is None
+    assert C.frase(fra_set, nomi, C.NORMALE) == "Cambio campo: un minuto di pausa."
+
+
+def test_il_colpo_debole_si_ferma_prima_dell_avversario():
+    # La regia ferma la pallina fra 120 e 280 cm dalla linea di chi colpisce, spesso oltre lo
+    # schermo: la frase dice quello che vuole D25, non lo schermo.
+    nomi = {1: C.Nome("Rossi", "m")}
+    evento = Evento(n=5, t=1.0, tipo=E.PALLA_MORTA, fase=E.GIOCO, chi=1, parte="A", causa="colpo_debole")
+    assert C.frase(evento, nomi) == "Fischio: palla morta, il colpo di Rossi è troppo debole e la pallina si ferma prima di arrivare all'avversario."
+
+
+def test_la_data_della_cronaca_con_l_articolo():
+    a, b = giocatore(1, cognome="Rossi"), giocatore(2, cognome="Bianchi")
+    risultato = simula_incontro(a, b, SINGOLARE_3, seme=3, dettaglio=COMPLETO)
+    nomi = C.nomi_dei_giocatori([a, b])
+    assert C.intestazione(risultato, nomi, datetime.datetime(2026, 10, 8, 9, 5), None)[1] == "Giocato l'8 ottobre 2026 alle 09:05."
+    assert C.intestazione(risultato, nomi, datetime.datetime(2026, 10, 7, 9, 5), None)[1] == "Giocato il 7 ottobre 2026 alle 09:05."
+
+
+def _evento_di_prova(n, tipo, **campi):
+    return Evento(n=n, t=float(n), tipo=tipo, fase=E.GIOCO, **campi)
+
+
+def test_la_penalita_che_chiude_il_set_resta_nel_suo_set():
+    # Nei testi della finestra la penalità che chiude un set a palla ferma va prima del fischio
+    # lungo, non in testa al primo punto del set che segue.
+    nomi = {1: C.Nome("Rossi", "m"), 2: C.Nome("Bianchi", "f"), "A": C.Nome("Rossi", "m"), "B": C.Nome("Bianchi", "f")}
+    fine_set = {"set": 1, "punteggio": [11, 7], "set_vinti": [1, 0], "ultimo": False}
+    momenti = [
+        Momento("preliminari", (_evento_di_prova(1, E.INIZIO_INCONTRO, dati={"formato": "singolare al meglio dei 3 set"}),), None),
+        Momento("palla_ferma", (_evento_di_prova(2, E.INIZIO_SET, set_n=1, dati={"apre": 1}),), None),
+        Momento("punto", (_evento_di_prova(3, E.PUNTO, punti=1, a_chi="A", punteggio=(9, 7)),),
+                EsitoPunto("fallo", "schermo_contro", False, 2, "A", 1, 1, "scambio", "bomba", "centro", set_n=1, punteggio=(9, 7))),
+        Momento("palla_ferma", (_evento_di_prova(4, E.PENALITA, chi=2, parte="B", causa="muovere_tavolo", a_chi="A", punti=2, punteggio=(11, 7),
+                                                  dati={"seconda_infrazione": True}),), None),
+        Momento("palla_ferma", (_evento_di_prova(5, E.FISCHIO, fischio=E.LUNGO), _evento_di_prova(6, E.FINE_SET, dati=fine_set)), None),
+        Momento("palla_ferma", (_evento_di_prova(7, E.INIZIO_SET, set_n=2, dati={"apre": 2}),), None),
+        Momento("punto", (_evento_di_prova(8, E.PUNTO, punti=1, a_chi="B", punteggio=(0, 1)),),
+                EsitoPunto("fallo", "schermo_contro", False, 1, "B", 1, 1, "scambio", "bomba", "centro", set_n=2, punteggio=(0, 1))),
+    ]
+    pezzi = testi.testi_della_partita(momenti, nomi)
+    primo_set, secondo_set = pezzi[1], pezzi[2]
+    assert "Penalità a Bianchi" in primo_set and primo_set.index("Penalità a Bianchi") < primo_set.index("Set a Rossi, 11 a 7")
+    assert secondo_set.startswith("Set 2, Rossi 0, Bianchi 0.") and "Penalità" not in secondo_set

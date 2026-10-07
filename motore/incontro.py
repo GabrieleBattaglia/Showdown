@@ -4,9 +4,11 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nasce il 2026-10-07 con la tappa 9, decisione D25. Sopra la catena degli esiti c'è l'incontro, che
 fa l'arbitro: il sorteggio con la moneta, i set a 11 con 2 di scarto e senza tetto, i due servizi a
 testa con chi apre che si alterna da un set all'altro, gli imprevisti a palla ferma con le
-ammonizioni ricordate per tutto l'incontro, i time-out, i cambi campo e la gara a squadre. Il set
-lo chiude anche una penalità, e una sanzione prima del primo punto fa partire il set sul 2 a 0
-senza cambiare l'ordine di battuta.
+ammonizioni ricordate per tutto l'incontro, per il giocatore nel singolare e per la squadra nella
+gara a squadre, i time-out, i cambi campo e la gara a squadre. Il set lo chiude anche una
+penalità, e una sanzione prima del primo punto fa partire il set sul 2 a 0 senza cambiare
+l'ordine di battuta; se invece la penalità porta qualcuno ai punti del cambio campo, si cambia
+subito, prima della battuta che segue.
 Il caso viene da tre generatori nati dal seme dell'incontro. Il dado degli esiti decide tutto ciò che
 sposta i punti o il loro ordine. Il generatore delle procedure decide ciò che non tocca i punti ma
 deve restare uguale nelle due modalità: i time-out, la faccia chiamata al sorteggio e il lato del
@@ -132,6 +134,8 @@ class RisultatoIncontro:
     sorteggio: dict | None = None
     # Le frasi della registrazione nel mondo, che la facciata aggiunge dopo l'incontro.
     registrazione: list | None = None
+    # Nella gara a squadre, i nomi delle due squadre, per la cronaca.
+    nomi_squadre: tuple | None = None
 
     @property
     def set_vinti(self):
@@ -287,8 +291,11 @@ class Incontro:
         if self.regia:
             eventi = self.regia.fine_set(self.set_n, tuple(self.punteggio), tuple(self.set_vinti), True)
             eventi += self.regia.fine_incontro(tuple(self.set_vinti), list(self.set_giocati))
-        yield self._momento(CHIUSURA, eventi, None)
+        # Il risultato si compone prima di consegnare la chiusura: chi segue la partita un momento
+        # alla volta e si ferma quando lo stato dice finito, come la live, lo trova già pronto.
+        chiusura = self._momento(CHIUSURA, eventi, None)
         self.risultato = self._componi_risultato()
+        yield chiusura
 
     def _momento(self, genere, eventi, esito):
         eventi = tuple(eventi)
@@ -301,7 +308,12 @@ class Incontro:
     # I preliminari.
 
     def _preliminari(self):
-        """Il sorteggio, con la moneta, e il riscaldamento; restituisce gli eventi."""
+        """
+        Il sorteggio, con la moneta, e il riscaldamento; restituisce gli eventi. Nel singolare chi
+        vince il sorteggio sceglie fra la battuta e il lato del tavolo. Nella gara a squadre,
+        regole IBSA 22.5 e 22.7, dopo il lancio l'arbitro legge le formazioni, e la squadra che
+        ha vinto, conoscendo l'ordine di gioco dell'altra, tiene il primo servizio o lo cede.
+        """
         t = self.taratura
         vince = "A" if self.dado.tiro() < 0.5 else "B"
         faccia_chiamata = "testa" if self.rng_procedure.random() < 0.5 else "croce"
@@ -310,10 +322,16 @@ class Incontro:
         arbitro_a_sinistra_di_a = self.rng_procedure.random() < 0.5
         batte = vince if sceglie_battuta else altra(vince)
         self.apre = batte
+        if self.squadre:
+            scelta = "tiene" if sceglie_battuta else "cede"
+        else:
+            scelta = "battuta" if sceglie_battuta else "lato"
         self.info_sorteggio = {"chiama": "A", "faccia_chiamata": faccia_chiamata, "faccia_uscita": faccia_uscita, "vince": vince,
-                               "scelta": "battuta" if sceglie_battuta else "lato", "batte": batte, "arbitro_a_sinistra_di_a": arbitro_a_sinistra_di_a}
+                               "scelta": scelta, "batte": batte, "arbitro_a_sinistra_di_a": arbitro_a_sinistra_di_a}
         if self.squadre:
             self.ordine = ordine_di_battuta(batte)
+            self.info_sorteggio["formazioni"] = {parte: list(self.formazione[parte]) for parte in ("A", "B")}
+            self.info_sorteggio["riserve"] = {parte: list(self.riserve[parte]) for parte in ("A", "B")}
         eventi = []
         if self.regia:
             eventi += self.regia.inizio_incontro(self._ids_al_tavolo_iniziali())
@@ -356,6 +374,10 @@ class Incontro:
             sanzioni = ()
             if banda < 6:
                 eventi, sanzioni = self._sanzione(banda)
+                if not self._set_finito():
+                    # Una penalità può portare qualcuno ai punti del cambio campo: si cambia
+                    # subito, a palla ferma, prima della battuta che segue.
+                    eventi += self._forse_cambio_campo()
                 yield self._momento(PALLA_FERMA, eventi, None)
                 if self._set_finito():
                     return
@@ -393,7 +415,7 @@ class Incontro:
         eventi = []
         if self.regia:
             visto = (punteggio_prima[_INDICE[parte_b]], punteggio_prima[_INDICE[parte_r]])
-            eventi += self.regia.ripresa(battitore, ricevitore, numero_servizio, visto, self.ripresa_lunga, passi[0], punteggio_prima)
+            eventi += self.regia.ripresa(battitore, ricevitore, numero_servizio, visto, self.ripresa_lunga, passi, punteggio_prima)
             eventi += self.regia.punto(passi, esito, tuple(self.punteggio))
         self.ripresa_lunga = esito.esito == "rottura"
         if assegnato:
@@ -460,14 +482,20 @@ class Incontro:
         return fasce
 
     def _sanzione(self, banda):
-        """Una sanzione a palla ferma: ammonizione la prima volta, poi penalità; mascherina e telefono sono penalità subito."""
+        """
+        Una sanzione a palla ferma: ammonizione la prima volta, poi penalità; mascherina e telefono
+        sono penalità subito. Nel singolare l'ammonizione si ricorda per il giocatore; nella gara a
+        squadre vale per tutta la squadra, regola IBSA 22.15: dopo l'ammonizione di un compagno,
+        la prima infrazione di un altro è già una penalità.
+        """
         parte = "A" if banda % 2 == 0 else "B"
         g = self._per_parte()[parte]
         if banda < 2:
             causa = self.dado.pesata(self.taratura.CAUSE_AMMONIZIONE)
-            tipo = "penalita" if g.id in self.ammoniti else "ammonizione"
-            seconda = g.id in self.ammoniti
-            self.ammoniti.add(g.id)
+            chi_ricorda = parte if self.squadre else g.id
+            seconda = chi_ricorda in self.ammoniti
+            tipo = "penalita" if seconda else "ammonizione"
+            self.ammoniti.add(chi_ricorda)
         else:
             causa = "mascherina_toccata" if banda < 4 else "telefono"
             tipo = "penalita"
@@ -552,10 +580,12 @@ class Incontro:
         almeno sei punti e una riserva vale almeno l'8 per cento più del più debole al tavolo, oppure
         un giocatore al tavolo è troppo stanco. Entra la riserva più forte che lascia valida la
         composizione, nello stesso posto della rotazione; chi esce non rientra.
+        Il confronto col più debole si fa soltanto fra le riserve che possono prenderne il posto:
+        se il più debole è l'unico del suo sesso al tavolo, una riserva forte dell'altro sesso non
+        può entrare, e non deve far entrare al suo posto una riserva che vale meno di chi esce.
         """
         if not self.squadre or not self.formato.sostituzioni:
             return []
-        t = self.taratura
         eventi = []
         for parte in ("A", "B"):
             if self.sostituzioni_fatte[parte] >= self.formato.sostituzioni:
@@ -564,26 +594,10 @@ class Incontro:
             if not riserve:
                 continue
             al_tavolo = [self.campo[gid] for gid in self.formazione[parte]]
-            sotto = self.punteggio[_INDICE[altra(parte)]] - self.punteggio[_INDICE[parte]]
-            esce = None
-            debole = min(al_tavolo, key=lambda c: (c.g.indice_collettivo_valore, c.id))
-            migliore = max(c.g.indice_collettivo_valore for c in riserve)
-            if sotto >= t.DISTACCO_SOSTITUZIONE and migliore >= (1.0 + t.VANTAGGIO_RISERVA) * debole.g.indice_collettivo_valore:
-                esce = debole
-            else:
-                stanchi = [c for c in al_tavolo if c.eff < t.EFFICIENZA_SOSTITUZIONE]
-                if stanchi:
-                    esce = min(stanchi, key=lambda c: (c.eff, c.id))
-            if esce is None:
+            scelta = self._chi_esce_e_chi_entra(parte, al_tavolo, riserve)
+            if scelta is None:
                 continue
-            entra = None
-            for riserva in sorted(riserve, key=lambda c: (-c.g.indice_collettivo_valore, c.id)):
-                nuova = [riserva.g if c is esce else c.g for c in al_tavolo]
-                if composizione_valida(nuova):
-                    entra = riserva
-                    break
-            if entra is None:
-                continue
+            esce, entra = scelta
             posto = self.formazione[parte].index(esce.id)
             self.formazione[parte][posto] = entra.id
             self.usciti.add(esce.id)
@@ -594,21 +608,49 @@ class Incontro:
                 eventi += self.regia.sostituzione(esce, entra)
         return eventi
 
+    def _chi_esce_e_chi_entra(self, parte, al_tavolo, riserve):
+        """
+        La coppia di chi esce e di chi entra secondo il criterio fisso, oppure None. Prima il
+        distacco nel punteggio, col più debole al tavolo; se lì non c'è una sostituzione da fare,
+        la stanchezza, dal più stanco.
+        """
+        t = self.taratura
+        sotto = self.punteggio[_INDICE[altra(parte)]] - self.punteggio[_INDICE[parte]]
+        if sotto >= t.DISTACCO_SOSTITUZIONE:
+            debole = min(al_tavolo, key=lambda c: (c.g.indice_collettivo_valore, c.id))
+            possibili = _riserve_al_posto_di(debole, al_tavolo, riserve)
+            if possibili and possibili[0].g.indice_collettivo_valore >= (1.0 + t.VANTAGGIO_RISERVA) * debole.g.indice_collettivo_valore:
+                return debole, possibili[0]
+        for stanco in sorted((c for c in al_tavolo if c.eff < t.EFFICIENZA_SOSTITUZIONE), key=lambda c: (c.eff, c.id)):
+            possibili = _riserve_al_posto_di(stanco, al_tavolo, riserve)
+            if possibili:
+                return stanco, possibili[0]
+        return None
+
     # Il risultato.
 
     def _componi_risultato(self):
         t = self.taratura
         for c in self.campo.values():
             c.stats.eff_finale = 1.0 - t.FATICA_MAX * (1.0 - math.exp(-c.azioni * c.ritmo / t.FATICA_SCALA))
+        nomi_squadre = None
         if self.squadre:
             parti = (tuple(g.id for g in self.parti["A"].giocatori), tuple(g.id for g in self.parti["B"].giocatori))
+            nomi_squadre = (self.parti["A"].nome, self.parti["B"].nome)
         else:
             parti = (self.parti["A"].id, self.parti["B"].id)
         vincitore = "A" if self.set_vinti[0] > self.set_vinti[1] else "B"
         return RisultatoIncontro(
             formato=self.formato, seme=self.seme, parti=parti, vincitore=vincitore, set=list(self.set_giocati), esito="regolare",
             durata_simulata=self.regia.t if self.regia else None, statistiche={gid: c.stats for gid, c in self.campo.items()},
-            incontro=self.statistiche_incontro, punti=self.punti, eventi=self.eventi, momenti=self.momenti_giocati, sorteggio=self.info_sorteggio)
+            incontro=self.statistiche_incontro, punti=self.punti, eventi=self.eventi, momenti=self.momenti_giocati, sorteggio=self.info_sorteggio,
+            nomi_squadre=nomi_squadre)
+
+
+def _riserve_al_posto_di(esce, al_tavolo, riserve):
+    """Le riserve che possono prendere il posto di chi esce lasciando valida la composizione, dalla più forte."""
+    ordinate = sorted(riserve, key=lambda c: (-c.g.indice_collettivo_valore, c.id))
+    return [r for r in ordinate if composizione_valida([r.g if c is esce else c.g for c in al_tavolo])]
 
 
 def simula_incontro(parte_a, parte_b, formato, **opzioni):

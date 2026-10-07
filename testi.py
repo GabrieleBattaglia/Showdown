@@ -892,7 +892,10 @@ def testi_della_partita(momenti, nomi, livello="normale"):
             in_attesa = []
             punteggio = momento.esito.punteggio
         elif "FINE_SET" in tipi and testi:
-            testi[-1] += "\n" + "\n".join(righe)
+            # Una penalità può chiudere il set a palla ferma: le sue righe, rimaste in attesa,
+            # vanno prima del fischio lungo, non nel primo punto del set che segue.
+            testi[-1] += "\n" + "\n".join(in_attesa + righe)
+            in_attesa = []
         else:
             in_attesa.extend(righe)
             for evento in momento.eventi:

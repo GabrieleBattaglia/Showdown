@@ -10,9 +10,13 @@ Il rapporto tiene le frasi di prima, senza separatori, per il confronto con banc
 e aggiunge le misure dei bersagli della taratura: cause dei falli, goal di battuta e da scambio,
 lunghezza degli scambi, set oltre i 12 punti, partite fra forti alla pari, palle morte, sanzioni,
 time-out, temperamento, esperienza, lettura del gioco, stanchezza, squadre, infortuni e tempo per
-partita. Accanto a ogni bersaglio dice se la misura ci sta dentro. Al meglio dei 5 aggiunge la
-sonda della stanchezza, un trentenne resistente e un sessantenne poco resistente, che la
-popolazione di prova da sola non contiene. I rapporti di prima e dopo la taratura della tappa 9
+partita. Accanto a ogni bersaglio dice se la misura ci sta dentro; gli eventi rari, rotture e
+penalità, si giudicano con l'intervallo di Poisson, e le bande del meglio dei 3 valgono soltanto lì.
+Il temperamento si misura con una sonda a coppie, gli stessi giocatori impetuosi e calmi contro gli
+stessi avversari e con gli stessi semi, perché il confronto fra gruppi di giocatori diversi è
+confuso dalle altre differenze fra loro. Al meglio dei 5 aggiunge la sonda della stanchezza, un
+trentenne resistente e un sessantenne poco resistente, che la popolazione di prova da sola non
+contiene. I rapporti di prima e dopo la taratura della tappa 9
 stanno accanto, in banco_partite_prima.txt e banco_partite_dopo.txt.
 Il mondo predefinito è una popolazione di prova di strumenti/popolazione_di_prova.py, col 60 per
 cento di allenati e l'esperienza fino a 12; con --mondo salvato si leggono in sola lettura i
@@ -80,6 +84,30 @@ def per_cento(parte, totale):
 def esito_bersaglio(valore, intervallo):
     basso, alto = intervallo
     return "dentro" if basso <= valore <= alto else "FUORI"
+
+
+def _poisson_fino_a(k, media):
+    """La probabilità di contare al massimo k eventi, se in media se ne aspettano media."""
+    termine = math.exp(-media)
+    totale = termine
+    for i in range(1, k + 1):
+        termine *= media / i
+        totale += termine
+    return min(1.0, totale)
+
+
+def esito_raro(osservati, attesi_minimo, attesi_massimo, soglia=0.025):
+    """
+    Il giudizio su un evento raro, come le rotture: con pochi eventi la banda non si confronta col
+    numero contato, che oscilla per puro caso, ma con l'intervallo di Poisson. Fuori soltanto se
+    contarne così pochi è improbabile anche col tasso più alto della banda, o contarne così tanti
+    anche col più basso: con 1000 partite una rottura ogni 312 dà in media 3,2 eventi.
+    """
+    if osservati > 0 and _poisson_fino_a(osservati - 1, attesi_massimo) > 1.0 - soglia:
+        return "FUORI"
+    if _poisson_fino_a(osservati, attesi_minimo) < soglia:
+        return "FUORI"
+    return "dentro, con l'intervallo di Poisson"
 
 
 def carica_mondo_salvato():
@@ -230,7 +258,13 @@ def percentile(valori, quota):
     return ordinati[indice]
 
 
-def rapporto(banco, intestazione, pari_forti, set_al_meglio=3):
+def rapporto(banco, intestazione, pari_forti, set_al_meglio=3, sonde=()):
+    """
+    Il rapporto discorsivo del banco, con i bersagli della taratura. Le bande del meglio dei 3,
+    cioè favorito, time-out e infortuni, si controllano soltanto al meglio dei 3, e gli infortuni
+    soltanto fra coppie a caso; gli eventi rari si giudicano con l'intervallo di Poisson. Le
+    sonde, come quella del temperamento, aggiungono le loro righe e i loro bersagli.
+    """
     righe = list(intestazione)
     punti = banco.punti
     giocati = len(punti)
@@ -324,23 +358,30 @@ def rapporto(banco, intestazione, pari_forti, set_al_meglio=3):
         minimo = massimo
         if nella_fascia:
             righe.append(f"Con un distacco {nome}: {len(nella_fascia)} partite, il favorito ne vince {vinte}, {percentuale(vinte, len(nella_fascia))}.")
-            if len(nella_fascia) >= 30:
+            # Le bande del favorito valgono al meglio dei 3: al meglio dei 5 il favorito vince di più.
+            if len(nella_fascia) >= 30 and set_al_meglio == 3:
                 bersagli.append((f"Vittorie del favorito con un distacco {nome}", per_cento(vinte, len(nella_fascia)), intervallo))
     n = len(partite)
     righe.append(f"Imprevisti: {banco.rotture} rotture, {banco.ammonizioni} ammonizioni, {banco.penalita} penalità di cui {banco.mascherine} per la mascherina, "
                  f"{banco.timeout} time-out, in {n} partite.")
-    bersagli.append(("Partite per una rottura", n / banco.rotture if banco.rotture else 9999, (150, 400)))
+    # Rotture e penalità sono così rare che in mille partite se ne contano poche: il numero
+    # contato si confronta con l'intervallo di Poisson della banda, non con la banda stessa.
+    bersagli.append(("Partite per una rottura", n / banco.rotture if banco.rotture else 9999, (150, 400), esito_raro(banco.rotture, n / 400, n / 150)))
     bersagli.append(("Ammonizioni ogni 100 partite", 100 * banco.ammonizioni / n, (3, 10)))
-    bersagli.append(("Penalità ogni 100 partite", 100 * banco.penalita / n, (0, 1.5)))
-    bersagli.append(("Time-out a partita", banco.timeout / n, (0.3, 0.8)))
+    bersagli.append(("Penalità ogni 100 partite", 100 * banco.penalita / n, (0, 1.5), esito_raro(banco.penalita, 0.0, 1.5 * n / 100)))
+    if set_al_meglio == 3:
+        # Al meglio dei 5 ci sono più set, e quindi più time-out.
+        bersagli.append(("Time-out a partita", banco.timeout / n, (0.3, 0.8)))
     g = banco.gruppi
     if g["impetuosi"]["attacchi"] and g["calmi"]["attacchi"]:
         imp = 100 * g["impetuosi"]["falli"] / g["impetuosi"]["attacchi"]
         calmi = 100 * g["calmi"]["falli"] / g["calmi"]["attacchi"]
         goal_imp = 100 * g["impetuosi"]["goal"] / g["impetuosi"]["attacchi"]
         goal_calmi = 100 * g["calmi"]["goal"] / g["calmi"]["attacchi"]
-        righe.append(f"Temperamento, ogni 100 attacchi: gli impetuosi fanno {numero(imp)} falli e {numero(goal_imp)} goal, i calmi {numero(calmi)} falli e {numero(goal_calmi)} goal.")
-        bersagli.append(("Falli degli impetuosi su quelli dei calmi", imp / calmi if calmi else 0, (1.35, 1.7)))
+        # Un confronto fra giocatori diversi, confuso dalle altre differenze fra loro: resta come
+        # informazione, e il bersaglio lo misura la sonda a coppie.
+        righe.append(f"Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno {numero(imp)} falli e {numero(goal_imp)} goal, i calmi {numero(calmi)} falli e {numero(goal_calmi)} goal; "
+                     f"il rapporto dei falli, {numero(imp / calmi if calmi else 0, 2)}, mescola il temperamento con le altre differenze fra i giocatori.")
     if g["esperti"]["azioni"] and g["inesperti"]["azioni"]:
         esp = 100 * g["esperti"]["falli"] / g["esperti"]["azioni"]
         ines = 100 * g["inesperti"]["falli"] / g["inesperti"]["azioni"]
@@ -361,16 +402,21 @@ def rapporto(banco, intestazione, pari_forti, set_al_meglio=3):
         nuova = statistics.fmean(p for p, _ in banco.infortuni)
         vecchia = statistics.fmean(v for _, v in banco.infortuni)
         righe.append(f"Infortuni, chi non è ambidestro: probabilità media per partita {numero(nuova, 3)} per cento, contro {numero(vecchia, 3)} del vecchio calcolo.")
-        if set_al_meglio == 3:
-            # Il bersaglio vale al meglio dei 3: al meglio dei 5 il carico è più alto, e gli infortuni anche.
+        if set_al_meglio == 3 and not pari_forti:
+            # Il bersaglio vale al meglio dei 3 e fra coppie a caso: al meglio dei 5, e fra pari
+            # forti, le partite sono più lunghe, il carico più alto, e gli infortuni anche.
             bersagli.append(("Infortuni rispetto a prima, per cento", 100 * nuova / vecchia if vecchia else 0, (90, 110)))
     if banco.durate:
         righe.append(f"Durata simulata: in media {numero(statistics.fmean(banco.durate) / 60)} minuti, da {numero(min(banco.durate) / 60)} a {numero(max(banco.durate) / 60)}; "
                      f"incontri con le invarianti violate: {banco.invarianti}.")
         bersagli.append(("Durata simulata media in minuti", statistics.fmean(banco.durate) / 60, (12, 20)))
+    for righe_sonda, bersagli_sonda in sonde:
+        righe.extend(righe_sonda)
+        bersagli.extend(bersagli_sonda)
     righe.append("I bersagli della taratura:")
-    for nome, valore, intervallo in bersagli:
-        righe.append(f"{nome}: {numero(valore, 2)}, bersaglio da {numero(intervallo[0], 2)} a {numero(intervallo[1], 2)}, {esito_bersaglio(valore, intervallo)}.")
+    for nome, valore, intervallo, *giudizio in bersagli:
+        esito = giudizio[0] if giudizio else esito_bersaglio(valore, intervallo)
+        righe.append(f"{nome}: {numero(valore, 2)}, bersaglio da {numero(intervallo[0], 2)} a {numero(intervallo[1], 2)}, {esito}.")
     return righe
 
 
@@ -396,6 +442,44 @@ def sonda_fatica(giocatori, quante, rng, opzioni):
                      f"{numero(media, 3)}, minima {numero(min(efficienze), 3)}, bersaglio da {numero(intervallo[0], 2)} a {numero(intervallo[1], 2)}, "
                      f"{esito_bersaglio(media, intervallo)}; mai sotto 0,6: {'sì' if min(efficienze) >= 0.6 else 'NO'}.")
     return righe
+
+
+def sonda_temperamento(giocatori, quante, rng, opzioni, formato):
+    """
+    Il bersaglio 18.8 del progetto misurato a coppie: lo stesso giocatore, una volta impetuoso e
+    una volta calmo, contro lo stesso avversario e con lo stesso seme, così che fra le due
+    partite cambi soltanto il temperamento. I due temperamenti sono quelli medi dei gruppi del
+    banco, chi sta da 75 in su e chi sta fino a 25, nella popolazione in prova. Il confronto
+    fra gruppi di giocatori diversi era confuso dalle altre differenze fra loro: con tutti i
+    temperamenti portati a 50 il rapporto dei falli restava 1,12 invece di 1.
+    Restituisce le righe e i bersagli per il rapporto.
+    """
+    attuali = [g.temperamento_attuale for g in giocatori]
+    impetuosi = [t for t in attuali if t >= 75] or [80.0]
+    calmi = [t for t in attuali if t <= 25] or [20.0]
+    livelli = (("impetuoso", statistics.fmean(impetuosi)), ("calmo", statistics.fmean(calmi)))
+    conti = {nome: Counter() for nome, _livello in livelli}
+    opzioni = {**opzioni, "dettaglio": ESSENZIALE}
+    for _ in range(quante):
+        g, avversario = rng.sample(giocatori, 2)
+        seme = rng.getrandbits(63)
+        for nome, livello in livelli:
+            copia = copy.copy(g)
+            # Il temperamento innato che, con la calma dell'età, dà proprio il livello cercato.
+            copia.temperamento = min(100.0, livello + costanti.CALMA_PER_ANNO * max(0.0, g.eta_anni - costanti.ETA_INIZIO_CALMA))
+            stats = simula_incontro(copia, avversario, formato, seme=seme, **opzioni).statistiche[g.id]
+            conti[nome]["falli"] += sum(stats.falli.values())
+            conti[nome]["goal"] += stats.goal
+            conti[nome]["attacchi"] += stats.attacchi
+    per_cento_attacchi = {nome: (100 * c["falli"] / c["attacchi"], 100 * c["goal"] / c["attacchi"]) for nome, c in conti.items() if c["attacchi"]}
+    if len(per_cento_attacchi) < 2:
+        return [], []
+    (falli_imp, goal_imp), (falli_calmi, goal_calmi) = per_cento_attacchi["impetuoso"], per_cento_attacchi["calmo"]
+    righe = [f"Sonda del temperamento, {quante} coppie di partite: gli stessi giocatori con temperamento {numero(livelli[0][1], 0)} e {numero(livelli[1][1], 0)}, "
+             f"contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa {numero(falli_imp)} falli e {numero(goal_imp)} goal, "
+             f"il calmo {numero(falli_calmi)} falli e {numero(goal_calmi)} goal."]
+    bersagli = [("Falli degli impetuosi su quelli dei calmi, a coppie", falli_imp / falli_calmi if falli_calmi else 0, (1.35, 1.7))]
+    return righe, bersagli
 
 
 def squadra_a_caso(giocatori, nome, rng, usati):
@@ -480,7 +564,8 @@ def main():
     ]
     if argomenti.taratura:
         intestazione.append(f"Taratura letta da {argomenti.taratura}.")
-    righe = rapporto(banco, intestazione, argomenti.pari_forti, argomenti.set)
+    sonde = [sonda_temperamento(disponibili, 400, rng, opzioni, formato)]
+    righe = rapporto(banco, intestazione, argomenti.pari_forti, argomenti.set, sonde)
     if argomenti.set == 5:
         righe.extend(sonda_fatica(disponibili, 200, rng, opzioni))
     if argomenti.squadre:

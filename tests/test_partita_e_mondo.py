@@ -194,3 +194,11 @@ def test_amichevole_registrata_e_cronaca_salvata(mondo, cartella_di_prova):
     squadre = motore.gioca_squadre(Squadra("Leoni", (uomini[0], uomini[1], donne[0])), Squadra("Tigri", (uomini[2], donne[1], uomini[3])), seme=2)
     assert max(squadre.set[0]) >= 31 and squadre.eventi is None
     assert {gid: g.a_dizionario() for gid, g in mondo.giocatori.items()} == prima
+    # La cronaca di una gara a squadre giocata in modalità completa si salva col nome delle squadre.
+    completa = motore.gioca_squadre(Squadra("Leoni", (uomini[0], uomini[1], donne[0])), Squadra("Tigri", (uomini[2], donne[1], uomini[3])), seme=2, dettaglio="completo")
+    assert completa.nomi_squadre == ("Leoni", "Tigri")
+    percorso = motore.salva_cronaca(completa)
+    assert percorso.startswith(str(cartella_di_prova / CARTELLA_CRONACHE)) and percorso.endswith("Leoni contro Tigri.txt")
+    with open(percorso, encoding="utf-8") as f:
+        cronaca = f.read()
+    assert "Inizio della gara a squadre: Leoni contro Tigri" in cronaca and "L'arbitro legge le formazioni: Leoni con " in cronaca

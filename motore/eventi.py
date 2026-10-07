@@ -39,6 +39,7 @@ TAPPE_FUORI = frozenset(("fuori", "terra", "soffitto"))
 # I tipi degli eventi, in quattro famiglie. L'incontro e l'arbitro.
 INIZIO_INCONTRO = "INIZIO_INCONTRO"
 SORTEGGIO = "SORTEGGIO"
+FORMAZIONI = "FORMAZIONI"
 RISCALDAMENTO_INIZIO = "RISCALDAMENTO_INIZIO"
 RISCALDAMENTO_COLPO = "RISCALDAMENTO_COLPO"
 AVVISO_TEMPO = "AVVISO_TEMPO"
@@ -78,7 +79,7 @@ PENALITA = "PENALITA"
 CAMBIO_AL_TAVOLO = "CAMBIO_AL_TAVOLO"
 SOSTITUZIONE = "SOSTITUZIONE"
 
-TIPI = (INIZIO_INCONTRO, SORTEGGIO, RISCALDAMENTO_INIZIO, RISCALDAMENTO_COLPO, AVVISO_TEMPO, RISCALDAMENTO_FINE, INIZIO_SET, RECUPERO, CONSEGNA,
+TIPI = (INIZIO_INCONTRO, SORTEGGIO, FORMAZIONI, RISCALDAMENTO_INIZIO, RISCALDAMENTO_COLPO, AVVISO_TEMPO, RISCALDAMENTO_FINE, INIZIO_SET, RECUPERO, CONSEGNA,
         ANNUNCIO, DOMANDA_PRONTO, FISCHIO, CHIAMATA, CAMBIO_BATTITORE, FINE_SET, FINE_INCONTRO,
         BATTUTA, VOLO, PARATA, CAMBIO_MANO, CONTROLLO, COLPO, GOAL, FALLO, PALLA_MORTA, ROTTURA, SOSTITUZIONE_ATTREZZO, RIPETIZIONE, PUNTO,
         TIMEOUT_INIZIO, TIMEOUT_FINE, CAMBIO_CAMPO_INIZIO, CAMBIO_CAMPO_FINE, AMMONIZIONE, PENALITA,
@@ -114,6 +115,7 @@ CHIAMATE = {
     "time_out": "time-out",
     "cambio_campo": "cambio campo",
     "quindici_secondi": "15 secondi",
+    "trenta_secondi": "30 secondi",
     "primo_servizio": "primo servizio",
     "secondo_servizio": "secondo servizio",
     "terzo_servizio": "terzo servizio",
@@ -168,7 +170,7 @@ CAUSE = {
     "goal_dopo_difesa_irregolare": _c("goal", "15.6.1", "goal", 2, "{chi} tocca la pallina nell'area di porta, e la pallina entra lo stesso"),
     "autogoal": _c("goal", "15.2.1", "goal", 2, "la pallina sfugge a {chi} ed entra nella sua porta"),
     # La palla morta, nessun punto, si ripete il servizio.
-    "colpo_debole": _c("palla_morta", "16.1", "palla_morta", 0, "il colpo di {chi} è troppo debole e la pallina si ferma prima dello schermo"),
+    "colpo_debole": _c("palla_morta", "16.1", "palla_morta", 0, "il colpo di {chi} è troppo debole e la pallina si ferma prima di arrivare all'avversario"),
     "ribattuta_lenta": _c("palla_morta", "16.1", "palla_morta", 0, "la ribattuta di {chi} si ferma prima dello schermo"),
     "pallina_ferma": _c("palla_morta", "16.2", "palla_morta", 0, "la pallina sfugge a {chi} e resta ferma, senza suono"),
     "limite_tecnico": _c("palla_morta", "simulatore", "palla_morta", 0, "lo scambio non finisce più, e l'arbitro lo ferma"),
@@ -189,10 +191,6 @@ CAUSE = {
     "mascherina_toccata": _c("penalita", "19.4.1", "penalita", 2, "tocca la mascherina senza permesso"),
     "telefono": _c("penalita", "19.4.2", "penalita", 2, "ha un telefono che suona"),
 }
-
-# Le cause in cui la pallina finisce in porta e quelle che si chiudono a terra o fuori dal tavolo.
-CAUSE_GOAL = frozenset(codice for codice, causa in CAUSE.items() if causa.famiglia == "goal")
-CAUSE_SANZIONE = frozenset(codice for codice, causa in CAUSE.items() if causa.famiglia in ("ammonizione", "penalita"))
 
 
 @dataclasses.dataclass(slots=True)
