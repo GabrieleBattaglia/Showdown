@@ -273,3 +273,19 @@ def test_una_polisportiva_sotto_un_altro_nome_non_si_accetta(mondo):
     dati["polisportiva_attiva"] = "Altro nome"
     with pytest.raises(archivio.ErroreSalvataggio, match="sotto un altro nome"):
         archivio.costruisci(contenuto, Mondo())
+
+
+def test_chi_esce_di_scena_esce_anche_dalla_vendita_e_il_computer_non_compra_i_morti(mondo):
+    cpu = _cpu_con_gloria(mondo)
+    altra = _cpu_con_gloria(mondo)
+    morto, vivo = sorted((g for g in mondo.giocatori.values() if g.appartenenza == "*"), key=lambda g: g.id)[:2]
+    mondo._tessera(cpu, morto)
+    mondo._tessera(cpu, vivo)
+    cpu.in_vendita[morto.id] = 100
+    mondo._uscita(morto, "morte", INIZIO, morto.eta)
+    assert morto.id not in cpu.in_vendita
+    # Un salvataggio vecchio poteva avere un morto in vendita: il computer non lo compra.
+    cpu.in_vendita[morto.id] = 1
+    altra.cassa = 10**9
+    mondo._compra_dal_mercato(altra, INIZIO)
+    assert morto.id not in altra.tesserati

@@ -543,6 +543,10 @@ class FinestraPrincipale(wx.Frame):
         if not rosa:
             self.mostra(f"{p.nome} non ha tesserati da svincolare.", "nessun tesserato", "rosa_vuota")
             return
+        # Le mosse si guardano prima di far scegliere il tesserato, non dopo.
+        if self.mondo.mosse_rimaste(p) <= 0:
+            self.mostra(f"Per oggi {p.nome} ha finito le mosse di mercato.", "nessuna mossa", "mosse_finite")
+            return
         dialogo = SceltaGiocatore(self, self.mondo, f"Svincola un tesserato di {p.nome}", "S&vincola", rosa)
         try:
             suoni.suona("dialogo_svincolo")
@@ -552,9 +556,6 @@ class FinestraPrincipale(wx.Frame):
             g = dialogo.scelto
         finally:
             dialogo.Destroy()
-        if self.mondo.mosse_rimaste(p) <= 0:
-            self.mostra(f"Per oggi {p.nome} ha finito le mosse di mercato.", "nessuna mossa", "mosse_finite")
-            return
         domanda = f"Svincolare {testi.nome_completo(g)}? Tornerà {testi.accorda(g, 'libero')}, e userai una delle {self.mondo.mosse_rimaste(p)} mosse che ti restano oggi."
         if self._domanda(domanda, "Svincolo") != wx.YES:
             return

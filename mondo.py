@@ -679,7 +679,8 @@ class Mondo:
                 continue
             for gid, prezzo in venditore.in_vendita.items():
                 g = self.giocatori.get(gid)
-                if g is None or prezzo > spendibile or prezzo > valore_di_mercato(g) * RIALZO_CPU or stipendio(g) > massimo:
+                # Il ritirato non si compra: serve ai salvataggi in cui un morto era rimasto in vendita.
+                if g is None or g.ritirato or prezzo > spendibile or prezzo > valore_di_mercato(g) * RIALZO_CPU or stipendio(g) > massimo:
                     continue
                 if debole is not None and g.indice_collettivo_valore <= debole.indice_collettivo_valore:
                     continue
@@ -827,6 +828,10 @@ class Mondo:
             if club != "*" and club in self.polisportive:
                 self.annota(self.polisportive[club], f"{nome_completo(g)} muore.", data)
                 self.polisportive[club].rimuovi_tesserato(gid, g.indice_collettivo_valore)
+        # Chi esce di scena esce anche dalla vendita: prima ci restava, e il computer poteva
+        # comprare un giocatore morto, che finiva fra i suoi tesserati.
+        if club != "*" and club in self.polisportive:
+            self.polisportive[club].in_vendita.pop(gid, None)
         self.giocatori_morti_sessione.append((gid, msg))
         self._ids_morti_processati_sessione.add(gid)
         g.ritirato = True

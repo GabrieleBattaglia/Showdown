@@ -3,6 +3,12 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.39.5] - 2026-10-07
+
+Un giocatore che moriva o lasciava il mondo mentre era in vendita restava nell'elenco delle vendite, e una polisportiva del computer poteva comprarlo: il morto finiva fra i suoi tesserati, e se era tuo incassavi il prezzo. Ora chi esce di scena esce anche dalla vendita, e il computer non compra chi non gioca più, nemmeno da un salvataggio vecchio.
+
+Svincola un tesserato, con le mosse di mercato finite, faceva scegliere il tesserato e solo dopo diceva che le mosse erano finite: ora lo dice subito.
+
 ## [1.39.3] - 2026-10-07
 
 ### Gli effetti sonori
