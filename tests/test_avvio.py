@@ -2,7 +2,8 @@
 Test del programma intero, dall'avvio al salvataggio, con le risposte dell'utente preparate in
 un copione e i file in una cartella temporanea: la nascita del mondo, una polisportiva, una
 partita, il salvataggio; poi il ritorno, che ricarica il mondo; infine un salvataggio rovinato,
-davanti al quale il programma si ferma senza toccare nulla.
+davanti al quale il programma si ferma senza toccare nulla. Dalla tappa 9 la partita si gioca
+col motore nuovo, e la sua fine si riconosce dalla riga Fine dell'incontro.
 """
 
 import builtins
@@ -59,7 +60,7 @@ def test_nascita_partita_salvataggio_e_ritorno(cartella_di_prova, recita, capsys
     assert copione.risposte == []
     schermo = capsys.readouterr().out
     assert "Nessun salvataggio trovato: nasce un mondo nuovo, con 50 giocatori." in schermo
-    assert "=== PARTITA TERMINATA ===" in schermo
+    assert "Fine dell'incontro: vince " in schermo
     assert "Mondo salvato:" in schermo
     documento = archivio.leggi(cartella_di_prova / FILE_MONDO)
     club = documento["mondo"]["polisportive"]["club di prova"]

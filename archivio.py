@@ -24,8 +24,12 @@ i giorni per cui conservarli e il registro delle vecchie glorie. Il formato 3, d
 registra ogni polisportiva sotto il suo nome, quello che i tesserati portano scritto, e non ha più
 nei tesserati né ritirati né assenti. Il formato 4, della tappa 8, aggiunge l'economia: cassa,
 vendite e bilanci delle polisportive, esperienza, fedeltà, pazienza, arretrati e bandiera dei
-giocatori. Un salvataggio di un formato vecchio si aggiorna da solo alla lettura, e si riscrive
-nel formato nuovo al primo salvataggio.
+giocatori. Il formato 5, della tappa 9, del 2026-10-07, aggiunge a ogni giocatore il temperamento,
+ricavato dal suo numero come alla nascita, e la sede dell'infortunio: non precisata per chi era già
+infortunato, che resta fermo come prima. Il valore complessivo non si salva, e si ricalcola alla
+lettura con i pesi del momento. Un salvataggio di un formato vecchio si aggiorna da solo alla
+lettura, e si riscrive nel formato nuovo al primo salvataggio; le versioni di prima rifiutano un
+salvataggio di un formato più recente, con il loro messaggio.
 """
 
 import contextlib
@@ -50,14 +54,15 @@ from costanti import (
     FILE_MONDO_COPIA_VECCHIO,
     FILE_MONDO_VECCHIO,
     NUM_GIOCATORI_INIZIALI,
+    SEDE_NON_PRECISATA,
     VERSIONE,
 )
-from modelli import DATA, VOCI_CONTI, Giocatore, Polisportiva, a_json, da_json, normalizza_nome
+from modelli import DATA, VOCI_CONTI, Giocatore, Polisportiva, a_json, da_json, normalizza_nome, temperamento_innato
 from mondo import CONSERVAZIONE_PREDEFINITA
 from utilita import adesso, adesso_utc
 
 APPLICAZIONE = "MESS"
-FORMATO = 4
+FORMATO = 5
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Da dove viene il mondo appena caricato.
@@ -269,7 +274,19 @@ def _dal_formato_3(documento):
     documento["formato"] = 4
 
 
-MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3}
+def _dal_formato_4(documento):
+    """
+    Dal formato 4 al 5, con la tappa 9: ogni giocatore riceve il temperamento che avrebbe avuto
+    alla nascita, ricavato dal suo numero senza toccare il caso, e la sede dell'infortunio, non
+    precisata per chi è infortunato, così resta fermo come prima, e nessuna per gli altri.
+    """
+    for g in documento["mondo"]["giocatori"]:
+        g.setdefault("temperamento", temperamento_innato(g["id"]))
+        g.setdefault("infortunio_sede", SEDE_NON_PRECISATA if g["infortunato"] else None)
+    documento["formato"] = 5
+
+
+MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4}
 
 
 def _conservazione_da_json(valore):

@@ -1,12 +1,18 @@
-"""Test del motore di partita, che non stampa nulla, e del mondo che avanza col tempo."""
+"""
+Test della facciata del motore di partita, che non stampa nulla, e del mondo che avanza col tempo.
+Dalla tappa 9 la cronaca su file sta nella cartella cronache, una partita per file, e la partita si
+può giocare senza registrarla.
+"""
 
 import datetime
 import random
 
 import pytest
 
-from costanti import MODALITA_OUTPUT_FILE, NOME_FILE_LOG_PARTITE
+import testi
+from costanti import CARTELLA_CRONACHE, MODALITA_OUTPUT_CONSOLE, MODALITA_OUTPUT_FILE
 from mondo import Mondo
+from motore import Squadra
 from partita import MotorePartita
 from utilita import in_ora_locale
 
@@ -53,10 +59,43 @@ def test_partita_con_mostra_e_cronaca_su_file(mondo, cartella_di_prova):
     righe = []
     for g in mondo.giocatori.values():
         g.infortunato = False
+    g3, g4 = mondo.giocatori[3], mondo.giocatori[4]
     MotorePartita(mondo, mostra=righe.append).gioca_partita(3, 4, 3, MODALITA_OUTPUT_FILE)
-    assert righe[0].startswith("\n--- Inizio Partita: ID 3 vs ID 4")
+    assert righe[0] == f"Inizio dell'incontro: {g3.cognome} contro {g4.cognome}, al meglio dei 3 set."
+    assert righe[-1].startswith("Fine dell'incontro: vince ")
     assert any(r.startswith("Cronaca completa salvata in:") for r in righe)
-    assert (cartella_di_prova / NOME_FILE_LOG_PARTITE).read_text(encoding="utf-8").count("PARTITA TERMINATA") == 1
+    cronache = list((cartella_di_prova / CARTELLA_CRONACHE).iterdir())
+    assert len(cronache) == 1 and cronache[0].name.endswith(f" {g3.cognome} contro {g4.cognome}.txt")
+    testo = cronache[0].read_text(encoding="utf-8")
+    assert testo.count("Fine dell'incontro: vince ") == 1
+    assert "\n\n" not in testo
+
+
+def test_partita_in_console_un_punto_alla_volta(mondo):
+    righe, pause = [], []
+    for g in mondo.giocatori.values():
+        g.infortunato = False
+    risultato = MotorePartita(mondo, mostra=righe.append, pausa=pause.append).gioca_partita(5, 6, 3, MODALITA_OUTPUT_CONSOLE, seme=11)
+    assert risultato["error"] is None
+    assert len(pause) == risultato["risultato"].incontro.punti_giocati
+    assert set(pause) == {"\rUn tasto per il punto successivo.\r"}
+    assert righe[-1].startswith("Fine dell'incontro: vince ")
+    assert sum(1 for r in righe if r.startswith("Fine dell'incontro")) == 1
+
+
+def test_partita_interrotta_non_si_registra(mondo):
+    for g in mondo.giocatori.values():
+        g.infortunato = False
+    prima = mondo.giocatori[5].a_dizionario()
+    righe = []
+
+    def interrompi(_prompt):
+        raise EOFError
+
+    risultato = MotorePartita(mondo, mostra=righe.append, pausa=interrompi).gioca_partita(5, 6, 3, MODALITA_OUTPUT_CONSOLE)
+    assert risultato["error"] == "Partita interrotta dall'utente."
+    assert righe[-1] == "Partita interrotta dall'utente."
+    assert mondo.giocatori[5].a_dizionario() == prima
 
 
 def test_partita_rifiutata(mondo):
@@ -65,13 +104,31 @@ def test_partita_rifiutata(mondo):
     assert motore.gioca_partita(1, 1, 3)["error"] == "I giocatori devono essere diversi."
     assert motore.gioca_partita(1, 999, 3)["error"] == "ID giocatore non valido."
     assert righe[-1] == "ERRORE: ID giocatore non valido."
-
-
-def test_resistenza_piena_nel_primo_set(mondo):
-    motore = MotorePartita(mondo)
     for g in mondo.giocatori.values():
-        assert motore._calcola_resistenza_set(g, 1) == 1.0
-        assert 0.01 <= motore._calcola_resistenza_set(g, 5) < 1.0
+        g.infortunato = False
+    assert motore.gioca_partita(1, 2, 4)["error"] == "Il numero di set deve essere 3 o 5."
+    mondo.giocatori[2].infortunato = True
+    mondo.giocatori[2].infortunio_sede = "ginocchio"
+    assert motore.gioca_partita(1, 2, 3)["error"] == "Uno o entrambi infortunati."
+
+
+def test_registra_falso_lascia_il_mondo_identico(mondo):
+    for g in mondo.giocatori.values():
+        g.infortunato = False
+    prima = {gid: g.a_dizionario() for gid, g in mondo.giocatori.items()}
+    risultato = MotorePartita(mondo).gioca_partita(7, 8, 5, seme=3, registra=False)
+    assert risultato["error"] is None and risultato["seme"] == 3
+    assert {gid: g.a_dizionario() for gid, g in mondo.giocatori.items()} == prima
+
+
+def test_stesso_seme_stessa_partita(mondo):
+    for g in mondo.giocatori.values():
+        g.infortunato = False
+    motore = MotorePartita(mondo)
+    primo = motore.gioca_partita(9, 10, 3, seme=42, registra=False)
+    secondo = motore.gioca_partita(9, 10, 3, seme=42, registra=False)
+    assert primo["punteggio_set"] == secondo["punteggio_set"]
+    assert primo["risultato"].punti == secondo["risultato"].punti
 
 
 def test_avanzamento_del_tempo(mondo):
@@ -114,3 +171,26 @@ def test_polisportive_del_computer(mondo):
     for p in mondo.polisportive.values():
         for gid in p.tesserati:
             assert mondo.giocatori[gid].appartenenza == p.nome
+
+
+def test_amichevole_registrata_e_cronaca_salvata(mondo, cartella_di_prova):
+    for g in mondo.giocatori.values():
+        g.infortunato = False
+    motore = MotorePartita(mondo)
+    risultato = motore.gioca_amichevole(11, 12, set_al_meglio=5, seme=8)
+    assert risultato.eventi and risultato.momenti and risultato.registrazione[0].startswith("Punti allenamento: ")
+    assert mondo.giocatori[11].partitevinte + mondo.giocatori[11].partiteperse == 1
+    percorso = motore.salva_cronaca(risultato)
+    assert percorso.startswith(str(cartella_di_prova / CARTELLA_CRONACHE))
+    pezzi = testi.testi_della_partita(risultato.momenti, motore.nomi(risultato))
+    assert len(pezzi) == risultato.incontro.punti_giocati + 2
+    with pytest.raises(ValueError, match=r"I giocatori devono essere diversi\."):
+        motore.gioca_amichevole(11, 11)
+    with pytest.raises(ValueError, match="3 o 5"):
+        motore.gioca_amichevole(11, 12, set_al_meglio=4)
+    uomini = [g for g in mondo.giocatori.values() if g.sesso == "m"][:4]
+    donne = [g for g in mondo.giocatori.values() if g.sesso == "f"][:2]
+    prima = {gid: g.a_dizionario() for gid, g in mondo.giocatori.items()}
+    squadre = motore.gioca_squadre(Squadra("Leoni", (uomini[0], uomini[1], donne[0])), Squadra("Tigri", (uomini[2], donne[1], uomini[3])), seme=2)
+    assert max(squadre.set[0]) >= 31 and squadre.eventi is None
+    assert {gid: g.a_dizionario() for gid, g in mondo.giocatori.items()} == prima

@@ -1,4 +1,7 @@
-"""Test della nascita dei giocatori, della gloria richiesta, della probabilità di accettazione e delle polisportive."""
+"""
+Test della nascita dei giocatori, della gloria richiesta, della probabilità di accettazione e delle polisportive.
+Dalla tappa 9 l'indice di valore si confronta con valore.indice, che con i pesi iniziali dà la formula di prima.
+"""
 
 import datetime
 import json
@@ -6,6 +9,7 @@ import random
 
 import pytest
 
+import valore
 from costanti import (
     ARCHETIPI_ALLENAMENTO,
     ATTRIBUTI_ALLENABILI,
@@ -47,9 +51,11 @@ def test_nascita_dentro_i_limiti(giocatori):
 
 
 def test_indice_di_valore(giocatori):
+    # Dalla tappa 9 l'indice lo calcola valore.py; con i pesi iniziali è la formula di prima.
     for g in giocatori:
         bonus = 33 * sum(bool(getattr(g, f)) for f in ("ambidestro", "giocorapido", "cambiovelocita"))
         somma = sum(getattr(g, a) for a in ATTRIBUTI_BASE_CON_ALLENABILI)
+        assert g.indice_collettivo_valore == pytest.approx(valore.indice(g))
         assert g.indice_collettivo_valore == pytest.approx(somma + bonus)
 
 

@@ -24,6 +24,8 @@ polisportiva incassa lo sponsor e paga gli stipendi; chi non viene pagato aspett
 pazienza e alla fine se ne va, salvo le bandiere; le offerte sono premi d'ingaggio; i tesserati
 si mettono in vendita e si comprano. Il computer tessera e compra solo chi può pagare, a rosa
 piena scambia solo se ci sta nei conti, e quando non paga vende il suo giocatore più caro.
+Dalla tappa 9, il 2026-10-07, un infortunio ha una sede, e la guarigione la toglie insieme
+all'infortunio.
 Il mondo non stampa: consegna i suoi messaggi alla funzione notifica, che gli passa chi lo usa.
 """
 
@@ -837,6 +839,7 @@ class Mondo:
             if g.infortunato and g.infortunio_fine_datetime and data >= g.infortunio_fine_datetime:
                 g.infortunato = False
                 g.infortunio_fine_datetime = None
+                g.infortunio_sede = None
                 rapporto["guariti"] += 1
                 self.annota(g, "Guarisce dall'infortunio.", data)
             eta_pre = g.eta

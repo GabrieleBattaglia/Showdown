@@ -8,6 +8,9 @@ problema P12, e le correzioni delle liste, problema P11. Le regole del gioco non
 nei moduli del motore, che questa interfaccia chiama: dalla tappa 7 anche fondazione, offerte,
 svincoli e chiusura delle polisportive, con la password facoltativa e i nomi come li si scrive.
 Dalla tappa 8 il tesseramento chiede la cifra dell'ingaggio; il resto dell'economia sta nella finestra.
+Dalla tappa 9, il 2026-10-07, l'amichevole si gioca col motore nuovo, soltanto al meglio dei 3 o dei
+5 set, con la cronaca nuova e senza trattini nei testi; può giocare anche l'ambidestro con un braccio
+infortunato, che continua con l'altro.
 """
 
 import datetime
@@ -35,6 +38,7 @@ from costanti import (
     NOME_POLISPORTIVA_MAX,
     NOME_POLISPORTIVA_MIN,
     PAGINAZIONE_LISTE,
+    SET_AMMESSI,
     VERSIONE,
 )
 from economia import ingaggio_richiesto, stipendio
@@ -635,12 +639,8 @@ class InterfacciaTestuale:
     # Partite.
 
     def _pausa_punto(self, prompt):
-        """Fra un punto e l'altro della cronaca in console: aspetta un tasto."""
-        try:
-            key(prompt)
-        except EOFError:
-            print("Partita interrotta.")
-            raise
+        """Fra un punto e l'altro della cronaca in console: aspetta un tasto. EOF o Ctrl+C interrompono la partita, che non si registra."""
+        key(prompt)
 
     def _giocatore_per_partita(self, domanda, escluso=None):
         """Chiede un giocatore per l'amichevole; None, dopo aver spiegato il perché, se non va bene."""
@@ -653,16 +653,16 @@ class InterfacciaTestuale:
             return None
         g = self.giocatori[gid]
         if g.ritirato:
-            print(f"\tATTENZIONE: {g.nome} è ritirato!")
+            print(f"\tATTENZIONE: {g.nome} è {accorda(g.sesso, 'ritirato')}!")
             return None
-        if g.infortunato:
-            print(f"\tATTENZIONE: {g.nome} è infortunato!")
+        if not g.puo_giocare:
+            print(f"\tATTENZIONE: {g.nome} è {accorda(g.sesso, 'infortunato')}!")
             return None
         return gid
 
     def organizza_partita_amichevole(self):
-        """Chiede i dettagli e avvia una partita amichevole tra due giocatori."""
-        print("\n--- Organizza Partita Amichevole ---")
+        """Chiede i dettagli e avvia una partita amichevole tra due giocatori, al meglio dei 3 o dei 5 set."""
+        print("\nOrganizza un'amichevole.")
         try:
             id1 = self._giocatore_per_partita("ID Giocatore 1? ")
             if id1 is None:
@@ -672,27 +672,29 @@ class InterfacciaTestuale:
                 return
             g1 = self.giocatori[id1]
             g2 = self.giocatori[id2]
-            print(f"\nPartita: {g1.nome} {g1.cognome} (ID:{id1}) vs {g2.nome} {g2.cognome} (ID:{id2})")
-            set_input = dgt("Al meglio di quanti Set (3 o 5)? ", "i", imin=3, imax=5)
-            num_set = 5 if set_input == 5 else 3
-            print(f"Partita al meglio dei {num_set} set.")
-            print("\nModalità Visualizzazione Risultati:")
-            opzioni_output = {'R': "Solo Risultato finale", 'C': "Cronaca in Console (punto per punto)", 'F': "Salva Cronaca su File"}
-            scelta_output = menu(d=opzioni_output, p="Scegli modalità (R/C/F)? ", keyslist=True, show=True)
+            print(f"\nAmichevole fra {g1.nome} {g1.cognome}, ID {id1}, e {g2.nome} {g2.cognome}, ID {id2}.")
+            num_set = dgt("Al meglio di quanti set, 3 o 5? ", "i", imin=3, imax=5)
+            if num_set not in SET_AMMESSI:
+                print("Il numero di set deve essere 3 o 5.")
+                return
+            print(f"Amichevole al meglio dei {num_set} set.")
+            print("\nCome vuoi seguirla?")
+            opzioni_output = {'R': "Solo il risultato finale", 'C': "La cronaca un punto alla volta", 'F': "La cronaca salvata in un file"}
+            scelta_output = menu(d=opzioni_output, p="Scegli fra R, C e F: ", keyslist=True, show=True)
             modalita = {'C': MODALITA_OUTPUT_CONSOLE, 'F': MODALITA_OUTPUT_FILE}.get(scelta_output, MODALITA_OUTPUT_RISULTATO)
-            print("Avvio simulazione partita...")
             risultato = MotorePartita(self.mondo, mostra=print, pausa=self._pausa_punto).gioca_partita(id1, id2, num_set, modalita)
             if risultato.get('error'):
-                print(f"\nErrore durante la partita: {risultato['error']}")
+                print(f"\nL'amichevole non si è giocata: {risultato['error']}")
             else:
-                print("\n--- Riepilogo Partita Amichevole ---")
+                print("\nRiepilogo dell'amichevole.")
                 v_id = risultato.get('vincitore_id')
                 p_id = risultato.get('perdente_id')
-                print(f"Vincitore: ID {v_id} ({self.giocatori[v_id].nome} {self.giocatori[v_id].cognome})")
-                print(f"Perdente:  ID {p_id} ({self.giocatori[p_id].nome} {self.giocatori[p_id].cognome})")
-                print(f"Punteggio Set: {risultato.get('punteggio_set')}")
+                print(f"Vince {self.giocatori[v_id].nome} {self.giocatori[v_id].cognome}, ID {v_id}.")
+                print(f"Perde {self.giocatori[p_id].nome} {self.giocatori[p_id].cognome}, ID {p_id}.")
+                dal_vincitore = [(a, b) if v_id == id1 else (b, a) for a, b in risultato.get('punteggio_set')]
+                print("Set: " + ", ".join(f"{a} a {b}" for a, b in dal_vincitore) + ".")
                 if risultato.get('log_path'):
-                    print(f"Cronaca completa disponibile in: {risultato['log_path']}")
+                    print(f"La cronaca completa è nel file {risultato['log_path']}.")
         except (ValueError, TypeError) as e_input:
             print(f"\nERRORE Input/Tipo non valido: {e_input}")
             print("Operazione partita annullata.")
