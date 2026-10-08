@@ -14,12 +14,15 @@ vicino, cioè la legge del motore con i decibel dimezzati, com'è, moltiplicati 
 che è quasi la legge dell'aria aperta. La cupezza: nessuna; quella di oggi, che scende con la
 distanza fino a 2660 hertz in fondo; quella dell'ombra dello schermo, aperta finché la pallina si
 vede e poi giù, lieve fino a 6000 hertz o forte fino agli stessi 2660 di oggi: così l'ombra forte e
-la distanza differiscono solo nella forma, e l'ombra lieve e quella forte solo nella quantità. La
-larghezza: la metà lontana larga quanto quella vicina, come oggi; stretta dallo schermo in poi fino
-al 65 o al 30 per cento in fondo, dove il 30 è quasi l'angolo vero; oppure tutto il tavolo
-dall'angolo vero, con le casse a 30 gradi, che cambia anche la metà vicina. Poi, se i voti scelgono
-qualcosa di diverso da oggi, un gruppo finale mette a confronto lo spazio di oggi con quello delle
-scelte messe insieme, per sentire se le tre leggi stanno bene insieme.
+la distanza differiscono solo nella forma, e l'ombra lieve e quella forte solo nella quantità. Tutte
+cambiano il timbro e non il livello, perché la resa pareggia l'energia che il filtro toglie. La
+larghezza: la metà lontana larga quanto quella vicina, come oggi; oppure stretta dallo schermo in
+poi fino al 65, al 30 o al 10 per cento in fondo, dove il 30 è circa l'angolo vero con le casse a 30
+gradi e il 10 circa l'angolo vero in cuffia, con i lati pieni a 90 gradi. La metà vicina resta
+sempre com'è: la legge dell'angolo vero su tutto il tavolo, che pure la resa conosce, qui non c'è,
+perché cambierebbe soprattutto la metà vicina e il fischio, e la domanda non riguarda loro. Poi, se
+i voti scelgono qualcosa di diverso da oggi, un gruppo finale mette a confronto lo spazio di oggi
+con quello delle scelte messe insieme, per sentire se le tre leggi stanno bene insieme.
 I punti sono quelli dell'ascolto libero, scelti da strumenti/ascolta_partita.py, che Gabriele ha già
 sentito: per ogni dimensione due o tre che la mettono in evidenza, composti in memoria per il
 giocatore A con strumenti/resa_prototipo.py, in fila con una pausa fra l'uno e l'altro, senza file
@@ -29,17 +32,24 @@ loro restano quelli delle leggi.
 Il protocollo è quello delle prove alla cieca di Gabriele, che va trattato come uno strumento di
 misura. Prima della prova lo strumento dice soltanto come si esegue, cosa premere e che domanda ci
 sarà, mai i numeri, mai quale candidato sia quello di oggi, mai che c'è un controllo; aspetta il via
-e lascia qualche secondo di silenzio prima del primo suono. In ogni gruppo un candidato, scelto a
-caso, è ripetuto identico sotto due lettere e presentato come gli altri: è il controllo. Le lettere
-si mescolano con un seme, che si registra; ogni gruppo comincia con la rassegna, tutte le lettere
-una volta, in ordine, senza domande, e poi il voto da 1 a 5 lettera per lettera, sentendo ogni
-lettera tutte le volte che si vuole, e con la possibilità di non avere preferenze. In fondo al
-gruppo c'è il menu comune dei collaudi, di collaudo_comune di GBUtils: r rifà la rassegna e il voto,
-c commenta, Invio dà il gruppo per superato, Escape lo chiude senza giudizio.
+di ogni gruppo e lascia qualche secondo di silenzio prima del suo primo suono. In ogni gruppo un
+candidato, scelto a caso, è ripetuto identico sotto due lettere e presentato come gli altri: è il
+controllo. Le lettere si mescolano con un seme, che si registra; ogni gruppo comincia con la
+rassegna, tutte le lettere una volta, in ordine, senza domande, e poi il voto da 1 a 5 lettera per
+lettera, sentendo ogni lettera tutte le volte che si vuole, e con la possibilità di non avere
+preferenze, che la riga del voto ricorda ogni volta. In fondo al gruppo c'è il menu comune dei
+collaudi, di collaudo_comune di GBUtils: r rifà la rassegna e il voto, c commenta, Invio dà il
+gruppo per superato, Escape lo chiude senza giudizio, e allora i suoi voti restano nel file ma non
+decidono niente.
+La scelta di un gruppo è il candidato con la media più alta, ma uno diverso da quello di oggi vince
+soltanto se anche oggi ha avuto un voto e lui lo supera: con i voti incompleti, una lettera votata
+da sola, magari con un voto basso, non deve diventare la scelta. A parità vince oggi; senza voti,
+senza preferenze o con il gruppo chiuso senza giudizio resta oggi.
 I risultati vanno nel file banco_spazio.txt, nella cartella del programma, una riga per voce: in
 testa la data e il seme, poi i voti e i commenti di ogni gruppo, con le sole lettere; alla fine
 della sessione, e soltanto allora, quale lettera era quale, il riepilogo che somma i voti per
-candidato, il conto del controllo e la scelta di ogni gruppo. Di suo lo strumento non scrive righe
+candidato, il conto del controllo e la scelta di ogni gruppo, che dice anche se i voti erano
+incompleti o il gruppo chiuso senza giudizio. Di suo lo strumento non scrive righe
 vuote, perché enter_escape e gruppo vanno a capo da sé; le sole che restano vengono dal menu di
 collaudo_comune, che qui non si tocca.
 Uso, dalla cartella del programma: python strumenti/banco_spazio.py. Con un numero, per esempio
@@ -80,6 +90,9 @@ VOTI = frozenset("12345")
 # nel voto il suono parte quasi subito, perché il tasto l'ha chiesto. Fra un punto e l'altro della
 # stessa lettera, una pausa.
 ANTICIPO_RASSEGNA = 2.0
+# La prima lettera della rassegna segue il via del gruppo: oltre al tempo per il suo nome, il silenzio
+# dei collaudi prima del primo suono.
+ANTICIPO_PRIMA_LETTERA = ANTICIPO_RASSEGNA + ascolta_suoni.SILENZIO_INIZIALE
 ANTICIPO_VOTO = ap.ANTICIPO
 PAUSA_FRA_I_PUNTI = 1.2
 # Mentre una lettera suona si dà un'occhiata alla tastiera a questo passo, e si aspetta un poco oltre la fine.
@@ -137,11 +150,13 @@ def _ombra(fc, quanto, nota=""):
     return Candidato(nome, resa.Spazio(cupezza="ombra", fc_ombra=fc))
 
 
-def _stretta(lontano):
-    return Candidato(f"la metà lontana che si stringe dallo schermo in poi, fino al {intero(lontano * 100)} per cento in fondo", resa.Spazio(lontano=lontano))
+def _stretta(lontano, nota=""):
+    return Candidato(f"la metà lontana che si stringe dallo schermo in poi, fino al {intero(lontano * 100)} per cento in fondo{nota}", resa.Spazio(lontano=lontano))
 
 
 ANGOLO_LONTANO = math.degrees(math.atan2(LARGHEZZA_TAVOLO / 2, resa.D_FONDO))
+# In cuffia il pan pieno porta il suono in un orecchio, cioè a 90 gradi dal centro.
+ANGOLO_CUFFIA = 90.0
 FC_OMBRA_LIEVE = 6000.0
 
 VOLUME = (
@@ -160,9 +175,8 @@ CUPEZZA = (
 LARGHEZZA = (
     Candidato("la metà lontana larga quanto quella vicina, la legge di oggi", resa.Spazio()),
     _stretta(0.65),
-    _stretta(0.3),
-    Candidato(f"tutto il tavolo dall'angolo vero, con le casse a {intero(resa.ANGOLO_CASSE)} gradi: l'angolo lontano a {numero(ANGOLO_LONTANO)} gradi dal centro",
-              resa.Spazio(pan="angolo")),
+    _stretta(0.3, f": circa l'angolo vero, {numero(ANGOLO_LONTANO)} gradi dal centro, con le casse a {intero(resa.ANGOLO_CASSE)} gradi"),
+    _stretta(0.1, f": circa l'angolo vero in cuffia, dove i lati pieni stanno a {intero(ANGOLO_CUFFIA)} gradi"),
 )
 DIMENSIONI = (
     Dimensione("volume", "Spazio, il volume del lontano",
@@ -170,7 +184,7 @@ DIMENSIONI = (
                ("goal_di_battuta", "goal_tuo_lontano"), ("volume",), VOLUME),
     Dimensione("cupezza", "Spazio, il colore del lontano",
                "quanto ti sembra giusto il colore, chiaro o scuro, dei suoni a metà tavolo e di quelli lontani, rispetto a quelli vicini a te",
-               ("goal_di_battuta", "schermo_centrale", "goal_tuo_lontano"), ("cupezza", "d0", "fc_ombra"), CUPEZZA),
+               ("goal_di_battuta", "schermo_centrale", "goal_tuo_lontano"), tuple(sorted(resa.CAMPI_DEL_COLORE)), CUPEZZA),
     Dimensione("larghezza", "Spazio, la larghezza della metà lontana",
                "quanto ti sembra giusta la posizione a destra e a sinistra dei suoni, soprattutto nella metà lontana del tavolo",
                ("diagonale", "goal_tuo_lontano"), ("pan", "lontano"), LARGHEZZA),
@@ -256,6 +270,8 @@ class Prova:
         self.nessuna_preferenza = False
         self.saltata = False
         self.svolta = False
+        # Chiusa senza giudizio, con Escape nel menu di fine gruppo: i voti restano nel file ma non decidono.
+        self.chiusa = False
 
     def indice(self, lettera):
         return self.ordine[self.lettere.index(lettera)]
@@ -302,16 +318,20 @@ def medie(prova):
 
 def scelta(prova):
     """
-    L'indice del candidato preferito: quello con la media più alta; a parità quello di oggi, se è
-    fra i pari, o il primo. Senza voti, o senza preferenze, resta quello di oggi.
+    L'indice del candidato preferito: quello con la media più alta, ma un candidato diverso da
+    quello di oggi vince soltanto se oggi ha avuto un voto e lui lo supera, perché con i voti
+    incompleti una lettera votata da sola non ha battuto niente. A parità resta oggi, e fra pari
+    che non sono oggi vince il primo. Senza voti, senza preferenze, senza un voto a oggi o con il
+    gruppo chiuso senza giudizio resta quello di oggi.
     """
     oggi = indice_di_oggi(prova.dimensione)
     valori = medie(prova)
-    if prova.nessuna_preferenza or not valori:
+    if prova.nessuna_preferenza or prova.chiusa or oggi not in valori:
         return oggi
     migliore = max(valori.values())
-    pari = [indice for indice, media in valori.items() if media == migliore]
-    return oggi if oggi in pari else min(pari)
+    if valori[oggi] == migliore:
+        return oggi
+    return min(indice for indice, media in valori.items() if media == migliore)
 
 
 def spazio_delle_scelte(prove):
@@ -356,11 +376,15 @@ def suona(buffer, tasti):
 
 
 def rassegna(prova):
-    """Tutte le lettere una volta, in ordine, ciascuna annunciata prima di suonare, senza domande. Escape la interrompe."""
+    """
+    Tutte le lettere una volta, in ordine, ciascuna annunciata prima di suonare, senza domande; la
+    prima dopo qualche secondo di silenzio in più, perché segue il via del gruppo. Escape la interrompe.
+    """
     print("Rassegna.")
-    for lettera in prova.lettere:
+    for posto, lettera in enumerate(prova.lettere):
+        anticipo = ANTICIPO_RASSEGNA if posto else ANTICIPO_PRIMA_LETTERA
         print(f"Lettera {lettera}.")
-        if suona(prova.da_sentire(lettera, ANTICIPO_RASSEGNA), TASTI_DELLA_RASSEGNA) == "\x1b":
+        if suona(prova.da_sentire(lettera, anticipo), TASTI_DELLA_RASSEGNA) == "\x1b":
             print("Rassegna interrotta.")
             return
 
@@ -387,25 +411,30 @@ def riassunto(prova):
 def voto(prova):
     """
     Il voto, una lettera alla volta, dalla prima. Spazio fa sentire la lettera, quante volte si
-    vuole; il tasto di un'altra lettera fa sentire quella, per confronto; da 1 a 5 si vota e si
-    passa alla seguente; Invio passa oltre senza cambiare il voto; n dichiara nessuna preferenza
-    per tutto il gruppo e cancella i voti; Escape chiude il voto. Un tasto premuto mentre una
-    lettera suona la ferma e vale subito.
+    vuole; il tasto di un'altra lettera fa sentire quella, per confronto; da 1 a 5 si vota la
+    lettera del prompt, anche mentre ne suona un'altra, e si passa alla seguente; Invio passa
+    oltre senza cambiare il voto; n dichiara nessuna preferenza per tutto il gruppo e cancella i
+    voti; Escape chiude il voto. Un tasto premuto mentre una lettera suona la ferma e vale subito,
+    e spazio fa ripartire quella che suonava, anche se è una lettera di confronto: nel voto le
+    lettere non si annunciano, e chi ascolta crede di risentire quella che ha appena chiesto.
     """
-    print(f"Il voto, da A a {prova.lettere[-1]}: {prova.dimensione.domanda}.")
+    print(f"Il voto, da A a {prova.lettere[-1]}: {prova.dimensione.domanda}; n se non hai preferenze.")
     tasti = tasti_del_voto(prova)
     i = 0
     tasto = None
+    in_corso = None
     while i < len(prova.lettere):
         lettera = prova.lettere[i]
         if tasto is None:
+            in_corso = None
             tasto = key(invito(lettera, prova.voti.get(lettera)))
             print()
         scelto, tasto = tasto, None
         if scelto not in tasti:
             continue
         if scelto == " ":
-            tasto = suona(prova.da_sentire(lettera, ANTICIPO_VOTO), tasti)
+            in_corso = in_corso or lettera
+            tasto = suona(prova.da_sentire(in_corso, ANTICIPO_VOTO), tasti)
         elif scelto == "\r":
             i += 1
         elif scelto == "\x1b":
@@ -419,7 +448,8 @@ def voto(prova):
             prova.nessuna_preferenza = False
             i += 1
         else:
-            tasto = suona(prova.da_sentire(scelto.upper(), ANTICIPO_VOTO), tasti)
+            in_corso = scelto.upper()
+            tasto = suona(prova.da_sentire(in_corso, ANTICIPO_VOTO), tasti)
     print(riassunto(prova))
 
 
@@ -512,18 +542,35 @@ def righe_della_rivelazione(prove):
             voti_della_coppia = [f"{lettera} {prova.voti.get(lettera, 'senza voto')}" for lettera in coppia]
             righe.append(f"Controllo, {titolo}: le lettere {unisci(coppia)}, identiche campione per campione, hanno avuto {unisci(voti_della_coppia)}.")
         if dimensione.chiave != INSIEME.chiave:
-            scelto = dimensione.candidati[scelta(prova)].nome
-            if prova.nessuna_preferenza or not prova.voti:
-                righe.append(f"Scelta, {titolo}: senza voti resta {scelto}.")
-            else:
-                righe.append(f"Scelta, {titolo}: {scelto}.")
+            righe.append(riga_della_scelta(prova))
     return righe
+
+
+def riga_della_scelta(prova):
+    """La scelta di un gruppo, con il perché quando resta quella di oggi per i voti chiusi, mancanti o incompleti."""
+    titolo = prova.dimensione.titolo
+    scelto = prova.dimensione.candidati[scelta(prova)].nome
+    if prova.chiusa:
+        return f"Scelta, {titolo}: il gruppo è stato chiuso senza giudizio, quindi i voti non contano e resta {scelto}."
+    if prova.nessuna_preferenza or not prova.voti:
+        return f"Scelta, {titolo}: senza voti resta {scelto}."
+    senza = [lettera for lettera in prova.lettere if lettera not in prova.voti]
+    if not senza:
+        return f"Scelta, {titolo}: {scelto}."
+    mancano = f"la lettera {senza[0]} è rimasta" if len(senza) == 1 else f"le lettere {unisci(senza)} sono rimaste"
+    if indice_di_oggi(prova.dimensione) not in medie(prova):
+        return f"Scelta, {titolo}: i voti erano incompleti, {mancano} senza voto, e la legge di oggi non ne ha avuti, quindi resta lei: {scelto}."
+    return f"Scelta, {titolo}: {scelto}, anche se i voti erano incompleti: {mancano} senza voto."
 
 
 # La sessione.
 
 def esegui(prova, risultati, annotazioni):
-    """Un gruppo intero: la domanda e i punti, l'annuncio, il giro, il menu di fine gruppo e i voti nel file."""
+    """
+    Un gruppo intero: la domanda e i punti, l'annuncio, il giro, il menu di fine gruppo e i voti
+    nel file. Se il menu si chiude con Escape, senza giudizio, i voti si scrivono lo stesso ma non
+    decidono la scelta.
+    """
     dimensione = prova.dimensione
     titoli = [TITOLI_DEI_PUNTI[chiave] for chiave in dimensione.punti]
     print(f"Nel prossimo gruppo la domanda è: {dimensione.domanda}, con un voto da 1 a 5 per ogni lettera.")
@@ -533,7 +580,7 @@ def esegui(prova, risultati, annotazioni):
         risultati.scrivi(f"{dimensione.titolo}: gruppo saltato.")
         return
     giro(prova)
-    annotazioni.esito(dimensione.titolo, riproduci=lambda: giro(prova))
+    prova.chiusa = annotazioni.esito(dimensione.titolo, riproduci=lambda: giro(prova)) == "chiuso"
     prova.svolta = True
     risultati.scrivi(*righe_dei_voti(prova))
     annotazioni.scrivi_in_sospeso()
@@ -558,15 +605,15 @@ def main(argv=None):
     print("Ogni gruppo si annuncia con la sua domanda e i suoi punti, e si può saltare. Poi viene la rassegna: tutte le lettere una volta, "
           "una dopo l'altra, senza domande; Escape la interrompe.")
     print("Poi il voto, una lettera alla volta: spazio la fa sentire, quante volte vuoi; il tasto di un'altra lettera fa sentire quella, per confronto; "
-          "da 1 a 5 dai il voto, dove 5 è il migliore, e passi alla lettera seguente; Invio passa oltre senza cambiare il voto; "
-          "n vuol dire nessuna preferenza fra le lettere del gruppo; Escape chiude il voto.")
-    print("Mentre una lettera suona i tasti valgono subito, e spazio la fa ripartire.")
-    print("A fine gruppo: r rifà la rassegna e il voto, c commenta, Invio lo dà per superato, Escape lo chiude senza giudizio.")
+          "da 1 a 5 dai il voto, dove 5 è il migliore, sempre alla lettera del prompt, anche mentre ne senti un'altra, e passi alla lettera seguente; "
+          "Invio passa oltre senza cambiare il voto; n vuol dire nessuna preferenza fra le lettere del gruppo; Escape chiude il voto.")
+    print("Mentre una lettera suona i tasti valgono subito, e spazio fa ripartire quella che suona.")
+    print("A fine gruppo: r rifà la rassegna e il voto, c commenta, Invio lo dà per superato, Escape lo chiude senza giudizio, e allora i suoi voti non contano.")
     print(f"I voti e i commenti vanno nel file {FILE_DEI_RISULTATI}, una riga per voce.")
-    # enter_escape e gruppo vanno a capo da sé: un print in più farebbe una riga vuota.
+    # enter_escape e gruppo vanno a capo da sé: un print in più farebbe una riga vuota. Il silenzio
+    # prima del primo suono sta nella rassegna, dopo il via di ogni gruppo.
     if not enter_escape("\rInvio per cominciare, Escape per uscire\r"):
         return 0
-    time.sleep(ascolta_suoni.SILENZIO_INIZIALE)
     risultati = Risultati(percorsi.percorso(FILE_DEI_RISULTATI))
     risultati.scrivi(f"Banco dello spazio, {time.strftime('%Y-%m-%d %H:%M')}, seme {seme}.")
     annotazioni = Annotazioni(risultati.percorso)

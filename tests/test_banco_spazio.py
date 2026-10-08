@@ -176,16 +176,66 @@ def _decibel(x):
     return 10.0 * math.log10(float(np.mean(x ** 2)))
 
 
-def _acuti(x, soglia=5000.0):
-    """L'energia sopra la soglia, in hertz, del tratto stereo, con la finestra di Hann."""
-    spettro = np.abs(np.fft.rfft(x * np.hanning(len(x))[:, None], axis=0)) ** 2
-    return float(np.sum(spettro[np.fft.rfftfreq(len(x), 1.0 / FS) >= soglia]))
-
-
 def _pan(x):
     """Il pan che la legge a potenza costante della resa dà a un tratto stereo, dalle energie dei due canali."""
     sinistra, destra = float(np.sum(x[:, 0] ** 2)), float(np.sum(x[:, 1] ** 2))
     return math.atan2(math.sqrt(destra), math.sqrt(sinistra)) * 4.0 / math.pi - 1.0
+
+
+# La resa di prima, riscritta qui com'era prima delle leggi dello spazio, perché il confronto con lo
+# spazio di oggi non passi dal codice nuovo: pan e distanza dalla vista del motore, il suo volume, e il
+# taglio aperto fino a 60 centimetri e poi giù come 60 diviso la distanza, fra 1500 e 18000 hertz.
+
+def _coefficienti_di_prima(fc):
+    a = math.exp(-2.0 * math.pi * fc / FS)
+    return [(1.0 - a) ** 2], [1.0, -2.0 * a, a * a]
+
+
+def _spazializza_di_prima(posato, ascoltatore):
+    from scipy.signal import lfilter
+
+    pan = np.empty(len(posato.posizioni))
+    vol = np.empty(len(posato.posizioni))
+    fc = np.empty(len(posato.posizioni))
+    for i, p in enumerate(posato.posizioni):
+        pan[i], d, _lato = vista(p, ascoltatore)
+        vol[i] = volume(d)
+        fc[i] = float(min(18000.0, max(1500.0, 18000.0 * 60.0 / max(d, 60.0))))
+    mono = posato.mono
+    if len(posato.posizioni) == 1:
+        b, a = _coefficienti_di_prima(fc[0])
+        segnale = lfilter(b, a, mono).astype(np.float32)
+        angolo = (pan[0] + 1.0) * math.pi / 4.0
+        g = vol[0] * (posato.guadagni[0] if posato.guadagni is not None else 1.0)
+        return np.stack([segnale * (g * math.cos(angolo)), segnale * (g * math.sin(angolo))], axis=1).astype(np.float32)
+    t = np.arange(len(mono)) / FS
+    pan_s = np.interp(t, posato.tempi, pan)
+    vol_s = np.interp(t, posato.tempi, vol)
+    if posato.guadagni is not None:
+        vol_s = vol_s * np.interp(t, posato.tempi, posato.guadagni)
+    passo = round(0.005 * FS)
+    tagli = np.interp(np.arange(0, len(mono), passo) / FS, posato.tempi, fc)
+    segnale = np.empty(len(mono))
+    stato = np.zeros(2)
+    for k in range(math.ceil(len(mono) / passo)):
+        b, a = _coefficienti_di_prima(tagli[min(k, len(tagli) - 1)])
+        tratto = slice(k * passo, (k + 1) * passo)
+        segnale[tratto], stato = lfilter(b, a, mono.astype(np.float64)[tratto], zi=stato)
+    segnale = segnale.astype(np.float32)
+    angolo = (pan_s + 1.0) * (math.pi / 4.0)
+    return np.stack([segnale * vol_s * np.cos(angolo), segnale * vol_s * np.sin(angolo)], axis=1).astype(np.float32)
+
+
+def _componi_di_prima(azione, ascoltatore):
+    posati = resa.posa(azione)
+    t0 = min([azione[0].t] + [p.t for p in posati])
+    fine = max(p.t - t0 + len(p.mono) / FS for p in posati)
+    buffer = np.zeros((math.ceil(fine * FS) + 1, 2), dtype=np.float32)
+    for p in posati:
+        stereo = _spazializza_di_prima(p, ascoltatore)
+        inizio = round((p.t - t0) * FS)
+        buffer[inizio:inizio + len(stereo)] += stereo
+    return buffer
 
 
 # Le leggi dello spazio.
@@ -195,7 +245,8 @@ def test_lo_spazio_di_oggi_da_la_resa_di_prima(banco):
     for chiave, punto in punti.items():
         azione = resa.azione(punto.momento.eventi)
         for ascoltatore in "AB":
-            prima = resa.componi(azione, ascoltatore).buffer
+            prima = _componi_di_prima(azione, ascoltatore)
+            assert np.array_equal(resa.componi(azione, ascoltatore).buffer, prima), (chiave, ascoltatore)
             assert np.array_equal(resa.componi(azione, ascoltatore, resa.Spazio()).buffer, prima), (chiave, ascoltatore)
     # I campi di oggi sono quelli del motore: il pan e la distanza della vista, il volume e il taglio di sempre.
     posizioni = [(3.0, 20.0), (61.0, 183.0), (-50.0, 183.0), (119.0, 350.0), (40.0, 420.0)]
@@ -210,7 +261,10 @@ def test_lo_spazio_di_oggi_da_la_resa_di_prima(banco):
         materiale = _materiali(banco, dimensione.chiave)[bs.indice_di_oggi(dimensione)]
         for k, chiave in enumerate(dimensione.punti):
             azione = resa.azione(punti[chiave].momento.eventi)
-            assert np.array_equal(materiale.rese[k].buffer, resa.componi(azione, "A").buffer)
+            assert np.array_equal(materiale.rese[k].buffer, _componi_di_prima(azione, "A"))
+    # Lo spazio di oggi non si pareggia: il pareggio tocca solo le cupezze diverse da oggi.
+    assert not resa.OGGI.da_pareggiare() and not resa.Spazio(volume=2.0, lontano=0.3).da_pareggiare()
+    assert all(resa.Spazio(**{campo: valore}).da_pareggiare() for campo, valore in (("cupezza", "nessuna"), ("d0", 80.0), ("fc_ombra", 5000.0)))
 
 
 def test_la_legge_del_volume():
@@ -262,6 +316,32 @@ def test_la_legge_del_pan():
     assert resa.campi([(61.0, 300.0)], "A", angolo)[0][0] == 0.0
     # L'arbitro, che con la legge laterale è tutto in un orecchio, con l'angolo vero sta a 0,88.
     assert resa.campi([(-50.0, 183.0)], "A", angolo)[0][0] == pytest.approx(-0.88, abs=0.01)
+
+
+def test_il_pareggio_della_cupezza():
+    # Un impulso ha lo spettro piatto: la quota d'energia che il passa basso lascia passare è la media
+    # del quadrato della sua risposta su tutte le frequenze, e anche l'energia dell'impulso filtrato.
+    from scipy.signal import lfilter
+
+    impulso = np.zeros(FS)
+    impulso[0] = 1.0
+    frequenze = np.linspace(0.0, FS / 2, 200001)
+    for fc in (1500.0, 2660.0, 6000.0, 18000.0):
+        a = math.exp(-2.0 * math.pi * fc / FS)
+        risposta = (1.0 - a) ** 4 / (1.0 - 2.0 * a * np.cos(2.0 * math.pi * frequenze / FS) + a * a) ** 2
+        passata = resa.energia_passata(impulso, fc)[0]
+        assert passata == pytest.approx(float(np.mean(risposta)), rel=0.005), fc
+        assert passata == pytest.approx(float(np.sum(lfilter([(1.0 - a) ** 2], [1.0, -2.0 * a, a * a], impulso) ** 2)), rel=0.005), fc
+    rumore = np.random.default_rng(7).standard_normal(FS)
+    # Il guadagno rende l'energia del taglio di oggi: uno se i tagli coincidono, meno di uno se il filtro è più aperto.
+    fc = np.array([18000.0, 6000.0, 2660.0])
+    di_oggi = np.array([2660.0, 2660.0, 2660.0])
+    guadagni = resa.pareggio(rumore, fc, di_oggi)
+    assert guadagni[2] == pytest.approx(1.0) and guadagni[0] < guadagni[1] < 1.0
+    passate = resa.energia_passata(rumore, fc)
+    assert passate * guadagni ** 2 == pytest.approx(resa.energia_passata(rumore, di_oggi))
+    # Una sorgente muta non ha niente da pareggiare.
+    assert resa.pareggio(np.zeros(100), fc, di_oggi) == pytest.approx(np.ones(3))
 
 
 def test_le_leggi_sconosciute_non_esistono():
@@ -318,28 +398,62 @@ def test_il_volume_cambia_davvero_sui_buffer(banco):
     assert [round(-a) for a in attesi] == [4, 8, 13, 17]
 
 
-def test_la_cupezza_cambia_davvero_sui_buffer(banco):
+def _rotolamento(materiale, fascia, durata=0.04, passo=8):
+    """
+    Le finestre del rotolamento, in tutti i punti del materiale, dove la pallina sta fra le due y
+    della fascia e nessun altro suono si sovrappone: lì si sente il nastro di rumore, il suono più
+    ricco di acuti, dove il colore cambia davvero.
+    """
+    finestre = []
+    for k, rese in enumerate(materiale.rese):
+        altri = [(p.t, p.t + len(p.mono) / FS) for p in rese.posati if p.ruolo != "rotolamento"]
+        for p in (p for p in rese.posati if p.ruolo == "rotolamento"):
+            for j in range(0, len(p.tempi), passo):
+                t = p.t + p.tempi[j]
+                if fascia[0] <= p.posizioni[j][1] <= fascia[1] and not any(a < t + durata and b > t for a, b in altri):
+                    inizio = materiale.inizi[k] + round((t - rese.t0) * FS)
+                    finestre.append(materiale.buffer[inizio:inizio + round(durata * FS)].astype(np.float64))
+    return finestre
+
+
+def _colore(finestre):
+    """Il livello in decibel delle finestre messe insieme e il loro centroide, in hertz."""
+    energia = 0.0
+    momento = 0.0
+    frequenze = None
+    for x in finestre:
+        spettro = np.sum(np.abs(np.fft.rfft(x * np.hanning(len(x))[:, None], axis=0)) ** 2, axis=1)
+        frequenze = np.fft.rfftfreq(len(x), 1.0 / FS)
+        energia += float(np.sum(spettro))
+        momento += float(np.sum(frequenze * spettro))
+    livello = 10.0 * math.log10(sum(float(np.sum(x ** 2)) for x in finestre))
+    return livello, momento / energia
+
+
+def test_la_cupezza_cambia_il_timbro_del_rotolamento_e_non_il_livello(banco):
+    # Le finestre del rotolamento a metà tavolo, prima che lo schermo nasconda la pallina, e in fondo,
+    # dove l'ombra è piena: le stesse per tutti i candidati, che hanno gli stessi suoni posati.
+    meta, fondo = (120.0, 185.0), (resa.Y_OMBRA_PIENA, 366.0)
     materiali = _materiali(banco, "cupezza")
-    nessuna = materiali[0]
-    misure = []
-    for materiale in materiali:
-        # Gli acuti persi, rispetto a nessuna cupezza: in fondo, alla battuta dell'avversario, e allo schermo centrale.
-        fondo = _acuti(_finestra(materiale, 0, "battuta", durata=0.06)[0]) / _acuti(_finestra(nessuna, 0, "battuta", durata=0.06)[0])
-        schermo = _acuti(_finestra(materiale, 1, "schermo", durata=0.06)[0]) / _acuti(_finestra(nessuna, 1, "schermo", durata=0.06)[0])
-        misure.append((10.0 * math.log10(fondo), 10.0 * math.log10(schermo)))
-    (nessuna_fondo, nessuna_schermo), (distanza_fondo, distanza_schermo), (lieve_fondo, lieve_schermo), (forte_fondo, forte_schermo) = misure
-    assert nessuna_fondo == 0.0 and nessuna_schermo == 0.0
-    # La distanza chiude anche allo schermo; l'ombra lo lascia aperto e chiude solo dietro.
-    assert distanza_fondo < -10.0 and distanza_schermo < -5.0
-    assert lieve_schermo == pytest.approx(0.0, abs=0.05) and forte_schermo == pytest.approx(0.0, abs=0.05)
-    assert -10.0 < lieve_fondo < -3.0
-    assert forte_fondo < -12.0
-    # L'ombra forte e la distanza di oggi chiudono quasi uguale in fondo: differiscono nella forma.
-    assert abs(forte_fondo - distanza_fondo) < 3.0
-    # Ogni coppia di candidati si distingue di almeno tre decibel in uno dei due posti.
-    for i in range(len(misure)):
-        for j in range(i + 1, len(misure)):
-            assert max(abs(misure[i][0] - misure[j][0]), abs(misure[i][1] - misure[j][1])) >= 3.0, (i, j, misure)
+    assert all(len(_rotolamento(materiali[0], fascia)) >= 8 for fascia in (meta, fondo))
+    misure = [(_colore(_rotolamento(m, meta)), _colore(_rotolamento(m, fondo))) for m in materiali]
+    oggi = misure[bs.indice_di_oggi(bs.DIMENSIONI[1])]
+    # Il livello del rotolamento resta quello di oggi, entro mezzo decibel: prima del pareggio il filtro
+    # ne toglieva fino a quattro, quanto un passo del gruppo del volume.
+    for (livello_meta, _c), (livello_fondo, _d) in misure:
+        assert abs(livello_meta - oggi[0][0]) < 0.5 and abs(livello_fondo - oggi[1][0]) < 0.5, misure
+    centroidi = [(m[0][1], m[1][1]) for m in misure]
+    (nessuna_meta, nessuna_fondo), (distanza_meta, distanza_fondo), (lieve_meta, lieve_fondo), (forte_meta, forte_fondo) = centroidi
+    # A metà tavolo solo la distanza scurisce; le ombre sono ancora aperte, come nessuna cupezza.
+    assert lieve_meta == pytest.approx(nessuna_meta, abs=1.0) and forte_meta == pytest.approx(nessuna_meta, abs=1.0)
+    assert distanza_meta < nessuna_meta - 300.0
+    # In fondo la distanza e l'ombra forte scuriscono quasi uguale, l'ombra lieve meno, nessuna cupezza niente.
+    assert nessuna_fondo > lieve_fondo + 300.0 > forte_fondo + 600.0
+    assert abs(forte_fondo - distanza_fondo) < 200.0
+    # Ogni coppia di candidati si distingue di almeno 400 hertz di centroide in uno dei due posti.
+    for i in range(len(centroidi)):
+        for j in range(i + 1, len(centroidi)):
+            assert max(abs(centroidi[i][0] - centroidi[j][0]), abs(centroidi[i][1] - centroidi[j][1])) >= 400.0, (i, j, centroidi)
 
 
 def test_la_larghezza_cambia_davvero_sui_buffer(banco):
@@ -353,16 +467,20 @@ def test_la_larghezza_cambia_davvero_sui_buffer(banco):
         misura = (_pan(lontano), _pan(meta), _pan(vicino))
         attese = tuple(resa.campi([p.posizioni[0]], "A", candidato.spazio)[0][0] for p in (parata_lontana, sponda, parata_vicina))
         assert misura == pytest.approx(attese, abs=0.03), candidato.nome
+        assert candidato.spazio.pan == "laterale"
         misure.append(misura)
-    oggi, larga, stretta, angolo = misure
-    # Le tre metà lontane laterali si stringono a passi ben distinti, con la metà vicina uguale.
-    assert oggi[0] - larga[0] > 0.2 and larga[0] - stretta[0] > 0.2
-    assert oggi[1:] == pytest.approx(larga[1:], abs=0.01) and oggi[1:] == pytest.approx(stretta[1:], abs=0.01)
-    # L'angolo vero stringe anche a metà tavolo e allarga vicino a te.
-    assert abs(angolo[1]) < abs(oggi[1]) - 0.3 and abs(angolo[2]) > abs(oggi[2])
-    for i in range(len(misure)):
-        for j in range(i + 1, len(misure)):
-            assert max(abs(a - b) for a, b in zip(misure[i], misure[j], strict=True)) >= 0.1, (i, j, misure)
+    # Le metà lontane si stringono a passi ben distinti, e la metà vicina resta quella di oggi.
+    lontani = [misura[0] for misura in misure]
+    assert all(a - b > 0.1 for a, b in itertools.pairwise(lontani)), lontani
+    for misura in misure[1:]:
+        assert misura[1:] == pytest.approx(misure[0][1:], abs=0.01)
+    # Nessun candidato tocca la metà vicina: in ogni punto, i suoni fermi fino allo schermo, il fischio
+    # dell'arbitro compreso, hanno il pan di oggi in tutti i candidati.
+    for k, chiave in enumerate(bs.DIMENSIONI[2].punti):
+        for posato in _materiali(banco, "larghezza")[0].rese[k].posati:
+            if len(posato.posizioni) == 1 and posato.posizioni[0][1] <= 183.0:
+                pan = [resa.campi(posato.posizioni, "A", c.spazio)[0][0] for c in bs.LARGHEZZA]
+                assert len(set(pan)) == 1, (chiave, posato.ruolo, posato.posizioni[0], pan)
 
 
 def test_i_materiali_sono_i_punti_in_fila(banco):
@@ -454,10 +572,29 @@ def test_la_scelta_di_un_gruppo(prove):
     prova.voti.clear()
     a, b = prova.lettere_di(prova.ripetuto)
     prova.voti.update({a: 5, b: 1})
-    unico = next(i for i in lettere if i != prova.ripetuto)
+    unico = next(i for i in lettere if i not in (prova.ripetuto, oggi))
     prova.voti[lettere[unico][0]] = 4
+    for lettera in lettere[oggi]:
+        prova.voti.setdefault(lettera, 2)
     assert bs.medie(prova)[prova.ripetuto] == 3.0 and bs.scelta(prova) == unico
     prova.nessuna_preferenza = True
+    assert bs.scelta(prova) == oggi
+    # Con i voti incompleti un candidato vince solo se anche oggi ha un voto e lui lo supera: una
+    # lettera votata da sola, anche con 1, resta senza avversari e non diventa la scelta.
+    prova.nessuna_preferenza = False
+    for voto_solo in (1, 5):
+        prova.voti.clear()
+        prova.voti[lettere[altro][0]] = voto_solo
+        assert bs.scelta(prova) == oggi
+    prova.voti[lettere[oggi][0]] = 3
+    assert bs.scelta(prova) == altro
+    prova.voti[lettere[altro][0]] = 3
+    assert bs.scelta(prova) == oggi
+    prova.voti[lettere[altro][0]] = 2
+    assert bs.scelta(prova) == oggi
+    # Chiuso senza giudizio, i voti non decidono.
+    prova.voti[lettere[altro][0]] = 5
+    prova.chiusa = True
     assert bs.scelta(prova) == oggi
 
 
@@ -493,8 +630,10 @@ def test_la_rassegna_fa_sentire_ogni_lettera_in_ordine(prove, cassa, monkeypatch
     _tastiera(monkeypatch, cassa, [])
     bs.rassegna(prova)
     assert len(cassa.suonati) == len(prova.lettere) and cassa.fermate == 0
-    anticipo = round(bs.ANTICIPO_RASSEGNA * FS)
-    for lettera, buffer in zip(prova.lettere, cassa.suonati, strict=True):
+    # La prima lettera segue il via del gruppo: prima del suo suono qualche secondo di silenzio in più.
+    assert bs.ANTICIPO_PRIMA_LETTERA >= bs.ANTICIPO_RASSEGNA + 3.0
+    for posto, (lettera, buffer) in enumerate(zip(prova.lettere, cassa.suonati, strict=True)):
+        anticipo = round((bs.ANTICIPO_RASSEGNA if posto else bs.ANTICIPO_PRIMA_LETTERA) * FS)
         assert not np.any(buffer[:anticipo])
         assert np.array_equal(buffer[anticipo:], prova.materiali[prova.indice(lettera)].buffer)
     scritto = capsys.readouterr().out
@@ -536,6 +675,27 @@ def test_i_tasti_del_voto(prove, cassa, monkeypatch, capsys):
     assert not prova.nessuna_preferenza and prova.voti == {a: 3}
 
 
+def test_spazio_fa_ripartire_la_lettera_che_suona(prove, cassa, monkeypatch, capsys):
+    prova = prove[1]
+    a, b = prova.lettere[:2]
+    d = next(x for x in prova.lettere[2:] if prova.indice(x) != prova.indice(a))
+    assert not np.array_equal(prova.da_sentire(d, 0.0), prova.da_sentire(a, 0.0))
+    # Al prompt di A si chiede un'altra lettera per confronto, e mentre suona spazio la fa ripartire:
+    # quella, non la A. Mentre suona di nuovo il 3 va alla A, la lettera del prompt. Al prompt di B,
+    # quando non suona niente, spazio fa sentire la B.
+    copione = [d.lower(), ("durante", 1, " "), ("durante", 2, "3"), " ", "\x1b"]
+    tastiera = _tastiera(monkeypatch, cassa, copione)
+    bs.voto(prova)
+    assert tastiera.copione == []
+    assert prova.voti == {a: 3}
+    sentiti = [d, d, b]
+    assert len(cassa.suonati) == len(sentiti) and cassa.fermate == 2
+    for lettera, buffer in zip(sentiti, cassa.suonati, strict=True):
+        assert np.array_equal(buffer, prova.da_sentire(lettera, bs.ANTICIPO_VOTO)), lettera
+    # La riga del voto ricorda ogni volta che si può non avere preferenze.
+    assert capsys.readouterr().out.startswith(f"Il voto, da A a {prova.lettere[-1]}: {prova.dimensione.domanda}; n se non hai preferenze.\n")
+
+
 def test_i_prompt_stanno_in_quaranta_caratteri():
     for lettera in bs.LETTERE:
         assert len(bs.invito(lettera, None).strip("\r")) <= 40
@@ -565,9 +725,11 @@ def test_la_sessione_intera(banco, prove, cassa, cartella_di_prova, suonati, mon
     monkeypatch.setattr(bs, "punti_del_banco", lambda: punti)
     monkeypatch.setattr(bs, "prepara", lambda seme, _punti: prove if seme == SEME else pytest.fail(f"seme {seme}"))
     monkeypatch.setattr(bs, "enter_escape", _enter_escape_finta([True]))
-    monkeypatch.setattr(bs.time, "sleep", lambda _secondi: None)
+    # Il silenzio prima del primo suono sta nella rassegna, non in un'attesa prima del prompt.
+    dormite = []
+    monkeypatch.setattr(bs.time, "sleep", dormite.append)
     # Il volume si ascolta e si commenta, il colore si salta, la larghezza si interrompe, si vota
-    # nessuna preferenza e poi si rifà con r, e il gruppo finale si vota a metà.
+    # nessuna preferenza, poi si rifà con r e si chiude senza giudizio, e il gruppo finale si vota a metà.
     monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True, False, True, True]))
     monkeypatch.setattr(collaudo_comune, "dgt", lambda *_a, **_k: "una lettera mi sembra troppo piana ")
     voti_volume = _voti_del_volume(volume)
@@ -579,17 +741,24 @@ def test_la_sessione_intera(banco, prove, cassa, cartella_di_prova, suonati, mon
     copione += ["4", "\x1b", "\r"]
     tastiera = _tastiera(monkeypatch, cassa, copione)
     assert bs.main([str(SEME)]) == 0
-    assert tastiera.copione == []
+    assert tastiera.copione == [] and dormite == []
     assert suonati == []
     # Le lettere suonate: il volume 5 della rassegna e 3 del voto, la larghezza 2 interrotte e 5 col
     # secondo giro, il gruppo finale 3; le fermate sono il voto dato mentre suonava e l'Escape.
     assert len(cassa.suonati) == 8 + 7 + 3 and cassa.fermate == 2
+    # Ogni rassegna comincia col silenzio lungo, dopo il via: nel volume, in ogni giro della larghezza e
+    # nel gruppo finale la prima lettera è più lunga della seconda proprio del silenzio in più.
+    silenzio_in_piu = round(bs.ANTICIPO_PRIMA_LETTERA * FS) - round(bs.ANTICIPO_RASSEGNA * FS)
+    for primo in (0, 8, 10, 15):
+        assert len(cassa.suonati[primo]) - len(cassa.suonati[primo + 1]) == silenzio_in_piu, primo
     coppia = volume.lettere_di(volume.ripetuto)
     rassegna = dict(zip(volume.lettere, cassa.suonati[:5], strict=True))
     assert np.array_equal(rassegna[coppia[0]], rassegna[coppia[1]])
     assert np.array_equal(cassa.suonati[6], volume.da_sentire(b, bs.ANTICIPO_VOTO))
     assert volume.voti == voti_volume and larghezza.voti == voti_larghezza and not larghezza.nessuna_preferenza
     assert cupezza.saltata and not cupezza.svolta and cupezza.voti == {}
+    # La larghezza chiusa senza giudizio tiene i voti, ma la sua scelta resta quella di oggi.
+    assert larghezza.chiusa and not volume.chiusa and bs.scelta(larghezza) == bs.indice_di_oggi(larghezza.dimensione)
 
     righe = (cartella_di_prova / bs.FILE_DEI_RISULTATI).read_text(encoding="utf-8").splitlines()
     assert righe[0].startswith("Banco dello spazio, ") and righe[0].endswith(f", seme {SEME}.")
@@ -630,19 +799,25 @@ def test_la_sessione_intera(banco, prove, cassa, cartella_di_prova, suonati, mon
             riga = next(r for r in riepilogo if r.startswith(f"Riepilogo, {titolo}, {candidato.nome}: "))
             assert f": totale {sum(voti)} con {len(voti)} vot" in riga
         assert riepilogo[0].startswith(f"Riepilogo, {titolo}, {prova.dimensione.candidati[max(medie, key=medie.get)].nome}: ")
-        assert f"Scelta, {titolo}: {prova.dimensione.candidati[bs.scelta(prova)].nome}." in rivelate
+    assert f"Scelta, {titolo_v}: {bs.VOLUME[bs.scelta(volume)].nome}." in rivelate
+    oggi_l = bs.LARGHEZZA[bs.indice_di_oggi(larghezza.dimensione)].nome
+    assert f"Scelta, {titolo_l}: il gruppo è stato chiuso senza giudizio, quindi i voti non contano e resta {oggi_l}." in rivelate
     assert not any(r.startswith(f"{titolo_c}, la lettera") for r in rivelate)
-    # Il gruppo finale: lo spazio di oggi contro le scelte, e la scelta del volume è il lontano più piano.
+    # Il gruppo finale: lo spazio di oggi contro le scelte, dove il volume è il lontano più piano e la
+    # larghezza, chiusa senza giudizio, quella di oggi.
     assert bs.scelta(volume) == next(i for i, cand in enumerate(bs.VOLUME) if cand.spazio.volume == 2.0)
     assert sum(1 for r in rivelate if r.startswith(f"{titolo_f}, la lettera")) == 3
     assert any(r.startswith(f"Riepilogo, {titolo_f}, lo spazio di oggi") for r in rivelate)
-    assert any(r.startswith(f"Riepilogo, {titolo_f}, le scelte dei tre gruppi: ") and bs.VOLUME[-1].nome in r for r in rivelate)
+    assert any(r.startswith(f"Riepilogo, {titolo_f}, le scelte dei tre gruppi: ") and bs.VOLUME[-1].nome in r and oggi_l in r for r in rivelate)
     assert not any(r.startswith(f"Scelta, {titolo_f}") for r in rivelate)
     assert all(r.strip() and not r.startswith(("-", "=", "_")) for r in righe)
 
     scritto = capsys.readouterr().out
     assert scritto.startswith("Banco dello spazio della partita di MESS: 3 gruppi, ")
     assert scritto.rstrip().endswith("trovi i voti, quale lettera era quale e il riepilogo.")
+    # Le istruzioni dicono cosa succede ai voti con Escape, e ogni voto ricorda che si può non avere preferenze.
+    assert "Escape lo chiude senza giudizio, e allora i suoi voti non contano." in scritto
+    assert scritto.count("; n se non hai preferenze.\n") == 4
     # A schermo non si dice mai quale lettera era quale, né che c'è un controllo, né un numero delle leggi.
     for vietata in (*nomi, "controllo", "ripetut", "decibel", "hertz", "per cento", "oggi"):
         assert vietata not in scritto, vietata
@@ -657,7 +832,10 @@ def test_la_rivelazione_senza_preferenze_e_senza_voti(prove):
     for prova in prove:
         prova.svolta = True
     cupezza.nessuna_preferenza = True
-    larghezza.voti[larghezza.lettere[0]] = 4
+    # Nella larghezza un solo voto, a una lettera che non è quella di oggi.
+    indice_oggi = bs.indice_di_oggi(larghezza.dimensione)
+    premiata = next(x for x in larghezza.lettere if larghezza.indice(x) != indice_oggi)
+    larghezza.voti[premiata] = 4
     righe = bs.righe_della_rivelazione(prove)
     assert bs.righe_dei_voti(cupezza) == [f"{cupezza.dimensione.titolo}: nessuna preferenza."]
     for prova in prove:
@@ -675,9 +853,22 @@ def test_la_rivelazione_senza_preferenze_e_senza_voti(prove):
             assert len(riepilogo) == len(prova.dimensione.candidati) and all(": nessun voto, letter" in r for r in riepilogo)
             assert f"Scelta, {titolo}: senza voti resta {oggi}." in righe
         else:
-            premiato = prova.candidato(prova.lettere[0]).nome
+            premiato = prova.candidato(premiata).nome
             assert next(r for r in righe if r.startswith(f"Riepilogo, {titolo}, ")).startswith(f"Riepilogo, {titolo}, {premiato}: totale 4 con 1 voto, media 4,0, ")
-            assert f"Scelta, {titolo}: {premiato}." in righe
+            # Il voto è incompleto e oggi non ne ha: la lettera votata da sola non diventa la scelta.
+            senza = bs.unisci([x for x in prova.lettere if x != premiata])
+            assert (f"Scelta, {titolo}: i voti erano incompleti, le lettere {senza} sono rimaste senza voto, "
+                    f"e la legge di oggi non ne ha avuti, quindi resta lei: {oggi}.") in righe
+    # Con un voto anche a oggi, più basso, la lettera premiata vince, e la riga dice che i voti erano incompleti.
+    votata_oggi = larghezza.lettere_di(indice_oggi)[0]
+    larghezza.voti[votata_oggi] = 2
+    senza = [x for x in larghezza.lettere if x not in (premiata, votata_oggi)]
+    mancano = f"la lettera {senza[0]} è rimasta" if len(senza) == 1 else f"le lettere {bs.unisci(senza)} sono rimaste"
+    assert bs.riga_della_scelta(larghezza) == f"Scelta, {larghezza.dimensione.titolo}: {larghezza.candidato(premiata).nome}, anche se i voti erano incompleti: {mancano} senza voto."
+    # Con tutti i voti la riga dice soltanto la scelta.
+    for x in senza:
+        larghezza.voti[x] = 1
+    assert bs.riga_della_scelta(larghezza) == f"Scelta, {larghezza.dimensione.titolo}: {larghezza.candidato(premiata).nome}."
 
 
 def test_senza_il_via_non_suona_niente(banco, prove, cassa, cartella_di_prova, monkeypatch, capsys):

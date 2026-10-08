@@ -40,6 +40,11 @@ la distanza, come oggi, o solo dove lo schermo nasconde la pallina, o mai; quant
 lontana del tavolo, che oggi è larga quanto quella vicina, oppure il panorama dall'angolo vero sotto
 cui chi ascolta vede il punto. Il predefinito, OGGI, è lo spazio dell'ascolto libero, e con lui la
 resa dà gli stessi buffer di prima campione per campione.
+Dopo la revisione del banco, le dimensioni restano separate anche nel livello: il passa basso toglie
+energia, e al rotolamento, che è un nastro di rumore ricco di acuti, ne toglieva fino a quattro
+decibel, quanto un passo del volume. Perciò una cupezza diversa da quella di oggi è pareggiata: ogni
+suono riceve il guadagno che gli rende l'energia che avrebbe con il taglio di oggi, calcolata sul suo
+spettro. Così la cupezza cambia soltanto il timbro, e il livello lo decide la legge del volume.
 """
 
 import collections
@@ -96,6 +101,10 @@ FC_FONDO = FC_MAX * D0 / D_FONDO
 ANGOLO_CASSE = 30.0
 CUPEZZE = ("distanza", "ombra", "nessuna")
 PANORAMI = ("laterale", "angolo")
+# I campi di Spazio che fanno la cupezza: se uno di loro è diverso da oggi, il livello si pareggia.
+CAMPI_DEL_COLORE = frozenset(("cupezza", "d0", "fc_ombra"))
+# Quante bande dello spettro di un suono servono a stimare l'energia che il passa basso lascia passare.
+BANDE_DEL_PAREGGIO = 1024
 
 
 @dataclass(frozen=True)
@@ -108,7 +117,9 @@ class Spazio:
     li dimezza.
     cupezza dice come si chiude il passa basso: "distanza", col taglio che scende da d0 centimetri
     in poi, come oggi; "ombra", aperto finché la pallina si vede sotto lo schermo e poi giù fino a
-    fc_ombra, fra Y_OMBRA e Y_OMBRA_PIENA; "nessuna", sempre aperto.
+    fc_ombra, fra Y_OMBRA e Y_OMBRA_PIENA; "nessuna", sempre aperto. Una cupezza diversa da quella
+    di oggi cambia il timbro e non il livello: ogni suono ha l'energia che avrebbe con il taglio di
+    oggi.
     pan dice da dove viene il panorama: "laterale", dallo scarto dal centro, come oggi, con la metà
     lontana che si stringe a poco a poco dallo schermo alla testata lontana, dove è larga lontano
     volte quella vicina; "angolo", dall'angolo vero sotto cui chi ascolta vede il punto, con le
@@ -130,6 +141,10 @@ class Spazio:
     def diverso_in(self, altro):
         """I nomi dei campi in cui questo spazio è diverso da altro."""
         return {campo.name for campo in fields(self) if getattr(self, campo.name) != getattr(altro, campo.name)}
+
+    def da_pareggiare(self):
+        """Vero se la cupezza non è quella di oggi, e quindi il livello dei suoni va pareggiato a quello di oggi."""
+        return bool(self.diverso_in(OGGI) & CAMPI_DEL_COLORE)
 
 
 OGGI = Spazio()
@@ -367,10 +382,44 @@ def _filtra(mono, fc_blocchi):
     return uscita
 
 
+def energia_passata(mono, fc):
+    """
+    La quota dell'energia della sorgente che il passa basso lascia passare, per ogni taglio di fc:
+    lo spettro della sorgente si raccoglie in bande, e ogni banda si pesa con il quadrato della
+    risposta del filtro al suo centro. Una sorgente muta passa tutta.
+    """
+    fc = np.atleast_1d(np.asarray(fc, dtype=np.float64))
+    mono = np.asarray(mono, dtype=np.float64)
+    potenza = np.abs(np.fft.rfft(mono)) ** 2
+    frequenze = np.fft.rfftfreq(len(mono), 1.0 / FS)
+    bordi = np.unique(np.linspace(0, len(potenza), min(BANDE_DEL_PAREGGIO, len(potenza)) + 1).astype(int))[:-1]
+    energie = np.add.reduceat(potenza, bordi)
+    totale = float(np.sum(energie))
+    if totale <= 0.0:
+        return np.ones(len(fc))
+    centri = np.add.reduceat(frequenze, bordi) / np.diff(np.append(bordi, len(potenza)))
+    a = np.exp(-2.0 * math.pi * fc / FS)[:, None]
+    coseno = np.cos(2.0 * math.pi * centri / FS)[None, :]
+    risposta = (1.0 - a) ** 4 / (1.0 - 2.0 * a * coseno + a * a) ** 2
+    return risposta @ energie / totale
+
+
+def pareggio(mono, fc, fc_di_oggi):
+    """Il guadagno che dà alla sorgente filtrata con ogni taglio di fc l'energia che avrebbe con il taglio di oggi, posizione per posizione."""
+    passate = energia_passata(mono, np.concatenate([fc, fc_di_oggi]))
+    return np.sqrt(passate[len(fc):] / passate[:len(fc)])
+
+
 def spazializza(posato, ascoltatore, spazio=None):
-    """La sorgente mono di un suono resa stereo per chi ascolta, con le leggi dello spazio: un array di campioni per 2, float32."""
+    """
+    La sorgente mono di un suono resa stereo per chi ascolta, con le leggi dello spazio: un array di
+    campioni per 2, float32. Con una cupezza diversa da quella di oggi il volume di ogni posizione si
+    pareggia, perché il suono abbia l'energia che avrebbe con il taglio di oggi.
+    """
     mono = posato.mono
     pan, vol, fc = campi(posato.posizioni, ascoltatore, spazio)
+    if spazio is not None and spazio.da_pareggiare():
+        vol = vol * pareggio(mono, fc, campi(posato.posizioni, ascoltatore, OGGI)[2])
     if len(posato.posizioni) == 1:
         from scipy.signal import lfilter
 
