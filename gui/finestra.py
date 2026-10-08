@@ -203,13 +203,13 @@ class FinestraPrincipale(wx.Frame):
                 ("&Password della polisportiva attiva...", None, self.password_polisportiva),
                 ("C&hiudi la polisportiva attiva...", None, self.chiudi_polisportiva),
             )),
-            ("&Partite", (
+            ("Pa&rtite", (
                 ("&Amichevole...", "Ctrl+O", self.amichevole),
                 None,
                 ("&Punto successivo", "F8", self.punto_successivo),
                 ("&Resto dell'incontro", "Ctrl+F8", self.resto_dell_incontro),
                 None,
-                ("&Salva la cronaca...", "Ctrl+Shift+O", self.salva_cronaca),
+                ("&Salva la cronaca", "Ctrl+Shift+O", self.salva_cronaca),
             )),
             ("&Mondo", (
                 ("&Data e prossimo avanzamento", "Ctrl+D", lambda: self.mostra(testi.data_e_avanzamento(self.mondo, adesso_utc()), "data simulata", "data_e_avanzamento")),
@@ -699,7 +699,8 @@ class FinestraPrincipale(wx.Frame):
         avversario = self._scegli_giocatore(f"Amichevole, l'avversario di {testi.nome_completo(tuo)}", "&Avanti", "dialogo_avversario", avversari)
         if avversario is None:
             return
-        dialogo = OpzioniAmichevole(self, self.mondo, tuo, avversario)
+        ultime = (self.impostazioni["amichevole_set"], self.impostazioni["amichevole_modo"], self.impostazioni["amichevole_livello"])
+        dialogo = OpzioniAmichevole(self, self.mondo, tuo, avversario, ultime)
         try:
             suoni.suona("dialogo_opzioni_amichevole")
             if self._modale(dialogo) != wx.ID_OK or dialogo.risultato is None:
@@ -708,6 +709,11 @@ class FinestraPrincipale(wx.Frame):
             set_al_meglio, modo, livello = dialogo.risultato
         finally:
             dialogo.Destroy()
+        # Le scelte si ricordano per la prossima amichevole, anche dopo la chiusura (Gabriele, 8 ottobre 2026).
+        # Se il file non si scrive, valgono comunque per questa sessione: l'incontro non si ferma per questo.
+        if ultime != (set_al_meglio, modo, livello):
+            self.impostazioni.update(amichevole_set=set_al_meglio, amichevole_modo=modo, amichevole_livello=livello)
+            modulo_impostazioni.salva(self.impostazioni)
         # Il tuo giocatore è tuo per definizione; l'avversario può esserlo anche lui, di una qualunque delle tue polisportive.
         fra_tuoi = avversario.id in self._tuoi()
         istante, data_simulata = adesso(), self.mondo.datetime_corrente_simulazione

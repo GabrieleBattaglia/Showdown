@@ -242,7 +242,7 @@ def test_ricerca(app_wx, monkeypatch):
 def test_aspetto(app_wx):
     dialogo = dialoghi.Aspetto(None, {"dimensione": 20, "colore_testo": [100, 100, 100], "colore_sfondo": [0, 0, 50], "volume_effetti": 30})
     try:
-        assert dialogo.valori() == {"dimensione": 20, "colore_testo": [100, 100, 100], "colore_sfondo": [0, 0, 50], "volume_effetti": 30}
+        assert dialogo.valori() == impostazioni.valide({"dimensione": 20, "colore_testo": [100, 100, 100], "colore_sfondo": [0, 0, 50], "volume_effetti": 30})
         dialogo.ai_predefiniti()
         # I predefiniti dell'aspetto non toccano il volume degli effetti.
         assert dialogo.valori() == impostazioni.valide({"volume_effetti": 30})

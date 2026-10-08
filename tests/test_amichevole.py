@@ -15,6 +15,7 @@ import pytest
 import wx
 
 import archivio
+import impostazioni
 import partita
 import testi
 from costanti import CARTELLA_CRONACHE, FILE_MONDO
@@ -98,10 +99,13 @@ def _esito_atteso(finestra, tuo):
 
 def test_il_menu_partite_e_la_guida(finestra):
     titoli = [titolo for titolo, _voci in finestra.voci_menu()]
-    assert titoli.index("&Partite") == titoli.index("&Polisportive") + 1
+    assert titoli.index("Pa&rtite") == titoli.index("&Polisportive") + 1
+    # Ogni titolo della barra ha la sua lettera: Partite usa la R, perché la P è di Polisportive.
+    lettere = [titolo[titolo.index("&") + 1].lower() for titolo in titoli]
+    assert len(lettere) == len(set(lettere)), lettere
     voci = {voce[0]: voce[1] for _t, elenco in finestra.voci_menu() for voce in filter(None, elenco)}
     assert voci["&Amichevole..."] == "Ctrl+O" and voci["&Punto successivo"] == "F8"
-    assert voci["&Resto dell'incontro"] == "Ctrl+F8" and voci["&Salva la cronaca..."] == "Ctrl+Shift+O"
+    assert voci["&Resto dell'incontro"] == "Ctrl+F8" and voci["&Salva la cronaca"] == "Ctrl+Shift+O"
     guida = testi.guida(finestra.voci_guida())
     assert "Menu Partite: Amichevole, Ctrl+O; Punto successivo, F8; Resto dell'incontro, Ctrl+F8; Salva la cronaca, Ctrl+Maiusc+O." in guida
 
@@ -317,3 +321,20 @@ def test_il_dialogo_delle_opzioni(app_wx, mondo):
         assert dialogo.GetReturnCode() == wx.ID_OK
     finally:
         dialogo.Destroy()
+
+
+def test_le_opzioni_dell_amichevole_si_ricordano(app_wx, mondo):
+    # Il dialogo riparte dalle ultime scelte, e le impostazioni le conservano anche dopo la chiusura.
+    dialogo = dialoghi.OpzioniAmichevole(None, mondo, mondo.giocatori[2], mondo.giocatori[3], (5, dialoghi.TUTTA_SUBITO, cronaca.SINTETICA))
+    try:
+        assert dialogo.set.GetStringSelection() == "Al meglio di 5 set"
+        assert dialogo.modo.GetStringSelection() == "Tutta subito"
+        assert dialogo.livello.GetStringSelection() == "Sintetica"
+    finally:
+        dialogo.Destroy()
+    salvate = impostazioni.valide({"amichevole_set": 5, "amichevole_modo": "risultato", "amichevole_livello": "tecnica"})
+    assert (salvate["amichevole_set"], salvate["amichevole_modo"], salvate["amichevole_livello"]) == (5, "risultato", "tecnica")
+    rovinate = impostazioni.valide({"amichevole_set": 4, "amichevole_modo": "boh", "amichevole_livello": True})
+    assert (rovinate["amichevole_set"], rovinate["amichevole_modo"], rovinate["amichevole_livello"]) == (3, "punto", "normale")
+    assert set(impostazioni.MODI_DELL_AMICHEVOLE) == {chiave for chiave, _nome in dialoghi.MODI_DI_MOSTRARE}
+    assert set(impostazioni.LIVELLI_DELL_AMICHEVOLE) == {chiave for chiave, _nome in dialoghi.LIVELLI_DI_CRONACA}

@@ -934,23 +934,28 @@ class OpzioniAmichevole(_Dialogo):
     Le opzioni dell'amichevole fra due giocatori già scelti: al meglio di 3 o di 5 set, come
     mostrare la cronaca, un punto alla volta, tutta subito o solo il risultato, e il suo livello,
     sintetica, normale o tecnica, che vale anche per il file. I predefiniti sono quelli scelti da
-    Gabriele: 3 set, un punto alla volta, normale. In risultato restano le tre scelte.
+    Gabriele: 3 set, un punto alla volta, normale; dall'8 ottobre 2026 il dialogo riparte dalle
+    ultime scelte, che riceve in iniziali come terna di set, modo e livello. In risultato restano le
+    tre scelte.
     """
 
-    def __init__(self, genitore, mondo, primo, secondo):
+    def __init__(self, genitore, mondo, primo, secondo, iniziali=None):
         super().__init__(genitore, "Opzioni dell'amichevole")
         self.risultato = None
         chi = f"Amichevole fra {testi.nome_completo(primo)}, {testi.stato(primo, mondo)}, e {testi.nome_completo(secondo)}, {testi.stato(secondo, mondo)}."
         self.sizer.Add(wx.StaticText(self.pannello, label=chi), 0, wx.ALL, 8)
         self.etichetta("&Set dell'incontro")
         self.set = self.aggiungi(wx.Choice(self.pannello, choices=[f"Al meglio di {n} set" for n in SET_AMMESSI]))
-        self.set.SetSelection(0)
         self.etichetta("&Come mostrare la cronaca")
         self.modo = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome in MODI_DI_MOSTRARE]))
-        self.modo.SetSelection(0)
         self.etichetta("&Livello della cronaca, anche per il file")
         self.livello = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome in LIVELLI_DI_CRONACA]))
-        self.livello.SetSelection([chiave for chiave, _nome in LIVELLI_DI_CRONACA].index(cronaca.NORMALE))
+        set_al_meglio, modo, livello = iniziali or (SET_AMMESSI[0], UN_PUNTO_ALLA_VOLTA, cronaca.NORMALE)
+        modi = [chiave for chiave, _nome in MODI_DI_MOSTRARE]
+        livelli = [chiave for chiave, _nome in LIVELLI_DI_CRONACA]
+        self.set.SetSelection(SET_AMMESSI.index(set_al_meglio) if set_al_meglio in SET_AMMESSI else 0)
+        self.modo.SetSelection(modi.index(modo) if modo in modi else 0)
+        self.livello.SetSelection(livelli.index(livello) if livello in livelli else livelli.index(cronaca.NORMALE))
         gioca, _annulla = self.pulsanti((wx.ID_OK, "&Gioca"), (wx.ID_CANCEL, "Annulla"))
         gioca.Bind(wx.EVT_BUTTON, self.conferma)
         self.completa((460, 340))
