@@ -1,0 +1,36 @@
+Collaudo della partita dal vivo di MESS con NVDA, versione 1.50.0.
+Prima: nella cartella E:\git\tmp\mess-collaudo-economia lancia python Showdown.py. È una copia del programma, aggiornata, con il tuo mondo, e il tuo mondo vero non si tocca.
+Prima: Pat-Bologna ha tre tesserati, e ognuno gioca un'amichevole al giorno: bastano per le tre amichevoli del collaudo.
+Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
+PROVA 1, le impostazioni.
+Passo 1: dal menu Impostazioni apri Velocità di gioco, leggi il dialogo e chiudilo con Annulla.
+Domanda 1: il dialogo si legge bene, e parte da 4?
+Passo 2: dal menu Impostazioni apri Effetti sonori, e cambia il volume della partita dal vivo, ascoltando il suono di prova; poi conferma.
+Domanda 2: i due volumi si leggono con le loro etichette, e il suono di prova segue il volume della partita?
+Esito:
+PROVA 2, assistere a una partita.
+Passo 1: premi Ctrl+O, scegli un tuo tesserato e l'avversario, e nelle opzioni lascia Assisti; poi Alt+G.
+Domanda 1: la finestra dal vivo si apre con il fuoco su Prosegui, e NVDA la presenta bene?
+Passo 2: premi Tab per andare alla cronaca, poi Maiusc+Tab per tornare al pulsante.
+Domanda 2: il campo della cronaca si legge, e il fuoco torna su Prosegui?
+Passo 3: premi Invio per il riscaldamento, poi Invio alcune volte per sentire i punti, leggendo con Tab la cronaca dopo qualche punto.
+Domanda 3: mentre l'azione suona NVDA tace, e la cronaca di ogni tranche corrisponde a quello che hai sentito?
+Passo 4: mentre un punto suona premi Invio, poi di nuovo Invio.
+Domanda 4: la pausa ferma il suono, il pulsante si legge come Riprendi, e la ripresa riparte dal punto giusto?
+Passo 5: premi più e meno qualche volta.
+Domanda 5: la velocità cambia, e lo capisci dal suono e dal titolo?
+Passo 6: premi Alt+L e ascolta il punto seguente.
+Domanda 6: ora senti la partita dalla parte dell'avversario?
+Passo 7: premi Alt+F.
+Domanda 7: la partita suona fino alla fine del set e poi si ferma?
+Passo 8: premi Esc.
+Domanda 8: la vista dice che l'amichevole è registrata, senza svelare chi ha vinto?
+Esito:
+PROVA 3, la fine.
+Passo 1: premi Ctrl+O con un altro tesserato, e nelle opzioni scegli Vai alla fine.
+Domanda 1: la vista si apre con il risultato e i punti allenamento, e sotto c'è la cronaca intera?
+Passo 2: premi Ctrl+O con il terzo tesserato, scegli Assisti, ascolta qualche punto e premi Alt+V.
+Domanda 2: la vista mostra il risultato, con il suo suono, e il triplice fischio si è sentito se la partita è arrivata alla fine?
+Passo 3: esci con Alt+F4.
+Domanda 3: tutto si è chiuso senza intoppi?
+Esito:
