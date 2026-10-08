@@ -1,4 +1,30 @@
-Collaudo dei dialoghi dell'economia di MESS con NVDA, versione 1.38.2.
-Prima: nella cartella E:\git\tmp\mess-collaudo-economia lancia python Showdown.py. È una copia del programma con il tuo mondo preparato apposta, e il tuo mondo vero non si tocca.
-Prima: nella copia Pat-Bologna ha 8000 euro in cassa, i tuoi tre tesserati aspettano lo stipendio di un mese e la loro pazienza è quasi finita, e PoliTeam01 Lahe-Gela vende Alteo Dalla Torre a 4900 euro.
+Collaudo della finestra di MESS con NVDA, versione 1.46.6: l'amichevole e i suoni. Le prove dell'economia le hai già superate.
+Prima: nella cartella E:\git\tmp\mess-collaudo-economia lancia python Showdown.py, come per l'economia: il mondo è quello che hai lasciato, e il tuo mondo vero non si tocca.
+Prima: la finestra suona a ogni comando; qui conta come i suoni si sentono mentre usi il programma.
 Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
+PROVA 1, l'amichevole.
+Passo 1: premi Alt+R e scorri il menu Partite con le frecce, poi chiudilo con Esc.
+Domanda 1: le quattro voci si leggono bene, con i loro tasti?
+Passo 2: premi Ctrl+O, scegli un tuo tesserato e poi l'avversario.
+Domanda 2: i due dialoghi di scelta e i loro titoli si capiscono?
+Passo 3: nel dialogo delle opzioni scorri le scelte con Alt+S, Alt+C e Alt+L, lascia un punto alla volta e la cronaca normale, poi premi Alt+G.
+Domanda 3: le opzioni si leggono bene?
+Passo 4: premi F8 una decina di volte, leggendo la vista ogni volta.
+Domanda 4: ogni testo si apre con il punteggio, e la cronaca dei punti si capisce, con le chiamate dell'arbitro?
+Passo 5: premi Ctrl+F8.
+Domanda 5: il resto dell'incontro e il risultato si leggono bene?
+Passo 6: premi Ctrl+Maiusc+O, poi apri con un editor il file che la vista indica.
+Domanda 6: il file della cronaca si legge bene?
+Passo 7: premi di nuovo Ctrl+O.
+Domanda 7: il tesserato che ha già giocato oggi non compare più, e il dialogo delle opzioni ripropone le tue ultime scelte?
+Passo 8: gioca questa seconda amichevole con tutta subito, poi una terza, se ti resta un tesserato, con solo il risultato.
+Domanda 8: la cronaca intera e il solo risultato si leggono bene?
+Passo 9: apri con Ctrl+G la scheda di uno dei tuoi tesserati.
+Domanda 9: la riga del temperamento si capisce?
+Esito:
+PROVA 2, i suoni e la chiusura.
+Passo 1: ripensa ai suoni sentiti durante le prove, anche quelli dell'economia.
+Domanda 1: ti hanno aiutato a capire gli esiti prima della voce, senza coprirla?
+Passo 2: esci con Alt+F4.
+Domanda 2: tutto si è chiuso senza intoppi, con il suono dell'uscita?
+Esito:
