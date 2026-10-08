@@ -3,6 +3,10 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.46.7] - 2026-10-08
+
+L'ascolto guidato dei suoni, ascolta_suoni.py, lasciava una riga vuota dopo l'attesa del via e dopo l'annuncio di ogni gruppo: ora non più.
+
 ## [1.46.6] - 2026-10-08
 
 ### Le partite, con il regolamento IBSA

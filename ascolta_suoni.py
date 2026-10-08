@@ -89,17 +89,14 @@ def main():
     print("Ogni gruppo si annuncia e si può saltare. Per ogni suono: Invio lo fa sentire, spazio lo ripete, Invio passa al successivo, Escape chiude il gruppo.")
     print("A fine gruppo: r riascolta, c commenta, Invio lo dà per superato, Escape lo chiude senza giudizio.")
     print(f"Le impressioni vanno nel file {FILE_DEGLI_ESITI}, una riga per voce.")
+    # enter_escape e gruppo vanno gia' a capo da sole: un print() in piu' lascerebbe una riga vuota.
     if not enter_escape("\rInvio per cominciare, Escape per uscire\r"):
-        print()
         return 0
-    print()
     time.sleep(SILENZIO_INIZIALE)
     esiti = Annotazioni(percorsi.percorso(FILE_DEGLI_ESITI))
     for titolo, eventi in gruppi:
         if not gruppo(titolo, len(eventi), "suoni"):
-            print()
             continue
-        print()
         ascolta(eventi)
         esiti.esito(titolo, riproduci=lambda e=eventi: ascolta(e))
     print("Fine dell'ascolto.")

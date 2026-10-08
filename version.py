@@ -6,7 +6,7 @@ avanza come 1.y.z, e la GUI completa uscirà come 2.0.0.
 """
 
 __app_name__ = "MESS"
-__version__ = "1.46.6"
+__version__ = "1.46.7"
 __date__ = "2026-10-08"
 __author__ = "Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto)"
 
