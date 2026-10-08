@@ -1,0 +1,3 @@
+Partita, i lati e il movimento, 2026-10-08 16:06: test superato, nessun commento
+Partita, la battuta e lo scambio, 2026-10-08 16:06: test superato, nessun commento
+Partita, i falli, 2026-10-08 16:07: test superato, nessun commento
