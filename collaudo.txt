@@ -1,4 +1,0 @@
-Collaudo della finestra di MESS con NVDA, versione 1.46.6: l'amichevole e i suoni. Le prove dell'economia le hai già superate.
-Prima: nella cartella E:\git\tmp\mess-collaudo-economia lancia python Showdown.py, come per l'economia: il mondo è quello che hai lasciato, e il tuo mondo vero non si tocca.
-Prima: la finestra suona a ogni comando; qui conta come i suoni si sentono mentre usi il programma.
-Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
