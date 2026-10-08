@@ -3,6 +3,34 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.46.6] - 2026-10-08
+
+### Le partite, con il regolamento IBSA
+
+Il motore di partita è nuovo, scritto sul regolamento IBSA dello showdown, edizione 2025-2028, con le scelte fatte da Gabriele voce per voce. La battuta deve rimbalzare una volta sola sulla sponda laterale e passare sotto lo schermo, e chi riceve la para come ogni altro colpo. Il goal vale due punti, ogni errore di gioco uno all'avversario, la penalità due. Il set lo vince chi arriva a 11 con due punti di scarto, senza tetto: il vecchio limite dei 17 punti non c'è più. Gli incontri sono al meglio di 3 o di 5 set, con due servizi a testa.
+
+Ogni fallo ha la sua causa e la chiamata dell'arbitro: servizio irregolare, schermo centrale, out, body touch, difesa irregolare, invasione, infrazione paletta, infrazione palla. L'arbitro fa il sorteggio con la moneta, porta la pallina al battitore, annuncia servizio e punteggio, fischia; ci sono il riscaldamento, il cambio campo, i time-out, la palla morta con il servizio ripetuto, le ammonizioni e le penalità, e rarissime palette e palline rotte. Non c'è pubblico. Nel motore c'è anche la gara a squadre, con un set a 31 punti, tre servizi a testa e la rotazione fissa, senza sostituzioni.
+
+Il vecchio motore trasformava in fallo il 94 per cento dei punti, e quasi tutti i goal erano ace di battuta. Ora i goal sono più della metà dei punti, e quattro su cinque nascono dallo scambio; gli scambi durano qualche colpo, a volte più di dieci; il favorito vince più spesso quanto più è forte, e fra due giocatori forti alla pari si vince di poco, e ogni tanto un set va oltre i 12 punti.
+
+### Il giocatore in campo
+
+La stanchezza cresce con i colpi giocati: la frena la resistenza, anche quella allenata, e la accelera l'età, e un giocatore molto resistente regge cinque set. Il colpo si sceglie secondo i propri punti forti e il lato debole dell'avversario, ma riesce bene a chi è lucido e riposato, e leggere l'avversario è da giocatori esperti. Il mancino sorprende con la sua angolazione, e gli avversari, abituati ai destri, sbagliano lato più spesso; l'ambidestro cambia mano per coprire il lato debole.
+
+Ogni giocatore ha un temperamento, da calmissimo a impetuoso, che la scheda dice a parole: l'impetuoso rischia colpi più forti e fa più falli e più ammonizioni, il calmo sbaglia meno; l'esperienza riduce i falli di tutti.
+
+Gli infortuni hanno una sede. Quello al braccio di gioco ferma chiunque, tranne l'ambidestro, che continua con l'altro braccio; chi ha giocato molto di recente rischia di più. L'ambidestro non ha più infortuni cinque volte più rari e cinque volte più brevi.
+
+### Il valore
+
+Il valore complessivo si ricava ora da quanto ogni caratteristica e ogni tratto contano davvero in partita, e non più dalla loro somma alla pari con 33 punti per tratto. Al primo avvio i giocatori cambiano valore uno per uno: chi ha tratti speciali perde qualcosa, chi ha molta precisione o forza sale. Stipendi e gloria richiesta seguono il valore nuovo, ma l'economia nel suo insieme resta quella della versione 1.38.2.
+
+### L'amichevole nella finestra
+
+Nel menu Partite, che si apre con Alt+R, Amichevole, con Ctrl+O, fa giocare un tuo tesserato della polisportiva attiva contro chiunque altro, anche un altro tuo. Nel dialogo delle opzioni scegli al meglio di 3 o di 5 set, come mostrare la cronaca, un punto alla volta, tutta subito o solo il risultato, e il suo livello, sintetica, normale o tecnica; il dialogo ricorda le ultime scelte. L'incontro si gioca e si registra subito. Un punto alla volta, F8 mostra il punto successivo e Ctrl+F8 tutto il resto; Ctrl+Maiusc+O salva la cronaca in un file della cartella cronache, uno per incontro. Ogni giocatore gioca al massimo un'amichevole per giorno simulato, perché ogni amichevole dà punti allenamento. Il menu ha i suoi suoni, quattordici nuovi.
+
+Anche l'interfaccia testuale gioca con il motore nuovo, a 3 o 5 set e con la regola dell'amichevole al giorno. Il salvataggio passa al formato 5, e quello della versione precedente si aggiorna da solo.
+
 ## [1.39.6] - 2026-10-07
 
 Al mercato la domanda di conferma di un'offerta, di un acquisto o di un'offerta d'acquisto aveva il Sì già scelto, al contrario di tutte le altre domande della finestra: ora ha il No, così un Invio di troppo non spende una mossa. Per confermare si sceglie Sì.
