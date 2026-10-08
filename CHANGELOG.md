@@ -3,6 +3,28 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.50.0] - 2026-10-08
+
+### La partita dal vivo
+
+Un'amichevole ora si può ascoltare. Nel dialogo delle opzioni, dopo Ctrl+O, i modi di seguirla sono due: Assisti e Vai alla fine. Vai alla fine mostra nella vista principale il risultato e i punti allenamento, e sotto la cronaca intera. Assisti apre la finestra dal vivo, e la partita si sente dal punto di vista del tuo giocatore: la pallina che corre, rimbalza sulle sponde e passa sotto lo schermo, a destra o a sinistra, vicina o lontana, più cupa quanto più si allontana; i colpi, le parate, il goal che cade nella tasca, i falli, il fischietto dell'arbitro.
+
+Nella finestra dal vivo il pulsante Prosegui ha il fuoco: Invio o spazio fanno sentire il gioco fino al punto seguente, a un fallo o alla fine del set, e mentre suona lo stesso pulsante mette in pausa e riprende. Alt+F ascolta fino alla fine del set. Alt+L cambia il lato d'ascolto e ti porta dalla parte dell'avversario. Alt+V va alla fine e mostra il risultato. Esc esce senza svelare chi ha vinto: l'incontro resta registrato, e il risultato si legge nei diari dei giocatori o nella cronaca salvata. Con Tab arrivi alla cronaca dell'azione appena ascoltata, che lo screen reader non legge da solo, così non copre i suoni. Le pause lunghe, time-out, cambio campo e inizio del set, non si sentono: si leggono nella cronaca.
+
+L'arbitro fischia una volta per i falli, due dopo ogni goal, a lungo alla fine di ogni set, e tre volte alla fine della partita. Dopo il goal c'è una piccola fanfara, e dopo ogni fallo un segnale che lo distingue bene dal goal.
+
+Il punto alla volta con F8 nella vista principale non c'è più: lo sostituisce Assisti. Il menu Partite tiene Amichevole e Salva la cronaca.
+
+### Velocità e volume
+
+Nel menu Impostazioni, alla voce Velocità di gioco, si sceglie quanto durano le pause fra i punti e la procedura dell'arbitro, da 1, il tempo reale, a 8: si parte da 4. L'azione resta sempre a tempo reale. Durante la partita dal vivo i tasti più e meno la cambiano al volo.
+
+Nel dialogo degli effetti sonori, accanto al volume degli effetti, c'è il volume della partita, da 0 a 100, con il suo suono di prova: si parte da 50, e a 100 la partita suona al livello pieno.
+
+### L'elenco dei suoni
+
+Nella cartella del programma c'è suoni_di_mess.txt, con ogni azione della finestra e della partita e il nome del suono che la accompagna nella collezione di GBUtils: serve a ritoccare i suoni con Acu_Maker.
+
 ## [1.46.7] - 2026-10-08
 
 L'ascolto guidato dei suoni, ascolta_suoni.py, lasciava una riga vuota dopo l'attesa del via e dopo l'annuncio di ogni gruppo: ora non più.

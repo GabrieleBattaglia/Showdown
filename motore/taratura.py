@@ -283,6 +283,7 @@ class Taratura:
     FISCHIO_SINGOLO: float = 0.35
     FISCHIO_DOPPIO: float = 0.8
     FISCHIO_LUNGO: float = 1.4
+    FISCHIO_TRIPLO: float = 1.2
     RITARDO_CHIAMATA: float = 0.8
     DURATA_CHIAMATA: float = 1.2
     ATTESA_BATTUTA: tuple = (0.5, 1.6)

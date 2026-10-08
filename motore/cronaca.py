@@ -100,7 +100,7 @@ def _altra(parte):
 _LATI = {"sinistra": "a sinistra", "centro": "al centro", "destra": "a destra"}
 _DAL_LATO = {"sx": "dalla sinistra", "centro": "dal centro", "dx": "dalla destra"}
 _ALLA = {"sinistra": "alla sinistra", "centro": "al centro", "destra": "alla destra"}
-_FISCHI = {E.SINGOLO: "Fischio", E.DOPPIO: "Doppio fischio", E.LUNGO: "Fischio lungo"}
+_FISCHI = {E.SINGOLO: "Fischio", E.DOPPIO: "Doppio fischio", E.LUNGO: "Fischio lungo", E.TRIPLO: "Triplice fischio"}
 _SERVIZI = {1: "Primo", 2: "Secondo", 3: "Terzo"}
 
 
@@ -278,7 +278,9 @@ def _fine_set(evento, nomi, livello):
     vince = "A" if a > b else "B"
     io, lui = _punteggio_di((a, b), vince)
     sa, sb = d["set_vinti"]
-    testo = f"Fischio lungo. Set a {_n(nomi, vince)}, {io} a {lui}"
+    # Il set che chiude la partita finisce col triplice fischio, regola di Gabriele; gli altri col fischio lungo.
+    fischio = _FISCHI[E.TRIPLO] if d.get("ultimo") else _FISCHI[E.LUNGO]
+    testo = f"{fischio}. Set a {_n(nomi, vince)}, {io} a {lui}"
     if d.get("ultimo"):
         testo += "."
     elif sa == sb:
@@ -288,7 +290,7 @@ def _fine_set(evento, nomi, livello):
         mio, suo = _punteggio_di((sa, sb), guida)
         testo += f"; {_n(nomi, guida)} conduce {'un' if mio == 1 else _PAROLE[mio]} set a {_PAROLE[suo]}."
     if livello == SINTETICA:
-        return testo.replace("Fischio lungo. ", "")
+        return testo.replace(f"{fischio}. ", "")
     return testo
 
 

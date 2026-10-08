@@ -160,6 +160,7 @@ SUONI = {
     "rottura": "mess_partita_rottura",
     "recupero": "mess_partita_recupero",
     "fischio_lungo": "mess_partita_fischio_lungo",
+    "fischio_triplo": "mess_partita_fischio_triplo",
 }
 # Ogni ruolo detto a parole: l'azione che lo fa suonare. Le leggono l'ascolto dei timbri e l'elenco
 # dei suoni per Acu_Maker, suoni_di_mess.txt.
@@ -185,7 +186,8 @@ AZIONI = {
     "fallo": "il fallo, dopo il fischio singolo, dalla testata di chi lo commette",
     "rottura": "la paletta o la pallina che si rompe",
     "recupero": "l'arbitro che recupera la pallina prima di consegnarla a chi batte",
-    "fischio_lungo": "il fischio lungo dell'arbitro, a fine set e a fine incontro",
+    "fischio_lungo": "il fischio lungo dell'arbitro, a fine set",
+    "fischio_triplo": "il triplice fischio dell'arbitro, a fine partita",
 }
 # I suoni dell'esito, che vengono dopo il fischio: per ognuno il fischio che lo precede.
 ESITI = {"fanfara": E.DOPPIO, "fallo": E.SINGOLO}

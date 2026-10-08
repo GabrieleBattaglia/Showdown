@@ -44,7 +44,7 @@ from motore.tavolo import (
 )
 
 _NUMERI_SERVIZIO = {1: "primo_servizio", 2: "secondo_servizio", 3: "terzo_servizio"}
-_FISCHI = {E.SINGOLO: "FISCHIO_SINGOLO", E.DOPPIO: "FISCHIO_DOPPIO", E.LUNGO: "FISCHIO_LUNGO"}
+_FISCHI = {E.SINGOLO: "FISCHIO_SINGOLO", E.DOPPIO: "FISCHIO_DOPPIO", E.LUNGO: "FISCHIO_LUNGO", E.TRIPLO: "FISCHIO_TRIPLO"}
 
 
 def altra(parte):
@@ -768,7 +768,8 @@ class Regia:
     def fine_set(self, set_n, punteggio, set_vinti, ultimo):
         self.punteggio = punteggio
         self.fase = E.CHIUSURA if ultimo else E.PAUSA
-        eventi = [self._fischio(E.LUNGO)]
+        # A fine partita il triplice fischio, regola di Gabriele; a fine set il fischio lungo del regolamento.
+        eventi = [self._fischio(E.TRIPLO if ultimo else E.LUNGO)]
         eventi.append(self._arbitro(E.FINE_SET, 0.0, dati={"set": set_n, "punteggio": list(punteggio), "set_vinti": list(set_vinti), "ultimo": ultimo}))
         return eventi
 

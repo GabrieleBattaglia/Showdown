@@ -262,15 +262,20 @@ def test_il_fischio_e_il_fischietto_vero_col_suo_trillo():
     for inizio, fine in soffi:
         _i, f, oscillazioni_del_soffio = _trillo(doppio[round(inizio * FS):round(fine * FS)])
         assert 5 <= oscillazioni_del_soffio <= 9 and abs(float(np.median(f)) - centro) < 0.02 * centro
-    # Il lungo, a fine set e a fine incontro: più lungo del singolo, ma breve anche lui.
+    # Il lungo, a fine set: più lungo del singolo, ma breve anche lui.
     lungo = ps.sorgente("fischio_lungo").astype(np.float64)
     assert len(_soffi(lungo)) == 1 and 1.5 * durata < len(lungo) / FS < 0.7
     assert _trillo(lungo)[2] > 15
+    # Il triplice, a fine partita, regola di Gabriele: tre soffi dello stesso fischietto, con le pause brevi del doppio.
+    triplo = ps.sorgente("fischio_triplo").astype(np.float64)
+    soffi = _soffi(triplo)
+    assert len(soffi) == 3 and all(0.04 <= soffi[i + 1][0] - soffi[i][1] <= 0.12 for i in range(2))
+    assert len(triplo) / FS < 1.0
 
 
 def test_il_fischio_dura_quanto_il_suo_preset():
     # Non più allungato al tempo che il motore dà al fischio: la pausa del doppio e il lungo restano brevi.
-    for variante, ruolo in ((E.SINGOLO, "fischio_singolo"), (E.DOPPIO, "fischio_doppio"), (E.LUNGO, "fischio_lungo")):
+    for variante, ruolo in ((E.SINGOLO, "fischio_singolo"), (E.DOPPIO, "fischio_doppio"), (E.LUNGO, "fischio_lungo"), (E.TRIPLO, "fischio_triplo")):
         fischio = _evento(1, 2.0, E.FISCHIO, (-50.0, 183.0), durata=1.4, fischio=variante)
         posato = ps.posati_dell_evento(fischio)[0]
         assert posato.ruolo == ruolo and len(posato.mono) == len(ps.sorgente(ruolo))
@@ -459,13 +464,29 @@ def test_il_fischio_suona_forte_quanto_nell_ascolto_libero():
     from motore.tavolo import posizione_arbitro
 
     sonorita = {}
-    for fischio, durata in ((E.SINGOLO, 0.35), (E.DOPPIO, 0.8), (E.LUNGO, 1.4)):
+    for fischio, durata in ((E.SINGOLO, 0.35), (E.DOPPIO, 0.8), (E.LUNGO, 1.4), (E.TRIPLO, 1.2)):
         e = _evento(1, 0.0, E.FISCHIO, posizione_arbitro(True), durata=durata, fischio=fischio)
         sonorita[fischio] = _sonorita(ps.spazializza(ps.posati_dell_evento(e)[0], "A"))
         if fischio == E.SINGOLO:
             approvato = _sonorita(resa.spazializza(resa.posati_dell_evento(e)[0], "A"))
             assert sonorita[fischio] == pytest.approx(approvato, abs=2.0)
     assert sonorita[E.DOPPIO] == pytest.approx(sonorita[E.SINGOLO], abs=1.0) and sonorita[E.LUNGO] == pytest.approx(sonorita[E.SINGOLO], abs=1.0)
+    assert sonorita[E.TRIPLO] == pytest.approx(sonorita[E.SINGOLO], abs=1.0)
+
+
+def test_il_triplice_fischio_chiude_la_partita():
+    # Regola di Gabriele dell'8 ottobre 2026: il fischio lungo a fine set, il triplice a fine partita, e la cronaca lo dice.
+    momenti = list(_incontro().momenti())
+    eventi = [e for m in momenti for e in m.eventi]
+    fischi_di_fine = [eventi[i - 1].fischio for i, e in enumerate(eventi) if e.tipo == E.FINE_SET]
+    assert fischi_di_fine[-1] == E.TRIPLO and set(fischi_di_fine[:-1]) <= {E.LUNGO} and len(fischi_di_fine) >= 2
+    assert sum(1 for e in eventi if e.tipo == E.FISCHIO and e.fischio == E.TRIPLO) == 1
+    from motore import cronaca
+
+    nomi = {1: cronaca.Nome("Rossi", "m"), 2: cronaca.Nome("Bianchi", "f"), "A": cronaca.Nome("Rossi", "m"), "B": cronaca.Nome("Bianchi", "f")}
+    righe = cronaca.componi(momenti, nomi, cronaca.NORMALE)
+    finali = [r for r in righe if r.startswith(("Fischio lungo. Set a", "Triplice fischio. Set a"))]
+    assert finali[-1].startswith("Triplice fischio. Set a") and all(r.startswith("Fischio lungo.") for r in finali[:-1])
 
 
 # La riproduzione.

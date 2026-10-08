@@ -92,10 +92,12 @@ GIOCO = "gioco"
 PAUSA = "pausa"
 CHIUSURA = "chiusura"
 
-# I tre fischi dell'arbitro, sempre uguali come nella realtà.
+# I fischi dell'arbitro, sempre uguali come nella realtà: uno per i falli, due dopo ogni goal, il
+# lungo a fine set e tre a fine partita, regola di Gabriele dell'8 ottobre 2026.
 SINGOLO = "singolo"
 DOPPIO = "doppio"
 LUNGO = "lungo"
+TRIPLO = "triplo"
 
 # Le chiamate dell'arbitro nei termini italiani della FISPIC. Il let non c'è: l'arbitro del
 # simulatore sa sempre che cosa è successo.
