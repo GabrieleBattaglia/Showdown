@@ -33,13 +33,20 @@ hanno un suono: nella live le dirà la cronaca, e nell'ascolto libero si leggono
 Nessun segnaposto è più un suono della finestra: la sponda, che usava quello della scheda del
 giocatore, prende un fruscio quasi uguale della collezione. Lo strumento non scrive più file WAV:
 il punto si compone al volo.
+Le leggi dello spazio, aggiunte lo stesso giorno per il banco dei dosaggi alla cieca,
+strumenti/banco_spazio.py. Lo spazio di un punto ha tre leggi, raccolte in Spazio: quanto il lontano
+è più piano, con l'esponente della legge di volume del motore; quanto è più cupo, e se lo diventa con
+la distanza, come oggi, o solo dove lo schermo nasconde la pallina, o mai; quanto è larga la metà
+lontana del tavolo, che oggi è larga quanto quella vicina, oppure il panorama dall'angolo vero sotto
+cui chi ascolta vede il punto. Il predefinito, OGGI, è lo spazio dell'ascolto libero, e con lui la
+resa dà gli stessi buffer di prima campione per campione.
 """
 
 import collections
 import itertools
 import math
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 
 import numpy as np
@@ -47,6 +54,8 @@ import numpy as np
 RADICE = Path(__file__).resolve().parent.parent
 if str(RADICE) not in sys.path:
     sys.path.insert(0, str(RADICE))
+
+from costanti import ASCOLTO_DIETRO_TESTATA, LARGHEZZA_TAVOLO, LUNGHEZZA_TAVOLO, META_TAVOLO  # noqa: E402
 
 FS = 44100
 # Il passo di controllo lungo i voli: pan, volume e taglio cambiano ogni 5 millesimi.
@@ -72,6 +81,58 @@ VARIANTI_RUMORE = 4
 # Il livello: il guadagno fisso della partita, e il tetto che nessun picco supera.
 GUADAGNO_PARTITA = 1.0
 TETTO = 0.8
+# Le leggi dello spazio. La distanza del centro della porta lontana dal punto d'ascolto, 406
+# centimetri, e quella del vicino a cui tutte le leggi di volume danno lo stesso guadagno.
+D_FONDO = float(LUNGHEZZA_TAVOLO + ASCOLTO_DIETRO_TESTATA)
+D_RIF_VOLUME = 60.0
+# L'ombra dello schermo, dal modello di Maekawa del critico della tappa 10, con le orecchie da 30 a
+# 60 centimetri sopra il piano e la luce di 10 sotto lo schermo: la pallina comincia a sparire dietro
+# lo schermo a 215 centimetri dalla porta di chi ascolta, e qui l'ombra è piena da 300 in poi.
+Y_OMBRA = 215.0
+Y_OMBRA_PIENA = 300.0
+# Il taglio che la legge di oggi dà in fondo al tavolo, circa 2660 hertz.
+FC_FONDO = FC_MAX * D0 / D_FONDO
+# Le casse per la legge dell'angolo vero: a 30 gradi dal centro, come nell'ascolto in stereo.
+ANGOLO_CASSE = 30.0
+CUPEZZE = ("distanza", "ombra", "nessuna")
+PANORAMI = ("laterale", "angolo")
+
+
+@dataclass(frozen=True)
+class Spazio:
+    """
+    Le tre leggi dello spazio, che i dosaggi alla cieca di D28 mettono a confronto; il predefinito
+    è lo spazio di oggi.
+    volume è l'esponente della legge di volume del motore, presa a partire dal vicino, a
+    D_RIF_VOLUME: 1 la lascia com'è, 2 raddoppia i decibel che separano il lontano dal vicino, 0,5
+    li dimezza.
+    cupezza dice come si chiude il passa basso: "distanza", col taglio che scende da d0 centimetri
+    in poi, come oggi; "ombra", aperto finché la pallina si vede sotto lo schermo e poi giù fino a
+    fc_ombra, fra Y_OMBRA e Y_OMBRA_PIENA; "nessuna", sempre aperto.
+    pan dice da dove viene il panorama: "laterale", dallo scarto dal centro, come oggi, con la metà
+    lontana che si stringe a poco a poco dallo schermo alla testata lontana, dove è larga lontano
+    volte quella vicina; "angolo", dall'angolo vero sotto cui chi ascolta vede il punto, con le
+    casse a ANGOLO_CASSE gradi, su tutto il tavolo.
+    """
+    volume: float = 1.0
+    cupezza: str = "distanza"
+    d0: float = D0
+    fc_ombra: float = FC_FONDO
+    pan: str = "laterale"
+    lontano: float = 1.0
+
+    def __post_init__(self):
+        if self.cupezza not in CUPEZZE:
+            raise ValueError(f"La cupezza {self.cupezza} non esiste: le leggi sono {', '.join(CUPEZZE)}.")
+        if self.pan not in PANORAMI:
+            raise ValueError(f"Il panorama {self.pan} non esiste: le leggi sono {', '.join(PANORAMI)}.")
+
+    def diverso_in(self, altro):
+        """I nomi dei campi in cui questo spazio è diverso da altro."""
+        return {campo.name for campo in fields(self) if getattr(self, campo.name) != getattr(altro, campo.name)}
+
+
+OGGI = Spazio()
 
 # I preset segnaposto della collezione di GBUtils, uno per ruolo e mai lo stesso per due ruoli.
 # Nessuno è fra quelli della finestra di MESS, in suoni.EVENTI, perché nell'ascolto un suono
@@ -225,22 +286,66 @@ def in_fila(ruolo, durata, numero):
 
 # La geometria.
 
-def taglio(d):
-    """La frequenza di taglio del passa basso alla distanza d, in centimetri."""
-    return float(min(FC_MAX, max(FC_MIN, FC_MAX * D0 / max(d, D0))))
+def taglio(d, d0=D0):
+    """La frequenza di taglio del passa basso alla distanza d, in centimetri: aperto fino a d0, poi giù come d0 diviso la distanza."""
+    return float(min(FC_MAX, max(FC_MIN, FC_MAX * d0 / max(d, d0))))
 
 
-def campi(posizioni, ascoltatore):
-    """Pan, volume e taglio di ogni posizione, per chi ascolta dalla testata della parte indicata."""
-    from motore.tavolo import vista, volume
+def nel_riferimento(pos, ascoltatore):
+    """Lo scarto dal centro del tavolo e la distanza dalla propria linea di porta, in centimetri, per chi ascolta dalla testata indicata."""
+    x, y = pos
+    scarto = x - LARGHEZZA_TAVOLO / 2
+    if ascoltatore == "B":
+        return -scarto, LUNGHEZZA_TAVOLO - y
+    return scarto, y
 
+
+def legge_del_pan(pan, scarto, y, spazio):
+    """Il pan di un punto: quello laterale di oggi, stretto nella metà lontana, oppure quello dell'angolo vero."""
+    if spazio.pan == "angolo":
+        angolo = math.degrees(math.atan2(scarto, y + ASCOLTO_DIETRO_TESTATA))
+        return max(-1.0, min(1.0, angolo / ANGOLO_CASSE))
+    if spazio.lontano == 1.0 or y <= META_TAVOLO:
+        return pan
+    quota = min(1.0, (y - META_TAVOLO) / (LUNGHEZZA_TAVOLO - META_TAVOLO))
+    return pan * (1.0 - (1.0 - spazio.lontano) * quota)
+
+
+def legge_del_volume(d, spazio):
+    """Il guadagno alla distanza d: quello del motore, con i decibel dal vicino moltiplicati per l'esponente."""
+    from motore.tavolo import volume
+
+    if spazio.volume == 1.0:
+        return volume(d)
+    riferimento = volume(D_RIF_VOLUME)
+    return riferimento * (volume(d) / riferimento) ** spazio.volume
+
+
+def legge_del_taglio(d, y, spazio):
+    """Il taglio del passa basso alla distanza d, e a y centimetri dalla porta di chi ascolta, per l'ombra dello schermo."""
+    if spazio.cupezza == "nessuna":
+        return FC_MAX
+    if spazio.cupezza == "ombra":
+        # Fra l'inizio e la pienezza dell'ombra il taglio scende in proporzione sulla scala delle ottave.
+        quota = min(1.0, max(0.0, (y - Y_OMBRA) / (Y_OMBRA_PIENA - Y_OMBRA)))
+        return FC_MAX * (spazio.fc_ombra / FC_MAX) ** quota
+    return taglio(d, spazio.d0)
+
+
+def campi(posizioni, ascoltatore, spazio=None):
+    """Pan, volume e taglio di ogni posizione, per chi ascolta dalla testata della parte indicata, con le leggi dello spazio; quelle di oggi se manca."""
+    from motore.tavolo import vista
+
+    spazio = OGGI if spazio is None else spazio
     pan = np.empty(len(posizioni))
     vol = np.empty(len(posizioni))
     fc = np.empty(len(posizioni))
     for i, p in enumerate(posizioni):
-        pan[i], d, _lato = vista(p, ascoltatore)
-        vol[i] = volume(d)
-        fc[i] = taglio(d)
+        laterale, d, _lato = vista(p, ascoltatore)
+        scarto, y = nel_riferimento(p, ascoltatore)
+        pan[i] = legge_del_pan(laterale, scarto, y, spazio)
+        vol[i] = legge_del_volume(d, spazio)
+        fc[i] = legge_del_taglio(d, y, spazio)
     return pan, vol, fc
 
 
@@ -262,10 +367,10 @@ def _filtra(mono, fc_blocchi):
     return uscita
 
 
-def spazializza(posato, ascoltatore):
-    """La sorgente mono di un suono resa stereo per chi ascolta: un array di campioni per 2, float32."""
+def spazializza(posato, ascoltatore, spazio=None):
+    """La sorgente mono di un suono resa stereo per chi ascolta, con le leggi dello spazio: un array di campioni per 2, float32."""
     mono = posato.mono
-    pan, vol, fc = campi(posato.posizioni, ascoltatore)
+    pan, vol, fc = campi(posato.posizioni, ascoltatore, spazio)
     if len(posato.posizioni) == 1:
         from scipy.signal import lfilter
 
@@ -433,8 +538,11 @@ def posa(eventi):
     return posati
 
 
-def componi(eventi, ascoltatore="A"):
-    """Il punto per chi ascolta dalla testata indicata: ogni suono posato, spazializzato e sommato al suo istante, esatto al campione."""
+def componi(eventi, ascoltatore="A", spazio=None):
+    """
+    Il punto per chi ascolta dalla testata indicata: ogni suono posato, spazializzato con le leggi
+    dello spazio, quelle di oggi se manca, e sommato al suo istante, esatto al campione.
+    """
     eventi = list(eventi)
     posati = posa(eventi)
     if not posati:
@@ -445,21 +553,30 @@ def componi(eventi, ascoltatore="A"):
     fine = max(p.t - t0 + len(p.mono) / FS for p in posati)
     buffer = np.zeros((math.ceil(fine * FS) + 1, 2), dtype=np.float32)
     for p in posati:
-        stereo = spazializza(p, ascoltatore)
+        stereo = spazializza(p, ascoltatore, spazio)
         inizio = round((p.t - t0) * FS)
         buffer[inizio:inizio + len(stereo)] += stereo
     return Resa(buffer, t0, posati)
 
 
-def con_margine(buffer, guadagno=GUADAGNO_PARTITA, tetto=TETTO):
-    """Il buffer al guadagno fisso della partita, abbassato tutto insieme se un picco supera il tetto."""
-    uscita = np.asarray(buffer, dtype=np.float32) * np.float32(guadagno)
-    picco = float(np.max(np.abs(uscita))) if len(uscita) else 0.0
+def con_margine_comune(buffers, guadagno=GUADAGNO_PARTITA, tetto=TETTO):
+    """
+    Più buffer al guadagno fisso della partita, abbassati tutti dello stesso fattore se il picco più
+    alto fra tutti supera il tetto: così i rapporti di livello fra un buffer e l'altro restano.
+    """
+    uscite = [np.asarray(buffer, dtype=np.float32) * np.float32(guadagno) for buffer in buffers]
+    picco = max((float(np.max(np.abs(uscita))) for uscita in uscite if len(uscita)), default=0.0)
     if picco > tetto:
         # Il tetto nei float32 del buffer, arrotondato per difetto: 0,8 diventerebbe un soffio di più.
         limite = np.float32(tetto)
         if float(limite) > tetto:
             limite = np.nextafter(limite, np.float32(0.0))
-        uscita *= limite / np.float32(picco)
-        np.clip(uscita, -limite, limite, out=uscita)
-    return uscita
+        for uscita in uscite:
+            uscita *= limite / np.float32(picco)
+            np.clip(uscita, -limite, limite, out=uscita)
+    return uscite
+
+
+def con_margine(buffer, guadagno=GUADAGNO_PARTITA, tetto=TETTO):
+    """Il buffer al guadagno fisso della partita, abbassato tutto insieme se un picco supera il tetto."""
+    return con_margine_comune([buffer], guadagno, tetto)[0]
