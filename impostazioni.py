@@ -1,5 +1,5 @@
 """
-Le impostazioni di MESS: dimensione dei caratteri, colori del testo e dello sfondo, volume degli effetti.
+Le impostazioni di MESS: dimensione dei caratteri, colori del testo e dello sfondo, volume degli effetti e della partita, velocità di gioco.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 5 del piano, secondo la decisione D12, sul modello di Terminal
 Beast e di Tornello: i colori sono percentuali di rosso, verde e blu, da 0 a 100, e il valore
@@ -10,6 +10,8 @@ Dal 2026-10-07, con la decisione D24, c'è anche il volume degli effetti sonori,
 il predefinito, i suoni sono come li ha pensati chi li ha fatti, e a zero tacciono.
 Dal 2026-10-08, con la decisione D29, c'è la velocità di gioco della partita dal vivo, da 1 a 8, e i
 modi di seguire l'amichevole diventano Assisti e Vai alla fine, con i valori di prima migrati.
+Con la decisione D30, lo stesso giorno, la velocità di gioco parte da 4, e chi l'ha già salvata la
+ritrova com'era; e la partita ha un volume suo, da 0 a 100, accanto a quello degli effetti.
 """
 
 import contextlib
@@ -34,11 +36,19 @@ MODI_DELL_AMICHEVOLE = ("assisti", "fine")
 MODI_DI_PRIMA = {"punto": "assisti", "tutta": "fine", "risultato": "fine"}
 LIVELLI_DELL_AMICHEVOLE = ("sintetica", "normale", "tecnica")
 # La velocità di gioco della decisione D12, nella forma di D29: divide le pause e la procedura
-# dell'arbitro della partita dal vivo, da 1, il tempo reale, a 8.
+# dell'arbitro della partita dal vivo, da 1, il tempo reale, a 8. Con D30 parte da 4: pause e
+# procedura a un quarto del tempo reale. Vale solo per chi non l'ha mai salvata.
 VELOCITA_MINIMA = 1
 VELOCITA_MASSIMA = 8
+VELOCITA_PREDEFINITA = 4
+# Il volume della partita dal vivo, decisione D30, da 0 a 100 come quello degli effetti ma a parte:
+# a 95 la partita suona come nell'ascolto libero che Gabriele ha approvato, e a 100 il suo picco più
+# alto arriva al tetto senza superarlo. È il VOLUME_DI_PROGETTO di partita_sonora, scritto qui per
+# non far dipendere le impostazioni da numpy; una prova controlla che i due valori siano uguali.
+VOLUME_PARTITA_PREDEFINITO = 95
 PREDEFINITE = {"dimensione": 12, "colore_testo": [0, 100, 0], "colore_sfondo": [0, 0, 0], "volume_effetti": 50,
-               "amichevole_set": 3, "amichevole_modo": "assisti", "amichevole_livello": "normale", "velocita_gioco": 1}
+               "amichevole_set": 3, "amichevole_modo": "assisti", "amichevole_livello": "normale", "velocita_gioco": VELOCITA_PREDEFINITA,
+               "volume_partita": VOLUME_PARTITA_PREDEFINITO}
 
 
 def _colore_valido(valore):
@@ -56,7 +66,8 @@ def valide(dati):
     for chiave in ("colore_testo", "colore_sfondo"):
         if _colore_valido(dati.get(chiave)):
             risultato[chiave] = list(dati[chiave])
-    for chiave, minimo, massimo in (("volume_effetti", VOLUME_MINIMO, VOLUME_MASSIMO), ("velocita_gioco", VELOCITA_MINIMA, VELOCITA_MASSIMA)):
+    for chiave, minimo, massimo in (("volume_effetti", VOLUME_MINIMO, VOLUME_MASSIMO), ("volume_partita", VOLUME_MINIMO, VOLUME_MASSIMO),
+                                    ("velocita_gioco", VELOCITA_MINIMA, VELOCITA_MASSIMA)):
         valore = dati.get(chiave)
         if isinstance(valore, int) and not isinstance(valore, bool) and minimo <= valore <= massimo:
             risultato[chiave] = valore

@@ -3,8 +3,9 @@ Test dell'amichevole nella finestra, tappe 9 e 10, sul desktop nascosto del conf
 il menu Partite, che con la decisione D29 non ha più F8 e Ctrl+F8; il primo giocatore scelto fra i
 tuoi, l'avversario fra tutti gli altri, chi ha già giocato oggi che non compare; le opzioni, con i
 due modi Assisti e Vai alla fine e la migrazione di quelli ricordati dalla tappa 9; la finestra dal
-vivo, che si apre con l'incontro già registrato e salvato, e la vista che dopo Esc, Vai alla fine o
-il risultato mostra lo stesso testo di Vai alla fine; la velocità di gioco passata al motore e
+vivo, che si apre con l'incontro già registrato e salvato, e la vista che dopo Vai alla fine o il
+risultato mostra lo stesso testo di Vai alla fine, mentre dopo Esc, decisione D30, non svela il
+risultato e dice dove leggerlo, senza il suono dell'esito; la velocità di gioco passata al motore e
 ricordata; il salvataggio della cronaca in una cartella temporanea, con il momento dell'incontro
 anche se si salva dopo un avanzamento; il perché di un mondo non salvato prima della cronaca intera;
 i suoni di ogni passo. I dialoghi sono sostituiti da risposte scritte, la cassa della partita da una
@@ -78,6 +79,11 @@ def finestra(app_wx, mondo, monkeypatch):
 
 def _esce_con_esc(finestra_dal_vivo):
     finestra_dal_vivo.esci(dal_vivo.CON_ESC)
+
+
+def _va_alla_fine(finestra_dal_vivo):
+    """Alt+V, Vai alla fine: la vista mostra il risultato, come dopo Vai alla fine nelle opzioni."""
+    finestra_dal_vivo.esci(dal_vivo.ALLA_FINE)
 
 
 class Scelte:
@@ -180,18 +186,66 @@ def test_assisti_apre_la_finestra_dal_vivo_con_l_incontro_gia_registrato(finestr
     assert scelte.elenchi[0] == [2, 5, 9]
     assert scelte.elenchi[1] == sorted(gid for gid in mondo.giocatori if gid != 2)
     assert len(scelte.dal_vivo) == 1 and scelte.dal_vivo[0].uscita == dal_vivo.CON_ESC
-    assert visto["partite"] == 1 and visto["velocita"] == 1
+    # La velocità di gioco predefinita, decisione D30, è 4.
+    assert visto["partite"] == 1 and visto["velocita"] == 4
     assert visto["salvati"][2]["ultima_amichevole"] == visto["salvati"][7]["ultima_amichevole"] == mondo.datetime_corrente_simulazione.isoformat()
     # Il gemello rigioca lo stesso incontro registrato.
     assert scelte.dal_vivo[0].cronologia.incontro.seme == finestra.incontro.risultato.seme
-    esito = _esito_atteso(finestra, 2)
-    assert suonati == ["dialogo_amichevole", "dialogo_avversario", "dialogo_opzioni_amichevole", "amichevole_al_via", "riscaldamento_saltato", esito]
-    # Uscendo, la vista mostra lo stesso testo di Vai alla fine, aperto dal risultato.
+    # Uscendo con Esc il risultato non si svela, né con il suono dell'esito né nella vista o nella barra.
+    assert suonati == ["dialogo_amichevole", "dialogo_avversario", "dialogo_opzioni_amichevole", "amichevole_al_via", "riscaldamento_saltato"]
     testo = finestra.vista.GetValue()
-    assert testo == _testo_alla_fine(finestra)
-    assert testo.startswith("Vince ") and "Punti allenamento: " in testo.splitlines()[1] and "\n\n" not in testo
-    assert finestra.ultimo_evento.startswith("vince ")
+    assert testo == testi.amichevole_senza_risultato(finestra.incontro.nomi)
+    assert finestra.ultimo_evento == "amichevole registrata"
     assert len(cassa.buffer) == 2 and cassa.accese == 0
+
+
+def test_esc_non_svela_il_risultato(finestra, suonati, monkeypatch, cartella_di_prova):
+    mondo = finestra.mondo
+    Scelte(monkeypatch, 2, 7, modo=ASSISTI)
+    finestra.amichevole()
+    v = finestra.incontro
+    testo = finestra.vista.GetValue()
+    risultato = testi.risultato_amichevole(v.risultato, mondo)
+    assert risultato not in testo and "Vince" not in testo and "set a" not in testo and "Punti allenamento" not in testo
+    assert all(frase not in testo for frase in v.risultato.registrazione)
+    assert f"l'amichevole fra {v.nomi['A'].testo} e {v.nomi['B'].testo} è comunque registrata nel mondo" in testo
+    assert "\n\n" not in testo and len(testo.splitlines()) == 2
+    # I tasti che la vista nomina sono quelli dei menu: il diario del giocatore e la cronaca salvata.
+    guida = testi.guida(finestra.voci_guida())
+    assert "Ctrl+Maiusc+D" in testo and "Diario del giocatore, Ctrl+Maiusc+D" in guida
+    assert "Ctrl+Maiusc+O" in testo and "Salva la cronaca, Ctrl+Maiusc+O" in guida
+    # Il risultato c'è davvero dove la vista dice: nel diario dei due giocatori e nella cronaca salvata.
+    for gid in (2, 7):
+        assert any("l'amichevole contro " in voce["testo"] for voce in mondo.giocatori[gid].diario if "testo" in voce)
+    finestra.salva_cronaca()
+    assert suonati[-1] == "cronaca_salvata"
+    scritto = next((cartella_di_prova / CARTELLA_CRONACHE).iterdir()).read_text(encoding="utf-8")
+    assert "Fine dell'incontro: vince " in scritto
+    # Nessun suono d'esito, mai: né subito né in coda.
+    assert not {"amichevole_vinta", "amichevole_persa", "amichevole_fra_tuoi", "resto_dell_incontro"} & set(suonati)
+
+
+def test_esc_con_il_mondo_non_salvato(finestra, suonati, monkeypatch):
+    # Anche dopo Esc il perché di un salvataggio non riuscito si legge, e si sente, senza svelare il risultato.
+    def guasto(*_args, **_kwargs):
+        raise OSError("disco pieno")
+
+    monkeypatch.setattr(archivio, "scrivi", guasto)
+    Scelte(monkeypatch, 2, 4, modo=ASSISTI)
+    finestra.amichevole()
+    v = finestra.incontro
+    righe = finestra.vista.GetValue().splitlines()
+    assert righe == [*testi.amichevole_senza_risultato(v.nomi).splitlines(), "Salvataggio non riuscito: disco pieno. Il salvataggio precedente è rimasto com'era."]
+    assert suonati[-2:] == ["amichevole_al_via", "salvataggio_non_riuscito"]
+
+
+def test_il_risultato_dalla_finestra_dal_vivo(finestra, suonati, monkeypatch, cassa):
+    # A incontro finito il pulsante porta al risultato, come prova test_dal_vivo: la vista lo mostra
+    # come Vai alla fine, e l'esito suona.
+    Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=lambda f: f.esci(dal_vivo.AL_RISULTATO))
+    finestra.amichevole()
+    assert finestra.vista.GetValue() == _testo_alla_fine(finestra)
+    assert suonati[-1] == _esito_atteso(finestra, 2) and finestra.ultimo_evento.startswith("vince ")
 
 
 def test_vai_alla_fine_dalla_finestra_dal_vivo(finestra, suonati, monkeypatch, cassa):
@@ -220,7 +274,8 @@ def test_la_velocita_cambiata_dal_vivo_si_ricorda(finestra, suonati, monkeypatch
     Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=nel_vivo)
     finestra.amichevole()
     assert suonati.count("dal_vivo_piu_veloce") == 2
-    assert finestra.impostazioni["velocita_gioco"] == 3 and impostazioni.carica()["velocita_gioco"] == 3
+    # Dalla predefinita, 4, a 6.
+    assert finestra.impostazioni["velocita_gioco"] == 6 and impostazioni.carica()["velocita_gioco"] == 6
     # La prossima partita dal vivo parte a quella velocità, e il motore la usa.
     finestra.mondo.datetime_corrente_simulazione += datetime.timedelta(days=1)
     visto = {}
@@ -232,7 +287,7 @@ def test_la_velocita_cambiata_dal_vivo_si_ricorda(finestra, suonati, monkeypatch
 
     Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=guarda)
     finestra.amichevole()
-    assert visto["velocita"] == (3, 3.0)
+    assert visto["velocita"] == (6, 6.0)
 
 
 def test_l_amichevole_da_assistere_nel_motore(mondo):
@@ -321,7 +376,8 @@ def test_il_mondo_che_non_si_salva_e_la_cronaca_che_non_si_salva(finestra, suona
         raise OSError("disco pieno")
 
     monkeypatch.setattr(archivio, "scrivi", guasto)
-    Scelte(monkeypatch, 2, 4, modo=modo)
+    # Dalla finestra dal vivo si esce con Alt+V, che mostra il risultato; Esc ha la sua prova.
+    Scelte(monkeypatch, 2, 4, modo=modo, nel_vivo=_va_alla_fine)
     finestra.amichevole()
     v = finestra.incontro
     righe = finestra.vista.GetValue().splitlines()
@@ -339,7 +395,7 @@ def test_il_mondo_che_non_si_salva_e_la_cronaca_che_non_si_salva(finestra, suona
 
 @pytest.mark.parametrize("livello", [SINTETICA, TECNICA])
 def test_il_testo_si_apre_col_risultato_a_ogni_livello(finestra, monkeypatch, livello):
-    Scelte(monkeypatch, 2, 7, modo=ASSISTI, livello=livello)
+    Scelte(monkeypatch, 2, 7, modo=ASSISTI, livello=livello, nel_vivo=_va_alla_fine)
     finestra.amichevole()
     assert finestra.vista.GetValue().splitlines()[0] == testi.risultato_amichevole(finestra.incontro.risultato, finestra.mondo)
 

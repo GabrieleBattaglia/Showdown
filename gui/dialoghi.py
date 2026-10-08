@@ -34,6 +34,7 @@ from GBwx import STILE_ADATTABILE, adatta_finestra, pannello_scorrevole
 import economia
 import impostazioni as modulo_impostazioni
 import mercato
+import partita_sonora
 import ricerca
 import suoni
 import testi
@@ -103,10 +104,11 @@ class _Dialogo(wx.Dialog):
     def suona_fra_poco(self, funzione):
         """
         Chiama funzione poco dopo l'ultima richiesta: è per i suoni che seguono un campo mentre lo si
-        cambia, che così suonano una volta sola quando ci si ferma, e non a ogni cifra o freccia.
+        cambia, che così suonano una volta sola quando ci si ferma, e non a ogni cifra o freccia. Se
+        nel frattempo si è passati a un altro campo, con un'altra funzione, vale l'ultima.
         """
         if self._timer_del_suono is not None and self._timer_del_suono.IsRunning():
-            self._timer_del_suono.Restart(RITARDO_DEL_SUONO_AL_VOLO)
+            self._timer_del_suono.Restart(RITARDO_DEL_SUONO_AL_VOLO, funzione)
         else:
             self._timer_del_suono = wx.CallLater(RITARDO_DEL_SUONO_AL_VOLO, self._suono_rimandato, funzione)
 
@@ -332,32 +334,46 @@ class Conservazione(_Dialogo):
 
 class EffettiSonori(_Dialogo):
     """
-    Il volume degli effetti sonori, da 0 a 100, decisione D24: a ogni ritocco, quando ci si ferma,
-    suona il campione al volume scelto, così si sente subito il livello; a zero tace.
+    Il volume degli effetti sonori, da 0 a 100, decisione D24, e quello della partita dal vivo, da 0
+    a 100, decisione D30: a ogni ritocco di un campo, quando ci si ferma, suona il suo campione al
+    volume scritto, così si sente subito il livello; a zero tace. Il campione della partita suona al
+    fattore con cui suonerebbe la partita, non a quello degli effetti. In risultato restano i due
+    volumi, effetti e partita.
     """
 
-    def __init__(self, genitore, volume):
+    def __init__(self, genitore, volume, volume_partita=modulo_impostazioni.VOLUME_PARTITA_PREDEFINITO):
         super().__init__(genitore, "Effetti sonori")
         self.risultato = None
-        self.sizer.Add(wx.StaticText(self.pannello, label="Il volume degli effetti sonori, da 0 a 100: a 50 i suoni sono come sono stati pensati, a zero tacciono."), 0, wx.ALL, 8)
+        self.sizer.Add(wx.StaticText(self.pannello, label=testi.SPIEGAZIONE_VOLUMI), 0, wx.ALL, 8)
         self.etichetta("&Volume degli effetti")
         self.volume = self.aggiungi(wx.SpinCtrl(self.pannello, min=modulo_impostazioni.VOLUME_MINIMO, max=modulo_impostazioni.VOLUME_MASSIMO, initial=volume))
+        self.etichetta("Volume della &partita dal vivo")
+        self.volume_partita = self.aggiungi(wx.SpinCtrl(self.pannello, min=modulo_impostazioni.VOLUME_MINIMO, max=modulo_impostazioni.VOLUME_MASSIMO,
+                                                        initial=volume_partita))
         ok, _annulla = self.pulsanti((wx.ID_OK, "OK"), (wx.ID_CANCEL, "Annulla"))
         ok.Bind(wx.EVT_BUTTON, self.conferma)
-        self.volume.Bind(wx.EVT_SPINCTRL, self.al_volume)
-        self.volume.Bind(wx.EVT_TEXT, self.al_volume)
-        self.completa((400, 220))
+        for campo, gestore in ((self.volume, self.al_volume), (self.volume_partita, self.al_volume_partita)):
+            campo.Bind(wx.EVT_SPINCTRL, gestore)
+            campo.Bind(wx.EVT_TEXT, gestore)
+        self.completa((440, 280))
         self.volume.SetFocus()
 
     def al_volume(self, event=None):
         self.suona_fra_poco(self.prova)
 
+    def al_volume_partita(self, event=None):
+        self.suona_fra_poco(self.prova_partita)
+
     def prova(self):
         """Il suono di prova al volume scritto nel campo, non a quello salvato."""
         suoni.suona("prova_volume_effetti", volume=self.volume.GetValue())
 
+    def prova_partita(self):
+        """Il suono di prova della partita al volume della partita scritto nel campo, con il fattore della partita."""
+        suoni.suona("prova_volume_partita", fattore=partita_sonora.fattore_del_volume(self.volume_partita.GetValue()))
+
     def conferma(self, event=None):
-        self.risultato = self.volume.GetValue()
+        self.risultato = (self.volume.GetValue(), self.volume_partita.GetValue())
         self.chiudi(wx.ID_OK)
 
 

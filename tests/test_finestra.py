@@ -17,6 +17,7 @@ import wx
 import archivio
 import impostazioni
 import mondo as modulo_mondo
+import partita_sonora
 import ricerca
 import suoni
 import testi
@@ -573,12 +574,13 @@ def test_la_velocita_di_gioco(finestra, suonati, monkeypatch, cartella_di_prova)
 
     voci = {voce[0]: voce for _t, elenco in finestra.voci_menu() for voce in filter(None, elenco)}
     assert voci["&Velocità di gioco..."][1] is None
-    assert impostazioni.carica()["velocita_gioco"] == 1
-    monkeypatch.setattr(dialoghi.VelocitaDiGioco, "ShowModal", scegli(4))
+    # Decisione D30: chi non l'ha mai scelta parte da 4.
+    assert impostazioni.carica()["velocita_gioco"] == 4 == impostazioni.VELOCITA_PREDEFINITA
+    monkeypatch.setattr(dialoghi.VelocitaDiGioco, "ShowModal", scegli(6))
     finestra.cambia_velocita()
     assert suonati == ["dialogo_velocita_di_gioco", "velocita_di_gioco_salvata"]
-    assert impostazioni.carica()["velocita_gioco"] == 4 and finestra.impostazioni["velocita_gioco"] == 4
-    assert finestra.ultimo_evento == "velocità di gioco 4"
+    assert impostazioni.carica()["velocita_gioco"] == 6 and finestra.impostazioni["velocita_gioco"] == 6
+    assert finestra.ultimo_evento == "velocità di gioco 6"
     # Un file che non si scrive lo dice la barra, e la velocità vale comunque per la sessione.
     monkeypatch.setattr(impostazioni, "salva", lambda _impostazioni: False)
     monkeypatch.setattr(dialoghi.VelocitaDiGioco, "ShowModal", scegli(8))
@@ -587,9 +589,19 @@ def test_la_velocita_di_gioco(finestra, suonati, monkeypatch, cartella_di_prova)
     assert finestra.impostazioni["velocita_gioco"] == 8
 
 
-@pytest.mark.parametrize(("valore", "letto"), [(1, 1), (8, 8), (5, 5), (0, 1), (9, 1), (True, 1), ("3", 1), (2.5, 1), (None, 1)])
+@pytest.mark.parametrize(("valore", "letto"), [(1, 1), (8, 8), (5, 5), (0, 4), (9, 4), (True, 4), ("3", 4), (2.5, 4), (None, 4)])
 def test_la_velocita_si_valida(valore, letto):
     assert impostazioni.valide({"velocita_gioco": valore})["velocita_gioco"] == letto
+
+
+def test_la_velocita_gia_salvata_resta_com_era(cartella_di_prova):
+    # Decisione D30: il 4 vale per chi non ha mai salvato la velocità; chi l'ha salvata la ritrova.
+    (cartella_di_prova / impostazioni.FILE_IMPOSTAZIONI).write_text('{"dimensione": 14, "velocita_gioco": 1}', encoding="utf-8")
+    assert impostazioni.carica()["velocita_gioco"] == 1
+    (cartella_di_prova / impostazioni.FILE_IMPOSTAZIONI).write_text('{"dimensione": 14}', encoding="utf-8")
+    letto = impostazioni.carica()
+    assert letto["velocita_gioco"] == 4 and letto["dimensione"] == 14
+    assert impostazioni.valide(None)["velocita_gioco"] == 4
 
 
 @pytest.mark.parametrize(("origine", "avvisi", "atteso"), [
@@ -823,10 +835,14 @@ def test_i_suoni_delle_vendite(finestra, suonati, monkeypatch):
 
 
 def test_il_volume_degli_effetti(finestra, suonati, monkeypatch, cartella_di_prova):
-    def scegli(volume):
+    def scegli(volume, volume_partita=None):
         def mostra(self):
+            assert self.volume_partita.GetValue() == finestra.impostazioni["volume_partita"]
             self.volume.SetValue(volume)
             self.prova()
+            if volume_partita is not None:
+                self.volume_partita.SetValue(volume_partita)
+                self.prova_partita()
             self.conferma()
             return wx.ID_OK
         return mostra
@@ -836,7 +852,9 @@ def test_il_volume_degli_effetti(finestra, suonati, monkeypatch, cartella_di_pro
     assert suonati == ["dialogo_effetti_sonori", "prova_volume_effetti", "effetti_sonori_applicati"]
     assert [d["fattore"] for d in suonati.dettagli] == [1.0, 1.6, 1.6]
     assert impostazioni.carica()["volume_effetti"] == 80
-    assert finestra.ultimo_evento == "volume degli effetti 80"
+    # Il volume della partita, toccato o no, resta com'era: il predefinito, 95.
+    assert impostazioni.carica()["volume_partita"] == 95
+    assert finestra.ultimo_evento == "volume effetti 80, partita 95"
     # A zero tacciono la prova e la conferma; l'aspetto, salvato dopo, non cambia il volume.
     monkeypatch.setattr(dialoghi.EffettiSonori, "ShowModal", scegli(0))
     finestra.cambia_effetti()
@@ -851,6 +869,62 @@ def test_il_volume_degli_effetti(finestra, suonati, monkeypatch, cartella_di_pro
     finestra.cambia_aspetto()
     assert impostazioni.carica()["volume_effetti"] == 0
     assert len(suonati) == 4
+
+
+def test_il_volume_della_partita(finestra, suonati, monkeypatch, cartella_di_prova):
+    # Decisione D30: nel dialogo degli effetti, accanto a quello degli effetti, con il suo suono di
+    # prova, che suona al fattore della partita anche con gli effetti a zero.
+    def scegli(volume, volume_partita):
+        def mostra(self):
+            etichette = [figlio.GetLabel() for figlio in self.pannello.GetChildren() if isinstance(figlio, wx.StaticText)]
+            assert "&Volume degli effetti" in etichette and "Volume della &partita dal vivo" in etichette
+            assert (self.volume_partita.GetMin(), self.volume_partita.GetMax()) == (0, 100)
+            self.volume.SetValue(volume)
+            self.volume_partita.SetValue(volume_partita)
+            self.prova_partita()
+            self.conferma()
+            return wx.ID_OK
+        return mostra
+
+    monkeypatch.setattr(dialoghi.EffettiSonori, "ShowModal", scegli(0, 100))
+    finestra.cambia_effetti()
+    assert suonati == ["dialogo_effetti_sonori", "prova_volume_partita"]
+    assert suonati.dettagli[1]["preset"] == "mess_prova_volume_partita"
+    assert suonati.dettagli[1]["fattore"] == pytest.approx(partita_sonora.fattore_del_volume(100))
+    assert impostazioni.carica()["volume_partita"] == 100 and finestra.impostazioni["volume_partita"] == 100
+    assert finestra.ultimo_evento == "volume effetti 0, partita 100"
+    # A zero la prova della partita tace, anche con gli effetti accesi; il volume si salva lo stesso. Il
+    # dialogo si apre in silenzio, perché gli effetti erano a zero, e la conferma suona al volume nuovo.
+    monkeypatch.setattr(dialoghi.EffettiSonori, "ShowModal", scegli(50, 0))
+    finestra.cambia_effetti()
+    assert suonati[2:] == ["effetti_sonori_applicati"]
+    assert impostazioni.carica()["volume_partita"] == 0
+    # Un file che non si scrive lo dice la barra.
+    monkeypatch.setattr(impostazioni, "salva", lambda _impostazioni: False)
+    monkeypatch.setattr(dialoghi.EffettiSonori, "ShowModal", scegli(50, 60))
+    finestra.cambia_effetti()
+    assert suonati[-1] == "impostazioni_non_salvate" and finestra.ultimo_evento == "volumi non salvati"
+    assert finestra.impostazioni["volume_partita"] == 60
+
+
+@pytest.mark.parametrize(("valore", "letto"), [(0, 0), (100, 100), (37, 37), (101, 95), (-1, 95), (True, 95), ("30", 95), (12.5, 95), (None, 95)])
+def test_il_volume_della_partita_si_valida(valore, letto):
+    assert impostazioni.valide({"volume_partita": valore})["volume_partita"] == letto
+
+
+def test_il_suono_di_prova_segue_l_ultimo_campo_toccato(app_wx, suonati):
+    # Due campi, un solo suono rimandato: se si passa all'altro campo prima che suoni, vale l'ultimo.
+    dialogo = dialoghi.EffettiSonori(None, 50, 95)
+    try:
+        dialogo.al_volume()
+        dialogo.al_volume_partita()
+        assert dialogo._timer_del_suono.args == (dialogo.prova_partita,)
+        dialogo._timer_del_suono.Stop()
+        dialogo.al_volume()
+        assert dialogo._timer_del_suono.args == (dialogo.prova,)
+        dialogo._timer_del_suono.Stop()
+    finally:
+        dialogo.Destroy()
 
 
 def test_il_tic_della_probabilita(app_wx, suonati):

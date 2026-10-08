@@ -9,15 +9,25 @@ coda di zeri, la posizione, la pausa con la maniglia, le code che finiscono, la 
 metà. La cronologia: i segmenti fino a ogni punto, sanzione o fine set, che coprono tutto l'incontro;
 la velocità di gioco che accorcia pause e procedura e lascia l'azione a tempo reale, con gli stessi
 punti; i tratti di procedura di ogni segmento e le pieghe che li fanno durare quanto vuole la velocità.
+Dalla decisione D30: il volume della partita, che cresce fino a 100 e al predefinito suona come
+l'ascolto libero, e le pause lunghe di ogni segmento, con la pausa di sempre che resta prima.
 """
 
+import itertools
 import math
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
 from aiuti_dal_vivo import CassaFinta, Orologio, vieta_la_cassa_vera
 from aiuti_motore import giocatore
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
+
+import resa_prototipo as resa
+
+import impostazioni
 import partita_sonora as ps
 from motore import COMPLETO, SINGOLARE_3, Incontro
 from motore import eventi as E
@@ -151,16 +161,17 @@ def test_due_rumori_di_fila_non_sono_uguali():
     assert not np.array_equal(posati[0].mono, posati[1].mono)
 
 
-@pytest.mark.parametrize("volume_effetti", [0, 25, 50, 100])
-def test_il_margine_tiene_anche_al_volume_massimo(volume_effetti):
+@pytest.mark.parametrize("volume_partita", [0, 25, 50, 95, 100])
+def test_il_margine_tiene_anche_al_volume_massimo(volume_partita):
     battute = [_evento(n, 0.2 * n, E.BATTUTA, (61.0, 25.0), chi=1, parte="A") for n in range(1, 6)]
     buffer = ps.componi(battute, "A").buffer * 1.5
-    pronto = ps.per_la_cassa(buffer, volume_effetti)
+    pronto = ps.per_la_cassa(buffer, volume_partita)
     assert float(np.max(np.abs(pronto))) <= ps.TETTO
-    if volume_effetti == 0:
+    if volume_partita == 0:
         assert not np.any(pronto)
-    if volume_effetti == 25:
-        assert np.allclose(pronto, buffer * 0.5, atol=1e-6) or float(np.max(np.abs(pronto))) == pytest.approx(ps.TETTO, abs=1e-6)
+    if volume_partita == 25:
+        fattore = ps.fattore_del_volume(25)
+        assert np.allclose(pronto, buffer * fattore, atol=1e-6) or float(np.max(np.abs(pronto))) == pytest.approx(ps.TETTO, abs=1e-6)
 
 
 def test_le_sorgenti_si_preparano_tutte():
@@ -311,11 +322,27 @@ def test_ogni_segmento_si_compone_dentro_il_margine():
 # Le correzioni della revisione: il livello uguale per ogni buffer, la paletta nel riscaldamento,
 # la rampa della ripartenza e le pieghe della procedura.
 
+def test_il_volume_della_partita_cresce_fino_in_fondo():
+    # Decisione D30: il volume della partita moltiplica il buffer in proporzione da 0 a 100, senza
+    # fermarsi a metà come faceva il volume degli effetti oltre il 53.
+    fattori = [ps.fattore_del_volume(v) for v in range(101)]
+    assert fattori[0] == 0.0 and all(b > a for a, b in itertools.pairwise(fattori))
+    assert fattori[50] == pytest.approx(2 * fattori[25]) and fattori[100] == pytest.approx(2 * fattori[50])
+    # A 100 il picco di progetto arriva al tetto, senza superarlo; fuori scala vale il bordo.
+    assert ps.PICCO_DI_PROGETTO * fattori[100] == pytest.approx(ps.TETTO)
+    assert ps.fattore_del_volume(150) == fattori[100] and ps.fattore_del_volume(-5) == 0.0
+    # Al volume di progetto, 95, il predefinito delle impostazioni, il fattore è quello dell'ascolto libero approvato.
+    assert ps.VOLUME_DI_PROGETTO == 95 == impostazioni.VOLUME_PARTITA_PREDEFINITO == impostazioni.PREDEFINITE["volume_partita"]
+    assert ps.fattore_del_volume(ps.VOLUME_DI_PROGETTO) == pytest.approx(resa.GUADAGNO_PARTITA) == pytest.approx(1.0)
+    assert (ps.TETTO, ps.GUADAGNO_PARTITA) == (resa.TETTO, resa.GUADAGNO_PARTITA)
+    segmento = _segmenti(_incontro())[3]
+    buffer = ps.componi(segmento.eventi, "A", da=segmento.inizio, fine=segmento.fine).buffer
+    assert np.allclose(ps.per_la_cassa(buffer, impostazioni.VOLUME_PARTITA_PREDEFINITO), resa.con_margine(buffer), atol=1e-6)
+    # E il volume più alto suona davvero più forte di quello di progetto, che è già vicino al tetto.
+    assert float(np.max(np.abs(ps.per_la_cassa(buffer, 100)))) > float(np.max(np.abs(ps.per_la_cassa(buffer, 95))))
+
+
 def test_il_fattore_del_volume_e_lo_stesso_per_ogni_buffer():
-    assert ps.fattore_del_volume(50) == 1.0 and ps.fattore_del_volume(25) == 0.5 and ps.fattore_del_volume(0) == 0.0
-    # Sopra il volume 53 il picco di progetto toccherebbe il tetto: il fattore non cresce più.
-    assert ps.fattore_del_volume(60) == ps.fattore_del_volume(100) == pytest.approx(ps.TETTO / ps.PICCO_DI_PROGETTO)
-    assert ps.fattore_del_volume(52) == pytest.approx(52 / 50)
     segmenti = _segmenti(_incontro())
     for livello in (75, 100):
         fattore = np.float32(ps.fattore_del_volume(livello))
@@ -416,3 +443,40 @@ def test_i_tratti_di_procedura_sono_il_tempo_che_la_velocita_accorcia():
 
     for i in range(len(eventi[1.0]) - 1):
         assert azione(1.0, i) == pytest.approx(azione(4.0, i), abs=0.004), (eventi[1.0][i].tipo, eventi[1.0][i + 1].tipo)
+
+
+# La decisione D30: le pause lunghe, che non si sentono mai, e la pausa di sempre che resta.
+
+def test_il_segmento_sa_se_ha_una_pausa_lunga():
+    segmenti = _segmenti(_incontro(seme=50))
+    con_la_pausa = [s for s in segmenti if s.pausa_lunga]
+    # Ogni set comincia con la sua pausa lunga, l'inizio del set; poi i due time-out e il cambio campo del terzo set.
+    tipi = [{e.tipo for e in s.preambolo} & ps.PAUSE_LUNGHE for s in con_la_pausa]
+    assert sum(E.INIZIO_SET in t for t in tipi) == 3
+    assert sum(E.TIMEOUT_INIZIO in t for t in tipi) == 2 and sum(E.CAMBIO_CAMPO_INIZIO in t for t in tipi) == 3
+    for s in segmenti:
+        # Il preambolo è tutto quello che viene prima della ripresa del gioco, e la ripresa è l'inizio.
+        assert all(e.t <= s.inizio + ps.TOLLERANZA for e in s.preambolo)
+        if s.preambolo:
+            assert s.eventi[len(s.preambolo)].t == s.inizio
+        if not s.pausa_lunga:
+            assert not {e.tipo for e in s.eventi[:len(s.preambolo)]} & ps.PAUSE_LUNGHE
+    # Il riscaldamento non ha preambolo: comincia con l'incontro.
+    assert segmenti[0].riscaldamento and segmenti[0].preambolo == [] and not segmenti[0].pausa_lunga
+
+
+def test_la_pausa_di_sempre_prima_della_pausa_lunga():
+    for velocita in (1.0, 4.0):
+        segmenti = _segmenti(_incontro(velocita, seme=50), velocita)
+        for precedente, segmento in itertools.pairwise(segmenti):
+            primo = segmento.eventi[0]
+            if any(e.tipo == E.TIMEOUT_INIZIO for e in segmento.preambolo):
+                # Dopo il punto il motore lascia la pausa fra i punti, alla velocità di gioco; poi il fischio del time-out.
+                assert precedente.chiusura.tipo == E.PUNTO and primo.tipo == E.FISCHIO
+                assert segmento.attesa_prima(precedente.fine, velocita) == pytest.approx(5.5 / velocita, abs=0.002)
+                # Alla velocità di adesso, se è cambiata, la pausa si ripiega come tutta la procedura.
+                assert segmento.attesa_prima(precedente.fine, 8) == pytest.approx(5.5 / 8, abs=0.002)
+            if precedente.riscaldamento:
+                # Dopo il riscaldamento il primo set comincia subito: la sua pausa lunga non lascia niente prima.
+                assert segmento.pausa_lunga and primo.tipo == E.INIZIO_SET
+                assert segmento.attesa_prima(precedente.fine, velocita) == pytest.approx(0.0, abs=0.002)

@@ -21,9 +21,10 @@ sua causa: le cause che fanno un rumore loro, la paletta che cade, il colpo a vu
 tocco, hanno il loro suono, come vuole D28, e gli altri falli si riconoscono dal suono della pallina,
 dal fischio e dalla chiamata. Le parole dell'arbitro non suonano: le dice la cronaca. I suoni tonali
 si sintetizzano una volta; quelli di rumore tengono quattro varianti, che girano dentro il buffer.
-Il livello ha un margine: allo stesso volume degli effetti ogni buffer ha lo stesso fattore, così
+Il livello ha un margine: allo stesso volume della partita ogni buffer ha lo stesso fattore, così
 la partita non cambia livello da un punto all'altro né cambiando lato, e un tetto che nessun picco
-supera, anche al volume massimo.
+supera, anche al volume massimo. Dalla decisione D30 il volume è quello della partita, a parte da
+quello degli effetti, e cresce in proporzione fino a 100, dove il picco più alto tocca il tetto.
 La riproduzione e la cronologia. Il buffer parte come ciclo di Acusticator, con una coda di zeri, e
 si ferma con la sua maniglia, come vuole D28: la pausa, il salto, l'uscita e il cambio di lato
 fermano soltanto la partita, mai gli effetti della finestra, che Acusticator.stop zittirebbe. Quando
@@ -31,9 +32,13 @@ riparte a metà, dopo una pausa o un cambio di lato, la testa ha cinque millesim
 taglio non faccia clic. La Cronologia divide l'incontro, svolto un momento alla volta, in segmenti
 che finiscono a ogni punto, sanzione o fine set, e lascia al motore la velocità di gioco, che divide
 le pause e la procedura dell'arbitro e mai l'azione. Pause e procedura già svolte a una velocità
-diversa da quella di adesso, il time-out che sta già suonando o la pausa dopo il punto in cui si è
-premuto più, si ripiegano: ogni segmento conosce i suoi tratti di procedura, e il buffer li fa
-durare quanto vuole la velocità di adesso, spostando quello che viene dopo. L'azione non si piega mai.
+diversa da quella di adesso, come la pausa dopo il punto in cui si è premuto più, o la procedura
+dell'arbitro che la segue, si ripiegano: ogni segmento conosce i suoi tratti di procedura, e il
+buffer li fa durare quanto vuole la velocità di adesso, spostando quello che viene dopo. L'azione
+non si piega mai.
+Le pause lunghe, cioè time-out, cambio campo e inizio del set, con la decisione D30 non si sentono
+mai: ogni segmento sa se prima della ripresa del gioco ne ha una, e quanto dura la pausa di sempre
+dopo il punto, che resta; le pause lunghe si leggono nella cronaca.
 """
 
 import collections
@@ -64,16 +69,19 @@ RITARDO_SECONDO_TOCCO = 0.08
 # I suoni di rumore e quante varianti ne restano in memoria.
 KIND_DI_RUMORE = frozenset((5, 6, 7, 8))
 VARIANTI_RUMORE = 4
-# Il livello: il guadagno fisso della partita, e il tetto che nessun picco supera. Il volume degli
-# effetti moltiplica il buffer come moltiplica i suoni della finestra, a 50 com'è stato pensato, ma
-# senza superare il fattore che porta al tetto il picco di progetto, il più alto misurato dal
-# revisore in 24 incontri, a tre velocità e dalle due testate: 0,7526, del fischio che parte nello
-# stesso campione di un colpo. Così il fattore è lo stesso per ogni buffer, e oltre il volume 53 la
-# partita non cresce più; un picco mai visto lo abbassa ancora con_margine, come rete.
+# Il livello: il guadagno fisso della partita, e il tetto che nessun picco supera. Il picco di
+# progetto è il più alto misurato dal revisore in 24 incontri, a tre velocità e dalle due testate:
+# 0,7526, del fischio che parte nello stesso campione di un colpo. Dalla decisione D30 la partita ha
+# un volume suo, da 0 a 100, che moltiplica il buffer in proporzione, fino in fondo: a 100 porta il
+# picco di progetto al tetto, e al volume di progetto, 95, il fattore è uno, il livello dell'ascolto
+# libero approvato da Gabriele. Prima era il volume degli effetti, a 50 com'era stato pensato, ma
+# oltre il 53 il fattore si fermava e la partita non cresceva più. Il fattore resta lo stesso per
+# ogni buffer; un picco mai visto lo abbassa ancora con_margine, come rete.
 GUADAGNO_PARTITA = 1.0
 TETTO = 0.8
-VOLUME_DI_PROGETTO = 50
 PICCO_DI_PROGETTO = 0.76
+VOLUME_MASSIMO = 100
+VOLUME_DI_PROGETTO = round(VOLUME_MASSIMO * PICCO_DI_PROGETTO / TETTO)
 # Il silenzio lasciato davanti al primo suono quando il buffer accorcia quello in testa.
 ANTICIPO = 0.3
 # I secondi di zeri in coda al ciclo: se il battito che lo ferma arriva tardi, il punto non riparte.
@@ -605,14 +613,14 @@ def con_margine(buffer, guadagno=GUADAGNO_PARTITA, tetto=TETTO):
 
 def fattore_del_volume(volume):
     """
-    Il fattore della partita al volume degli effetti, da 0 a 100: a 50 uno, e lo stesso per ogni
-    buffer; non supera quello che porta il picco di progetto al tetto, a cui arriva al volume 53.
+    Il fattore della partita al suo volume, da 0 a 100, lo stesso per ogni buffer: cresce in
+    proporzione, vale uno al volume di progetto e porta il picco di progetto al tetto a 100.
     """
-    return GUADAGNO_PARTITA * min(max(0, min(100, volume)) / VOLUME_DI_PROGETTO, TETTO / PICCO_DI_PROGETTO)
+    return GUADAGNO_PARTITA * max(0, min(VOLUME_MASSIMO, volume)) / VOLUME_DI_PROGETTO
 
 
 def per_la_cassa(buffer, volume):
-    """Il buffer pronto per la cassa al volume degli effetti, da 0 a 100: a 50 com'è stato pensato, mai sopra il tetto."""
+    """Il buffer pronto per la cassa al volume della partita, da 0 a 100: al volume di progetto com'è stato pensato, mai sopra il tetto."""
     return con_margine(buffer, fattore_del_volume(volume))
 
 
@@ -750,6 +758,9 @@ EVENTI_DI_PROCEDURA = frozenset((E.SORTEGGIO, E.FORMAZIONI, E.RECUPERO, E.ANNUNC
                                  E.AMMONIZIONE, E.PENALITA, E.CAMBIO_AL_TAVOLO))
 PAUSA_DOPO = frozenset((E.PUNTO, E.RIPETIZIONE, E.TIMEOUT_INIZIO, E.CAMBIO_CAMPO_INIZIO))
 RITARDO_PRIMA = frozenset((E.CHIAMATA, E.AMMONIZIONE, E.PENALITA))
+# Le pause lunghe della decisione D30, che non si sentono mai e si leggono nella cronaca: il
+# time-out, il cambio campo e l'inizio del set, riconosciuti dal loro primo evento.
+PAUSE_LUNGHE = frozenset((E.TIMEOUT_INIZIO, E.CAMBIO_CAMPO_INIZIO, E.INIZIO_SET))
 
 
 def tratti_di_procedura(precedente, evento, velocita_precedente, velocita):
@@ -804,6 +815,24 @@ class Segmento:
     @property
     def ultimo(self):
         return self.chiusura.tipo == E.FINE_INCONTRO
+
+    @property
+    def preambolo(self):
+        """Gli eventi che vengono prima della ripresa del gioco: pause e procedura a palla ferma, che si leggono nella cronaca."""
+        return [e for e, _m, _a in self.voci[:_indice_del_gioco(self.voci)]]
+
+    @property
+    def pausa_lunga(self):
+        """Vero se prima della ripresa del gioco il segmento ha una pausa lunga: un time-out, un cambio campo o l'inizio di un set."""
+        return any(e.tipo in PAUSE_LUNGHE for e in self.preambolo)
+
+    def attesa_prima(self, da, velocita):
+        """
+        I secondi, alla velocità data, fra l'istante da, la fine del segmento di prima, e il primo
+        evento di questo: la pausa di sempre dopo il punto, quella che resta quando la pausa lunga
+        che viene dopo non si sente. Zero se il segmento comincia subito.
+        """
+        return max(0.0, secondi_del_buffer(self.voci[0][0].t, da, ripiega(self.procedure, velocita)))
 
 
 def set_finito(punteggio, formato):
@@ -872,9 +901,14 @@ class Cronologia:
         return Segmento(voci, _inizio_del_gioco(voci), chiusura.t + chiusura.durata, procedure)
 
 
-def _inizio_del_gioco(voci):
-    """L'istante del primo momento di gioco del segmento: i preliminari, un punto o una sanzione, dal suo primo evento."""
-    for evento, momento, apre in voci:
+def _indice_del_gioco(voci):
+    """La voce che apre il primo momento di gioco del segmento: i preliminari, un punto o una sanzione; la prima, se non ce n'è."""
+    for indice, (_evento, momento, apre) in enumerate(voci):
         if apre and (momento.genere in ("preliminari", "punto") or any(e.tipo in SANZIONI for e in momento.eventi)):
-            return evento.t
-    return voci[0][0].t
+            return indice
+    return 0
+
+
+def _inizio_del_gioco(voci):
+    """L'istante del primo momento di gioco del segmento, dal suo primo evento: è la ripresa del gioco."""
+    return voci[_indice_del_gioco(voci)][0].t

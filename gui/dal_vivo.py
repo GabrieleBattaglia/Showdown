@@ -11,9 +11,10 @@ fermata. Durante il riscaldamento il pulsante diventa Salta il riscaldamento: la
 vuole saltabile con un tasto, e D29 non ne nomina un altro. Ascolta fino a fine set, Alt+F, non si
 ferma a ogni punto ma solo a fine set, e ha il suo suono anche mentre l'azione suona o è in pausa,
 perché si sappia subito che il tasto è arrivato; Alt+L passa dalla parte dell'altro giocatore anche
-a metà punto, ricomponendo il suono dal punto in cui si è arrivati; Alt+V va alla fine; Esc esce. Più
+a metà punto, ricomponendo il suono dal punto in cui si è arrivati; Alt+V va alla fine e mostra il
+risultato; Esc esce senza svelarlo, e la vista principale dice dove leggerlo, decisione D30. Più
 e meno cambiano al volo la velocità di gioco: il motore la usa dal momento seguente, e pause e
-procedura già composte, come il time-out che sta suonando, si ripiegano alla velocità nuova appena il
+procedura già composte, come la pausa dopo il punto, si ripiegano alla velocità nuova appena il
 suono tace, così il cambio non si sente. A fine incontro il pulsante lo dice e porta al risultato.
 Con Tab e Maiusc+Tab si va nel campo della cronaca, dove si legge la tranche appena ascoltata al
 livello scelto: il campo cambia mentre il fuoco resta sul pulsante, perciò NVDA non lo legge da solo
@@ -24,7 +25,11 @@ zittirebbe anche gli effetti della finestra.
 Prosegui fa sentire il punto dalla ripresa del gioco, con il silenzio in testa accorciato: le pause e
 la procedura a palla ferma che vengono prima, il time-out, il cambio campo, l'inizio del set, si
 leggono nella cronaca, perché la pausa fra due punti la decide chi ascolta. Ascolta fino a fine set
-invece fa sentire tutto di seguito, un segmento dopo l'altro, con le pause accorciate dalla velocità.
+invece fa sentire tutto di seguito, un segmento dopo l'altro, con le pause accorciate dalla velocità;
+ma le pause lunghe, il time-out, il cambio campo e l'inizio del set, con la decisione D30 non le fa
+sentire nemmeno lui: dopo la pausa di sempre che segue il punto, il suono riprende dalla ripresa del
+gioco, e la pausa lunga si legge nella cronaca. La partita suona al suo volume, quello della partita
+nelle impostazioni, a parte da quello degli effetti, secondo D30.
 La cassa e l'orologio si possono sostituire, e le prove lo fanno: così nessuna prova suona.
 """
 
@@ -57,7 +62,8 @@ AL_RISULTATO = "risultato"
 class FinestraDalVivo(_Dialogo):
     """
     La partita dal vivo: gemello è l'incontro ancora da giocare, con lo stesso seme di quello
-    registrato; nomi e livello sono quelli della cronaca, velocita quella di gioco delle impostazioni.
+    registrato; nomi e livello sono quelli della cronaca, velocita quella di gioco delle impostazioni,
+    da cui viene anche il volume della partita; senza impostazioni vale il volume predefinito.
     Alla chiusura uscita dice come si è chiusa, e velocita la velocità a cui si è arrivati.
     """
 
@@ -67,6 +73,7 @@ class FinestraDalVivo(_Dialogo):
         self.livello = livello
         self.velocita = velocita
         self.impostazioni = impostazioni
+        self.volume = modulo_impostazioni.valide(impostazioni)["volume_partita"]
         self.set_al_meglio = gemello.formato.set_al_meglio
         self.cronologia = ps.Cronologia(gemello)
         self.riproduttore = ps.Riproduttore(cassa, orologio or time.monotonic)
@@ -163,7 +170,7 @@ class FinestraDalVivo(_Dialogo):
         self.resa = ps.componi(self.segmento.eventi, self.ascoltatore, da=da, fine=self.segmento.fine, anticipo=anticipo, pieghe=self._pieghe)
 
     def _per_la_cassa(self):
-        return ps.per_la_cassa(self.resa.buffer, suoni.volume_effetti())
+        return ps.per_la_cassa(self.resa.buffer, self.volume)
 
     def _suona_segmento(self, segmento, fresco, sovrapponi=False, anticipo=0.0):
         """
@@ -224,13 +231,22 @@ class FinestraDalVivo(_Dialogo):
         self.timer.Start(BATTITO)
 
     def _prosegui_di_seguito(self, fresco=False):
-        """Fino a fine set: il segmento che segue parte appena finisce quello di prima, la cui coda finisce di suonare."""
+        """
+        Fino a fine set: il segmento che segue parte appena finisce quello di prima, la cui coda
+        finisce di suonare. Se prima della ripresa del gioco c'è una pausa lunga, time-out, cambio
+        campo o inizio del set, non si sente: resta la pausa di sempre dopo il punto, in silenzio, e
+        il segmento comincia dalla ripresa, come con Prosegui; la pausa lunga è nella cronaca.
+        """
         segmento = self.cronologia.prossimo(self.velocita)
         if segmento is None:
             self._fine_tranche()
             return
         self.tranche.extend(segmento.voci)
-        self._suona_segmento(segmento, fresco=fresco, sovrapponi=not fresco)
+        if not fresco and segmento.pausa_lunga:
+            attesa = segmento.attesa_prima(self.segmento.fine, self.velocita)
+            self._suona_segmento(segmento, fresco=True, sovrapponi=True, anticipo=attesa)
+        else:
+            self._suona_segmento(segmento, fresco=fresco, sovrapponi=not fresco)
         self._aggiorna_prosegui()
 
     def _fine_tranche(self):

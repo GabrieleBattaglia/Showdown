@@ -27,7 +27,8 @@ senza giudizio. Le impressioni vanno nel file ascolto_partita.txt, nella cartell
 una riga per voce. Di suo lo strumento non scrive righe vuote, perché enter_escape e gruppo vanno
 a capo da sé; le sole che restano vengono dal menu di collaudo_comune, che qui non si tocca.
 I punti si sentono a un livello fisso, con margine: nessun picco supera il tetto della resa,
-qualunque sia il volume degli effetti scelto nel gioco, che qui non conta.
+qualunque sia il volume della partita scelto nel gioco, che qui non conta: è il livello che il
+gioco dà al volume della partita predefinito, 95.
 Uso, dalla cartella del programma: python strumenti/ascolta_partita.py
 """
 

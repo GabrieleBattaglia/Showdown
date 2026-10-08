@@ -22,6 +22,9 @@ set, cambio di lato e velocità, e la velocità di gioco nelle impostazioni. Qua
 mess_fino_a_fine_set, mess_dall_altra_parte, mess_velocita_di_gioco e mess_velocita_salvata, e
 cinque della collezione portano la firma di MESS, con la V202; i quattro del punto per punto passano
 ai comandi della finestra dal vivo.
+Con la decisione D30 la partita ha un volume suo, nel dialogo degli effetti, con il suo suono di
+prova, mess_prova_volume_partita, anche lui nella V202: suona al fattore della partita, non a quello
+degli effetti, perché faccia sentire il livello che la partita avrà.
 """
 
 import sys
@@ -83,6 +86,9 @@ GRUPPI = (
         "conservazione_applicata": "mess_diari_conservati",
         "dialogo_effetti_sonori": "meteora_impostazioni",
         "prova_volume_effetti": "mess_prova_volume",
+        # La prova del volume della partita, decisione D30: una pallina colpita che attraversa il
+        # tavolo e sbatte sulla sponda, al fattore della partita e non a quello degli effetti.
+        "prova_volume_partita": "mess_prova_volume_partita",
         "effetti_sonori_applicati": "conferma",
         # La velocità di gioco della partita dal vivo: il tic tac di un metronomo, e tre note che scendono e si posano.
         "dialogo_velocita_di_gioco": "mess_velocita_di_gioco",
@@ -269,22 +275,26 @@ def attesa():
     return max(0.0, _FINE_DELL_ULTIMO[0] - time.monotonic())
 
 
-def suona(evento, sync=False, volume=None, semitoni=0.0):
+def suona(evento, sync=False, volume=None, semitoni=0.0, fattore=None):
     """
     Suona il preset dell'evento al volume degli effetti, o a quello dato. A volume zero non parte
     niente. sync è quello di Acusticator: falso non aspetta, un numero aspetta al massimo quei
-    secondi. semitoni sposta l'altezza, anche di frazioni. Vero se il suono è partito. Un evento
-    sconosciuto, un preset che manca o una scheda audio che non risponde non fermano il programma.
+    secondi. semitoni sposta l'altezza, anche di frazioni. fattore, se dato, moltiplica il suono al
+    posto del volume: è per la prova del volume della partita, che suona al fattore della partita;
+    a fattore zero non parte niente. Vero se il suono è partito. Un evento sconosciuto, un preset
+    che manca o una scheda audio che non risponde non fermano il programma.
     """
-    volume = volume_effetti() if volume is None else volume
-    if volume <= 0:
+    if fattore is None:
+        volume = volume_effetti() if volume is None else volume
+        fattore = volume / VOLUME_DI_PROGETTO
+    if fattore <= 0:
         return False
     preset = EVENTI.get(evento)
     if preset is None:
         print(f"MESS: evento sonoro sconosciuto, {evento}", file=sys.stderr)
         return False
     try:
-        return _riproduci(evento, preset, sync, volume / VOLUME_DI_PROGETTO, semitoni)
+        return _riproduci(evento, preset, sync, fattore, semitoni)
     except Exception as errore:  # noqa: BLE001 - un suono che non parte non deve far cadere un comando della finestra
         print(f"MESS: il suono {evento} non è partito: {errore}", file=sys.stderr)
         return False

@@ -235,6 +235,38 @@ def test_il_volume_moltiplica_il_suono(suonati):
     assert suoni.volume_effetti() == 100
 
 
+def test_il_fattore_prende_il_posto_del_volume(suonati):
+    # La prova del volume della partita, decisione D30: suona al fattore della partita, anche con gli effetti a zero.
+    suoni.imposta_volume(0)
+    assert suoni.suona("prova_volume_partita", fattore=partita_sonora.fattore_del_volume(100))
+    assert not suoni.suona("prova_volume_partita", fattore=0.0)
+    suoni.imposta_volume(50)
+    assert suoni.suona("prova_volume_partita", fattore=partita_sonora.fattore_del_volume(partita_sonora.VOLUME_DI_PROGETTO))
+    assert suonati == ["prova_volume_partita", "prova_volume_partita"]
+    assert [d["fattore"] for d in suonati.dettagli] == [pytest.approx(100 / 95), pytest.approx(1.0)]
+    assert {d["preset"] for d in suonati.dettagli} == {"mess_prova_volume_partita"}
+
+
+def test_le_prove_dei_due_volumi_si_distinguono():
+    # La prova della partita è un rumore che attraversa il tavolo, quella degli effetti una nota sola.
+    effetti, partita = (Acusticator.preset(suoni.EVENTI[evento]) for evento in ("prova_volume_effetti", "prova_volume_partita"))
+    assert effetti[1] in (1, 3, 4) and partita[1] in (5, 6, 7, 8)
+    assert len(partita[0]) // 4 == 3 and partita[0][6] == "-0.6.0.6"
+    descrizione = Acusticator.descrizione("mess_prova_volume_partita")
+    assert descrizione.startswith("MESS, prova del volume della partita dal vivo") and "rumore rosa" in descrizione and "370 ms" in descrizione
+
+
+def test_i_suoni_del_punto_per_punto_dicono_la_finestra_dal_vivo():
+    # Dalla decisione D29 i quattro suoni del punto per punto servono la finestra dal vivo: le
+    # descrizioni della collezione lo dicono, e non parlano più di F8 e Ctrl+F8.
+    dal_vivo = {"amichevole_al_via": "Assisti", "riscaldamento_saltato": "Salta il riscaldamento", "resto_dell_incontro": "Alt+V",
+                "incontro_finito": "Alt+F o Alt+L"}
+    for evento, comando in dal_vivo.items():
+        descrizione = Acusticator.descrizione(suoni.EVENTI[evento])
+        assert "F8" not in descrizione and "un punto alla volta" not in descrizione, evento
+        assert "partita dal vivo" in descrizione and comando in descrizione, evento
+
+
 def test_il_volume_si_legge_dalle_impostazioni(cartella_di_prova):
     assert impostazioni.salva({**impostazioni.PREDEFINITE, "volume_effetti": 70})
     assert suoni.volume_effetti() == 70

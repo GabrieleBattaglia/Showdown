@@ -26,10 +26,12 @@ tuo tesserato e un giocatore qualunque, ciascuno al massimo una al giorno, si gi
 subito, il mondo si salva, e la cronaca si salva nel suo file al livello scelto. Con la decisione
 D29, tappa 10, i modi di seguirla sono due: Vai alla fine mostra nella vista il risultato, i punti
 allenamento e sotto la cronaca intera; Assisti apre la finestra dal vivo di gui/dal_vivo.py, e
-quando se ne esce, con Esc, con Vai alla fine o dal risultato, la vista mostra lo stesso testo. Il
-punto per punto con F8 e Ctrl+F8 non c'è più. L'esito si sente solo quando si mostra, perché la
-partita dal vivo non lo sveli prima. Nel menu Impostazioni c'è la velocità di gioco. Le parti delle
-tappe 9 e 10 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+quando se ne esce con Vai alla fine o dal risultato la vista mostra lo stesso testo. Il punto per
+punto con F8 e Ctrl+F8 non c'è più. L'esito si sente solo quando si mostra, perché la partita dal
+vivo non lo sveli prima; e con la decisione D30 chi esce con Esc non lo vede affatto: la vista dice
+che l'incontro è registrato e dove leggerne il risultato. Nel menu Impostazioni c'è la velocità di
+gioco, e il dialogo degli effetti sonori ha anche il volume della partita. Le parti delle tappe 9 e
+10 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -45,7 +47,7 @@ import ricerca
 import suoni
 import testi
 from gui import aspetto
-from gui.dal_vivo import ALLA_FINE, FinestraDalVivo
+from gui.dal_vivo import ALLA_FINE, CON_ESC, FinestraDalVivo
 from gui.dialoghi import (
     ASSISTI,
     Aspetto,
@@ -660,9 +662,10 @@ class FinestraPrincipale(wx.Frame):
         Un'amichevole, regole di Gabriele: il primo giocatore è un tesserato della polisportiva
         attiva, il secondo chiunque altro, e nessuno dei due deve aver già giocato un'amichevole
         oggi. Dopo le opzioni l'incontro si gioca e si registra subito e il mondo si salva; con
-        Assisti si apre la finestra dal vivo, e quando se ne esce, o subito con Vai alla fine, la
-        vista mostra il risultato, i punti allenamento e sotto la cronaca intera. L'esito suona
-        quando si vede, non prima.
+        Assisti si apre la finestra dal vivo, e quando se ne esce con Alt+V o dal risultato, o
+        subito con Vai alla fine, la vista mostra il risultato, i punti allenamento e sotto la
+        cronaca intera. L'esito suona quando si vede, non prima. Chi esce con Esc non lo vede,
+        decisione D30: la vista dice soltanto che l'incontro è registrato e dove leggerne il risultato.
         """
         p = self._attiva()
         if p is None:
@@ -720,6 +723,11 @@ class FinestraPrincipale(wx.Frame):
         # Il mondo si salva subito, anche prima della partita dal vivo: chi esce a metà la trova già registrata.
         riuscito, messaggi, _avvisi = self._salva_raccogliendo()
         uscita = self._dal_vivo(v, gemello) if gemello is not None else None
+        if uscita == CON_ESC:
+            # Esc non svela il risultato, decisione D30: la vista dice soltanto che l'incontro è
+            # registrato e dove leggerlo, senza il suono dell'esito, e la barra non dice chi ha vinto.
+            self._concludi(testi.amichevole_senza_risultato(v.nomi), "amichevole registrata", None, salvataggio=(riuscito, messaggi))
+            return
         # Alt+V nella finestra dal vivo: prima i cinque guizzi del salto alla fine, poi l'esito. Se il
         # salvataggio non è riuscito, dopo l'esito si sente quello, e i guizzi restano fuori: due suoni
         # messi in coda insieme si sovrapporrebbero.
@@ -788,15 +796,20 @@ class FinestraPrincipale(wx.Frame):
             dialogo.Destroy()
 
     def cambia_effetti(self):
-        """Il volume degli effetti sonori: vale subito, e l'OK si sente già al volume nuovo."""
-        dialogo = EffettiSonori(self, self.impostazioni["volume_effetti"])
+        """
+        Il volume degli effetti sonori e, dalla decisione D30, quello della partita dal vivo: il primo
+        vale subito, e l'OK si sente già al volume nuovo; il secondo dalla prossima partita.
+        """
+        dialogo = EffettiSonori(self, self.impostazioni["volume_effetti"], self.impostazioni["volume_partita"])
         try:
             suoni.suona("dialogo_effetti_sonori")
             if self._modale(dialogo) == wx.ID_OK and dialogo.risultato is not None:
-                self.impostazioni = modulo_impostazioni.valide({**self.impostazioni, "volume_effetti": dialogo.risultato})
+                effetti, partita = dialogo.risultato
+                self.impostazioni = modulo_impostazioni.valide({**self.impostazioni, "volume_effetti": effetti, "volume_partita": partita})
                 suoni.imposta_volume(self.impostazioni["volume_effetti"])
                 salvate = self._salva_impostazioni("effetti_sonori_applicati")
-                self.ultimo_evento = f"volume degli effetti {self.impostazioni['volume_effetti']}" if salvate else "volume degli effetti non salvato"
+                volumi = f"effetti {self.impostazioni['volume_effetti']}, partita {self.impostazioni['volume_partita']}"
+                self.ultimo_evento = f"volume {volumi}" if salvate else "volumi non salvati"
                 self.aggiorna_barra()
             else:
                 suoni.suona("annullato")

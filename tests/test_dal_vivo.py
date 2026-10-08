@@ -4,9 +4,11 @@ la cassa è finta, l'orologio pure, e il battito del timer lo dà la prova. Il p
 sue facce, Pausa, Riprendi, Salta il riscaldamento e il risultato; la pausa e la ripresa dalla stessa
 posizione; l'ascolto fino a fine set senza fermate ai punti, con il suo suono in ogni stato; il
 cambio di lato a metà punto, ricomposto dal punto in cui si era; Vai alla fine ed Esc, che fermano il
-suono con la maniglia; la velocità di gioco con più e meno, che accorcia anche il time-out che sta
-suonando e la pausa dopo il punto in cui si è premuto; la fine dell'incontro; il campo della
-cronaca, letto con Tab, con la guida che segue lato e velocità e torna con F1.
+suono con la maniglia; la velocità di gioco con più e meno, che accorcia anche la pausa dopo il punto
+in cui si è premuto, e quella cambiata in pausa, che vale alla ripresa; la fine dell'incontro; il
+campo della cronaca, letto con Tab, con la guida che segue lato e velocità e torna con F1.
+Dalla decisione D30: le pause lunghe, time-out, cambio campo e inizio del set, che né Prosegui né
+l'ascolto fino a fine set fanno sentire, e il volume della partita, a parte da quello degli effetti.
 """
 
 import numpy as np
@@ -15,7 +17,9 @@ import wx
 from aiuti_dal_vivo import CassaFinta, Orologio, vieta_la_cassa_vera
 from aiuti_motore import giocatore
 
+import impostazioni
 import partita_sonora as ps
+import suoni
 import testi
 from gui import dal_vivo
 from gui.dal_vivo import FinestraDalVivo
@@ -36,14 +40,14 @@ def cassa_vera_muta(monkeypatch):
 class Vivo:
     """La finestra dal vivo con la sua cassa, il suo orologio, l'incontro gemello e i nomi."""
 
-    def __init__(self, velocita=1, livello=cronaca.NORMALE, seme=SEME):
+    def __init__(self, velocita=1, livello=cronaca.NORMALE, seme=SEME, impostazioni=None):
         g1, g2 = giocatore(1, 12.0), giocatore(2, 13.0)
         self.nomi = cronaca.nomi_dei_giocatori([g1, g2])
         self.riferimento = Incontro(g1, g2, SINGOLARE_3, seme=seme, dettaglio=COMPLETO).gioca()
         self.gemello = Incontro(g1, g2, SINGOLARE_3, seme=seme, dettaglio=COMPLETO, velocita=velocita)
         self.cassa = CassaFinta()
         self.orologio = Orologio()
-        self.finestra = FinestraDalVivo(None, self.gemello, self.nomi, livello, velocita, cassa=self.cassa, orologio=self.orologio)
+        self.finestra = FinestraDalVivo(None, self.gemello, self.nomi, livello, velocita, impostazioni, cassa=self.cassa, orologio=self.orologio)
 
     def scorri(self, secondi, passo=0.05):
         """Fa passare il tempo, con un battito del timer a ogni passo."""
@@ -211,7 +215,9 @@ def test_il_cambio_di_lato_a_meta_punto(vivo, suonati):
     assert f.ascoltatore == "B" and suonati[-1] == "dal_vivo_cambio_lato"
     assert f.lato.GetLabel() == f"Cambia &lato, ora ascolti da {vivo.nomi['B'].testo}"
     assert vivo.cassa.maniglie[-2].fermate == 1 and vivo.cassa.accese == 1
-    atteso = ps.per_la_cassa(ps.componi(f.segmento.eventi, "B", da=t0, fine=f.segmento.fine).buffer, 50)
+    # Senza impostazioni la partita suona al volume predefinito della partita.
+    assert f.volume == impostazioni.VOLUME_PARTITA_PREDEFINITO
+    atteso = ps.per_la_cassa(ps.componi(f.segmento.eventi, "B", da=t0, fine=f.segmento.fine).buffer, f.volume)
     da = round(1.5 * FS)
     assert not np.any(vivo.cassa.buffer[-1][0])
     assert np.array_equal(vivo.cassa.buffer[-1][RAMPA:len(atteso) - da], atteso[da + RAMPA:])
@@ -221,7 +227,7 @@ def test_il_cambio_di_lato_a_meta_punto(vivo, suonati):
     f.cambia_lato()
     assert f.resa is None and len(vivo.cassa.buffer) == 3
     f.al_prosegui()
-    per_a = ps.per_la_cassa(ps.componi(f.segmento.eventi, "A", da=t0, fine=f.segmento.fine).buffer, 50)
+    per_a = ps.per_la_cassa(ps.componi(f.segmento.eventi, "A", da=t0, fine=f.segmento.fine).buffer, f.volume)
     da = round(2.0 * FS)
     assert np.array_equal(vivo.cassa.buffer[-1][RAMPA:len(per_a) - da], per_a[da + RAMPA:])
 
@@ -354,32 +360,124 @@ def test_la_guida_segue_lato_e_velocita_e_torna_con_f1(vivo, suonati):
     assert vivo.testo().startswith("Set 1: apre ")
 
 
-def test_piu_dentro_il_time_out_lo_accorcia(app_wx, suonati):
-    # Col seme 5 c'è un time-out nel primo set. Lo si raggiunge a velocità 1, e lì si passa a 8.
+def _con_il_time_out(segmento):
+    return segmento is not None and any(e.tipo == E.TIMEOUT_INIZIO for e in segmento.preambolo)
+
+
+def test_fino_a_fine_set_il_time_out_non_si_sente(app_wx, suonati):
+    # Col seme 5 c'è un time-out nel primo set. Decisione D30: fino a fine set dopo il punto resta
+    # la pausa di sempre, in silenzio, e il suono riprende dalla ripresa del gioco, senza il minuto
+    # del time-out e senza il suo fischio; il time-out si legge nella cronaca.
     vivo = Vivo(seme=5)
     try:
         f = vivo.finestra
         _salta_il_riscaldamento(vivo)
         f.fino_a_fine_set()
-        vivo.scorri_fino(lambda: vivo.arrivato(E.TIMEOUT_INIZIO))
-        inizio, fine = (next(e.t for e in f.segmento.eventi if e.tipo == tipo) for tipo in (E.TIMEOUT_INIZIO, E.TIMEOUT_FINE))
+        visti = []
+
+        def al_time_out():
+            if not visti or visti[-1] is not f.segmento:
+                visti.append(f.segmento)
+            return _con_il_time_out(f.segmento)
+
+        vivo.scorri_fino(al_time_out)
+        segmento, precedente = visti[-1], visti[-2]
+        assert segmento.pausa_lunga and precedente.chiusura.tipo == E.PUNTO
+        inizio, fine = (next(e.t for e in segmento.eventi if e.tipo == tipo) for tipo in (E.TIMEOUT_INIZIO, E.TIMEOUT_FINE))
         assert fine - inizio == pytest.approx(60.0, abs=0.01)
-        vivo.scorri(1.0)
-        buffer = len(vivo.cassa.buffer)
-        for _ in range(7):
-            f.cambia_velocita(1)
-        assert f.velocita == 8
-        # Il time-out è silenzio: il buffer riparte subito, dallo stesso secondo, con il resto ripiegato.
-        assert len(vivo.cassa.buffer) > buffer and vivo.cassa.accese == 1 and not f._da_ripiegare
-        restano = vivo.scorri_fino(lambda: vivo.arrivato(E.TIMEOUT_FINE))
-        assert restano == pytest.approx(59.0 / 8, abs=0.1)
-        # I buffer ripartiti per la velocità ripartono tutti nel silenzio.
-        for acceso in vivo.cassa.buffer[buffer:]:
-            assert float(np.max(np.abs(acceso[:round(ps.SILENZIO_DAVANTI * FS)]))) < ps.SOGLIA_SILENZIO
-        # Dopo il time-out la partita va avanti con gli stessi punti, fino a fine set.
+        # Il fischio del time-out è il primo evento del segmento, e come tutto il time-out non suona.
+        preambolo = {e.n for e in segmento.preambolo}
+        assert segmento.eventi[0].tipo == E.FISCHIO and segmento.eventi[0].n in preambolo
+        assert not preambolo & {p.evento for p in f.resa.posati}
+        assert f.resa.t0 >= segmento.inizio - ps.TOLLERANZA
+        # Resta la pausa dopo il punto, 5,5 secondi a velocità 1, come fra due punti qualunque.
+        assert f.riproduttore.corrente.anticipo == segmento.attesa_prima(precedente.fine, 1) == pytest.approx(5.5, abs=0.01)
+        assert vivo.scorri_fino(lambda: not f.riproduttore.in_anticipo()) == pytest.approx(5.5, abs=0.1)
+        # Dopo il time-out la partita va avanti con gli stessi punti, fino a fine set, e la cronaca lo dice.
         vivo.fino_a_fermo()
         assert f.segmento.chiusura.tipo == E.FINE_SET
         assert f.segmento.chiusura.dati["punteggio"] == list(vivo.riferimento.set[0])
+        assert "Time-out per " in vivo.testo()
+    finally:
+        vivo.finestra.timer.Stop()
+        vivo.finestra.Destroy()
+
+
+def test_prosegui_non_fa_sentire_le_pause_lunghe(app_wx, suonati):
+    # Prosegui comincia sempre dalla ripresa del gioco: l'inizio del primo set e il time-out del seme 5
+    # restano fuori dal suono, e si leggono nella cronaca della tranche.
+    vivo = Vivo(seme=5, velocita=8)
+    try:
+        f = vivo.finestra
+        _salta_il_riscaldamento(vivo)
+        visti = []
+        for _ in range(60):
+            f.al_prosegui()
+            segmento = f.segmento
+            assert f.resa.t0 >= segmento.inizio - ps.TOLLERANZA
+            assert not {e.n for e in segmento.preambolo} & {p.evento for p in f.resa.posati}
+            vivo.fino_a_fermo(passo=0.1)
+            if segmento.pausa_lunga:
+                visti.append((segmento, vivo.testo()))
+            if _con_il_time_out(segmento):
+                break
+        tipi = [{e.tipo for e in s.preambolo} for s, _testo in visti]
+        assert E.INIZIO_SET in tipi[0] and visti[0][1].startswith("Set 1: apre ")
+        assert E.TIMEOUT_INIZIO in tipi[-1] and "Time-out per " in visti[-1][1]
+    finally:
+        vivo.finestra.timer.Stop()
+        vivo.finestra.Destroy()
+
+
+@pytest.mark.parametrize("fino_a_fine_set", [False, True])
+def test_le_pause_lunghe_non_si_sentono_mai(app_wx, suonati, monkeypatch, fino_a_fine_set):
+    # Col seme 50 l'incontro va al terzo set, con due time-out, un'ammonizione e il cambio campo a
+    # metà del terzo set. Si ascolta tutto, con Prosegui o fino a fine set, e nessun buffer composto
+    # porta un suono di quello che viene prima della ripresa in un segmento con una pausa lunga.
+    composti = []
+    componi = ps.componi
+
+    def spia(*args, **kwargs):
+        composti.append(componi(*args, **kwargs))
+        return composti[-1]
+
+    monkeypatch.setattr(ps, "componi", spia)
+    vivo = Vivo(seme=50, velocita=8)
+    try:
+        f = vivo.finestra
+        segmenti = []
+        prossimo = f.cronologia.prossimo
+
+        def registra(velocita=None):
+            segmento = prossimo(velocita)
+            if segmento is not None:
+                segmenti.append(segmento)
+            return segmento
+
+        f.cronologia.prossimo = registra
+        tranche = 0
+        while f.stato != dal_vivo.FINITO:
+            tranche += 1
+            assert tranche < 200
+            if fino_a_fine_set:
+                f.fino_a_fine_set()
+            else:
+                f.al_prosegui()
+                if f.segmento.riscaldamento:
+                    f.al_prosegui()
+                    continue
+            vivo.fino_a_fermo(passo=0.25)
+        assert vivo.gemello.risultato.set == vivo.riferimento.set and len(vivo.riferimento.set) == 3
+        lunghi = [s for s in segmenti if s.pausa_lunga]
+        tipi = {e.tipo for s in lunghi for e in s.preambolo}
+        assert {E.TIMEOUT_INIZIO, E.CAMBIO_CAMPO_INIZIO, E.INIZIO_SET} <= tipi
+        assert any(e.tipo == E.CAMBIO_CAMPO_INIZIO and not e.dati["fra_set"] for s in lunghi for e in s.preambolo)
+        da_tacere = {e.n for s in lunghi for e in s.preambolo}
+        sentiti = {p.evento for resa in composti for p in resa.posati}
+        assert sentiti and not da_tacere & sentiti
+        # Le pause lunghe hanno anche eventi che suonerebbero, come il fischio del time-out.
+        assert any(ps.posati_dell_evento(e) for s in lunghi for e in s.preambolo)
+        assert vivo.cassa.accese == 0
     finally:
         vivo.finestra.timer.Stop()
         vivo.finestra.Destroy()
@@ -411,21 +509,57 @@ def test_piu_dentro_un_punto_accorcia_la_pausa_che_lo_segue(app_wx, suonati):
 
 
 def test_la_velocita_cambiata_in_pausa_vale_alla_ripresa(app_wx, suonati):
-    vivo = Vivo(seme=5)
+    # Prima della decisione D30 la prova si fermava dentro il time-out, che ora non si sente: si
+    # ferma invece dentro la pausa dopo il primo punto, 5,5 secondi a velocità 1.
+    vivo = Vivo()
     try:
         f = vivo.finestra
         _salta_il_riscaldamento(vivo)
         f.fino_a_fine_set()
-        vivo.scorri_fino(lambda: vivo.arrivato(E.TIMEOUT_INIZIO))
-        vivo.scorri(10.0)
+        primo = f.segmento
+        vivo.scorri_fino(lambda: f.segmento is not primo)
+        ripresa = f.segmento.eventi[0]
+        assert ripresa.tipo in (E.RECUPERO, E.CONSEGNA) and not f.segmento.pausa_lunga
+        assert ripresa.t - primo.fine == pytest.approx(5.5, abs=0.01)
+        vivo.scorri(2.0)
         f.al_prosegui()
         assert f.stato == dal_vivo.PAUSA
+        restavano = 5.5 - f.posizione
+        assert restavano == pytest.approx(3.5, abs=0.06)
         for _ in range(3):
             f.cambia_velocita(1)
         f.al_prosegui()
         assert f.stato == dal_vivo.SUONA and suonati[-1] == "dal_vivo_ripresa"
-        # Dei 60 secondi ne mancavano 50: a velocità 4 sono 12,5.
-        assert vivo.scorri_fino(lambda: vivo.arrivato(E.TIMEOUT_FINE)) == pytest.approx(50.0 / 4, abs=0.1)
+        # Della pausa ne mancavano 3,5 secondi: a velocità 4 durano meno di uno.
+        assert vivo.scorri_fino(lambda: f.riproduttore.posizione() >= f.resa.secondi(ripresa.t) - 1e-9) == pytest.approx(restavano / 4, abs=0.06)
     finally:
         vivo.finestra.timer.Stop()
         vivo.finestra.Destroy()
+
+
+def test_la_partita_suona_al_suo_volume(app_wx, suonati):
+    # Decisione D30: il volume della partita viene dalle impostazioni, e quello degli effetti non lo tocca.
+    suoni.imposta_volume(0)
+    vivo = Vivo(impostazioni=impostazioni.valide({"volume_partita": 40, "volume_effetti": 0}))
+    try:
+        f = vivo.finestra
+        assert f.volume == 40
+        f.al_prosegui()
+        atteso = ps.per_la_cassa(ps.componi(f.segmento.eventi, "A", da=f.segmento.inizio, fine=f.segmento.fine, anticipo=ps.ANTICIPO).buffer, 40)
+        assert np.any(atteso)
+        assert np.array_equal(vivo.cassa.buffer[0][:len(atteso)], atteso)
+        assert not np.any(vivo.cassa.buffer[0][len(atteso):])
+    finally:
+        vivo.finestra.timer.Stop()
+        vivo.finestra.Destroy()
+    # A volume zero la partita tace, ma il tempo scorre e la tranche finisce lo stesso.
+    muta = Vivo(impostazioni=impostazioni.valide({"volume_partita": 0}))
+    try:
+        f = muta.finestra
+        f.al_prosegui()
+        assert f.stato == dal_vivo.SUONA and muta.cassa.buffer == []
+        muta.fino_a_fermo()
+        assert f.stato == dal_vivo.FERMO and muta.testo().endswith("Fine del riscaldamento.")
+    finally:
+        muta.finestra.timer.Stop()
+        muta.finestra.Destroy()

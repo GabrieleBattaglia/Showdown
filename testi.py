@@ -849,8 +849,9 @@ def guida(voci):
 GUIDA_DELLA_PARTITA_DAL_VIVO = (
     "La partita dal vivo si apre scegliendo Assisti nel dialogo dell'amichevole. Lì Invio o spazio sul pulsante Prosegui fanno sentire il gioco "
     "fino al punto seguente, e mentre suona lo mettono in pausa e lo riprendono; Alt+F ascolta fino a fine set, Alt+L passa dalla parte "
-    "dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce; più e meno cambiano la velocità di gioco; F1 rimette la guida "
-    "dei tasti nel campo della cronaca, che si raggiunge con Tab.")
+    "dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce senza svelarlo; più e meno cambiano la velocità di gioco; "
+    "F1 rimette la guida dei tasti nel campo della cronaca, che si raggiunge con Tab. Time-out, cambio campo e inizio del set non si "
+    "sentono: si leggono nella cronaca, e il suono riprende dalla ripresa del gioco.")
 
 
 def informazioni():
@@ -925,9 +926,11 @@ def guida_dal_vivo(nomi, ascoltatore, set_al_meglio, velocita):
         f"Partita dal vivo: {nomi['A'].testo} contro {nomi['B'].testo}, al meglio dei {set_al_meglio} set. L'incontro è già registrato nel mondo.",
         dove_ascolti(nomi, ascoltatore),
         "Invio o spazio su Prosegui fanno sentire il gioco fino al punto seguente; mentre suona, lo stesso tasto lo ferma e lo riprende, e salta il riscaldamento.",
-        "Alt+F ascolta fino a fine set, Alt+L passa dalla parte dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce.",
+        "Alt+F ascolta fino a fine set, Alt+L passa dalla parte dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce senza svelarlo.",
         f"Più e meno cambiano la velocità di gioco, ora {velocita}: accorcia le pause e la procedura dell'arbitro, mai l'azione.",
-        "In questo campo, dopo ogni tranche, c'è la cronaca di quello che hai appena sentito; F1 ci rimette questa guida, Maiusc+Tab torna al pulsante.",
+        "Time-out, cambio campo e inizio del set non si sentono: il suono riprende dalla ripresa del gioco.",
+        "In questo campo, dopo ogni tranche, c'è la cronaca di quello che hai appena sentito, pause lunghe comprese; "
+        "F1 ci rimette questa guida, Maiusc+Tab torna al pulsante.",
     ])
 
 
@@ -936,7 +939,11 @@ def titolo_dal_vivo(nomi, velocita):
 
 
 SPIEGAZIONE_VELOCITA = ("La velocità di gioco vale per tutte le partite dal vivo: a 1 le pause fra i punti e la procedura dell'arbitro durano come nella realtà, "
-                        "a 2 la metà, a 4 un quarto. L'azione resta sempre a tempo reale. Durante la partita più e meno la cambiano al volo.")
+                        "a 2 la metà, a 4, la predefinita, un quarto. L'azione resta sempre a tempo reale. Durante la partita più e meno la cambiano al volo.")
+# Il dialogo degli effetti sonori, con il volume della partita della decisione D30.
+SPIEGAZIONE_VOLUMI = ("Il volume degli effetti sonori, da 0 a 100: a 50 i suoni sono come sono stati pensati, a zero tacciono. "
+                      "Il volume della partita dal vivo, da 0 a 100, vale soltanto per i suoni della partita: a 95 suona come è stata pensata, "
+                      "a 100 arriva al massimo senza distorcere, a zero tace.")
 
 
 # L'amichevole nella finestra, tappa 9: risultato e cronaca salvata.
@@ -964,6 +971,17 @@ def _dopo_il_risultato(risultato, mondo):
 
 def amichevole_solo_risultato(risultato, mondo):
     return "\n".join(_dopo_il_risultato(risultato, mondo))
+
+
+def amichevole_senza_risultato(nomi):
+    """
+    La vista dopo Esc nella partita dal vivo, decisione D30: l'incontro è registrato, ma il risultato
+    non si svela, e nemmeno i punti allenamento, che lo farebbero capire; si dice dove leggerlo.
+    """
+    return "\n".join([
+        f"Sei uscito dalla partita dal vivo senza vederne la fine: l'amichevole fra {nomi['A'].testo} e {nomi['B'].testo} è comunque registrata nel mondo.",
+        "Il risultato lo leggi nel diario di ciascuno dei due giocatori, con Ctrl+Maiusc+D, e nella cronaca intera, che si salva in un file con Ctrl+Maiusc+O.",
+    ])
 
 
 def cronaca_amichevole(risultato, nomi, livello):
