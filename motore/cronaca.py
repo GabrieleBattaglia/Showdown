@@ -484,11 +484,6 @@ def _cambio_al_tavolo(evento, nomi, livello):
     return f"Cambio al tavolo: esce {_n(nomi, d['esce'])}, entra {_n(nomi, d['entra'])}; batte {_n(nomi, d['batte'])}."
 
 
-def _sostituzione(evento, nomi, livello):
-    d = evento.dati
-    return f"Sostituzione: esce {_n(nomi, d['esce'])}, entra {_n(nomi, d['entra'])}."
-
-
 _FRASI = {
     E.INIZIO_INCONTRO: _inizio_incontro, E.SORTEGGIO: _sorteggio, E.FORMAZIONI: _formazioni, E.RISCALDAMENTO_INIZIO: _riscaldamento_inizio, E.RISCALDAMENTO_COLPO: _riscaldamento_colpo,
     E.AVVISO_TEMPO: _avviso_tempo, E.RISCALDAMENTO_FINE: _riscaldamento_fine, E.INIZIO_SET: _inizio_set, E.RECUPERO: _recupero, E.CONSEGNA: _consegna,
@@ -497,7 +492,7 @@ _FRASI = {
     E.CONTROLLO: _controllo, E.COLPO: _colpo, E.GOAL: _goal, E.FALLO: _fallo, E.PALLA_MORTA: _palla_morta, E.ROTTURA: _rottura,
     E.SOSTITUZIONE_ATTREZZO: _sostituzione_attrezzo, E.RIPETIZIONE: _ripetizione, E.PUNTO: _punto, E.TIMEOUT_INIZIO: _timeout_inizio,
     E.TIMEOUT_FINE: _timeout_fine, E.CAMBIO_CAMPO_INIZIO: _cambio_campo_inizio, E.CAMBIO_CAMPO_FINE: _cambio_campo_fine, E.AMMONIZIONE: _ammonizione,
-    E.PENALITA: _penalita, E.CAMBIO_AL_TAVOLO: _cambio_al_tavolo, E.SOSTITUZIONE: _sostituzione,
+    E.PENALITA: _penalita, E.CAMBIO_AL_TAVOLO: _cambio_al_tavolo,
 }
 
 
@@ -539,7 +534,7 @@ def righe_del_momento(momento, nomi, livello=NORMALE):
     if livello == SINTETICA and momento.genere == "punto" and momento.esito is not None:
         righe.append(riga_sintetica(momento.esito, nomi))
         for evento in momento.eventi:
-            if evento.tipo in (E.TIMEOUT_INIZIO, E.CAMBIO_CAMPO_INIZIO, E.SOSTITUZIONE, E.AMMONIZIONE, E.PENALITA):
+            if evento.tipo in (E.TIMEOUT_INIZIO, E.CAMBIO_CAMPO_INIZIO, E.AMMONIZIONE, E.PENALITA):
                 testo = frase(evento, nomi, SINTETICA)
                 if testo:
                     righe.append(testo)

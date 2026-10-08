@@ -6,8 +6,10 @@ da 3 a 6 giocatori: i primi tre sono i titolari, nell'ordine 1, 2 e 3, e al tavo
 sesso e uno dell'altro; gli altri sono le riserve. Si gioca un set solo a 31 punti con 2 di scarto,
 con la rotazione fissa A1 contro B1, B1 contro A2, A2 contro B2 e così via: chi batte serve tre
 volte contro il successivo nella sequenza, poi lascia il tavolo, e chi ha ricevuto batte contro il
-seguente. Ogni squadra ha un time-out e una sostituzione per incontro, con un criterio fisso e
-senza caso, scritto nell'incontro.
+seguente. Ogni squadra ha un time-out per incontro. Durante l'incontro non si sostituisce nessuno,
+decisione D26 di Gabriele: nella realtà non si vede, ed è uno scostamento voluto dalla regola IBSA
+22.8. La formazione e la turnazione si dichiarano all'inizio con l'ordine dei giocatori, e una
+riserva gioca soltanto se la squadra la mette fra i primi tre, per tutta la gara.
 Nella tappa 9 il risultato di una gara a squadre non si registra nella carriera: arriva con la
 tappa 12.
 """

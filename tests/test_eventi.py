@@ -18,7 +18,7 @@ from motore.regia import controlla_invarianti
 from motore.scambio import Passo
 from motore.tavolo import locale_in_assoluto
 
-RIPRESE_LUNGHE = {E.INIZIO_SET, E.TIMEOUT_FINE, E.CAMBIO_CAMPO_FINE, E.SOSTITUZIONE_ATTREZZO, E.SOSTITUZIONE}
+RIPRESE_LUNGHE = {E.INIZIO_SET, E.TIMEOUT_FINE, E.CAMBIO_CAMPO_FINE, E.SOSTITUZIONE_ATTREZZO}
 
 
 @pytest.fixture(scope="module")

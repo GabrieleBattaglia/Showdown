@@ -1,4 +1,4 @@
-Banco di prova del motore di partita dopo la taratura della tappa 9, fatta fra il 7 e l'8 ottobre 2026 sul ramo motore-ibsa. Prima le misure e i passi della taratura, nell'ordine in cui si sono fatti, poi il valore complessivo e l'economia, poi i rapporti del banco come li scrive strumenti/banco_partite.py, da confrontare con quelli di banco_partite_prima.txt, che misuravano il vecchio motore.
+Banco di prova del motore di partita dopo la taratura della tappa 9, fatta fra il 7 e l'8 ottobre 2026 sul ramo motore-ibsa, e ripresa l'8 ottobre con la decisione D26 di Gabriele, al passo 14. Prima le misure e i passi della taratura, nell'ordine in cui si sono fatti, poi il valore complessivo e l'economia, poi i rapporti del banco come li scrive strumenti/banco_partite.py, da confrontare con quelli di banco_partite_prima.txt, che misuravano il vecchio motore.
 Gli strumenti: strumenti/banco_partite.py per le partite; strumenti/taratura_valore.py, nuovo, per i pesi del valore; strumenti/simulazione_lunga.py, nuovo, per l'economia in dieci anni simulati. Dove non è detto altro, le misure vengono dalla popolazione di prova del banco, 400 giocatori col 60 per cento di allenati e l'esperienza fino a 12, con 1000 partite al meglio dei 3 set per seme, ripetute su più semi; il mondo salvato è una copia in sola lettura di quello di Gabriele, 61 giocatori appena nati e mai allenati, che somigliano al mondo maturo delle simulazioni lunghe.
 Il punto di partenza, il motore com'era stato scritto, su cinque semi: goal il 51,2 per cento dei punti, 4,33 attacchi per punto, cause dei falli tutte nelle bande, falli degli esperti dal 14 al 25 per cento in meno secondo il seme, al bordo della banda. Il favorito, col valore della tappa 8, vinceva il 48, 62, 70 e 92 per cento nelle quattro fasce di distacco. Fra pari forti un set oltre i 12 punti ogni 8,9 partite, ma i set stretti erano il 28 per cento e lo scarto medio 5,8, appena fuori. Nel mondo salvato i goal erano soltanto il 40 per cento dei punti: sei punti su dieci li decidevano i falli.
 Passo 1, la prima taratura del valore sul motore intatto. La regressione spiegava il 95 per cento del rating, ma diceva tre cose storte: i blocchi avevano peso zero, perché sarebbero usciti negativi; il controllo palla quasi nulla, e con le prove a coppie dieci punti di controllo valevano un quinto di dieci punti di un colpo; i colpi verso il dritto di chi difende pesavano un quarto di quelli verso il rovescio, e quattro erano quasi inerti. Il progetto chiama queste caratteristiche difetti da correggere nel motore, e così si è fatto.
@@ -23,326 +23,387 @@ Passo 13, le correzioni dopo la revisione dell'8 ottobre 2026. Due revisori hann
 Gli infortuni: AZIONI_RIFERIMENTO_INFORTUNIO passa da 130 a 150. Con 130, tarato sulla sola popolazione di prova allenata, gli infortuni erano il 101 per cento di prima in quella popolazione, ma il 110 nel mondo salvato e il 115 fra giocatori mai allenati, dove le partite sono più equilibrate e più lunghe; con 150 sono il 95, il 103 e il 108 per cento, con 1500 partite sui semi 7101, 7505 e 7606, e nei rapporti qui sotto il 98 per cento col seme 1, il 104 nel mondo salvato e il 100 in modalità completa.
 Il banco: il temperamento si misura ora con una sonda a coppie, gli stessi giocatori con temperamento 83 e 17, i valori medi dei gruppi da 75 in su e fino a 25, contro gli stessi avversari e con gli stessi semi. L'impetuoso fa da 1,58 a 1,69 volte i falli del calmo secondo il seme, dentro la banda da 1,35 a 1,7, e segna di più. Il confronto fra i gruppi resta come informazione, perché mescola il temperamento con le altre differenze fra i giocatori: con tutti i temperamenti portati a 50 il suo rapporto restava 1,12 invece di 1. Le bande del favorito e dei time-out si controllano soltanto al meglio dei 3, quella degli infortuni soltanto fra coppie a caso al meglio dei 3, e rotture e penalità, che in mille partite sono poche, con l'intervallo di Poisson: con una rottura ogni 312 partite se ne aspettano 3,2 in mille, e contarne 2 o 6 è soltanto il caso.
 In modalità completa le invarianti non sono mai violate, compreso il controllo nuovo della battuta; l'incontro al meglio dei 3 dura sempre 12,2 minuti simulati. Le gare a squadre segnano 52,3 punti a gara, con 33,2 punti giocati.
-I rapporti del banco dopo la taratura e le correzioni della revisione: popolazione di prova col seme 1, pari forti col seme 2, mondo salvato col seme 3, modalità completa col seme 6, al meglio dei 5 con le squadre col seme 8.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
+Passo 14, la decisione D26 di Gabriele, l'8 ottobre 2026, sulle segnalazioni della revisione e della taratura che toccavano a lui. Cinque scelte nuove, realizzate in questo passo, e poi una taratura rifatta da capo: manopole del motore, pesi del valore e scala, nell'ordine del progetto.
+La precisione pesa la metà in tutte le qualità dove entra: 0,10 invece di 0,20 nei colpi, 0,05 invece di 0,10 nella bomba, 0,125 invece di 0,25 nelle battute e nel controllo, 0,10 invece di 0,20 nelle chiusure e nei blocchi; la metà tolta va alla caratteristica propria di ogni qualità, così le qualità restano da 0 a 100. Con le prove a coppie della revisione, cinque punti allenati di precisione portano ora un giocatore mai allenato dal 52 all'87 per cento di vittorie contro gli stessi avversari, dove prima lo portavano al 96, e gli danno 72 punti di valore invece di 112. Un punto di precisione vale tre punti di difesa, dove prima ne valeva sei; resta la caratteristica che rende di più per punto esperienza, ma non stravolge più un giocatore. Una prova nuova in tests/test_campo.py controlla i pesi dimezzati e l'aumento esatto di ogni qualità.
+La stanchezza dipende dall'età, dalla resistenza e da quanto il giocatore si allena: per ora lo dice la parte allenata della resistenza, che con tutti e cinque i punti fa sopportare il doppio del ritmo, K_ALLENAMENTO_FATICA 1; la costanza dell'allenamento arriverà con la tappa 11, nella funzione allenamento di motore/campo.py. Perché un giocatore molto resistente regga cinque set senza che la resistenza diventi la caratteristica più pagata al meglio dei 3, la curva della stanchezza ha cambiato forma: con FORMA_FATICA 1,5 la stanchezza si accumula, poca nel primo set e di più verso la fine di un incontro lungo, mentre prima cresceva più in fretta proprio alle prime azioni. FATICA_SCALA è passata da 600 a 500 e ANNI_FATICA da 20 a 25, perché il sessantenne restasse nella banda. La sonda della stanchezza ha due casi nuovi, misurati a fine quinto set contro il proprio gemello: il giovane di 24 anni con resistenza 10, metà allenata, ci arriva con un'efficienza di 0,948 e 0,955 nei semi 8 e 18, l'anziano di 65 anni con resistenza 1,5 con 0,66, vicino al minimo di 0,65. I due casi del progetto restano dentro: il trentenne con resistenza 5 finisce l'incontro al meglio dei 5 a 0,913 e 0,917, il sessantenne con resistenza 2 a 0,752 e 0,762. Un incontro arrivato al quinto set chiede in media 385 azioni, uno al meglio dei 3 circa 130.
+Il valore si misura sugli incontri al meglio dei 3, come prima: lo strumento non cambia metodo, ma ha un quinto passo, la verifica a coppie, che confronta quanto vale nelle partite un punto di precisione o di resistenza, innata o allenata, e il mancino, con quanto gli dà il valore. La precisione torna, 12,5 contro 12,4 con la prima stima della scala; la resistenza no, perché la regressione le dà un peso solo, mentre nelle partite un punto innato vale 2,6 e un punto allenato 6,1: il valore gliene dà 5,1 per entrambi.
+Il mancino, oltre all'abitudine degli avversari che sbagliano lato, ha la sorpresa in difesa: i suoi colpi e le sue battute arrivano da un'angolazione meno abituale e premono del 3 per cento in più, SORPRESA_MANCINO 0,03; il difensore si abitua durante l'incontro come capisce l'avversario, cioè per la sua lettura del gioco, con le parate contro i mancini al ritmo di COLPI_PER_CAPIRE, e chi non ha esperienza resta sorpreso per tutto l'incontro; la ribattuta, che torna piano, non sorprende. Con la sola abitudine il mancino valeva meno di un punto; con la sorpresa vale 4,5 punti di valore nelle prove a coppie e 5,6 nel peso del valore, con la scala vera, dentro la banda da 2 a 6 di Gabriele. Con 0,04 e 0,05 arrivava a 6 e oltre. Due prove nuove in tests/test_scambio.py e una in tests/test_campo.py controllano la sorpresa, la ribattuta che non sorprende e l'abitudine di chi ha esperienza.
+Nella gara a squadre non ci sono più sostituzioni durante l'incontro, scostamento voluto dalla regola IBSA 22.8: la formazione e la turnazione si dichiarano all'inizio con l'ordine della squadra, i primi tre giocano tutta la gara e una riserva gioca soltanto se la squadra la mette fra i primi tre. Sono spariti l'evento SOSTITUZIONE, la logica della sostituzione in corsa, i suoi tre numeri della taratura e la costante SOSTITUZIONI_SQUADRE; il time-out resta, uno per squadra. Le prove nuove in tests/test_squadre.py fanno giocare una squadra di anziani deboli e poco resistenti, con tre riserve fortissime, sotto di dieci punti e più: la formazione dichiarata gioca fino in fondo. Le gare segnano 50,6 punti, al bordo basso della banda, perché senza la riserva che entra la squadra sotto non rimonta più.
+Le manopole ritoccate, dopo i pesi nuovi del valore. KG da 1,6 a 2,0: la scala tarata sulle casse è più larga, lo stesso divario di forza dà un distacco più grande, e nel mondo salvato il favorito con oltre il 30 per cento di distacco vinceva soltanto l'83 per cento. G0 da meno 1,7 a meno 1,83, perché i goal erano saliti al 60 per cento dei punti. PRESSIONE_TEMPERAMENTO da 0,26 a 0,18: con la stanchezza che si accumula e la pendenza più alta, le prove a coppie davano all'impetuoso otto punti di valore più del calmo; ora la regressione ne dà meno 0,8 e 0,9 nei semi 9 e 19. P_BATTUTA_IRREGOLARE da 0,042 a 0,044, perché fra pari forti le battute irregolari erano scese sotto il 4 per cento; nelle cause critiche della difesa di lato la paletta caduta passa da 60 a 50 su 100, perché l'infrazione paletta stava al 3 per cento; PAUSA_FRA_PUNTI da 3,5 a 4,3 secondi, perché l'incontro al meglio dei 3 era sceso a 11,9 minuti.
+La scala del valore, per la decisione D26, si tara sulla simulazione lunga e non più su un mondo fermo: strumenti/simulazione_lunga.py ha l'opzione --cerca-scala, che simula dieci anni su quattro semi in parallelo, 2026, 7, 13 e 21, e cerca B per bisezione finché la cassa mediana delle polisportive del computer torna sui 5000 euro, mentre A tiene ferma la mediana del valore nel mondo maturo; con --scala si prova una scala qualunque senza toccare il progetto. Con la mediana del valore della tappa 8, 137,9, la cassa tornava a 5000 euro con B 1,35, ma lo stipendio mediano restava a 230 euro: un valore più disperso alza la mediana dei tesserati, perché il decimo dei giocatori che resta senza squadra sta in fondo. Con la mediana a 135,5 lo stipendio mediano scende a 210 o 220 euro, e la bisezione dà A meno 93 e B 1,4663. Su otto semi, i quattro della ricerca e altri quattro mai usati, 3, 101, 555 e 9090: cassa mediana fra 4820 e 5450 euro, 6670 nel solo seme 3, in media 5205, contro 5730-10050 della scala di prima e 4740-5070 del valore della tappa 8; stipendio mediano 210 o 220 euro; decimo percentile 90, novantesimo fra 590 e 620; monte stipendi fra il 92 e il 95 per cento dello sponsor; tesserati l'89 o il 90 per cento; mediana del valore fra 133,6 e 135,5. Nel mondo maturo il valore va da 91 a 179 dal decimo al novantesimo percentile; nel mondo salvato di Gabriele la mediana è 139,9, da 94 a 177.
+I bersagli dopo la decisione D26, come media dei semi. Nella popolazione di prova, cinque semi: goal il 58,9 per cento dei punti, uno solo dei semi a 60,1; goal di battuta il 18,5 per cento dei goal; punti finiti sulla battuta il 17,7 per cento; 4,39 attacchi per punto, mediana 3, novantesimo percentile 11; schermo centrale il 35,5 per cento dei falli, out 38, servizio irregolare 11,2, body touch 7,8, difesa irregolare 2,4, infrazione palla 1,9, infrazione paletta 2,7, invasione 0,5; battute irregolari il 4,8 per cento; palle morte l'1,2 per cento, mai per limite tecnico; 16,1 punti segnati per set; favorito al 56, 61, 78 e 96,8 per cento nelle quattro fasce; 5,5 ammonizioni e 0,6 penalità ogni 100 partite, 0,65 time-out a partita; esperti col 25 per cento di falli in meno, sul lato debole il 72 per cento degli attacchi laterali, gli inesperti il 54; l'impetuoso 1,6 volte i falli del calmo, a coppie; infortuni al 94 per cento di prima. Fra pari forti, tre semi: un set oltre i 12 punti ogni 7,0 partite, set stretti il 32,9 per cento, scarto medio 5,3, goal il 59 per cento. Nel mondo salvato, tre semi: goal il 45,8 per cento, favorito al 54, 59, 69 e 85,7 per cento, infortuni al 104. In modalità completa nessuna invariante violata, 12,2 minuti a incontro. Le gare a squadre segnano 50,6 punti, con 31,6 punti giocati e un time-out a gara, senza sostituzioni.
+Restano fuori banda: il favorito oltre il 30 per cento di distacco nella popolazione di prova, 96,8 contro il tetto di 96, mentre nel mondo salvato la stessa fascia sta a 85,7, appena sopra il fondo di 85, e la fascia dal 15 al 30 a 68,8, sotto il 70: le due popolazioni chiedono pendenze diverse, perché quella di prova ha distacchi fino al doppio e al triplo del valore, e KG 2,0 è il compromesso; lo stipendio al decimo percentile, 90 euro contro la banda da 120 a 150, prezzo del valore più largo; la cassa del seme 3, 6670 euro; gli inesperti sul lato debole, 54 per cento in media ma oltre il 55 in tre semi su cinque, come prima.
+I rapporti del banco dopo la decisione D26: popolazione di prova col seme 1, pari forti col seme 2, mondo salvato col seme 3, letto da una copia in sola lettura, modalità completa col seme 6, al meglio dei 5 con le squadre col seme 8.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 03:20.
 Popolazione di prova con il 60 per cento di allenati e l'esperienza fino a 12: 400 giocatori, 400 disponibili, cioè che possono giocare.
-Indice di valore dei disponibili: minimo 43, mediana 188, massimo 453.
-1000 partite al meglio dei 3 set fra coppie estratte a caso, in modalità essenziale, giocate in 1,2 secondi, cioè 1,17 millisecondi a partita, con il seme 1: per ripetere la prova identica si aggiunge --seme 1.
-Punti giocati 23527: 23216 assegnati e 311 palle morte o rotture, che si ripetono.
-Dei punti assegnati, 13368 sono goal, 57,6 per cento, e 9848 sono falli, 42,4 per cento.
-Come nascono i goal: goal da scambio: 9289, 69,5 per cento; goal di battuta: 2452, 18,3 per cento; goal su una palla tornata piano: 1402, 10,5 per cento; autogoal: 122, 0,9 per cento; goal dopo una difesa irregolare: 103, 0,8 per cento.
-Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 8733, 65,3 per cento dei goal.
-Come nascono i falli, per chiamata dell'arbitro: out: 3821, 38,4 per cento; schermo centrale: 3636, 36,5 per cento; servizio irregolare: 1050, 10,6 per cento; body touch: 721, 7,2 per cento; infrazione paletta: 267, 2,7 per cento; difesa irregolare: 224, 2,3 per cento; infrazione palla: 185, 1,9 per cento; invasione: 47, 0,5 per cento.
-I falli per causa IBSA: schermo_contro: 2743, 27,6 per cento; out_sponda: 1924, 19,3 per cento; schermo_sopra: 893, 9,0 per cento; out_in_difesa: 815, 8,2 per cento; body_touch: 697, 7,0 per cento; out_tavola_contatto: 696, 7,0 per cento; battuta_senza_rimbalzo: 346, 3,5 per cento; out_volo: 282, 2,8 per cento; paletta_caduta: 267, 2,7 per cento; battuta_due_rimbalzi: 265, 2,7 per cento; pallina_trattenuta: 185, 1,9 per cento; difesa_irregolare: 121, 1,2 per cento; battuta_strisciata: 113, 1,1 per cento; out_soffitto: 104, 1,0 per cento; goal_dopo_difesa_irregolare: 103, 1,0 per cento; battuta_a_vuoto: 96, 1,0 per cento; battuta_doppio_tocco: 85, 0,9 per cento; battuta_prima_del_fischio: 76, 0,8 per cento; battuta_oltre_due_secondi: 69, 0,7 per cento; invasione_mano_libera: 34, 0,3 per cento; body_touch_pieno: 24, 0,2 per cento; invasione_tavola_contatto: 13, 0,1 per cento.
-Come nascono le palle morte: colpo_debole: 160, 52,1 per cento; pallina_ferma: 83, 27,0 per cento; ribattuta_lenta: 64, 20,8 per cento.
-Lunghezza degli scambi: in media 4,53 attacchi per punto, mediana 3, novantesimo percentile 11, al massimo 55.
-Punti per numero di attacchi: finito sulla battuta: 4012, 17,1 per cento; un attacco: 3745, 15,9 per cento; due attacchi: 2864, 12,2 per cento; da tre a cinque attacchi: 5912, 25,1 per cento; oltre cinque attacchi: 6994, 29,7 per cento.
-Set giocati 2224, in media 10,6 punti giocati per set, cioè scambi assegnati o ripetuti, e 16,5 punti segnati, la somma del punteggio.
-Set arrivati ai vantaggi, con entrambi almeno a 10: 155, 7,0 per cento. Set oltre i 12 punti: 78, 3,5 per cento; il più lungo finisce 18 a 20.
-Punteggi di set più frequenti: 11 a 5: 157, 7,1 per cento; 11 a 6: 150, 6,7 per cento; 11 a 8: 138, 6,2 per cento; 11 a 2: 133, 6,0 per cento; 11 a 4: 128, 5,8 per cento; 11 a 7: 124, 5,6 per cento.
-Partite giocate 1000. Risultati in set: 2 a 0: 776, 77,6 per cento; 2 a 1: 224, 22,4 per cento.
-Partite con almeno un set oltre i 12 punti: 76, una ogni 13,2. Set chiusi con 2 o 3 punti di scarto: 21,0 per cento; scarto medio 6,5.
-Il favorito, cioè il giocatore con l'indice di valore più alto, vince 867 partite su 1000, 86,7 per cento.
-Con un distacco meno del 5 per cento: 58 partite, il favorito ne vince 41, 70,7 per cento.
-Con un distacco fra il 5 e il 15 per cento: 105 partite, il favorito ne vince 64, 61,0 per cento.
-Con un distacco fra il 15 e il 30 per cento: 150 partite, il favorito ne vince 101, 67,3 per cento.
-Con un distacco oltre il 30 per cento: 687 partite, il favorito ne vince 661, 96,2 per cento.
-Imprevisti: 4 rotture, 49 ammonizioni, 1 penalità di cui 1 per la mascherina, 632 time-out, in 1000 partite.
-Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 16,6 falli e 22,6 goal, i calmi 11,3 falli e 15,2 goal; il rapporto dei falli, 1,47, mescola il temperamento con le altre differenze fra i giocatori.
-Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 3,06 falli, chi è sotto 1 ne fa 4,25.
-Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 64,8 per cento degli attacchi laterali.
-Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 45,7 per cento degli attacchi laterali.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,608 per cento, contro 0,618 del vecchio calcolo.
-Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 17, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,8 falli e 20,0 goal, il calmo 10,5 falli e 15,7 goal.
+Indice di valore dei disponibili: minimo 22, mediana 199, massimo 542.
+1000 partite al meglio dei 3 set fra coppie estratte a caso, in modalità essenziale, giocate in 1,1 secondi, cioè 1,13 millisecondi a partita, con il seme 1: per ripetere la prova identica si aggiunge --seme 1.
+Punti giocati 22329: 22076 assegnati e 253 palle morte o rotture, che si ripetono.
+Dei punti assegnati, 13012 sono goal, 58,9 per cento, e 9064 sono falli, 41,1 per cento.
+Come nascono i goal: goal da scambio: 9502, 73,0 per cento; goal di battuta: 2317, 17,8 per cento; goal su una palla tornata piano: 970, 7,5 per cento; goal dopo una difesa irregolare: 116, 0,9 per cento; autogoal: 107, 0,8 per cento.
+Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 8513, 65,4 per cento dei goal.
+Come nascono i falli, per chiamata dell'arbitro: out: 3533, 38,5 per cento; schermo centrale: 3268, 35,6 per cento; servizio irregolare: 1000, 10,9 per cento; body touch: 688, 7,5 per cento; infrazione paletta: 253, 2,8 per cento; difesa irregolare: 228, 2,5 per cento; infrazione palla: 170, 1,9 per cento; invasione: 40, 0,4 per cento.
+I falli per causa IBSA: schermo_contro: 2469, 26,9 per cento; out_sponda: 1760, 19,2 per cento; schermo_sopra: 799, 8,7 per cento; out_in_difesa: 776, 8,5 per cento; out_tavola_contatto: 647, 7,0 per cento; body_touch: 637, 6,9 per cento; battuta_senza_rimbalzo: 302, 3,3 per cento; paletta_caduta: 253, 2,8 per cento; out_volo: 247, 2,7 per cento; battuta_due_rimbalzi: 245, 2,7 per cento; pallina_trattenuta: 170, 1,9 per cento; battuta_strisciata: 138, 1,5 per cento; goal_dopo_difesa_irregolare: 116, 1,3 per cento; difesa_irregolare: 112, 1,2 per cento; out_soffitto: 103, 1,1 per cento; battuta_a_vuoto: 85, 0,9 per cento; battuta_doppio_tocco: 85, 0,9 per cento; battuta_prima_del_fischio: 80, 0,9 per cento; battuta_oltre_due_secondi: 65, 0,7 per cento; body_touch_pieno: 51, 0,6 per cento; invasione_mano_libera: 36, 0,4 per cento; invasione_tavola_contatto: 4, 0,0 per cento.
+Come nascono le palle morte: colpo_debole: 115, 45,8 per cento; pallina_ferma: 74, 29,5 per cento; ribattuta_lenta: 62, 24,7 per cento.
+Lunghezza degli scambi: in media 4,42 attacchi per punto, mediana 3, novantesimo percentile 11, al massimo 53.
+Punti per numero di attacchi: finito sulla battuta: 3813, 17,1 per cento; un attacco: 3609, 16,2 per cento; due attacchi: 2833, 12,7 per cento; da tre a cinque attacchi: 5712, 25,6 per cento; oltre cinque attacchi: 6362, 28,5 per cento.
+Set giocati 2192, in media 10,2 punti giocati per set, cioè scambi assegnati o ripetuti, e 16,0 punti segnati, la somma del punteggio.
+Set arrivati ai vantaggi, con entrambi almeno a 10: 138, 6,3 per cento. Set oltre i 12 punti: 70, 3,2 per cento; il più lungo finisce 14 a 16.
+Punteggi di set più frequenti: 11 a 2: 144, 6,6 per cento; 11 a 0: 139, 6,3 per cento; 11 a 5: 129, 5,9 per cento; 11 a 7: 123, 5,6 per cento; 12 a 2: 121, 5,5 per cento; 11 a 4: 121, 5,5 per cento.
+Partite giocate 1000. Risultati in set: 2 a 0: 808, 80,8 per cento; 2 a 1: 192, 19,2 per cento.
+Partite con almeno un set oltre i 12 punti: 68, una ogni 14,7. Set chiusi con 2 o 3 punti di scarto: 17,7 per cento; scarto medio 7,0.
+Il favorito, cioè il giocatore con l'indice di valore più alto, vince 895 partite su 1000, 89,5 per cento.
+Con un distacco meno del 5 per cento: 56 partite, il favorito ne vince 35, 62,5 per cento.
+Con un distacco fra il 5 e il 15 per cento: 86 partite, il favorito ne vince 48, 55,8 per cento.
+Con un distacco fra il 15 e il 30 per cento: 121 partite, il favorito ne vince 97, 80,2 per cento.
+Con un distacco oltre il 30 per cento: 737 partite, il favorito ne vince 715, 97,0 per cento.
+Imprevisti: 2 rotture, 60 ammonizioni, 2 penalità di cui 1 per la mascherina, 657 time-out, in 1000 partite.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 16,8 falli e 22,6 goal, i calmi 11,7 falli e 16,0 goal; il rapporto dei falli, 1,44, mescola il temperamento con le altre differenze fra i giocatori.
+Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 2,90 falli, chi è sotto 1 ne fa 3,88.
+Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 65,7 per cento degli attacchi laterali.
+Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 57,8 per cento degli attacchi laterali.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,585 per cento, contro 0,618 del vecchio calcolo.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 17, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,4 falli e 21,2 goal, il calmo 10,9 falli e 17,0 goal.
 I bersagli della taratura:
-Goal sui punti giocati: 56,82, bersaglio da 45,00 a 60,00, dentro.
-Goal di battuta sui goal: 18,34, bersaglio da 12,00 a 25,00, dentro.
-Falli per schermo centrale: 36,54, bersaglio da 28,00 a 38,00, dentro.
-Falli per out: 38,40, bersaglio da 30,00 a 42,00, dentro.
-Falli per servizio irregolare: 10,55, bersaglio da 8,00 a 15,00, dentro.
-Falli per body touch: 7,25, bersaglio da 6,00 a 15,00, dentro.
-Falli per difesa irregolare: 2,25, bersaglio da 1,50 a 6,00, dentro.
-Falli per infrazione palla: 1,86, bersaglio da 1,00 a 5,00, dentro.
-Falli per infrazione paletta: 2,68, bersaglio da 0,50 a 3,00, dentro.
-Falli per invasione: 0,47, bersaglio da 0,30 a 2,00, dentro.
-Battute irregolari sulle battute: 4,76, bersaglio da 4,00 a 8,00, dentro.
-Palle morte sui punti giocati: 1,30, bersaglio da 0,50 a 1,50, dentro.
+Goal sui punti giocati: 58,27, bersaglio da 45,00 a 60,00, dentro.
+Goal di battuta sui goal: 17,81, bersaglio da 12,00 a 25,00, dentro.
+Falli per schermo centrale: 35,60, bersaglio da 28,00 a 38,00, dentro.
+Falli per out: 38,49, bersaglio da 30,00 a 42,00, dentro.
+Falli per servizio irregolare: 10,89, bersaglio da 8,00 a 15,00, dentro.
+Falli per body touch: 7,49, bersaglio da 6,00 a 15,00, dentro.
+Falli per difesa irregolare: 2,48, bersaglio da 1,50 a 6,00, dentro.
+Falli per infrazione palla: 1,85, bersaglio da 1,00 a 5,00, dentro.
+Falli per infrazione paletta: 2,76, bersaglio da 0,50 a 3,00, dentro.
+Falli per invasione: 0,44, bersaglio da 0,30 a 2,00, dentro.
+Battute irregolari sulle battute: 4,77, bersaglio da 4,00 a 8,00, dentro.
+Palle morte sui punti giocati: 1,12, bersaglio da 0,50 a 1,50, dentro.
 Palle morte per limite tecnico: 0,00, bersaglio da 0,00 a 0,00, dentro.
-Punti finiti sulla battuta: 17,05, bersaglio da 12,00 a 22,00, dentro.
-Attacchi per punto, media: 4,53, bersaglio da 2,50 a 5,00, dentro.
+Punti finiti sulla battuta: 17,08, bersaglio da 12,00 a 22,00, dentro.
+Attacchi per punto, media: 4,42, bersaglio da 2,50 a 5,00, dentro.
 Attacchi per punto, mediana: 3,00, bersaglio da 2,00 a 3,00, dentro.
 Attacchi per punto, novantesimo percentile: 11,00, bersaglio da 6,00 a 12,00, dentro.
-Punti segnati per set: 16,45, bersaglio da 15,00 a 19,00, dentro.
-Vittorie del favorito con un distacco meno del 5 per cento: 70,69, bersaglio da 50,00 a 58,00, FUORI.
-Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 60,95, bersaglio da 58,00 a 70,00, dentro.
-Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 67,33, bersaglio da 70,00 a 85,00, FUORI.
-Vittorie del favorito con un distacco oltre il 30 per cento: 96,22, bersaglio da 85,00 a 96,00, FUORI.
-Partite per una rottura: 250,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
-Ammonizioni ogni 100 partite: 4,90, bersaglio da 3,00 a 10,00, dentro.
-Penalità ogni 100 partite: 0,10, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
-Time-out a partita: 0,63, bersaglio da 0,30 a 0,80, dentro.
-Falli in meno degli esperti, per cento: 28,08, bersaglio da 18,00 a 35,00, dentro.
-Attacchi laterali sul lato debole, esperti: 64,77, bersaglio da 60,00 a 100,00, dentro.
-Attacchi laterali sul lato debole, inesperti: 45,65, bersaglio da 35,00 a 55,00, dentro.
-Infortuni rispetto a prima, per cento: 98,39, bersaglio da 90,00 a 110,00, dentro.
-Falli degli impetuosi su quelli dei calmi, a coppie: 1,69, bersaglio da 1,35 a 1,70, dentro.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
-Popolazione di prova con il 60 per cento di allenati e l'esperienza fino a 12: 400 giocatori, 400 disponibili, cioè che possono giocare.
-Indice di valore dei disponibili: minimo 40, mediana 190, massimo 506.
-1000 partite al meglio dei 3 set fra coppie di forti alla pari, in modalità essenziale, giocate in 1,4 secondi, cioè 1,43 millisecondi a partita, con il seme 2: per ripetere la prova identica si aggiunge --seme 2.
-Punti giocati 28790: 28414 assegnati e 376 palle morte o rotture, che si ripetono.
-Dei punti assegnati, 16154 sono goal, 56,9 per cento, e 12260 sono falli, 43,1 per cento.
-Come nascono i goal: goal da scambio: 11600, 71,8 per cento; goal di battuta: 2768, 17,1 per cento; goal su una palla tornata piano: 1444, 8,9 per cento; goal dopo una difesa irregolare: 184, 1,1 per cento; autogoal: 158, 1,0 per cento.
-Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 11096, 68,7 per cento dei goal.
-Come nascono i falli, per chiamata dell'arbitro: out: 4722, 37,9 per cento; schermo centrale: 4553, 36,6 per cento; servizio irregolare: 1167, 9,4 per cento; body touch: 1012, 8,1 per cento; difesa irregolare: 344, 2,8 per cento; infrazione paletta: 336, 2,7 per cento; infrazione palla: 232, 1,9 per cento; invasione: 78, 0,6 per cento.
-I falli per causa IBSA: schermo_contro: 3476, 27,9 per cento; out_sponda: 2308, 18,5 per cento; out_in_difesa: 1127, 9,1 per cento; schermo_sopra: 1077, 8,7 per cento; body_touch: 931, 7,5 per cento; out_tavola_contatto: 779, 6,3 per cento; battuta_senza_rimbalzo: 359, 2,9 per cento; out_volo: 344, 2,8 per cento; paletta_caduta: 336, 2,7 per cento; battuta_due_rimbalzi: 298, 2,4 per cento; pallina_trattenuta: 232, 1,9 per cento; goal_dopo_difesa_irregolare: 184, 1,5 per cento; out_soffitto: 164, 1,3 per cento; difesa_irregolare: 160, 1,3 per cento; battuta_strisciata: 152, 1,2 per cento; battuta_doppio_tocco: 106, 0,9 per cento; battuta_prima_del_fischio: 91, 0,7 per cento; battuta_a_vuoto: 90, 0,7 per cento; body_touch_pieno: 81, 0,7 per cento; battuta_oltre_due_secondi: 71, 0,6 per cento; invasione_mano_libera: 64, 0,5 per cento; invasione_tavola_contatto: 14, 0,1 per cento.
-Come nascono le palle morte: colpo_debole: 181, 48,4 per cento; pallina_ferma: 107, 28,6 per cento; ribattuta_lenta: 86, 23,0 per cento.
-Lunghezza degli scambi: in media 4,98 attacchi per punto, mediana 3.0, novantesimo percentile 12, al massimo 59.
-Punti per numero di attacchi: finito sulla battuta: 4577, 15,9 per cento; un attacco: 4070, 14,1 per cento; due attacchi: 3403, 11,8 per cento; da tre a cinque attacchi: 7126, 24,8 per cento; oltre cinque attacchi: 9614, 33,4 per cento.
-Set giocati 2475, in media 11,6 punti giocati per set, cioè scambi assegnati o ripetuti, e 18,0 punti segnati, la somma del punteggio.
-Set arrivati ai vantaggi, con entrambi almeno a 10: 335, 13,5 per cento. Set oltre i 12 punti: 146, 5,9 per cento; il più lungo finisce 18 a 15.
-Punteggi di set più frequenti: 11 a 9: 218, 8,8 per cento; 11 a 7: 217, 8,8 per cento; 11 a 8: 199, 8,0 per cento; 11 a 6: 197, 8,0 per cento; 12 a 10: 189, 7,6 per cento; 11 a 5: 176, 7,1 per cento.
-Partite giocate 1000. Risultati in set: 2 a 0: 525, 52,5 per cento; 2 a 1: 475, 47,5 per cento.
-Partite con almeno un set oltre i 12 punti: 140, una ogni 7,1. Set chiusi con 2 o 3 punti di scarto: 34,5 per cento; scarto medio 5,0.
-Il favorito, cioè il giocatore con l'indice di valore più alto, vince 563 partite su 1000, 56,3 per cento.
-Con un distacco meno del 5 per cento: 1000 partite, il favorito ne vince 563, 56,3 per cento.
-Imprevisti: 2 rotture, 56 ammonizioni, 10 penalità di cui 7 per la mascherina, 617 time-out, in 1000 partite.
-Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 17,8 falli e 18,1 goal, i calmi 10,0 falli e 15,8 goal; il rapporto dei falli, 1,79, mescola il temperamento con le altre differenze fra i giocatori.
-Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 2,68 falli, chi è sotto 1 ne fa 3,89.
-Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 67,1 per cento degli attacchi laterali.
-Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 55,7 per cento degli attacchi laterali.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,876 per cento, contro 0,790 del vecchio calcolo.
-Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 17, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,4 falli e 21,6 goal, il calmo 10,7 falli e 16,9 goal.
-I bersagli della taratura:
-Goal sui punti giocati: 56,11, bersaglio da 50,00 a 70,00, dentro.
-Goal di battuta sui goal: 17,14, bersaglio da 12,00 a 25,00, dentro.
-Falli per schermo centrale: 36,59, bersaglio da 28,00 a 38,00, dentro.
-Falli per out: 37,95, bersaglio da 30,00 a 42,00, dentro.
-Falli per servizio irregolare: 9,38, bersaglio da 8,00 a 15,00, dentro.
-Falli per body touch: 8,13, bersaglio da 6,00 a 15,00, dentro.
-Falli per difesa irregolare: 2,76, bersaglio da 1,50 a 6,00, dentro.
-Falli per infrazione palla: 1,86, bersaglio da 1,00 a 5,00, dentro.
-Falli per infrazione paletta: 2,70, bersaglio da 0,50 a 3,00, dentro.
-Falli per invasione: 0,63, bersaglio da 0,30 a 2,00, dentro.
-Battute irregolari sulle battute: 4,28, bersaglio da 4,00 a 8,00, dentro.
-Palle morte sui punti giocati: 1,30, bersaglio da 0,50 a 1,50, dentro.
-Palle morte per limite tecnico: 0,00, bersaglio da 0,00 a 0,00, dentro.
-Punti finiti sulla battuta: 15,90, bersaglio da 12,00 a 22,00, dentro.
-Punti segnati per set: 18,02, bersaglio da 15,00 a 19,00, dentro.
-Partite ogni set oltre i 12, fra pari forti: 7,14, bersaglio da 5,50 a 9,00, dentro.
-Set con 2 o 3 punti di scarto, fra pari forti: 34,51, bersaglio da 30,00 a 100,00, dentro.
-Scarto medio dei set, fra pari forti: 5,04, bersaglio da 0,00 a 5,50, dentro.
-Vittorie del favorito con un distacco meno del 5 per cento: 56,30, bersaglio da 50,00 a 58,00, dentro.
+Punti segnati per set: 16,01, bersaglio da 15,00 a 19,00, dentro.
+Vittorie del favorito con un distacco meno del 5 per cento: 62,50, bersaglio da 50,00 a 58,00, FUORI.
+Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 55,81, bersaglio da 58,00 a 70,00, FUORI.
+Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 80,17, bersaglio da 70,00 a 85,00, dentro.
+Vittorie del favorito con un distacco oltre il 30 per cento: 97,01, bersaglio da 85,00 a 96,00, FUORI.
 Partite per una rottura: 500,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
-Ammonizioni ogni 100 partite: 5,60, bersaglio da 3,00 a 10,00, dentro.
-Penalità ogni 100 partite: 1,00, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
-Time-out a partita: 0,62, bersaglio da 0,30 a 0,80, dentro.
-Falli in meno degli esperti, per cento: 31,25, bersaglio da 18,00 a 35,00, dentro.
-Attacchi laterali sul lato debole, esperti: 67,09, bersaglio da 60,00 a 100,00, dentro.
-Attacchi laterali sul lato debole, inesperti: 55,66, bersaglio da 35,00 a 55,00, FUORI.
-Falli degli impetuosi su quelli dei calmi, a coppie: 1,62, bersaglio da 1,35 a 1,70, dentro.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
-Mondo salvato in mess_mondo.json.gz: 61 giocatori, 61 disponibili, cioè che possono giocare.
-Indice di valore dei disponibili: minimo 78, mediana 139, massimo 207.
-1000 partite al meglio dei 3 set fra coppie estratte a caso, in modalità essenziale, giocate in 1,4 secondi, cioè 1,37 millisecondi a partita, con il seme 3: per ripetere la prova identica si aggiunge --seme 3.
-Punti giocati 29578: 29144 assegnati e 434 palle morte o rotture, che si ripetono.
-Dei punti assegnati, 13489 sono goal, 46,3 per cento, e 15655 sono falli, 53,7 per cento.
-Come nascono i goal: goal da scambio: 8403, 62,3 per cento; goal di battuta: 2971, 22,0 per cento; goal su una palla tornata piano: 1734, 12,9 per cento; goal dopo una difesa irregolare: 191, 1,4 per cento; autogoal: 190, 1,4 per cento.
-Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 8421, 62,4 per cento dei goal.
-Come nascono i falli, per chiamata dell'arbitro: out: 6035, 38,1 per cento; schermo centrale: 5933, 37,4 per cento; servizio irregolare: 1727, 10,9 per cento; body touch: 1036, 6,5 per cento; infrazione paletta: 410, 2,6 per cento; difesa irregolare: 382, 2,4 per cento; infrazione palla: 255, 1,6 per cento; invasione: 68, 0,4 per cento.
-I falli per causa IBSA: schermo_contro: 4504, 28,4 per cento; out_sponda: 3057, 19,3 per cento; schermo_sopra: 1429, 9,0 per cento; out_in_difesa: 1226, 7,7 per cento; out_tavola_contatto: 1101, 6,9 per cento; body_touch: 977, 6,2 per cento; battuta_senza_rimbalzo: 544, 3,4 per cento; out_volo: 470, 3,0 per cento; battuta_due_rimbalzi: 415, 2,6 per cento; paletta_caduta: 410, 2,6 per cento; pallina_trattenuta: 255, 1,6 per cento; battuta_strisciata: 241, 1,5 per cento; difesa_irregolare: 191, 1,2 per cento; goal_dopo_difesa_irregolare: 191, 1,2 per cento; out_soffitto: 181, 1,1 per cento; battuta_a_vuoto: 167, 1,1 per cento; battuta_doppio_tocco: 141, 0,9 per cento; battuta_prima_del_fischio: 118, 0,7 per cento; battuta_oltre_due_secondi: 101, 0,6 per cento; body_touch_pieno: 59, 0,4 per cento; invasione_mano_libera: 50, 0,3 per cento; invasione_tavola_contatto: 18, 0,1 per cento.
-Come nascono le palle morte: colpo_debole: 183, 42,4 per cento; pallina_ferma: 169, 39,1 per cento; ribattuta_lenta: 80, 18,5 per cento.
-Lunghezza degli scambi: in media 4,12 attacchi per punto, mediana 3.0, novantesimo percentile 10, al massimo 47.
-Punti per numero di attacchi: finito sulla battuta: 5521, 18,7 per cento; un attacco: 4667, 15,8 per cento; due attacchi: 3842, 13,0 per cento; da tre a cinque attacchi: 7635, 25,8 per cento; oltre cinque attacchi: 7913, 26,8 per cento.
-Set giocati 2402, in media 12,3 punti giocati per set, cioè scambi assegnati o ripetuti, e 17,8 punti segnati, la somma del punteggio.
-Set arrivati ai vantaggi, con entrambi almeno a 10: 283, 11,8 per cento. Set oltre i 12 punti: 121, 5,0 per cento; il più lungo finisce 17 a 14.
-Punteggi di set più frequenti: 11 a 7: 237, 9,9 per cento; 11 a 9: 205, 8,5 per cento; 11 a 8: 204, 8,5 per cento; 11 a 6: 202, 8,4 per cento; 11 a 5: 176, 7,3 per cento; 11 a 4: 169, 7,0 per cento.
-Partite giocate 1000. Risultati in set: 2 a 0: 598, 59,8 per cento; 2 a 1: 402, 40,2 per cento.
-Partite con almeno un set oltre i 12 punti: 115, una ogni 8,7. Set chiusi con 2 o 3 punti di scarto: 33,1 per cento; scarto medio 5,1.
-Il favorito, cioè il giocatore con l'indice di valore più alto, vince 719 partite su 1000, 71,9 per cento.
-Con un distacco meno del 5 per cento: 130 partite, il favorito ne vince 69, 53,1 per cento.
-Con un distacco fra il 5 e il 15 per cento: 250 partite, il favorito ne vince 152, 60,8 per cento.
-Con un distacco fra il 15 e il 30 per cento: 248 partite, il favorito ne vince 175, 70,6 per cento.
-Con un distacco oltre il 30 per cento: 372 partite, il favorito ne vince 323, 86,8 per cento.
-Imprevisti: 2 rotture, 80 ammonizioni, 8 penalità di cui 4 per la mascherina, 611 time-out, in 1000 partite.
-Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 25,9 falli e 16,6 goal, i calmi 14,3 falli e 13,1 goal; il rapporto dei falli, 1,81, mescola il temperamento con le altre differenze fra i giocatori.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,822 per cento, contro 0,793 del vecchio calcolo.
-Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 84 e 15, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 24,0 falli e 18,3 goal, il calmo 14,6 falli e 13,8 goal.
+Ammonizioni ogni 100 partite: 6,00, bersaglio da 3,00 a 10,00, dentro.
+Penalità ogni 100 partite: 0,20, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
+Time-out a partita: 0,66, bersaglio da 0,30 a 0,80, dentro.
+Falli in meno degli esperti, per cento: 25,21, bersaglio da 18,00 a 35,00, dentro.
+Attacchi laterali sul lato debole, esperti: 65,68, bersaglio da 60,00 a 100,00, dentro.
+Attacchi laterali sul lato debole, inesperti: 57,84, bersaglio da 35,00 a 55,00, FUORI.
+Infortuni rispetto a prima, per cento: 94,62, bersaglio da 90,00 a 110,00, dentro.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,60, bersaglio da 1,35 a 1,70, dentro.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 03:20.
+Popolazione di prova con il 60 per cento di allenati e l'esperienza fino a 12: 400 giocatori, 400 disponibili, cioè che possono giocare.
+Indice di valore dei disponibili: minimo 13, mediana 197, massimo 563.
+1000 partite al meglio dei 3 set fra coppie di forti alla pari, in modalità essenziale, giocate in 1,4 secondi, cioè 1,44 millisecondi a partita, con il seme 2: per ripetere la prova identica si aggiunge --seme 2.
+Punti giocati 27970: 27534 assegnati e 436 palle morte o rotture, che si ripetono.
+Dei punti assegnati, 15909 sono goal, 57,8 per cento, e 11625 sono falli, 42,2 per cento.
+Come nascono i goal: goal da scambio: 12051, 75,7 per cento; goal di battuta: 2510, 15,8 per cento; goal su una palla tornata piano: 1027, 6,5 per cento; goal dopo una difesa irregolare: 174, 1,1 per cento; autogoal: 147, 0,9 per cento.
+Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 11121, 69,9 per cento dei goal.
+Come nascono i falli, per chiamata dell'arbitro: out: 4482, 38,0 per cento; schermo centrale: 4209, 35,7 per cento; servizio irregolare: 1098, 9,3 per cento; body touch: 1037, 8,8 per cento; difesa irregolare: 373, 3,2 per cento; infrazione paletta: 311, 2,6 per cento; infrazione palla: 220, 1,9 per cento; invasione: 69, 0,6 per cento.
+I falli per causa IBSA: schermo_contro: 3173, 26,9 per cento; out_sponda: 2113, 17,9 per cento; out_in_difesa: 1134, 9,6 per cento; schermo_sopra: 1036, 8,8 per cento; body_touch: 960, 8,1 per cento; out_tavola_contatto: 781, 6,6 per cento; battuta_senza_rimbalzo: 363, 3,1 per cento; out_volo: 316, 2,7 per cento; paletta_caduta: 311, 2,6 per cento; battuta_due_rimbalzi: 259, 2,2 per cento; pallina_trattenuta: 220, 1,9 per cento; difesa_irregolare: 199, 1,7 per cento; goal_dopo_difesa_irregolare: 174, 1,5 per cento; battuta_strisciata: 144, 1,2 per cento; out_soffitto: 138, 1,2 per cento; battuta_a_vuoto: 97, 0,8 per cento; battuta_doppio_tocco: 95, 0,8 per cento; battuta_prima_del_fischio: 77, 0,7 per cento; body_touch_pieno: 77, 0,7 per cento; battuta_oltre_due_secondi: 63, 0,5 per cento; invasione_mano_libera: 59, 0,5 per cento; invasione_tavola_contatto: 10, 0,1 per cento.
+Come nascono le palle morte: colpo_debole: 191, 44,3 per cento; pallina_ferma: 142, 32,9 per cento; ribattuta_lenta: 98, 22,7 per cento.
+Lunghezza degli scambi: in media 5,08 attacchi per punto, mediana 3.0, novantesimo percentile 12, al massimo 49.
+Punti per numero di attacchi: finito sulla battuta: 4202, 15,0 per cento; un attacco: 3948, 14,1 per cento; due attacchi: 3372, 12,1 per cento; da tre a cinque attacchi: 7019, 25,1 per cento; oltre cinque attacchi: 9429, 33,7 per cento.
+Set giocati 2445, in media 11,4 punti giocati per set, cioè scambi assegnati o ripetuti, e 17,8 punti segnati, la somma del punteggio.
+Set arrivati ai vantaggi, con entrambi almeno a 10: 307, 12,6 per cento. Set oltre i 12 punti: 150, 6,1 per cento; il più lungo finisce 17 a 15.
+Punteggi di set più frequenti: 11 a 8: 212, 8,7 per cento; 11 a 7: 178, 7,3 per cento; 11 a 9: 176, 7,2 per cento; 11 a 4: 176, 7,2 per cento; 11 a 6: 174, 7,1 per cento; 12 a 10: 157, 6,4 per cento.
+Partite giocate 1000. Risultati in set: 2 a 0: 555, 55,5 per cento; 2 a 1: 445, 44,5 per cento.
+Partite con almeno un set oltre i 12 punti: 139, una ogni 7,2. Set chiusi con 2 o 3 punti di scarto: 33,0 per cento; scarto medio 5,3.
+Il favorito, cioè il giocatore con l'indice di valore più alto, vince 542 partite su 1000, 54,2 per cento.
+Con un distacco meno del 5 per cento: 1000 partite, il favorito ne vince 542, 54,2 per cento.
+Imprevisti: 5 rotture, 72 ammonizioni, 6 penalità di cui 4 per la mascherina, 605 time-out, in 1000 partite.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 15,9 falli e 16,1 goal, i calmi 10,2 falli e 15,0 goal; il rapporto dei falli, 1,56, mescola il temperamento con le altre differenze fra i giocatori.
+Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 2,50 falli, chi è sotto 1 ne fa 3,89.
+Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 75,8 per cento degli attacchi laterali.
+Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 54,0 per cento degli attacchi laterali.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,898 per cento, contro 0,813 del vecchio calcolo.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 17, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,0 falli e 22,4 goal, il calmo 10,8 falli e 18,9 goal.
 I bersagli della taratura:
-Goal sui punti giocati: 45,60, bersaglio da 45,00 a 60,00, dentro.
-Goal di battuta sui goal: 22,03, bersaglio da 12,00 a 25,00, dentro.
-Falli per schermo centrale: 37,44, bersaglio da 28,00 a 38,00, dentro.
-Falli per out: 38,09, bersaglio da 30,00 a 42,00, dentro.
-Falli per servizio irregolare: 10,90, bersaglio da 8,00 a 15,00, dentro.
-Falli per body touch: 6,54, bersaglio da 6,00 a 15,00, dentro.
-Falli per difesa irregolare: 2,41, bersaglio da 1,50 a 6,00, dentro.
-Falli per infrazione palla: 1,61, bersaglio da 1,00 a 5,00, dentro.
-Falli per infrazione paletta: 2,59, bersaglio da 0,50 a 3,00, dentro.
-Falli per invasione: 0,43, bersaglio da 0,30 a 2,00, dentro.
-Battute irregolari sulle battute: 6,16, bersaglio da 4,00 a 8,00, dentro.
-Palle morte sui punti giocati: 1,46, bersaglio da 0,50 a 1,50, dentro.
+Goal sui punti giocati: 56,88, bersaglio da 50,00 a 70,00, dentro.
+Goal di battuta sui goal: 15,78, bersaglio da 12,00 a 25,00, dentro.
+Falli per schermo centrale: 35,67, bersaglio da 28,00 a 38,00, dentro.
+Falli per out: 37,99, bersaglio da 30,00 a 42,00, dentro.
+Falli per servizio irregolare: 9,31, bersaglio da 8,00 a 15,00, dentro.
+Falli per body touch: 8,79, bersaglio da 6,00 a 15,00, dentro.
+Falli per difesa irregolare: 3,16, bersaglio da 1,50 a 6,00, dentro.
+Falli per infrazione palla: 1,86, bersaglio da 1,00 a 5,00, dentro.
+Falli per infrazione paletta: 2,64, bersaglio da 0,50 a 3,00, dentro.
+Falli per invasione: 0,58, bersaglio da 0,30 a 2,00, dentro.
+Battute irregolari sulle battute: 4,13, bersaglio da 4,00 a 8,00, dentro.
+Palle morte sui punti giocati: 1,54, bersaglio da 0,50 a 1,50, FUORI.
 Palle morte per limite tecnico: 0,00, bersaglio da 0,00 a 0,00, dentro.
-Punti finiti sulla battuta: 18,67, bersaglio da 12,00 a 22,00, dentro.
-Attacchi per punto, media: 4,12, bersaglio da 2,50 a 5,00, dentro.
+Punti finiti sulla battuta: 15,02, bersaglio da 12,00 a 22,00, dentro.
+Punti segnati per set: 17,77, bersaglio da 15,00 a 19,00, dentro.
+Partite ogni set oltre i 12, fra pari forti: 7,19, bersaglio da 5,50 a 9,00, dentro.
+Set con 2 o 3 punti di scarto, fra pari forti: 33,05, bersaglio da 30,00 a 100,00, dentro.
+Scarto medio dei set, fra pari forti: 5,29, bersaglio da 0,00 a 5,50, dentro.
+Vittorie del favorito con un distacco meno del 5 per cento: 54,20, bersaglio da 50,00 a 58,00, dentro.
+Partite per una rottura: 200,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
+Ammonizioni ogni 100 partite: 7,20, bersaglio da 3,00 a 10,00, dentro.
+Penalità ogni 100 partite: 0,60, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
+Time-out a partita: 0,60, bersaglio da 0,30 a 0,80, dentro.
+Falli in meno degli esperti, per cento: 35,63, bersaglio da 18,00 a 35,00, FUORI.
+Attacchi laterali sul lato debole, esperti: 75,81, bersaglio da 60,00 a 100,00, dentro.
+Attacchi laterali sul lato debole, inesperti: 53,99, bersaglio da 35,00 a 55,00, dentro.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,57, bersaglio da 1,35 a 1,70, dentro.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 03:20.
+Mondo salvato in mess_mondo.json.gz: 61 giocatori, 61 disponibili, cioè che possono giocare.
+Indice di valore dei disponibili: minimo 66, mediana 140, massimo 212.
+1000 partite al meglio dei 3 set fra coppie estratte a caso, in modalità essenziale, giocate in 2,0 secondi, cioè 2,01 millisecondi a partita, con il seme 3: per ripetere la prova identica si aggiunge --seme 3.
+Punti giocati 29400: 28969 assegnati e 431 palle morte o rotture, che si ripetono.
+Dei punti assegnati, 13361 sono goal, 46,1 per cento, e 15608 sono falli, 53,9 per cento.
+Come nascono i goal: goal da scambio: 8632, 64,6 per cento; goal di battuta: 3024, 22,6 per cento; goal su una palla tornata piano: 1315, 9,8 per cento; autogoal: 206, 1,5 per cento; goal dopo una difesa irregolare: 184, 1,4 per cento.
+Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 8315, 62,2 per cento dei goal.
+Come nascono i falli, per chiamata dell'arbitro: out: 5942, 37,6 per cento; schermo centrale: 5860, 37,1 per cento; servizio irregolare: 1746, 11,1 per cento; body touch: 1176, 7,4 per cento; infrazione paletta: 396, 2,5 per cento; difesa irregolare: 375, 2,4 per cento; infrazione palla: 244, 1,5 per cento; invasione: 53, 0,3 per cento.
+I falli per causa IBSA: schermo_contro: 4477, 28,3 per cento; out_sponda: 3023, 19,1 per cento; schermo_sopra: 1383, 8,8 per cento; out_in_difesa: 1167, 7,4 per cento; body_touch: 1084, 6,9 per cento; out_tavola_contatto: 1053, 6,7 per cento; battuta_senza_rimbalzo: 557, 3,5 per cento; out_volo: 488, 3,1 per cento; battuta_due_rimbalzi: 403, 2,6 per cento; paletta_caduta: 396, 2,5 per cento; pallina_trattenuta: 244, 1,5 per cento; battuta_strisciata: 223, 1,4 per cento; out_soffitto: 211, 1,3 per cento; difesa_irregolare: 191, 1,2 per cento; goal_dopo_difesa_irregolare: 184, 1,2 per cento; battuta_a_vuoto: 165, 1,0 per cento; battuta_doppio_tocco: 157, 1,0 per cento; battuta_oltre_due_secondi: 127, 0,8 per cento; battuta_prima_del_fischio: 114, 0,7 per cento; body_touch_pieno: 92, 0,6 per cento; invasione_mano_libera: 41, 0,3 per cento; invasione_tavola_contatto: 12, 0,1 per cento.
+Come nascono le palle morte: colpo_debole: 198, 46,5 per cento; pallina_ferma: 140, 32,9 per cento; ribattuta_lenta: 88, 20,7 per cento.
+Lunghezza degli scambi: in media 4,27 attacchi per punto, mediana 3.0, novantesimo percentile 10, al massimo 76.
+Punti per numero di attacchi: finito sulla battuta: 5568, 18,9 per cento; un attacco: 4470, 15,2 per cento; due attacchi: 3713, 12,6 per cento; da tre a cinque attacchi: 7450, 25,3 per cento; oltre cinque attacchi: 8199, 27,9 per cento.
+Set giocati 2395, in media 12,3 punti giocati per set, cioè scambi assegnati o ripetuti, e 17,7 punti segnati, la somma del punteggio.
+Set arrivati ai vantaggi, con entrambi almeno a 10: 266, 11,1 per cento. Set oltre i 12 punti: 140, 5,8 per cento; il più lungo finisce 18 a 16.
+Punteggi di set più frequenti: 11 a 9: 213, 8,9 per cento; 11 a 6: 198, 8,3 per cento; 11 a 5: 196, 8,2 per cento; 11 a 8: 192, 8,0 per cento; 11 a 7: 188, 7,8 per cento; 11 a 4: 157, 6,6 per cento.
+Partite giocate 1000. Risultati in set: 2 a 0: 605, 60,5 per cento; 2 a 1: 395, 39,5 per cento.
+Partite con almeno un set oltre i 12 punti: 132, una ogni 7,6. Set chiusi con 2 o 3 punti di scarto: 32,2 per cento; scarto medio 5,3.
+Il favorito, cioè il giocatore con l'indice di valore più alto, vince 708 partite su 1000, 70,8 per cento.
+Con un distacco meno del 5 per cento: 120 partite, il favorito ne vince 57, 47,5 per cento.
+Con un distacco fra il 5 e il 15 per cento: 193 partite, il favorito ne vince 117, 60,6 per cento.
+Con un distacco fra il 15 e il 30 per cento: 254 partite, il favorito ne vince 167, 65,7 per cento.
+Con un distacco oltre il 30 per cento: 433 partite, il favorito ne vince 367, 84,8 per cento.
+Imprevisti: 5 rotture, 98 ammonizioni, 4 penalità di cui 1 per la mascherina, 649 time-out, in 1000 partite.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 24,7 falli e 16,0 goal, i calmi 13,5 falli e 13,7 goal; il rapporto dei falli, 1,83, mescola il temperamento con le altre differenze fra i giocatori.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,825 per cento, contro 0,793 del vecchio calcolo.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 84 e 15, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 23,8 falli e 16,8 goal, il calmo 14,4 falli e 13,8 goal.
+I bersagli della taratura:
+Goal sui punti giocati: 45,45, bersaglio da 45,00 a 60,00, dentro.
+Goal di battuta sui goal: 22,63, bersaglio da 12,00 a 25,00, dentro.
+Falli per schermo centrale: 37,11, bersaglio da 28,00 a 38,00, dentro.
+Falli per out: 37,63, bersaglio da 30,00 a 42,00, dentro.
+Falli per servizio irregolare: 11,06, bersaglio da 8,00 a 15,00, dentro.
+Falli per body touch: 7,45, bersaglio da 6,00 a 15,00, dentro.
+Falli per difesa irregolare: 2,37, bersaglio da 1,50 a 6,00, dentro.
+Falli per infrazione palla: 1,55, bersaglio da 1,00 a 5,00, dentro.
+Falli per infrazione paletta: 2,51, bersaglio da 0,50 a 3,00, dentro.
+Falli per invasione: 0,34, bersaglio da 0,30 a 2,00, dentro.
+Battute irregolari sulle battute: 6,33, bersaglio da 4,00 a 8,00, dentro.
+Palle morte sui punti giocati: 1,45, bersaglio da 0,50 a 1,50, dentro.
+Palle morte per limite tecnico: 0,00, bersaglio da 0,00 a 0,00, dentro.
+Punti finiti sulla battuta: 18,94, bersaglio da 12,00 a 22,00, dentro.
+Attacchi per punto, media: 4,27, bersaglio da 2,50 a 5,00, dentro.
 Attacchi per punto, mediana: 3,00, bersaglio da 2,00 a 3,00, dentro.
 Attacchi per punto, novantesimo percentile: 10,00, bersaglio da 6,00 a 12,00, dentro.
-Punti segnati per set: 17,76, bersaglio da 15,00 a 19,00, dentro.
-Vittorie del favorito con un distacco meno del 5 per cento: 53,08, bersaglio da 50,00 a 58,00, dentro.
-Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 60,80, bersaglio da 58,00 a 70,00, dentro.
-Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 70,56, bersaglio da 70,00 a 85,00, dentro.
-Vittorie del favorito con un distacco oltre il 30 per cento: 86,83, bersaglio da 85,00 a 96,00, dentro.
-Partite per una rottura: 500,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
-Ammonizioni ogni 100 partite: 8,00, bersaglio da 3,00 a 10,00, dentro.
-Penalità ogni 100 partite: 0,80, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
-Time-out a partita: 0,61, bersaglio da 0,30 a 0,80, dentro.
-Infortuni rispetto a prima, per cento: 103,60, bersaglio da 90,00 a 110,00, dentro.
-Falli degli impetuosi su quelli dei calmi, a coppie: 1,64, bersaglio da 1,35 a 1,70, dentro.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
+Punti segnati per set: 17,68, bersaglio da 15,00 a 19,00, dentro.
+Vittorie del favorito con un distacco meno del 5 per cento: 47,50, bersaglio da 50,00 a 58,00, FUORI.
+Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 60,62, bersaglio da 58,00 a 70,00, dentro.
+Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 65,75, bersaglio da 70,00 a 85,00, FUORI.
+Vittorie del favorito con un distacco oltre il 30 per cento: 84,76, bersaglio da 85,00 a 96,00, FUORI.
+Partite per una rottura: 200,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
+Ammonizioni ogni 100 partite: 9,80, bersaglio da 3,00 a 10,00, dentro.
+Penalità ogni 100 partite: 0,40, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
+Time-out a partita: 0,65, bersaglio da 0,30 a 0,80, dentro.
+Infortuni rispetto a prima, per cento: 104,03, bersaglio da 90,00 a 110,00, dentro.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,65, bersaglio da 1,35 a 1,70, dentro.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 03:20.
 Popolazione di prova con il 60 per cento di allenati e l'esperienza fino a 12: 400 giocatori, 400 disponibili, cioè che possono giocare.
-Indice di valore dei disponibili: minimo 65, mediana 187, massimo 588.
-400 partite al meglio dei 3 set fra coppie estratte a caso, in modalità completo, giocate in 2,6 secondi, cioè 6,41 millisecondi a partita, con il seme 6: per ripetere la prova identica si aggiunge --seme 6.
-Punti giocati 9482: 9361 assegnati e 121 palle morte o rotture, che si ripetono.
-Dei punti assegnati, 5311 sono goal, 56,7 per cento, e 4050 sono falli, 43,3 per cento.
-Come nascono i goal: goal da scambio: 3635, 68,4 per cento; goal di battuta: 1022, 19,2 per cento; goal su una palla tornata piano: 550, 10,4 per cento; goal dopo una difesa irregolare: 58, 1,1 per cento; autogoal: 46, 0,9 per cento.
-Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 3455, 65,1 per cento dei goal.
-Come nascono i falli, per chiamata dell'arbitro: out: 1565, 38,1 per cento; schermo centrale: 1508, 36,7 per cento; servizio irregolare: 417, 10,2 per cento; body touch: 305, 7,4 per cento; infrazione paletta: 109, 2,7 per cento; difesa irregolare: 103, 2,5 per cento; infrazione palla: 82, 2,0 per cento; invasione: 19, 0,5 per cento.
-I falli per causa IBSA: schermo_contro: 1129, 27,5 per cento; out_sponda: 791, 19,3 per cento; schermo_sopra: 379, 9,2 per cento; out_in_difesa: 336, 8,2 per cento; body_touch: 295, 7,2 per cento; out_tavola_contatto: 285, 6,9 per cento; battuta_senza_rimbalzo: 137, 3,3 per cento; out_volo: 110, 2,7 per cento; paletta_caduta: 109, 2,7 per cento; battuta_due_rimbalzi: 103, 2,5 per cento; pallina_trattenuta: 82, 2,0 per cento; goal_dopo_difesa_irregolare: 58, 1,4 per cento; battuta_a_vuoto: 50, 1,2 per cento; battuta_strisciata: 46, 1,1 per cento; difesa_irregolare: 45, 1,1 per cento; out_soffitto: 43, 1,0 per cento; battuta_doppio_tocco: 31, 0,8 per cento; battuta_prima_del_fischio: 28, 0,7 per cento; battuta_oltre_due_secondi: 22, 0,5 per cento; invasione_mano_libera: 15, 0,4 per cento; body_touch_pieno: 10, 0,2 per cento; invasione_tavola_contatto: 4, 0,1 per cento.
-Come nascono le palle morte: colpo_debole: 57, 47,5 per cento; pallina_ferma: 32, 26,7 per cento; ribattuta_lenta: 31, 25,8 per cento.
-Lunghezza degli scambi: in media 4,53 attacchi per punto, mediana 3.0, novantesimo percentile 11, al massimo 43.
-Punti per numero di attacchi: finito sulla battuta: 1647, 17,4 per cento; un attacco: 1452, 15,3 per cento; due attacchi: 1231, 13,0 per cento; da tre a cinque attacchi: 2332, 24,6 per cento; oltre cinque attacchi: 2820, 29,7 per cento.
-Set giocati 890, in media 10,7 punti giocati per set, cioè scambi assegnati o ripetuti, e 16,5 punti segnati, la somma del punteggio.
-Set arrivati ai vantaggi, con entrambi almeno a 10: 63, 7,1 per cento. Set oltre i 12 punti: 25, 2,8 per cento; il più lungo finisce 16 a 13.
-Punteggi di set più frequenti: 11 a 4: 64, 7,2 per cento; 11 a 9: 59, 6,6 per cento; 11 a 3: 59, 6,6 per cento; 11 a 6: 58, 6,5 per cento; 11 a 2: 54, 6,1 per cento; 11 a 7: 53, 6,0 per cento.
-Partite giocate 400. Risultati in set: 2 a 0: 310, 77,5 per cento; 2 a 1: 90, 22,5 per cento.
-Partite con almeno un set oltre i 12 punti: 25, una ogni 16,0. Set chiusi con 2 o 3 punti di scarto: 23,3 per cento; scarto medio 6,4.
-Il favorito, cioè il giocatore con l'indice di valore più alto, vince 346 partite su 400, 86,5 per cento.
-Con un distacco meno del 5 per cento: 26 partite, il favorito ne vince 11, 42,3 per cento.
-Con un distacco fra il 5 e il 15 per cento: 50 partite, il favorito ne vince 36, 72,0 per cento.
-Con un distacco fra il 15 e il 30 per cento: 62 partite, il favorito ne vince 51, 82,3 per cento.
-Con un distacco oltre il 30 per cento: 262 partite, il favorito ne vince 248, 94,7 per cento.
-Imprevisti: 1 rotture, 29 ammonizioni, 0 penalità di cui 0 per la mascherina, 263 time-out, in 400 partite.
-Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 16,8 falli e 18,3 goal, i calmi 11,6 falli e 16,6 goal; il rapporto dei falli, 1,45, mescola il temperamento con le altre differenze fra i giocatori.
-Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 3,07 falli, chi è sotto 1 ne fa 4,02.
-Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 73,2 per cento degli attacchi laterali.
-Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 49,0 per cento degli attacchi laterali.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,720 per cento, contro 0,717 del vecchio calcolo.
-Durata simulata: in media 12,2 minuti, da 6,4 a 25,2; incontri con le invarianti violate: 0.
-Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 18, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,8 falli e 19,9 goal, il calmo 11,1 falli e 16,6 goal.
+Indice di valore dei disponibili: minimo 37, mediana 194, massimo 689.
+400 partite al meglio dei 3 set fra coppie estratte a caso, in modalità completo, giocate in 3,5 secondi, cioè 8,63 millisecondi a partita, con il seme 6: per ripetere la prova identica si aggiunge --seme 6.
+Punti giocati 9191: 9065 assegnati e 126 palle morte o rotture, che si ripetono.
+Dei punti assegnati, 5242 sono goal, 57,8 per cento, e 3823 sono falli, 42,2 per cento.
+Come nascono i goal: goal da scambio: 3777, 72,1 per cento; goal di battuta: 975, 18,6 per cento; goal su una palla tornata piano: 399, 7,6 per cento; goal dopo una difesa irregolare: 49, 0,9 per cento; autogoal: 42, 0,8 per cento.
+Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 3432, 65,5 per cento dei goal.
+Come nascono i falli, per chiamata dell'arbitro: out: 1423, 36,8 per cento; schermo centrale: 1386, 35,8 per cento; servizio irregolare: 414, 10,7 per cento; body touch: 334, 8,6 per cento; infrazione paletta: 110, 2,8 per cento; difesa irregolare: 105, 2,7 per cento; infrazione palla: 82, 2,1 per cento; invasione: 18, 0,5 per cento.
+I falli per causa IBSA: schermo_contro: 1052, 27,2 per cento; out_sponda: 686, 17,7 per cento; schermo_sopra: 334, 8,6 per cento; out_in_difesa: 320, 8,3 per cento; body_touch: 308, 8,0 per cento; out_tavola_contatto: 249, 6,4 per cento; battuta_senza_rimbalzo: 147, 3,8 per cento; out_volo: 123, 3,2 per cento; paletta_caduta: 110, 2,8 per cento; battuta_due_rimbalzi: 96, 2,5 per cento; pallina_trattenuta: 82, 2,1 per cento; difesa_irregolare: 56, 1,4 per cento; goal_dopo_difesa_irregolare: 49, 1,3 per cento; out_soffitto: 45, 1,2 per cento; battuta_strisciata: 43, 1,1 per cento; battuta_a_vuoto: 42, 1,1 per cento; battuta_doppio_tocco: 34, 0,9 per cento; battuta_prima_del_fischio: 27, 0,7 per cento; body_touch_pieno: 26, 0,7 per cento; battuta_oltre_due_secondi: 25, 0,6 per cento; invasione_mano_libera: 13, 0,3 per cento; invasione_tavola_contatto: 5, 0,1 per cento.
+Come nascono le palle morte: colpo_debole: 64, 51,2 per cento; pallina_ferma: 37, 29,6 per cento; ribattuta_lenta: 24, 19,2 per cento.
+Lunghezza degli scambi: in media 4,53 attacchi per punto, mediana 3, novantesimo percentile 11, al massimo 51.
+Punti per numero di attacchi: finito sulla battuta: 1599, 17,4 per cento; un attacco: 1427, 15,5 per cento; due attacchi: 1215, 13,2 per cento; da tre a cinque attacchi: 2221, 24,2 per cento; oltre cinque attacchi: 2729, 29,7 per cento.
+Set giocati 882, in media 10,4 punti giocati per set, cioè scambi assegnati o ripetuti, e 16,2 punti segnati, la somma del punteggio.
+Set arrivati ai vantaggi, con entrambi almeno a 10: 63, 7,1 per cento. Set oltre i 12 punti: 33, 3,7 per cento; il più lungo finisce 18 a 15.
+Punteggi di set più frequenti: 11 a 6: 65, 7,4 per cento; 11 a 1: 55, 6,2 per cento; 11 a 7: 54, 6,1 per cento; 11 a 4: 53, 6,0 per cento; 11 a 8: 53, 6,0 per cento; 11 a 3: 49, 5,6 per cento.
+Partite giocate 400. Risultati in set: 2 a 0: 318, 79,5 per cento; 2 a 1: 82, 20,5 per cento.
+Partite con almeno un set oltre i 12 punti: 33, una ogni 12,1. Set chiusi con 2 o 3 punti di scarto: 19,7 per cento; scarto medio 6,8.
+Il favorito, cioè il giocatore con l'indice di valore più alto, vince 337 partite su 400, 84,2 per cento.
+Con un distacco meno del 5 per cento: 21 partite, il favorito ne vince 7, 33,3 per cento.
+Con un distacco fra il 5 e il 15 per cento: 46 partite, il favorito ne vince 26, 56,5 per cento.
+Con un distacco fra il 15 e il 30 per cento: 64 partite, il favorito ne vince 47, 73,4 per cento.
+Con un distacco oltre il 30 per cento: 269 partite, il favorito ne vince 257, 95,5 per cento.
+Imprevisti: 1 rotture, 23 ammonizioni, 4 penalità di cui 2 per la mascherina, 276 time-out, in 400 partite.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 16,2 falli e 20,1 goal, i calmi 11,0 falli e 15,7 goal; il rapporto dei falli, 1,47, mescola il temperamento con le altre differenze fra i giocatori.
+Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 3,00 falli, chi è sotto 1 ne fa 3,87.
+Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 75,2 per cento degli attacchi laterali.
+Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 49,7 per cento degli attacchi laterali.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,699 per cento, contro 0,717 del vecchio calcolo.
+Durata simulata: in media 12,2 minuti, da 6,2 a 26,0; incontri con le invarianti violate: 0.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 18, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,2 falli e 21,7 goal, il calmo 10,8 falli e 17,5 goal.
 I bersagli della taratura:
-Goal sui punti giocati: 56,01, bersaglio da 45,00 a 60,00, dentro.
-Goal di battuta sui goal: 19,24, bersaglio da 12,00 a 25,00, dentro.
-Falli per schermo centrale: 36,71, bersaglio da 28,00 a 38,00, dentro.
-Falli per out: 38,10, bersaglio da 30,00 a 42,00, dentro.
-Falli per servizio irregolare: 10,15, bersaglio da 8,00 a 15,00, dentro.
-Falli per body touch: 7,42, bersaglio da 6,00 a 15,00, dentro.
-Falli per difesa irregolare: 2,51, bersaglio da 1,50 a 6,00, dentro.
-Falli per infrazione palla: 2,00, bersaglio da 1,00 a 5,00, dentro.
-Falli per infrazione paletta: 2,65, bersaglio da 0,50 a 3,00, dentro.
+Goal sui punti giocati: 57,03, bersaglio da 45,00 a 60,00, dentro.
+Goal di battuta sui goal: 18,60, bersaglio da 12,00 a 25,00, dentro.
+Falli per schermo centrale: 35,80, bersaglio da 28,00 a 38,00, dentro.
+Falli per out: 36,75, bersaglio da 30,00 a 42,00, dentro.
+Falli per servizio irregolare: 10,69, bersaglio da 8,00 a 15,00, dentro.
+Falli per body touch: 8,63, bersaglio da 6,00 a 15,00, dentro.
+Falli per difesa irregolare: 2,71, bersaglio da 1,50 a 6,00, dentro.
+Falli per infrazione palla: 2,12, bersaglio da 1,00 a 5,00, dentro.
+Falli per infrazione paletta: 2,84, bersaglio da 0,50 a 3,00, dentro.
 Falli per invasione: 0,46, bersaglio da 0,30 a 2,00, dentro.
-Battute irregolari sulle battute: 4,63, bersaglio da 4,00 a 8,00, dentro.
-Palle morte sui punti giocati: 1,27, bersaglio da 0,50 a 1,50, dentro.
+Battute irregolari sulle battute: 4,73, bersaglio da 4,00 a 8,00, dentro.
+Palle morte sui punti giocati: 1,36, bersaglio da 0,50 a 1,50, dentro.
 Palle morte per limite tecnico: 0,00, bersaglio da 0,00 a 0,00, dentro.
-Punti finiti sulla battuta: 17,37, bersaglio da 12,00 a 22,00, dentro.
+Punti finiti sulla battuta: 17,40, bersaglio da 12,00 a 22,00, dentro.
 Attacchi per punto, media: 4,53, bersaglio da 2,50 a 5,00, dentro.
 Attacchi per punto, mediana: 3,00, bersaglio da 2,00 a 3,00, dentro.
 Attacchi per punto, novantesimo percentile: 11,00, bersaglio da 6,00 a 12,00, dentro.
-Punti segnati per set: 16,49, bersaglio da 15,00 a 19,00, dentro.
-Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 72,00, bersaglio da 58,00 a 70,00, FUORI.
-Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 82,26, bersaglio da 70,00 a 85,00, dentro.
-Vittorie del favorito con un distacco oltre il 30 per cento: 94,66, bersaglio da 85,00 a 96,00, dentro.
+Punti segnati per set: 16,23, bersaglio da 15,00 a 19,00, dentro.
+Vittorie del favorito con un distacco fra il 5 e il 15 per cento: 56,52, bersaglio da 58,00 a 70,00, FUORI.
+Vittorie del favorito con un distacco fra il 15 e il 30 per cento: 73,44, bersaglio da 70,00 a 85,00, dentro.
+Vittorie del favorito con un distacco oltre il 30 per cento: 95,54, bersaglio da 85,00 a 96,00, dentro.
 Partite per una rottura: 400,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
-Ammonizioni ogni 100 partite: 7,25, bersaglio da 3,00 a 10,00, dentro.
-Penalità ogni 100 partite: 0,00, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
-Time-out a partita: 0,66, bersaglio da 0,30 a 0,80, dentro.
-Falli in meno degli esperti, per cento: 23,70, bersaglio da 18,00 a 35,00, dentro.
-Attacchi laterali sul lato debole, esperti: 73,24, bersaglio da 60,00 a 100,00, dentro.
-Attacchi laterali sul lato debole, inesperti: 48,99, bersaglio da 35,00 a 55,00, dentro.
-Infortuni rispetto a prima, per cento: 100,32, bersaglio da 90,00 a 110,00, dentro.
-Durata simulata media in minuti: 12,19, bersaglio da 12,00 a 20,00, dentro.
-Falli degli impetuosi su quelli dei calmi, a coppie: 1,61, bersaglio da 1,35 a 1,70, dentro.
-Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 01:28.
+Ammonizioni ogni 100 partite: 5,75, bersaglio da 3,00 a 10,00, dentro.
+Penalità ogni 100 partite: 1,00, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
+Time-out a partita: 0,69, bersaglio da 0,30 a 0,80, dentro.
+Falli in meno degli esperti, per cento: 22,28, bersaglio da 18,00 a 35,00, dentro.
+Attacchi laterali sul lato debole, esperti: 75,19, bersaglio da 60,00 a 100,00, dentro.
+Attacchi laterali sul lato debole, inesperti: 49,69, bersaglio da 35,00 a 55,00, dentro.
+Infortuni rispetto a prima, per cento: 97,38, bersaglio da 90,00 a 110,00, dentro.
+Durata simulata media in minuti: 12,20, bersaglio da 12,00 a 20,00, dentro.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,60, bersaglio da 1,35 a 1,70, dentro.
+Banco di prova del motore di partita, MESS versione 1.38.2, 2026-10-08 03:20.
 Popolazione di prova con il 60 per cento di allenati e l'esperienza fino a 12: 400 giocatori, 400 disponibili, cioè che possono giocare.
-Indice di valore dei disponibili: minimo 63, mediana 182, massimo 475.
-1000 partite al meglio dei 5 set fra coppie estratte a caso, in modalità essenziale, giocate in 1,8 secondi, cioè 1,82 millisecondi a partita, con il seme 8: per ripetere la prova identica si aggiunge --seme 8.
-Punti giocati 38325: 37860 assegnati e 465 palle morte o rotture, che si ripetono.
-Dei punti assegnati, 20959 sono goal, 55,4 per cento, e 16901 sono falli, 44,6 per cento.
-Come nascono i goal: goal da scambio: 14332, 68,4 per cento; goal di battuta: 3982, 19,0 per cento; goal su una palla tornata piano: 2188, 10,4 per cento; goal dopo una difesa irregolare: 230, 1,1 per cento; autogoal: 227, 1,1 per cento.
-Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 13690, 65,3 per cento dei goal.
-Come nascono i falli, per chiamata dell'arbitro: out: 6428, 37,5 per cento; schermo centrale: 6398, 37,3 per cento; servizio irregolare: 1716, 10,0 per cento; body touch: 1274, 7,4 per cento; difesa irregolare: 451, 2,6 per cento; infrazione paletta: 448, 2,6 per cento; infrazione palla: 315, 1,8 per cento; invasione: 101, 0,6 per cento.
-I falli per causa IBSA: schermo_contro: 4861, 28,4 per cento; out_sponda: 3214, 18,8 per cento; schermo_sopra: 1537, 9,0 per cento; out_in_difesa: 1435, 8,4 per cento; body_touch: 1198, 7,0 per cento; out_tavola_contatto: 1155, 6,7 per cento; battuta_senza_rimbalzo: 519, 3,0 per cento; paletta_caduta: 448, 2,6 per cento; battuta_due_rimbalzi: 440, 2,6 per cento; out_volo: 426, 2,5 per cento; pallina_trattenuta: 315, 1,8 per cento; goal_dopo_difesa_irregolare: 230, 1,3 per cento; difesa_irregolare: 221, 1,3 per cento; battuta_strisciata: 209, 1,2 per cento; out_soffitto: 198, 1,2 per cento; battuta_doppio_tocco: 153, 0,9 per cento; battuta_a_vuoto: 152, 0,9 per cento; battuta_prima_del_fischio: 127, 0,7 per cento; battuta_oltre_due_secondi: 116, 0,7 per cento; invasione_mano_libera: 81, 0,5 per cento; body_touch_pieno: 76, 0,4 per cento; invasione_tavola_contatto: 20, 0,1 per cento.
-Come nascono le palle morte: colpo_debole: 200, 43,4 per cento; pallina_ferma: 147, 31,9 per cento; ribattuta_lenta: 114, 24,7 per cento.
-Lunghezza degli scambi: in media 4,47 attacchi per punto, mediana 3, novantesimo percentile 11, al massimo 51.
-Punti per numero di attacchi: finito sulla battuta: 6631, 17,3 per cento; un attacco: 6002, 15,7 per cento; due attacchi: 4652, 12,1 per cento; da tre a cinque attacchi: 9763, 25,5 per cento; oltre cinque attacchi: 11277, 29,4 per cento.
-Set giocati 3538, in media 10,8 punti giocati per set, cioè scambi assegnati o ripetuti, e 16,6 punti segnati, la somma del punteggio.
-Set arrivati ai vantaggi, con entrambi almeno a 10: 293, 8,3 per cento. Set oltre i 12 punti: 147, 4,2 per cento; il più lungo finisce 13 a 16.
-Punteggi di set più frequenti: 11 a 6: 240, 6,8 per cento; 11 a 5: 236, 6,7 per cento; 11 a 4: 225, 6,4 per cento; 11 a 7: 215, 6,1 per cento; 11 a 2: 207, 5,9 per cento; 11 a 8: 200, 5,7 per cento.
-Partite giocate 1000. Risultati in set: 3 a 0: 620, 62,0 per cento; 3 a 1: 222, 22,2 per cento; 3 a 2: 158, 15,8 per cento.
-Partite con almeno un set oltre i 12 punti: 130, una ogni 7,7. Set chiusi con 2 o 3 punti di scarto: 22,2 per cento; scarto medio 6,4.
-Il favorito, cioè il giocatore con l'indice di valore più alto, vince 874 partite su 1000, 87,4 per cento.
-Con un distacco meno del 5 per cento: 68 partite, il favorito ne vince 39, 57,4 per cento.
-Con un distacco fra il 5 e il 15 per cento: 124 partite, il favorito ne vince 72, 58,1 per cento.
-Con un distacco fra il 15 e il 30 per cento: 153 partite, il favorito ne vince 129, 84,3 per cento.
-Con un distacco oltre il 30 per cento: 655 partite, il favorito ne vince 634, 96,8 per cento.
-Imprevisti: 4 rotture, 83 ammonizioni, 12 penalità di cui 10 per la mascherina, 987 time-out, in 1000 partite.
-Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 18,7 falli e 20,0 goal, i calmi 10,5 falli e 15,4 goal; il rapporto dei falli, 1,77, mescola il temperamento con le altre differenze fra i giocatori.
-Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 3,37 falli, chi è sotto 1 ne fa 4,41.
-Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 72,9 per cento degli attacchi laterali.
-Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 57,4 per cento degli attacchi laterali.
-Stanchezza a fine incontro al meglio di 5, giovani resistenti: efficienza media 0,876, minima 0,795, su 17 incontri.
-Infortuni, chi non è ambidestro: probabilità media per partita 0,780 per cento, contro 0,652 del vecchio calcolo.
-Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 18, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 19,0 falli e 19,9 goal, il calmo 11,5 falli e 15,9 goal.
+Indice di valore dei disponibili: minimo 57, mediana 191, massimo 544.
+1000 partite al meglio dei 5 set fra coppie estratte a caso, in modalità essenziale, giocate in 2,2 secondi, cioè 2,23 millisecondi a partita, con il seme 8: per ripetere la prova identica si aggiunge --seme 8.
+Punti giocati 36049: 35600 assegnati e 449 palle morte o rotture, che si ripetono.
+Dei punti assegnati, 20222 sono goal, 56,8 per cento, e 15378 sono falli, 43,2 per cento.
+Come nascono i goal: goal da scambio: 14495, 71,7 per cento; goal di battuta: 3773, 18,7 per cento; goal su una palla tornata piano: 1541, 7,6 per cento; goal dopo una difesa irregolare: 222, 1,1 per cento; autogoal: 191, 0,9 per cento.
+Goal arrivati dopo almeno due attacchi, cioè da uno scambio vero: 13073, 64,6 per cento dei goal.
+Come nascono i falli, per chiamata dell'arbitro: out: 5796, 37,2 per cento; schermo centrale: 5707, 36,6 per cento; servizio irregolare: 1704, 10,9 per cento; body touch: 1208, 7,7 per cento; infrazione paletta: 411, 2,6 per cento; difesa irregolare: 405, 2,6 per cento; infrazione palla: 299, 1,9 per cento; invasione: 70, 0,4 per cento.
+I falli per causa IBSA: schermo_contro: 4352, 27,9 per cento; out_sponda: 2897, 18,6 per cento; schermo_sopra: 1355, 8,7 per cento; out_in_difesa: 1311, 8,4 per cento; body_touch: 1109, 7,1 per cento; out_tavola_contatto: 999, 6,4 per cento; battuta_senza_rimbalzo: 521, 3,3 per cento; battuta_due_rimbalzi: 413, 2,6 per cento; paletta_caduta: 411, 2,6 per cento; out_volo: 400, 2,6 per cento; pallina_trattenuta: 299, 1,9 per cento; battuta_strisciata: 234, 1,5 per cento; goal_dopo_difesa_irregolare: 222, 1,4 per cento; out_soffitto: 189, 1,2 per cento; difesa_irregolare: 183, 1,2 per cento; battuta_a_vuoto: 166, 1,1 per cento; battuta_doppio_tocco: 141, 0,9 per cento; battuta_prima_del_fischio: 123, 0,8 per cento; battuta_oltre_due_secondi: 106, 0,7 per cento; body_touch_pieno: 99, 0,6 per cento; invasione_mano_libera: 55, 0,4 per cento; invasione_tavola_contatto: 15, 0,1 per cento.
+Come nascono le palle morte: colpo_debole: 195, 43,8 per cento; pallina_ferma: 152, 34,2 per cento; ribattuta_lenta: 98, 22,0 per cento.
+Lunghezza degli scambi: in media 4,41 attacchi per punto, mediana 3, novantesimo percentile 11, al massimo 52.
+Punti per numero di attacchi: finito sulla battuta: 6294, 17,5 per cento; un attacco: 5730, 15,9 per cento; due attacchi: 4544, 12,6 per cento; da tre a cinque attacchi: 9042, 25,1 per cento; oltre cinque attacchi: 10439, 29,0 per cento.
+Set giocati 3429, in media 10,5 punti giocati per set, cioè scambi assegnati o ripetuti, e 16,3 punti segnati, la somma del punteggio.
+Set arrivati ai vantaggi, con entrambi almeno a 10: 250, 7,3 per cento. Set oltre i 12 punti: 117, 3,4 per cento; il più lungo finisce 15 a 18.
+Punteggi di set più frequenti: 11 a 4: 229, 6,7 per cento; 11 a 2: 225, 6,6 per cento; 11 a 3: 208, 6,1 per cento; 11 a 6: 193, 5,6 per cento; 11 a 5: 191, 5,6 per cento; 11 a 8: 186, 5,4 per cento.
+Partite giocate 1000. Risultati in set: 3 a 0: 686, 68,6 per cento; 3 a 1: 199, 19,9 per cento; 3 a 2: 115, 11,5 per cento.
+Partite con almeno un set oltre i 12 punti: 106, una ogni 9,4. Set chiusi con 2 o 3 punti di scarto: 20,3 per cento; scarto medio 6,7.
+Il favorito, cioè il giocatore con l'indice di valore più alto, vince 903 partite su 1000, 90,3 per cento.
+Con un distacco meno del 5 per cento: 58 partite, il favorito ne vince 30, 51,7 per cento.
+Con un distacco fra il 5 e il 15 per cento: 114 partite, il favorito ne vince 80, 70,2 per cento.
+Con un distacco fra il 15 e il 30 per cento: 126 partite, il favorito ne vince 104, 82,5 per cento.
+Con un distacco oltre il 30 per cento: 702 partite, il favorito ne vince 689, 98,1 per cento.
+Imprevisti: 4 rotture, 89 ammonizioni, 12 penalità di cui 8 per la mascherina, 990 time-out, in 1000 partite.
+Temperamento nei gruppi, ogni 100 attacchi: gli impetuosi fanno 18,5 falli e 21,6 goal, i calmi 10,7 falli e 16,8 goal; il rapporto dei falli, 1,73, mescola il temperamento con le altre differenze fra i giocatori.
+Esperienza, ogni 100 azioni: chi ha esperienza da 10 in su fa 3,21 falli, chi è sotto 1 ne fa 4,39.
+Lettura del gioco: contro un difensore con un lato debole, gli esperti mandano lì il 77,3 per cento degli attacchi laterali.
+Lettura del gioco: contro un difensore con un lato debole, gli inesperti mandano lì il 60,2 per cento degli attacchi laterali.
+Infortuni, chi non è ambidestro: probabilità media per partita 0,746 per cento, contro 0,652 del vecchio calcolo.
+Sonda del temperamento, 400 coppie di partite: gli stessi giocatori con temperamento 83 e 18, contro gli stessi avversari e con gli stessi semi. Ogni 100 attacchi l'impetuoso fa 17,8 falli e 20,5 goal, il calmo 11,6 falli e 16,7 goal.
 I bersagli della taratura:
-Goal sui punti giocati: 54,69, bersaglio da 45,00 a 60,00, dentro.
-Goal di battuta sui goal: 19,00, bersaglio da 12,00 a 25,00, dentro.
-Falli per schermo centrale: 37,35, bersaglio da 28,00 a 38,00, dentro.
-Falli per out: 37,52, bersaglio da 30,00 a 42,00, dentro.
-Falli per servizio irregolare: 10,02, bersaglio da 8,00 a 15,00, dentro.
-Falli per body touch: 7,44, bersaglio da 6,00 a 15,00, dentro.
-Falli per difesa irregolare: 2,63, bersaglio da 1,50 a 6,00, dentro.
-Falli per infrazione palla: 1,84, bersaglio da 1,00 a 5,00, dentro.
-Falli per infrazione paletta: 2,62, bersaglio da 0,50 a 3,00, dentro.
-Falli per invasione: 0,59, bersaglio da 0,30 a 2,00, dentro.
-Battute irregolari sulle battute: 4,76, bersaglio da 4,00 a 8,00, dentro.
-Palle morte sui punti giocati: 1,20, bersaglio da 0,50 a 1,50, dentro.
+Goal sui punti giocati: 56,10, bersaglio da 45,00 a 60,00, dentro.
+Goal di battuta sui goal: 18,66, bersaglio da 12,00 a 25,00, dentro.
+Falli per schermo centrale: 36,58, bersaglio da 28,00 a 38,00, dentro.
+Falli per out: 37,15, bersaglio da 30,00 a 42,00, dentro.
+Falli per servizio irregolare: 10,92, bersaglio da 8,00 a 15,00, dentro.
+Falli per body touch: 7,74, bersaglio da 6,00 a 15,00, dentro.
+Falli per difesa irregolare: 2,60, bersaglio da 1,50 a 6,00, dentro.
+Falli per infrazione palla: 1,92, bersaglio da 1,00 a 5,00, dentro.
+Falli per infrazione paletta: 2,63, bersaglio da 0,50 a 3,00, dentro.
+Falli per invasione: 0,45, bersaglio da 0,30 a 2,00, dentro.
+Battute irregolari sulle battute: 5,02, bersaglio da 4,00 a 8,00, dentro.
+Palle morte sui punti giocati: 1,23, bersaglio da 0,50 a 1,50, dentro.
 Palle morte per limite tecnico: 0,00, bersaglio da 0,00 a 0,00, dentro.
-Punti finiti sulla battuta: 17,30, bersaglio da 12,00 a 22,00, dentro.
-Attacchi per punto, media: 4,47, bersaglio da 2,50 a 5,00, dentro.
+Punti finiti sulla battuta: 17,46, bersaglio da 12,00 a 22,00, dentro.
+Attacchi per punto, media: 4,41, bersaglio da 2,50 a 5,00, dentro.
 Attacchi per punto, mediana: 3,00, bersaglio da 2,00 a 3,00, dentro.
 Attacchi per punto, novantesimo percentile: 11,00, bersaglio da 6,00 a 12,00, dentro.
-Punti segnati per set: 16,63, bersaglio da 15,00 a 19,00, dentro.
+Punti segnati per set: 16,29, bersaglio da 15,00 a 19,00, dentro.
 Partite per una rottura: 250,00, bersaglio da 150,00 a 400,00, dentro, con l'intervallo di Poisson.
-Ammonizioni ogni 100 partite: 8,30, bersaglio da 3,00 a 10,00, dentro.
+Ammonizioni ogni 100 partite: 8,90, bersaglio da 3,00 a 10,00, dentro.
 Penalità ogni 100 partite: 1,20, bersaglio da 0,00 a 1,50, dentro, con l'intervallo di Poisson.
-Falli in meno degli esperti, per cento: 23,53, bersaglio da 18,00 a 35,00, dentro.
-Attacchi laterali sul lato debole, esperti: 72,89, bersaglio da 60,00 a 100,00, dentro.
-Attacchi laterali sul lato debole, inesperti: 57,42, bersaglio da 35,00 a 55,00, FUORI.
-Efficienza finale, giovani resistenti: 0,88, bersaglio da 0,86 a 0,93, dentro.
-Falli degli impetuosi su quelli dei calmi, a coppie: 1,65, bersaglio da 1,35 a 1,70, dentro.
-Sonda della stanchezza, 30 anni con resistenza 5, 200 incontri al meglio di 5: efficienza finale media 0,895, minima 0,792, bersaglio da 0,86 a 0,93, dentro; mai sotto 0,6: sì.
-Sonda della stanchezza, 60 anni con resistenza 2, 200 incontri al meglio di 5: efficienza finale media 0,761, minima 0,668, bersaglio da 0,72 a 0,82, dentro; mai sotto 0,6: sì.
-Squadre: 300 gare, in media 33,2 punti giocati, da 19 a 47; 198 sostituzioni e 311 time-out.
-Punti segnati per gara a squadre, la somma del punteggio: 52,34, bersaglio da 50 a 75, dentro.
+Falli in meno degli esperti, per cento: 26,94, bersaglio da 18,00 a 35,00, dentro.
+Attacchi laterali sul lato debole, esperti: 77,28, bersaglio da 60,00 a 100,00, dentro.
+Attacchi laterali sul lato debole, inesperti: 60,23, bersaglio da 35,00 a 55,00, FUORI.
+Falli degli impetuosi su quelli dei calmi, a coppie: 1,53, bersaglio da 1,35 a 1,70, dentro.
+Sonda della stanchezza, un trentenne con resistenza 5, che non si allena, 200 incontri al meglio di 5: efficienza finale media 0,917, minima 0,766, bersaglio da 0,86 a 0,93, dentro; mai sotto 0,6: sì.
+Sonda della stanchezza, un sessantenne con resistenza 2, 200 incontri al meglio di 5: efficienza finale media 0,752, minima 0,652, bersaglio da 0,72 a 0,82, dentro; mai sotto 0,6: sì.
+Sonda della stanchezza, un giovane di 24 anni con resistenza 10, metà allenata, 82 incontri arrivati al quinto set su 200, contro il gemello: efficienza finale media 0,948, minima 0,883, bersaglio da 0,94 a 1,00, dentro; mai sotto 0,6: sì.
+Sonda della stanchezza, un anziano di 65 anni con resistenza 1,5, che non si allena, 88 incontri arrivati al quinto set su 200, contro il gemello: efficienza finale media 0,660, minima 0,650, bersaglio da 0,60 a 0,78, dentro; mai sotto 0,6: sì.
+Squadre: 300 gare, in media 31,6 punti giocati, da 18 a 45; 305 time-out, nessuna sostituzione durante la gara.
+Punti segnati per gara a squadre, la somma del punteggio: 50,49, bersaglio da 50 a 75, dentro.
 Il rapporto della taratura del valore, strumenti/taratura_valore.py col seme 9 e il controllo sulla copia del mondo salvato:
-Taratura del valore complessivo sul motore di partita, 2026-10-08 00:03, seme 9.
-Primo passo: 3200 giocatori, e 400 per la verifica, contro 48 sparring fissi, 172800 incontri al meglio dei 3 set in 64,3 secondi, con 8 processi.
-Secondo passo: la regressione spiega il 95,9 per cento della varianza del rating, e il 95,4 per cento nella popolazione di verifica.
-Nella verifica il rating si lega al valore della tappa 8 con una correlazione di 0,868, e al valore nuovo con 0,972.
-Terzo passo: il mondo maturo di 10 anni simulati, 4134 giocatori in attività, in 66,1 secondi. La scala che conserva la mediana del valore di prima e il monte stipendi: A -39,16, B 1,0091.
-Il valore di prima nel mondo maturo: mediana 137,4, decimo percentile 112,5, novantesimo 172,8, da 71,9 a 230,8.
-Il valore nuovo nel mondo maturo: mediana 137,4, decimo percentile 99,2, novantesimo 176,1, da 48,8 a 230,9.
-Fra i due valori, nel mondo maturo, la correlazione è 0,464. La media del fattore di stipendio è 1,219 col valore di prima e 1,219 col nuovo.
+Taratura del valore complessivo sul motore di partita, 2026-10-08 03:15, seme 9.
+Primo passo: 3200 giocatori, e 400 per la verifica, contro 48 sparring fissi, 172800 incontri al meglio dei 3 set in 41,2 secondi, con 16 processi.
+Secondo passo: la regressione spiega il 95,4 per cento della varianza del rating, e il 94,3 per cento nella popolazione di verifica.
+Nella verifica il rating si lega al valore della tappa 8 con una correlazione di 0,884, e al valore nuovo con 0,968.
+Terzo passo: il mondo maturo di 10 anni simulati, 4256 giocatori in attività, in 66,3 secondi. La prima stima della scala, che conserva la mediana del valore di prima e il monte stipendi di questo mondo fermo: A -59,59, B 1,2712. Quella vera si cerca con simulazione_lunga.py --cerca-scala, dopo aver copiato i pesi.
+Il valore di prima nel mondo maturo: mediana 137,9, decimo percentile 113,6, novantesimo 173,2, da 75,8 a 237,7.
+Il valore nuovo nel mondo maturo: mediana 137,9, decimo percentile 101,9, novantesimo 175,0, da 33,1 a 241,7.
+Fra i due valori, nel mondo maturo, la correlazione è 0,542. La media del fattore di stipendio è 1,238 col valore di prima e 1,238 col nuovo.
 Il valore di prima nel mondo salvato, 61 giocatori: mediana 137,5, decimo percentile 118,0, novantesimo 169,7, da 104,5 a 188,2.
-Il valore nuovo nel mondo salvato: mediana 139,5, decimo percentile 97,8, novantesimo 176,7, da 78,0 a 207,5.
-Il valore nuovo di mille neonati: mediana 136,9, decimo percentile 100,8, novantesimo 175,6, da 59,1 a 231,5.
+Il valore nuovo nel mondo salvato: mediana 142,4, decimo percentile 103,0, novantesimo 174,2, da 78,0 a 205,2.
+Il valore nuovo di mille neonati: mediana 138,4, decimo percentile 102,0, novantesimo 176,0, da 54,9 a 242,8.
 Quarto passo, i pesi in punti di valore: per ogni punto della caratteristica, e fra parentesi da zero al massimo della scala.
-lungolineasx 0,50 (20); lungolineadx 0,50 (20); diagonalesx 0,49 (20); diagonaledx 0,49 (20); singolaspondasx 0,55 (22); singolaspondadx 0,55 (22); doppiaspondasx 0,49 (20); doppiaspondadx 0,49 (20); triplaspondasx 0,38 (15); triplaspondadx 0,38 (15); bomba 0,27 (11); battutasx 0,82 (33); battutadx 0,82 (33); chiusura_dritto 2,13 (85); chiusura_rovescio 2,60 (104); blocco_dritto 1,06 (42); blocco_rovescio 1,40 (56); difesa 3,68 (147); tenutapaletta 1,31 (52); controllopalla 0,80 (32); attacco 1,48 (59); precisione 22,32 (223); forza 6,17 (62); resistenza 3,44 (34).
-I tratti in punti di valore: mancino 1,3; ambidestro 5,0; giocorapido 1,8; cambiovelocita 4,9.
-Nessuna caratteristica è quasi inerte: tutte pesano almeno un quarto della media di quelle di gioco.
-Il temperamento, dal calmissimo di tau meno 0,8 all'impetuoso di tau 0,8, vale 1,4 punti di valore, bersaglio entro 5.
-L'esperienza di carriera, da 0 a 12, vale 29,4 punti di valore; un punto di fattore d'età della stanchezza ne vale -18,4.
+lungolineasx 0,57 (23); lungolineadx 0,57 (23); diagonalesx 0,68 (27); diagonaledx 0,68 (27); singolaspondasx 0,65 (26); singolaspondadx 0,65 (26); doppiaspondasx 0,71 (28); doppiaspondadx 0,71 (28); triplaspondasx 0,45 (18); triplaspondadx 0,45 (18); bomba 0,28 (11); battutasx 1,08 (43); battutadx 1,08 (43); chiusura_dritto 2,75 (110); chiusura_rovescio 3,35 (134); blocco_dritto 1,64 (66); blocco_rovescio 2,04 (82); difesa 4,17 (167); tenutapaletta 1,61 (64); controllopalla 1,04 (42); attacco 1,56 (62); precisione 12,42 (124); forza 6,58 (66); resistenza 5,13 (51).
+I tratti in punti di valore: mancino 4,8; ambidestro 6,2; giocorapido 1,4; cambiovelocita 5,7.
+Con la scala di costanti.py, B 1,4663, i punti di valore si moltiplicano per 1,154: mancino 5,5; ambidestro 7,2; giocorapido 1,6; cambiovelocita 6,6; un punto di precisione 14,33, uno di resistenza 5,91.
+Caratteristiche quasi inerti, sotto 0,25 volte il peso medio di gioco sulla scala piena: bomba. È un difetto da correggere nel motore, non nel valore.
+Il temperamento, dal calmissimo di tau meno 0,8 all'impetuoso di tau 0,8, vale -0,8 punti di valore, bersaglio entro 5.
+L'esperienza di carriera, da 0 a 12, vale 31,8 punti di valore; un punto di fattore d'età della stanchezza ne vale -20,5.
 La curva del favorito, col valore nuovo, su una terza popolazione:
-Con un distacco meno del 5 per cento: 186 partite, il favorito ne vince il 47,3 per cento, bersaglio da 50 a 58, FUORI.
-Con un distacco fra il 5 e il 15 per cento: 388 partite, il favorito ne vince il 63,9 per cento, bersaglio da 58 a 70, dentro.
-Con un distacco fra il 15 e il 30 per cento: 433 partite, il favorito ne vince il 74,8 per cento, bersaglio da 70 a 85, dentro.
-Con un distacco oltre il 30 per cento: 1993 partite, il favorito ne vince il 95,2 per cento, bersaglio da 85 a 96, dentro.
-Il blocco dei pesi, dei tratti e della scala è quello copiato in costanti.py.
+Con un distacco meno del 5 per cento: 195 partite, il favorito ne vince il 60,5 per cento, bersaglio da 50 a 58, FUORI.
+Con un distacco fra il 5 e il 15 per cento: 347 partite, il favorito ne vince il 64,3 per cento, bersaglio da 58 a 70, dentro.
+Con un distacco fra il 15 e il 30 per cento: 440 partite, il favorito ne vince il 82,7 per cento, bersaglio da 70 a 85, dentro.
+Con un distacco oltre il 30 per cento: 2018 partite, il favorito ne vince il 96,8 per cento, bersaglio da 85 a 96, FUORI.
+Quinto passo, la verifica a coppie: 240 soggetti destrimani contro 40 avversari, con gli stessi semi; un punto di valore vale 5,08 millesimi di rating, misurati su difesa, chiusure, forza e attacco.
+Nelle partite un punto di precisione allenata vale 12,5 punti di valore; il valore gliene dà 12,4.
+Nelle partite un punto di resistenza innata vale 2,6 punti di valore; il valore gliene dà 5,1.
+Nelle partite un punto di resistenza allenata vale 6,1 punti di valore; il valore gliene dà 5,1.
+Nelle partite il mancino, con chiusure e blocchi specchiati vale 3,9 punti di valore; il valore gliene dà 4,8.
+Il blocco da copiare in costanti.py, con la prima stima della scala:
+PESI_VALORE = {
+    "lungolineasx": 0.44, "lungolineadx": 0.44, "diagonalesx": 0.53, "diagonaledx": 0.53, "singolaspondasx": 0.51, "singolaspondadx": 0.51,
+    "doppiaspondasx": 0.56, "doppiaspondadx": 0.56, "triplaspondasx": 0.35, "triplaspondadx": 0.35, "bomba": 0.22, "battutasx": 0.85,
+    "battutadx": 0.85, "chiusura_dritto": 2.16, "chiusura_rovescio": 2.63, "blocco_dritto": 1.29, "blocco_rovescio": 1.61, "difesa": 3.28,
+    "tenutapaletta": 1.26, "controllopalla": 0.82, "attacco": 1.23, "precisione": 9.77, "forza": 5.18, "resistenza": 4.03,
+}
+PESI_TRATTI = {"mancino": 3.8, "ambidestro": 4.9, "giocorapido": 1.1, "cambiovelocita": 4.5}
+SCALA_VALORE_A = -59.59
+SCALA_VALORE_B = 1.2712
+Taratura completata in 129,6 secondi.
+Il blocco dei pesi e dei tratti è quello copiato in costanti.py; la scala, A meno 93 e B 1,4663, viene dalla ricerca qui sotto.
+La ricerca della scala, python strumenti/simulazione_lunga.py --cerca-scala --mediana 135,5 --passi 7:
+Ricerca della scala del valore, 10 anni sui semi 2026, 7, 13, 21, cassa mediana cercata 5000 euro.
+Primo giro, con la scala di costanti.py. Scala A -66,91, B 1,3134: cassa mediana 5880, 5410, 4990, 5240 euro, in media 5380; stipendio mediano 230, 230, 230, 230, decimo percentile 100, 110, 100, 110, novantesimo 560, 590, 560, 580; monte stipendi 91, 93, 91, 92 per cento dello sponsor; tesserati 90, 90, 90, 90 per cento; mediana del valore 137,7, 138,3, 137,3, 137,7.
+La mediana del valore da tenere ferma è 135,5; quella della somma pesata nel mondo maturo è 155,8.
+Scala A -89,64, B 1,4447: cassa mediana 4790, 4800, 5300, 5350 euro, in media 5060; stipendio mediano 220, 220, 220, 220, decimo percentile 90, 90, 90, 90, novantesimo 610, 610, 590, 590; monte stipendi 95, 94, 93, 93 per cento dello sponsor; tesserati 90, 90, 90, 90 per cento; mediana del valore 135,6, 135,7, 135,5, 135,6.
+Scala A -120,35, B 1,6417: cassa mediana 4500, 4300, 4670, 3760 euro, in media 4308; stipendio mediano 230, 220, 210, 260, decimo percentile 90, 90, 80, 120, novantesimo 710, 690, 660, 810; monte stipendi 101, 101, 100, 102 per cento dello sponsor; tesserati 87, 88, 89, 77 per cento; mediana del valore 134,6, 136,1, 134,6, 136,6.
+Scala A -104,99, B 1,5432: cassa mediana 4550, 4640, 4590, 4680 euro, in media 4615; stipendio mediano 220, 220, 220, 220, decimo percentile 90, 90, 90, 90, novantesimo 660, 660, 640, 660; monte stipendi 99, 98, 97, 98 per cento dello sponsor; tesserati 89, 90, 90, 89 per cento; mediana del valore 135,8, 134,8, 135,3, 135,9.
+Scala A -97,32, B 1,4940: cassa mediana 4420, 4800, 4820, 4530 euro, in media 4642; stipendio mediano 220, 220, 220, 220, decimo percentile 90, 90, 90, 90, novantesimo 650, 620, 640, 630; monte stipendi 97, 96, 97, 96 per cento dello sponsor; tesserati 89, 89, 90, 89 per cento; mediana del valore 135,8, 136,0, 135,6, 135,9.
+Scala A -93,48, B 1,4694: cassa mediana 4820, 5160, 4700, 5070 euro, in media 4938; stipendio mediano 220, 210, 220, 220, decimo percentile 90, 90, 90, 90, novantesimo 640, 610, 640, 610; monte stipendi 95, 94, 96, 94 per cento dello sponsor; tesserati 89, 89, 89, 89 per cento; mediana del valore 135,2, 135,1, 135,8, 135,8.
+Scala A -91,56, B 1,4571: cassa mediana 5120, 5020, 4790, 5320 euro, in media 5062; stipendio mediano 210, 210, 220, 210, decimo percentile 90, 90, 90, 90, novantesimo 610, 620, 630, 610; monte stipendi 93, 95, 97, 93 per cento dello sponsor; tesserati 90, 90, 90, 89 per cento; mediana del valore 134,0, 134,0, 135,7, 134,7.
+Scala A -92,52, B 1,4632: cassa mediana 4900, 4970, 5070, 5110 euro, in media 5012; stipendio mediano 210, 220, 220, 210, decimo percentile 90, 100, 90, 90, novantesimo 590, 600, 610, 600; monte stipendi 93, 93, 94, 93 per cento dello sponsor; tesserati 89, 90, 89, 89 per cento; mediana del valore 135,0, 135,9, 135,3, 135,3.
+La scala trovata, da copiare in costanti.py: SCALA_VALORE_A = -93.00, SCALA_VALORE_B = 1.4663.
+Ricerca completata in 536 secondi.
+La verifica della scala su otto semi, python strumenti/simulazione_lunga.py --scala -93,00 1,4663 --semi 2026 7 13 21 3 101 555 9090:
+Scala A -93,00, B 1,4663: cassa mediana 4910, 4850, 4900, 5060, 6670, 4820, 5450, 4980 euro, in media 5205; stipendio mediano 210, 220, 210, 210, 220, 220, 210, 220, decimo percentile 90, 90, 90, 90, 90, 90, 90, 90, novantesimo 610, 600, 590, 610, 590, 620, 590, 600; monte stipendi 94, 94, 93, 94, 92, 95, 92, 93 per cento dello sponsor; tesserati 90, 90, 90, 89, 89, 90, 90, 90 per cento; mediana del valore 135,4, 135,5, 133,9, 135,2, 134,7, 135,4, 133,6, 135,1.
+La simulazione lunga col seme 2026 e il confronto con l'economia della tappa 8, python strumenti/simulazione_lunga.py:
+Simulazione lunga del mondo, 10 anni col seme 2026, in 67 secondi.
+Anno 1: 482 giocatori in attività, 82 per cento tesserati, 29 polisportive del computer. Stipendi 90, 210 e 650 euro al decimo, cinquantesimo e novantesimo percentile; casse 4410, 4820 e 11470 euro; il monte stipendi è il 86 per cento dello sponsor. Valore 83, 132 e 180. Un giorno simulato chiede 5 millisecondi.
+Anno 2: 900 giocatori in attività, 87 per cento tesserati, 55 polisportive del computer. Stipendi 90, 210 e 630 euro al decimo, cinquantesimo e novantesimo percentile; casse 4490, 5110 e 16380 euro; il monte stipendi è il 88 per cento dello sponsor. Valore 88, 133 e 180. Un giorno simulato chiede 13 millisecondi.
+Anno 3: 1331 giocatori in attività, 89 per cento tesserati, 81 polisportive del computer. Stipendi 90, 210 e 620 euro al decimo, cinquantesimo e novantesimo percentile; casse 4070, 5140 e 12540 euro; il monte stipendi è il 90 per cento dello sponsor. Valore 89, 135 e 180. Un giorno simulato chiede 27 millisecondi.
+Anno 4: 1725 giocatori in attività, 89 per cento tesserati, 105 polisportive del computer. Stipendi 90, 210 e 610 euro al decimo, cinquantesimo e novantesimo percentile; casse 3660, 5090 e 17400 euro; il monte stipendi è il 90 per cento dello sponsor. Valore 90, 135 e 179. Un giorno simulato chiede 43 millisecondi.
+Anno 5: 2146 giocatori in attività, 90 per cento tesserati, 130 polisportive del computer. Stipendi 90, 210 e 620 euro al decimo, cinquantesimo e novantesimo percentile; casse 3550, 5150 e 16330 euro; il monte stipendi è il 91 per cento dello sponsor. Valore 90, 135 e 179. Un giorno simulato chiede 56 millisecondi.
+Anno 6: 2575 giocatori in attività, 90 per cento tesserati, 156 polisportive del computer. Stipendi 90, 210 e 630 euro al decimo, cinquantesimo e novantesimo percentile; casse 2450, 5010 e 18820 euro; il monte stipendi è il 92 per cento dello sponsor. Valore 90, 134 e 180. Un giorno simulato chiede 68 millisecondi.
+Anno 7: 2993 giocatori in attività, 89 per cento tesserati, 181 polisportive del computer. Stipendi 90, 210 e 620 euro al decimo, cinquantesimo e novantesimo percentile; casse 1740, 5070 e 20000 euro; il monte stipendi è il 93 per cento dello sponsor. Valore 90, 134 e 179. Un giorno simulato chiede 81 millisecondi.
+Anno 8: 3402 giocatori in attività, 90 per cento tesserati, 206 polisportive del computer. Stipendi 90, 210 e 610 euro al decimo, cinquantesimo e novantesimo percentile; casse 2420, 5010 e 21590 euro; il monte stipendi è il 93 per cento dello sponsor. Valore 91, 135 e 179. Un giorno simulato chiede 94 millisecondi.
+Anno 9: 3809 giocatori in attività, 90 per cento tesserati, 231 polisportive del computer. Stipendi 90, 210 e 610 euro al decimo, cinquantesimo e novantesimo percentile; casse 2090, 4980 e 21190 euro; il monte stipendi è il 93 per cento dello sponsor. Valore 91, 135 e 179. Un giorno simulato chiede 108 millisecondi.
+Anno 10: 4235 giocatori in attività, 90 per cento tesserati, 257 polisportive del computer. Stipendi 90, 210 e 610 euro al decimo, cinquantesimo e novantesimo percentile; casse 2260, 4910 e 23000 euro; il monte stipendi è il 94 per cento dello sponsor. Valore 91, 135 e 179. Un giorno simulato chiede 122 millisecondi.
+Il confronto con l'economia della tappa 8:
+Stipendio mediano in euro: 210, bersaglio da 190 a 230, dentro.
+Stipendio al decimo percentile: 90, bersaglio da 120 a 150, FUORI.
+Stipendio al novantesimo percentile: 610, bersaglio da 450 a 650, dentro.
+Cassa mediana delle polisportive del computer: 4910, bersaglio da 4000 a 6500, dentro.
+Tesserati sui giocatori in attività, per cento: 90, bersaglio da 85 a 92, dentro.
+Valore dei giocatori in attività: mediana 135,4, dal decimo al novantesimo percentile 90,9 e 179,3.

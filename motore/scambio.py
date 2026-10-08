@@ -14,6 +14,9 @@ fermata, pesa sempre come alla pari, e il blocco sceglie soltanto come finisce: 
 venuta dalla taratura del valore, perché nel softmax unico del progetto un blocco migliore
 spostava peso anche su goal e falli, e allenarlo faceva perdere punti. Il tiro critico vale
 sempre un punto, e sceglie soltanto una causa più clamorosa.
+I colpi e le battute del mancino premono un po' di più sul difensore, per la sorpresa di
+un'angolazione meno abituale, decisione D26: la sorpresa la calcola InCampo una volta per punto,
+e cala man mano che il difensore si abitua; la ribattuta, che torna piano, non sorprende.
 Con l'elenco passi la catena annota ogni passo, per la regia che ne farà eventi e posizioni; senza,
 in modalità essenziale, non crea nulla. Le statistiche dei giocatori le aggiorna la catena stessa,
 così valgono uguali nelle due modalità.
@@ -113,7 +116,8 @@ def gioca_punto(battitore, ricevitore, dado, taratura, passi=None, rottura_al_co
     colpi = 0
     limite = t.LIMITE_COLPI_PUNTO
     while True:
-        # La parata di chi difende, contro la pressione del colpo che arriva nella sua zona.
+        # La parata di chi difende, contro la pressione del colpo che arriva nella sua zona. Il
+        # colpo di un mancino preme di più, per la sorpresa, finché il difensore non si abitua.
         difensore.conta_azione()
         d, b, cambio = difensore.difesa(zona)
         if cambio and annota:
@@ -121,10 +125,14 @@ def gioca_punto(battitore, ricevitore, dado, taratura, passi=None, rottura_al_co
         eff = difensore.eff
         d *= eff
         b *= eff
+        premuta = pressione
+        if attaccante.mancino and origine != "ribattuta":
+            premuta *= difensore.sorpresa
+            difensore.parate_mancino += 1
         # Se la pallina passa lo decide soprattutto la chiusura, ma anche il blocco: una pallina
         # toccata e non fermata può finire in porta lo stesso.
-        r = log((pressione + q0) / (d + peso_blocco * (b - d) + q0))
-        rb = log((pressione + q0) / (b + q0))
+        r = log((premuta + q0) / (d + peso_blocco * (b - d) + q0))
+        rb = log((premuta + q0) / (b + q0))
         ln_mf = difensore.ln_mf
         e_goal = exp(t.G0 + t.KG * r)
         e_fallo = exp(t.F0 + t.KF * r + ln_mf)

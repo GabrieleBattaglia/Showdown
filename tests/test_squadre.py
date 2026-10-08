@@ -1,8 +1,9 @@
 """
 Test della gara a squadre: composizione, rotazione fissa, tre servizi, set a 31 con 2 di scarto,
-cambio campo a 16, anche dopo una penalità, un time-out e una sostituzione per squadra, chi esce
-non rientra e chi entra vale più di chi esce; le ammonizioni che valgono per tutta la squadra, il
-sorteggio con la lettura delle formazioni e gli avvisi del riscaldamento.
+cambio campo a 16, anche dopo una penalità, un time-out per squadra; nessuna sostituzione durante
+l'incontro, decisione D26, nemmeno con la squadra stanca e molto sotto e le riserve fortissime, e
+una riserva messa fra i primi tre che gioca tutta la gara; le ammonizioni che valgono per tutta la
+squadra, il sorteggio con la lettura delle formazioni e gli avvisi del riscaldamento.
 """
 
 import itertools
@@ -11,9 +12,10 @@ import pytest
 from aiuti_motore import giocatore
 
 from motore import cronaca as C
-from motore.incontro import COMPLETO, ESSENZIALE, SQUADRE, Incontro, simula_incontro
+from motore import eventi as E
+from motore.incontro import COMPLETO, ESSENZIALE, SQUADRE, Incontro, StatisticheIncontro, simula_incontro
 from motore.regia import controlla_invarianti
-from motore.squadre import Squadra, composizione_valida, ordine_di_battuta, problema_squadra
+from motore.squadre import Squadra, ordine_di_battuta, problema_squadra
 
 
 def _squadra(nome, primo_id, sessi="mmf", valori=None, **altro):
@@ -86,29 +88,32 @@ def test_un_set_a_31_e_il_cambio_campo_a_16():
         assert indice == 0 or max(prima[indice - 1]) < 16
 
 
-def test_time_out_e_sostituzione_una_per_squadra():
-    sostituzioni = timeout = 0
+def _chi_ha_giocato(risultato):
+    return {p.battitore for p in risultato.punti} | {p.ricevitore for p in risultato.punti}
+
+
+def test_un_time_out_per_squadra_e_nessuna_sostituzione():
+    # La squadra A ha tre titolari anziani, deboli e poco resistenti, e tre riserve fortissime:
+    # col vecchio criterio sarebbe entrata una riserva, per il distacco o per la stanchezza. Con
+    # la decisione D26 la formazione dichiarata all'inizio gioca tutta la gara.
+    timeout = 0
     for seme in range(40):
-        a = _squadra("Leoni", 1, "mmfmmf", valori=[6.0, 6.0, 6.0, 35.0, 35.0, 35.0], anni=60)
+        a = _squadra("Leoni", 1, "mmfmmf", valori=[6.0, 6.0, 6.0, 35.0, 35.0, 35.0], anni=60, fisico=1.0)
         b = _squadra("Tigri", 11, "ffmffm", valori=[30.0, 30.0, 30.0, 10.0, 10.0, 10.0])
         incontro = Incontro(a, b, SQUADRE, seme=seme, dettaglio=COMPLETO if seme < 5 else ESSENZIALE)
         risultato = incontro.gioca()
+        x, y = risultato.set[0]
+        assert y - x >= 10, "La squadra A deve finire molto sotto, perché la prova abbia senso."
         if risultato.eventi:
             assert controlla_invarianti(risultato.eventi) == []
-        per_parte = {"A": 0, "B": 0}
-        for _set_n, punto_n, parte, esce, entra in risultato.incontro.sostituzioni:
-            per_parte[parte] += 1
-            dopo = risultato.punti[punto_n:]
-            assert all(esce not in (p.battitore, p.ricevitore) for p in dopo)
-            assert any(entra in (p.battitore, p.ricevitore) for p in dopo) or not dopo
-        assert max(per_parte.values()) <= 1
+            assert "SOSTITUZIONE" not in {e.tipo for e in risultato.eventi}
+        assert _chi_ha_giocato(risultato) == {1, 2, 3, 11, 12, 13}
+        assert incontro.formazione == {"A": [1, 2, 3], "B": [11, 12, 13]}
         assert max(sum(1 for _s, _p, parte in risultato.incontro.timeout if parte == quale) for quale in "AB") <= 1
-        for parte, squadra in (("A", a), ("B", b)):
-            al_tavolo = [next(g for g in squadra.giocatori if g.id == gid) for gid in incontro.formazione[parte]]
-            assert composizione_valida(al_tavolo)
-        sostituzioni += len(risultato.incontro.sostituzioni)
         timeout += len(risultato.incontro.timeout)
-    assert sostituzioni > 0 and timeout > 0
+    assert timeout > 0
+    assert "SOSTITUZIONE" not in E.TIPI and "sostituzioni" not in StatisticheIncontro.__slots__
+    assert not hasattr(SQUADRE, "sostituzioni")
 
 
 def test_gli_eventi_delle_squadre():
@@ -149,43 +154,20 @@ def test_le_ammonizioni_valgono_per_tutta_la_squadra():
         assert risultato.statistiche[secondo].penalita == 1 and risultato.statistiche[secondo].ammonizioni == 0
 
 
-def test_la_riserva_che_entra_vale_piu_di_chi_esce():
-    # Il più debole al tavolo è l'unica donna: la riserva forte è un uomo e non può prenderne il
-    # posto, e la riserva donna vale meno di lei. Nessuna sostituzione per il distacco.
+def test_la_riserva_messa_in_formazione_gioca_tutta_la_gara():
+    # La formazione si dichiara all'inizio: la squadra mette la riserva forte fra i primi tre, al
+    # posto del secondo, e quella gioca tutta la gara; chi resta fuori non entra mai, nemmeno
+    # stanco o sotto nel punteggio.
     for seme in range(20):
-        a = Squadra("Leoni", (giocatore(1, valore=20.0), giocatore(2, valore=20.0), giocatore(3, valore=10.0, sesso="f"),
-                              giocatore(4, valore=38.0), giocatore(5, valore=6.0, sesso="f")))
-        b = _squadra("Tigri", 11, "mmf", valori=[30.0, 30.0, 30.0])
-        risultato = simula_incontro(a, b, SQUADRE, seme=seme, dettaglio=ESSENZIALE)
-        assert all(parte != "A" for _s, _p, parte, _esce, _entra in risultato.incontro.sostituzioni)
-    # Il più debole è un uomo: entra la riserva forte, al suo posto.
-    entrate = 0
-    for seme in range(20):
-        a = Squadra("Leoni", (giocatore(1, valore=10.0), giocatore(2, valore=20.0), giocatore(3, valore=20.0, sesso="f"),
-                              giocatore(4, valore=38.0), giocatore(5, valore=6.0, sesso="f")))
-        b = _squadra("Tigri", 11, "mmf", valori=[30.0, 30.0, 30.0])
-        risultato = simula_incontro(a, b, SQUADRE, seme=seme, dettaglio=ESSENZIALE)
-        for _s, _p, parte, esce, entra in risultato.incontro.sostituzioni:
-            if parte == "A":
-                assert (esce, entra) == (1, 4)
-                entrate += 1
-    assert entrate > 5
-
-
-def test_senza_riserva_valida_per_il_distacco_conta_la_stanchezza():
-    # Sotto nel punteggio, col più debole che è l'unica donna e una sola riserva, un uomo: per il
-    # distacco nessuno può entrare, ma la stanchezza degli anziani fa entrare l'uomo al posto di un uomo.
-    entrate = 0
-    for seme in range(10):
-        a = Squadra("Leoni", (giocatore(1, valore=20.0, anni=72, fisico=1.0), giocatore(2, valore=20.0, anni=72, fisico=1.0),
-                              giocatore(3, valore=10.0, sesso="f", anni=72, fisico=1.0), giocatore(4, valore=38.0)))
+        titolari = (giocatore(1, valore=10.0, anni=70, fisico=1.0), giocatore(4, valore=38.0), giocatore(3, valore=10.0, sesso="f", anni=70, fisico=1.0))
+        a = Squadra("Leoni", (*titolari, giocatore(2, valore=20.0), giocatore(5, valore=36.0, sesso="f")))
         b = _squadra("Tigri", 11, "mmf", valori=[32.0, 32.0, 32.0])
-        risultato = simula_incontro(a, b, SQUADRE, seme=seme, dettaglio=ESSENZIALE)
-        for _s, _p, parte, esce, entra in risultato.incontro.sostituzioni:
-            if parte == "A":
-                assert esce in (1, 2) and entra == 4
-                entrate += 1
-    assert entrate > 0
+        incontro = Incontro(a, b, SQUADRE, seme=seme, dettaglio=ESSENZIALE)
+        risultato = incontro.gioca()
+        giocato = _chi_ha_giocato(risultato)
+        assert {1, 4, 3} <= giocato and not {2, 5} & giocato
+        assert incontro.formazione["A"] == [1, 4, 3]
+        assert risultato.sorteggio["riserve"]["A"] == [2, 5]
 
 
 class _PenalitaVersoIl16(Incontro):

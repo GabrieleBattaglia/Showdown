@@ -5,7 +5,8 @@ Nasce il 2026-10-07 con la tappa 9, secondo il punto 15 del progetto del motore.
 sommava alla pari tutte le caratteristiche e dava 33 punti a ogni tratto raro; qui i pesi si
 misurano su quanto ogni caratteristica conta davvero nelle partite. Lo strumento non scrive nulla
 nel progetto: alla fine stampa il blocco da copiare in costanti.py.
-Il metodo, in quattro passi.
+Il metodo, in cinque passi, misura il valore sugli incontri al meglio dei 3 set, che sono la
+maggior parte, decisione D26: i 5 set restano per rari tornei e per le finali.
 Primo, il rating: una popolazione di prova di 3200 giocatori gioca contro quarantotto sparring
 fissi, nati da un'altra popolazione, un incontro al meglio dei 3 set ciascuno, in modalità essenziale; il rating
 è il logaritmo del rapporto fra i punti fatti e quelli subiti. Nella popolazione della regressione
@@ -27,16 +28,25 @@ elevato alla differenza fra il valore e 140, divisa per 40. Il progetto chiedeva
 distanza fra decimo e novantesimo percentile, ma il valore di prima aveva una coda lunga, i 33
 punti di ogni tratto, e con la stessa distanza fra i percentili il monte stipendi calava di un
 decimo: nella simulazione lunga le casse del computer salivano da 5000 a 18000 euro di mediana.
-Con la media del fattore, il monte stipendi resta quello di prima e la cassa torna sui 5000 euro;
-il valore nuovo ha però un terzo di dispersione in più fra decimo e novantesimo percentile.
+Con la media del fattore il monte stipendi di un mondo fermo resta quello di prima; ma nel
+mondo che si muove le polisportive del computer scelgono i giocatori più economici, e le casse
+crescevano lo stesso. Dalla decisione D26 questa scala è soltanto la prima stima: quella vera si
+cerca dopo, con strumenti/simulazione_lunga.py --cerca-scala, sulla cassa mediana delle
+polisportive del computer in più semi.
 Quarto, il rapporto: i pesi in punti di valore, le caratteristiche quasi inerti, l'effetto di
 temperamento ed esperienza, la curva del favorito su una terza popolazione e il blocco da copiare.
+Quinto, la verifica a coppie: gli stessi giocatori con un punto in più di precisione o di
+resistenza, innata o allenata, oppure mancini, contro gli stessi avversari e con gli stessi semi.
+Dice quanto valgono davvero nelle partite, e quanto il valore dà loro: la regressione ha un peso
+solo per caratteristica, e dove l'effetto non è una retta, come la resistenza nella stanchezza,
+o dove i giocatori sono pochi, come i mancini, può sbagliare.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/taratura_valore.py
     python strumenti/taratura_valore.py --seme 9 --mondo salvato --rapporto taratura_valore.txt
 """
 
 import argparse
+import copy
 import math
 import os
 import random
@@ -54,7 +64,7 @@ if str(STRUMENTI) not in sys.path:
     sys.path.insert(0, str(STRUMENTI))
 
 from popolazione_di_prova import genera  # noqa: E402
-from simulazione_lunga import in_attivita, simula  # noqa: E402
+from simulazione_lunga import PESI_TAPPA_8, TRATTI_TAPPA_8, in_attivita, simula  # noqa: E402
 
 import archivio  # noqa: E402
 import costanti  # noqa: E402
@@ -65,9 +75,6 @@ from motore import ESSENZIALE, SINGOLARE_3, TARATURA, simula_incontro  # noqa: E
 from motore.campo import lettura_possibile, temperamento_relativo  # noqa: E402
 from motore.taratura import carica_taratura  # noqa: E402
 
-# L'indice della tappa 8, su cui sono tarate le cifre dell'economia: è la scala da conservare.
-PESI_TAPPA_8 = dict.fromkeys(costanti.CARATTERISTICHE_VALORE, 1.0)
-TRATTI_TAPPA_8 = {"mancino": 0.0, "ambidestro": 33.0, "giocorapido": 33.0, "cambiovelocita": 33.0}
 CONTROLLI = ("temperamento", "lettura", "fattore_eta")
 # Le caratteristiche fisiche vanno da 0 a 10, le altre da 0 a 40.
 FISICHE = ("precisione", "forza", "resistenza")
@@ -325,6 +332,78 @@ def curva_del_favorito(giocatori, indice_di, quante, seme, taratura=TARATURA):
     return righe
 
 
+# La verifica a coppie del quinto passo: le modifiche da misurare, e quelle di riferimento, che
+# danno quanto rating vale un punto di valore. Una modifica è un elenco di attributi con l'aumento,
+# oppure il mancino: lo stesso giocatore con chiusure e blocchi specchiati e il tratto.
+VERIFICHE = (("un punto di precisione allenata", (("precisione_allenata", 1.0),)), ("un punto di resistenza innata", (("resistenza_base", 1.0),)),
+             ("un punto di resistenza allenata", (("resistenza_allenata", 1.0),)), ("il mancino, con chiusure e blocchi specchiati", "mancino"))
+RIFERIMENTI = ((("difesa_allenata", 8.0),), (("chiusurasx_allenata", 8.0), ("chiusuradx_allenata", 8.0)), (("forza_allenata", 3.0),), (("attacco_allenata", 8.0),))
+
+
+def modificato(g, modifica):
+    """Una copia del giocatore con la modifica della verifica a coppie."""
+    m = copy.copy(g)
+    if modifica == "mancino":
+        for radice in ("chiusura", "blocco"):
+            for parte in ("_base", "_allenata"):
+                sx, dx = radice + "sx" + parte, radice + "dx" + parte
+                setattr(m, sx, getattr(g, dx))
+                setattr(m, dx, getattr(g, sx))
+        m.mancino, m.ambidestro = True, False
+        return m
+    for nome, aumento in modifica:
+        setattr(m, nome, getattr(m, nome) + aumento)
+    return m
+
+
+def _coppie_di_un_gruppo(soggetti, avversari, seme, taratura):
+    """I punti fatti e subiti da una parte dei soggetti, come sono e con ogni modifica, contro gli stessi avversari e con gli stessi semi."""
+    modifiche = [(), *(m for _nome, m in VERIFICHE), *RIFERIMENTI]
+    conti = [[0, 0] for _m in modifiche]
+    for g in soggetti:
+        rng = random.Random(f"coppie-{seme}-{g.id}")
+        semi = [rng.getrandbits(63) for _a in avversari]
+        for conto, modifica in zip(conti, modifiche, strict=True):
+            m = modificato(g, modifica)
+            for avversario, seme_incontro in zip(avversari, semi, strict=True):
+                r = simula_incontro(m, avversario, SINGOLARE_3, seme=seme_incontro, dettaglio=ESSENZIALE, taratura=taratura)
+                conto[0] += sum(x for x, _y in r.set)
+                conto[1] += sum(y for _x, y in r.set)
+    return conti
+
+
+def verifica_a_coppie(soggetti, avversari, seme, pesi, tratti, a, b, taratura=TARATURA, processi=1):
+    """
+    Il quinto passo: quanto valgono davvero nelle partite alcune modifiche, misurate a coppie, gli
+    stessi soggetti contro gli stessi avversari e con gli stessi semi, e quanto dà loro il valore.
+    Il rating guadagnato si porta in punti di valore con quello delle modifiche di riferimento,
+    difesa, chiusure, forza e attacco, che il valore pesa giuste. La regressione dà un peso solo a
+    ogni caratteristica: la resistenza, che conta per la stanchezza in modo diverso se innata o
+    allenata, e il mancino, portato da pochi giocatori, sono i punti dove può sbagliare di più.
+    """
+    if processi <= 1:
+        conti = _coppie_di_un_gruppo(soggetti, avversari, seme, taratura)
+    else:
+        from taratura_valore import _coppie_di_un_gruppo as lavoro
+        gruppi = [soggetti[i::processi] for i in range(processi)]
+        conti = None
+        with ProcessPoolExecutor(max_workers=processi) as esecutore:
+            for parziale in esecutore.map(lavoro, gruppi, [avversari] * processi, [seme] * processi, [taratura] * processi):
+                conti = parziale if conti is None else [[x + y for x, y in zip(c, p, strict=True)] for c, p in zip(conti, parziale, strict=True)]
+    rating = [math.log(fatti / subiti) - math.log(conti[0][0] / conti[0][1]) for fatti, subiti in conti]
+
+    def punti_di_valore(modifica):
+        return statistics.fmean(valore.indice(modificato(g, modifica), pesi, tratti, a, b) - valore.indice(g, pesi, tratti, a, b) for g in soggetti)
+
+    n = len(VERIFICHE)
+    per_punto = statistics.fmean(rating[1 + n + i] / punti_di_valore(modifica) for i, modifica in enumerate(RIFERIMENTI))
+    righe = [f"Quinto passo, la verifica a coppie: {len(soggetti)} soggetti destrimani contro {len(avversari)} avversari, con gli stessi semi; "
+             f"un punto di valore vale {numero(1000 * per_punto, 2)} millesimi di rating, misurati su difesa, chiusure, forza e attacco."]
+    for i, (nome, modifica) in enumerate(VERIFICHE):
+        righe.append(f"Nelle partite {nome} vale {numero(rating[1 + i] / per_punto)} punti di valore; il valore gliene dà {numero(punti_di_valore(modifica))}.")
+    return righe
+
+
 def mondo_salvato():
     """I giocatori in attività del mondo salvato, letti in sola lettura."""
     mondo = Mondo()
@@ -351,6 +430,7 @@ def main():
     parser.add_argument("--sparring", type=int, default=48, help="quanti sparring fissi, 48 se non indicato")
     parser.add_argument("--quota-tratti", type=float, default=0.2, help="la frequenza di ogni tratto nelle popolazioni della regressione, 0,2 se non indicata")
     parser.add_argument("--curva", type=int, default=3000, help="quante partite per la curva del favorito, 3000 se non indicato")
+    parser.add_argument("--coppie", type=int, default=240, help="quanti soggetti nella verifica a coppie, 240 se non indicato, contro 40 sparring; 0 la salta")
     parser.add_argument("--seme", type=int, default=9, help="il seme della taratura, 9 se non indicato")
     parser.add_argument("--anni", type=int, default=10, help="gli anni della simulazione lunga per il mondo maturo, 10 se non indicato")
     parser.add_argument("--mondo", choices=("nuovo", "salvato"), default="nuovo", help="con salvato aggiunge il controllo sul mondo salvato, letto in sola lettura")
@@ -400,7 +480,8 @@ def main():
     attivi = in_attivita(maturo)
     a, b = scala(attivi, pesi, tratti)
     righe.append(f"Terzo passo: il mondo maturo di {argomenti.anni} anni simulati, {len(attivi)} giocatori in attività, in {numero(time.perf_counter() - inizio_mondo)} secondi. "
-                 f"La scala che conserva la mediana del valore di prima e il monte stipendi: A {numero(a, 2)}, B {numero(b, 4)}.")
+                 f"La prima stima della scala, che conserva la mediana del valore di prima e il monte stipendi di questo mondo fermo: A {numero(a, 2)}, B {numero(b, 4)}. "
+                 "Quella vera si cerca con simulazione_lunga.py --cerca-scala, dopo aver copiato i pesi.")
     vecchi = [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in attivi]
     nuovi = [valore.indice(g, pesi, tratti, a, b) for g in attivi]
     righe.append(descrivi_distribuzione("Il valore di prima nel mondo maturo", vecchi))
@@ -421,6 +502,12 @@ def main():
         voci.append(f"{nome} {numero(b * pesi[nome], 2)} ({numero(b * pesi[nome] * massimo_di(nome), 0)})")
     righe.append("; ".join(voci) + ".")
     righe.append("I tratti in punti di valore: " + "; ".join(f"{nome} {numero(b * tratti[nome])}" for nome in valore.TRATTI) + ".")
+    # La scala vera la cerca poi la simulazione lunga: con quella già scritta in costanti.py i
+    # punti di valore crescono o calano tutti nello stesso rapporto, e i tratti si leggono così.
+    b_costanti = costanti.SCALA_VALORE_B
+    righe.append(f"Con la scala di costanti.py, B {numero(b_costanti, 4)}, i punti di valore si moltiplicano per {numero(b_costanti / b, 3)}: "
+                 + "; ".join(f"{nome} {numero(b_costanti * tratti[nome])}" for nome in valore.TRATTI)
+                 + f"; un punto di precisione {numero(b_costanti * pesi['precisione'], 2)}, uno di resistenza {numero(b_costanti * pesi['resistenza'], 2)}.")
     pieni = {nome: pesi[nome] * massimo_di(nome) for nome in costanti.CARATTERISTICHE_VALORE}
     media_gioco = statistics.fmean(pieni[nome] for nome in costanti.CARATTERISTICHE_VALORE if nome not in FISICHE)
     inerti = [nome for nome, peso in pieni.items() if peso < costanti.SOGLIA_PESO_INERTE * media_gioco]
@@ -438,7 +525,12 @@ def main():
     righe.append("La curva del favorito, col valore nuovo, su una terza popolazione:")
     indice_terza = {g.id: valore.indice(g, pesi, tratti, a, b) for g in terza}
     righe.extend(curva_del_favorito(terza, indice_terza, argomenti.curva, seme * 1000 + 3, taratura))
-    righe.append("Il blocco da copiare in costanti.py:")
+
+    # Quinto passo: la verifica a coppie.
+    if argomenti.coppie:
+        soggetti = [g for g in verifica if not g.mancino and not g.ambidestro][:argomenti.coppie]
+        righe.extend(verifica_a_coppie(soggetti, sparring[:40], seme * 1000 + 4, pesi, tratti, a, b, taratura, argomenti.processi))
+    righe.append("Il blocco da copiare in costanti.py, con la prima stima della scala:")
     righe.extend(blocco_costanti(pesi, tratti, a, b))
     righe.append(f"Taratura completata in {numero(time.perf_counter() - inizio)} secondi.")
     testo = "\n".join(righe)

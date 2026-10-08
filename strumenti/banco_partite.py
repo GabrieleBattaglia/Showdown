@@ -15,8 +15,9 @@ penalità, si giudicano con l'intervallo di Poisson, e le bande del meglio dei 3
 Il temperamento si misura con una sonda a coppie, gli stessi giocatori impetuosi e calmi contro gli
 stessi avversari e con gli stessi semi, perché il confronto fra gruppi di giocatori diversi è
 confuso dalle altre differenze fra loro. Al meglio dei 5 aggiunge la sonda della stanchezza, un
-trentenne resistente e un sessantenne poco resistente, che la popolazione di prova da sola non
-contiene. I rapporti di prima e dopo la taratura della tappa 9
+trentenne resistente e un sessantenne poco resistente, e dalla decisione D26 un giovane molto
+resistente e allenato e un anziano poco resistente a fine quinto set, che la popolazione di prova
+da sola non contiene. I rapporti di prima e dopo la taratura della tappa 9
 stanno accanto, in banco_partite_prima.txt e banco_partite_dopo.txt.
 Il mondo predefinito è una popolazione di prova di strumenti/popolazione_di_prova.py, col 60 per
 cento di allenati e l'esperienza fino a 12; con --mondo salvato si leggono in sola lettura i
@@ -225,7 +226,9 @@ class Banco:
                         self.lettura[nome]["laterali"] += stats.attacchi_verso[debole] + stats.attacchi_verso[forte]
             anni = g.eta_anni
             resistenza = g._get_valore_totale("resistenza_base")
-            if risultato.formato.set_al_meglio == 5:
+            # I gruppi del punto 18.16 non allenano la resistenza: dalla decisione D26 chi si
+            # allena si stanca più piano, e lo misura la sonda della stanchezza.
+            if risultato.formato.set_al_meglio == 5 and g.resistenza_allenata < 0.5:
                 if 25 <= anni <= 35 and 4 <= resistenza <= 6:
                     self.fatica["giovani resistenti"].append(stats.eff_finale)
                 elif 55 <= anni <= 65 and resistenza <= 3:
@@ -420,27 +423,49 @@ def rapporto(banco, intestazione, pari_forti, set_al_meglio=3, sonde=()):
     return righe
 
 
+# I casi della sonda della stanchezza: descrizione, anni, resistenza innata e allenata, dove si
+# misura e bersaglio. I primi due sono quelli del punto 18.16 del progetto, misurati su tutti gli
+# incontri al meglio di 5; gli altri due vengono dalla decisione D26, e si misurano a fine quinto set.
+CASI_FATICA = (
+    ("un trentenne con resistenza 5, che non si allena", 30, 5.0, 0.0, "tutti", (0.86, 0.93)),
+    ("un sessantenne con resistenza 2", 60, 2.0, 0.0, "tutti", (0.72, 0.82)),
+    ("un giovane di 24 anni con resistenza 10, metà allenata", 24, 5.0, 5.0, "quinto", (0.94, 1.0)),
+    ("un anziano di 65 anni con resistenza 1,5, che non si allena", 65, 1.5, 0.0, "quinto", (0.6, 0.78)),
+)
+
+
 def sonda_fatica(giocatori, quante, rng, opzioni):
     """
-    La stanchezza a fine incontro al meglio di 5 del punto 18.16 del progetto: un trentenne con
-    resistenza 5 e un sessantenne con resistenza 2, ricavati da giocatori a caso cambiando età e
-    resistenza, contro avversari a caso. La popolazione di prova nasce fra 9 e 45 anni, e senza la
-    sonda i sessantenni non ci sarebbero.
+    La stanchezza a fine incontro al meglio di 5. Ogni caso nasce da giocatori a caso, cambiando età
+    e resistenza: la popolazione di prova nasce fra 9 e 45 anni, e senza la sonda gli anziani non ci
+    sarebbero. I casi del punto 18.16 del progetto, il trentenne e il sessantenne, giocano contro
+    avversari a caso, e conta la media di tutti gli incontri. I casi della decisione D26, il giovane
+    molto resistente e allenato che deve reggere cinque set senza risentirne troppo, e l'anziano
+    poco resistente che invece perde molto, giocano contro il proprio gemello, uguale a lui, perché
+    l'incontro sia equilibrato e arrivi spesso al quinto set: conta l'efficienza a fine quinto set.
     """
     righe = []
-    for anni, resistenza, intervallo in ((30, 5.0, (0.86, 0.93)), (60, 2.0, (0.72, 0.82))):
+    for descrizione, anni, innata, allenata, dove, intervallo in CASI_FATICA:
         efficienze = []
         for _ in range(quante):
             g, avversario = rng.sample(giocatori, 2)
             g = copy.copy(g)
             g.eta = costanti.giorni_da_anni(anni)
-            g.resistenza_base, g.resistenza_allenata = resistenza, 0.0
+            g.resistenza_base, g.resistenza_allenata = innata, allenata
+            if dove == "quinto":
+                avversario = copy.copy(g)
+                avversario.id = g.id + 10_000_000
             risultato = simula_incontro(g, avversario, formato_singolare(5), seme=rng.getrandbits(63), **opzioni)
-            efficienze.append(risultato.statistiche[g.id].eff_finale)
+            if dove == "tutti" or len(risultato.set) == 5:
+                efficienze.append(risultato.statistiche[g.id].eff_finale)
+        if not efficienze:
+            righe.append(f"Sonda della stanchezza, {descrizione}: nessun incontro arrivato al quinto set su {quante}.")
+            continue
         media = statistics.fmean(efficienze)
-        righe.append(f"Sonda della stanchezza, {anni} anni con resistenza {numero(resistenza, 0)}, {quante} incontri al meglio di 5: efficienza finale media "
-                     f"{numero(media, 3)}, minima {numero(min(efficienze), 3)}, bersaglio da {numero(intervallo[0], 2)} a {numero(intervallo[1], 2)}, "
-                     f"{esito_bersaglio(media, intervallo)}; mai sotto 0,6: {'sì' if min(efficienze) >= 0.6 else 'NO'}.")
+        quali = f"{quante} incontri al meglio di 5" if dove == "tutti" else f"{len(efficienze)} incontri arrivati al quinto set su {quante}, contro il gemello"
+        righe.append(f"Sonda della stanchezza, {descrizione}, {quali}: efficienza finale media {numero(media, 3)}, minima {numero(min(efficienze), 3)}, "
+                     f"bersaglio da {numero(intervallo[0], 2)} a {numero(intervallo[1], 2)}, {esito_bersaglio(media, intervallo)}; "
+                     f"mai sotto 0,6: {'sì' if min(efficienze) >= 0.6 else 'NO'}.")
     return righe
 
 
@@ -495,7 +520,7 @@ def squadra_a_caso(giocatori, nome, rng, usati):
 
 
 def gioca_squadre(giocatori, quante, rng, opzioni):
-    punti, segnati, sostituzioni, timeout, durate = [], [], 0, 0, []
+    punti, segnati, timeout, durate = [], [], 0, []
     for i in range(quante):
         usati = set()
         a = squadra_a_caso(giocatori, f"Squadra A{i}", rng, usati)
@@ -503,11 +528,10 @@ def gioca_squadre(giocatori, quante, rng, opzioni):
         risultato = simula_incontro(a, b, SQUADRE, seme=rng.getrandbits(63), **opzioni)
         punti.append(risultato.incontro.punti_giocati)
         segnati.append(sum(risultato.set[0]))
-        sostituzioni += len(risultato.incontro.sostituzioni)
         timeout += len(risultato.incontro.timeout)
         if risultato.durata_simulata:
             durate.append(risultato.durata_simulata)
-    righe = [f"Squadre: {quante} gare, in media {numero(statistics.fmean(punti))} punti giocati, da {min(punti)} a {max(punti)}; {sostituzioni} sostituzioni e {timeout} time-out."]
+    righe = [f"Squadre: {quante} gare, in media {numero(statistics.fmean(punti))} punti giocati, da {min(punti)} a {max(punti)}; {timeout} time-out, nessuna sostituzione durante la gara."]
     if durate:
         righe.append(f"Durata simulata delle gare a squadre: in media {numero(statistics.fmean(durate) / 60)} minuti.")
     righe.append(f"Punti segnati per gara a squadre, la somma del punteggio: {numero(statistics.fmean(segnati), 2)}, bersaglio da 50 a 75, {esito_bersaglio(statistics.fmean(segnati), (50, 75))}.")

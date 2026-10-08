@@ -58,10 +58,10 @@ PUNTI_CAMBIO_CAMPO_SQUADRE = 16
 GIOCATORI_SQUADRA_MIN = 3
 GIOCATORI_SQUADRA_MAX = 6
 GIOCATORI_AL_TAVOLO = 3
-# Time-out, sostituzioni, riscaldamento e pause, in secondi dove sono durate.
+# Time-out, riscaldamento e pause, in secondi dove sono durate. Nella gara a squadre non ci sono
+# sostituzioni durante l'incontro, decisione D26: uno scostamento voluto dalla regola IBSA 22.8.
 TIMEOUT_PER_SET = 1
 TIMEOUT_SQUADRE = 1
-SOSTITUZIONI_SQUADRE = 1
 RISCALDAMENTO_SINGOLARE = 60
 RISCALDAMENTO_SQUADRE = 90
 AVVISI_RISCALDAMENTO_SINGOLARE = (45,)
@@ -332,25 +332,29 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # chiusure e blocchi di dritto e di rovescio, così un mancino specchiato vale quanto il destrimano
 # di partenza; ciascuna ha un peso, e i tratti hanno il loro. Fino alla tappa 8 i pesi erano tutti
 # a 1, con 33 punti per ambidestro, gioco rapido e cambio di velocità. Quelli qui sotto li ha
-# misurati sul motore nuovo strumenti/taratura_valore.py, il 2026-10-07, col seme 9: sono in punti
-# di caratteristica, con la media delle caratteristiche di gioco a 1, e A e B riportano la somma
-# sulla scala di prima, con la mediana a 137 e lo stesso monte stipendi nel mondo maturo, perché
-# l'economia della decisione D22 non cambi; la distanza fra decimo e novantesimo percentile è di
-# circa il 30 per cento più larga di prima, che aveva la coda lunga dei 33 punti di ogni tratto,
-# e nel mondo maturo va da 99 a 176. Le coppie speculari di colpi hanno un peso solo; le fisiche,
-# che vanno da 0 a 10, pesano per punto quattro volte tanto, e la precisione, che entra in tutte
-# le qualità, più di tutte.
+# misurati sul motore nuovo strumenti/taratura_valore.py, sugli incontri al meglio dei 3, l'ultima
+# volta l'8 ottobre 2026 col seme 9, dopo la decisione D26 che ha dimezzato il peso della
+# precisione nelle qualità: sono in punti di caratteristica, con la media delle caratteristiche
+# di gioco a 1. A e B riportano la somma sulla scala del valore, e dalla decisione D26 si cercano
+# con strumenti/simulazione_lunga.py --cerca-scala: B per bisezione, perché in dieci anni simulati
+# su quattro semi la cassa mediana delle polisportive del computer torni sui 5000 euro della tappa
+# 8, e A perché la mediana del valore nel mondo maturo stia a 135,5, così lo stipendio mediano
+# resta vicino ai 210 euro. Il valore è più largo di prima: nel mondo maturo va da 91 a 179 dal
+# decimo al novantesimo percentile, e gli stipendi più bassi scendono a 90 euro. Le coppie
+# speculari di colpi hanno un peso solo; le fisiche, che vanno da 0 a 10, pesano per punto
+# quattro volte tanto, e la precisione, che entra in tutte le qualità, più di tutte, ma la metà
+# di prima.
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
 PESI_VALORE = {
-    "lungolineasx": 0.49, "lungolineadx": 0.49, "diagonalesx": 0.49, "diagonaledx": 0.49, "singolaspondasx": 0.54, "singolaspondadx": 0.54,
-    "doppiaspondasx": 0.49, "doppiaspondadx": 0.49, "triplaspondasx": 0.37, "triplaspondadx": 0.37, "bomba": 0.26, "battutasx": 0.82,
-    "battutadx": 0.82, "chiusura_dritto": 2.11, "chiusura_rovescio": 2.58, "blocco_dritto": 1.05, "blocco_rovescio": 1.39, "difesa": 3.65,
-    "tenutapaletta": 1.30, "controllopalla": 0.79, "attacco": 1.47, "precisione": 22.12, "forza": 6.11, "resistenza": 3.41,
+    "lungolineasx": 0.44, "lungolineadx": 0.44, "diagonalesx": 0.53, "diagonaledx": 0.53, "singolaspondasx": 0.51, "singolaspondadx": 0.51,
+    "doppiaspondasx": 0.56, "doppiaspondadx": 0.56, "triplaspondasx": 0.35, "triplaspondadx": 0.35, "bomba": 0.22, "battutasx": 0.85,
+    "battutadx": 0.85, "chiusura_dritto": 2.16, "chiusura_rovescio": 2.63, "blocco_dritto": 1.29, "blocco_rovescio": 1.61, "difesa": 3.28,
+    "tenutapaletta": 1.26, "controllopalla": 0.82, "attacco": 1.23, "precisione": 9.77, "forza": 5.18, "resistenza": 4.03,
 }
-PESI_TRATTI = {"mancino": 1.3, "ambidestro": 5.0, "giocorapido": 1.8, "cambiovelocita": 4.9}
-SCALA_VALORE_A = -39.16
-SCALA_VALORE_B = 1.0091
+PESI_TRATTI = {"mancino": 3.8, "ambidestro": 4.9, "giocorapido": 1.1, "cambiovelocita": 4.5}
+SCALA_VALORE_A = -93.00
+SCALA_VALORE_B = 1.4663
 SOGLIA_PESO_INERTE = 0.25
 
 

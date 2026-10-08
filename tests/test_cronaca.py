@@ -47,7 +47,6 @@ _DATI = {
     E.FINE_INCONTRO: {"set_vinti": [2, 1], "set": [[11, 8], [7, 11], [12, 10]]},
     E.CAMBIO_CAMPO_INIZIO: {"fra_set": True},
     E.CAMBIO_AL_TAVOLO: {"esce": 1, "entra": 3, "batte": 2},
-    E.SOSTITUZIONE: {"esce": 1, "entra": 3},
     E.SOSTITUZIONE_ATTREZZO: {"attrezzo": "paletta", "di": 1},
     E.GOAL: {"zona": "dx", "battitore": 1, "ricevitore": 2},
     E.PENALITA: {"seconda_infrazione": True},

@@ -103,9 +103,11 @@ def test_l_ambidestro_fa_la_media_dei_lati(giocatori):
 
 
 def test_un_mondo_appena_nato_resta_sulla_scala_di_prima():
-    # La taratura del 2026-10-07 conserva la mediana del valore di prima e la media del fattore
-    # dello stipendio, cioè il monte stipendi della decisione D22: su mille neonati la mediana è
-    # 139. La tolleranza è di 8 punti sulla mediana e di un decimo sul fattore.
+    # Dalla decisione D26 la scala la cerca la simulazione lunga, perché le casse delle
+    # polisportive del computer tornino sui 5000 euro, con la mediana del valore del mondo maturo
+    # a 135,5 e lo stipendio mediano vicino a 210 euro: su ottocento neonati la mediana è 134, e
+    # la media del fattore dello stipendio sta entro un decimo di quella del valore di prima. La
+    # tolleranza è di 7 punti sulla mediana e di un decimo sul fattore.
     stato = random.getstate()
     random.seed(2026)
     try:
@@ -114,7 +116,7 @@ def test_un_mondo_appena_nato_resta_sulla_scala_di_prima():
         random.setstate(stato)
     nuovi = sorted(g.indice_collettivo_valore for g in neonati)
     vecchi = [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in neonati]
-    assert 132 <= nuovi[len(nuovi) // 2] <= 148
+    assert 128 <= nuovi[len(nuovi) // 2] <= 142
 
     def fattore(indici):
         return sum(math.exp((i - VALORE_DI_RIFERIMENTO) / SCALA_STIPENDIO) for i in indici) / len(indici)

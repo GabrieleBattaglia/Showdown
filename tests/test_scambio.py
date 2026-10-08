@@ -133,6 +133,42 @@ def test_col_suo_peso_il_blocco_ferma_anche_i_goal():
     assert sum(forte) == pytest.approx(1.0) and sum(debole) == pytest.approx(1.0)
 
 
+def _parate_contro(mancino, copione):
+    """Le parate di un punto in cui batte un giocatore, mancino o no, contro lo stesso ricevitore destrimano."""
+    battitore = InCampo(giocatore(1, mancino=mancino), "A", TARATURA)
+    ricevitore = InCampo(giocatore(2), "B", TARATURA)
+    battitore.prepara_punto(ricevitore)
+    ricevitore.prepara_punto(battitore)
+    passi = []
+    gioca_punto(battitore, ricevitore, DadoScritto(copione), TARATURA, passi)
+    return [p for p in passi if p.tipo == "parata"], battitore, ricevitore
+
+
+def test_la_battuta_del_mancino_sorprende_chi_para():
+    # D26: la stessa battuta, dello stesso giocatore, arriva da un'angolazione meno abituale se
+    # chi batte è mancino, e il goal diventa più probabile; il ricevitore conta la parata.
+    copione = [*_inizio_regolare(), (0, 0.5)]
+    (destro,), _b, ricevitore_destro = _parate_contro(False, copione)
+    (mancino,), _b, ricevitore_mancino = _parate_contro(True, copione)
+    assert mancino.prob[0] > destro.prob[0] * 1.03
+    assert sum(mancino.prob) == pytest.approx(1.0)
+    assert ricevitore_mancino.parate_mancino == 1 and ricevitore_destro.parate_mancino == 0
+    assert ricevitore_mancino.sorpresa == pytest.approx(1.0 + TARATURA.SORPRESA_MANCINO)
+
+
+def test_la_ribattuta_del_mancino_non_sorprende():
+    # Il ricevitore mancino ribatte piano: la pallina che torna non ha angolazione da sorprendere.
+    copione = [*_inizio_regolare(), (3, 0.5), NON_LENTA, 0.0, (0, 0.5)]
+    battitore = InCampo(giocatore(1), "A", TARATURA)
+    ricevitore = InCampo(giocatore(2, mancino=True), "B", TARATURA)
+    battitore.prepara_punto(ricevitore)
+    ricevitore.prepara_punto(battitore)
+    passi = []
+    esito = gioca_punto(battitore, ricevitore, DadoScritto(copione), TARATURA, passi)
+    assert esito.origine == "ribattuta" and battitore.sorpresa > 1.0
+    assert battitore.parate_mancino == 0 and ricevitore.parate_mancino == 0
+
+
 def test_controllo_trattenuto_e_paletta_caduta():
     esito, *_resto = _gioca([*_inizio_regolare(), FERMATA, (0, 0.5)])
     assert (esito.esito, esito.causa, esito.critico, esito.punti, esito.a_chi, esito.origine) == ("fallo", "pallina_trattenuta", False, 1, "A", "controllo")

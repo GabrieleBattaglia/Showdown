@@ -5,7 +5,8 @@ Nasce il 2026-10-07 con la tappa 9, decisione D25. Sopra la catena degli esiti c
 fa l'arbitro: il sorteggio con la moneta, i set a 11 con 2 di scarto e senza tetto, i due servizi a
 testa con chi apre che si alterna da un set all'altro, gli imprevisti a palla ferma con le
 ammonizioni ricordate per tutto l'incontro, per il giocatore nel singolare e per la squadra nella
-gara a squadre, i time-out, i cambi campo e la gara a squadre. Il set lo chiude anche una
+gara a squadre, i time-out, i cambi campo e la gara a squadre, dove durante l'incontro non si
+sostituisce nessuno, decisione D26. Il set lo chiude anche una
 penalità, e una sanzione prima del primo punto fa partire il set sul 2 a 0 senza cambiare
 l'ordine di battuta; se invece la penalità porta qualcuno ai punti del cambio campo, si cambia
 subito, prima della battuta che segue.
@@ -39,16 +40,15 @@ from costanti import (
     SERVIZI_CONSECUTIVI_PER_GIOCATORE,
     SERVIZI_SQUADRE,
     SET_AMMESSI,
-    SOSTITUZIONI_SQUADRE,
     TIMEOUT_PER_SET,
     TIMEOUT_SQUADRE,
 )
-from motore.campo import InCampo, StatisticheGiocatore
+from motore.campo import InCampo, StatisticheGiocatore, efficienza
 from motore.dado import Dado
 from motore.eventi import ErroreMotore
 from motore.regia import Regia
 from motore.scambio import EsitoPunto, gioca_punto
-from motore.squadre import Squadra, composizione_valida, ordine_di_battuta, problema_squadra
+from motore.squadre import Squadra, ordine_di_battuta, problema_squadra
 from motore.taratura import TARATURA
 
 __all__ = ("COMPLETO", "ESSENZIALE", "SINGOLARE_3", "SINGOLARE_5", "SQUADRE", "EsitoPunto", "Formato", "Incontro", "Momento", "RisultatoIncontro",
@@ -65,7 +65,7 @@ CHIUSURA = "chiusura"
 
 @dataclasses.dataclass(frozen=True)
 class Formato:
-    """Le regole di un tipo d'incontro: set, punti, servizi, cambio campo, time-out, sostituzioni e riscaldamento."""
+    """Le regole di un tipo d'incontro: set, punti, servizi, cambio campo, time-out e riscaldamento."""
     nome: str
     tipo: str
     set_al_meglio: int
@@ -75,16 +75,15 @@ class Formato:
     cambio_campo_a: int
     timeout: str
     timeout_quanti: int
-    sostituzioni: int
     riscaldamento: int
     avvisi_riscaldamento: tuple
 
 
 SINGOLARE_3 = Formato("singolare al meglio dei 3 set", "singolare", 3, PUNTI_VITTORIA_SET_BASE, PUNTI_VANTAGGIO_NECESSARI, SERVIZI_CONSECUTIVI_PER_GIOCATORE,
-                      PUNTI_CAMBIO_CAMPO_ULTIMO_SET, "set", TIMEOUT_PER_SET, 0, RISCALDAMENTO_SINGOLARE, AVVISI_RISCALDAMENTO_SINGOLARE)
+                      PUNTI_CAMBIO_CAMPO_ULTIMO_SET, "set", TIMEOUT_PER_SET, RISCALDAMENTO_SINGOLARE, AVVISI_RISCALDAMENTO_SINGOLARE)
 SINGOLARE_5 = dataclasses.replace(SINGOLARE_3, nome="singolare al meglio dei 5 set", set_al_meglio=5)
 SQUADRE = Formato("gara a squadre", "squadre", 1, PUNTI_SET_SQUADRE, PUNTI_VANTAGGIO_NECESSARI, SERVIZI_SQUADRE, PUNTI_CAMBIO_CAMPO_SQUADRE,
-                  "incontro", TIMEOUT_SQUADRE, SOSTITUZIONI_SQUADRE, RISCALDAMENTO_SQUADRE, AVVISI_RISCALDAMENTO_SQUADRE)
+                  "incontro", TIMEOUT_SQUADRE, RISCALDAMENTO_SQUADRE, AVVISI_RISCALDAMENTO_SQUADRE)
 
 
 def formato_singolare(set_al_meglio):
@@ -95,9 +94,9 @@ def formato_singolare(set_al_meglio):
 
 
 class StatisticheIncontro:
-    """I numeri dell'incontro nel suo insieme: punti, palle morte, rotture, lunghezza degli scambi, time-out e sostituzioni."""
+    """I numeri dell'incontro nel suo insieme: punti, palle morte, rotture, lunghezza degli scambi, time-out, sanzioni e cambi campo."""
 
-    __slots__ = ("attacchi_per_punto", "cambi_campo", "palle_morte", "punti_giocati", "rotture", "sanzioni", "sostituzioni", "timeout")
+    __slots__ = ("attacchi_per_punto", "cambi_campo", "palle_morte", "punti_giocati", "rotture", "sanzioni", "timeout")
 
     def __init__(self):
         self.punti_giocati = 0
@@ -106,7 +105,6 @@ class StatisticheIncontro:
         self.attacchi_per_punto = []
         # Le pause e le sanzioni, come tuple di set, punto e parte, per confrontarle fra le modalità.
         self.timeout = []
-        self.sostituzioni = []
         self.sanzioni = []
         self.cambi_campo = []
 
@@ -172,7 +170,12 @@ class Incontro:
     """
     Un incontro fra due giocatori, o fra due squadre nel formato SQUADRE. Si svolge con gioca(),
     oppure un momento alla volta con momenti(), che è un generatore. Il dado si può sostituire
-    con un DadoTruccato, per le prove.
+    con un DadoTruccato, per le prove. Nella gara a squadre la formazione e la turnazione si
+    dichiarano all'inizio, con l'ordine della Squadra: i primi tre giocano tutta la gara, e le
+    riserve, lette dall'arbitro con le formazioni, non entrano durante l'incontro. Nella realtà le
+    sostituzioni in corsa non si vedono: è uno scostamento voluto dalla regola IBSA 22.8,
+    decisione D26 di Gabriele. Una riserva gioca soltanto se la squadra la mette fra i primi tre,
+    e allora gioca tutta la gara.
     """
 
     def __init__(self, parte_a, parte_b, formato, *, seme=None, dettaglio=COMPLETO, taratura=TARATURA, riscaldamento=True, timeout=True, dado=None):
@@ -230,8 +233,6 @@ class Incontro:
         self.serie = {"A": 0, "B": 0}
         self.ammoniti = set()
         self.cambio_campo_fatto = False
-        self.sostituzioni_fatte = {"A": 0, "B": 0}
-        self.usciti = set()
         self.ripresa_lunga = True
         self.sanzioni_in_attesa = []
         self.punti = []
@@ -430,7 +431,6 @@ class Incontro:
             self.servizi_fatti = 0
             eventi += self._cambio_battitore()
         eventi += self._forse_cambio_campo()
-        eventi += self._forse_sostituzione()
         return self._momento(PUNTO, eventi, esito)
 
     def _al_tavolo(self):
@@ -574,65 +574,11 @@ class Incontro:
             return self.regia.cambio_campo(fra_set=False)
         return []
 
-    def _forse_sostituzione(self):
-        """
-        La sostituzione delle squadre, una per incontro, con un criterio fisso: la squadra è sotto di
-        almeno sei punti e una riserva vale almeno l'8 per cento più del più debole al tavolo, oppure
-        un giocatore al tavolo è troppo stanco. Entra la riserva più forte che lascia valida la
-        composizione, nello stesso posto della rotazione; chi esce non rientra.
-        Il confronto col più debole si fa soltanto fra le riserve che possono prenderne il posto:
-        se il più debole è l'unico del suo sesso al tavolo, una riserva forte dell'altro sesso non
-        può entrare, e non deve far entrare al suo posto una riserva che vale meno di chi esce.
-        """
-        if not self.squadre or not self.formato.sostituzioni:
-            return []
-        eventi = []
-        for parte in ("A", "B"):
-            if self.sostituzioni_fatte[parte] >= self.formato.sostituzioni:
-                continue
-            riserve = [self.campo[gid] for gid in self.riserve[parte] if gid not in self.usciti and gid not in self.formazione[parte]]
-            if not riserve:
-                continue
-            al_tavolo = [self.campo[gid] for gid in self.formazione[parte]]
-            scelta = self._chi_esce_e_chi_entra(parte, al_tavolo, riserve)
-            if scelta is None:
-                continue
-            esce, entra = scelta
-            posto = self.formazione[parte].index(esce.id)
-            self.formazione[parte][posto] = entra.id
-            self.usciti.add(esce.id)
-            self.sostituzioni_fatte[parte] += 1
-            self.ripresa_lunga = True
-            self.statistiche_incontro.sostituzioni.append((self.set_n, self.punto_n, parte, esce.id, entra.id))
-            if self.regia:
-                eventi += self.regia.sostituzione(esce, entra)
-        return eventi
-
-    def _chi_esce_e_chi_entra(self, parte, al_tavolo, riserve):
-        """
-        La coppia di chi esce e di chi entra secondo il criterio fisso, oppure None. Prima il
-        distacco nel punteggio, col più debole al tavolo; se lì non c'è una sostituzione da fare,
-        la stanchezza, dal più stanco.
-        """
-        t = self.taratura
-        sotto = self.punteggio[_INDICE[altra(parte)]] - self.punteggio[_INDICE[parte]]
-        if sotto >= t.DISTACCO_SOSTITUZIONE:
-            debole = min(al_tavolo, key=lambda c: (c.g.indice_collettivo_valore, c.id))
-            possibili = _riserve_al_posto_di(debole, al_tavolo, riserve)
-            if possibili and possibili[0].g.indice_collettivo_valore >= (1.0 + t.VANTAGGIO_RISERVA) * debole.g.indice_collettivo_valore:
-                return debole, possibili[0]
-        for stanco in sorted((c for c in al_tavolo if c.eff < t.EFFICIENZA_SOSTITUZIONE), key=lambda c: (c.eff, c.id)):
-            possibili = _riserve_al_posto_di(stanco, al_tavolo, riserve)
-            if possibili:
-                return stanco, possibili[0]
-        return None
-
     # Il risultato.
 
     def _componi_risultato(self):
-        t = self.taratura
         for c in self.campo.values():
-            c.stats.eff_finale = 1.0 - t.FATICA_MAX * (1.0 - math.exp(-c.azioni * c.ritmo / t.FATICA_SCALA))
+            c.stats.eff_finale = efficienza(c.azioni, c.ritmo, self.taratura)
         nomi_squadre = None
         if self.squadre:
             parti = (tuple(g.id for g in self.parti["A"].giocatori), tuple(g.id for g in self.parti["B"].giocatori))
@@ -645,12 +591,6 @@ class Incontro:
             durata_simulata=self.regia.t if self.regia else None, statistiche={gid: c.stats for gid, c in self.campo.items()},
             incontro=self.statistiche_incontro, punti=self.punti, eventi=self.eventi, momenti=self.momenti_giocati, sorteggio=self.info_sorteggio,
             nomi_squadre=nomi_squadre)
-
-
-def _riserve_al_posto_di(esce, al_tavolo, riserve):
-    """Le riserve che possono prendere il posto di chi esce lasciando valida la composizione, dalla più forte."""
-    ordinate = sorted(riserve, key=lambda c: (-c.g.indice_collettivo_valore, c.id))
-    return [r for r in ordinate if composizione_valida([r.g if c is esce else c.g for c in al_tavolo])]
 
 
 def simula_incontro(parte_a, parte_b, formato, **opzioni):

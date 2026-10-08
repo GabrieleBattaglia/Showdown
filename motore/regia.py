@@ -755,12 +755,6 @@ class Regia:
                               dati={"esce": esce.id, "entra": entra.id, "batte": battitore.id})
         return [evento]
 
-    def sostituzione(self, esce, entra):
-        self.mani[entra.id] = entra.mano
-        evento = self._evento(E.SOSTITUZIONE, self.tar.DURATA_SOSTITUZIONE / self.velocita, entra.id, locale_in_assoluto(entra.parte, CENTRO_X, 25.0),
-                              dati={"esce": esce.id, "entra": entra.id})
-        return [evento]
-
     def fine_set(self, set_n, punteggio, set_vinti, ultimo):
         self.punteggio = punteggio
         self.fase = E.CHIUSURA if ultimo else E.PAUSA

@@ -10,9 +10,10 @@ Ogni colpo ha la sua riga nella tabella COLPI, nel riferimento di chi colpisce: 
 dire che la pallina va verso la sinistra di chi colpisce, o vi tocca la prima sponda. La zona è
 quella d'arrivo vista da chi difende, le sponde sono in ordine, e la partenza è in centimetri dalla
 sponda sinistra di chi colpisce. Invertire un colpo costa una riga.
-I valori sono quelli della taratura fatta col banco il 2026-10-07, a fine tappa 9: dove si
-allontanano dal progetto il commento accanto dice il valore di partenza e il motivo, e il racconto
-dei passi sta in strumenti/banco_partite_dopo.txt.
+I valori sono quelli della taratura fatta col banco il 2026-10-07, a fine tappa 9, ripresa l'8
+ottobre dopo la decisione D26 di Gabriele: dove si allontanano dal progetto il commento accanto
+dice il valore di partenza e il motivo, e il racconto dei passi sta in
+strumenti/banco_partite_dopo.txt.
 """
 
 import dataclasses
@@ -70,12 +71,19 @@ class Taratura:
     # Le qualità, da 0 a 100: pesi di caratteristica, attacco, precisione e forza per i colpi;
     # di caratteristica, precisione, forza e attacco per le battute; di caratteristica, difesa e
     # precisione per chiusure e blocchi; di controllo palla, precisione e tenuta per il controllo.
-    PESI_COLPO: tuple = (0.50, 0.15, 0.20, 0.15)
-    PESI_BOMBA: tuple = (0.50, 0.15, 0.10, 0.25)
-    PESI_BATTUTA: tuple = (0.55, 0.25, 0.10, 0.10)
-    PESI_CHIUSURA: tuple = (0.55, 0.25, 0.20)
-    PESI_BLOCCO: tuple = (0.60, 0.20, 0.20)
-    PESI_CONTROLLO: tuple = (0.55, 0.25, 0.20)
+    # La precisione pesa la metà di quanto chiedeva il progetto, per decisione di Gabriele, D26:
+    # va da 0 a 10 ed entra in tutte le qualità, e con 0,20 o 0,25 cinque punti allenati
+    # portavano un giocatore dal 53 al 96 per cento di vittorie contro lo stesso avversario, e un
+    # punto valeva 22 punti di valore. La metà tolta passa alla caratteristica propria di ogni
+    # qualità, così le qualità restano da 0 a 100. I pesi del progetto erano 0,50 e 0,20 nei
+    # colpi, 0,50 e 0,10 nella bomba, 0,55 e 0,25 nelle battute, 0,55 e 0,20 nelle chiusure,
+    # 0,60 e 0,20 nei blocchi, 0,55 e 0,25 nel controllo.
+    PESI_COLPO: tuple = (0.60, 0.15, 0.10, 0.15)
+    PESI_BOMBA: tuple = (0.55, 0.15, 0.05, 0.25)
+    PESI_BATTUTA: tuple = (0.675, 0.125, 0.10, 0.10)
+    PESI_CHIUSURA: tuple = (0.65, 0.25, 0.10)
+    PESI_BLOCCO: tuple = (0.70, 0.20, 0.10)
+    PESI_CONTROLLO: tuple = (0.675, 0.125, 0.20)
     # Q0 era 10: schiacciava i rapporti fra pressione e difesa dei giocatori poco allenati, che
     # sono il mondo vero, e lì il favorito vinceva poco più di otto volte su dieci anche con un
     # distacco oltre il 30 per cento.
@@ -83,9 +91,14 @@ class Taratura:
     # La difesa: logit di goal, fallo, fuori e ribattuta rispetto alla fermata, che vale zero.
     # G0 era -2,0: più goal, perché i giocatori veri del mondo, poco allenati, segnassero almeno
     # quanto sbagliano. KG era 2,6: col valore nuovo il favorito vinceva quasi sempre, il 98 per
-    # cento oltre il 30 per cento di distacco, e la pendenza si è abbassata fino alla banda.
-    G0: float = -1.7
-    KG: float = 1.6
+    # cento oltre il 30 per cento di distacco, e la pendenza si è abbassata fino alla banda. Con
+    # la decisione D26 KG è risalito da 1,6 a 2,0: la scala del valore tarata sulle casse è più
+    # larga, lo stesso divario di forza dà un distacco più grande, e nel mondo salvato il favorito
+    # con oltre il 30 per cento di distacco vinceva soltanto l'83 per cento. G0 è sceso da meno
+    # 1,7 a meno 1,83, perché con la precisione dimezzata, la stanchezza che si accumula e la
+    # pendenza più alta i goal erano saliti al 60 per cento dei punti, il bordo della banda.
+    G0: float = -1.83
+    KG: float = 2.0
     F0: float = -3.9
     KF: float = 1.0
     O0: float = -4.2
@@ -97,12 +110,16 @@ class Taratura:
     # blocco, che sceglie solo fra ribattuta e fermata, non pesava quasi nulla.
     PESO_BLOCCO_PARATA: float = 0.3
     CAUSE_DIFESA: tuple = (("body_touch", 70), ("difesa_irregolare", 25), ("invasione_mano_libera", 4), ("invasione_tavola_contatto", 1))
-    CAUSE_DIFESA_CRITICHE: tuple = (("paletta_caduta", 60), ("body_touch_pieno", 40))
+    # Nelle cause critiche della difesa di lato la paletta caduta era 60 su 100 e il body touch
+    # pieno 40: con la pendenza dei goal più alta della decisione D26 l'infrazione paletta era
+    # salita al 3 per cento dei falli, il bordo della banda.
+    CAUSE_DIFESA_CRITICHE: tuple = (("paletta_caduta", 50), ("body_touch_pieno", 50))
     CAUSE_DIFESA_CRITICHE_CENTRO: tuple = (("paletta_caduta", 80), ("body_touch_pieno", 20))
     QUOTA_DIFESA_IRREGOLARE_IN_PORTA: float = 0.5
     # La battuta. P_BATTUTA_IRREGOLARE era 0,035: col fallo meno legato all'abilità le battute
-    # irregolari erano scese al 4 per cento, il bordo della banda.
-    P_BATTUTA_IRREGOLARE: float = 0.042
+    # irregolari erano scese al 4 per cento, il bordo della banda; 0,042 dopo la taratura, 0,044
+    # con la decisione D26, perché fra pari forti, che battono bene, erano scese sotto il 4.
+    P_BATTUTA_IRREGOLARE: float = 0.044
     PRESSIONE_BATTUTA: float = 0.80
     QUOTA_BATTUTA_LATERALE: float = 0.55
     CAUSE_BATTUTA: tuple = (("battuta_senza_rimbalzo", 34), ("battuta_due_rimbalzi", 26), ("battuta_strisciata", 14), ("battuta_oltre_due_secondi", 7),
@@ -144,8 +161,11 @@ class Taratura:
     # La pressione dell'attacco. PRESSIONE_TEMPERAMENTO era 0,22: con la pendenza dei goal più
     # bassa l'impetuoso valeva sei punti meno del calmo, e il temperamento deve essere uno stile,
     # non una forza. PRESSIONE_TEMPO_BASE era 0,7, e TEMPO_GIOCO_RAPIDO 0,8, che col tempo nuovo
-    # quasi nessuno raggiungeva.
-    PRESSIONE_TEMPERAMENTO: float = 0.26
+    # quasi nessuno raggiungeva. Con la decisione D26 PRESSIONE_TEMPERAMENTO è tornata da 0,26 a
+    # 0,18: con la stanchezza che si accumula i falli dell'impetuoso pesano meno al meglio dei 3, e
+    # con la pendenza dei goal più alta la sua pressione rende di più; con le prove a coppie
+    # l'impetuoso valeva otto punti più del calmo, ora ne vale uno o due.
+    PRESSIONE_TEMPERAMENTO: float = 0.18
     PRESSIONE_TEMPO_BASE: float = 0.5
     BONUS_CAMBIO_VELOCITA: float = 0.05
     BONUS_GIOCO_RAPIDO: float = 0.04
@@ -154,15 +174,26 @@ class Taratura:
     PRESSIONE_PALLA_SET: float = 0.0
     PRESSIONE_PALLA_SET_TEMPERAMENTO: float = 0.5
     PRESSIONE_PALLA_SET_ESPERIENZA: float = 0.6
-    # La stanchezza.
+    # La stanchezza. Dipende dall'età, dalla resistenza e da quanto il giocatore si allena, D26:
+    # chi si allena si stanca più piano, fino a K_ALLENAMENTO_FATICA in più di ritmo sopportato.
+    # Per ora quanto si allena lo dice la parte allenata della resistenza; la costanza
+    # dell'allenamento arriverà con la tappa 11.
+    # FORMA_FATICA è nuova: con 1 la stanchezza cresceva più in fretta alle prime azioni e poi
+    # rallentava; con 1,5 si accumula, piano nel primo set e di più verso la fine di un incontro
+    # lungo. Così al meglio dei 3, su cui si misura il valore, la resistenza e l'allenamento
+    # pesano poco, e al meglio dei 5 separano chi regge da chi crolla, come vuole Gabriele: il
+    # giovane molto resistente e allenato arriva al quinto set quasi fresco. FATICA_SCALA era 600 e
+    # ANNI_FATICA 20: con la curva nuova il sessantenne poco resistente scendeva sotto la banda.
     FATICA_MAX: float = 0.35
-    FATICA_SCALA: float = 600.0
+    FATICA_SCALA: float = 500.0
+    FORMA_FATICA: float = 1.5
     ETA_INIZIO_FATICA: float = 30.0
-    ANNI_FATICA: float = 20.0
+    ANNI_FATICA: float = 25.0
     ETA_FATICA_GIOVANI: float = 16.0
     FATICA_GIOVANI_PER_ANNO: float = 0.10
     RESISTENZA_BASE: float = 0.6
     RESISTENZA_PER_PUNTO: float = 0.08
+    K_ALLENAMENTO_FATICA: float = 1.0
     K_FATICA_FALLI: float = 1.5
     # Lettura del gioco, esperienza e temperamento. K_ESP_FALLI era 0,35: gli esperti facevano
     # dal 14 al 22 per cento di falli in meno secondo il seme, al bordo della banda.
@@ -186,6 +217,15 @@ class Taratura:
     # La mano.
     MALUS_ROVESCIO: float = 0.10
     COSTO_CAMBIO_MANO: float = 0.03
+    # La sorpresa del mancino in difesa, D26: i suoi colpi e le sue battute arrivano da
+    # un'angolazione meno abituale per chi gioca quasi sempre contro i destri, e premono di più,
+    # di questa quota. Durante l'incontro il difensore si abitua, come capisce l'avversario: per
+    # la sua lettura del gioco, costruita con le parate contro i mancini, al ritmo di
+    # COLPI_PER_CAPIRE. La ribattuta, che torna piano, non sorprende nessuno. Con 0,03 il mancino
+    # vale da 4 a 5 punti di valore, nelle prove a coppie e nel peso del valore, dentro la banda da
+    # 2 a 6 di Gabriele; senza la sorpresa, con la sola abitudine degli avversari, non arrivava a
+    # un punto.
+    SORPRESA_MANCINO: float = 0.03
     # Gli imprevisti a palla ferma. P_SANZIONE era 0,0010, e le ammonizioni stavano al bordo
     # basso della banda.
     P_SANZIONE: float = 0.0014
@@ -206,10 +246,6 @@ class Taratura:
     P_TIMEOUT_MAX: float = 0.6
     K_LETTURA_TIMEOUT: float = 0.5
     P_SCEGLIE_BATTUTA: float = 0.7
-    # Le squadre.
-    DISTACCO_SOSTITUZIONE: int = 6
-    VANTAGGIO_RISERVA: float = 0.08
-    EFFICIENZA_SOSTITUZIONE: float = 0.85
     # La regia: velocità e attriti in centimetri e secondi.
     DECELERAZIONE: float = 40.0
     PERDITA_PER_SPONDA: float = 0.12
@@ -238,9 +274,10 @@ class Taratura:
     FATTORE_CONTROLLO_GIOCO_RAPIDO: float = 0.7
     DURATA_CONTROLLO: tuple = (0.4, 1.4)
     DURATA_TRATTENUTA: tuple = (2.3, 3.0)
-    # Era 1,5: l'incontro al meglio dei 3 durava meno di 12 minuti simulati.
-    PAUSA_FRA_PUNTI: float = 3.5
-    DURATA_SOSTITUZIONE: float = 30.0
+    # Era 1,5: l'incontro al meglio dei 3 durava meno di 12 minuti simulati; 3,5 dopo la taratura,
+    # 4,3 con la decisione D26, perché con la pendenza dei goal più alta gli incontri si erano
+    # accorciati di nuovo a 11,9 minuti.
+    PAUSA_FRA_PUNTI: float = 4.3
     DURATA_CAMBIO_ATTREZZO: float = 30.0
     INTERVALLO_RISCALDAMENTO: tuple = (2.0, 3.5)
     # La lettura delle formazioni dopo il sorteggio della gara a squadre, regola IBSA 22.5.

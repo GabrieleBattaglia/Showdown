@@ -1,7 +1,8 @@
 """
 Test dei conti della taratura del valore, strumenti/taratura_valore.py, senza giocare partite: i
-minimi quadrati con i pesi non negativi, la scala che conserva mediana e monte stipendi, e le
-coppie speculari di colpi e battute che hanno un peso solo.
+minimi quadrati con i pesi non negativi, la prima stima della scala che conserva mediana e monte
+stipendi, le coppie speculari di colpi e battute che hanno un peso solo, e la ricerca della scala
+vera per bisezione di strumenti/simulazione_lunga.py, con una simulazione finta.
 """
 
 import math
@@ -14,6 +15,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 
+import simulazione_lunga as sl
 import taratura_valore as tv
 
 import costanti
@@ -58,3 +60,23 @@ def test_la_scala_conserva_mediana_e_monte_stipendi(monkeypatch):
     assert statistics.fmean(tv.fattore_stipendio(v) for v in nuovi) == pytest.approx(statistics.fmean(tv.fattore_stipendio(v) for v in vecchi), rel=1e-6)
     assert tv.fattore_stipendio(costanti.VALORE_DI_RIFERIMENTO) == 1.0
     assert math.isfinite(a) and b > 0
+
+
+def _misure_finte(mediana_somme, mediana_tappa_8, a, b):
+    # Una simulazione finta: la cassa mediana scende con la dispersione del valore, cioè con B.
+    cassa = 5000.0 * math.exp(-4.0 * (b - 1.1))
+    return {"casse": (0.0, cassa, 0.0), "stipendi": (110.0, 210.0, 560.0), "monte_su_sponsor": 0.92, "tesserati": 90, "attivi": 100,
+            "mediana_valore": a + b * mediana_somme, "mediana_somme": mediana_somme, "mediana_tappa_8": mediana_tappa_8}
+
+
+def test_la_scala_si_cerca_per_bisezione_sulla_cassa(monkeypatch):
+    # D26: la scala si tara sulla simulazione lunga. Con una cassa che scende con B, la bisezione
+    # ritrova il B che la porta al bersaglio, e A tiene la mediana del valore della tappa 8.
+    monkeypatch.setattr(sl, "con_scala", lambda _anni, semi, a, b, _processi: {s: _misure_finte(100.0, 138.0, a, b) for s in semi})
+    monkeypatch.setattr(sl.costanti, "SCALA_VALORE_A", -50.0)
+    monkeypatch.setattr(sl.costanti, "SCALA_VALORE_B", 1.0)
+    a, b, righe = sl.cerca_scala(10, (1, 2, 3), 5000.0, 1, passi=20, stampa=None)
+    assert b == pytest.approx(1.1, abs=1e-4)
+    assert a + b * 100.0 == pytest.approx(138.0)
+    assert righe[-1].startswith("La scala trovata, da copiare in costanti.py")
+    assert sl.PESI_TAPPA_8 is tv.PESI_TAPPA_8

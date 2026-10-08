@@ -1,7 +1,8 @@
 """
-Test del giocatore in campo: stanchezza di ciascuno, mano e rovescio, paura degli errori, scelta del
-colpo e lettura dell'avversario. Qui sta anche la regressione del problema P1: chi batte gioca con
-la sua stanchezza, non con quella dell'avversario.
+Test del giocatore in campo: stanchezza di ciascuno, che cala con l'allenamento, mano e rovescio,
+paura degli errori, scelta del colpo e lettura dell'avversario, la precisione che pesa la metà e
+la sorpresa del mancino in difesa, decisione D26. Qui sta anche la regressione del problema P1: chi
+batte gioca con la sua stanchezza, non con quella dell'avversario.
 """
 
 import dataclasses
@@ -12,7 +13,7 @@ import random
 from aiuti_motore import TARATURA_NEUTRA, giocatore
 
 from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA
-from motore.campo import InCampo
+from motore.campo import InCampo, allenamento, efficienza, ritmo_della_fatica
 from motore.dado import Dado
 from motore.scambio import gioca_punto
 from motore.taratura import TARATURA
@@ -144,3 +145,83 @@ def test_contro_un_mancino_l_inesperto_tira_sul_suo_dritto():
     # Il dritto del mancino è a sinistra: l'abitudine ci tira lo stesso, la lettura no.
     assert _verso(inesperto, "sx") > _verso(inesperto, "dx")
     assert _verso(esperto, "dx") > _verso(esperto, "sx")
+
+
+# I pesi della precisione nel progetto della tappa 9, prima della decisione D26, e il loro posto
+# nelle tuple dei pesi delle qualità.
+PRECISIONE_DEL_PROGETTO = {"PESI_COLPO": (2, 0.20), "PESI_BOMBA": (2, 0.10), "PESI_BATTUTA": (1, 0.25), "PESI_CHIUSURA": (2, 0.20),
+                           "PESI_BLOCCO": (2, 0.20), "PESI_CONTROLLO": (1, 0.25)}
+
+
+def test_la_precisione_pesa_la_meta_in_tutte_le_qualita():
+    # D26: cinque punti allenati di precisione portavano un giocatore dal 53 al 96 per cento di
+    # vittorie; ora la precisione pesa la metà, e la metà tolta va alla caratteristica propria.
+    for nome, (posto, peso) in PRECISIONE_DEL_PROGETTO.items():
+        pesi = getattr(TARATURA, nome)
+        assert math.isclose(pesi[posto], peso / 2), nome
+        assert math.isclose(sum(pesi), 1.0), nome
+    # In campo: due punti di precisione in più, cioè due decimi della scala, alzano ogni qualità
+    # di cento volte il peso dimezzato per due decimi; il rovescio toglie il suo dieci per cento.
+    normale = _campo(giocatore(1, fisico=3.0))
+    preciso = _campo(giocatore(1, fisico=3.0, precisione_base=5.0))
+
+    def aumento(nome):
+        posto, _peso = PRECISIONE_DEL_PROGETTO[nome]
+        return 100.0 * getattr(TARATURA, nome)[posto] * 0.2
+
+    for indice, colpo in enumerate(COLPI_DELLO_SCAMBIO):
+        atteso = aumento("PESI_BOMBA" if colpo == "bomba" else "PESI_COLPO")
+        assert math.isclose(preciso.Q[indice] - normale.Q[indice], atteso)
+    for indice in range(len(COLPI_DI_BATTUTA)):
+        assert math.isclose(preciso.QB[indice] - normale.QB[indice], aumento("PESI_BATTUTA"))
+    rovescio = 1.0 - TARATURA.MALUS_ROVESCIO
+    for zona, fattore in (("sx", rovescio), ("centro", 1.0), ("dx", 1.0)):
+        assert math.isclose(preciso.D[zona] - normale.D[zona], aumento("PESI_CHIUSURA") * fattore)
+        assert math.isclose(preciso.B[zona] - normale.B[zona], aumento("PESI_BLOCCO") * fattore)
+    assert math.isclose(preciso.C - normale.C, aumento("PESI_CONTROLLO"))
+    assert math.isclose(aumento("PESI_COLPO"), 2.0) and math.isclose(aumento("PESI_CHIUSURA"), 2.0)
+
+
+def test_chi_si_allena_si_stanca_meno():
+    # D26: la stanchezza dipende dall'età, dalla resistenza e da quanto si allena, che per ora è
+    # la parte allenata della resistenza. A parità di resistenza totale, chi l'ha allenata regge
+    # di più; senza allenamento il ritmo è quello di prima.
+    innato = giocatore(1, anni=25, fisico=3.0, resistenza_base=8.0)
+    allenato = giocatore(2, anni=25, fisico=3.0, resistenza_base=4.0, resistenza_allenata=4.0)
+    assert allenamento(innato) == 0.0 and math.isclose(allenamento(allenato), 0.8)
+    assert ritmo_della_fatica(allenato, TARATURA) < ritmo_della_fatica(innato, TARATURA)
+    trentenne = giocatore(3, anni=30, fisico=3.0, resistenza_base=5.0)
+    assert math.isclose(ritmo_della_fatica(trentenne, TARATURA), 1.0)
+    assert math.isclose(_campo(allenato).ritmo, ritmo_della_fatica(allenato, TARATURA))
+
+
+def test_cinque_set_lunghi_secondo_resistenza_eta_e_allenamento():
+    # Un incontro al meglio dei 5 arrivato al quinto set chiede in media 385 azioni. Il giovane
+    # molto resistente e allenato arriva in fondo quasi fresco, l'anziano poco resistente perde
+    # molto, mai sotto il minimo.
+    azioni = 385
+    giovane = giocatore(1, anni=24, fisico=3.0, resistenza_base=5.0, resistenza_allenata=5.0)
+    anziano = giocatore(2, anni=65, fisico=3.0, resistenza_base=1.5)
+    eff_giovane = efficienza(azioni, ritmo_della_fatica(giovane, TARATURA), TARATURA)
+    eff_anziano = efficienza(azioni, ritmo_della_fatica(anziano, TARATURA), TARATURA)
+    assert eff_giovane >= 0.94
+    assert 1.0 - TARATURA.FATICA_MAX <= eff_anziano <= 0.75
+
+
+def test_la_sorpresa_del_mancino_cala_con_l_abitudine_di_chi_ha_esperienza():
+    # D26: i colpi del mancino arrivano da un'angolazione meno abituale e premono di più; chi ha
+    # esperienza ci si abitua con le parate, chi non ne ha resta sorpreso.
+    s = TARATURA.SORPRESA_MANCINO
+    assert s > 0
+    mancino, destro = _campo(giocatore(2, mancino=True), "B"), _campo(giocatore(3), "B")
+    inesperto, esperto = _campo(giocatore(1)), _campo(giocatore(4, esperienza=20.0))
+    assert inesperto.sorpresa_contro(destro) == 1.0
+    assert math.isclose(inesperto.sorpresa_contro(mancino), 1.0 + s)
+    assert math.isclose(esperto.sorpresa_contro(mancino), 1.0 + s)
+    inesperto.parate_mancino = esperto.parate_mancino = 200
+    assert math.isclose(inesperto.sorpresa_contro(mancino), 1.0 + s)
+    assert 1.0 + s * (1.0 - esperto.L) - 1e-9 <= esperto.sorpresa_contro(mancino) < 1.0 + s
+    esperto.prepara_punto(mancino)
+    assert esperto.sorpresa == esperto.sorpresa_contro(mancino)
+    esperto.prepara_punto(destro)
+    assert esperto.sorpresa == 1.0

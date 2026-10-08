@@ -8,21 +8,26 @@ un ruolo distinto: la chiusura decide se la pallina passa, il blocco se si ferma
 il controllo quanto bene si prepara l'attacco, la tenuta paletta la bomba e la paletta caduta, la
 resistenza soltanto la stanchezza.
 La stanchezza è di ciascuno, cresce con le azioni giocate, più in fretta per chi è anziano o poco
-resistente, e nelle pause non passa: il vecchio difetto del problema P1, la resistenza del primo
-giocatore passata a chi batte, sparisce per costruzione. Il destrimano ha il rovescio a sinistra,
-il mancino a destra; l'ambidestro sano non ha rovescio e cambia mano quando la pallina arriva dal
-lato opposto alla mano che impugna, mentre con un braccio infortunato gioca con l'altro e ha il
-rovescio dal lato del braccio fermo.
+resistente, più piano per chi si allena, e nelle pause non passa: il vecchio difetto del problema
+P1, la resistenza del primo giocatore passata a chi batte, sparisce per costruzione. Quanto il
+giocatore si allena, per ora, lo dice la parte allenata della resistenza, decisione D26: la
+costanza dell'allenamento arriverà con la tappa 11, e prenderà il suo posto in allenamento().
+Il destrimano ha il rovescio a sinistra, il mancino a destra; l'ambidestro sano non ha rovescio e
+cambia mano quando la pallina arriva dal lato opposto alla mano che impugna, mentre con un braccio
+infortunato gioca con l'altro e ha il rovescio dal lato del braccio fermo.
 La scelta del colpo segue la regola di Gabriele: lucido e riposato, il giocatore sceglie bene i suoi
 punti forti e il lato debole dell'avversario; stanco o inesperto, sceglie quasi a caso. Capire
 l'avversario è alla portata di chi ha esperienza, e si costruisce durante l'incontro: prima di
-capirlo, si immagina un destrimano, ed è questo il vantaggio del mancino.
+capirlo, si immagina un destrimano, ed è questo il primo vantaggio del mancino. Il secondo, D26,
+è la sorpresa in difesa: i suoi colpi arrivano da un'angolazione meno abituale per chi gioca quasi
+sempre contro i destri, e premono un po' di più, finché il difensore non ci si abitua, per quanto
+la sua lettura del gioco gli permette.
 """
 
 import math
 from collections import Counter
 
-from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA, SEDI_INFORTUNIO
+from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA, MAX_ALLENATO_FISICO, SEDI_INFORTUNIO
 
 ZONE = ("sx", "centro", "dx")
 _BRACCIO_DELLA_SEDE = {codice: braccio for codice, _frase, braccio, _peso, _durata in SEDI_INFORTUNIO}
@@ -91,6 +96,39 @@ def lettura_possibile(g, taratura):
     return esperienza / (esperienza + taratura.K_LETTURA)
 
 
+def allenamento(g):
+    """
+    Quanto il giocatore si allena, da 0 a 1, per la stanchezza: per ora la parte allenata della
+    resistenza sul suo tetto, decisione D26; con la tappa 11 verrà la costanza dell'allenamento.
+    """
+    allenata = float(getattr(g, "resistenza_allenata", 0.0) or 0.0)
+    return max(0.0, min(1.0, allenata / MAX_ALLENATO_FISICO))
+
+
+def ritmo_della_fatica(g, taratura):
+    """
+    Quanto in fretta il giocatore si stanca, uno per un trentenne con resistenza 5 che non si
+    allena: cresce con l'età, sopra i 30 anni e sotto i 16, e cala con la resistenza e con
+    l'allenamento.
+    """
+    t = taratura
+    anni = g.eta_anni
+    fattore_eta = 1.0 + max(0.0, anni - t.ETA_INIZIO_FATICA) / t.ANNI_FATICA + max(0.0, t.ETA_FATICA_GIOVANI - anni) * t.FATICA_GIOVANI_PER_ANNO
+    fattore_resistenza = t.RESISTENZA_BASE + t.RESISTENZA_PER_PUNTO * g._get_valore_totale("resistenza_base")
+    fattore_allenamento = 1.0 + t.K_ALLENAMENTO_FATICA * allenamento(g)
+    return fattore_eta / max(0.05, fattore_resistenza * fattore_allenamento)
+
+
+def efficienza(azioni, ritmo, taratura):
+    """
+    L'efficienza dopo tante azioni giocate col ritmo di fatica indicato: 1 a mente fresca, mai sotto
+    1 meno FATICA_MAX. Con FORMA_FATICA sopra 1 la stanchezza si accumula: poca nelle prime azioni,
+    di più verso la fine di un incontro lungo.
+    """
+    t = taratura
+    return 1.0 - t.FATICA_MAX * (1.0 - math.exp(-((azioni * ritmo / t.FATICA_SCALA) ** t.FORMA_FATICA)))
+
+
 def temperamento_relativo(g):
     """Il temperamento attuale portato fra -1, calmissimo, e 1, impetuoso."""
     attuale = getattr(g, "temperamento_attuale", 50.0)
@@ -119,15 +157,18 @@ class InCampo:
         "giocorapido",
         "id",
         "ln_mf",
+        "mancino",
         "mano",
         "mf",
         "osservati",
+        "parate_mancino",
         "parte",
         "pesi_cause_battuta",
         "pi",
         "prob_colpi",
         "ritmo",
         "rovescio",
+        "sorpresa",
         "stats",
         "tar",
         "tau",
@@ -143,13 +184,13 @@ class InCampo:
         self.L = lettura_possibile(g, t)
         self.giocorapido = bool(getattr(g, "giocorapido", False))
         self.cambiovelocita = bool(getattr(g, "cambiovelocita", False))
-        anni = g.eta_anni
-        fattore_eta = 1.0 + max(0.0, anni - t.ETA_INIZIO_FATICA) / t.ANNI_FATICA + max(0.0, t.ETA_FATICA_GIOVANI - anni) * t.FATICA_GIOVANI_PER_ANNO
-        fattore_resistenza = t.RESISTENZA_BASE + t.RESISTENZA_PER_PUNTO * g._get_valore_totale("resistenza_base")
-        self.ritmo = fattore_eta / max(0.05, fattore_resistenza)
+        self.mancino = bool(getattr(g, "mancino", False))
+        self.ritmo = ritmo_della_fatica(g, t)
         self._calcola_qualita(g, t)
         self.azioni = 0
         self.osservati = 0
+        self.parate_mancino = 0
+        self.sorpresa = 1.0
         self.eff = 1.0
         self.mf = 1.0
         self.ln_mf = 0.0
@@ -254,7 +295,8 @@ class InCampo:
         battute contro l'avversario di adesso. Dentro il punto la stanchezza resta ferma.
         """
         t = self.tar
-        self.eff = eff = 1.0 - t.FATICA_MAX * (1.0 - math.exp(-self.azioni * self.ritmo / t.FATICA_SCALA))
+        self.eff = eff = efficienza(self.azioni, self.ritmo, t)
+        self.sorpresa = self.sorpresa_contro(avversario)
         s_rel = (1.0 - eff) / t.FATICA_MAX if t.FATICA_MAX > 0 else 0.0
         if pressione_set and t.PRESSIONE_PALLA_SET:
             self.pi = t.PRESSIONE_PALLA_SET * (1.0 + t.PRESSIONE_PALLA_SET_TEMPERAMENTO * self.tau) * (1.0 - t.PRESSIONE_PALLA_SET_ESPERIENZA * self.L)
@@ -277,6 +319,19 @@ class InCampo:
             colpo = colpi[nome]
             utilita_b.append(math.log(self.QB[indice] * eff + q0) + t.PESO_DEBOLEZZA * percepita[colpo.zona] + termine_potenza * colpo.potenza)
         _probabilita, self.cum_battute = _softmax_cumulata(utilita_b, temperatura)
+
+    def sorpresa_contro(self, attaccante):
+        """
+        Quanto premono di più, su questo difensore, i colpi di chi attacca: 1 contro un destrimano,
+        di più contro un mancino, per l'angolazione meno abituale. Il difensore si abitua con le
+        parate contro i mancini, ma soltanto per quanto la sua lettura del gioco gli permette: chi
+        non ha esperienza resta sorpreso per tutto l'incontro.
+        """
+        t = self.tar
+        if not attaccante.mancino or not t.SORPRESA_MANCINO:
+            return 1.0
+        abitudine = self.L * (1.0 - math.exp(-self.parate_mancino / t.COLPI_PER_CAPIRE))
+        return 1.0 + t.SORPRESA_MANCINO * (1.0 - abitudine)
 
     def debolezza_vera(self, avversario):
         """Quanto ogni zona dell'avversario è più debole della sua media, senza la stanchezza."""
