@@ -185,7 +185,7 @@ def test_la_precisione_pesa_la_meta_in_tutte_le_qualita():
 def test_chi_si_allena_si_stanca_meno():
     # D26: la stanchezza dipende dall'età, dalla resistenza e da quanto si allena, che per ora è
     # la parte allenata della resistenza. A parità di resistenza totale, chi l'ha allenata regge
-    # di più; senza allenamento il ritmo è quello di prima.
+    # di più; senza allenamento conta soltanto la resistenza totale.
     innato = giocatore(1, anni=25, fisico=3.0, resistenza_base=8.0)
     allenato = giocatore(2, anni=25, fisico=3.0, resistenza_base=4.0, resistenza_allenata=4.0)
     assert allenamento(innato) == 0.0 and math.isclose(allenamento(allenato), 0.8)
@@ -195,12 +195,29 @@ def test_chi_si_allena_si_stanca_meno():
     assert math.isclose(_campo(allenato).ritmo, ritmo_della_fatica(allenato, TARATURA))
 
 
+def test_la_resistenza_della_scheda_resta_il_fattore_principale():
+    # Revisione di D26: la parte allenata conta nella resistenza totale e, meno, come abitudine ad
+    # allenarsi. Fra giocatori che nel mondo possono esistere, con l'innata fino a 3 e l'allenata
+    # fino a 5, chi ha almeno un punto in più di resistenza totale si stanca sempre più piano,
+    # comunque sia divisa: con K_ALLENAMENTO_FATICA a 1 una resistenza 5 tutta allenata reggeva
+    # più di una resistenza 6 tutta innata.
+    passi = [x / 2 for x in range(11)]
+    possibili = [(innata, allenata) for innata in passi if innata <= 3.0 for allenata in passi]
+    ritmi = {}
+    for gid, (innata, allenata) in enumerate(possibili, start=1):
+        g = giocatore(gid, anni=27, resistenza_base=innata, resistenza_allenata=allenata)
+        ritmi[innata, allenata] = ritmo_della_fatica(g, TARATURA)
+    for (i1, a1), (i2, a2) in itertools.permutations(possibili, 2):
+        if i1 + a1 >= i2 + a2 + 1.0:
+            assert ritmi[i1, a1] < ritmi[i2, a2], ((i1, a1), (i2, a2))
+
+
 def test_cinque_set_lunghi_secondo_resistenza_eta_e_allenamento():
     # Un incontro al meglio dei 5 arrivato al quinto set chiede in media 385 azioni. Il giovane
-    # molto resistente e allenato arriva in fondo quasi fresco, l'anziano poco resistente perde
-    # molto, mai sotto il minimo.
+    # con la resistenza più alta che si possa avere, 3 innata e 5 allenata, arriva in fondo quasi
+    # fresco, l'anziano poco resistente perde molto, mai sotto il minimo.
     azioni = 385
-    giovane = giocatore(1, anni=24, fisico=3.0, resistenza_base=5.0, resistenza_allenata=5.0)
+    giovane = giocatore(1, anni=24, fisico=3.0, resistenza_base=3.0, resistenza_allenata=5.0)
     anziano = giocatore(2, anni=65, fisico=3.0, resistenza_base=1.5)
     eff_giovane = efficienza(azioni, ritmo_della_fatica(giovane, TARATURA), TARATURA)
     eff_anziano = efficienza(azioni, ritmo_della_fatica(anziano, TARATURA), TARATURA)

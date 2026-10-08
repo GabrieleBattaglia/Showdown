@@ -1,7 +1,8 @@
 """
 Test del valore complessivo della tappa 9: con i pesi della tappa 8 è l'indice di prima, le due
 parti sommano al totale, i pesi non sono negativi, un mancino specchiato vale quanto il
-destrimano, e con i pesi misurati dalla taratura un mondo appena nato ha la mediana attorno a 140
+destrimano più il suo tratto, che sta fra 2 e 6 punti come vuole Gabriele, decisione D26, e con
+i pesi misurati dalla taratura un mondo appena nato ha la mediana attorno a 140
 e lo stesso monte stipendi di prima, perché l'economia della decisione D22 non cambi.
 """
 
@@ -91,6 +92,12 @@ def test_un_mancino_specchiato_vale_quanto_il_destrimano(giocatori):
         _specchia(g)
         assert valore.caratteristiche(g) == pytest.approx(prima)
         assert valore.indice(g) == pytest.approx(indice + SCALA_VALORE_B * PESI_TRATTI["mancino"])
+
+
+def test_il_vantaggio_del_mancino_resta_nella_banda_di_gabriele():
+    # D26: il vantaggio del mancino nel valore resta piccolo ma visibile, fra 2 e 6 punti. Il peso
+    # è la media di quattro semi della taratura, perché con un seme solo andava da 2,9 a 5,6.
+    assert 2.0 <= SCALA_VALORE_B * PESI_TRATTI["mancino"] <= 6.0
 
 
 def test_l_ambidestro_fa_la_media_dei_lati(giocatori):

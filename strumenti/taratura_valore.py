@@ -15,12 +15,21 @@ sarebbero un centinaio e gli ambidestri una sessantina, e il loro peso uscirebbe
 Secondo, la regressione: i minimi quadrati del rating sulle caratteristiche del valore, prese per
 ruolo come in valore.py, e sui quattro tratti, con tre regressori di controllo, temperamento,
 lettura del gioco e fattore d'età della stanchezza, che si misurano ma non entrano nell'indice.
+La resistenza ha una colonna sola, col totale. La parte allenata, che nella stanchezza conta anche
+come abitudine ad allenarsi, decisione D26, rende un po' più di quella innata, ma la regressione
+non sa separarle: nelle popolazioni di prova chi allena la resistenza allena anche il resto, e una
+colonna in più per l'allenamento, provata dopo la revisione di D26, usciva negativa da un seme
+all'altro, mentre a coppie l'allenata rende di più. Quanto rende ciascuna lo dice la verifica a
+coppie del quinto passo; con K_ALLENAMENTO_FATICA a 0,3 le due stanno vicine al prezzo unico.
 I colpi e le battute speculari, come il lungolinea sinistro e il destro, hanno un peso solo: la
 differenza fra i due lati nasce dalla popolazione, quasi tutta destrimana, ed è più piccola del
 rumore della misura, che da un seme all'altro la rovescia. Chiusure e blocchi invece restano
 divisi fra dritto e rovescio, perché lì la differenza c'è sempre, e nello stesso verso.
 I pesi non possono essere negativi: si risolve, si azzera il più negativo, si risolve di nuovo.
-Una seconda popolazione, nata da un altro seme, verifica il risultato.
+Una seconda popolazione, nata da un altro seme, verifica il risultato. I primi due passi si
+ripetono su più semi, quattro se non si dice altro, e i pesi sono la media: con un seme solo il
+mancino andava da 2,9 a 5,6 punti di valore secondo il seme, e la bomba scendeva sotto la soglia
+delle caratteristiche quasi inerti in un seme su quattro.
 Terzo, la scala: il mondo maturo di una simulazione lunga, dieci anni in una cartella temporanea,
 fissa A e B perché il valore nuovo conservi due cose del valore della tappa 8, su cui contano
 stipendi e gloria della decisione D22: la mediana, e la media del fattore dello stipendio, cioè e
@@ -39,10 +48,13 @@ Quinto, la verifica a coppie: gli stessi giocatori con un punto in più di preci
 resistenza, innata o allenata, oppure mancini, contro gli stessi avversari e con gli stessi semi.
 Dice quanto valgono davvero nelle partite, e quanto il valore dà loro: la regressione ha un peso
 solo per caratteristica, e dove l'effetto non è una retta, come la resistenza nella stanchezza,
-o dove i giocatori sono pochi, come i mancini, può sbagliare.
+o dove i giocatori sono pochi, come i mancini, può sbagliare. Anche la verifica si fa su tutti i
+semi, con 480 soggetti per seme, e somma i loro incontri: con duecento soggetti e un seme solo il
+mancino oscillava fra 1 e 5,5 punti, e non poteva confermare la banda da 2 a 6 di Gabriele. Il
+rapporto dà anche il mancino seme per seme, con l'errore della media.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/taratura_valore.py
-    python strumenti/taratura_valore.py --seme 9 --mondo salvato --rapporto taratura_valore.txt
+    python strumenti/taratura_valore.py --semi 9 19 29 39 --mondo salvato --rapporto taratura_valore.txt
 """
 
 import argparse
@@ -372,35 +384,63 @@ def _coppie_di_un_gruppo(soggetti, avversari, seme, taratura):
     return conti
 
 
-def verifica_a_coppie(soggetti, avversari, seme, pesi, tratti, a, b, taratura=TARATURA, processi=1):
+def _somma_conti(primi, secondi):
+    return [[x + y for x, y in zip(c, p, strict=True)] for c, p in zip(primi, secondi, strict=True)]
+
+
+def verifica_a_coppie(gruppi, pesi, tratti, a, b, taratura=TARATURA, processi=1):
     """
     Il quinto passo: quanto valgono davvero nelle partite alcune modifiche, misurate a coppie, gli
     stessi soggetti contro gli stessi avversari e con gli stessi semi, e quanto dà loro il valore.
-    Il rating guadagnato si porta in punti di valore con quello delle modifiche di riferimento,
-    difesa, chiusure, forza e attacco, che il valore pesa giuste. La regressione dà un peso solo a
-    ogni caratteristica: la resistenza, che conta per la stanchezza in modo diverso se innata o
-    allenata, e il mancino, portato da pochi giocatori, sono i punti dove può sbagliare di più.
+    I gruppi sono terne di soggetti, avversari e seme, una per seme della taratura: i loro
+    incontri si sommano, e il mancino, che oscilla di più, si dà anche gruppo per gruppo, con
+    l'errore della media. Il rating guadagnato si porta in punti di valore con quello delle
+    modifiche di riferimento, difesa, chiusure, forza e attacco, che il valore pesa giuste. La
+    regressione dà un peso solo a ogni caratteristica: la resistenza allenata, che conta anche come
+    abitudine ad allenarsi, rende un po' più di quella innata, e il prezzo unico deve stare fra le
+    due; il mancino, portato da pochi giocatori, è il punto dove la regressione oscilla di più.
     """
+    lavori = [(indice, soggetti[i::processi], avversari, seme) for indice, (soggetti, avversari, seme) in enumerate(gruppi) for i in range(max(1, processi))]
     if processi <= 1:
-        conti = _coppie_di_un_gruppo(soggetti, avversari, seme, taratura)
+        parziali = [_coppie_di_un_gruppo(soggetti, avversari, seme, taratura) for _indice, soggetti, avversari, seme in lavori]
     else:
         from taratura_valore import _coppie_di_un_gruppo as lavoro
-        gruppi = [soggetti[i::processi] for i in range(processi)]
-        conti = None
         with ProcessPoolExecutor(max_workers=processi) as esecutore:
-            for parziale in esecutore.map(lavoro, gruppi, [avversari] * processi, [seme] * processi, [taratura] * processi):
-                conti = parziale if conti is None else [[x + y for x, y in zip(c, p, strict=True)] for c, p in zip(conti, parziale, strict=True)]
-    rating = [math.log(fatti / subiti) - math.log(conti[0][0] / conti[0][1]) for fatti, subiti in conti]
+            parziali = list(esecutore.map(lavoro, [x[1] for x in lavori], [x[2] for x in lavori], [x[3] for x in lavori], [taratura] * len(lavori)))
+    per_gruppo = [None] * len(gruppi)
+    for (indice, *_resto), parziale in zip(lavori, parziali, strict=True):
+        per_gruppo[indice] = parziale if per_gruppo[indice] is None else _somma_conti(per_gruppo[indice], parziale)
+    totale = per_gruppo[0]
+    for conti in per_gruppo[1:]:
+        totale = _somma_conti(totale, conti)
+    tutti = [g for soggetti, _avversari, _seme in gruppi for g in soggetti]
+    n = len(VERIFICHE)
 
-    def punti_di_valore(modifica):
+    def rating_di(conti):
+        return [math.log(fatti / subiti) - math.log(conti[0][0] / conti[0][1]) for fatti, subiti in conti]
+
+    def punti_di_valore(modifica, soggetti):
         return statistics.fmean(valore.indice(modificato(g, modifica), pesi, tratti, a, b) - valore.indice(g, pesi, tratti, a, b) for g in soggetti)
 
-    n = len(VERIFICHE)
-    per_punto = statistics.fmean(rating[1 + n + i] / punti_di_valore(modifica) for i, modifica in enumerate(RIFERIMENTI))
-    righe = [f"Quinto passo, la verifica a coppie: {len(soggetti)} soggetti destrimani contro {len(avversari)} avversari, con gli stessi semi; "
-             f"un punto di valore vale {numero(1000 * per_punto, 2)} millesimi di rating, misurati su difesa, chiusure, forza e attacco."]
+    def per_punto_di(rating, soggetti):
+        return statistics.fmean(rating[1 + n + i] / punti_di_valore(modifica, soggetti) for i, modifica in enumerate(RIFERIMENTI))
+
+    rating = rating_di(totale)
+    per_punto = per_punto_di(rating, tutti)
+    avversari_per_gruppo = len(gruppi[0][1])
+    righe = [f"Quinto passo, la verifica a coppie: {len(tutti)} soggetti destrimani in {len(gruppi)} gruppi, uno per seme, ciascuno contro {avversari_per_gruppo} avversari, "
+             f"con gli stessi semi; un punto di valore vale {numero(1000 * per_punto, 2)} millesimi di rating, misurati su difesa, chiusure, forza e attacco."]
     for i, (nome, modifica) in enumerate(VERIFICHE):
-        righe.append(f"Nelle partite {nome} vale {numero(rating[1 + i] / per_punto)} punti di valore; il valore gliene dà {numero(punti_di_valore(modifica))}.")
+        righe.append(f"Nelle partite {nome} vale {numero(rating[1 + i] / per_punto)} punti di valore; il valore gliene dà {numero(punti_di_valore(modifica, tutti))}.")
+    indice_mancino = 1 + next(i for i, (_nome, modifica) in enumerate(VERIFICHE) if modifica == "mancino")
+    if len(gruppi) > 1:
+        mancini = []
+        for (soggetti, _avversari, _seme), conti in zip(gruppi, per_gruppo, strict=True):
+            rating_gruppo = rating_di(conti)
+            mancini.append(rating_gruppo[indice_mancino] / per_punto_di(rating_gruppo, soggetti))
+        errore = statistics.stdev(mancini) / math.sqrt(len(mancini))
+        righe.append("Il mancino gruppo per gruppo, nell'ordine dei semi: " + ", ".join(numero(m) for m in mancini)
+                     + f" punti di valore; la media {numero(statistics.fmean(mancini))}, con un errore della media di {numero(errore)}.")
     return righe
 
 
@@ -423,63 +463,91 @@ def blocco_costanti(pesi, tratti, a, b):
     return righe
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Misura i pesi del valore complessivo di MESS sul motore di partita, senza scrivere nulla nel progetto.")
-    parser.add_argument("--giocatori", type=int, default=3200, help="quanti giocatori nella popolazione della regressione, 3200 se non indicato")
-    parser.add_argument("--verifica", type=int, default=400, help="quanti giocatori nella popolazione di verifica, 400 se non indicato")
-    parser.add_argument("--sparring", type=int, default=48, help="quanti sparring fissi, 48 se non indicato")
-    parser.add_argument("--quota-tratti", type=float, default=0.2, help="la frequenza di ogni tratto nelle popolazioni della regressione, 0,2 se non indicata")
-    parser.add_argument("--curva", type=int, default=3000, help="quante partite per la curva del favorito, 3000 se non indicato")
-    parser.add_argument("--coppie", type=int, default=240, help="quanti soggetti nella verifica a coppie, 240 se non indicato, contro 40 sparring; 0 la salta")
-    parser.add_argument("--seme", type=int, default=9, help="il seme della taratura, 9 se non indicato")
-    parser.add_argument("--anni", type=int, default=10, help="gli anni della simulazione lunga per il mondo maturo, 10 se non indicato")
-    parser.add_argument("--mondo", choices=("nuovo", "salvato"), default="nuovo", help="con salvato aggiunge il controllo sul mondo salvato, letto in sola lettura")
-    parser.add_argument("--taratura", type=Path, default=None, help="un file JSON di sostituzioni della taratura del motore")
-    parser.add_argument("--processi", type=int, default=min(8, os.cpu_count() or 1), help="quanti processi giocano le partite del rating, fino a 8 se il computer li ha")
-    parser.add_argument("--rapporto", type=Path, default=None, help="salva il rapporto anche in questo file")
-    argomenti = parser.parse_args()
-    seme = argomenti.seme
-    taratura = carica_taratura(argomenti.taratura) if argomenti.taratura else TARATURA
-    inizio = time.perf_counter()
-    righe = [f"Taratura del valore complessivo sul motore di partita, {time.strftime('%Y-%m-%d %H:%M')}, seme {seme}."]
-    if argomenti.taratura:
-        righe.append(f"Taratura del motore letta da {argomenti.taratura}.")
-
-    # Primo passo: il rating dalle partite contro gli sparring.
+def misura_un_seme(seme, argomenti, taratura):
+    """
+    I primi due passi per un seme: le popolazioni, il rating contro gli sparring e la regressione.
+    Restituisce i pesi normalizzati, i tratti e i controlli nella stessa unità, la popolazione di
+    verifica col suo rating, gli sparring e le misure della regressione.
+    """
     popolazione = genera(argomenti.giocatori, seme, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=1)
     sparring = genera(argomenti.sparring, seme + 1, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=500_001)
     verifica = genera(argomenti.verifica, seme + 2, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=600_001)
     ridistribuisci_tratti(popolazione, argomenti.quota_tratti, seme)
     ridistribuisci_tratti(verifica, argomenti.quota_tratti, seme + 2)
-    terza = genera(800, seme + 3, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=700_001)
     rating_pop = rating(popolazione, sparring, seme * 1000 + 1, taratura, argomenti.processi)
     rating_ver = rating(verifica, sparring, seme * 1000 + 2, taratura, argomenti.processi)
-    partite = (len(popolazione) + len(verifica)) * len(sparring)
-    righe.append(f"Primo passo: {len(popolazione)} giocatori, e {len(verifica)} per la verifica, contro {len(sparring)} sparring fissi, "
-                 f"{partite} incontri al meglio dei 3 set in {numero(time.perf_counter() - inizio)} secondi, con {argomenti.processi} processi.")
-
-    # Secondo passo: la regressione con i pesi non negativi.
     righe_x = [regressori(g) for g in popolazione]
     y = [rating_pop[g.id] for g in popolazione]
     coefficienti, escluse = minimi_quadrati(righe_x, y)
     righe_v = [regressori(g) for g in verifica]
     y_v = [rating_ver[g.id] for g in verifica]
     pesi, tratti, unita = pesi_dai_coefficienti(coefficienti)
-    righe.append(f"Secondo passo: la regressione spiega il {numero(100 * r_quadro(coefficienti, righe_x, y))} per cento della varianza del rating, "
-                 f"e il {numero(100 * r_quadro(coefficienti, righe_v, y_v))} per cento nella popolazione di verifica.")
-    if escluse:
-        righe.append("Pesi azzerati perché sarebbero negativi: " + ", ".join(COLONNE[c] for c in escluse) + ".")
-    vecchio_v = [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in verifica]
-    nuovo_v = [valore.indice(g, pesi, tratti, 0.0, 1.0) for g in verifica]
-    righe.append(f"Nella verifica il rating si lega al valore della tappa 8 con una correlazione di {numero(correlazione(vecchio_v, y_v), 3)}, "
-                 f"e al valore nuovo con {numero(correlazione(nuovo_v, y_v), 3)}.")
+    n = len(GRUPPI) + len(valore.TRATTI)
+    return {"seme": seme, "pesi": pesi, "tratti": tratti, "controlli": {nome: coefficienti[n + i] / unita for i, nome in enumerate(CONTROLLI)},
+            "escluse": [COLONNE[c] for c in escluse], "r2": r_quadro(coefficienti, righe_x, y), "r2_verifica": r_quadro(coefficienti, righe_v, y_v),
+            "verifica": verifica, "rating_verifica": y_v, "sparring": sparring, "partite": (len(popolazione) + len(verifica)) * len(sparring)}
 
-    # Terzo passo: la scala sul mondo maturo.
+
+def elenco(valori):
+    """Numeri separati da virgole, con la e prima dell'ultimo."""
+    testi = [numero(v) if isinstance(v, float) else str(v) for v in valori]
+    return testi[0] if len(testi) == 1 else ", ".join(testi[:-1]) + " e " + testi[-1]
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Misura i pesi del valore complessivo di MESS sul motore di partita, senza scrivere nulla nel progetto.")
+    parser.add_argument("--giocatori", type=int, default=3200, help="quanti giocatori nella popolazione della regressione per ogni seme, 3200 se non indicato")
+    parser.add_argument("--verifica", type=int, default=400, help="quanti giocatori nella popolazione di verifica per ogni seme, 400 se non indicato")
+    parser.add_argument("--sparring", type=int, default=48, help="quanti sparring fissi per ogni seme, 48 se non indicato")
+    parser.add_argument("--quota-tratti", type=float, default=0.2, help="la frequenza di ogni tratto nelle popolazioni della regressione, 0,2 se non indicata")
+    parser.add_argument("--curva", type=int, default=3000, help="quante partite per la curva del favorito, 3000 se non indicato")
+    parser.add_argument("--coppie", type=int, default=480, help="quanti soggetti per seme nella verifica a coppie, 480 se non indicato, contro 40 sparring; 0 la salta")
+    parser.add_argument("--semi", type=int, nargs="+", default=[9, 19, 29, 39], help="i semi della taratura, 9, 19, 29 e 39 se non indicati: i pesi sono la media")
+    parser.add_argument("--anni", type=int, default=10, help="gli anni della simulazione lunga per il mondo maturo, 10 se non indicato")
+    parser.add_argument("--mondo", choices=("nuovo", "salvato"), default="nuovo", help="con salvato aggiunge il controllo sul mondo salvato, letto in sola lettura")
+    parser.add_argument("--taratura", type=Path, default=None, help="un file JSON di sostituzioni della taratura del motore")
+    parser.add_argument("--processi", type=int, default=min(8, os.cpu_count() or 1), help="quanti processi giocano le partite del rating, fino a 8 se il computer li ha")
+    parser.add_argument("--rapporto", type=Path, default=None, help="salva il rapporto anche in questo file")
+    argomenti = parser.parse_args()
+    semi = argomenti.semi
+    primo = semi[0]
+    taratura = carica_taratura(argomenti.taratura) if argomenti.taratura else TARATURA
+    inizio = time.perf_counter()
+    righe = [f"Taratura del valore complessivo sul motore di partita, {time.strftime('%Y-%m-%d %H:%M')}, " + (f"semi {elenco(semi)}." if len(semi) > 1 else f"seme {primo}.")]
+    if argomenti.taratura:
+        righe.append(f"Taratura del motore letta da {argomenti.taratura}.")
+
+    # Primo e secondo passo, per ogni seme: il rating dalle partite contro gli sparring e la
+    # regressione con i pesi non negativi. I pesi sono la media dei semi.
+    misure = [misura_un_seme(seme, argomenti, taratura) for seme in semi]
+    righe.append(f"Primo passo: per ogni seme {argomenti.giocatori} giocatori, e {argomenti.verifica} per la verifica, contro {argomenti.sparring} sparring fissi; "
+                 f"in tutto {sum(m['partite'] for m in misure)} incontri al meglio dei 3 set in {numero(time.perf_counter() - inizio)} secondi, con {argomenti.processi} processi.")
+    pesi = {nome: statistics.fmean(m["pesi"][nome] for m in misure) for nome in costanti.CARATTERISTICHE_VALORE}
+    tratti = {nome: statistics.fmean(m["tratti"][nome] for m in misure) for nome in valore.TRATTI}
+    controlli = {nome: statistics.fmean(m["controlli"][nome] for m in misure) for nome in CONTROLLI}
+    righe.append(f"Secondo passo: la regressione spiega, seme per seme, il {elenco([100 * m['r2'] for m in misure])} per cento della varianza del rating, "
+                 f"e il {elenco([100 * m['r2_verifica'] for m in misure])} per cento nella popolazione di verifica."
+                 + (" I pesi sono la media dei semi." if len(misure) > 1 else ""))
+    for m in misure:
+        if m["escluse"]:
+            righe.append(f"Pesi azzerati perché sarebbero negativi, col seme {m['seme']}: " + ", ".join(m["escluse"]) + ".")
+    vecchio, nuovo = [], []
+    for m in misure:
+        vecchio.append(correlazione([valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in m["verifica"]], m["rating_verifica"]))
+        nuovo.append(correlazione([valore.indice(g, pesi, tratti, 0.0, 1.0) for g in m["verifica"]], m["rating_verifica"]))
+    righe.append(f"Nella verifica il rating si lega al valore della tappa 8 con una correlazione media di {numero(statistics.fmean(vecchio), 3)}, "
+                 f"e al valore nuovo, coi pesi medi, con {numero(statistics.fmean(nuovo), 3)}.")
+    b_costanti = costanti.SCALA_VALORE_B
+    if len(misure) > 1:
+        righe.append("I tratti seme per seme, in punti di valore con la scala di costanti.py, B " + numero(b_costanti, 4) + ": "
+                     + "; ".join(f"{nome} {elenco([b_costanti * m['tratti'][nome] for m in misure])}" for nome in valore.TRATTI) + ".")
+
+    # Terzo passo: la scala sul mondo maturo, col primo seme.
     inizio_mondo = time.perf_counter()
-    maturo, _racconto = simula(argomenti.anni, seme, stampa=None)
+    maturo, _racconto = simula(argomenti.anni, primo, stampa=None)
     attivi = in_attivita(maturo)
     a, b = scala(attivi, pesi, tratti)
-    righe.append(f"Terzo passo: il mondo maturo di {argomenti.anni} anni simulati, {len(attivi)} giocatori in attività, in {numero(time.perf_counter() - inizio_mondo)} secondi. "
+    righe.append(f"Terzo passo: il mondo maturo di {argomenti.anni} anni simulati col seme {primo}, {len(attivi)} giocatori in attività, in {numero(time.perf_counter() - inizio_mondo)} secondi. "
                  f"La prima stima della scala, che conserva la mediana del valore di prima e il monte stipendi di questo mondo fermo: A {numero(a, 2)}, B {numero(b, 4)}. "
                  "Quella vera si cerca con simulazione_lunga.py --cerca-scala, dopo aver copiato i pesi.")
     vecchi = [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in attivi]
@@ -492,7 +560,7 @@ def main():
         salvati = mondo_salvato()
         righe.append(descrivi_distribuzione(f"Il valore di prima nel mondo salvato, {len(salvati)} giocatori", [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in salvati]))
         righe.append(descrivi_distribuzione("Il valore nuovo nel mondo salvato", [valore.indice(g, pesi, tratti, a, b) for g in salvati]))
-    neonati = genera(1000, seme + 4, quota_allenati=0.0, esperienza=(0, 0), primo_id=800_001)
+    neonati = genera(1000, primo + 4, quota_allenati=0.0, esperienza=(0, 0), primo_id=800_001)
     righe.append(descrivi_distribuzione("Il valore nuovo di mille neonati", [valore.indice(g, pesi, tratti, a, b) for g in neonati]))
 
     # Quarto passo: il rapporto.
@@ -504,7 +572,6 @@ def main():
     righe.append("I tratti in punti di valore: " + "; ".join(f"{nome} {numero(b * tratti[nome])}" for nome in valore.TRATTI) + ".")
     # La scala vera la cerca poi la simulazione lunga: con quella già scritta in costanti.py i
     # punti di valore crescono o calano tutti nello stesso rapporto, e i tratti si leggono così.
-    b_costanti = costanti.SCALA_VALORE_B
     righe.append(f"Con la scala di costanti.py, B {numero(b_costanti, 4)}, i punti di valore si moltiplicano per {numero(b_costanti / b, 3)}: "
                  + "; ".join(f"{nome} {numero(b_costanti * tratti[nome])}" for nome in valore.TRATTI)
                  + f"; un punto di precisione {numero(b_costanti * pesi['precisione'], 2)}, uno di resistenza {numero(b_costanti * pesi['resistenza'], 2)}.")
@@ -516,20 +583,23 @@ def main():
                      + ", ".join(inerti) + ". È un difetto da correggere nel motore, non nel valore.")
     else:
         righe.append("Nessuna caratteristica è quasi inerte: tutte pesano almeno un quarto della media di quelle di gioco.")
-    n = len(GRUPPI) + len(valore.TRATTI)
-    effetto_temperamento = coefficienti[n] * 1.6 / unita * b
-    effetto_lettura = coefficienti[n + 1] * (lettura_possibile(_Esperto(12.0), TARATURA)) / unita * b
-    effetto_eta = coefficienti[n + 2] / unita * b
-    righe.append(f"Il temperamento, dal calmissimo di tau meno 0,8 all'impetuoso di tau 0,8, vale {numero(effetto_temperamento)} punti di valore, bersaglio entro 5.")
-    righe.append(f"L'esperienza di carriera, da 0 a 12, vale {numero(effetto_lettura)} punti di valore; un punto di fattore d'età della stanchezza ne vale {numero(effetto_eta)}.")
+    righe.append(f"Il temperamento, dal calmissimo di tau meno 0,8 all'impetuoso di tau 0,8, vale {numero(controlli['temperamento'] * 1.6 * b)} punti di valore, bersaglio entro 5.")
+    righe.append(f"L'esperienza di carriera, da 0 a 12, vale {numero(controlli['lettura'] * lettura_possibile(_Esperto(12.0), TARATURA) * b)} punti di valore; "
+                 f"un punto di fattore d'età della stanchezza ne vale {numero(controlli['fattore_eta'] * b)}.")
     righe.append("La curva del favorito, col valore nuovo, su una terza popolazione:")
+    terza = genera(800, primo + 3, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=700_001)
     indice_terza = {g.id: valore.indice(g, pesi, tratti, a, b) for g in terza}
-    righe.extend(curva_del_favorito(terza, indice_terza, argomenti.curva, seme * 1000 + 3, taratura))
+    righe.extend(curva_del_favorito(terza, indice_terza, argomenti.curva, primo * 1000 + 3, taratura))
 
-    # Quinto passo: la verifica a coppie.
+    # Quinto passo: la verifica a coppie, su tutti i semi, con soggetti destrimani nati apposta.
     if argomenti.coppie:
-        soggetti = [g for g in verifica if not g.mancino and not g.ambidestro][:argomenti.coppie]
-        righe.extend(verifica_a_coppie(soggetti, sparring[:40], seme * 1000 + 4, pesi, tratti, a, b, taratura, argomenti.processi))
+        gruppi = []
+        for m in misure:
+            seme = m["seme"]
+            candidati = genera(2 * argomenti.coppie, seme + 5, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=1_000_001)
+            soggetti = [g for g in candidati if not g.mancino and not g.ambidestro][:argomenti.coppie]
+            gruppi.append((soggetti, m["sparring"][:40], seme * 1000 + 4))
+        righe.extend(verifica_a_coppie(gruppi, pesi, tratti, a, b, taratura, argomenti.processi))
     righe.append("Il blocco da copiare in costanti.py, con la prima stima della scala:")
     righe.extend(blocco_costanti(pesi, tratti, a, b))
     righe.append(f"Taratura completata in {numero(time.perf_counter() - inizio)} secondi.")

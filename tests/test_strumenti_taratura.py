@@ -1,8 +1,11 @@
 """
-Test dei conti della taratura del valore, strumenti/taratura_valore.py, senza giocare partite: i
-minimi quadrati con i pesi non negativi, la prima stima della scala che conserva mediana e monte
-stipendi, le coppie speculari di colpi e battute che hanno un peso solo, e la ricerca della scala
-vera per bisezione di strumenti/simulazione_lunga.py, con una simulazione finta.
+Test dei conti della taratura del valore, strumenti/taratura_valore.py, quasi senza giocare
+partite: i minimi quadrati con i pesi non negativi, la prima stima della scala che conserva
+mediana e monte stipendi, le coppie speculari di colpi e battute che hanno un peso solo, e la
+ricerca della scala vera per bisezione di strumenti/simulazione_lunga.py, con una simulazione
+finta. Dalla revisione di D26: la resistenza ha un prezzo solo, la verifica a coppie somma più
+gruppi con poche partite, e la sonda della stanchezza del banco misura soltanto giocatori che
+possono esistere.
 """
 
 import math
@@ -15,8 +18,10 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 
+import banco_partite as bp
 import simulazione_lunga as sl
 import taratura_valore as tv
+from aiuti_motore import giocatore
 
 import costanti
 
@@ -80,3 +85,34 @@ def test_la_scala_si_cerca_per_bisezione_sulla_cassa(monkeypatch):
     assert a + b * 100.0 == pytest.approx(138.0)
     assert righe[-1].startswith("La scala trovata, da copiare in costanti.py")
     assert sl.PESI_TAPPA_8 is tv.PESI_TAPPA_8
+
+
+def test_la_resistenza_ha_un_prezzo_solo_comunque_sia_divisa():
+    # Revisione di D26: la resistenza entra nella regressione col totale, innata o allenata che
+    # sia; quanto rende in più la parte allenata, come abitudine ad allenarsi, lo dice la verifica
+    # a coppie, perché nelle popolazioni di prova la regressione non sa separarla.
+    innato = giocatore(1, anni=27, resistenza_base=3.0, resistenza_allenata=0.0)
+    allenato = giocatore(1, anni=27, resistenza_base=1.0, resistenza_allenata=2.0)
+    assert tv.regressori(innato) == tv.regressori(allenato)
+    assert "allenamento" not in tv.COLONNE and tv.COLONNE.count("resistenza") == 1
+
+
+def test_la_verifica_a_coppie_somma_i_gruppi_e_da_il_mancino_per_seme():
+    soggetti = [giocatore(10 + i, valore=10.0 + 4 * i) for i in range(2)]
+    avversari = [giocatore(100 + i, valore=12.0) for i in range(2)]
+    altri = [giocatore(20 + i, valore=14.0 + 4 * i) for i in range(2)]
+    righe = tv.verifica_a_coppie([(soggetti, avversari, 1), (altri, avversari, 2)], costanti.PESI_VALORE, costanti.PESI_TRATTI,
+                                 costanti.SCALA_VALORE_A, costanti.SCALA_VALORE_B)
+    assert righe[0].startswith("Quinto passo, la verifica a coppie: 4 soggetti destrimani in 2 gruppi")
+    assert len(righe) == 2 + len(tv.VERIFICHE)
+    assert righe[-1].startswith("Il mancino gruppo per gruppo")
+
+
+def test_la_sonda_della_stanchezza_misura_giocatori_possibili():
+    # La resistenza innata nasce fra 0 e il 60 per cento del suo tetto, cioè 3, e non cresce;
+    # l'allenata arriva a 5. Un giovane con 5 di innata, o un trentenne con 5 senza allenarsi,
+    # nel mondo non esistono.
+    innata_massima = costanti.MAX_PRECISIONE_RESISTENZA * 0.6
+    for descrizione, _anni, innata, allenata, _dove, _intervallo in bp.CASI_FATICA:
+        assert 0.0 <= innata <= innata_massima, descrizione
+        assert 0.0 <= allenata <= costanti.MAX_ALLENATO_FISICO, descrizione

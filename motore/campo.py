@@ -108,8 +108,8 @@ def allenamento(g):
 def ritmo_della_fatica(g, taratura):
     """
     Quanto in fretta il giocatore si stanca, uno per un trentenne con resistenza 5 che non si
-    allena: cresce con l'età, sopra i 30 anni e sotto i 16, e cala con la resistenza e con
-    l'allenamento.
+    allena, un riferimento di calcolo: nel mondo l'innata arriva al massimo a 3. Cresce con l'età,
+    sopra i 30 anni e sotto i 16, e cala con la resistenza totale e, meno, con l'allenamento.
     """
     t = taratura
     anni = g.eta_anni

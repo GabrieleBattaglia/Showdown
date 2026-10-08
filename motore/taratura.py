@@ -96,8 +96,10 @@ class Taratura:
     # larga, lo stesso divario di forza dà un distacco più grande, e nel mondo salvato il favorito
     # con oltre il 30 per cento di distacco vinceva soltanto l'83 per cento. G0 è sceso da meno
     # 1,7 a meno 1,83, perché con la precisione dimezzata, la stanchezza che si accumula e la
-    # pendenza più alta i goal erano saliti al 60 per cento dei punti, il bordo della banda.
-    G0: float = -1.83
+    # pendenza più alta i goal erano saliti al 60 per cento dei punti, il bordo della banda; poi a
+    # meno 1,86 dopo la revisione di D26, perché con la stanchezza nuova, più tardiva, al meglio
+    # dei 3 si sbaglia un po' meno, e i goal erano risaliti al 59,6 per cento.
+    G0: float = -1.86
     KG: float = 2.0
     F0: float = -3.9
     KF: float = 1.0
@@ -179,21 +181,32 @@ class Taratura:
     # Per ora quanto si allena lo dice la parte allenata della resistenza; la costanza
     # dell'allenamento arriverà con la tappa 11.
     # FORMA_FATICA è nuova: con 1 la stanchezza cresceva più in fretta alle prime azioni e poi
-    # rallentava; con 1,5 si accumula, piano nel primo set e di più verso la fine di un incontro
-    # lungo. Così al meglio dei 3, su cui si misura il valore, la resistenza e l'allenamento
-    # pesano poco, e al meglio dei 5 separano chi regge da chi crolla, come vuole Gabriele: il
-    # giovane molto resistente e allenato arriva al quinto set quasi fresco. FATICA_SCALA era 600 e
-    # ANNI_FATICA 20: con la curva nuova il sessantenne poco resistente scendeva sotto la banda.
+    # rallentava; ora si accumula, piano nei primi set e di più verso la fine di un incontro lungo.
+    # Così al meglio dei 3, su cui si misura il valore, la resistenza pesa poco, e al meglio dei 5
+    # separa chi regge da chi crolla, come vuole Gabriele: il giovane molto resistente e allenato
+    # arriva al quinto set quasi fresco, l'anziano poco resistente ci arriva sfinito.
+    # Dopo la revisione della decisione D26 K_ALLENAMENTO_FATICA è sceso da 1 a 0,3. La parte
+    # allenata conta già nella resistenza totale, e con 1 contava una seconda volta tanto da
+    # valere più del doppio di un punto innato: resistenza 5 tutta allenata reggeva più di 6
+    # innata. Con 0,3 la resistenza della scheda resta il fattore principale: fra due giocatori
+    # possibili, con l'innata fino a 3 e l'allenata fino a 5, chi ha un punto in più di
+    # resistenza totale si stanca sempre più piano, comunque sia divisa. Perché il giovane più
+    # resistente che possa esistere, 3 innata e 5 allenata, reggesse lo stesso i cinque set, la
+    # resistenza conta di più per punto, RESISTENZA_PER_PUNTO da 0,08 a 0,12 e RESISTENZA_BASE da
+    # 0,6 a 0,4, e la curva è più tardiva, FORMA_FATICA da 1,5 a 2,5; ANNI_FATICA è passato da 25
+    # a 30, perché il sessantenne restasse nella sua banda. Il trentenne con resistenza 5 senza
+    # allenamento, il riferimento del ritmo 1, è soltanto un conto: nel mondo l'innata nasce fra 0
+    # e 3 e non cresce.
     FATICA_MAX: float = 0.35
     FATICA_SCALA: float = 500.0
-    FORMA_FATICA: float = 1.5
+    FORMA_FATICA: float = 2.5
     ETA_INIZIO_FATICA: float = 30.0
-    ANNI_FATICA: float = 25.0
+    ANNI_FATICA: float = 30.0
     ETA_FATICA_GIOVANI: float = 16.0
     FATICA_GIOVANI_PER_ANNO: float = 0.10
-    RESISTENZA_BASE: float = 0.6
-    RESISTENZA_PER_PUNTO: float = 0.08
-    K_ALLENAMENTO_FATICA: float = 1.0
+    RESISTENZA_BASE: float = 0.4
+    RESISTENZA_PER_PUNTO: float = 0.12
+    K_ALLENAMENTO_FATICA: float = 0.3
     K_FATICA_FALLI: float = 1.5
     # Lettura del gioco, esperienza e temperamento. K_ESP_FALLI era 0,35: gli esperti facevano
     # dal 14 al 22 per cento di falli in meno secondo il seme, al bordo della banda.
@@ -222,9 +235,11 @@ class Taratura:
     # di questa quota. Durante l'incontro il difensore si abitua, come capisce l'avversario: per
     # la sua lettura del gioco, costruita con le parate contro i mancini, al ritmo di
     # COLPI_PER_CAPIRE. La ribattuta, che torna piano, non sorprende nessuno. Con 0,03 il mancino
-    # vale da 4 a 5 punti di valore, nelle prove a coppie e nel peso del valore, dentro la banda da
-    # 2 a 6 di Gabriele; senza la sorpresa, con la sola abitudine degli avversari, non arrivava a
-    # un punto.
+    # vale 3,6 punti di valore nelle prove a coppie, media di quattro semi con 1920 soggetti, e 4
+    # nel peso del valore, dentro la banda da 2 a 6 di Gabriele; senza la sorpresa, con la sola
+    # abitudine degli avversari, non arrivava a un punto. Un seme solo oscilla fra 2 e 5 punti:
+    # la revisione di D26 aveva trovato 5,6 nel peso e 3,3 nelle partite, e la differenza veniva
+    # dal seme unico della taratura, non dalla sorpresa.
     SORPRESA_MANCINO: float = 0.03
     # Gli imprevisti a palla ferma. P_SANZIONE era 0,0010, e le ammonizioni stavano al bordo
     # basso della banda.
@@ -276,8 +291,10 @@ class Taratura:
     DURATA_TRATTENUTA: tuple = (2.3, 3.0)
     # Era 1,5: l'incontro al meglio dei 3 durava meno di 12 minuti simulati; 3,5 dopo la taratura,
     # 4,3 con la decisione D26, perché con la pendenza dei goal più alta gli incontri si erano
-    # accorciati di nuovo a 11,9 minuti.
-    PAUSA_FRA_PUNTI: float = 4.3
+    # accorciati di nuovo a 11,9 minuti; 5,5 dopo la revisione di D26, perché su otto semi i 4,3
+    # davano in media 11,9 minuti, sotto la banda in sei semi su otto. Ogni secondo di pausa
+    # allunga l'incontro di poco più di un terzo di minuto, con circa 22 punti a incontro.
+    PAUSA_FRA_PUNTI: float = 5.5
     DURATA_CAMBIO_ATTREZZO: float = 30.0
     INTERVALLO_RISCALDAMENTO: tuple = (2.0, 3.5)
     # La lettura delle formazioni dopo il sorteggio della gara a squadre, regola IBSA 22.5.

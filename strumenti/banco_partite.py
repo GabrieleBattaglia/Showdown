@@ -15,9 +15,9 @@ penalità, si giudicano con l'intervallo di Poisson, e le bande del meglio dei 3
 Il temperamento si misura con una sonda a coppie, gli stessi giocatori impetuosi e calmi contro gli
 stessi avversari e con gli stessi semi, perché il confronto fra gruppi di giocatori diversi è
 confuso dalle altre differenze fra loro. Al meglio dei 5 aggiunge la sonda della stanchezza, un
-trentenne resistente e un sessantenne poco resistente, e dalla decisione D26 un giovane molto
-resistente e allenato e un anziano poco resistente a fine quinto set, che la popolazione di prova
-da sola non contiene. I rapporti di prima e dopo la taratura della tappa 9
+trentenne con la resistenza innata più alta e un sessantenne poco resistente, e dalla decisione D26
+un giovane molto resistente e allenato e un anziano poco resistente a fine quinto set, che la
+popolazione di prova da sola non contiene: tutti giocatori che nel mondo possono esistere. I rapporti di prima e dopo la taratura della tappa 9
 stanno accanto, in banco_partite_prima.txt e banco_partite_dopo.txt.
 Il mondo predefinito è una popolazione di prova di strumenti/popolazione_di_prova.py, col 60 per
 cento di allenati e l'esperienza fino a 12; con --mondo salvato si leggono in sola lettura i
@@ -165,7 +165,7 @@ class Banco:
         self.invarianti = 0
         self.gruppi = {"impetuosi": Counter(), "calmi": Counter(), "esperti": Counter(), "inesperti": Counter()}
         self.lettura = {"esperti": Counter(), "inesperti": Counter()}
-        self.fatica = {"giovani resistenti": [], "anziani poco resistenti": []}
+        self.fatica = {"trentenni con la resistenza innata più alta": [], "anziani poco resistenti": []}
         self.infortuni = []
         self._dp = {}
 
@@ -226,11 +226,14 @@ class Banco:
                         self.lettura[nome]["laterali"] += stats.attacchi_verso[debole] + stats.attacchi_verso[forte]
             anni = g.eta_anni
             resistenza = g._get_valore_totale("resistenza_base")
-            # I gruppi del punto 18.16 non allenano la resistenza: dalla decisione D26 chi si
-            # allena si stanca più piano, e lo misura la sonda della stanchezza.
+            # I gruppi del punto 18.16, riletti dopo la revisione della decisione D26, non allenano
+            # la resistenza: chi si allena si stanca più piano, e lo misura la sonda della
+            # stanchezza. Il trentenne ha la resistenza innata più alta che si possa avere, fra 2,5
+            # e 3: l'innata nasce fra 0 e 3 e non cresce, e il vecchio gruppo, con la resistenza da
+            # 4 a 6 senza allenamento, restava sempre vuoto.
             if risultato.formato.set_al_meglio == 5 and g.resistenza_allenata < 0.5:
-                if 25 <= anni <= 35 and 4 <= resistenza <= 6:
-                    self.fatica["giovani resistenti"].append(stats.eff_finale)
+                if 25 <= anni <= 35 and g.resistenza_base >= 2.5:
+                    self.fatica["trentenni con la resistenza innata più alta"].append(stats.eff_finale)
                 elif 55 <= anni <= 65 and resistenza <= 3:
                     self.fatica["anziani poco resistenti"].append(stats.eff_finale)
             if not g.ambidestro:
@@ -398,7 +401,7 @@ def rapporto(banco, intestazione, pari_forti, set_al_meglio=3, sonde=()):
             bersagli.append((f"Attacchi laterali sul lato debole, {nome}", quota, intervallo))
     for nome, valori in banco.fatica.items():
         if valori:
-            intervallo = (0.86, 0.93) if nome == "giovani resistenti" else (0.72, 0.82)
+            intervallo = (0.86, 0.93) if nome.startswith("trentenni") else (0.72, 0.82)
             righe.append(f"Stanchezza a fine incontro al meglio di 5, {nome}: efficienza media {numero(statistics.fmean(valori), 3)}, minima {numero(min(valori), 3)}, su {len(valori)} incontri.")
             bersagli.append((f"Efficienza finale, {nome}", statistics.fmean(valori), intervallo))
     if banco.infortuni:
@@ -424,12 +427,17 @@ def rapporto(banco, intestazione, pari_forti, set_al_meglio=3, sonde=()):
 
 
 # I casi della sonda della stanchezza: descrizione, anni, resistenza innata e allenata, dove si
-# misura e bersaglio. I primi due sono quelli del punto 18.16 del progetto, misurati su tutti gli
-# incontri al meglio di 5; gli altri due vengono dalla decisione D26, e si misurano a fine quinto set.
+# misura e bersaglio. Sono giocatori che nel mondo possono esistere: la resistenza innata nasce fra
+# 0 e 3 e non cresce, l'allenata arriva a 5. I primi due sono quelli del punto 18.16 del progetto,
+# misurati su tutti gli incontri al meglio di 5; il trentenne, che il progetto voleva con
+# resistenza 5, è riletto con la resistenza innata più alta, 3, senza allenamento, perché una
+# resistenza 5 senza allenamento non esiste, e dalla decisione D26 l'allenamento conta anche da
+# solo. Gli altri due vengono dalla decisione D26, e si misurano a fine quinto set: il giovane ha
+# la resistenza più alta che si possa avere, 3 innata e 5 allenata.
 CASI_FATICA = (
-    ("un trentenne con resistenza 5, che non si allena", 30, 5.0, 0.0, "tutti", (0.86, 0.93)),
+    ("un trentenne con resistenza 3, la più alta innata, che non si allena", 30, 3.0, 0.0, "tutti", (0.86, 0.93)),
     ("un sessantenne con resistenza 2", 60, 2.0, 0.0, "tutti", (0.72, 0.82)),
-    ("un giovane di 24 anni con resistenza 10, metà allenata", 24, 5.0, 5.0, "quinto", (0.94, 1.0)),
+    ("un giovane di 24 anni con resistenza 8, la più alta possibile, 3 innata e 5 allenata", 24, 3.0, 5.0, "quinto", (0.94, 1.0)),
     ("un anziano di 65 anni con resistenza 1,5, che non si allena", 65, 1.5, 0.0, "quinto", (0.6, 0.78)),
 )
 
@@ -591,7 +599,9 @@ def main():
     sonde = [sonda_temperamento(disponibili, 400, rng, opzioni, formato)]
     righe = rapporto(banco, intestazione, argomenti.pari_forti, argomenti.set, sonde)
     if argomenti.set == 5:
-        righe.extend(sonda_fatica(disponibili, 200, rng, opzioni))
+        # Quattrocento incontri per caso: dei giovani e degli anziani contro il gemello arriva al
+        # quinto set meno della metà, e con duecento la media oscillava di un centesimo.
+        righe.extend(sonda_fatica(disponibili, 400, rng, opzioni))
     if argomenti.squadre:
         righe.extend(gioca_squadre(disponibili, argomenti.squadre, rng, opzioni))
     testo = "\n".join(righe)
