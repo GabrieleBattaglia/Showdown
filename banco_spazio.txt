@@ -1,0 +1,53 @@
+Banco dello spazio, 2026-10-08 19:01, seme 409436.
+Spazio, il volume del lontano, lettera A: 5.
+Spazio, il volume del lontano, lettera B: 5.
+Spazio, il volume del lontano, lettera C: 5.
+Spazio, il volume del lontano, lettera D: 5.
+Spazio, il volume del lontano, lettera E: 5.
+Spazio, il volume del lontano, 2026-10-08 19:03: test superato, nessun commento
+Spazio, il colore del lontano, lettera A: 5.
+Spazio, il colore del lontano, lettera B: 5.
+Spazio, il colore del lontano, lettera C: 5.
+Spazio, il colore del lontano, lettera D: 5.
+Spazio, il colore del lontano, lettera E: 5.
+Spazio, il colore del lontano, 2026-10-08 19:05: test superato, nessun commento
+Spazio, la larghezza della metà lontana, lettera A: 5.
+Spazio, la larghezza della metà lontana, lettera B: 5.
+Spazio, la larghezza della metà lontana, lettera C: 5.
+Spazio, la larghezza della metà lontana, lettera D: 5.
+Spazio, la larghezza della metà lontana, lettera E: 5.
+Spazio, la larghezza della metà lontana, 2026-10-08 19:06: test superato, nessun commento
+Spazio, il volume del lontano, la lettera A era: il lontano 12,7 decibel sotto il vicino.
+Spazio, il volume del lontano, la lettera B era: il lontano 16,9 decibel sotto il vicino, quasi come all'aria aperta.
+Spazio, il volume del lontano, la lettera C era: il lontano 4,2 decibel sotto il vicino; è la versione ripetuta per controllo, identica alla lettera E.
+Spazio, il volume del lontano, la lettera D era: il lontano 8,5 decibel sotto il vicino, la legge di oggi.
+Spazio, il volume del lontano, la lettera E era: il lontano 4,2 decibel sotto il vicino; è la versione ripetuta per controllo, identica alla lettera C.
+Riepilogo, Spazio, il volume del lontano, il lontano 4,2 decibel sotto il vicino: totale 10 con 2 voti, media 5,0, lettere C e E.
+Riepilogo, Spazio, il volume del lontano, il lontano 8,5 decibel sotto il vicino, la legge di oggi: totale 5 con 1 voto, media 5,0, lettera D.
+Riepilogo, Spazio, il volume del lontano, il lontano 12,7 decibel sotto il vicino: totale 5 con 1 voto, media 5,0, lettera A.
+Riepilogo, Spazio, il volume del lontano, il lontano 16,9 decibel sotto il vicino, quasi come all'aria aperta: totale 5 con 1 voto, media 5,0, lettera B.
+Controllo, Spazio, il volume del lontano: le lettere C e E, identiche campione per campione, hanno avuto C 5 e E 5.
+Scelta, Spazio, il volume del lontano: il lontano 8,5 decibel sotto il vicino, la legge di oggi.
+Spazio, il colore del lontano, la lettera A era: cupo con la distanza, la legge di oggi: il taglio scende da 60 centimetri in poi, fino a 2.660 hertz in fondo.
+Spazio, il colore del lontano, la lettera B era: nessuna cupezza: il lontano chiaro quanto il vicino.
+Spazio, il colore del lontano, la lettera C era: cupo solo all'ombra dello schermo, forte: il taglio comincia a scendere a 215 centimetri dalla tua porta e arriva a 2.660 hertz a 300, quanto in fondo oggi; è la versione ripetuta per controllo, identica alla lettera E.
+Spazio, il colore del lontano, la lettera D era: cupo solo all'ombra dello schermo, lieve: il taglio comincia a scendere a 215 centimetri dalla tua porta e arriva a 6.000 hertz a 300.
+Spazio, il colore del lontano, la lettera E era: cupo solo all'ombra dello schermo, forte: il taglio comincia a scendere a 215 centimetri dalla tua porta e arriva a 2.660 hertz a 300, quanto in fondo oggi; è la versione ripetuta per controllo, identica alla lettera C.
+Riepilogo, Spazio, il colore del lontano, nessuna cupezza: il lontano chiaro quanto il vicino: totale 5 con 1 voto, media 5,0, lettera B.
+Riepilogo, Spazio, il colore del lontano, cupo con la distanza, la legge di oggi: il taglio scende da 60 centimetri in poi, fino a 2.660 hertz in fondo: totale 5 con 1 voto, media 5,0, lettera A.
+Riepilogo, Spazio, il colore del lontano, cupo solo all'ombra dello schermo, lieve: il taglio comincia a scendere a 215 centimetri dalla tua porta e arriva a 6.000 hertz a 300: totale 5 con 1 voto, media 5,0, lettera D.
+Riepilogo, Spazio, il colore del lontano, cupo solo all'ombra dello schermo, forte: il taglio comincia a scendere a 215 centimetri dalla tua porta e arriva a 2.660 hertz a 300, quanto in fondo oggi: totale 10 con 2 voti, media 5,0, lettere C e E.
+Controllo, Spazio, il colore del lontano: le lettere C e E, identiche campione per campione, hanno avuto C 5 e E 5.
+Scelta, Spazio, il colore del lontano: cupo con la distanza, la legge di oggi: il taglio scende da 60 centimetri in poi, fino a 2.660 hertz in fondo.
+Spazio, la larghezza della metà lontana, la lettera A era: la metà lontana larga quanto quella vicina, la legge di oggi; è la versione ripetuta per controllo, identica alla lettera E.
+Spazio, la larghezza della metà lontana, la lettera B era: la metà lontana che si stringe dallo schermo in poi, fino al 65 per cento in fondo.
+Spazio, la larghezza della metà lontana, la lettera C era: la metà lontana che si stringe dallo schermo in poi, fino al 10 per cento in fondo: circa l'angolo vero in cuffia, dove i lati pieni stanno a 90 gradi.
+Spazio, la larghezza della metà lontana, la lettera D era: la metà lontana che si stringe dallo schermo in poi, fino al 30 per cento in fondo: circa l'angolo vero, 8,5 gradi dal centro, con le casse a 30 gradi.
+Spazio, la larghezza della metà lontana, la lettera E era: la metà lontana larga quanto quella vicina, la legge di oggi; è la versione ripetuta per controllo, identica alla lettera A.
+Riepilogo, Spazio, la larghezza della metà lontana, la metà lontana larga quanto quella vicina, la legge di oggi: totale 10 con 2 voti, media 5,0, lettere A e E.
+Riepilogo, Spazio, la larghezza della metà lontana, la metà lontana che si stringe dallo schermo in poi, fino al 65 per cento in fondo: totale 5 con 1 voto, media 5,0, lettera B.
+Riepilogo, Spazio, la larghezza della metà lontana, la metà lontana che si stringe dallo schermo in poi, fino al 30 per cento in fondo: circa l'angolo vero, 8,5 gradi dal centro, con le casse a 30 gradi: totale 5 con 1 voto, media 5,0, lettera D.
+Riepilogo, Spazio, la larghezza della metà lontana, la metà lontana che si stringe dallo schermo in poi, fino al 10 per cento in fondo: circa l'angolo vero in cuffia, dove i lati pieni stanno a 90 gradi: totale 5 con 1 voto, media 5,0, lettera C.
+Controllo, Spazio, la larghezza della metà lontana: le lettere A e E, identiche campione per campione, hanno avuto A 5 e E 5.
+Scelta, Spazio, la larghezza della metà lontana: la metà lontana larga quanto quella vicina, la legge di oggi.
+Spazio, tutto insieme: il gruppo non è servito, perché le scelte dei tre gruppi sono proprio lo spazio di oggi.
