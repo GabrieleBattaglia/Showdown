@@ -13,17 +13,19 @@ dell'avversario, uno scambio lungo, un out con la pallina che cade a terra, uno 
 un fallo che fa un rumore suo, la paletta che cade, o se manca il colpo a vuoto o il doppio tocco.
 Ogni punto si sente dalla testata di chi ascolta, di solito il giocatore A, dal fischio che dà il
 via alla battuta fino al fischio della fine; le parole dell'arbitro non hanno un suono e si leggono
-prima, nella cronaca.
+prima, nella cronaca, dove una riga dice anche da che punto comincia il suono.
 Il protocollo è quello degli ascolti di Gabriele. Prima di suonare lo strumento spiega come
-funziona e aspetta il via, poi lascia qualche secondo di silenzio. I punti stanno in tre gruppi,
-che si annunciano e si possono saltare. Per ogni punto scrive chi sei, dove sta l'avversario e
-la cronaca normale del punto, e aspetta Invio prima di farlo sentire; poi spazio lo ripete, quante
-volte si vuole, e Invio passa al successivo; Escape chiude il gruppo. Un tasto premuto mentre il
-punto suona lo ferma e vale subito: spazio lo fa ripartire, Invio passa oltre, Escape chiude il
-gruppo; gli altri tasti non lo fermano. Ogni gruppo si chiude con il menu comune dei collaudi, di
-collaudo_comune di GBUtils: r riascolta il gruppo, c lascia un commento, Invio lo dà per superato,
-Escape lo chiude senza giudizio. Le impressioni vanno nel file ascolto_partita.txt, nella cartella
-del programma, una riga per voce.
+funziona, con la legenda dei suoni provvisori che si sentono nei punti, uno per riga, e aspetta il
+via, poi lascia qualche secondo di silenzio. I punti stanno in tre gruppi, che si annunciano e si
+possono saltare. Per ogni punto scrive chi sei, dove sta l'avversario e la cronaca normale del
+punto, e aspetta Invio prima di farlo sentire; poi spazio lo ripete, quante volte si vuole, e Invio
+passa al successivo; Escape chiude il gruppo. Un tasto premuto mentre il punto suona lo ferma e
+vale subito: spazio lo fa ripartire, Invio passa oltre, Escape chiude il gruppo; gli altri tasti
+non lo fermano. Ogni gruppo si chiude con il menu comune dei collaudi, di collaudo_comune di
+GBUtils: r riascolta il gruppo, c lascia un commento, Invio lo dà per superato, Escape lo chiude
+senza giudizio. Le impressioni vanno nel file ascolto_partita.txt, nella cartella del programma,
+una riga per voce. Di suo lo strumento non scrive righe vuote, perché enter_escape e gruppo vanno
+a capo da sé; le sole che restano vengono dal menu di collaudo_comune, che qui non si tocca.
 I punti si sentono a un livello fisso, con margine: nessun picco supera il tetto della resa,
 qualunque sia il volume degli effetti scelto nel gioco, che qui non conta.
 Uso, dalla cartella del programma: python strumenti/ascolta_partita.py
@@ -83,13 +85,17 @@ class Candidato(NamedTuple):
 
 
 class Punto(NamedTuple):
-    """Un punto scelto per l'ascolto: la chiave, il titolo, chi ascolta, il punto giocato, le righe da leggere e il buffer da sentire."""
+    """
+    Un punto scelto per l'ascolto: la chiave, il titolo, chi ascolta, il punto giocato, le righe da
+    leggere, il buffer da sentire e i ruoli dei suoni che ci sono dentro, per la legenda.
+    """
     chiave: str
     titolo: str
     ascoltatore: str
     candidato: Candidato
     righe: list
     buffer: np.ndarray
+    ruoli: tuple
 
 
 # I punti giocati.
@@ -238,6 +244,35 @@ GRUPPI = (
     ("Partita, i falli", (("out_a_terra", "A"), ("schermo_centrale", "A"), ("rumore", "A"))),
 )
 TITOLO_DALL_ALTRA_PARTE = "la stessa diagonale, ascoltata dall'altra testata del tavolo"
+# La riga della cronaca che dice dove comincia il suono: dal fischio del via, o dalla battuta se
+# chi batte non l'ha aspettato.
+INIZIO_COL_FISCHIO = "Qui comincia il suono: il fischio dell'arbitro dà il via."
+INIZIO_CON_LA_BATTUTA = "Qui comincia il suono, con la battuta."
+# La legenda dei suoni provvisori, nell'ordine in cui si incontrano in un punto: per ogni ruolo
+# della resa, l'evento che rappresenta e com'è il segnaposto; il nome del preset lo aggiunge
+# resa.SUONI. Si stampano soltanto i ruoli che si sentono nei punti scelti.
+LEGENDA = {
+    "fischio_singolo": ("Il fischio dell'arbitro, al via e ai falli", "il bip acuto di fine ricerca di Tornello"),
+    "battuta": ("La battuta", "un urto di legno chiaro"),
+    "secondo_tocco": ("Il secondo tocco della battuta col doppio tocco", "un tonfo cupo brevissimo"),
+    "colpo_a_vuoto": ("Il colpo a vuoto in battuta", "un fruscio di pagina che scende"),
+    "colpo": ("Il colpo d'attacco", "un tonfo secco"),
+    "rotolamento": ("La pallina che rotola", "una pioggia fine che la segue nello spazio"),
+    "sponda": ("La pallina sulla sponda", "una carta sfilata dal mazzo"),
+    "parata": ("La parata", "una carta posata sul tavolo"),
+    "controllo": ("Il controllo, la pallina fermata e scossa", "un fruscio di carte rimescolate"),
+    "corpo": ("La pallina sul corpo", "un impatto percussivo"),
+    "goal": ("Il goal, la pallina in porta", "un colpo di grancassa lontano"),
+    "fischio_doppio": ("Il doppio fischio del goal", "due tic vicinissimi"),
+    "schermo": ("La pallina contro lo schermo", "un colpo che sprofonda"),
+    "terra": ("La pallina che cade a terra", "un impatto percussivo"),
+    "soffitto": ("La pallina al soffitto", "un impatto percussivo"),
+    "tavola_contatto": ("La pallina sulla tavola di contatto", "un impatto percussivo"),
+    "paletta_caduta": ("La paletta che cade", "quattro rimbalzi che calano"),
+    "rottura": ("La paletta o la pallina che si rompe", "un colpo di frusta"),
+    "recupero": ("Il recupero della pallina", "carte scartate che volano"),
+    "fischio_lungo": ("Il fischio lungo della fine del set", "un tick acuto"),
+}
 
 
 def scegli(candidati):
@@ -268,8 +303,12 @@ def presentazione(candidato, ascoltatore):
     righe = [f"Sei {nomi[ascoltatore].testo}, alla tua testata del tavolo; di fronte a te, oltre lo schermo, c'è {avversario.testo}, {il_tuo}; "
              f"l'arbitro sta alla tua {lato}."]
     eventi = list(candidato.momento.eventi)
+    primo = resa.azione(eventi)[0]
     fine = next(i for i, e in enumerate(eventi) if e.tipo in resa.FINE_AZIONE)
     for e in eventi[:fine + 1]:
+        # Le parole che vengono prima si leggono soltanto: una riga dice dove comincia il suono.
+        if e is primo:
+            righe.append(INIZIO_COL_FISCHIO if e.tipo == "FISCHIO" else INIZIO_CON_LA_BATTUTA)
         testo = C.frase(e, nomi, C.NORMALE)
         if testo:
             righe.append(testo)
@@ -277,10 +316,20 @@ def presentazione(candidato, ascoltatore):
 
 
 def componi_punto(candidato, ascoltatore):
-    """Il buffer da sentire: l'azione del punto composta per chi ascolta, al livello della partita, con l'anticipo di silenzio in testa."""
+    """
+    Il buffer da sentire, cioè l'azione del punto composta per chi ascolta, al livello della partita
+    e con l'anticipo di silenzio in testa; e i ruoli dei suoni che ci sono dentro, senza doppioni.
+    """
     composto = resa.componi(resa.azione(candidato.momento.eventi), ascoltatore)
     silenzio = np.zeros((round(ANTICIPO * resa.FS), 2), dtype=np.float32)
-    return np.concatenate([silenzio, resa.con_margine(composto.buffer)])
+    ruoli = tuple(dict.fromkeys(p.ruolo for p in composto.posati))
+    return np.concatenate([silenzio, resa.con_margine(composto.buffer)]), ruoli
+
+
+def legenda(gruppi):
+    """Le righe della legenda: per ogni suono provvisorio che si sente nei punti dei gruppi, l'evento, com'è e il suo preset."""
+    usati = {ruolo for _titolo, punti in gruppi for punto in punti for ruolo in punto.ruoli}
+    return [f"{evento}: {come}, preset {resa.SUONI[ruolo]}." for ruolo, (evento, come) in LEGENDA.items() if ruolo in usati]
 
 
 def prepara(candidati=None):
@@ -300,7 +349,7 @@ def prepara(candidati=None):
                 titolo_punto = TITOLI_DEL_RUMORE[_esito(candidato).causa]
             if ascoltatore != "A":
                 titolo_punto = TITOLO_DALL_ALTRA_PARTE
-            punti.append(Punto(chiave, titolo_punto, ascoltatore, candidato, presentazione(candidato, ascoltatore), componi_punto(candidato, ascoltatore)))
+            punti.append(Punto(chiave, titolo_punto, ascoltatore, candidato, presentazione(candidato, ascoltatore), *componi_punto(candidato, ascoltatore)))
         if punti:
             gruppi.append((titolo, punti))
     return gruppi
@@ -360,17 +409,17 @@ def main():
     print("Mentre un punto suona, spazio lo fa ripartire, Invio passa oltre ed Escape chiude il gruppo.")
     print("A fine gruppo: r riascolta, c commenta, Invio lo dà per superato, Escape lo chiude senza giudizio.")
     print(f"Le impressioni vanno nel file {FILE_DEGLI_ESITI}, una riga per voce.")
+    print("I suoni sono provvisori, scelti dalla collezione. Ecco quelli che senti nei punti, con l'evento che rappresentano:")
+    for riga in legenda(gruppi):
+        print(riga)
+    # enter_escape e gruppo vanno a capo da sé: un print in più farebbe una riga vuota.
     if not enter_escape("\rInvio per cominciare, Escape per uscire\r"):
-        print()
         return 0
-    print()
     time.sleep(SILENZIO_INIZIALE)
     esiti = Annotazioni(percorsi.percorso(FILE_DEGLI_ESITI))
     for titolo, punti in gruppi:
         if not gruppo(titolo, len(punti), "punti"):
-            print()
             continue
-        print()
         ascolta(punti)
         esiti.esito(titolo, riproduci=lambda p=punti: ascolta(p))
     print("Fine dell'ascolto.")

@@ -16,15 +16,17 @@ il ribaltamento dei lati per il giocatore lontano, chiesto da D11, resta in un p
 un passa basso a due poli, il cui taglio scende con la distanza. Lungo i voli posizione, pan, volume
 e taglio seguono la pallina a passi di 5 millesimi, e il rotolamento dura quanto il tratto del volo
 che sta sul tavolo, tagliato da un nastro di rumore sintetizzato una volta sola, con un livello che
-cala con la velocità.
+cala con la velocità. Il volo non dice se un tratto è sul tavolo o in aria: lo dicono il tipo delle
+sue tappe e la causa del colpo che lo lancia, perché la pallina che vola fuori dal tavolo ha le
+stesse tappe di quella che salta la sponda, ma non rotola.
 Le correzioni rispetto al prototipo delle misure, secondo le obiezioni del critico. Il suono si
 sceglie dal tipo dell'evento, dal suo esito e dalla sua causa, non dal solo tipo: il colpo a vuoto
 non ha più il suono della battuta ma il suo, la battuta col doppio tocco fa sentire il secondo tocco,
 la paletta che cade ha il suo suono al posto di quello del colpo o della parata, come vuole D28, e la
 parata che non arriva, o quella che prende il corpo, non fa il rumore della paletta sulla pallina. I
-suoni di rumore, che Acusticator sintetizza diversi ogni volta, hanno quattro varianti, scelte col
-numero dell'evento, così due parate vicine non sono identiche campione per campione; quelli tonali si
-sintetizzano una volta sola. Il livello si tiene con margine: un guadagno fisso di partita e un
+suoni di rumore, che Acusticator sintetizza diversi ogni volta, hanno quattro varianti, che girano
+per ruolo dentro il punto: due parate, due sponde o due controlli di fila non sono mai identici
+campione per campione; quelli tonali si sintetizzano una volta sola. Il livello si tiene con margine: un guadagno fisso di partita e un
 tetto, sotto il quale il buffer scende tutto insieme se un picco lo supera, qualunque sia il volume
 degli effetti della finestra. Le parole dell'arbitro, annuncio, domanda di pronto e chiamata, non
 hanno un suono: nella live le dirà la cronaca, e nell'ascolto libero si leggono prima del punto.
@@ -33,6 +35,7 @@ giocatore, prende un fruscio quasi uguale della collezione. Lo strumento non scr
 il punto si compone al volo.
 """
 
+import collections
 import itertools
 import math
 import sys
@@ -101,8 +104,13 @@ TAPPE_SONORE = {"sponda": "sponda", "curva": "sponda", "schermo": "schermo", "te
 # Il volo non dice se un tratto è sul tavolo o in aria: lo dice il tipo delle sue tappe.
 FINE_IN_ARIA = frozenset(("terra", "soffitto", "sopra_schermo"))
 INIZIO_IN_ARIA = frozenset(("fuori", "soffitto", "tavola_contatto", "sopra_schermo"))
-# Gli eventi che portano un volo da far sentire.
+# Oppure la causa del colpo che lo lancia: con queste la pallina parte in aria e il tavolo non la
+# sente. Per il soffitto e lo schermo lo dicono già le tappe; per il volo fuori dal tavolo no, perché
+# le sue tappe, partenza, fuori e terra, sono quelle della pallina che rotola e salta la sponda.
+CAUSE_IN_ARIA = frozenset(("out_volo", "out_soffitto", "schermo_sopra"))
+# Gli eventi che portano un volo da far sentire, e quelli che lanciano la pallina in un volo.
 CON_VOLO = frozenset(("VOLO", "CONSEGNA", "RISCALDAMENTO_COLPO"))
+LANCI = frozenset(("BATTUTA", "COLPO", "PARATA"))
 # Le parate che non mettono la paletta sulla pallina: quella che non arriva, quella che prende il
 # corpo, che suona con la tappa del volo, e quella a cui cade la paletta, che suona col fallo.
 CAUSE_SENZA_PARATA = frozenset(("body_touch", "body_touch_pieno", "paletta_caduta"))
@@ -113,7 +121,11 @@ PROCEDURA = frozenset(("RECUPERO", "CONSEGNA", "ANNUNCIO", "DOMANDA_PRONTO"))
 
 @dataclass
 class Posato:
-    """Un suono messo nel punto: il ruolo, l'istante, la sorgente mono, le posizioni ai passi di controllo dal suo inizio, una sola se sta fermo."""
+    """
+    Un suono messo nel punto: il ruolo, l'istante, la sorgente mono, le posizioni ai passi di
+    controllo dal suo inizio, una sola se sta fermo; poi il numero dell'evento da cui viene e la
+    variante della sorgente, che conta soltanto per i suoni di rumore.
+    """
     ruolo: str
     t: float
     mono: np.ndarray
@@ -121,6 +133,7 @@ class Posato:
     posizioni: list
     guadagni: np.ndarray | None = None
     evento: int = 0
+    variante: int = 0
 
 
 @dataclass
@@ -154,7 +167,7 @@ def sorgente(ruolo, durata=None, piatto=False, variante=0):
     """
     La sorgente mono di un ruolo: al centro, allungata se si chiede una durata, senza inviluppo se
     piatto. I suoni tonali escono sempre uguali e si sintetizzano una volta; quelli di rumore
-    tengono VARIANTI_RUMORE varianti, e variante, di solito il numero dell'evento, sceglie quale.
+    tengono VARIANTI_RUMORE varianti, e variante sceglie quale: nel punto la dà il giro di Varianti.
     """
     from GBUtils import Acusticator
 
@@ -305,27 +318,49 @@ def suoni_fermi(e):
     return []
 
 
-def _fermo(ruolo, t, pos, numero, mono=None, guadagno=None):
+class Varianti:
+    """
+    Il giro delle varianti dentro un punto: ogni ruolo ha il suo contatore, che dà 0, 1, 2, 3 e
+    ricomincia. Così due suoni di rumore dello stesso ruolo, uno dopo l'altro, non prendono mai la
+    stessa variante; col numero dell'evento non bastava, perché nello scambio gli eventi tornano con
+    un passo di quattro, parata, controllo, colpo e volo, e due parate di fila cadevano quasi sempre
+    sulla stessa.
+    """
+
+    def __init__(self):
+        self._conti = collections.defaultdict(itertools.count)
+
+    def __call__(self, ruolo):
+        return next(self._conti[ruolo]) % VARIANTI_RUMORE
+
+
+def _fermo(ruolo, t, pos, evento, variante=0, mono=None, guadagno=None):
     if mono is None:
-        mono = sorgente(ruolo, variante=numero)
-    return Posato(ruolo, t, mono, np.array([0.0]), [pos], None if guadagno is None else np.array([guadagno]), numero)
+        mono = sorgente(ruolo, variante=variante)
+    return Posato(ruolo, t, mono, np.array([0.0]), [pos], None if guadagno is None else np.array([guadagno]), evento, variante)
 
 
 def _in_aria(prima, dopo):
     return dopo.tipo in FINE_IN_ARIA or prima.tipo in INIZIO_IN_ARIA
 
 
-def posati_del_volo(e):
-    """Il rotolamento lungo il tratto del volo che sta sul tavolo, e i suoni delle tappe: sponde, schermo, terra, corpo."""
+def posati_del_volo(e, varianti=None, causa=None):
+    """
+    Il rotolamento lungo il tratto del volo che sta sul tavolo, e i suoni delle tappe: sponde,
+    schermo, terra, corpo. causa è quella del colpo che ha lanciato il volo, se si conosce.
+    """
     from motore.tavolo import posizione_al_tempo
 
+    if varianti is None:
+        varianti = Varianti()
     volo = e.volo
     posati = []
-    # Il rotolamento va dalla partenza fino alla prima tappa che lascia il tavolo.
-    fine = volo[-1].t
+    # Il rotolamento va dalla partenza fino alla prima tappa che lascia il tavolo; non c'è se la
+    # pallina parte in aria.
+    fine = volo[0].t if causa in CAUSE_IN_ARIA else volo[-1].t
     for prima, dopo in itertools.pairwise(volo):
         if _in_aria(prima, dopo):
-            fine = prima.t
+            fine = min(fine, prima.t)
             break
     durata = fine - volo[0].t
     if durata > 0.02:
@@ -335,22 +370,28 @@ def posati_del_volo(e):
         v = np.interp(volo[0].t + tempi, [tp.t for tp in volo], [tp.v for tp in volo])
         guadagni = GUADAGNO_ROTOLAMENTO * np.clip(np.sqrt(np.maximum(v, 0.0) / V_RIF), 0.15, 1.3)
         posati.append(Posato("rotolamento", volo[0].t, nastro("rotolamento", durata, e.n), tempi, posizioni, guadagni, e.n))
-    for k, tp in enumerate(volo[1:], 1):
+    for tp in volo[1:]:
         ruolo = TAPPE_SONORE.get(tp.tipo)
         if ruolo:
-            posati.append(_fermo(ruolo, tp.t, (tp.x, tp.y), e.n + k))
+            posati.append(_fermo(ruolo, tp.t, (tp.x, tp.y), e.n, varianti(ruolo)))
     return posati
 
 
-def posati_dell_evento(e):
-    """I suoni di un evento: vuoto per quelli che sono stato del gioco, parole o silenzio."""
-    posati = [_fermo(ruolo, e.t + ritardo, e.pos, e.n) for ruolo, ritardo in suoni_fermi(e)]
+def posati_dell_evento(e, varianti=None, causa=None):
+    """
+    I suoni di un evento: vuoto per quelli che sono stato del gioco, parole o silenzio. varianti è il
+    giro del punto, nuovo se manca; causa, per un volo, è quella del colpo che l'ha lanciato.
+    """
+    if varianti is None:
+        varianti = Varianti()
+    posati = [_fermo(ruolo, e.t + ritardo, e.pos, e.n, varianti(ruolo)) for ruolo, ritardo in suoni_fermi(e)]
     if e.tipo == "CONTROLLO":
-        posati.append(_fermo("controllo", e.t, e.pos, e.n, in_fila("controllo", max(e.durata, 0.15), e.n), GUADAGNO_CONTROLLO))
+        variante = varianti("controllo")
+        posati.append(_fermo("controllo", e.t, e.pos, e.n, variante, in_fila("controllo", max(e.durata, 0.15), variante), GUADAGNO_CONTROLLO))
     elif e.tipo == "FISCHIO":
-        posati.append(_fermo(f"fischio_{e.fischio}", e.t, e.pos, e.n, sorgente(f"fischio_{e.fischio}", e.durata)))
+        posati.append(_fermo(f"fischio_{e.fischio}", e.t, e.pos, e.n, mono=sorgente(f"fischio_{e.fischio}", e.durata)))
     if e.volo and e.tipo in CON_VOLO:
-        posati.extend(posati_del_volo(e))
+        posati.extend(posati_del_volo(e, varianti, causa))
     return posati
 
 
@@ -376,10 +417,19 @@ def azione(eventi):
 
 
 def posa(eventi):
-    """I suoni posati di tutti gli eventi, nell'ordine degli eventi."""
+    """
+    I suoni posati di tutti gli eventi, nell'ordine degli eventi, con un solo giro delle varianti
+    per tutto il punto. Ogni volo riceve la causa del colpo che l'ha lanciato: l'ultima battuta,
+    colpo o parata di chi ha colpito.
+    """
+    varianti = Varianti()
     posati = []
+    lancio = None
     for e in eventi:
-        posati.extend(posati_dell_evento(e))
+        if e.tipo in LANCI:
+            lancio = e
+        causa = lancio.causa if e.tipo == "VOLO" and lancio is not None and lancio.chi == e.chi else None
+        posati.extend(posati_dell_evento(e, varianti, causa))
     return posati
 
 

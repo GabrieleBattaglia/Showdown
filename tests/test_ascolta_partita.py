@@ -4,13 +4,18 @@ strumenti/resa_prototipo.py, senza mai suonare: la cassa di Acusticator è sosti
 registratore, e quella vera, se qualcuno la chiamasse, fa fallire la prova. I preset segnaposto:
 esistono, sono tutti diversi, nessuno è della finestra né un'onda quadra. Il suono si sceglie da
 tipo, esito e causa dell'evento; l'azione va dal fischio del via al punto; lo spazio si ribalta per
-l'altro giocatore; i rumori hanno le loro varianti. Poi lo strumento: compone tutti i punti scelti
-senza suonare, nessun buffer supera il margine, i punti sono quelli dichiarati e sempre gli stessi,
-e i tasti e il menu di fine gruppo funzionano con una tastiera finta da copione.
+l'altro giocatore; i rumori hanno le loro varianti, e due dello stesso ruolo di fila non sono mai
+uguali; la pallina che vola fuori dal tavolo non rotola. Poi lo strumento: compone tutti i punti
+scelti senza suonare e senza scrivere, nessun buffer supera il margine, i punti sono quelli
+dichiarati e sempre gli stessi, la cronaca dice dove comincia il suono e la legenda nomina i suoni
+provvisori; i tasti e il menu di fine gruppo funzionano con una tastiera finta da copione, e lo
+strumento non scrive righe vuote di suo.
 """
 
 import collections
+import itertools
 import sys
+import types
 from pathlib import Path
 
 import collaudo_comune
@@ -23,20 +28,34 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 import ascolta_partita as ap
 import resa_prototipo as resa
 
+import percorsi
 import suoni
 from motore import eventi as E
-from motore.eventi import Evento
+from motore.eventi import Evento, Tappa
 from motore.tavolo import vista
+
+# I messaggi del menu di collaudo_comune, che dopo di sé lascia una riga vuota.
+MESSAGGI_DEL_MENU = ("Annotato.", "Segnato come superato.", "Chiuso.")
+
+
+def _vietato(nome, chiamate):
+    """Al posto di una funzione che suona: segna la chiamata e fa fallire la prova."""
+    def chiamata(*_args, **_kwargs):
+        chiamate.append(nome)
+        raise AssertionError(f"una prova avrebbe suonato davvero, con {nome}")
+
+    return chiamata
+
+
+def _vieta_la_cassa(mp, chiamate):
+    for nome in ("riproduci", "ciclo_di", "play", "stop"):
+        mp.setattr(Acusticator, nome, _vietato(f"Acusticator.{nome}", chiamate))
 
 
 @pytest.fixture(autouse=True)
 def cassa_vera_muta(monkeypatch):
     """La cassa vera di Acusticator non deve suonare mai: chi la chiama fa fallire la prova."""
-    def vietato(*_args, **_kwargs):
-        raise AssertionError("una prova avrebbe suonato davvero")
-
-    for nome in ("riproduci", "ciclo_di", "play", "stop"):
-        monkeypatch.setattr(Acusticator, nome, vietato)
+    _vieta_la_cassa(monkeypatch, [])
 
 
 class Cassa:
@@ -98,8 +117,27 @@ def _tastiera(monkeypatch, copione):
 
 
 @pytest.fixture(scope="module")
-def gruppi():
-    return ap.prepara()
+def preparazione(tmp_path_factory):
+    """
+    I gruppi composti una volta per tutto il modulo. Una fixture di modulo parte prima di quelle
+    automatiche di ogni prova, compresi la cassa vietata e il registratore del conftest: perciò le
+    protezioni le mette lei, finché prepara lavora. La cassa vera di Acusticator e il motore dei
+    suoni della finestra sono vietati, e la cartella del programma è una cartella temporanea.
+    Restituisce i gruppi, le chiamate arrivate alle funzioni vietate e la cartella.
+    """
+    chiamate = []
+    cartella = tmp_path_factory.mktemp("ascolto_partita")
+    with pytest.MonkeyPatch.context() as mp:
+        _vieta_la_cassa(mp, chiamate)
+        mp.setattr(suoni, "_riproduci", _vietato("suoni._riproduci", chiamate))
+        mp.setattr(percorsi, "cartella", lambda: str(cartella))
+        gruppi = ap.prepara()
+    return gruppi, chiamate, cartella
+
+
+@pytest.fixture(scope="module")
+def gruppi(preparazione):
+    return preparazione[0]
 
 
 @pytest.fixture(scope="module")
@@ -202,6 +240,45 @@ def test_i_rumori_hanno_le_loro_varianti_e_i_toni_no():
     assert resa.sorgente("colpo", variante=0) is resa.sorgente("colpo", variante=3)
 
 
+def test_due_rumori_di_fila_dello_stesso_ruolo_non_sono_mai_uguali(punti):
+    # Nei punti veri, dove gli eventi dello scambio tornano con un passo di quattro: parate,
+    # sponde, controlli e rotolamenti, uno dopo l'altro, non sono mai lo stesso suono campione per campione.
+    rumori = {ruolo for ruolo, nome in resa.SUONI.items() if Acusticator.preset(nome)[1] in resa.KIND_DI_RUMORE}
+    assert {"parata", "sponda", "controllo", "rotolamento"} <= rumori
+    coppie = collections.Counter()
+    for punto in punti:
+        posati = resa.componi(resa.azione(punto.candidato.momento.eventi), punto.ascoltatore).posati
+        for ruolo in rumori:
+            for a, b in itertools.pairwise(p for p in posati if p.ruolo == ruolo):
+                coppie[ruolo] += 1
+                n = min(len(a.mono), len(b.mono))
+                assert not np.array_equal(a.mono[:n], b.mono[:n]), f"{punto.chiave}, {punto.ascoltatore}: due {ruolo} di fila uguali, eventi {a.evento} e {b.evento}"
+    # Le coppie sono abbastanza perché la prova dica qualcosa: lo scambio lungo da solo ha undici parate.
+    assert coppie["parata"] >= 10 and coppie["controllo"] >= 5 and coppie["sponda"] >= 3, coppie
+
+
+def _volo_fuori(causa, lancio=E.COLPO):
+    """Un colpo, o una battuta, e il suo volo con le tappe dell'out: partenza, fuori dal bordo sinistro e terra."""
+    tappe = (Tappa(5.0, 30.0, 40.0, 400.0, "partenza"), Tappa(5.277, 0.0, 160.0, 320.0, "fuori"), Tappa(5.437, -40.0, 210.0, 0.0, "terra"))
+    esito = "irregolare" if lancio == E.BATTUTA else "fallo"
+    return [_evento(lancio, n=10, chi=1, pos=(30.0, 40.0), esito=esito, causa=causa),
+            _evento(E.VOLO, n=11, chi=1, pos=(-40.0, 210.0), durata=0.437, volo=tappe)]
+
+
+@pytest.mark.parametrize(("causa", "lancio", "rotola"), [
+    ("out_sponda", E.COLPO, True),
+    ("out_volo", E.COLPO, False),
+    ("out_volo", E.BATTUTA, False),
+])
+def test_la_pallina_che_vola_fuori_dal_tavolo_non_rotola(causa, lancio, rotola):
+    # Le tappe sono le stesse: la pallina che salta la sponda rotola fino al bordo, quella che vola fuori no.
+    ruoli = [p.ruolo for p in resa.posa(_volo_fuori(causa, lancio))]
+    assert ("rotolamento" in ruoli) == rotola
+    assert ruoli.count("terra") == 1
+    # Il volo da solo, senza il colpo che lo lancia, resta quello di prima: le tappe non bastano a dirlo in aria.
+    assert "rotolamento" in [p.ruolo for p in resa.posati_dell_evento(_volo_fuori(causa, lancio)[1])]
+
+
 def test_il_margine_tiene_qualunque_livello():
     forte = np.full((1000, 2), 0.5, dtype=np.float32)
     forte[10, 0] = 2.0
@@ -214,7 +291,12 @@ def test_il_margine_tiene_qualunque_livello():
 
 # Lo strumento.
 
-def test_lo_strumento_compone_tutti_i_punti_senza_suonare(gruppi, punti, suonati):
+def test_lo_strumento_compone_tutti_i_punti_senza_suonare(preparazione, punti):
+    gruppi, chiamate, cartella = preparazione
+    # Durante la composizione la cassa vera e i suoni della finestra erano vietati: nessuno li ha
+    # chiamati, e nella cartella del programma non è nato niente.
+    assert chiamate == []
+    assert list(cartella.iterdir()) == []
     assert [titolo for titolo, _punti in gruppi] == [titolo for titolo, _voci in ap.GRUPPI]
     assert [len(p) for _titolo, p in gruppi] == [3, 2, 3]
     anticipo = round(ap.ANTICIPO * resa.FS)
@@ -224,7 +306,7 @@ def test_lo_strumento_compone_tutti_i_punti_senza_suonare(gruppi, punti, suonati
         assert len(buffer) > anticipo + resa.FS
         assert not np.any(buffer[:anticipo])
         assert np.any(buffer[anticipo:anticipo + round(0.05 * resa.FS)]), f"{punto.chiave}: il fischio del via non c'è"
-    assert suonati == []
+        assert punto.ruoli[0] == "fischio_singolo" and set(punto.ruoli) == set(_ruoli(punto))
 
 
 def test_nessun_punto_supera_il_margine(punti):
@@ -278,6 +360,38 @@ def test_i_punti_sono_quelli_dichiarati(punti):
         assert punto.righe[0].startswith(f"Sei {nomi[punto.ascoltatore].testo}, ") and nomi[altro].testo in punto.righe[0]
         assert "l'arbitro sta alla tua " in punto.righe[0]
         assert len(punto.righe) > 3 and all(riga.strip() for riga in punto.righe)
+
+
+def test_la_cronaca_dice_dove_comincia_il_suono(punti):
+    # Dopo l'annuncio, che è soltanto parole, e subito prima della battuta: il fischio del via.
+    for punto in punti:
+        righe = punto.righe
+        assert righe.count(ap.INIZIO_COL_FISCHIO) == 1 and ap.INIZIO_CON_LA_BATTUTA not in righe
+        i = righe.index(ap.INIZIO_COL_FISCHIO)
+        assert i > 1 and righe[i + 1].startswith("Battuta"), righe[i + 1]
+    # Chi batte prima del fischio fa cominciare il suono dalla battuta.
+    candidato = punti[0].candidato
+    eventi = list(candidato.momento.eventi)
+    i = next(i for i, e in enumerate(eventi) if e.tipo == E.BATTUTA)
+    assert eventi[i - 1].tipo == E.FISCHIO
+    eventi[i - 1], eventi[i] = eventi[i], eventi[i - 1]
+    righe = ap.presentazione(candidato._replace(momento=types.SimpleNamespace(eventi=eventi)), "A")
+    assert ap.INIZIO_COL_FISCHIO not in righe
+    assert righe[righe.index(ap.INIZIO_CON_LA_BATTUTA) + 1].startswith("Battuta")
+
+
+def test_la_legenda_nomina_i_suoni_che_si_sentono(gruppi):
+    # Ogni ruolo della resa ha la sua voce, e la legenda stampa soltanto quelli dei punti, col loro preset.
+    assert set(ap.LEGENDA) == set(resa.SUONI)
+    usati = {ruolo for _titolo, punti in gruppi for punto in punti for ruolo in punto.ruoli}
+    righe = ap.legenda(gruppi)
+    assert len(righe) == len(usati) == len(set(righe))
+    for ruolo in usati:
+        evento, come = ap.LEGENDA[ruolo]
+        assert f"{evento}: {come}, preset {resa.SUONI[ruolo]}." in righe
+    assert {"fischio_singolo", "battuta", "parata", "sponda", "rotolamento", "controllo", "goal", "fischio_doppio"} <= usati
+    assert righe[0].startswith("Il fischio dell'arbitro")
+    assert all(riga.strip() and not riga.startswith(("-", "=", "_")) for riga in righe)
 
 
 def test_i_punti_sono_sempre_gli_stessi():
@@ -339,13 +453,23 @@ def test_una_scheda_che_non_risponde_non_ferma_l_ascolto(gruppi, monkeypatch, ca
     assert "la scheda audio non risponde" in capsys.readouterr().out
 
 
+def _enter_escape_finta(risposte):
+    """Al posto di enter_escape di GBUtils: scrive il prompt e va a capo come quella vera, e risponde dal copione."""
+    risposte = iter(risposte)
+
+    def enter_escape(prompt="", *_args, **_kwargs):
+        print(prompt)
+        return next(risposte)
+
+    return enter_escape
+
+
 def test_il_menu_di_fine_gruppo_scrive_una_riga_per_voce(gruppi, cassa, cartella_di_prova, suonati, monkeypatch, capsys):
     monkeypatch.setattr(ap, "prepara", lambda: gruppi)
-    monkeypatch.setattr(ap, "enter_escape", lambda *_a, **_k: True)
+    monkeypatch.setattr(ap, "enter_escape", _enter_escape_finta([True]))
     monkeypatch.setattr(ap.time, "sleep", lambda _secondi: None)
     # Il primo gruppo si ascolta e si commenta, il secondo si salta, il terzo si riascolta con r e si chiude senza giudizio.
-    risposte = iter([True, False, True])
-    monkeypatch.setattr(collaudo_comune, "enter_escape", lambda *_a, **_k: next(risposte))
+    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True, False, True]))
     monkeypatch.setattr(collaudo_comune, "dgt", lambda *_a, **_k: "la diagonale si sente bene ")
     primo, terzo = len(gruppi[0][1]), len(gruppi[2][1])
     _tastiera(monkeypatch, ["\r", "\r"] * primo + ["c", "\r"] + ["\r", "\r"] * terzo + ["r"] + ["\r", "\r"] * terzo + ["\x1b"])
@@ -358,12 +482,19 @@ def test_il_menu_di_fine_gruppo_scrive_una_riga_per_voce(gruppi, cassa, cartella
     scritto = capsys.readouterr().out
     assert scritto.startswith("Ascolto libero della partita di MESS: 3 gruppi, 8 punti, ")
     assert scritto.rstrip().endswith("Fine dell'ascolto.")
+    # La legenda viene prima del via.
+    assert all(f"\n{riga}\n" in scritto.split("\rInvio per cominciare")[0] for riga in ap.legenda(gruppi))
+    # Le sole righe vuote sono quelle che il menu di collaudo_comune lascia dopo i suoi messaggi.
+    righe = scritto.split("\n")
+    vuote = [i for i, riga in enumerate(righe[:-1]) if riga == ""]
+    assert vuote and all(righe[i - 1] in MESSAGGI_DEL_MENU for i in vuote), [righe[i - 1] for i in vuote]
     assert suonati == []
 
 
-def test_senza_il_via_non_suona_niente(gruppi, cassa, cartella_di_prova, monkeypatch):
+def test_senza_il_via_non_suona_niente(gruppi, cassa, cartella_di_prova, monkeypatch, capsys):
     monkeypatch.setattr(ap, "prepara", lambda: gruppi)
-    monkeypatch.setattr(ap, "enter_escape", lambda *_a, **_k: False)
+    monkeypatch.setattr(ap, "enter_escape", _enter_escape_finta([False]))
     assert ap.main() == 0
     assert cassa.suonati == []
     assert not (cartella_di_prova / ap.FILE_DEGLI_ESITI).exists()
+    assert "\n\n" not in capsys.readouterr().out
