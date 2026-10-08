@@ -1,9 +1,10 @@
 """
 Test della cronaca: una frase per ogni tipo d'evento al livello tecnico, nessun separatore grafico e
 nessuna riga vuota, le chiamate FISPIC, l'annuncio dal punto di vista di chi batte, il file nella
-cartella delle cronache con il suffisso per i nomi doppi, e i testi un punto alla volta, anche
-quando una penalità chiude il set; il cambio campo a metà set nella sintetica, la frase del colpo
-debole e la data con l'articolo giusto.
+cartella delle cronache con il suffisso per i nomi doppi, e dalla tappa 10 la cronaca divisa nei
+segmenti della partita dal vivo, che è quella intera con l'apertura di ogni punto, anche quando una
+penalità chiude il set; il cambio campo a metà set nella sintetica, la frase del colpo debole e la
+data con l'articolo giusto.
 """
 
 import datetime
@@ -13,12 +14,13 @@ import re
 import pytest
 from aiuti_motore import giocatore
 
+import partita_sonora
 import testi
 from costanti import CARTELLA_CRONACHE
 from motore import cronaca as C
 from motore import eventi as E
 from motore.eventi import Evento, Tappa
-from motore.incontro import COMPLETO, SINGOLARE_3, SQUADRE, Momento, StatoIncontro, simula_incontro
+from motore.incontro import COMPLETO, SINGOLARE_3, SQUADRE, Incontro, Momento, StatoIncontro, simula_incontro
 from motore.scambio import EsitoPunto
 from motore.squadre import Squadra
 
@@ -137,14 +139,28 @@ def test_il_file_della_cronaca_e_il_suffisso(partita, cartella_di_prova):
     assert eventi.endswith("eventi.json") and len(letti) == len(risultato.eventi) and letti[0]["tipo"] == E.INIZIO_INCONTRO
 
 
-def test_i_testi_un_punto_alla_volta(partita):
+def _aperture(righe):
+    return [riga for riga in righe if re.fullmatch(r"Set \d+, Rossi \d+, Bianchi \d+\.", riga)]
+
+
+@pytest.mark.parametrize("livello", C.LIVELLI)
+def test_la_cronaca_della_partita_dal_vivo(partita, livello):
+    # Divisa nei segmenti della partita dal vivo, la cronaca è quella intera, più l'apertura di ogni punto.
     risultato, nomi = partita
-    pezzi = testi.testi_della_partita(risultato.momenti, nomi)
-    assert pezzi[0].startswith("Inizio dell'incontro: Rossi contro Bianchi")
-    assert pezzi[1].startswith("Set 1, Rossi 0, Bianchi 0.")
-    assert len(pezzi) == risultato.incontro.punti_giocati + 2
-    assert pezzi[-1].startswith("Fine dell'incontro: vince ") or "Fine dell'incontro: vince " in pezzi[-1]
-    assert all("\n\n" not in pezzo for pezzo in pezzi)
+    gemello = Incontro(giocatore(1, valore=18.0, cognome="Rossi", nome="Mario"), giocatore(2, valore=16.0, cognome="Bianchi", nome="Anna", sesso="f"),
+                       SINGOLARE_3, seme=12, dettaglio=COMPLETO)
+    cronologia = partita_sonora.Cronologia(gemello)
+    pezzi = []
+    while (segmento := cronologia.prossimo()) is not None:
+        pezzi.append(testi.righe_degli_eventi(segmento.voci, nomi, livello))
+    assert pezzi[0][0].startswith("Inizio dell'incontro: Rossi contro Bianchi")
+    assert "Set 1, Rossi 0, Bianchi 0." in pezzi[1]
+    assert pezzi[-1][-1].startswith("Fine dell'incontro: vince ")
+    tutte = [riga for righe in pezzi for riga in righe]
+    aperture = _aperture(tutte)
+    assert len(aperture) == risultato.incontro.punti_giocati
+    assert [riga for riga in tutte if riga not in aperture] == C.componi(risultato.momenti, nomi, livello)
+    assert all(riga.strip() for riga in tutte)
 
 
 def test_la_cronaca_delle_squadre():
@@ -187,24 +203,44 @@ def _evento_di_prova(n, tipo, **campi):
     return Evento(n=n, t=float(n), tipo=tipo, fase=E.GIOCO, **campi)
 
 
+class _IncontroScritto:
+    """Un incontro che consegna momenti scritti a mano, per la Cronologia della partita dal vivo."""
+
+    formato = SINGOLARE_3
+
+    def __init__(self, momenti):
+        self._scritti = momenti
+
+    def momenti(self):
+        yield from self._scritti
+
+    def imposta_velocita(self, velocita):
+        pass
+
+
 def test_la_penalita_che_chiude_il_set_resta_nel_suo_set():
-    # Nei testi della finestra la penalità che chiude un set a palla ferma va prima del fischio
-    # lungo, non in testa al primo punto del set che segue.
+    # Nella partita dal vivo la penalità che chiude un set a palla ferma non ferma la tranche: va
+    # col fischio lungo, prima della fine del set, e non in testa al primo punto del set che segue.
     nomi = {1: C.Nome("Rossi", "m"), 2: C.Nome("Bianchi", "f"), "A": C.Nome("Rossi", "m"), "B": C.Nome("Bianchi", "f")}
     fine_set = {"set": 1, "punteggio": [11, 7], "set_vinti": [1, 0], "ultimo": False}
     momenti = [
         Momento("preliminari", (_evento_di_prova(1, E.INIZIO_INCONTRO, dati={"formato": "singolare al meglio dei 3 set"}),), None),
         Momento("palla_ferma", (_evento_di_prova(2, E.INIZIO_SET, set_n=1, dati={"apre": 1}),), None),
-        Momento("punto", (_evento_di_prova(3, E.PUNTO, punti=1, a_chi="A", punteggio=(9, 7)),),
+        Momento("punto", (_evento_di_prova(3, E.CONSEGNA, set_n=1, punteggio=(8, 7)), _evento_di_prova(4, E.PUNTO, punti=1, a_chi="A", punteggio=(9, 7))),
                 EsitoPunto("fallo", "schermo_contro", False, 2, "A", 1, 1, "scambio", "bomba", "centro", set_n=1, punteggio=(9, 7))),
-        Momento("palla_ferma", (_evento_di_prova(4, E.PENALITA, chi=2, parte="B", causa="muovere_tavolo", a_chi="A", punti=2, punteggio=(11, 7),
+        Momento("palla_ferma", (_evento_di_prova(5, E.PENALITA, chi=2, parte="B", causa="muovere_tavolo", a_chi="A", punti=2, punteggio=(11, 7),
                                                   dati={"seconda_infrazione": True}),), None),
-        Momento("palla_ferma", (_evento_di_prova(5, E.FISCHIO, fischio=E.LUNGO), _evento_di_prova(6, E.FINE_SET, dati=fine_set)), None),
-        Momento("palla_ferma", (_evento_di_prova(7, E.INIZIO_SET, set_n=2, dati={"apre": 2}),), None),
-        Momento("punto", (_evento_di_prova(8, E.PUNTO, punti=1, a_chi="B", punteggio=(0, 1)),),
+        Momento("palla_ferma", (_evento_di_prova(6, E.FISCHIO, fischio=E.LUNGO), _evento_di_prova(7, E.FINE_SET, dati=fine_set)), None),
+        Momento("palla_ferma", (_evento_di_prova(8, E.INIZIO_SET, set_n=2, dati={"apre": 2}),), None),
+        Momento("punto", (_evento_di_prova(9, E.CONSEGNA, set_n=2, punteggio=(0, 0)), _evento_di_prova(10, E.PUNTO, punti=1, a_chi="B", punteggio=(0, 1))),
                 EsitoPunto("fallo", "schermo_contro", False, 1, "B", 1, 1, "scambio", "bomba", "centro", set_n=2, punteggio=(0, 1))),
     ]
-    pezzi = testi.testi_della_partita(momenti, nomi)
-    primo_set, secondo_set = pezzi[1], pezzi[2]
-    assert "Penalità a Bianchi" in primo_set and primo_set.index("Penalità a Bianchi") < primo_set.index("Set a Rossi, 11 a 7")
-    assert secondo_set.startswith("Set 2, Rossi 0, Bianchi 0.") and "Penalità" not in secondo_set
+    cronologia = partita_sonora.Cronologia(_IncontroScritto(momenti))
+    pezzi = []
+    while (segmento := cronologia.prossimo()) is not None:
+        pezzi.append("\n".join(testi.righe_degli_eventi(segmento.voci, nomi)))
+    assert len(pezzi) == 4
+    primo, fine_del_set, secondo_set = pezzi[1], pezzi[2], pezzi[3]
+    assert primo.startswith("Set 1: apre Rossi.\nSet 1, Rossi 8, Bianchi 7.")
+    assert fine_del_set.index("Penalità a Bianchi") < fine_del_set.index("Set a Rossi, 11 a 7")
+    assert "Set 2, Rossi 0, Bianchi 0." in secondo_set and "Penalità" not in secondo_set

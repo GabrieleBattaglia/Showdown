@@ -272,7 +272,9 @@ class Taratura:
     VARIAZIONE_VELOCITA: float = 0.10
     DISTANZA_PARATA: tuple = (15.0, 35.0)
     SCOSTAMENTO_MASSIMO: float = 8.0
-    # I tempi della regia, in secondi: scalati dalla velocità di gioco della tappa 10, decisione D12.
+    # I tempi della regia, in secondi. La velocità di gioco della tappa 10, decisioni D12 e D29, divide
+    # quelli delle pause e della procedura dell'arbitro; i fischi, l'attesa del battitore dopo il fischio,
+    # i controlli e gli intervalli del riscaldamento sono azione, e restano a tempo reale.
     RECUPERO_TASCA: float = 4.0
     RECUPERO_TAVOLO: float = 2.5
     RECUPERO_TERRA: float = 9.0

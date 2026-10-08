@@ -19,6 +19,9 @@ simulato, perché ogni amichevole dà punti allenamento: la facciata la controll
 per la finestra e per l'interfaccia testuale, e alla registrazione segna il giorno nei due giocatori.
 Le partite del torneo, e quelle giocate senza registrarle, non contano. La cronaca su file può
 ricevere il momento reale e il giorno simulato dell'incontro, per chi la salva più tardi.
+Con la decisione D29, tappa 10, l'amichevole da assistere dal vivo si gioca e si registra subito come
+le altre, e porta con sé un incontro gemello, con lo stesso seme, che la finestra dal vivo svolge un
+momento alla volta alla velocità di gioco scelta.
 """
 
 import random
@@ -200,13 +203,33 @@ class MotorePartita:
         con le frasi della registrazione nel campo registrazione. ValueError se non si può giocare,
         anche perché uno dei due ha già giocato un'amichevole oggi.
         """
+        risultato, _gemello = self._amichevole(id_g1, id_g2, set_al_meglio, seme, False)
+        return risultato
+
+    def amichevole_da_assistere(self, id_g1, id_g2, set_al_meglio=3, seme=None, velocita=1.0):
+        """
+        L'amichevole della partita dal vivo, decisione D29: si gioca e si registra subito, come
+        gioca_amichevole, così chi esce a metà la trova già nel mondo. Restituisce il risultato e un
+        incontro gemello, con lo stesso seme e ancora da giocare, che la finestra dal vivo svolge un
+        momento alla volta alla velocità di gioco scelta: il gemello nasce prima della registrazione,
+        perché l'incontro fotografa i giocatori quando nasce, e un infortunio o un'esperienza nuova
+        non lo cambiano. La velocità divide soltanto i tempi, quindi il gemello dà gli stessi punti.
+        """
+        return self._amichevole(id_g1, id_g2, set_al_meglio, seme, True, velocita)
+
+    def _amichevole(self, id_g1, id_g2, set_al_meglio, seme, con_gemello, velocita=1.0):
         errore = self.problema_amichevole(id_g1, id_g2)
         if errore:
             raise ValueError(errore)
         formato = formato_singolare(set_al_meglio)
-        risultato = Incontro(self.giocatori[id_g1], self.giocatori[id_g2], formato, seme=seme, dettaglio=COMPLETO, taratura=self.taratura).gioca()
+        g1, g2 = self.giocatori[id_g1], self.giocatori[id_g2]
+        incontro = Incontro(g1, g2, formato, seme=seme, dettaglio=COMPLETO, taratura=self.taratura)
+        gemello = None
+        if con_gemello:
+            gemello = Incontro(g1, g2, formato, seme=incontro.seme, dettaglio=COMPLETO, taratura=self.taratura, velocita=velocita)
+        risultato = incontro.gioca()
         risultato.registrazione = self.registra(risultato)
-        return risultato
+        return risultato, gemello
 
     def gioca_squadre(self, squadra_a, squadra_b, seme=None, dettaglio=ESSENZIALE):
         """Una gara a squadre. Nella tappa 9 non si registra nella carriera: arriva con la tappa 12."""

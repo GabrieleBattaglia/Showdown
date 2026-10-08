@@ -184,8 +184,8 @@ def test_amichevole_registrata_e_cronaca_salvata(mondo, cartella_di_prova):
     assert mondo.giocatori[11].partitevinte + mondo.giocatori[11].partiteperse == 1
     percorso = motore.salva_cronaca(risultato)
     assert percorso.startswith(str(cartella_di_prova / CARTELLA_CRONACHE))
-    pezzi = testi.testi_della_partita(risultato.momenti, motore.nomi(risultato))
-    assert len(pezzi) == risultato.incontro.punti_giocati + 2
+    testo = testi.cronaca_amichevole(risultato, motore.nomi(risultato), "normale")
+    assert testo.startswith("Inizio dell'incontro: ") and testo.count("Battuta ") == risultato.incontro.punti_giocati
     with pytest.raises(ValueError, match=r"I giocatori devono essere diversi\."):
         motore.gioca_amichevole(11, 11)
     with pytest.raises(ValueError, match="3 o 5"):

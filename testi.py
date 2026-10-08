@@ -16,8 +16,9 @@ col numero, e la sede dell'infortunio; la cronaca di un incontro, presa dagli ev
 divide in testi da mostrare un punto alla volta, ciascuno aperto dal punteggio, come vuole la
 decisione D17. Le parti nuove sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Dal 2026-10-08 ci sono i testi dell'amichevole della finestra: il risultato, aperto da chi vince,
-il primo e l'ultimo testo del punto per punto, il resto dell'incontro, la cronaca salvata, e il
-perché quando oggi nessuno può giocare.
+la cronaca salvata, e il perché quando oggi nessuno può giocare. Con la decisione D29 il punto per
+punto con F8 lascia il posto alla partita dal vivo, che ha qui la guida del suo campo di testo e la
+cronaca di ogni tranche, ancora aperta dal punteggio come vuole D17.
 """
 
 import datetime
@@ -872,46 +873,65 @@ def novita(testo_changelog):
 
 # La cronaca di un incontro, per la finestra.
 
-def testi_della_partita(momenti, nomi, livello="normale"):
+# I tipi degli eventi che la cronaca sintetica dice anche dentro un punto, come righe_del_momento.
+_SINTETICA_NEL_PUNTO = ("TIMEOUT_INIZIO", "CAMBIO_CAMPO_INIZIO", "AMMONIZIONE", "PENALITA")
+
+
+def righe_degli_eventi(voci, nomi, livello="normale"):
     """
-    La cronaca di un incontro divisa in testi da mostrare uno alla volta, al posto del precedente
-    come vuole la decisione D17: i preliminari, poi ogni punto con le palle ferme che lo precedono,
-    e la fine di un set insieme al punto che la chiude. Ogni testo di un punto si apre con il set e
-    il punteggio di partenza. I momenti sono quelli del risultato di un incontro in modalità completa.
+    La cronaca di un tratto della partita dal vivo, dalle terne di evento, momento e apertura della
+    Cronologia di partita_sonora, che può tagliare un momento a metà: ogni punto si apre con il set e
+    il punteggio di partenza, come vuole la decisione D17, e alla sintetica un punto è una riga sola,
+    che arriva quando il punto finisce. Una frase per riga, nessuna riga vuota.
     """
-    testi = []
-    in_attesa = []
-    punteggio = (0, 0)
-    for momento in momenti:
-        righe = cronaca.righe_del_momento(momento, nomi, livello)
-        tipi = {evento.tipo for evento in momento.eventi}
-        if momento.genere == "preliminari" or momento.genere == "chiusura":
-            testi.append("\n".join(in_attesa + righe))
-            in_attesa = []
-        elif momento.genere == "punto":
-            set_n = momento.esito.set_n
-            apertura = f"Set {set_n}, {nomi['A'].testo} {punteggio[0]}, {nomi['B'].testo} {punteggio[1]}."
-            testi.append("\n".join([apertura, *in_attesa, *righe]))
-            in_attesa = []
-            punteggio = momento.esito.punteggio
-        elif "FINE_SET" in tipi and testi:
-            # Una penalità può chiudere il set a palla ferma: le sue righe, rimaste in attesa,
-            # vanno prima del fischio lungo, non nel primo punto del set che segue.
-            testi[-1] += "\n" + "\n".join(in_attesa + righe)
-            in_attesa = []
-        else:
-            in_attesa.extend(righe)
-            for evento in momento.eventi:
-                if evento.tipo == "INIZIO_SET":
-                    punteggio = (0, 0)
-                elif evento.tipo == "PENALITA":
-                    punteggio = evento.punteggio
-    return [testo for testo in testi if testo]
+    righe = []
+    for evento, momento, apre in voci:
+        nel_punto = momento.genere == "punto"
+        if nel_punto and apre:
+            a, b = evento.punteggio or (0, 0)
+            righe.append(f"Set {evento.set_n}, {nomi['A'].testo} {a}, {nomi['B'].testo} {b}.")
+        if livello == cronaca.SINTETICA and nel_punto:
+            if evento.tipo in ("PUNTO", "RIPETIZIONE") and momento.esito is not None:
+                righe.append(cronaca.riga_sintetica(momento.esito, nomi))
+                continue
+            if evento.tipo not in _SINTETICA_NEL_PUNTO:
+                continue
+        testo = cronaca.frase(evento, nomi, livello)
+        if testo:
+            righe.append(testo)
+    return righe
 
 
-# L'amichevole nella finestra, tappa 9: risultato, testi del punto per punto e cronaca salvata.
+# La partita dal vivo, decisione D29: la guida del campo della cronaca e i testi della finestra.
 
-AVANTI_UN_PUNTO = "F8 mostra il punto successivo, Ctrl+F8 tutto il resto dell'incontro."
+def dove_ascolti(nomi, ascoltatore):
+    """Da quale parte del tavolo si ascolta, e chi sta di fronte."""
+    altro = "B" if ascoltatore == "A" else "A"
+    return f"Ascolti da {nomi[ascoltatore].testo}, alla sua testata del tavolo; {nomi[altro].testo} sta di fronte, oltre lo schermo."
+
+
+def guida_dal_vivo(nomi, ascoltatore, set_al_meglio, velocita):
+    """Il testo con cui si apre il campo della cronaca della finestra dal vivo: chi gioca, da dove si ascolta, i tasti e la velocità."""
+    return "\n".join([
+        f"Partita dal vivo: {nomi['A'].testo} contro {nomi['B'].testo}, al meglio dei {set_al_meglio} set. L'incontro è già registrato nel mondo.",
+        dove_ascolti(nomi, ascoltatore),
+        "Invio o spazio su Prosegui fanno sentire il gioco fino al punto seguente; mentre suona, lo stesso tasto lo ferma e lo riprende, e salta il riscaldamento.",
+        "Alt+F ascolta fino a fine set, Alt+L passa dalla parte dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce.",
+        f"Più e meno cambiano la velocità di gioco, ora {velocita}: accorcia le pause e la procedura dell'arbitro, mai l'azione.",
+        "In questo campo, dopo ogni tranche, c'è la cronaca di quello che hai appena sentito; Maiusc+Tab torna al pulsante.",
+    ])
+
+
+def titolo_dal_vivo(nomi, velocita):
+    return f"Dal vivo, {nomi['A'].testo} contro {nomi['B'].testo}, velocità {velocita}"
+
+
+SPIEGAZIONE_VELOCITA = ("La velocità di gioco vale per tutte le partite dal vivo: a 1 le pause fra i punti e la procedura dell'arbitro durano come nella realtà, "
+                        "a 2 la metà, a 4 un quarto. L'azione resta sempre a tempo reale. Durante la partita più e meno la cambiano al volo.")
+
+
+# L'amichevole nella finestra, tappa 9: risultato e cronaca salvata.
+
 SALVA_LA_CRONACA = "La cronaca dell'incontro si salva in un file con Ctrl+Maiusc+O."
 NESSUNA_AMICHEVOLE = "Nella sessione non hai ancora giocato un'amichevole: se ne gioca una con Ctrl+O."
 
@@ -939,34 +959,11 @@ def amichevole_solo_risultato(risultato, mondo):
 
 def cronaca_amichevole(risultato, nomi, livello):
     """
-    La cronaca intera dell'amichevole al livello scelto, per chi la vuole tutta subito: la vista la
-    mette dopo il risultato e dopo il perché di un salvataggio non riuscito, che in fondo a centinaia
-    di righe nessuno troverebbe.
+    La cronaca intera dell'amichevole al livello scelto, che Vai alla fine mostra sotto il risultato:
+    la vista la mette dopo il risultato e dopo il perché di un salvataggio non riuscito, che in fondo
+    a centinaia di righe nessuno troverebbe.
     """
     return "\n".join(cronaca.componi(risultato.momenti, nomi, livello))
-
-
-def primo_testo_amichevole(testo):
-    """Il primo testo del punto per punto, i preliminari, con i tasti per andare avanti."""
-    return f"{testo}\n{AVANTI_UN_PUNTO}"
-
-
-def ultimo_testo_amichevole(testo, risultato, mondo):
-    """
-    L'ultimo testo del punto per punto, la fine dell'incontro. Come vuole D17 si apre con il dato
-    essenziale, il risultato, e non con il fischio; poi la chiusura, la registrazione e come salvare
-    la cronaca.
-    """
-    return "\n".join([risultato_amichevole(risultato, mondo), testo, *(risultato.registrazione or []), SALVA_LA_CRONACA])
-
-
-def resto_amichevole(testi_rimasti, risultato, mondo):
-    """Il resto dell'incontro tutto insieme: il risultato davanti, come vuole D17, poi i testi che mancavano."""
-    return "\n".join([*_dopo_il_risultato(risultato, mondo), *testi_rimasti])
-
-
-def amichevole_finita(risultato, mondo):
-    return f"L'amichevole è già tutta mostrata. {risultato_amichevole(risultato, mondo)}\nCon Ctrl+Maiusc+O ne salvi la cronaca, con Ctrl+O ne giochi un'altra."
 
 
 def nessuno_per_l_amichevole(mondo, ora, poli=None, primo=None):

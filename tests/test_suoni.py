@@ -20,6 +20,7 @@ from GBUtils import Acusticator
 
 import ascolta_suoni
 import impostazioni
+import partita_sonora
 import suoni
 from mondo import Mondo
 from utilita import adesso
@@ -101,6 +102,22 @@ def test_nessun_preset_suona_uguale_a_un_altro():
         impronta = json.dumps([score, kind, adsr])
         assert impronta not in impronte, f"{evento} suona come {impronte[impronta]}"
         impronte[impronta] = evento
+
+
+def test_i_suoni_della_partita_non_sono_quelli_della_finestra():
+    # Tappa 10: un colpo o un fischio della partita non si deve confondere con un comando della
+    # finestra, né per nome né per contenuto; e ogni ruolo della partita ha il suo suono.
+    impronte = {json.dumps(list(Acusticator.preset(preset))): evento for evento, preset in suoni.EVENTI.items()}
+    della_partita = list(partita_sonora.SUONI.values())
+    assert len(della_partita) == len(set(della_partita))
+    assert not set(della_partita) & set(suoni.EVENTI.values())
+    for ruolo, preset in partita_sonora.SUONI.items():
+        score, kind, adsr = Acusticator.preset(preset)
+        assert score, f"il preset {preset} del ruolo {ruolo} non c'è nella collezione"
+        assert kind != 2, f"il ruolo {ruolo} è un'onda quadra"
+        impronta = json.dumps([score, kind, adsr])
+        assert impronta not in impronte, f"il ruolo {ruolo} della partita suona come l'evento {impronte[impronta]} della finestra"
+        impronte[impronta] = ruolo
 
 
 def test_nessuna_onda_quadra_salvo_donazione():

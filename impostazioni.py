@@ -8,6 +8,8 @@ mess_impostazioni.json accanto al programma, fuori da git come in Tornello, perc
 macchina e non il mondo. Un file mancante o rovinato non ferma niente: valgono i predefiniti.
 Dal 2026-10-07, con la decisione D24, c'è anche il volume degli effetti sonori, da 0 a 100: a 50,
 il predefinito, i suoni sono come li ha pensati chi li ha fatti, e a zero tacciono.
+Dal 2026-10-08, con la decisione D29, c'è la velocità di gioco della partita dal vivo, da 1 a 8, e i
+modi di seguire l'amichevole diventano Assisti e Vai alla fine, con i valori di prima migrati.
 """
 
 import contextlib
@@ -25,10 +27,18 @@ VOLUME_MASSIMO = 100
 # quelli del dialogo OpzioniAmichevole e del livello della cronaca del motore, scritti qui per non far
 # dipendere le impostazioni dalla finestra.
 SET_DELL_AMICHEVOLE = (3, 5)
-MODI_DELL_AMICHEVOLE = ("punto", "tutta", "risultato")
+# Con la decisione D29 i modi di seguire l'amichevole sono due, Assisti e Vai alla fine. I valori
+# ricordati dalla tappa 9 si migrano: il punto alla volta diventa Assisti, che è la partita dal vivo,
+# tutta subito e solo il risultato diventano Vai alla fine, che mostra il risultato e la cronaca.
+MODI_DELL_AMICHEVOLE = ("assisti", "fine")
+MODI_DI_PRIMA = {"punto": "assisti", "tutta": "fine", "risultato": "fine"}
 LIVELLI_DELL_AMICHEVOLE = ("sintetica", "normale", "tecnica")
+# La velocità di gioco della decisione D12, nella forma di D29: divide le pause e la procedura
+# dell'arbitro della partita dal vivo, da 1, il tempo reale, a 8.
+VELOCITA_MINIMA = 1
+VELOCITA_MASSIMA = 8
 PREDEFINITE = {"dimensione": 12, "colore_testo": [0, 100, 0], "colore_sfondo": [0, 0, 0], "volume_effetti": 50,
-               "amichevole_set": 3, "amichevole_modo": "punto", "amichevole_livello": "normale"}
+               "amichevole_set": 3, "amichevole_modo": "assisti", "amichevole_livello": "normale", "velocita_gioco": 1}
 
 
 def _colore_valido(valore):
@@ -46,9 +56,13 @@ def valide(dati):
     for chiave in ("colore_testo", "colore_sfondo"):
         if _colore_valido(dati.get(chiave)):
             risultato[chiave] = list(dati[chiave])
-    volume = dati.get("volume_effetti")
-    if isinstance(volume, int) and not isinstance(volume, bool) and VOLUME_MINIMO <= volume <= VOLUME_MASSIMO:
-        risultato["volume_effetti"] = volume
+    for chiave, minimo, massimo in (("volume_effetti", VOLUME_MINIMO, VOLUME_MASSIMO), ("velocita_gioco", VELOCITA_MINIMA, VELOCITA_MASSIMA)):
+        valore = dati.get(chiave)
+        if isinstance(valore, int) and not isinstance(valore, bool) and minimo <= valore <= massimo:
+            risultato[chiave] = valore
+    modo = dati.get("amichevole_modo")
+    if isinstance(modo, str):
+        dati = {**dati, "amichevole_modo": MODI_DI_PRIMA.get(modo, modo)}
     for chiave, ammessi in (("amichevole_set", SET_DELL_AMICHEVOLE), ("amichevole_modo", MODI_DELL_AMICHEVOLE), ("amichevole_livello", LIVELLI_DELL_AMICHEVOLE)):
         valore = dati.get(chiave)
         if not isinstance(valore, bool) and valore in ammessi:

@@ -10,6 +10,11 @@ Il caso della regia è soltanto quello della scena, nato dal seme dell'incontro:
 la zona, velocità, attese. La regia tiene l'orologio, la posizione dell'arbitro, che cambia lato a
 ogni cambio campo perché il riferimento resta ancorato ai giocatori, la mano di ogni giocatore e il
 punto in cui è finita la pallina, da cui dipende quanto dura il recupero.
+La velocità di gioco della decisione D12, nella forma decisa da Gabriele con D29, divide le pause e
+la procedura dell'arbitro: il sorteggio, il recupero, l'annuncio, la domanda di pronto, la chiamata,
+le pause fra i punti, i time-out e i cambi campo. L'azione invece resta sempre a tempo reale: i voli,
+i controlli, l'attesa del battitore dopo il fischio, la pallina che si ferma e i colpi del
+riscaldamento. A velocità 1, la predefinita, i tempi sono quelli di sempre, numero per numero.
 controlla_invarianti verifica una sequenza di eventi: la usano le prove e il banco.
 """
 
@@ -73,7 +78,12 @@ class Regia:
     # Gli strumenti.
 
     def _attesa(self, secondi):
+        """Una pausa o un tratto della procedura dell'arbitro: la velocità di gioco la accorcia."""
         self.t += secondi / self.velocita
+
+    def _attesa_reale(self, secondi):
+        """Un'attesa dentro l'azione, che resta sempre a tempo reale."""
+        self.t += secondi
 
     def _uniforme(self, a, b):
         return a + (b - a) * self.rng.random()
@@ -110,8 +120,8 @@ class Regia:
         """Il fischio e, 0,8 secondi dopo il suo inizio o appena finito, la chiamata dell'arbitro."""
         inizio = self.t
         fischio = self._fischio(variante)
-        self.t = max(self.t, inizio + self.tar.RITARDO_CHIAMATA)
-        return [fischio, self._arbitro(E.CHIAMATA, self.tar.DURATA_CHIAMATA, chiamata=chiave, **campi)]
+        self.t = max(self.t, inizio + self.tar.RITARDO_CHIAMATA / self.velocita)
+        return [fischio, self._arbitro(E.CHIAMATA, self.tar.DURATA_CHIAMATA / self.velocita, chiamata=chiave, **campi)]
 
     def _velocita(self, chi, base):
         c = self.campo[chi]
@@ -164,7 +174,7 @@ class Regia:
         chiede alla squadra che ha vinto se tiene il primo servizio o lo cede.
         """
         self.arbitro_a_sinistra = info["arbitro_a_sinistra_di_a"]
-        eventi = [self._arbitro(E.SORTEGGIO, 8.0, dati=dict(info))]
+        eventi = [self._arbitro(E.SORTEGGIO, 8.0 / self.velocita, dati=dict(info))]
         if "formazioni" in info:
             dati = {chiave: info[chiave] for chiave in ("formazioni", "riserve", "vince", "scelta", "batte")}
             eventi.append(self._arbitro(E.FORMAZIONI, self.tar.DURATA_FORMAZIONI / self.velocita, dati=dati))
@@ -201,7 +211,7 @@ class Regia:
             arrivo = self._punto_parata(difensore, colpo.zona)
             volo = self._volo(partenza, arrivo, self._sponde(chi, nome), self._velocita(chi, colpo.velocita), "paletta")
             eventi.append(self._evento(E.RISCALDAMENTO_COLPO, 0.0, chi, partenza, volo=volo, colpo=nome, mano=self.mani[chi]))
-            self._attesa(self._uniforme(*self.tar.INTERVALLO_RISCALDAMENTO))
+            self._attesa_reale(self._uniforme(*self.tar.INTERVALLO_RISCALDAMENTO))
             turno += 1
         self.t = max(self.t, inizio + durata)
         eventi.append(self._fischio(E.SINGOLO))
@@ -251,16 +261,16 @@ class Regia:
         causa = passo_battuta.causa if passo_battuta.esito == "irregolare" else None
         if causa == "battuta_prima_del_fischio":
             # Il battitore colpisce prima del fischio: l'arbitro fischierà il fallo.
-            self._attesa(0.2)
+            self._attesa_reale(0.2)
             return eventi
         eventi.append(self._fischio(E.SINGOLO))
         if causa == "battuta_oltre_due_secondi":
-            self._attesa(t.ATTESA_OLTRE_DUE_SECONDI)
+            self._attesa_reale(t.ATTESA_OLTRE_DUE_SECONDI)
         else:
             attesa = self._uniforme(*t.ATTESA_BATTUTA)
             if battitore.giocorapido:
                 attesa *= t.FATTORE_TEMPI_GIOCO_RAPIDO
-            self._attesa(attesa)
+            self._attesa_reale(attesa)
         return eventi
 
     def _partenza_battuta(self, chi, passi):
@@ -374,7 +384,7 @@ class Regia:
                     eventi.append(self._evento_volo(chi, volo))
                     pos = (volo[-1].x, volo[-1].y)
                 elif p.esito == "pallina_ferma":
-                    self._attesa(2.0)
+                    self._attesa_reale(2.0)
                 else:
                     eventi.append(self._evento(E.CONTROLLO, 0.6, chi, pos, mano=self.mani[chi], esito="recupero", colpo_n=colpo_n))
             elif p.tipo == "colpo":
@@ -671,7 +681,7 @@ class Regia:
             if p.causa == "ribattuta_lenta":
                 pos = self._volo_ribattuta_lenta(eventi, chi, pos, colpo_n)
             if p.causa in ("pallina_ferma", "colpo_debole", "ribattuta_lenta"):
-                self._attesa(2.0)
+                self._attesa_reale(2.0)
             eventi.append(self._evento(E.PALLA_MORTA, 0.0, chi, pos, fischio=E.SINGOLO, **comuni))
             self.pallina = "tavolo"
         else:
@@ -714,7 +724,7 @@ class Regia:
         pos = (pos[0], min(max(pos[1], 0.0), float(LUNGHEZZA_TAVOLO)))
         punti = 2 if tipo == "penalita" else 0
         self._attesa(max(0.0, self.tar.RITARDO_CHIAMATA - self.tar.FISCHIO_SINGOLO))
-        eventi.append(self._evento(tipo_evento, self.tar.DURATA_CHIAMATA, g.id, pos, causa=causa, chiamata=tipo, punti=punti,
+        eventi.append(self._evento(tipo_evento, self.tar.DURATA_CHIAMATA / self.velocita, g.id, pos, causa=causa, chiamata=tipo, punti=punti,
                                    a_chi=altra(g.parte) if punti else None, dati={"seconda_infrazione": seconda}))
         return eventi
 
