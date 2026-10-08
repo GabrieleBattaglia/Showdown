@@ -369,6 +369,32 @@ def test_temperamento_e_sede_non_validi_rifiutati(campo, valore):
         Giocatore.da_dizionario(dati)
 
 
+def test_un_formato_5_senza_l_ultima_amichevole_si_legge(cartella_di_prova):
+    # Così scrive main prima del 2026-10-08: formato 5, ma senza la data dell'ultima amichevole, nel salvataggio e nella copia.
+    contenuto = archivio.componi(_mondo_popolato())
+    assert contenuto["formato"] == 5
+    for g in contenuto["mondo"]["giocatori"]:
+        del g["ultima_amichevole"]
+    testo = json.dumps({**contenuto, "firma": archivio.firma(contenuto)})
+    for nome in (FILE_MONDO, FILE_MONDO_COPIA):
+        _comprimi(cartella_di_prova / nome, testo)
+    messaggi = []
+    m = _ricarica(messaggi)
+    assert messaggi[0].startswith("Mondo caricato:") and not m.salvataggio_bloccato
+    assert m.giocatori and all(g.ultima_amichevole is None for g in m.giocatori.values())
+    # Anche la copia di sicurezza, da sola, si legge.
+    os.remove(cartella_di_prova / FILE_MONDO)
+    messaggi.clear()
+    m = _ricarica(messaggi)
+    assert f"il file {FILE_MONDO} non c'è" in messaggi[0] and not m.salvataggio_bloccato
+    assert all(g.ultima_amichevole is None for g in m.giocatori.values())
+    assert not (cartella_di_prova / archivio.CARTELLA_QUARANTENA).exists()
+    # Al primo salvataggio il campo si scrive davvero nel file.
+    assert archivio.salva(m)
+    scritti = json.loads(_testo(cartella_di_prova / FILE_MONDO))["mondo"]["giocatori"]
+    assert all("ultima_amichevole" in g and g["ultima_amichevole"] is None for g in scritti)
+
+
 def test_l_ultima_amichevole_si_salva_e_si_rilegge(cartella_di_prova):
     mondo = _mondo_popolato()
     mondo.giocatori[2].ultima_amichevole = INIZIO

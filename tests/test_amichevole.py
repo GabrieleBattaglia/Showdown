@@ -3,7 +3,9 @@ Test dell'amichevole nella finestra, tappa 9, sul desktop nascosto del conftest 
 il menu Partite, il primo giocatore scelto fra i tuoi, l'avversario fra tutti gli altri, chi ha
 già giocato oggi che non compare, le opzioni, il punto per punto fino alla fine, il resto
 dell'incontro, la cronaca tutta subito o solo il risultato, il salvataggio della cronaca in una
-cartella temporanea e i suoni di ogni passo. I dialoghi sono sostituiti da risposte scritte.
+cartella temporanea, con il momento dell'incontro anche se si salva dopo un avanzamento, il perché
+di un mondo non salvato prima della cronaca intera, e i suoni di ogni passo. I dialoghi sono
+sostituiti da risposte scritte.
 """
 
 import datetime
@@ -13,6 +15,7 @@ import pytest
 import wx
 
 import archivio
+import partita
 import testi
 from costanti import CARTELLA_CRONACHE, FILE_MONDO
 from gui import dialoghi
@@ -137,6 +140,8 @@ def test_il_punto_per_punto_fino_alla_fine(finestra, suonati, monkeypatch, carte
     assert all(t.startswith("Set ") for t in testi_visti[1:-1])
     assert finestra.ultimo_evento.startswith("vince ")
     ultimo = testi_visti[-1]
+    # Anche l'ultimo testo, come vuole D17, si apre con il dato essenziale: il risultato, non il fischio.
+    assert ultimo.splitlines()[0] == testi.risultato_amichevole(v.risultato, mondo) and ultimo.startswith("Vince ")
     assert "Fine dell'incontro: vince " in ultimo and "Punti allenamento: " in ultimo and ultimo.endswith(testi.SALVA_LA_CRONACA)
     assert not any("\n\n" in t for t in testi_visti)
     assert suonati[4:] == ["punto_successivo"] * (len(v.testi) - 2) + [_esito_atteso(finestra, 2)]
@@ -232,6 +237,56 @@ def test_la_cronaca_che_non_si_salva_e_il_mondo_che_non_si_salva(finestra, suona
     finestra.salva_cronaca()
     assert finestra.vista.GetValue() == "La cronaca dell'amichevole non si è potuta salvare: disco pieno."
     assert suonati[-1] == "cronaca_non_salvata"
+
+
+def test_tutta_subito_col_mondo_che_non_si_salva(finestra, suonati, monkeypatch):
+    def guasto(*_args, **_kwargs):
+        raise OSError("disco pieno")
+
+    monkeypatch.setattr(archivio, "scrivi", guasto)
+    Scelte(monkeypatch, 2, 4, modo=TUTTA)
+    finestra.amichevole()
+    v = finestra.incontro
+    righe = finestra.vista.GetValue().splitlines()
+    # Il perché del salvataggio non riuscito viene subito dopo il risultato, non in fondo alla cronaca intera.
+    testa = testi.amichevole_solo_risultato(v.risultato, finestra.mondo).splitlines()
+    assert righe[:len(testa)] == testa
+    assert righe[len(testa)] == "Salvataggio non riuscito: disco pieno. Il salvataggio precedente è rimasto com'era."
+    assert righe[len(testa) + 1:] == testi.cronaca_amichevole(v.risultato, v.nomi, v.livello).splitlines()
+    assert len(righe) > len(testa) + 20
+    assert suonati[-2:] == [_esito_atteso(finestra, 2), "salvataggio_non_riuscito"]
+
+
+@pytest.mark.parametrize("livello", [SINTETICA, TECNICA])
+def test_l_ultimo_punto_si_apre_col_risultato_a_ogni_livello(finestra, monkeypatch, livello):
+    Scelte(monkeypatch, 2, 7, livello=livello)
+    finestra.amichevole()
+    v = finestra.incontro
+    while not v.finita:
+        finestra.punto_successivo()
+    assert finestra.vista.GetValue().splitlines()[0] == testi.risultato_amichevole(v.risultato, finestra.mondo)
+
+
+def test_la_cronaca_salvata_dopo_un_avanzamento_dice_quando_si_e_giocata(finestra, monkeypatch, cartella_di_prova):
+    mondo = finestra.mondo
+    Scelte(monkeypatch, 2, 7, modo=RISULTATO)
+    prima = adesso()
+    finestra.amichevole()
+    dopo = adesso()
+    v = finestra.incontro
+    giorno = mondo.datetime_corrente_simulazione
+    assert prima <= v.istante <= dopo and v.data_simulata == giorno
+    assert mondo.giocatori[2].ultima_amichevole == mondo.giocatori[7].ultima_amichevole == giorno
+    # Prima di salvare la cronaca il mondo passa al giorno dopo, e l'ora reale va avanti di nove ore.
+    mondo.datetime_corrente_simulazione += datetime.timedelta(days=1)
+    monkeypatch.setattr(partita, "adesso", lambda: dopo + datetime.timedelta(hours=9))
+    finestra.salva_cronaca()
+    file = next((cartella_di_prova / CARTELLA_CRONACHE).iterdir())
+    assert file.name.startswith(f"{v.istante:%Y-%m-%d %H.%M.%S} ")
+    seconda = file.read_text(encoding="utf-8").splitlines()[1]
+    assert seconda == cronaca.intestazione(v.risultato, v.nomi, v.istante, giorno)[1]
+    assert seconda.endswith(f", data simulata {cronaca.data_a_parole(giorno)}.")
+    assert f"alle {v.istante:%H:%M}," in seconda
 
 
 def test_senza_polisportiva_o_senza_tesserati(finestra, suonati):

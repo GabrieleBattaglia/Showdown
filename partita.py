@@ -17,7 +17,8 @@ un tasto chiama la funzione pausa. Le passa chi lo usa; se non le passa, lavora 
 Dal 2026-10-08, regola di Gabriele, ogni giocatore gioca al massimo un'amichevole per giorno
 simulato, perché ogni amichevole dà punti allenamento: la facciata la controlla prima di giocare,
 per la finestra e per l'interfaccia testuale, e alla registrazione segna il giorno nei due giocatori.
-Le partite del torneo, e quelle giocate senza registrarle, non contano.
+Le partite del torneo, e quelle giocate senza registrarle, non contano. La cronaca su file può
+ricevere il momento reale e il giorno simulato dell'incontro, per chi la salva più tardi.
 """
 
 import random
@@ -285,13 +286,19 @@ class MotorePartita:
 
     # La cronaca su file.
 
-    def salva_cronaca(self, risultato, livello=C.NORMALE):
-        """Scrive la cronaca dell'incontro in un file della cartella cronache e ne restituisce il percorso."""
+    def salva_cronaca(self, risultato, livello=C.NORMALE, istante=None, data_simulata=None):
+        """
+        Scrive la cronaca dell'incontro in un file della cartella cronache e ne restituisce il
+        percorso. istante e data_simulata sono il momento reale e il giorno simulato dell'incontro,
+        per l'intestazione e il nome del file: chi salva più tardi, come la finestra, li ha fissati
+        quando si è giocato; senza, valgono quelli di adesso, che per chi salva subito sono gli stessi.
+        """
         if risultato.momenti is None:
             raise ValueError("La cronaca c'è soltanto per gli incontri giocati in modalità completa.")
         nomi = self.nomi(risultato)
-        istante = adesso()
-        righe = C.intestazione(risultato, nomi, istante, self.mondo.datetime_corrente_simulazione)
+        istante = istante or adesso()
+        data_simulata = data_simulata or self.mondo.datetime_corrente_simulazione
+        righe = C.intestazione(risultato, nomi, istante, data_simulata)
         righe += C.componi(risultato.momenti, nomi, livello)
         righe += C.riepilogo(risultato, nomi)
         return C.salva(righe, C.nome_file(nomi, istante))

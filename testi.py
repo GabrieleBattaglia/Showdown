@@ -937,9 +937,13 @@ def amichevole_solo_risultato(risultato, mondo):
     return "\n".join(_dopo_il_risultato(risultato, mondo))
 
 
-def amichevole_tutta(risultato, mondo, nomi, livello):
-    """L'amichevole tutta in una volta: prima il risultato e la registrazione, poi la cronaca intera al livello scelto."""
-    return "\n".join([*_dopo_il_risultato(risultato, mondo), *cronaca.componi(risultato.momenti, nomi, livello)])
+def cronaca_amichevole(risultato, nomi, livello):
+    """
+    La cronaca intera dell'amichevole al livello scelto, per chi la vuole tutta subito: la vista la
+    mette dopo il risultato e dopo il perché di un salvataggio non riuscito, che in fondo a centinaia
+    di righe nessuno troverebbe.
+    """
+    return "\n".join(cronaca.componi(risultato.momenti, nomi, livello))
 
 
 def primo_testo_amichevole(testo):
@@ -947,9 +951,13 @@ def primo_testo_amichevole(testo):
     return f"{testo}\n{AVANTI_UN_PUNTO}"
 
 
-def ultimo_testo_amichevole(testo, risultato):
-    """L'ultimo testo del punto per punto, la fine dell'incontro, con la registrazione e come salvare la cronaca."""
-    return "\n".join([testo, *(risultato.registrazione or []), SALVA_LA_CRONACA])
+def ultimo_testo_amichevole(testo, risultato, mondo):
+    """
+    L'ultimo testo del punto per punto, la fine dell'incontro. Come vuole D17 si apre con il dato
+    essenziale, il risultato, e non con il fischio; poi la chiusura, la registrazione e come salvare
+    la cronaca.
+    """
+    return "\n".join([risultato_amichevole(risultato, mondo), testo, *(risultato.registrazione or []), SALVA_LA_CRONACA])
 
 
 def resto_amichevole(testi_rimasti, risultato, mondo):

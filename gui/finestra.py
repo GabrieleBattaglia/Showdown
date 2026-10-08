@@ -74,13 +74,18 @@ class AmichevoleInVista:
     L'ultima amichevole della sessione, già giocata e registrata, come la mostra la vista: i testi
     della cronaca, da mostrare uno alla volta, quanti se ne sono già visti, il livello scelto, che
     vale anche per il file, il suono dell'esito e le parole dell'esito per la barra di stato.
+    Ricorda anche quando si è giocata, l'istante reale e il giorno simulato: la cronaca si salva più
+    tardi, magari dopo un avanzamento del mondo, e il file deve dire il momento dell'incontro, lo
+    stesso dei diari dei due giocatori.
     """
 
-    def __init__(self, risultato, nomi, livello, esito):
+    def __init__(self, risultato, nomi, livello, esito, istante, data_simulata):
         self.risultato = risultato
         self.nomi = nomi
         self.livello = livello
         self.esito = esito
+        self.istante = istante
+        self.data_simulata = data_simulata
         self.testi = testi.testi_della_partita(risultato.momenti, nomi, livello)
         self.mostrati = 0
         vince = risultato.vincitore
@@ -400,17 +405,21 @@ class FinestraPrincipale(wx.Frame):
             self.mondo.notifica = notifica
         return riuscito, messaggi, avvisi
 
-    def _concludi(self, testo, evento, suono, salvare=True):
+    def _concludi(self, testo, evento, suono, salvare=True, coda=None):
         """
         La fine di un'operazione sulle polisportive: si salva subito, poi la vista mostra l'esito con
         il suo suono. Se il salvataggio non riesce, la vista aggiunge il perché, e dopo il suono
-        dell'operazione si sente quello del salvataggio fallito.
+        dell'operazione si sente quello del salvataggio fallito. coda, se c'è, è un testo lungo da
+        mettere dopo il perché, come la cronaca intera di un'amichevole, perché il perché resti a
+        portata di mano e non in fondo a centinaia di righe.
         """
         riuscito, messaggi = True, []
         if salvare:
             riuscito, messaggi, _avvisi = self._salva_raccogliendo()
         if not riuscito:
             testo = "\n".join([testo, *messaggi])
+        if coda:
+            testo = f"{testo}\n{coda}"
         self.mostra(testo, evento, suono)
         if not riuscito:
             suoni.in_coda("salvataggio_non_riuscito")
@@ -701,6 +710,7 @@ class FinestraPrincipale(wx.Frame):
             dialogo.Destroy()
         # Il tuo giocatore è tuo per definizione; l'avversario può esserlo anche lui, di una qualunque delle tue polisportive.
         fra_tuoi = avversario.id in self._tuoi()
+        istante, data_simulata = adesso(), self.mondo.datetime_corrente_simulazione
         risultato = motore.gioca_amichevole(tuo.id, avversario.id, set_al_meglio)
         id_vincitore = risultato.parti[0] if risultato.vincitore == "A" else risultato.parti[1]
         if fra_tuoi:
@@ -709,10 +719,12 @@ class FinestraPrincipale(wx.Frame):
             esito = "amichevole_vinta"
         else:
             esito = "amichevole_persa"
-        self.incontro = v = AmichevoleInVista(risultato, motore.nomi(risultato), livello, esito)
+        self.incontro = v = AmichevoleInVista(risultato, motore.nomi(risultato), livello, esito, istante, data_simulata)
         if modo == TUTTA_SUBITO:
             v.resto()
-            self._concludi(testi.amichevole_tutta(risultato, self.mondo, v.nomi, livello), v.evento_esito, esito)
+            # La cronaca intera va in coda, dopo il perché di un salvataggio non riuscito, che così resta in cima.
+            self._concludi(testi.amichevole_solo_risultato(risultato, self.mondo), v.evento_esito, esito,
+                           coda=testi.cronaca_amichevole(risultato, v.nomi, livello))
         elif modo == SOLO_IL_RISULTATO:
             v.resto()
             self._concludi(testi.amichevole_solo_risultato(risultato, self.mondo), v.evento_esito, esito)
@@ -740,7 +752,7 @@ class FinestraPrincipale(wx.Frame):
             return
         testo = v.prossimo()
         if v.finita:
-            self.mostra(testi.ultimo_testo_amichevole(testo, v.risultato), v.evento_esito, v.esito)
+            self.mostra(testi.ultimo_testo_amichevole(testo, v.risultato, self.mondo), v.evento_esito, v.esito)
         else:
             self.mostra(testo, f"amichevole, punto {v.mostrati - 1}", "punto_successivo")
 
@@ -753,13 +765,16 @@ class FinestraPrincipale(wx.Frame):
         suoni.in_coda(v.esito)
 
     def salva_cronaca(self):
-        """La cronaca dell'ultima amichevole nel suo file, nella cartella delle cronache, al livello scelto nelle opzioni."""
+        """
+        La cronaca dell'ultima amichevole nel suo file, nella cartella delle cronache, al livello
+        scelto nelle opzioni; intestazione e nome del file dicono quando si è giocata, non quando si salva.
+        """
         v = self.incontro
         if v is None:
             self.mostra(testi.NESSUNA_AMICHEVOLE, "nessuna amichevole", "nessun_incontro")
             return
         try:
-            percorso = MotorePartita(self.mondo).salva_cronaca(v.risultato, v.livello)
+            percorso = MotorePartita(self.mondo).salva_cronaca(v.risultato, v.livello, istante=v.istante, data_simulata=v.data_simulata)
         except OSError as errore:
             self.mostra(testi.cronaca_non_salvata(errore), "cronaca non salvata", "cronaca_non_salvata")
             return
