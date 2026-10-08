@@ -1,3 +1,7 @@
 Partita, i lati e il movimento, 2026-10-08 16:06: test superato, nessun commento
 Partita, la battuta e lo scambio, 2026-10-08 16:06: test superato, nessun commento
 Partita, i falli, 2026-10-08 16:07: test superato, nessun commento
+Partita, i timbri uno per uno, 2026-10-08 22:22: Tutto molto molto bene. Però, dopo ogni goal l'arbitro segnala il goal con 2 fischi, e la fine della partita con 3 fischi e i falli con un fischio. Forse lo sai già ed è già implementato.
+Partita, i lati e il movimento, 2026-10-08 22:23: test superato, nessun commento
+Partita, la battuta e lo scambio, 2026-10-08 22:23: test superato, nessun commento
+Partita, i falli, 2026-10-08 22:24: test superato, nessun commento
