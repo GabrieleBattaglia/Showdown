@@ -3,10 +3,12 @@ Test della partita sonora della tappa 10, partita_sonora.py, senza mai suonare: 
 Acusticator fa fallire chi la chiama, e la riproduzione usa una cassa finta e un orologio finto.
 Lo spazio: i valori del prototipo come predefiniti, il lato giusto per A e per B, le leggi che si
 sostituiscono. La composizione: ogni suono al suo campione, il silenzio in testa accorciato, il volo
-che attraversa il tavolo, il suono scelto da tipo, esito e causa, il margine anche al volume massimo.
-La riproduzione: la coda di zeri, la posizione, la pausa con la maniglia, le code che finiscono. La
-cronologia: i segmenti fino a ogni punto, sanzione o fine set, che coprono tutto l'incontro; la
-velocità di gioco che accorcia pause e procedura e lascia l'azione a tempo reale, con gli stessi punti.
+che attraversa il tavolo, il suono scelto da tipo, esito e causa, il margine anche al volume massimo,
+con lo stesso fattore per ogni buffer, e la paletta che suona nel riscaldamento. La riproduzione: la
+coda di zeri, la posizione, la pausa con la maniglia, le code che finiscono, la rampa di chi riparte a
+metà. La cronologia: i segmenti fino a ogni punto, sanzione o fine set, che coprono tutto l'incontro;
+la velocità di gioco che accorcia pause e procedura e lascia l'azione a tempo reale, con gli stessi
+punti; i tratti di procedura di ogni segmento e le pieghe che li fanno durare quanto vuole la velocità.
 """
 
 import math
@@ -304,3 +306,113 @@ def test_ogni_segmento_si_compone_dentro_il_margine():
         assert float(np.max(np.abs(ps.per_la_cassa(resa.buffer, 100)))) <= ps.TETTO
         assert math.isfinite(float(np.sum(resa.buffer)))
         ultimo_fine = segmento.fine
+
+
+# Le correzioni della revisione: il livello uguale per ogni buffer, la paletta nel riscaldamento,
+# la rampa della ripartenza e le pieghe della procedura.
+
+def test_il_fattore_del_volume_e_lo_stesso_per_ogni_buffer():
+    assert ps.fattore_del_volume(50) == 1.0 and ps.fattore_del_volume(25) == 0.5 and ps.fattore_del_volume(0) == 0.0
+    # Sopra il volume 53 il picco di progetto toccherebbe il tetto: il fattore non cresce più.
+    assert ps.fattore_del_volume(60) == ps.fattore_del_volume(100) == pytest.approx(ps.TETTO / ps.PICCO_DI_PROGETTO)
+    assert ps.fattore_del_volume(52) == pytest.approx(52 / 50)
+    segmenti = _segmenti(_incontro())
+    for livello in (75, 100):
+        fattore = np.float32(ps.fattore_del_volume(livello))
+        for segmento in segmenti[1:7]:
+            for ascoltatore in ("A", "B"):
+                buffer = ps.componi(segmento.eventi, ascoltatore, da=segmento.inizio, fine=segmento.fine).buffer
+                assert float(np.max(np.abs(buffer))) <= ps.PICCO_DI_PROGETTO
+                # Nessun buffer viene abbassato per conto suo: tutti per lo stesso fattore, punto dopo punto e lato per lato.
+                assert np.array_equal(ps.per_la_cassa(buffer, livello), buffer * fattore)
+
+
+def test_nel_riscaldamento_la_paletta_di_chi_riceve_suona():
+    preliminari = _segmenti(_incontro())[0]
+    sulla_paletta = [e for e in preliminari.eventi if e.tipo == E.RISCALDAMENTO_COLPO and e.volo[-1].tipo == "paletta"]
+    assert len(sulla_paletta) > 10
+    parate = [p for p in ps.posa(preliminari.eventi) if p.ruolo == "parata"]
+    # Una parata per ogni volo che arriva sulla paletta, al suo istante e nel suo punto, con il giro delle varianti.
+    assert [(p.t, p.posizioni[0]) for p in parate] == [(e.volo[-1].t, (e.volo[-1].x, e.volo[-1].y)) for e in sulla_paletta]
+    assert [p.variante for p in parate[:5]] == [0, 1, 2, 3, 0]
+    # Nel gioco la paletta del volo resta muta: suona la parata, che è un evento a sé.
+    volo = [e for s in _segmenti(_incontro())[1:4] for e in s.eventi if e.tipo == E.VOLO and e.volo[-1].tipo == "paletta"]
+    assert volo and not [p for p in ps.posati_del_volo(volo[0]) if p.ruolo == "parata"]
+
+
+def test_la_ripartenza_a_meta_ha_la_rampa_in_testa():
+    cassa, orologio = CassaFinta(), Orologio()
+    rip = ps.Riproduttore(cassa, orologio)
+    buffer = _rumore(2.0)
+    rip.suona(buffer, da=1.0, anticipo=0.3)
+    acceso = cassa.buffer[0]
+    testa, rampa = round(0.3 * FS), round(ps.SFUMATURA * FS)
+    # Dopo il silenzio dell'attesa il primo campione è zero, e la rampa sale per cinque millesimi.
+    assert not np.any(acceso[:testa + 1])
+    assert np.all(np.diff(acceso[testa:testa + rampa, 0]) > 0)
+    assert np.array_equal(acceso[testa + rampa:testa + round(1.0 * FS)], buffer[round(1.0 * FS) + rampa:])
+    assert rip.in_anticipo()
+    orologio.adesso += 0.31
+    assert not rip.in_anticipo()
+    # Da capo niente rampa: il buffer comincia già col suo silenzio.
+    rip.suona(buffer)
+    assert np.array_equal(cassa.buffer[1][:len(buffer)], buffer)
+    # Con tieni_le_code si ferma soltanto il buffer corrente, e la coda di quello di prima va avanti.
+    rip.suona(buffer, sovrapponi=True)
+    rip.suona(buffer, da=0.5, tieni_le_code=True)
+    assert cassa.maniglie[1].fermate == 0 and cassa.maniglie[2].fermate == 1 and cassa.accese == 2
+
+
+def test_le_pieghe_spostano_quello_che_viene_dopo():
+    pieghe = ((2.0, 6.0, 0.25),)
+    assert ps.secondi_del_buffer(1.0, 0.0, pieghe) == 1.0
+    assert ps.secondi_del_buffer(4.0, 0.0, pieghe) == pytest.approx(2.5)
+    assert ps.secondi_del_buffer(10.0, 0.0, pieghe) == pytest.approx(7.0)
+    assert ps.secondi_del_buffer(10.0, 3.0, pieghe) == pytest.approx(4.75)
+    for s in (0.5, 2.2, 2.9, 3.0, 6.5):
+        assert ps.secondi_del_buffer(ps.istante_del_motore(s, 0.0, pieghe), 0.0, pieghe) == pytest.approx(s)
+    # Una piega che allunga, per chi rallenta.
+    assert ps.secondi_del_buffer(10.0, 1.0, ((2.0, 4.0, 2.0),)) == pytest.approx(11.0)
+    # Due battute, a 1 e a 8 secondi, con la procedura in mezzo ripiegata a un quarto: la seconda arriva tre secondi prima, uguale.
+    battute = [_evento(1, 1.0, E.BATTUTA, (61.0, 25.0), chi=1, parte="A"), _evento(2, 8.0, E.BATTUTA, (61.0, 25.0), chi=1, parte="A")]
+    dritto = ps.componi(battute, "A", da=0.0)
+    piegato = ps.componi(battute, "A", da=0.0, pieghe=pieghe)
+    n = len(piegato.posati[1].mono)
+    assert piegato.pieghe == pieghe and piegato.durata == pytest.approx(dritto.durata - 3.0, abs=2 / FS)
+    assert np.array_equal(piegato.buffer[:round(2.0 * FS)], dritto.buffer[:round(2.0 * FS)])
+    assert np.array_equal(piegato.buffer[round(5.0 * FS):round(5.0 * FS) + n], dritto.buffer[round(8.0 * FS):round(8.0 * FS) + n])
+    assert piegato.secondi(8.0) == pytest.approx(5.0) and piegato.istante(5.0) == pytest.approx(8.0)
+    assert piegato.in_silenzio(3.0) and not piegato.in_silenzio(5.0)
+
+
+def test_ripiega_solo_quello_che_non_e_ancora_suonato():
+    procedure = [(1.0, 3.0, 1.0), (5.0, 65.0, 1.0)]
+    assert ps.ripiega(procedure, 1) == ()
+    gia = ps.ripiega(procedure, 4)
+    assert gia == ((1.0, 3.0, 0.25), (5.0, 65.0, 0.25))
+    # Dal secondo 20 del motore a velocità 8: quello che è già suonato resta com'era.
+    nuove = ps.ripiega(procedure, 8, gia, da=20.0)
+    assert nuove == ((1.0, 3.0, 0.25), (5.0, 20.0, 0.25), (20.0, 65.0, 0.125))
+    # Tornando alla velocità a cui il motore l'ha svolto, il resto non si piega più.
+    assert ps.ripiega(procedure, 1, nuove, da=30.0) == ((1.0, 3.0, 0.25), (5.0, 20.0, 0.25), (20.0, 30.0, 0.125))
+    # Alla stessa velocità non cambia niente: le pieghe contigue allo stesso fattore si fondono.
+    assert ps.ripiega(procedure, 4, gia, da=20.0) == gia
+
+
+def test_i_tratti_di_procedura_sono_il_tempo_che_la_velocita_accorcia():
+    eventi, tratti = {}, {}
+    for velocita in (1.0, 4.0):
+        segmenti = _segmenti(_incontro(velocita, seme=5), velocita)
+        eventi[velocita] = [e for s in segmenti for e in s.eventi]
+        tratti[velocita] = [t for s in segmenti for t in s.procedure]
+        assert {v for _a, _b, v in tratti[velocita]} == {velocita}
+    tipi = {e.tipo for e in eventi[1.0]}
+    assert {E.TIMEOUT_INIZIO, E.CAMBIO_CAMPO_INIZIO} <= tipi
+
+    def azione(velocita, i):
+        """Il tempo fra l'evento i e il seguente che non è pausa né procedura: non dipende dalla velocità."""
+        a, b = eventi[velocita][i].t, eventi[velocita][i + 1].t
+        return (b - a) - sum(max(0.0, min(b, tb) - max(a, ta)) for ta, tb, _v in tratti[velocita] if ta < b and tb > a)
+
+    for i in range(len(eventi[1.0]) - 1):
+        assert azione(1.0, i) == pytest.approx(azione(4.0, i), abs=0.004), (eventi[1.0][i].tipo, eventi[1.0][i + 1].tipo)

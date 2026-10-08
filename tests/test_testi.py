@@ -136,6 +136,9 @@ def test_guida_novita_e_informazioni():
     _accessibile(guida)
     assert "Menu File: Salva il mondo, Ctrl+S; Esci, Ctrl+Q." in guida
     assert testi.LEGENDA_BARRA in guida
+    # I tasti della partita dal vivo non stanno in un menu: la guida li dice in una riga sua.
+    assert testi.GUIDA_DELLA_PARTITA_DAL_VIVO in guida.splitlines()
+    assert all(tasto in testi.GUIDA_DELLA_PARTITA_DAL_VIVO for tasto in ("Prosegui", "Alt+F", "Alt+L", "Alt+V", "Esc", "più e meno", "F1"))
     novita = testi.novita("# Changelog\n\n## [1.3.0] - 2026-10-06\n\n### Un mondo nuovo\n\nIl file `mess_mondo.json` si firma.\n")
     assert novita.splitlines() == ["Changelog.", "Versione 1.3.0 del 2026-10-06.", "Un mondo nuovo.", "Il file mess_mondo.json si firma."]
     _accessibile(testi.informazioni())

@@ -21,20 +21,26 @@ sua causa: le cause che fanno un rumore loro, la paletta che cade, il colpo a vu
 tocco, hanno il loro suono, come vuole D28, e gli altri falli si riconoscono dal suono della pallina,
 dal fischio e dalla chiamata. Le parole dell'arbitro non suonano: le dice la cronaca. I suoni tonali
 si sintetizzano una volta; quelli di rumore tengono quattro varianti, che girano dentro il buffer.
-Il livello ha un margine: un guadagno fisso e un tetto, anche al volume degli effetti massimo.
+Il livello ha un margine: allo stesso volume degli effetti ogni buffer ha lo stesso fattore, così
+la partita non cambia livello da un punto all'altro né cambiando lato, e un tetto che nessun picco
+supera, anche al volume massimo.
 La riproduzione e la cronologia. Il buffer parte come ciclo di Acusticator, con una coda di zeri, e
 si ferma con la sua maniglia, come vuole D28: la pausa, il salto, l'uscita e il cambio di lato
-fermano soltanto la partita, mai gli effetti della finestra, che Acusticator.stop zittirebbe. La
-Cronologia divide l'incontro, svolto un momento alla volta, in segmenti che finiscono a ogni punto,
-sanzione o fine set, e lascia al motore la velocità di gioco, che divide le pause e la procedura
-dell'arbitro e mai l'azione: per questo il buffer non si ricompone mai per la velocità.
+fermano soltanto la partita, mai gli effetti della finestra, che Acusticator.stop zittirebbe. Quando
+riparte a metà, dopo una pausa o un cambio di lato, la testa ha cinque millesimi di rampa, perché il
+taglio non faccia clic. La Cronologia divide l'incontro, svolto un momento alla volta, in segmenti
+che finiscono a ogni punto, sanzione o fine set, e lascia al motore la velocità di gioco, che divide
+le pause e la procedura dell'arbitro e mai l'azione. Pause e procedura già svolte a una velocità
+diversa da quella di adesso, il time-out che sta già suonando o la pausa dopo il punto in cui si è
+premuto più, si ripiegano: ogni segmento conosce i suoi tratti di procedura, e il buffer li fa
+durare quanto vuole la velocità di adesso, spostando quello che viene dopo. L'azione non si piega mai.
 """
 
 import collections
 import itertools
 import math
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -59,16 +65,25 @@ RITARDO_SECONDO_TOCCO = 0.08
 KIND_DI_RUMORE = frozenset((5, 6, 7, 8))
 VARIANTI_RUMORE = 4
 # Il livello: il guadagno fisso della partita, e il tetto che nessun picco supera. Il volume degli
-# effetti moltiplica il buffer come moltiplica i suoni della finestra, a 50 com'è stato pensato.
+# effetti moltiplica il buffer come moltiplica i suoni della finestra, a 50 com'è stato pensato, ma
+# senza superare il fattore che porta al tetto il picco di progetto, il più alto misurato dal
+# revisore in 24 incontri, a tre velocità e dalle due testate: 0,7526, del fischio che parte nello
+# stesso campione di un colpo. Così il fattore è lo stesso per ogni buffer, e oltre il volume 53 la
+# partita non cresce più; un picco mai visto lo abbassa ancora con_margine, come rete.
 GUADAGNO_PARTITA = 1.0
 TETTO = 0.8
 VOLUME_DI_PROGETTO = 50
+PICCO_DI_PROGETTO = 0.76
 # Il silenzio lasciato davanti al primo suono quando il buffer accorcia quello in testa.
 ANTICIPO = 0.3
 # I secondi di zeri in coda al ciclo: se il battito che lo ferma arriva tardi, il punto non riparte.
 CODA_DI_ZERI = 2.0
 # La tolleranza sugli istanti: quelli degli eventi sono arrotondati al millesimo, quelli delle tappe no.
 TOLLERANZA = 0.001
+# Il silenzio in cui un buffer può ripartire senza che si senta: sotto questa soglia, per i secondi
+# che seguono, quanti ne bastano a coprire un battito della finestra.
+SOGLIA_SILENZIO = 1e-4
+SILENZIO_DAVANTI = 0.06
 
 # I preset segnaposto della collezione di GBUtils, uno per ruolo e mai lo stesso per due ruoli, gli
 # stessi dell'ascolto libero approvato da Gabriele. Nessuno è fra quelli della finestra, in
@@ -96,9 +111,12 @@ SUONI = {
     "fischio_doppio": "doppio_tic_conferma",
     "fischio_lungo": "sys_tick_alto",
 }
-# Le tappe del volo che hanno un suono proprio. Paletta e porta suonano con la parata e il goal.
+# Le tappe del volo che hanno un suono proprio. Paletta e porta suonano con la parata e il goal;
+# nel riscaldamento, dove il motore non crea parate, la pallina che arriva sulla paletta di chi
+# riceve suona da sé, con il suono della parata.
 TAPPE_SONORE = {"sponda": "sponda", "curva": "sponda", "schermo": "schermo", "terra": "terra", "corpo": "corpo", "soffitto": "soffitto",
                 "tavola_contatto": "tavola_contatto"}
+TAPPE_DEL_RISCALDAMENTO = {"paletta": "parata"}
 # Il volo non dice se un tratto è sul tavolo o in aria: lo dice il tipo delle sue tappe.
 FINE_IN_ARIA = frozenset(("terra", "soffitto", "sopra_schermo"))
 INIZIO_IN_ARIA = frozenset(("fuori", "soffitto", "tavola_contatto", "sopra_schermo"))
@@ -184,14 +202,89 @@ class Posato:
 
 @dataclass
 class Resa:
-    """Il buffer stereo composto, l'istante del suo primo campione e i suoni posati, per verificarlo."""
+    """
+    Il buffer stereo composto, l'istante del suo primo campione, i suoni posati, per verificarlo, e
+    le pieghe con cui è stato composto, che legano i secondi del buffer agli istanti del motore.
+    """
     buffer: np.ndarray
     t0: float
     posati: list
+    pieghe: tuple = ()
 
     @property
     def durata(self):
         return len(self.buffer) / FS
+
+    def secondi(self, t):
+        """Il secondo del buffer in cui suona l'istante t del motore."""
+        return secondi_del_buffer(t, self.t0, self.pieghe)
+
+    def istante(self, s):
+        """L'istante del motore che suona al secondo s del buffer."""
+        return istante_del_motore(s, self.t0, self.pieghe)
+
+    def in_silenzio(self, s, durata=SILENZIO_DAVANTI):
+        """Vero se il buffer tace da un soffio prima del secondo s fino a durata secondi dopo: lì può ripartire senza che si senta."""
+        tratto = self.buffer[max(0, round((s - SFUMATURA) * FS)):max(0, round((s + durata) * FS))]
+        return not len(tratto) or float(np.max(np.abs(tratto))) < SOGLIA_SILENZIO
+
+
+# Le pieghe del tempo. Il motore scrive pause e procedura alla velocità di gioco del momento in cui
+# le svolge; se la velocità cambia dopo, il tratto già svolto si ripiega. Una piega (a, b, f) fa
+# durare l'intervallo da a a b del tempo del motore (b - a) * f secondi di buffer, e sposta di
+# conseguenza tutto quello che viene dopo; f minore di uno accorcia, maggiore di uno allunga.
+
+def _scarto(t, pieghe):
+    """I secondi di tempo del motore che le pieghe tolgono prima dell'istante t, negativi se lo allungano."""
+    return sum((min(max(t, a), b) - a) * (1.0 - f) for a, b, f in pieghe)
+
+
+def secondi_del_buffer(t, t0, pieghe=()):
+    """Il secondo del buffer, che comincia all'istante t0 del motore, in cui suona l'istante t."""
+    return (t - t0) - (_scarto(t, pieghe) - _scarto(t0, pieghe))
+
+
+def istante_del_motore(s, t0, pieghe=()):
+    """L'istante del motore che suona al secondo s del buffer che comincia a t0: l'inverso di secondi_del_buffer."""
+    if not pieghe:
+        return t0 + s
+    punti = sorted({t0, *(x for a, b, _f in pieghe for x in (a, b) if x > t0)})
+    for sinistra, destra in itertools.pairwise(punti):
+        if secondi_del_buffer(destra, t0, pieghe) >= s:
+            mezzo = (sinistra + destra) / 2
+            pendenza = next((f for a, b, f in pieghe if a <= mezzo < b), 1.0)
+            return sinistra + (s - secondi_del_buffer(sinistra, t0, pieghe)) / pendenza
+    return punti[-1] + (s - secondi_del_buffer(punti[-1], t0, pieghe))
+
+
+def _fondi(pieghe):
+    """Le pieghe in ordine, senza quelle vuote e con le contigue allo stesso fattore fuse in una."""
+    fuse = []
+    for a, b, f in sorted(pieghe):
+        if b - a <= 1e-9:
+            continue
+        if fuse and abs(fuse[-1][1] - a) <= 1e-9 and math.isclose(fuse[-1][2], f):
+            fuse[-1] = (fuse[-1][0], b, fuse[-1][2])
+        else:
+            fuse.append((a, b, f))
+    return tuple(fuse)
+
+
+def ripiega(procedure, velocita, pieghe=(), da=None):
+    """
+    Le pieghe che fanno suonare la procedura di un segmento alla velocità data. procedure sono i
+    tratti (a, b, v) di pausa e procedura del segmento, ciascuno svolto dal motore alla velocità v,
+    che deve durare (b - a) * v / velocita. Con da, l'istante a cui il suono è arrivato, quello che
+    viene prima resta com'è stato suonato, con le pieghe date, e si ripiega solo il resto.
+    """
+    nuove = [] if da is None else [(a, min(b, da), f) for a, b, f in pieghe if a < da]
+    fine = -math.inf if da is None else da
+    for a, b, v in sorted(procedure):
+        inizio = max(a, fine)
+        if b - inizio > 1e-9 and abs(v / velocita - 1.0) > 1e-9:
+            nuove.append((inizio, b, v / velocita))
+        fine = max(fine, b)
+    return _fondi(nuove)
 
 
 # Le sorgenti, dalla collezione.
@@ -395,7 +488,8 @@ def _in_aria(prima, dopo):
 def posati_del_volo(e, varianti=None, causa=None):
     """
     Il rotolamento lungo il tratto del volo che sta sul tavolo, e i suoni delle tappe: sponde,
-    schermo, terra, corpo. causa è quella del colpo che ha lanciato il volo, se si conosce.
+    schermo, terra, corpo, e nel riscaldamento la paletta di chi riceve. causa è quella del colpo
+    che ha lanciato il volo, se si conosce.
     """
     from motore.tavolo import posizione_al_tempo
 
@@ -418,8 +512,9 @@ def posati_del_volo(e, varianti=None, causa=None):
         v = np.interp(volo[0].t + tempi, [tp.t for tp in volo], [tp.v for tp in volo])
         guadagni = GUADAGNO_ROTOLAMENTO * np.clip(np.sqrt(np.maximum(v, 0.0) / V_RIF), 0.15, 1.3)
         posati.append(Posato("rotolamento", volo[0].t, nastro("rotolamento", durata, e.n), tempi, posizioni, guadagni, e.n))
+    tappe = TAPPE_SONORE | TAPPE_DEL_RISCALDAMENTO if e.tipo == E.RISCALDAMENTO_COLPO else TAPPE_SONORE
     for tp in volo[1:]:
-        ruolo = TAPPE_SONORE.get(tp.tipo)
+        ruolo = tappe.get(tp.tipo)
         if ruolo:
             posati.append(_fermo(ruolo, tp.t, (tp.x, tp.y), e.n, varianti(ruolo)))
     return posati
@@ -459,14 +554,15 @@ def posa(eventi):
     return posati
 
 
-def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo=None):
+def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo=None, pieghe=()):
     """
     Gli eventi dati composti in un buffer stereo per chi ascolta dalla testata della parte indicata:
     ogni suono posato, spazializzato e sommato al suo istante, esatto al campione. da è l'istante del
     primo campione: senza, il primo evento, o il primo suono se viene prima; gli eventi che vengono
     prima non suonano. fine è l'istante fin dove il buffer arriva almeno, anche in silenzio. Con
     anticipo il silenzio in testa si accorcia, e davanti al primo suono ne restano quei secondi, mai
-    prima di da: è la ripartenza da fermi, che non fa aspettare chi ha premuto il tasto.
+    prima di da: è la ripartenza da fermi, che non fa aspettare chi ha premuto il tasto. Le pieghe
+    accorciano o allungano i tratti di procedura, e ogni suono cade al secondo che gli danno.
     """
     eventi = list(eventi)
     if da is not None:
@@ -478,17 +574,19 @@ def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo
         t0 = da
     if anticipo is not None and posati:
         t0 = max(t0, min(p.t for p in posati) - anticipo)
-    durata = max([p.t - t0 + len(p.mono) / FS for p in posati] + [0.0 if fine is None else fine - t0, 0.0])
+    pieghe = tuple(pieghe)
+    durata = max([secondi_del_buffer(p.t, t0, pieghe) + len(p.mono) / FS for p in posati] +
+                 [0.0 if fine is None else secondi_del_buffer(fine, t0, pieghe), 0.0])
     buffer = np.zeros((math.ceil(durata * FS) + 1, 2), dtype=np.float32)
     for p in posati:
         stereo = spazializza(p, ascoltatore, spazio)
-        inizio = round((p.t - t0) * FS)
+        inizio = round(secondi_del_buffer(p.t, t0, pieghe) * FS)
         if inizio < 0:
             # Un istante arrotondato può cadere mezzo millesimo prima del primo campione.
             stereo = stereo[-inizio:]
             inizio = 0
         buffer[inizio:inizio + len(stereo)] += stereo
-    return Resa(buffer, t0, posati)
+    return Resa(buffer, t0, posati, pieghe)
 
 
 def con_margine(buffer, guadagno=GUADAGNO_PARTITA, tetto=TETTO):
@@ -505,9 +603,17 @@ def con_margine(buffer, guadagno=GUADAGNO_PARTITA, tetto=TETTO):
     return uscita
 
 
+def fattore_del_volume(volume):
+    """
+    Il fattore della partita al volume degli effetti, da 0 a 100: a 50 uno, e lo stesso per ogni
+    buffer; non supera quello che porta il picco di progetto al tetto, a cui arriva al volume 53.
+    """
+    return GUADAGNO_PARTITA * min(max(0, min(100, volume)) / VOLUME_DI_PROGETTO, TETTO / PICCO_DI_PROGETTO)
+
+
 def per_la_cassa(buffer, volume):
     """Il buffer pronto per la cassa al volume degli effetti, da 0 a 100: a 50 com'è stato pensato, mai sopra il tetto."""
-    return con_margine(buffer, GUADAGNO_PARTITA * max(0, min(100, volume)) / VOLUME_DI_PROGETTO)
+    return con_margine(buffer, fattore_del_volume(volume))
 
 
 # La riproduzione.
@@ -541,6 +647,10 @@ class Voce:
     def finita(self, adesso):
         return adesso - self.partenza >= self.anticipo + self.durata - self.da
 
+    def in_anticipo(self, adesso):
+        """Vero finché suona il silenzio messo davanti, e il buffer non è ancora partito."""
+        return adesso - self.partenza < self.anticipo
+
     def ferma(self):
         if self.maniglia is not None:
             self.maniglia.stop()
@@ -553,7 +663,8 @@ class Riproduttore:
     sostituiscono l'una e l'altro. Il buffer corrente è uno solo; quelli di prima, se si chiede di
     sovrapporli, finiscono di suonare la loro coda, e battito li ferma quando sono finiti. La coda di
     zeri fa sì che un battito in ritardo non faccia ripartire il ciclo. Se la cassa non si apre il
-    tempo scorre lo stesso, in silenzio, e la finestra va avanti.
+    tempo scorre lo stesso, in silenzio, e la finestra va avanti. Un buffer che riparte a metà ha
+    cinque millesimi di rampa in testa: la ripresa e il cambio di lato non fanno clic.
     """
 
     def __init__(self, cassa=None, orologio=time.monotonic):
@@ -562,20 +673,35 @@ class Riproduttore:
         self.corrente = None
         self._code = []
 
-    def suona(self, buffer, da=0.0, anticipo=0.0, sovrapponi=False):
-        """Fa partire buffer dal secondo da, dopo anticipo secondi di silenzio, e restituisce la Voce."""
+    def suona(self, buffer, da=0.0, anticipo=0.0, sovrapponi=False, tieni_le_code=False):
+        """
+        Fa partire buffer dal secondo da, dopo anticipo secondi di silenzio, e restituisce la Voce.
+        Con sovrapponi il buffer di prima finisce di suonare; con tieni_le_code si ferma soltanto
+        quello, e le code dei buffer di prima vanno avanti; altrimenti si ferma tutto.
+        """
         if sovrapponi:
             if self.corrente is not None:
                 self._code.append(self.corrente)
+        elif tieni_le_code:
+            if self.corrente is not None:
+                self.corrente.ferma()
         else:
             self.ferma()
         durata = len(buffer) / FS
         da = max(0.0, min(da, durata))
-        pezzi = [np.zeros((round(anticipo * FS), 2), dtype=np.float32), np.asarray(buffer, dtype=np.float32)[round(da * FS):],
-                 np.zeros((round(CODA_DI_ZERI * FS), 2), dtype=np.float32)]
+        resto = np.asarray(buffer, dtype=np.float32)[round(da * FS):]
+        if da > 0 and len(resto):
+            resto = resto.copy()
+            n = min(round(SFUMATURA * FS), len(resto))
+            resto[:n] *= np.linspace(0.0, 1.0, n, dtype=np.float32)[:, None]
+        pezzi = [np.zeros((round(anticipo * FS), 2), dtype=np.float32), resto, np.zeros((round(CODA_DI_ZERI * FS), 2), dtype=np.float32)]
         maniglia = self.cassa.accendi(np.concatenate(pezzi)) if np.any(buffer) else None
         self.corrente = Voce(maniglia, self.orologio(), da, durata, anticipo)
         return self.corrente
+
+    def in_anticipo(self):
+        """Vero se il buffer corrente aspetta ancora dietro il silenzio messo davanti."""
+        return self.corrente is not None and self.corrente.in_anticipo(self.orologio())
 
     def posizione(self):
         """Il secondo del buffer corrente che sta suonando, o None se non suona niente."""
@@ -614,6 +740,34 @@ class Riproduttore:
 # fine del set, se non è l'ultimo; la fine dell'incontro; e l'ultimo evento dei preliminari.
 CHIUSURE_DEL_PUNTO = frozenset((E.PUNTO, E.RIPETIZIONE, E.AMMONIZIONE, E.PENALITA))
 SANZIONI = frozenset((E.AMMONIZIONE, E.PENALITA))
+# I tratti di pausa e di procedura, quelli che la velocità di gioco accorcia nella Regia del motore.
+# Gli eventi la cui durata è procedura dell'arbitro: il sorteggio, le formazioni, il recupero della
+# pallina, l'annuncio, la domanda di pronto, le chiamate, il cambio dell'attrezzo e il cambio al
+# tavolo. E gli intervalli fra due eventi: la pausa dopo il punto o la ripetizione, il ritardo della
+# chiamata dopo il fischio, e il time-out e il cambio campo, dal loro inizio alla fine, avviso
+# compreso. L'avviso del riscaldamento no: il riscaldamento è azione, a tempo reale.
+EVENTI_DI_PROCEDURA = frozenset((E.SORTEGGIO, E.FORMAZIONI, E.RECUPERO, E.ANNUNCIO, E.DOMANDA_PRONTO, E.CHIAMATA, E.SOSTITUZIONE_ATTREZZO,
+                                 E.AMMONIZIONE, E.PENALITA, E.CAMBIO_AL_TAVOLO))
+PAUSA_DOPO = frozenset((E.PUNTO, E.RIPETIZIONE, E.TIMEOUT_INIZIO, E.CAMBIO_CAMPO_INIZIO))
+RITARDO_PRIMA = frozenset((E.CHIAMATA, E.AMMONIZIONE, E.PENALITA))
+
+
+def tratti_di_procedura(precedente, evento, velocita_precedente, velocita):
+    """
+    I tratti di pausa e procedura che arrivano con l'evento, come terne (a, b, v): l'intervallo che
+    lo separa dal precedente, se è pausa o ritardo della chiamata, e la sua durata, se è procedura.
+    v è la velocità a cui il motore li ha svolti: quella del momento del precedente per l'intervallo,
+    perché la pausa la scrive il motore in fondo al punto, e quella dell'evento per la sua durata.
+    """
+    tratti = []
+    if precedente is not None:
+        a, b = precedente.t + precedente.durata, evento.t
+        dentro_una_pausa = precedente.tipo == E.AVVISO_TEMPO and precedente.fase == E.PAUSA
+        if b - a > TOLLERANZA and (precedente.tipo in PAUSA_DOPO or dentro_una_pausa or evento.tipo in RITARDO_PRIMA):
+            tratti.append((a, b, velocita_precedente))
+    if evento.tipo in EVENTI_DI_PROCEDURA and evento.durata > TOLLERANZA:
+        tratti.append((evento.t, evento.t + evento.durata, velocita))
+    return tratti
 
 
 @dataclass
@@ -623,10 +777,12 @@ class Segmento:
     evento, momento e se l'evento apre il suo momento; inizio è da dove comincia il suono quando si
     riparte da fermi, cioè dalla ripresa del gioco, perché pause e procedura che vengono prima le
     decide chi ascolta; fine è l'istante della chiusura, dove comincia il segmento che segue.
+    procedure sono i tratti di pausa e procedura, con la velocità a cui il motore li ha svolti.
     """
     voci: list
     inizio: float
     fine: float
+    procedure: list = field(default_factory=list)
 
     @property
     def eventi(self):
@@ -659,7 +815,9 @@ class Cronologia:
     """
     L'incontro dal vivo diviso in segmenti, ciascuno fino a un punto, una sanzione o una fine di set.
     Svolge l'incontro un momento alla volta, solo quando serve, e prima di ogni momento gli dà la
-    velocità di gioco del momento, così un cambio vale dalla procedura che segue.
+    velocità di gioco del momento, così un cambio vale dalla procedura che segue. Ogni segmento sa
+    quali sono i suoi tratti di pausa e procedura, e a che velocità il motore li ha svolti: quelli
+    svolti prima di un cambio si ripiegano nel buffer, con ripiega.
     """
 
     def __init__(self, incontro):
@@ -667,6 +825,8 @@ class Cronologia:
         self._momenti = incontro.momenti()
         self._in_attesa = collections.deque()
         self.esaurita = False
+        # L'ultimo evento consegnato, con la velocità del suo momento: la pausa che lo segue sta nel segmento dopo.
+        self._precedente = (None, None)
 
     def _chiude(self, evento, momento):
         if evento.tipo in CHIUSURE_DEL_PUNTO:
@@ -685,25 +845,31 @@ class Cronologia:
         except StopIteration:
             self.esaurita = True
             return False
-        self._in_attesa.extend((e, momento, i == 0) for i, e in enumerate(momento.eventi))
+        regia = getattr(self.incontro, "regia", None)
+        svolto = regia.velocita if regia is not None else 1.0
+        self._in_attesa.extend((e, momento, i == 0, svolto) for i, e in enumerate(momento.eventi))
         return True
 
     def prossimo(self, velocita=None):
         """Il segmento che segue, svolgendo i momenti che servono alla velocità data; None a incontro finito."""
         voci = []
+        procedure = []
         while True:
             if not self._in_attesa and (self.esaurita or not self._carica(velocita)):
                 break
             if not self._in_attesa:
                 continue
-            voce = self._in_attesa.popleft()
-            voci.append(voce)
-            if self._chiude(voce[0], voce[1]):
+            evento, momento, apre, svolto = self._in_attesa.popleft()
+            precedente, svolto_prima = self._precedente
+            procedure.extend(tratti_di_procedura(precedente, evento, svolto_prima, svolto))
+            self._precedente = (evento, svolto)
+            voci.append((evento, momento, apre))
+            if self._chiude(evento, momento):
                 break
         if not voci:
             return None
         chiusura = voci[-1][0]
-        return Segmento(voci, _inizio_del_gioco(voci), chiusura.t + chiusura.durata)
+        return Segmento(voci, _inizio_del_gioco(voci), chiusura.t + chiusura.durata, procedure)
 
 
 def _inizio_del_gioco(voci):

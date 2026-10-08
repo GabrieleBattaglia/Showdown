@@ -202,8 +202,8 @@ def test_vai_alla_fine_dalla_finestra_dal_vivo(finestra, suonati, monkeypatch, c
 
     Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=nel_vivo)
     finestra.amichevole()
-    # Prima i guizzi del salto alla fine, poi l'esito; il suono della partita è fermo.
-    assert suonati[-3:] == ["amichevole_al_via", "resto_dell_incontro", _esito_atteso(finestra, 2)]
+    # Alt+F mentre suona il riscaldamento ha il suo suono; poi i guizzi del salto alla fine, e l'esito; il suono della partita è fermo.
+    assert suonati[-4:] == ["amichevole_al_via", "dal_vivo_fino_a_fine_set", "resto_dell_incontro", _esito_atteso(finestra, 2)]
     assert finestra.vista.GetValue() == _testo_alla_fine(finestra)
     assert cassa.accese == 0
 

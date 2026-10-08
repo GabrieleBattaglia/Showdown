@@ -17,10 +17,11 @@ un suono della finestra: lo controlla una prova.
 Dal 2026-10-08, con l'amichevole della tappa 9 nella finestra, c'è il gruppo delle partite: i
 dialoghi dell'amichevole, i suoi esiti, il punto per punto e la cronaca salvata, quattordici suoni
 nuovi entrati nella collezione con la V201. Sono suoni della finestra, non della partita.
-Con la decisione D29 arrivano i comandi della partita dal vivo: pausa, ripresa, cambio di lato e
-velocità, e la velocità di gioco nelle impostazioni. Tre suoni sono nuovi, mess_dall_altra_parte,
-mess_velocita_di_gioco e mess_velocita_salvata, e cinque della collezione portano la firma di MESS,
-con la V202; i quattro del punto per punto passano ai comandi della finestra dal vivo.
+Con la decisione D29 arrivano i comandi della partita dal vivo: pausa, ripresa, ascolto fino a fine
+set, cambio di lato e velocità, e la velocità di gioco nelle impostazioni. Quattro suoni sono nuovi,
+mess_fino_a_fine_set, mess_dall_altra_parte, mess_velocita_di_gioco e mess_velocita_salvata, e
+cinque della collezione portano la firma di MESS, con la V202; i quattro del punto per punto passano
+ai comandi della finestra dal vivo.
 """
 
 import sys
@@ -83,7 +84,7 @@ GRUPPI = (
         "dialogo_effetti_sonori": "meteora_impostazioni",
         "prova_volume_effetti": "mess_prova_volume",
         "effetti_sonori_applicati": "conferma",
-        # La velocità di gioco della partita dal vivo: il tic tac di un metronomo, e lo stesso tic tac che si posa.
+        # La velocità di gioco della partita dal vivo: il tic tac di un metronomo, e tre note che scendono e si posano.
         "dialogo_velocita_di_gioco": "mess_velocita_di_gioco",
         "velocita_di_gioco_salvata": "mess_velocita_salvata",
     }),
@@ -222,10 +223,12 @@ GRUPPI = (
         "riscaldamento_saltato": "mess_punto_successivo",
         "resto_dell_incontro": "mess_resto_dell_incontro",
         "incontro_finito": "mess_incontro_finito",
-        # Il cronometro che si ferma e riparte, il giro del tavolo per l'altra testata, e il
-        # metronomo che accelera, rallenta o bussa contro il fondo scala.
+        # Il cronometro che si ferma e riparte, la scala che sale di filato fino a fine set, il giro
+        # del tavolo per l'altra testata, e il metronomo che accelera, rallenta o bussa contro il
+        # fondo scala.
         "dal_vivo_pausa": "meditimer_cronometro_pausa",
         "dal_vivo_ripresa": "meditimer_cronometro_ripreso",
+        "dal_vivo_fino_a_fine_set": "mess_fino_a_fine_set",
         "dal_vivo_cambio_lato": "mess_dall_altra_parte",
         "dal_vivo_piu_veloce": "meteora_velocita_su",
         "dal_vivo_piu_lenta": "meteora_velocita_giu",

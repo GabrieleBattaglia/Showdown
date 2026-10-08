@@ -840,8 +840,17 @@ def guida(voci):
         elenco = "; ".join(f"{voce}, {tasto}" if tasto else voce for voce, tasto in comandi)
         righe.append(f"Menu {menu}: {elenco}.")
     righe.append("Con Tab si passa dalla vista principale alla barra di stato e ritorno; F5 porta sulla vista principale, F7 sulla barra di stato.")
+    righe.append(GUIDA_DELLA_PARTITA_DAL_VIVO)
     righe.append(LEGENDA_BARRA)
     return "\n".join(righe)
+
+
+# La partita dal vivo nella guida ai comandi: i suoi tasti non stanno in un menu.
+GUIDA_DELLA_PARTITA_DAL_VIVO = (
+    "La partita dal vivo si apre scegliendo Assisti nel dialogo dell'amichevole. Lì Invio o spazio sul pulsante Prosegui fanno sentire il gioco "
+    "fino al punto seguente, e mentre suona lo mettono in pausa e lo riprendono; Alt+F ascolta fino a fine set, Alt+L passa dalla parte "
+    "dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce; più e meno cambiano la velocità di gioco; F1 rimette la guida "
+    "dei tasti nel campo della cronaca, che si raggiunge con Tab.")
 
 
 def informazioni():
@@ -918,7 +927,7 @@ def guida_dal_vivo(nomi, ascoltatore, set_al_meglio, velocita):
         "Invio o spazio su Prosegui fanno sentire il gioco fino al punto seguente; mentre suona, lo stesso tasto lo ferma e lo riprende, e salta il riscaldamento.",
         "Alt+F ascolta fino a fine set, Alt+L passa dalla parte dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce.",
         f"Più e meno cambiano la velocità di gioco, ora {velocita}: accorcia le pause e la procedura dell'arbitro, mai l'azione.",
-        "In questo campo, dopo ogni tranche, c'è la cronaca di quello che hai appena sentito; Maiusc+Tab torna al pulsante.",
+        "In questo campo, dopo ogni tranche, c'è la cronaca di quello che hai appena sentito; F1 ci rimette questa guida, Maiusc+Tab torna al pulsante.",
     ])
 
 

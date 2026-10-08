@@ -9,14 +9,18 @@ Il pulsante Prosegui ha già il fuoco: Invio o spazio fanno partire la tranche c
 l'azione suona lo stesso pulsante diventa Pausa, e poi Riprendi, che riparte dal punto in cui si era
 fermata. Durante il riscaldamento il pulsante diventa Salta il riscaldamento: la decisione D25 lo
 vuole saltabile con un tasto, e D29 non ne nomina un altro. Ascolta fino a fine set, Alt+F, non si
-ferma a ogni punto ma solo a fine set; Alt+L passa dalla parte dell'altro giocatore anche a metà
-punto, ricomponendo il suono dal punto in cui si è arrivati; Alt+V va alla fine; Esc esce. Più e meno
-cambiano al volo la velocità di gioco, che il motore usa dal momento seguente. A fine incontro il
-pulsante lo dice e porta al risultato.
+ferma a ogni punto ma solo a fine set, e ha il suo suono anche mentre l'azione suona o è in pausa,
+perché si sappia subito che il tasto è arrivato; Alt+L passa dalla parte dell'altro giocatore anche
+a metà punto, ricomponendo il suono dal punto in cui si è arrivati; Alt+V va alla fine; Esc esce. Più
+e meno cambiano al volo la velocità di gioco: il motore la usa dal momento seguente, e pause e
+procedura già composte, come il time-out che sta suonando, si ripiegano alla velocità nuova appena il
+suono tace, così il cambio non si sente. A fine incontro il pulsante lo dice e porta al risultato.
 Con Tab e Maiusc+Tab si va nel campo della cronaca, dove si legge la tranche appena ascoltata al
 livello scelto: il campo cambia mentre il fuoco resta sul pulsante, perciò NVDA non lo legge da solo
-e non copre i suoni. Il suono della partita si ferma sempre con la maniglia del suo ciclo, mai con
-Acusticator.stop, che zittirebbe anche gli effetti della finestra.
+e non copre i suoni. Prima della prima tranche il campo tiene la guida dei tasti, che dice il lato e
+la velocità di adesso anche dopo Alt+L, più e meno; F1 la rimette nel campo in ogni momento. Il suono
+della partita si ferma sempre con la maniglia del suo ciclo, mai con Acusticator.stop, che
+zittirebbe anche gli effetti della finestra.
 Prosegui fa sentire il punto dalla ripresa del gioco, con il silenzio in testa accorciato: le pause e
 la procedura a palla ferma che vengono prima, il time-out, il cambio campo, l'inizio del set, si
 leggono nella cronaca, perché la pausa fra due punti la decide chi ascolta. Ascolta fino a fine set
@@ -63,6 +67,7 @@ class FinestraDalVivo(_Dialogo):
         self.livello = livello
         self.velocita = velocita
         self.impostazioni = impostazioni
+        self.set_al_meglio = gemello.formato.set_al_meglio
         self.cronologia = ps.Cronologia(gemello)
         self.riproduttore = ps.Riproduttore(cassa, orologio or time.monotonic)
         self.ascoltatore = "A"
@@ -73,13 +78,17 @@ class FinestraDalVivo(_Dialogo):
         # In pausa: il secondo del buffer a cui ci si è fermati, e il suo primo istante se il cambio di lato ha tolto la composizione.
         self.posizione = 0.0
         self._t0_ricordato = 0.0
+        # Le pieghe con cui suona il segmento corrente, e se la velocità è cambiata dopo che è stato composto.
+        self._pieghe = ()
+        self._da_ripiegare = False
+        # Vero finché nel campo della cronaca c'è la guida dei tasti, che allora segue lato e velocità.
+        self._guida_in_vista = True
         self.tranche = []
         self.uscita = None
         self.prosegui = wx.Button(self.pannello, label="&Prosegui")
         self.sizer.Add(self.prosegui, 0, wx.ALL, 8)
         self.etichetta("&Cronaca")
-        guida = testi.guida_dal_vivo(nomi, self.ascoltatore, gemello.formato.set_al_meglio, velocita)
-        self.cronaca = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2, value=guida), 1)
+        self.cronaca = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2, value=self._testo_della_guida()), 1)
         if impostazioni:
             aspetto.applica(self.cronaca, impostazioni)
         riga = wx.BoxSizer(wx.HORIZONTAL)
@@ -122,45 +131,94 @@ class FinestraDalVivo(_Dialogo):
             self.prosegui.SetLabel(etichetta)
             self.pannello.Layout()
 
-    def _mostra(self, voci):
-        """La cronaca delle voci nel campo, al livello scelto, senza spostare il fuoco dal pulsante."""
-        righe = testi.righe_degli_eventi(voci, self.nomi, self.livello)
-        self.cronaca.ChangeValue("\n".join(righe) or "In questo tratto la cronaca, a questo livello, non ha frasi.")
+    def _scrivi(self, testo):
+        """Il testo nel campo della cronaca, con lo stile scelto e il cursore in cima, senza spostare il fuoco dal pulsante."""
+        self.cronaca.ChangeValue(testo)
         if self.impostazioni:
             aspetto.ridai_stile(self.cronaca, self.impostazioni)
         self.cronaca.SetInsertionPoint(0)
 
+    def _testo_della_guida(self):
+        return testi.guida_dal_vivo(self.nomi, self.ascoltatore, self.set_al_meglio, self.velocita)
+
+    def _mostra_guida(self):
+        """La guida dei tasti nel campo, con il lato e la velocità di adesso."""
+        self._scrivi(self._testo_della_guida())
+        self._guida_in_vista = True
+
+    def _mostra(self, voci):
+        """La cronaca delle voci nel campo, al livello scelto, al posto della guida o della tranche di prima."""
+        righe = testi.righe_degli_eventi(voci, self.nomi, self.livello)
+        self._scrivi("\n".join(righe) or "In questo tratto la cronaca, a questo livello, non ha frasi.")
+        self._guida_in_vista = False
+
     def _sentite(self):
         """Le voci della tranche fin dove il suono è arrivato."""
-        istante = self.resa.t0 + self.posizione if self.resa is not None else float("inf")
+        istante = self.resa.istante(self.posizione) if self.resa is not None else float("inf")
         return [voce for voce in self.tranche if voce[0].t <= istante + ps.TOLLERANZA]
 
     # Il suono.
 
     def _componi(self, da, anticipo=None):
-        self.resa = ps.componi(self.segmento.eventi, self.ascoltatore, da=da, fine=self.segmento.fine, anticipo=anticipo)
+        self.resa = ps.componi(self.segmento.eventi, self.ascoltatore, da=da, fine=self.segmento.fine, anticipo=anticipo, pieghe=self._pieghe)
 
     def _per_la_cassa(self):
         return ps.per_la_cassa(self.resa.buffer, suoni.volume_effetti())
 
-    def _suona_segmento(self, segmento, fresco, sovrapponi=False):
+    def _suona_segmento(self, segmento, fresco, sovrapponi=False, anticipo=0.0):
         """
-        Compone il segmento e lo fa partire. Da fresco comincia dalla ripresa del gioco, col silenzio
-        in testa accorciato; altrimenti prosegue dalla fine del segmento di prima, pause comprese.
+        Compone il segmento e lo fa partire, dopo anticipo secondi di silenzio. Da fresco comincia
+        dalla ripresa del gioco, col silenzio in testa accorciato; altrimenti prosegue dalla fine
+        del segmento di prima, pause comprese. La procedura che il motore ha svolto a un'altra
+        velocità si ripiega subito a quella di adesso.
         """
         da = segmento.inizio if fresco or self.segmento is None else self.segmento.fine
         self.segmento = segmento
+        self._pieghe = ps.ripiega(segmento.procedure, self.velocita)
+        self._da_ripiegare = False
         self._componi(da, ps.ANTICIPO if fresco else None)
-        self.riproduttore.suona(self._per_la_cassa(), sovrapponi=sovrapponi)
+        self.riproduttore.suona(self._per_la_cassa(), anticipo=anticipo, sovrapponi=sovrapponi)
 
-    def _avvia(self, modo):
+    def _ricomponi(self, posizione, t0, sempre=True):
+        """
+        Il segmento ricomposto dall'istante t0, con le pause e la procedura che restano dal secondo
+        posizione in avanti ripiegate alla velocità di adesso; quello che è già suonato resta com'era.
+        Senza sempre ricompone soltanto se le pieghe cambiano. Vero se ha ricomposto.
+        """
+        adesso = ps.istante_del_motore(posizione, t0, self._pieghe)
+        pieghe = ps.ripiega(self.segmento.procedure, self.velocita, self._pieghe, da=adesso)
+        self._da_ripiegare = False
+        if not sempre and self.resa is not None and pieghe == self._pieghe:
+            return False
+        self._pieghe = pieghe
+        self._componi(t0)
+        return True
+
+    def _ripiega_nel_silenzio(self):
+        """
+        La velocità è cambiata mentre l'azione suona: pause e procedura che restano nel segmento si
+        ripiegano a quella nuova. Il buffer riparte dallo stesso secondo soltanto dove tace, perché
+        il cambio non si senta; se adesso suona qualcosa, ci si riprova al battito che segue.
+        """
+        posizione = self.riproduttore.posizione()
+        if posizione is None or self.resa is None or self.riproduttore.in_anticipo():
+            return
+        adesso = self.resa.istante(posizione)
+        if ps.ripiega(self.segmento.procedure, self.velocita, self._pieghe, da=adesso) == self._pieghe:
+            self._da_ripiegare = False
+            return
+        if self.resa.in_silenzio(posizione):
+            self._ricomponi(posizione, self.resa.t0)
+            self.riproduttore.suona(self._per_la_cassa(), da=posizione, tieni_le_code=True)
+
+    def _avvia(self, modo, anticipo=0.0):
         segmento = self.cronologia.prossimo(self.velocita)
         if segmento is None:
             self._finisci()
             return
         self.modo = modo
         self.tranche = list(segmento.voci)
-        self._suona_segmento(segmento, fresco=True)
+        self._suona_segmento(segmento, fresco=True, anticipo=anticipo)
         self.stato = SUONA
         self._aggiorna_prosegui()
         self.timer.Start(BATTITO)
@@ -187,12 +245,17 @@ class FinestraDalVivo(_Dialogo):
         self._aggiorna_prosegui()
 
     def al_battito(self, event=None):
-        """Il battito del timer: ferma le code finite, passa al segmento che segue fino a fine set, o chiude la tranche."""
+        """
+        Il battito del timer: ferma le code finite, ripiega la procedura se la velocità è cambiata,
+        passa al segmento che segue fino a fine set, o chiude la tranche.
+        """
         if self.stato != SUONA:
             return
         finito = self.riproduttore.battito()
+        if self._da_ripiegare and not finito:
+            self._ripiega_nel_silenzio()
         posizione = self.riproduttore.posizione()
-        if self.modo == FINO_A_FINE_SET and not self.segmento.fine_set and posizione is not None and posizione >= self.segmento.fine - self.resa.t0:
+        if self.modo == FINO_A_FINE_SET and not self.segmento.fine_set and posizione is not None and posizione >= self.resa.secondi(self.segmento.fine):
             self._prosegui_di_seguito()
         elif finito:
             self._fine_tranche()
@@ -214,16 +277,21 @@ class FinestraDalVivo(_Dialogo):
             self._avvia(UN_PUNTO)
 
     def fino_a_fine_set(self, event=None):
-        """Alt+F: da fermi fa partire l'ascolto fino a fine set; mentre suona, o in pausa, smette di fermarsi a ogni punto."""
+        """
+        Alt+F, con il suo suono in ogni caso: da fermi fa partire l'ascolto fino a fine set, dopo il
+        suono; mentre suona smette di fermarsi a ogni punto; in pausa riparte, col suo suono al posto
+        di quello della ripresa. Premuto di nuovo, il suono conferma che il modo è già quello.
+        """
         if self.stato == FINITO:
             suoni.suona("incontro_finito")
             return
+        suoni.suona("dal_vivo_fino_a_fine_set")
         if self.stato == FERMO:
-            self._avvia(FINO_A_FINE_SET)
+            self._avvia(FINO_A_FINE_SET, anticipo=suoni.attesa())
             return
         self.modo = FINO_A_FINE_SET
         if self.stato == PAUSA:
-            self.riprendi()
+            self.riprendi(suono=None)
 
     def pausa(self):
         self.posizione = self.riproduttore.ferma() or 0.0
@@ -233,11 +301,15 @@ class FinestraDalVivo(_Dialogo):
         self._mostra(self._sentite())
         self._aggiorna_prosegui()
 
-    def riprendi(self):
-        """Riparte dal punto della pausa, dopo il suono della ripresa; se nel frattempo è cambiato il lato, ricompone."""
-        suoni.suona("dal_vivo_ripresa")
-        if self.resa is None:
-            self._componi(self._t0_ricordato)
+    def riprendi(self, suono="dal_vivo_ripresa"):
+        """
+        Riparte dal punto della pausa, dopo il suono della ripresa o quello del comando che l'ha
+        chiesta. Se nel frattempo è cambiato il lato, o la velocità, ricompone.
+        """
+        if suono:
+            suoni.suona(suono)
+        t0 = self.resa.t0 if self.resa is not None else self._t0_ricordato
+        self._ricomponi(self.posizione, t0, sempre=False)
         self.riproduttore.suona(self._per_la_cassa(), da=self.posizione, anticipo=suoni.attesa())
         self.stato = SUONA
         self._aggiorna_prosegui()
@@ -255,7 +327,8 @@ class FinestraDalVivo(_Dialogo):
         """
         Alt+L: si ascolta dalla testata dell'altro giocatore. Se l'azione suona, il segmento si
         ricompone per il nuovo lato e riparte dal punto in cui era arrivato, dopo il suono del
-        cambio; in pausa si ricompone alla ripresa; da fermi vale per la tranche che segue.
+        cambio; in pausa si ricompone alla ripresa; da fermi vale per la tranche che segue. Se nel
+        campo c'è ancora la guida, ora dice il lato nuovo.
         """
         if self.stato == FINITO:
             suoni.suona("incontro_finito")
@@ -264,16 +337,22 @@ class FinestraDalVivo(_Dialogo):
         suoni.suona("dal_vivo_cambio_lato")
         self.lato.SetLabel(self._etichetta_lato())
         self.pannello.Layout()
+        if self._guida_in_vista:
+            self._mostra_guida()
         if self.stato == SUONA:
             posizione = self.riproduttore.ferma() or 0.0
-            self._componi(self.resa.t0)
+            self._ricomponi(posizione, self.resa.t0)
             self.riproduttore.suona(self._per_la_cassa(), da=posizione, anticipo=suoni.attesa())
         elif self.stato == PAUSA and self.resa is not None:
             self._t0_ricordato = self.resa.t0
             self.resa = None
 
     def cambia_velocita(self, passo):
-        """Più o meno: la velocità di gioco cambia di un gradino, e vale dal momento che il motore svolge dopo."""
+        """
+        Più o meno: la velocità di gioco cambia di un gradino. Il motore la usa dal momento che
+        svolge dopo; se l'azione suona, pause e procedura già composte nel segmento si ripiegano
+        appena il suono tace, e in pausa alla ripresa. Se nel campo c'è la guida, ora la dice.
+        """
         nuova = max(modulo_impostazioni.VELOCITA_MINIMA, min(modulo_impostazioni.VELOCITA_MASSIMA, self.velocita + passo))
         if nuova == self.velocita:
             suoni.suona("dal_vivo_velocita_al_limite")
@@ -281,6 +360,16 @@ class FinestraDalVivo(_Dialogo):
         self.velocita = nuova
         suoni.suona("dal_vivo_piu_veloce" if passo > 0 else "dal_vivo_piu_lenta")
         self.SetTitle(testi.titolo_dal_vivo(self.nomi, nuova))
+        if self._guida_in_vista:
+            self._mostra_guida()
+        if self.stato == SUONA:
+            self._da_ripiegare = True
+            self._ripiega_nel_silenzio()
+
+    def rileggi_guida(self):
+        """F1: la guida dei tasti torna nel campo della cronaca, con il lato e la velocità di adesso; il fuoco resta sul pulsante."""
+        suoni.suona("guida")
+        self._mostra_guida()
 
     def esci(self, uscita):
         """Esc, Vai alla fine o il risultato: il suono della partita si ferma con la sua maniglia, e la finestra si chiude."""
@@ -292,7 +381,7 @@ class FinestraDalVivo(_Dialogo):
         self.chiudi(wx.ID_CANCEL if uscita == CON_ESC else wx.ID_OK)
 
     def _tasto(self, event):
-        """Esc esce, più e meno cambiano la velocità; con Alt o Ctrl il tasto va avanti, ai pulsanti e alla finestra."""
+        """Esc esce, F1 rimette la guida nel campo, più e meno cambiano la velocità; con Alt o Ctrl il tasto va avanti, ai pulsanti e alla finestra."""
         codice = event.GetKeyCode()
         if event.AltDown() or event.ControlDown():
             event.Skip()
@@ -300,6 +389,8 @@ class FinestraDalVivo(_Dialogo):
         carattere = event.GetUnicodeKey()
         if codice == wx.WXK_ESCAPE:
             self.esci(CON_ESC)
+        elif codice == wx.WXK_F1:
+            self.rileggi_guida()
         elif codice in (wx.WXK_ADD, wx.WXK_NUMPAD_ADD) or carattere == ord("+"):
             self.cambia_velocita(1)
         elif codice in (wx.WXK_SUBTRACT, wx.WXK_NUMPAD_SUBTRACT) or carattere == ord("-"):
