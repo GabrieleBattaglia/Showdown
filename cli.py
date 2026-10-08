@@ -10,7 +10,8 @@ svincoli e chiusura delle polisportive, con la password facoltativa e i nomi com
 Dalla tappa 8 il tesseramento chiede la cifra dell'ingaggio; il resto dell'economia sta nella finestra.
 Dalla tappa 9, il 2026-10-07, l'amichevole si gioca col motore nuovo, soltanto al meglio dei 3 o dei
 5 set, con la cronaca nuova e senza trattini nei testi; può giocare anche l'ambidestro con un braccio
-infortunato, che continua con l'altro.
+infortunato, che continua con l'altro. Dal 2026-10-08 vale anche qui la regola di Gabriele: al
+massimo un'amichevole per giocatore in ogni giorno simulato.
 """
 
 import datetime
@@ -657,6 +658,9 @@ class InterfacciaTestuale:
             return None
         if not g.puo_giocare:
             print(f"\tATTENZIONE: {g.nome} è {accorda(g.sesso, 'infortunato')}!")
+            return None
+        if g.ha_giocato_amichevole(self.data_sim):
+            print(f"\tATTENZIONE: oggi {g.nome} ha già giocato un'amichevole, e se ne gioca al massimo una per giorno simulato.")
             return None
         return gid
 

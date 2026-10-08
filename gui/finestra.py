@@ -21,6 +21,13 @@ avanza suona un solo suono, quello della notizia più importante, scelto insieme
 barra di stato perché non dicano cose diverse: è l'invito a premere F7. Se un salvataggio
 automatico non riesce, dopo il suono dell'operazione si sente quello del salvataggio fallito, e la
 vista dice il perché. Nel menu Impostazioni c'è il volume degli effetti.
+Dal 2026-10-08, con la tappa 9, c'è il menu Partite, con le scelte di Gabriele: l'amichevole fra un
+tuo tesserato e un giocatore qualunque, ciascuno al massimo una al giorno, si gioca e si registra
+subito, il mondo si salva, e poi la vista la mostra tutta, solo il risultato, oppure un punto alla
+volta con F8, ogni testo al posto del precedente come vuole D17; Ctrl+F8 mostra il resto, e la
+cronaca si salva nel suo file al livello scelto. L'esito si sente solo quando si mostra, perché il
+punto per punto non lo sveli prima. Le parti della tappa 9 sono di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -37,6 +44,8 @@ import suoni
 import testi
 from gui import aspetto
 from gui.dialoghi import (
+    SOLO_IL_RISULTATO,
+    TUTTA_SUBITO,
     Aspetto,
     Caffe,
     CambiaPolisportiva,
@@ -46,16 +55,54 @@ from gui.dialoghi import (
     Lettura,
     Mercato,
     NuovaPolisportiva,
+    OpzioniAmichevole,
     PagaArretrati,
     PasswordPolisportiva,
     Ricerca,
     SceltaGiocatore,
     Vendite,
 )
+from partita import MotorePartita
 from utilita import adesso, adesso_utc
 
 TITOLO = "MESS, Manageriale e Simulatore Showdown"
 RIGHE_BARRA = 4
+
+
+class AmichevoleInVista:
+    """
+    L'ultima amichevole della sessione, già giocata e registrata, come la mostra la vista: i testi
+    della cronaca, da mostrare uno alla volta, quanti se ne sono già visti, il livello scelto, che
+    vale anche per il file, il suono dell'esito e le parole dell'esito per la barra di stato.
+    """
+
+    def __init__(self, risultato, nomi, livello, esito):
+        self.risultato = risultato
+        self.nomi = nomi
+        self.livello = livello
+        self.esito = esito
+        self.testi = testi.testi_della_partita(risultato.momenti, nomi, livello)
+        self.mostrati = 0
+        vince = risultato.vincitore
+        sa, sb = risultato.set_vinti
+        mio, suo = (sa, sb) if vince == "A" else (sb, sa)
+        self.evento_esito = f"vince {nomi[vince].testo}, {mio} set a {suo}"
+
+    @property
+    def finita(self):
+        """Vero quando la vista ha già mostrato tutto l'incontro."""
+        return self.mostrati >= len(self.testi)
+
+    def prossimo(self):
+        """Il testo che viene dopo l'ultimo mostrato."""
+        self.mostrati += 1
+        return self.testi[self.mostrati - 1]
+
+    def resto(self):
+        """Tutti i testi non ancora mostrati, che da qui in avanti contano come visti."""
+        rimasti = self.testi[self.mostrati:]
+        self.mostrati = len(self.testi)
+        return rimasti
 
 
 class FinestraPrincipale(wx.Frame):
@@ -80,6 +127,8 @@ class FinestraPrincipale(wx.Frame):
                 self.avanzamento_all_avvio = evento
                 self.ultimo_evento = testo
         self.ultima_ricerca = None
+        # L'ultima amichevole giocata nella sessione, da mostrare con F8 e Ctrl+F8.
+        self.incontro = None
         self._testo_barra = None
         self._errore_aperto = False
         self._crea_controlli()
@@ -148,6 +197,14 @@ class FinestraPrincipale(wx.Frame):
                 None,
                 ("&Password della polisportiva attiva...", None, self.password_polisportiva),
                 ("C&hiudi la polisportiva attiva...", None, self.chiudi_polisportiva),
+            )),
+            ("&Partite", (
+                ("&Amichevole...", "Ctrl+O", self.amichevole),
+                None,
+                ("&Punto successivo", "F8", self.punto_successivo),
+                ("&Resto dell'incontro", "Ctrl+F8", self.resto_dell_incontro),
+                None,
+                ("&Salva la cronaca...", "Ctrl+Shift+O", self.salva_cronaca),
             )),
             ("&Mondo", (
                 ("&Data e prossimo avanzamento", "Ctrl+D", lambda: self.mostra(testi.data_e_avanzamento(self.mondo, adesso_utc()), "data simulata", "data_e_avanzamento")),
@@ -371,9 +428,12 @@ class FinestraPrincipale(wx.Frame):
     def esci(self):
         self.Close()
 
-    def _scegli_giocatore(self, titolo, pulsante, suono):
-        """Il giocatore scelto nel dialogo, oppure None se il dialogo è stato annullato; suono è quello dell'apertura."""
-        dialogo = SceltaGiocatore(self, self.mondo, titolo, pulsante)
+    def _scegli_giocatore(self, titolo, pulsante, suono, giocatori=None):
+        """
+        Il giocatore scelto nel dialogo, oppure None se il dialogo è stato annullato; suono è quello
+        dell'apertura, e giocatori, se dato, restringe l'elenco, che altrimenti ha tutto il mondo.
+        """
+        dialogo = SceltaGiocatore(self, self.mondo, titolo, pulsante, giocatori)
         try:
             suoni.suona(suono)
             if self._modale(dialogo) == wx.ID_OK:
@@ -594,6 +654,116 @@ class FinestraPrincipale(wx.Frame):
             return
         liberati = self.mondo.chiudi_polisportiva(p)
         self._concludi(testi.chiusa(p.nome, liberati), f"chiusa {p.nome}", "polisportiva_chiusa")
+
+    # L'amichevole, tappa 9.
+
+    def _tuoi(self):
+        """I numeri dei tesserati di tutte le tue polisportive."""
+        return {gid for p in self.mondo.polisportive.values() if not p.is_cpu_controlled for gid in p.tesserati}
+
+    def amichevole(self):
+        """
+        Un'amichevole, regole di Gabriele: il primo giocatore è un tesserato della polisportiva
+        attiva, il secondo chiunque altro, e nessuno dei due deve aver già giocato un'amichevole
+        oggi. Dopo le opzioni l'incontro si gioca e si registra subito, il mondo si salva, e la
+        vista lo mostra nel modo scelto. L'esito suona quando si vede, non prima.
+        """
+        p = self._attiva()
+        if p is None:
+            return
+        motore = MotorePartita(self.mondo)
+        rosa = [self.mondo.giocatori[gid] for gid in p.tesserati if gid in self.mondo.giocatori]
+        if not rosa:
+            self.mostra(f"{p.nome} non ha tesserati da far giocare.", "nessun tesserato", "rosa_vuota")
+            return
+        primi = motore.disponibili(rosa)
+        if not primi:
+            self.mostra(testi.nessuno_per_l_amichevole(self.mondo, adesso_utc(), poli=p), "nessuno gioca oggi", "nessun_giocatore_oggi")
+            return
+        tuo = self._scegli_giocatore(f"Amichevole, il tuo giocatore di {p.nome}", "&Avanti", "dialogo_amichevole", primi)
+        if tuo is None:
+            return
+        avversari = motore.disponibili(g for g in self.mondo.giocatori.values() if g is not tuo)
+        if not avversari:
+            self.mostra(testi.nessuno_per_l_amichevole(self.mondo, adesso_utc(), primo=tuo), "nessuno gioca oggi", "nessun_giocatore_oggi")
+            return
+        avversario = self._scegli_giocatore(f"Amichevole, l'avversario di {testi.nome_completo(tuo)}", "&Avanti", "dialogo_avversario", avversari)
+        if avversario is None:
+            return
+        dialogo = OpzioniAmichevole(self, self.mondo, tuo, avversario)
+        try:
+            suoni.suona("dialogo_opzioni_amichevole")
+            if self._modale(dialogo) != wx.ID_OK or dialogo.risultato is None:
+                suoni.suona("annullato")
+                return
+            set_al_meglio, modo, livello = dialogo.risultato
+        finally:
+            dialogo.Destroy()
+        # Il tuo giocatore è tuo per definizione; l'avversario può esserlo anche lui, di una qualunque delle tue polisportive.
+        fra_tuoi = avversario.id in self._tuoi()
+        risultato = motore.gioca_amichevole(tuo.id, avversario.id, set_al_meglio)
+        id_vincitore = risultato.parti[0] if risultato.vincitore == "A" else risultato.parti[1]
+        if fra_tuoi:
+            esito = "amichevole_fra_tuoi"
+        elif id_vincitore == tuo.id:
+            esito = "amichevole_vinta"
+        else:
+            esito = "amichevole_persa"
+        self.incontro = v = AmichevoleInVista(risultato, motore.nomi(risultato), livello, esito)
+        if modo == TUTTA_SUBITO:
+            v.resto()
+            self._concludi(testi.amichevole_tutta(risultato, self.mondo, v.nomi, livello), v.evento_esito, esito)
+        elif modo == SOLO_IL_RISULTATO:
+            v.resto()
+            self._concludi(testi.amichevole_solo_risultato(risultato, self.mondo), v.evento_esito, esito)
+        else:
+            self._concludi(testi.primo_testo_amichevole(v.prossimo()), "amichevole al via", "amichevole_al_via")
+
+    def _incontro_da_mostrare(self):
+        """
+        L'amichevole che F8 e Ctrl+F8 possono ancora mostrare. Se nella sessione non ce n'è, o se è
+        già tutta mostrata, lo dice la vista con il suo suono, e restituisce None.
+        """
+        v = self.incontro
+        if v is None:
+            self.mostra(testi.NESSUNA_AMICHEVOLE, "nessuna amichevole", "nessun_incontro")
+            return None
+        if v.finita:
+            self.mostra(testi.amichevole_finita(v.risultato, self.mondo), "amichevole finita", "incontro_finito")
+            return None
+        return v
+
+    def punto_successivo(self):
+        """F8: il testo che segue, al posto del precedente; l'ultimo, la fine dell'incontro, suona l'esito."""
+        v = self._incontro_da_mostrare()
+        if v is None:
+            return
+        testo = v.prossimo()
+        if v.finita:
+            self.mostra(testi.ultimo_testo_amichevole(testo, v.risultato), v.evento_esito, v.esito)
+        else:
+            self.mostra(testo, f"amichevole, punto {v.mostrati - 1}", "punto_successivo")
+
+    def resto_dell_incontro(self):
+        """Ctrl+F8: tutto quello che mancava, aperto dal risultato; dopo il suo suono, quello dell'esito."""
+        v = self._incontro_da_mostrare()
+        if v is None:
+            return
+        self.mostra(testi.resto_amichevole(v.resto(), v.risultato, self.mondo), v.evento_esito, "resto_dell_incontro")
+        suoni.in_coda(v.esito)
+
+    def salva_cronaca(self):
+        """La cronaca dell'ultima amichevole nel suo file, nella cartella delle cronache, al livello scelto nelle opzioni."""
+        v = self.incontro
+        if v is None:
+            self.mostra(testi.NESSUNA_AMICHEVOLE, "nessuna amichevole", "nessun_incontro")
+            return
+        try:
+            percorso = MotorePartita(self.mondo).salva_cronaca(v.risultato, v.livello)
+        except OSError as errore:
+            self.mostra(testi.cronaca_non_salvata(errore), "cronaca non salvata", "cronaca_non_salvata")
+            return
+        self.mostra(testi.cronaca_salvata(percorso, v.livello, v.nomi), "cronaca salvata", "cronaca_salvata")
 
     # Le impostazioni.
 

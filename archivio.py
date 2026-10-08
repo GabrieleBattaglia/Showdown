@@ -26,7 +26,9 @@ nei tesserati né ritirati né assenti. Il formato 4, della tappa 8, aggiunge l'
 vendite e bilanci delle polisportive, esperienza, fedeltà, pazienza, arretrati e bandiera dei
 giocatori. Il formato 5, della tappa 9, del 2026-10-07, aggiunge a ogni giocatore il temperamento,
 ricavato dal suo numero come alla nascita, e la sede dell'infortunio: non precisata per chi era già
-infortunato, che resta fermo come prima. Il valore complessivo non si salva, e si ricalcola alla
+infortunato, che resta fermo come prima; dal 2026-10-08, prima che il formato fosse pubblicato,
+anche la data simulata dell'ultima amichevole, vuota per tutti, perché nessuno ne aveva ancora
+giocate con la regola di una al giorno. Il valore complessivo non si salva, e si ricalcola alla
 lettura con i pesi del momento. Un salvataggio di un formato vecchio si aggiorna da solo alla
 lettura, e si riscrive nel formato nuovo al primo salvataggio; le versioni di prima rifiutano un
 salvataggio di un formato più recente, con il loro messaggio.
@@ -280,11 +282,13 @@ def _dal_formato_4(documento):
     """
     Dal formato 4 al 5, con la tappa 9: ogni giocatore riceve il temperamento che avrebbe avuto
     alla nascita, ricavato dal suo numero senza toccare il caso, e la sede dell'infortunio, non
-    precisata per chi è infortunato, così resta fermo come prima, e nessuna per gli altri.
+    precisata per chi è infortunato, così resta fermo come prima, e nessuna per gli altri. La data
+    dell'ultima amichevole resta vuota: tutti possono giocarne una già oggi.
     """
     for g in documento["mondo"]["giocatori"]:
         g.setdefault("temperamento", temperamento_innato(g["id"]))
         g.setdefault("infortunio_sede", SEDE_NON_PRECISATA if g["infortunato"] else None)
+        g.setdefault("ultima_amichevole", None)
     documento["formato"] = 5
 
 

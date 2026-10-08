@@ -2,7 +2,8 @@
 Test dell'archivio JSON firmato, tutti in una cartella temporanea: salvataggio e ricarica,
 copia di sicurezza, firma che scopre le modifiche, ripiego sulla copia, quarantena e blocco dei
 salvataggi, formato, identificativi che non si riusano, nascita del mondo nuovo. Dalla tappa 9 anche
-il formato 5, con il temperamento ricavato dal numero del giocatore e la sede dell'infortunio.
+il formato 5, con il temperamento ricavato dal numero del giocatore e la sede dell'infortunio, e dal
+2026-10-08 la data simulata dell'ultima amichevole, per la regola di una al giorno.
 """
 
 import copy
@@ -303,14 +304,15 @@ def test_il_vecchio_salvataggio_si_legge_e_si_sostituisce(cartella_di_prova):
     assert messaggi[-1] == f"Il mondo ora si salva compresso, in {FILE_MONDO}: {FILE_MONDO_VECCHIO} e {FILE_MONDO_COPIA_VECCHIO}, del formato di prima, non servono più e sono stati tolti."
 
 
-# Il formato 5 della tappa 9: temperamento e sede dell'infortunio.
+# Il formato 5 della tappa 9: temperamento, sede dell'infortunio e data dell'ultima amichevole.
 
 def _al_formato_4(contenuto):
-    """Un contenuto del formato 5 riportato com'era nel formato 4: senza temperamento e senza sede dell'infortunio."""
+    """Un contenuto del formato 5 riportato com'era nel formato 4: senza temperamento, sede dell'infortunio e ultima amichevole."""
     vecchio = copy.deepcopy(contenuto)
     for g in vecchio["mondo"]["giocatori"]:
         del g["temperamento"]
         del g["infortunio_sede"]
+        del g["ultima_amichevole"]
     vecchio["formato"] = 4
     return vecchio
 
@@ -319,6 +321,7 @@ def test_un_salvataggio_del_formato_4_si_aggiorna(cartella_di_prova):
     mondo = _mondo_popolato()
     mondo.giocatori[4].infortunato = True
     mondo.giocatori[4].infortunio_fine_datetime = INIZIO + datetime.timedelta(days=5)
+    mondo.giocatori[6].ultima_amichevole = INIZIO
     contenuto = _al_formato_4(archivio.componi(mondo))
     archivio.MIGRAZIONI[4](contenuto)
     assert contenuto["formato"] == 5
@@ -326,6 +329,8 @@ def test_un_salvataggio_del_formato_4_si_aggiorna(cartella_di_prova):
     assert per_id[4]["infortunio_sede"] == "non_precisata" and per_id[5]["infortunio_sede"] is None
     for gid, g in per_id.items():
         assert g["temperamento"] == temperamento_innato(gid) == mondo.giocatori[gid].temperamento
+        # Nel formato 4 nessuno aveva giocato amichevoli con la regola di una al giorno.
+        assert g["ultima_amichevole"] is None
     percorso = cartella_di_prova / FILE_MONDO
     vecchio = _al_formato_4(archivio.componi(mondo))
     _comprimi(percorso, json.dumps({**vecchio, "firma": archivio.firma(vecchio)}))
@@ -355,9 +360,21 @@ def test_il_temperamento_non_dipende_dal_caso_del_mondo():
     assert a.temperamento == b.temperamento == primo
 
 
-@pytest.mark.parametrize(("campo", "valore"), [("temperamento", 101.0), ("temperamento", -1), ("infortunio_sede", "naso"), ("infortunio_sede", 3)])
+@pytest.mark.parametrize(("campo", "valore"), [("temperamento", 101.0), ("temperamento", -1), ("infortunio_sede", "naso"), ("infortunio_sede", 3),
+                                              ("ultima_amichevole", "ieri"), ("ultima_amichevole", 3)])
 def test_temperamento_e_sede_non_validi_rifiutati(campo, valore):
     dati = _mondo_popolato().giocatori[1].a_dizionario()
     dati[campo] = valore
     with pytest.raises(ValueError, match=campo):
         Giocatore.da_dizionario(dati)
+
+
+def test_l_ultima_amichevole_si_salva_e_si_rilegge(cartella_di_prova):
+    mondo = _mondo_popolato()
+    mondo.giocatori[2].ultima_amichevole = INIZIO
+    assert archivio.salva(mondo)
+    ricaricato = _ricarica()
+    assert ricaricato.giocatori[2].ultima_amichevole == INIZIO
+    assert ricaricato.giocatori[2].ha_giocato_amichevole(INIZIO + datetime.timedelta(hours=3))
+    assert not ricaricato.giocatori[2].ha_giocato_amichevole(INIZIO + datetime.timedelta(days=1))
+    assert ricaricato.giocatori[3].ultima_amichevole is None

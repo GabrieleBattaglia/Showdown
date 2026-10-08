@@ -13,6 +13,10 @@ Nessun suono blocca la finestra, salvo quello dell'uscita, che aspetta di finire
 perché il programma non lo tronchi chiudendosi. Due suoni non si sovrappongono: quello che deve
 seguirne un altro si mette in coda, e parte quando il primo è finito.
 I suoni della partita non stanno qui: arriveranno con la tappa 10, secondo la decisione D11.
+Dal 2026-10-08, con l'amichevole della tappa 9 nella finestra, c'è il gruppo delle partite: i
+dialoghi dell'amichevole, i suoi esiti, il punto per punto e la cronaca salvata, quattordici suoni
+nuovi entrati nella collezione con la V201. Sono suoni della finestra, non della partita: colpi,
+goal e fischi restano alla tappa 10.
 """
 
 import sys
@@ -187,6 +191,27 @@ GRUPPI = (
         "stipendi_non_pagati": "mess_stipendi_non_pagati",
         "tuoi_tesserati_partiti": "mess_tesserati_partiti",
         "tuo_tesserato_venduto": "mess_tesserato_venduto",
+    }),
+    ("Partite, l'amichevole", {
+        # I due giocatori si scelgono come un invito e la sua risposta, dai due lati del tavolo.
+        "dialogo_amichevole": "mess_invito_a_giocare",
+        "dialogo_avversario": "mess_avversario_che_risponde",
+        "dialogo_opzioni_amichevole": "mess_opzioni_dell_amichevole",
+        "nessun_giocatore_oggi": "mess_torna_domani",
+        # L'esito si sente solo quando si mostra: la fanfara che sale, la stessa che scende, e la
+        # stretta di mano quando i due giocatori sono tutti e due tuoi.
+        "amichevole_vinta": "mess_amichevole_vinta",
+        "amichevole_persa": "mess_amichevole_persa",
+        "amichevole_fra_tuoi": "mess_stretta_di_mano",
+        # Il punto per punto: il via, un guizzo minimo a ogni F8, lo stesso guizzo cinque volte per
+        # il resto dell'incontro, e la cadenza di chi chiede ancora quando è finito.
+        "amichevole_al_via": "mess_conto_alla_rovescia",
+        "punto_successivo": "mess_punto_successivo",
+        "resto_dell_incontro": "mess_resto_dell_incontro",
+        "incontro_finito": "mess_incontro_finito",
+        "nessun_incontro": "mess_nessun_incontro",
+        "cronaca_salvata": "mess_cronaca_salvata",
+        "cronaca_non_salvata": "mess_cronaca_non_salvata",
     }),
 )
 EVENTI = {evento: preset for _titolo, gruppo in GRUPPI for evento, preset in gruppo.items()}

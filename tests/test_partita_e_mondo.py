@@ -1,7 +1,8 @@
 """
 Test della facciata del motore di partita, che non stampa nulla, e del mondo che avanza col tempo.
 Dalla tappa 9 la cronaca su file sta nella cartella cronache, una partita per file, e la partita si
-può giocare senza registrarla.
+può giocare senza registrarla. Dal 2026-10-08 ogni giocatore gioca al massimo un'amichevole per giorno
+simulato, nella facciata e nell'interfaccia testuale.
 """
 
 import datetime
@@ -9,6 +10,7 @@ import random
 
 import pytest
 
+import cli
 import testi
 from costanti import CARTELLA_CRONACHE, MODALITA_OUTPUT_CONSOLE, MODALITA_OUTPUT_FILE
 from mondo import Mondo
@@ -187,7 +189,7 @@ def test_amichevole_registrata_e_cronaca_salvata(mondo, cartella_di_prova):
     with pytest.raises(ValueError, match=r"I giocatori devono essere diversi\."):
         motore.gioca_amichevole(11, 11)
     with pytest.raises(ValueError, match="3 o 5"):
-        motore.gioca_amichevole(11, 12, set_al_meglio=4)
+        motore.gioca_amichevole(13, 14, set_al_meglio=4)
     uomini = [g for g in mondo.giocatori.values() if g.sesso == "m"][:4]
     donne = [g for g in mondo.giocatori.values() if g.sesso == "f"][:2]
     prima = {gid: g.a_dizionario() for gid, g in mondo.giocatori.items()}
@@ -202,3 +204,44 @@ def test_amichevole_registrata_e_cronaca_salvata(mondo, cartella_di_prova):
     with open(percorso, encoding="utf-8") as f:
         cronaca = f.read()
     assert "Inizio della gara a squadre: Leoni contro Tigri" in cronaca and "L'arbitro legge le formazioni: Leoni con " in cronaca
+
+
+def test_un_amichevole_al_giorno(mondo):
+    for g in mondo.giocatori.values():
+        g.infortunato = False
+    motore = MotorePartita(mondo)
+    motore.gioca_amichevole(11, 12, seme=1)
+    assert mondo.giocatori[11].ultima_amichevole == mondo.giocatori[12].ultima_amichevole == INIZIO
+    g11 = mondo.giocatori[11]
+    atteso = f"Oggi {g11.nome} {g11.cognome} ha già giocato un'amichevole: se ne gioca al massimo una per giorno simulato."
+    assert motore.problema_amichevole(11, 13) == atteso
+    assert "hanno già giocato" in motore.problema_amichevole(12, 11)
+    with pytest.raises(ValueError, match="già giocato"):
+        motore.gioca_amichevole(13, 11)
+    assert motore.gioca_partita(13, 12, 3)["error"].startswith("Oggi ")
+    disponibili = motore.disponibili(mondo.giocatori.values())
+    assert [g.id for g in disponibili] == sorted(gid for gid in mondo.giocatori if gid not in (11, 12))
+    # Una partita non registrata, o di un torneo, non conta come amichevole e non la impedisce.
+    assert motore.gioca_partita(11, 13, 3, registra=False)["error"] is None
+    assert mondo.giocatori[13].ultima_amichevole is None
+    assert motore.gioca_partita(11, 13, 3, info_torneo={"nome": "Coppa"})["error"] is None
+    assert mondo.giocatori[13].ultima_amichevole is None
+    # Il giorno simulato dopo si gioca di nuovo; gli infortuni di queste partite non contano qui.
+    for g in mondo.giocatori.values():
+        g.infortunato, g.infortunio_sede = False, None
+    mondo.datetime_corrente_simulazione = INIZIO + datetime.timedelta(days=1)
+    assert motore.problema_amichevole(11, 12) is None
+    assert motore.gioca_partita(11, 12, 3)["error"] is None
+    assert mondo.giocatori[11].ultima_amichevole == INIZIO + datetime.timedelta(days=1)
+
+
+def test_l_interfaccia_testuale_rifiuta_chi_ha_gia_giocato(mondo, monkeypatch, capsys):
+    for g in mondo.giocatori.values():
+        g.infortunato = False
+    mondo.giocatori[7].ultima_amichevole = INIZIO
+    interfaccia = cli.InterfacciaTestuale(mondo)
+    monkeypatch.setattr(cli, "dgt", lambda *a, **k: 7)
+    assert interfaccia._giocatore_per_partita("ID Giocatore 1? ") is None
+    assert "oggi" in capsys.readouterr().out
+    monkeypatch.setattr(cli, "dgt", lambda *a, **k: 8)
+    assert interfaccia._giocatore_per_partita("ID Giocatore 1? ") == 8
