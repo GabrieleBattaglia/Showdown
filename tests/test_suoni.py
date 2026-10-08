@@ -266,12 +266,12 @@ def test_il_volume_moltiplica_il_suono(suonati):
 def test_il_fattore_prende_il_posto_del_volume(suonati):
     # La prova del volume della partita, decisione D30: suona al fattore della partita, anche con gli effetti a zero.
     suoni.imposta_volume(0)
-    assert suoni.suona("prova_volume_partita", fattore=partita_sonora.fattore_del_volume(100))
+    assert suoni.suona("prova_volume_partita", fattore=partita_sonora.fattore_del_volume(50))
     assert not suoni.suona("prova_volume_partita", fattore=0.0)
     suoni.imposta_volume(50)
     assert suoni.suona("prova_volume_partita", fattore=partita_sonora.fattore_del_volume(partita_sonora.VOLUME_DI_PROGETTO))
     assert suonati == ["prova_volume_partita", "prova_volume_partita"]
-    assert [d["fattore"] for d in suonati.dettagli] == [pytest.approx(100 / 95), pytest.approx(1.0)]
+    assert [d["fattore"] for d in suonati.dettagli] == [pytest.approx(0.5), pytest.approx(1.0)]
     assert {d["preset"] for d in suonati.dettagli} == {"mess_prova_volume_partita"}
 
 

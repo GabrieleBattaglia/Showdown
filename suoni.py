@@ -232,6 +232,9 @@ GRUPPI = (
         "riscaldamento_saltato": "mess_punto_successivo",
         "resto_dell_incontro": "mess_resto_dell_incontro",
         "incontro_finito": "mess_incontro_finito",
+        # Esc esce dalla partita dal vivo senza svelare il risultato, decisione D30: un suono suo, che
+        # non dice chi ha vinto (Gabriele, 8 ottobre 2026, per la regola di un suono per ogni evento).
+        "amichevole_registrata": "mess_amichevole_registrata",
         # Il cronometro che si ferma e riparte, la scala che sale di filato fino a fine set, il giro
         # del tavolo per l'altra testata, e il metronomo che accelera, rallenta o bussa contro il
         # fondo scala.
@@ -387,6 +390,7 @@ AZIONI = {
     "riscaldamento_saltato": "nella partita dal vivo il riscaldamento saltato",
     "resto_dell_incontro": "nella partita dal vivo Alt+V, Vai alla fine",
     "incontro_finito": "nella partita dal vivo Alt+F o Alt+L a incontro già finito",
+    "amichevole_registrata": "nella partita dal vivo Esc, l'amichevole resta registrata senza svelare il risultato",
     "dal_vivo_pausa": "nella partita dal vivo la pausa, con Invio o spazio mentre l'azione suona",
     "dal_vivo_ripresa": "nella partita dal vivo la ripresa dopo la pausa",
     "dal_vivo_fino_a_fine_set": "nella partita dal vivo Alt+F, ascolta fino a fine set",

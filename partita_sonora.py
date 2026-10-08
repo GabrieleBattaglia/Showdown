@@ -108,16 +108,17 @@ TETTO_SORGENTI = 0.8
 # in 2502 buffer di 12 incontri a tre velocità e dalle due testate, è 0,68, di un goal insieme al
 # suo fischio doppio, e resta 0,67 anche dopo la revisione dei timbri, che ha alzato i fischi di
 # quasi 4 decibel: il progetto resta quello, con margine. Dalla decisione D30 la partita ha
-# un volume suo, da 0 a 100, che moltiplica il buffer in proporzione, fino in fondo: a 100 porta il
-# picco di progetto al tetto, e al volume di progetto, 95, il fattore è uno, il livello dell'ascolto
-# libero approvato da Gabriele. Prima era il volume degli effetti, a 50 com'era stato pensato, ma
+# un volume suo, da 0 a 100, che moltiplica il buffer in proporzione, fino in fondo. Scelta di
+# Gabriele dell'8 ottobre 2026: a 100, il volume di progetto, il fattore è uno, il livello
+# dell'ascolto libero che ha approvato, con il picco di progetto sotto il tetto; il volume parte da
+# 50, cioè la metà in ampiezza, sei decibel più piano, così il cursore ha strada nei due sensi. Prima era il volume degli effetti, a 50 com'era stato pensato, ma
 # oltre il 53 il fattore si fermava e la partita non cresceva più. Il fattore resta lo stesso per
 # ogni buffer; un picco mai visto lo abbassa ancora con_margine, come rete.
 GUADAGNO_PARTITA = 1.0
 TETTO = 0.8
 PICCO_DI_PROGETTO = 0.76
 VOLUME_MASSIMO = 100
-VOLUME_DI_PROGETTO = round(VOLUME_MASSIMO * PICCO_DI_PROGETTO / TETTO)
+VOLUME_DI_PROGETTO = VOLUME_MASSIMO
 # Il silenzio lasciato davanti al primo suono quando il buffer accorcia quello in testa.
 ANTICIPO = 0.3
 # I secondi di zeri in coda al ciclo: se il battito che lo ferma arriva tardi, il punto non riparte.
@@ -751,7 +752,7 @@ def con_margine(buffer, guadagno=GUADAGNO_PARTITA, tetto=TETTO):
 def fattore_del_volume(volume):
     """
     Il fattore della partita al suo volume, da 0 a 100, lo stesso per ogni buffer: cresce in
-    proporzione, vale uno al volume di progetto e porta il picco di progetto al tetto a 100.
+    proporzione, e a 100, il volume di progetto, vale uno, il livello dell'ascolto approvato.
     """
     return GUADAGNO_PARTITA * max(0, min(VOLUME_MASSIMO, volume)) / VOLUME_DI_PROGETTO
 

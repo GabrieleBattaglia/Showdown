@@ -726,8 +726,8 @@ class FinestraPrincipale(wx.Frame):
         uscita = self._dal_vivo(v, gemello) if gemello is not None else None
         if uscita == CON_ESC:
             # Esc non svela il risultato, decisione D30: la vista dice soltanto che l'incontro è
-            # registrato e dove leggerlo, senza il suono dell'esito, e la barra non dice chi ha vinto.
-            self._concludi(testi.amichevole_senza_risultato(v.nomi), "amichevole registrata", None, salvataggio=(riuscito, messaggi))
+            # registrato e dove leggerlo, con un suono suo e non quello dell'esito, e la barra non dice chi ha vinto.
+            self._concludi(testi.amichevole_senza_risultato(v.nomi), "amichevole registrata", "amichevole_registrata", salvataggio=(riuscito, messaggi))
             return
         # Alt+V nella finestra dal vivo: prima i cinque guizzi del salto alla fine, poi l'esito. Se il
         # salvataggio non è riuscito, dopo l'esito si sente quello, e i guizzi restano fuori: due suoni

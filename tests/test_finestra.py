@@ -852,9 +852,9 @@ def test_il_volume_degli_effetti(finestra, suonati, monkeypatch, cartella_di_pro
     assert suonati == ["dialogo_effetti_sonori", "prova_volume_effetti", "effetti_sonori_applicati"]
     assert [d["fattore"] for d in suonati.dettagli] == [1.0, 1.6, 1.6]
     assert impostazioni.carica()["volume_effetti"] == 80
-    # Il volume della partita, toccato o no, resta com'era: il predefinito, 95.
-    assert impostazioni.carica()["volume_partita"] == 95
-    assert finestra.ultimo_evento == "volume effetti 80, partita 95"
+    # Il volume della partita, toccato o no, resta com'era: il predefinito, 50.
+    assert impostazioni.carica()["volume_partita"] == 50
+    assert finestra.ultimo_evento == "volume effetti 80, partita 50"
     # A zero tacciono la prova e la conferma; l'aspetto, salvato dopo, non cambia il volume.
     monkeypatch.setattr(dialoghi.EffettiSonori, "ShowModal", scegli(0))
     finestra.cambia_effetti()
@@ -907,7 +907,7 @@ def test_il_volume_della_partita(finestra, suonati, monkeypatch, cartella_di_pro
     assert finestra.impostazioni["volume_partita"] == 60
 
 
-@pytest.mark.parametrize(("valore", "letto"), [(0, 0), (100, 100), (37, 37), (101, 95), (-1, 95), (True, 95), ("30", 95), (12.5, 95), (None, 95)])
+@pytest.mark.parametrize(("valore", "letto"), [(0, 0), (100, 100), (37, 37), (101, 50), (-1, 50), (True, 50), ("30", 50), (12.5, 50), (None, 50)])
 def test_il_volume_della_partita_si_valida(valore, letto):
     assert impostazioni.valide({"volume_partita": valore})["volume_partita"] == letto
 

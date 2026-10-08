@@ -191,8 +191,10 @@ def test_assisti_apre_la_finestra_dal_vivo_con_l_incontro_gia_registrato(finestr
     assert visto["salvati"][2]["ultima_amichevole"] == visto["salvati"][7]["ultima_amichevole"] == mondo.datetime_corrente_simulazione.isoformat()
     # Il gemello rigioca lo stesso incontro registrato.
     assert scelte.dal_vivo[0].cronologia.incontro.seme == finestra.incontro.risultato.seme
-    # Uscendo con Esc il risultato non si svela, né con il suono dell'esito né nella vista o nella barra.
-    assert suonati == ["dialogo_amichevole", "dialogo_avversario", "dialogo_opzioni_amichevole", "amichevole_al_via", "riscaldamento_saltato"]
+    # Uscendo con Esc il risultato non si svela, né con il suono dell'esito né nella vista o nella barra:
+    # si sente soltanto il suono dell'amichevole registrata.
+    assert suonati == ["dialogo_amichevole", "dialogo_avversario", "dialogo_opzioni_amichevole", "amichevole_al_via", "riscaldamento_saltato",
+                       "amichevole_registrata"]
     testo = finestra.vista.GetValue()
     assert testo == testi.amichevole_senza_risultato(finestra.incontro.nomi)
     assert finestra.ultimo_evento == "amichevole registrata"
@@ -236,7 +238,7 @@ def test_esc_con_il_mondo_non_salvato(finestra, suonati, monkeypatch):
     v = finestra.incontro
     righe = finestra.vista.GetValue().splitlines()
     assert righe == [*testi.amichevole_senza_risultato(v.nomi).splitlines(), "Salvataggio non riuscito: disco pieno. Il salvataggio precedente è rimasto com'era."]
-    assert suonati[-2:] == ["amichevole_al_via", "salvataggio_non_riuscito"]
+    assert suonati[-3:] == ["amichevole_al_via", "amichevole_registrata", "salvataggio_non_riuscito"]
 
 
 def test_il_risultato_dalla_finestra_dal_vivo(finestra, suonati, monkeypatch, cassa):

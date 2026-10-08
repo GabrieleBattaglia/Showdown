@@ -36,7 +36,7 @@ superato, Escape lo chiude senza giudizio. Le impressioni vanno nel file ascolto
 cartella del programma, una riga per voce. Di suo lo strumento non scrive righe vuote, perché
 enter_escape e gruppo vanno a capo da sé; le sole che restano vengono dal menu di collaudo_comune,
 che qui non si tocca.
-Tutto si sente al livello che il gioco dà al volume della partita predefinito, 95, con margine:
+Tutto si sente al livello dell'ascolto libero approvato, cioè quello che il gioco dà al volume della partita 100, con margine:
 nessun picco supera il tetto della partita, qualunque sia il volume scelto nel gioco, che qui non
 conta.
 Uso, dalla cartella del programma: python strumenti/ascolta_partita.py

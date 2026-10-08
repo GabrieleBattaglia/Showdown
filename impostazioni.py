@@ -42,10 +42,10 @@ VELOCITA_MINIMA = 1
 VELOCITA_MASSIMA = 8
 VELOCITA_PREDEFINITA = 4
 # Il volume della partita dal vivo, decisione D30, da 0 a 100 come quello degli effetti ma a parte:
-# a 95 la partita suona come nell'ascolto libero che Gabriele ha approvato, e a 100 il suo picco più
-# alto arriva al tetto senza superarlo. È il VOLUME_DI_PROGETTO di partita_sonora, scritto qui per
-# non far dipendere le impostazioni da numpy; una prova controlla che i due valori siano uguali.
-VOLUME_PARTITA_PREDEFINITO = 95
+# a 100, il volume di progetto di partita_sonora, la partita suona come nell'ascolto libero che
+# Gabriele ha approvato; si parte da 50, la metà, scelta di Gabriele dell'8 ottobre 2026, così il
+# cursore ha strada nei due sensi.
+VOLUME_PARTITA_PREDEFINITO = 50
 PREDEFINITE = {"dimensione": 12, "colore_testo": [0, 100, 0], "colore_sfondo": [0, 0, 0], "volume_effetti": 50,
                "amichevole_set": 3, "amichevole_modo": "assisti", "amichevole_livello": "normale", "velocita_gioco": VELOCITA_PREDEFINITA,
                "volume_partita": VOLUME_PARTITA_PREDEFINITO}

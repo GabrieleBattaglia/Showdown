@@ -615,18 +615,19 @@ def test_il_volume_della_partita_cresce_fino_in_fondo():
     fattori = [ps.fattore_del_volume(v) for v in range(101)]
     assert fattori[0] == 0.0 and all(b > a for a, b in itertools.pairwise(fattori))
     assert fattori[50] == pytest.approx(2 * fattori[25]) and fattori[100] == pytest.approx(2 * fattori[50])
-    # A 100 il picco di progetto arriva al tetto, senza superarlo; fuori scala vale il bordo.
-    assert ps.PICCO_DI_PROGETTO * fattori[100] == pytest.approx(ps.TETTO)
+    # A 100 il picco di progetto resta sotto il tetto; fuori scala vale il bordo.
+    assert ps.PICCO_DI_PROGETTO * fattori[100] <= ps.TETTO
     assert ps.fattore_del_volume(150) == fattori[100] and ps.fattore_del_volume(-5) == 0.0
-    # Al volume di progetto, 95, il predefinito delle impostazioni, il fattore è quello dell'ascolto libero approvato.
-    assert ps.VOLUME_DI_PROGETTO == 95 == impostazioni.VOLUME_PARTITA_PREDEFINITO == impostazioni.PREDEFINITE["volume_partita"]
+    # Al volume di progetto, 100, il fattore è quello dell'ascolto libero approvato; il predefinito delle
+    # impostazioni è la metà, scelta di Gabriele.
+    assert ps.VOLUME_DI_PROGETTO == 100 and impostazioni.VOLUME_PARTITA_PREDEFINITO == impostazioni.PREDEFINITE["volume_partita"] == 50
     assert ps.fattore_del_volume(ps.VOLUME_DI_PROGETTO) == pytest.approx(resa.GUADAGNO_PARTITA) == pytest.approx(1.0)
     assert (ps.TETTO, ps.GUADAGNO_PARTITA) == (resa.TETTO, resa.GUADAGNO_PARTITA)
     segmento = _segmenti(_incontro())[3]
     buffer = ps.componi(segmento.eventi, "A", da=segmento.inizio, fine=segmento.fine).buffer
-    assert np.allclose(ps.per_la_cassa(buffer, impostazioni.VOLUME_PARTITA_PREDEFINITO), resa.con_margine(buffer), atol=1e-6)
-    # E il volume più alto suona davvero più forte di quello di progetto, che è già vicino al tetto.
-    assert float(np.max(np.abs(ps.per_la_cassa(buffer, 100)))) > float(np.max(np.abs(ps.per_la_cassa(buffer, 95))))
+    assert np.allclose(ps.per_la_cassa(buffer, ps.VOLUME_DI_PROGETTO), resa.con_margine(buffer), atol=1e-6)
+    # E il predefinito suona davvero più piano: la metà in ampiezza.
+    assert float(np.max(np.abs(ps.per_la_cassa(buffer, 50)))) == pytest.approx(float(np.max(np.abs(ps.per_la_cassa(buffer, 100)))) / 2, rel=1e-3)
 
 
 def test_il_fattore_del_volume_e_lo_stesso_per_ogni_buffer():
