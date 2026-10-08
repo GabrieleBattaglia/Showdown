@@ -1,0 +1,16 @@
+Applicazione, l'avvio e l'uscita, 2026-10-08 08:36: test superato, nessun commento
+Applicazione, i salvataggi e gli errori gravi, 2026-10-08 08:37: test superato, nessun commento
+Applicazione, il fuoco, i dialoghi e gli elenchi, 2026-10-08 08:37: test superato, nessun commento
+Applicazione, l'aiuto, 2026-10-08 08:37: test superato, nessun commento
+Applicazione, le impostazioni, 2026-10-08 08:37: test superato, nessun commento
+Mondo, i giocatori, 2026-10-08 08:38: test superato, nessun commento
+Mondo, la sessione e la ricerca, 2026-10-08 08:38: test superato, nessun commento
+Mondo, il tempo e le notizie, 2026-10-08 08:38: test superato, nessun commento
+Polisportive, fondazione, cambio e password, 2026-10-08 08:39: test superato, nessun commento
+Polisportive, chiusura, schede e svincolo, 2026-10-08 08:39: test superato, nessun commento
+Polisportive, le notizie dei tuoi tesserati, 2026-10-08 08:39: test superato, nessun commento
+Economia, il mercato, 2026-10-08 08:39: test superato, nessun commento
+Economia, le offerte, 2026-10-08 08:40: test superato, nessun commento
+Economia, vendite e arretrati, 2026-10-08 08:40: test superato, nessun commento
+Economia, i conti del mese, 2026-10-08 08:40: test superato, nessun commento
+Partite, l'amichevole, 2026-10-08 08:40: test superato, nessun commento
