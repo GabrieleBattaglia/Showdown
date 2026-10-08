@@ -1,0 +1,186 @@
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 166 suoni, 144 della finestra e 22 della partita dal vivo.
+Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
+Finestra, applicazione, l'avvio e l'uscita, 6 suoni.
+Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
+Il primo avvio, quando nasce un mondo nuovo: mess_mondo_nuovo.
+L'avvio con il mondo ripreso dalla copia di sicurezza, perché il salvataggio principale non si usa: mess_avvio_dalla_copia.
+L'avvio con le collezioni di nomi e cognomi difettose: mess_avvio_con_avvisi.
+L'uscita dal programma con il mondo salvato: mess_uscita.
+L'uscita dal programma quando il salvataggio finale non riesce: mess_uscita_senza_salvataggio.
+Finestra, applicazione, i salvataggi e gli errori gravi, 5 suoni.
+Il mondo salvato con Ctrl+S: meditimer_banco_salvato.
+Il mondo salvato con Ctrl+S, ma con un avviso dell'archivio: mess_salvataggio_con_avviso.
+Un salvataggio che non riesce, con Ctrl+S o dopo un'operazione: mess_salvataggio_non_riuscito.
+All'avvio né il salvataggio né la sua copia si leggono, e il programma si ferma: mess_salvataggio_illeggibile.
+Un errore imprevisto del programma: sirena_d_allarme_1.
+Finestra, applicazione, il fuoco, i dialoghi e gli elenchi, 9 suoni.
+F5, il fuoco va nella vista principale: spostamento_f5.
+F7, il fuoco va nella barra di stato: spostamento_f7.
+Un'operazione annullata, con Esc o con Annulla in un dialogo: meteora_annullamento.
+La chiusura del mercato, delle vendite o degli arretrati dopo averci lavorato: terminata.
+Un pulsante premuto senza niente di scelto su cui lavorare: mess_tasto_a_vuoto.
+Un valore da correggere in un campo, e il dialogo resta aperto: mess_campo_da_correggere.
+Un elenco che si restringe mentre si scrive, e resta vuoto: espelli.
+Un elenco vuoto che torna a riempirsi mentre si scrive: aggiunta_giocatore.
+Una domanda di conferma, con Sì e No: meteora_sottotitoli_accesi.
+Finestra, applicazione, l'aiuto, 6 suoni.
+F1, la guida ai comandi, anche nella finestra dal vivo: pokermachine_manuale.
+F2, le novità della versione: jingle_scoperta.
+F2, quando il file delle novità non si legge: mess_novita_illeggibile.
+F3, le informazioni con la versione e gli autori: mess_informazioni.
+Offrimi un caffè, nel menu Aiuto: donazione.
+Dona con PayPal, nell'invito al caffè: carillon_dolce.
+Finestra, applicazione, le impostazioni, 12 suoni.
+Si apre il dialogo dell'aspetto, colori e caratteri, con Ctrl+P: scintillio_di_ghiaccio.
+Nel dialogo dell'aspetto, i valori tornano ai predefiniti: meteora_bande_azzerate.
+L'aspetto confermato e applicato: meteora_impostazione_cambiata.
+Le impostazioni valgono per la sessione ma il file non si scrive: mess_impostazioni_non_salvate.
+Si apre il dialogo della conservazione dei diari: meteora_console_salvata.
+La conservazione dei diari confermata: mess_diari_conservati.
+Si apre il dialogo degli effetti sonori: meteora_impostazioni.
+La prova del volume degli effetti, mentre lo si cambia: mess_prova_volume.
+La prova del volume della partita dal vivo, mentre lo si cambia: mess_prova_volume_partita.
+I volumi degli effetti e della partita confermati: conferma.
+Si apre il dialogo della velocità di gioco: mess_velocita_di_gioco.
+La velocità di gioco confermata e salvata: mess_velocita_salvata.
+Finestra, mondo, i giocatori, 8 suoni.
+Si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G: pokermachine_raddoppio_carta.
+La scheda di un giocatore: meteora_tag_letti.
+Si apre la scelta del giocatore di cui leggere il diario, con Ctrl+Shift+D: pokermachine_consiglio.
+Il diario di un giocatore: mess_diario_a_ritroso.
+L'elenco dei giocatori, con Ctrl+E: meteora_ramo_aggiornato.
+La classifica per valore, con Ctrl+L: meditimer_classifiche.
+La TOP 10 dei migliori giocatori, con Ctrl+T: mess_fuochi_d_artificio.
+Le statistiche del mondo, con Ctrl+I: meteora_marcatori.
+Finestra, mondo, la sessione e la ricerca, 8 suoni.
+I nuovi arrivati della sessione, con Ctrl+Shift+N: meteora_marcatori_importati.
+I ritirati della sessione, con Ctrl+Shift+R: mess_saluto_in_eco.
+Gli usciti di scena nella sessione, con Ctrl+Shift+U: mess_spirale_breve.
+Si apre la ricerca dei giocatori, con Ctrl+F: mess_sonar.
+Una ricerca che trova dei giocatori: meteora_marcatori_trovato.
+Una ricerca che non trova nessuno: meteora_marcatori_non_trovato.
+I risultati dell'ultima ricerca, con Ctrl+R: apertura.
+Ctrl+R quando nella sessione non c'è ancora una ricerca: meditimer_allarme_zittito.
+Finestra, mondo, il tempo e le notizie, 11 suoni.
+La data simulata e il prossimo avanzamento, con Ctrl+D: meditimer_ora.
+Il riepilogo dell'ultimo avanzamento del mondo, con Ctrl+Shift+A: mess_notiziario.
+Il riepilogo dell'avanzamento quando il mondo non è ancora avanzato: mess_notiziario_vuoto.
+Le vecchie glorie, con Ctrl+Shift+V: arpeggio_pensoso.
+Il mondo avanza di un giorno, senza notizie importanti: mess_nuovo_giorno.
+Il mondo avanza di più giorni in una volta: mess_giorni_trascorsi.
+Nell'avanzamento del giorno muore un giocatore: mess_giorno_di_lutto.
+Nell'avanzamento del giorno qualcuno si ritira: mess_giorno_di_congedo.
+Nell'avanzamento del giorno qualcuno lascia lo showdown prima del tempo: mess_giorno_di_partenza.
+Nell'avanzamento del giorno nasce una polisportiva del computer: meditimer_banco_avvio.
+Nell'avanzamento del giorno chiude una polisportiva del computer: mess_motore_che_si_spegne.
+Finestra, polisportive, fondazione, cambio e password, 11 suoni.
+Si apre il dialogo della nuova polisportiva, con Ctrl+N: mess_quinte_sovrapposte.
+Una polisportiva fondata: mess_fischio_d_inizio.
+Si apre il dialogo per cambiare la polisportiva attiva, con Ctrl+Shift+C: mess_scambio_di_posto.
+Una polisportiva diventa quella attiva: controllo_ok.
+Un comando che vuole una tua polisportiva quando non ne hai nessuna: mess_invito_a_fondare.
+Un comando che vuole la polisportiva attiva quando non ce n'è nessuna: mess_segnale_di_occupato.
+Una password sbagliata: mess_maniglia_scossa.
+La password e la sua conferma non coincidono: mess_due_voci_stonate.
+Si apre il dialogo della password della polisportiva attiva: mess_tastierino_del_codice.
+La polisportiva protetta da una password: mess_chiave_che_chiude.
+La password della polisportiva tolta: mess_chiave_che_apre.
+Finestra, polisportive, chiusura, schede e svincolo, 10 suoni.
+La richiesta della password prima di chiudere una polisportiva protetta: mess_bussare_alla_porta.
+La domanda se chiudere per sempre la polisportiva attiva: mess_campana_a_martello.
+Una polisportiva chiusa per sempre: mess_triplice_fischio.
+La scheda della polisportiva attiva, con Ctrl+M: mess_occhiata_alla_scheda.
+I tesserati della polisportiva attiva, con Ctrl+Shift+T: mess_rosa_che_sfila.
+Il diario della polisportiva attiva, con Ctrl+Shift+M: mess_penna_sul_diario.
+L'elenco delle polisportive, con Ctrl+Shift+E: mess_albo_che_scorre.
+Si apre la scelta del tesserato da svincolare, con Ctrl+Shift+S: mess_porta_che_cigola.
+Un tesserato svincolato, che torna libero: mess_contratto_strappato.
+Un comando che vuole i tesserati quando la polisportiva attiva non ne ha: mess_eco_nello_spogliatoio.
+Finestra, polisportive, le notizie dei tuoi tesserati, 3 suoni.
+Nell'avanzamento un tuo tesserato diventa una bandiera del club: mess_fanfara_della_bandiera.
+Nell'avanzamento un tuo tesserato si ritira: mess_scarpe_al_chiodo.
+Nell'avanzamento un tuo tesserato muore o lascia lo showdown: mess_il_silenzio.
+Finestra, economia, il mercato, 8 suoni.
+Si apre il mercato, con Ctrl+K: mess_mercato_aperto.
+Nel mercato cambia la scelta di chi mostrare: mess_mercato_mostra.
+Nel mercato cambia l'ordine dell'elenco: mess_mercato_ordine.
+Nel mercato si apre la ricerca per aggiungere un filtro: mess_filtro_dialogo.
+Nel mercato un filtro aggiunto: mess_filtro_aggiunto.
+Nel mercato un filtro tolto: mess_filtro_tolto.
+Nel mercato tutti i filtri tolti: mess_filtri_tutti_tolti.
+Nel mercato la scheda del giocatore scelto: carta_girata.
+Finestra, economia, le offerte, 11 suoni.
+Si apre il dialogo della cifra d'ingaggio di un libero: mess_cifra_ingaggio.
+La probabilità che il libero accetti, mentre si scrive la cifra: più è alta, più è acuto: mess_probabilita.
+Si apre il dialogo della cifra da offrire per un tesserato di un'altra polisportiva: mess_cifra_offerta.
+Il libero accetta l'ingaggio: mess_ingaggio_accettato.
+Il libero rifiuta l'ingaggio: mess_ingaggio_rifiutato.
+L'acquisto di un giocatore in vendita: mess_acquisto_fatto.
+La polisportiva del computer accetta l'offerta, e il tesserato passa a te: mess_offerta_accettata.
+La polisportiva del computer rifiuta l'offerta: mess_offerta_rifiutata.
+I soldi in cassa non bastano: mess_cassa_vuota.
+Le mosse di mercato del giorno sono finite: mess_mosse_finite.
+La rosa della polisportiva è piena: pokermachine_scudi_pieni.
+Finestra, economia, vendite e arretrati, 11 suoni.
+Si apre il dialogo delle vendite dei tesserati: mess_vendite_aperte.
+Un tesserato messo in vendita: meteora_marker_messo.
+Il prezzo di un tesserato già in vendita cambiato: meteora_marker_rinominato.
+Un tesserato tolto dalla vendita: meteora_marker_eliminato.
+Si vuole togliere dalla vendita un tesserato che in vendita non c'è: mess_vendita_non_attiva.
+Si apre il pagamento degli arretrati, con Ctrl+Shift+P: mess_arretrati_aperti.
+Nessun tesserato aspetta arretrati: mess_conti_a_posto.
+Arretrati pagati in parte, e il tesserato aspetta ancora: mess_arretrati_in_parte.
+Un tesserato riceve tutti gli arretrati: mess_arretrati_saldati.
+Pagato l'ultimo debito, nessuno aspetta più arretrati: mess_arretrati_tutti_saldati.
+Il bilancio della polisportiva attiva, con Ctrl+B: mess_bilancio.
+Finestra, economia, i conti del mese, 4 suoni.
+Nell'avanzamento arriva il primo del mese, con gli stipendi pagati: mess_primo_del_mese.
+Al primo del mese la cassa non basta per gli stipendi: mess_stipendi_non_pagati.
+Tuoi tesserati se ne vanno per gli stipendi non pagati: mess_tesserati_partiti.
+Un tuo tesserato in vendita è stato comprato: mess_tesserato_venduto.
+Finestra, partite, l'amichevole, 10 suoni.
+Si apre la scelta del tuo giocatore per un'amichevole, con Ctrl+O: mess_invito_a_giocare.
+Si apre la scelta dell'avversario dell'amichevole: mess_avversario_che_risponde.
+Si apre il dialogo delle opzioni dell'amichevole: mess_opzioni_dell_amichevole.
+Oggi nessuno può giocare un'amichevole: mess_torna_domani.
+L'amichevole la vince il tuo tesserato: mess_amichevole_vinta.
+L'amichevole la perde il tuo tesserato: mess_amichevole_persa.
+Un'amichevole fra due tuoi tesserati: mess_stretta_di_mano.
+Salva la cronaca quando nella sessione non c'è ancora un'amichevole: mess_nessun_incontro.
+La cronaca dell'amichevole salvata nel suo file, con Ctrl+Shift+O: mess_cronaca_salvata.
+La cronaca dell'amichevole che non si può scrivere nel file: mess_cronaca_non_salvata.
+Finestra, partite, la partita dal vivo, 11 suoni.
+Si apre la finestra della partita dal vivo, con Assisti: mess_conto_alla_rovescia.
+Nella partita dal vivo il riscaldamento saltato: mess_punto_successivo.
+Nella partita dal vivo Alt+V, Vai alla fine: mess_resto_dell_incontro.
+Nella partita dal vivo Alt+F o Alt+L a incontro già finito: mess_incontro_finito.
+Nella partita dal vivo la pausa, con Invio o spazio mentre l'azione suona: meditimer_cronometro_pausa.
+Nella partita dal vivo la ripresa dopo la pausa: meditimer_cronometro_ripreso.
+Nella partita dal vivo Alt+F, ascolta fino a fine set: mess_fino_a_fine_set.
+Nella partita dal vivo Alt+L, il lato d'ascolto passa all'altro giocatore: mess_dall_altra_parte.
+Nella partita dal vivo il tasto più, velocità di gioco più alta: meteora_velocita_su.
+Nella partita dal vivo il tasto meno, velocità di gioco più bassa: meteora_velocita_giu.
+Nella partita dal vivo più o meno con la velocità già al massimo o al minimo: meteora_velocita_al_limite.
+Partita dal vivo, i suoni dell'incontro, 22 suoni.
+Il fischio singolo dell'arbitro, ai falli e alle riprese del gioco: mess_partita_fischio_singolo.
+La battuta, la paletta che colpisce la pallina al servizio: mess_partita_battuta.
+Il secondo tocco della battuta col doppio tocco: mess_partita_secondo_tocco.
+Il colpo a vuoto in battuta, la paletta che manca la pallina e batte sul tavolo: mess_partita_colpo_a_vuoto.
+La pallina che rotola, il sonaglio dei pallini, una capriola per giro: mess_partita_rotolamento.
+La pallina che sbatte sulla sponda o sulla curva di un angolo: mess_partita_sponda.
+La parata, la pallina che si ferma sulla paletta: mess_partita_parata.
+Il controllo, la pallina fermata e scossa con la paletta prima del colpo: mess_partita_controllo.
+Il colpo d'attacco dello scambio: mess_partita_colpo.
+La pallina che colpisce il corpo di chi difende, il body touch: mess_partita_corpo.
+Il goal, la pallina che cade nella tasca della porta: mess_partita_goal.
+Il fischio doppio dell'arbitro, per il goal: mess_partita_fischio_doppio.
+La fanfara del goal, dopo il fischio doppio, dalla testata di chi segna: mess_partita_fanfara.
+La pallina che urta lo schermo centrale: mess_partita_schermo.
+La pallina che cade a terra fuori dal tavolo: mess_partita_terra.
+La pallina che sbatte sul soffitto: mess_partita_soffitto.
+La pallina che sale sulla tavola di contatto in fondo al tavolo: mess_partita_tavola_di_contatto.
+La paletta che cade, l'infrazione paletta: mess_partita_paletta_caduta.
+Il fallo, dopo il fischio singolo, dalla testata di chi lo commette: mess_partita_fallo.
+La paletta o la pallina che si rompe: mess_partita_rottura.
+L'arbitro che recupera la pallina prima di consegnarla a chi batte: mess_partita_recupero.
+Il fischio lungo dell'arbitro, a fine set e a fine incontro: mess_partita_fischio_lungo.

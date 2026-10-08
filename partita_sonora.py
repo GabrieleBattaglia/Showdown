@@ -3,7 +3,8 @@ MESS, la partita sonora della tappa 10: compone il suono della partita dal vivo 
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nasce il 2026-10-08 con le decisioni D28 e D29, dal prototipo strumenti/resa_prototipo.py, che
 Gabriele ha ascoltato nell'ascolto libero e approvato: lati, movimento e tempi funzionano. Il
-prototipo resta allo strumento d'ascolto e al banco alla cieca; questo è il modulo vero, ripulito.
+prototipo resta al banco alla cieca dello spazio; questo è il modulo vero, ripulito, e dalla fase
+dei timbri compone anche i punti dello strumento d'ascolto, strumenti/ascolta_partita.py.
 Il motore conosce in anticipo tutti gli eventi di un punto con i loro tempi, quindi un punto, o una
 tranche di più punti, si compone in un solo buffer stereo, con numpy e scipy, che va al mixer di
 Acusticator con una chiamata sola: ogni suono cade esatto al campione, all'istante del suo evento.
@@ -15,12 +16,25 @@ cui taglio scende col lontano. Pan e distanza vengono sempre da motore.tavolo.vi
 del motore né dai nomi dei colpi, così il ribaltamento chiesto da D11 per il giocatore lontano resta
 in un punto solo. I valori predefiniti sono quelli del prototipo; quelli che Gabriele sceglierà al
 banco alla cieca si mettono nello Spazio, che ha un campo per ognuna delle tre domande di D28.
-I suoni. La mappa SUONI dà un preset della collezione di GBUtils per ogni ruolo, per ora segnaposto,
-e nessuno è un suono della finestra. Il suono si sceglie dal tipo dell'evento, dal suo esito e dalla
-sua causa: le cause che fanno un rumore loro, la paletta che cade, il colpo a vuoto e il secondo
-tocco, hanno il loro suono, come vuole D28, e gli altri falli si riconoscono dal suono della pallina,
-dal fischio e dalla chiamata. Le parole dell'arbitro non suonano: le dice la cronaca. I suoni tonali
-si sintetizzano una volta; quelli di rumore tengono quattro varianti, che girano dentro il buffer.
+I suoni. La mappa SUONI dà un preset della collezione di GBUtils per ogni ruolo, e nessuno è un suono
+della finestra. Il suono si sceglie dal tipo dell'evento, dal suo esito e dalla sua causa: le cause
+che fanno un rumore loro, la paletta che cade, il colpo a vuoto e il secondo tocco, hanno il loro
+suono, come vuole D28, e gli altri falli si riconoscono dal suono della pallina, dal fischio e dalla
+chiamata. Le parole dell'arbitro non suonano: le dice la cronaca. I suoni tonali si sintetizzano una
+volta; quelli di rumore tengono quattro varianti, che girano dentro il buffer.
+I timbri veri, l'ultima fase di D28, hanno preso il posto dei segnaposto dell'ascolto libero: sono i
+preset mess_partita_ della collezione, uno per ruolo, che Gabriele può ritoccare con Acu_Maker. La
+pallina dello showdown è piena di pallini di metallo: ogni urto ha il suo tintinnio, e il
+rotolamento è un sonaglio, la capriola dei pallini del suo preset ripetuta una volta per giro della
+pallina, fitta quando corre e rada quando rallenta. I fischi sono il fischietto vero, un trillo
+rapidissimo, e suonano lunghi quanto il loro preset, non quanto il tempo che il motore dà al fischio,
+come chiesto da Gabriele dopo l'ascolto libero: pausa breve fra i due fischi del doppio, e il lungo
+breve anche lui. Dopo il fischio vengono i due suoni dell'esito, che si aggiungono senza togliere
+niente a quello che dice la pallina: dopo il doppio del goal una fanfara piccolissima, dalla testata
+di chi segna, e dopo il singolo di ogni fallo un cicalino grave di due note, dalla testata di chi lo
+commette, perché il fallo si distingua bene dal goal. I preset hanno fra loro i rapporti di livello
+che si sentono anche in Acu_Maker; la partita li alza tutti di GUADAGNO_TIMBRI, perché i colpi di
+rumore, brevi, nella collezione escono piano, e arrotonda le cime più alte con un limitatore morbido.
 Il livello ha un margine: allo stesso volume della partita ogni buffer ha lo stesso fattore, così
 la partita non cambia livello da un punto all'altro né cambiando lato, e un tetto che nessun picco
 supera, anche al volume massimo. Dalla decisione D30 il volume è quello della partita, a parte da
@@ -49,7 +63,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from costanti import LUNGHEZZA_TAVOLO, META_TAVOLO, VOLUME_RIFERIMENTO_CM
+from costanti import LUNGHEZZA_TAVOLO, META_TAVOLO, RAGGIO_PALLINA, VOLUME_RIFERIMENTO_CM
 from motore import eventi as E
 
 FS = 44100
@@ -60,18 +74,37 @@ CAMPIONI_PASSO = round(PASSO * FS)
 GUADAGNO_ROTOLAMENTO = 0.6
 V_RIF = 500.0
 GUADAGNO_CONTROLLO = 0.5
-# Il nastro del rotolamento, i secondi lasciati ai suoi capi e la sfumatura dei tratti tagliati.
-FONDO_LUNGO = 8.0
-MARGINE_FONDO = 0.5
+# Il sonaglio del rotolamento: una capriola dei pallini per ogni giro della pallina, cioè ogni
+# circonferenza percorsa, con il passo che varia di un quarto in più o in meno perché non batta
+# come una macchina, e il volume di ogni capriola fra tre quarti e il pieno.
+GIRO_PALLINA = 2.0 * math.pi * RAGGIO_PALLINA
+SCARTO_DEL_GIRO = 0.25
+VOLUME_MINIMO_CAPRIOLA = 0.75
+# La sfumatura dei tratti tagliati.
 SFUMATURA = 0.005
 # Il secondo tocco della battuta col doppio tocco arriva poco dopo il primo.
 RITARDO_SECONDO_TOCCO = 0.08
+# Il respiro fra la fine del fischio e il suono dell'esito che lo segue, la fanfara o il cicalino del fallo.
+RESPIRO_DELL_ESITO = 0.06
 # I suoni di rumore e quante varianti ne restano in memoria.
 KIND_DI_RUMORE = frozenset((5, 6, 7, 8))
 VARIANTI_RUMORE = 4
+# Il livello dei timbri. I preset della partita hanno fra loro i rapporti di livello giusti, gli
+# stessi che si sentono in Acu_Maker, ma i colpi di rumore, che durano poche decine di millesimi,
+# nella collezione escono piano: la partita alza tutte le sorgenti dello stesso fattore, scelto
+# perché la partita suoni forte quanto i segnaposto dell'ascolto libero approvato da Gabriele,
+# misurato sulla sonorità dei punti composti. Le cime che restano sopra il ginocchio, qualche
+# campione all'attacco dei colpi più bassi, le arrotonda un limitatore morbido, che non fa mai
+# superare il tetto delle sorgenti: così un colpo vicino, anche insieme al fischio, non porta la
+# partita oltre il suo picco di progetto.
+GUADAGNO_TIMBRI = 2.8
+GINOCCHIO_SORGENTI = 0.6
+TETTO_SORGENTI = 0.8
 # Il livello: il guadagno fisso della partita, e il tetto che nessun picco supera. Il picco di
 # progetto è il più alto misurato dal revisore in 24 incontri, a tre velocità e dalle due testate:
-# 0,7526, del fischio che parte nello stesso campione di un colpo. Dalla decisione D30 la partita ha
+# 0,7526, del fischio che parte nello stesso campione di un colpo. Con i timbri veri il più alto,
+# in 2502 buffer di 12 incontri a tre velocità e dalle due testate, è 0,68, di un goal insieme al
+# suo fischio doppio: il progetto resta quello, con margine. Dalla decisione D30 la partita ha
 # un volume suo, da 0 a 100, che moltiplica il buffer in proporzione, fino in fondo: a 100 porta il
 # picco di progetto al tetto, e al volume di progetto, 95, il fattore è uno, il livello dell'ascolto
 # libero approvato da Gabriele. Prima era il volume degli effetti, a 50 com'era stato pensato, ma
@@ -93,32 +126,62 @@ TOLLERANZA = 0.001
 SOGLIA_SILENZIO = 1e-4
 SILENZIO_DAVANTI = 0.06
 
-# I preset segnaposto della collezione di GBUtils, uno per ruolo e mai lo stesso per due ruoli, gli
-# stessi dell'ascolto libero approvato da Gabriele. Nessuno è fra quelli della finestra, in
-# suoni.EVENTI, perché un suono della finestra non si confonda con un evento della partita: lo
-# controlla una prova. I timbri veri arrivano per ultimi, secondo D28.
+# I timbri della partita, i preset della collezione di GBUtils fatti per lei con la V203, uno per
+# ruolo e mai lo stesso per due ruoli. Nessuno è fra quelli della finestra, in suoni.EVENTI, né
+# suona come uno di loro, perché un suono della finestra non si confonda con un evento della
+# partita: lo controllano le prove. L'ordine è quello in cui li presenta l'ascolto dei timbri.
 SUONI = {
-    "battuta": "colpo_d_impatto_5",
-    "colpo": "colpo_d_impatto_2",
-    "secondo_tocco": "colpo_d_impatto_1",
-    "colpo_a_vuoto": "meditimer_manuale",
-    "parata": "carta_giocata",
-    "paletta_caduta": "rimbalzo_stereo",
-    "sponda": "carta_pescata",
-    "rotolamento": "pioggia_leggera",
-    "controllo": "pokermachine_rimescolo",
-    "goal": "colpo_d_impatto_7",
-    "schermo": "colpo_d_impatto_3",
-    "terra": "colpo_d_impatto_10",
-    "corpo": "colpo_d_impatto_6",
-    "soffitto": "colpo_d_impatto_8",
-    "tavola_contatto": "colpo_d_impatto_9",
-    "rottura": "scudisciata",
-    "recupero": "pokermachine_scarto",
-    "fischio_singolo": "fide_pronto",
-    "fischio_doppio": "doppio_tic_conferma",
-    "fischio_lungo": "sys_tick_alto",
+    "fischio_singolo": "mess_partita_fischio_singolo",
+    "battuta": "mess_partita_battuta",
+    "secondo_tocco": "mess_partita_secondo_tocco",
+    "colpo_a_vuoto": "mess_partita_colpo_a_vuoto",
+    "rotolamento": "mess_partita_rotolamento",
+    "sponda": "mess_partita_sponda",
+    "parata": "mess_partita_parata",
+    "controllo": "mess_partita_controllo",
+    "colpo": "mess_partita_colpo",
+    "corpo": "mess_partita_corpo",
+    "goal": "mess_partita_goal",
+    "fischio_doppio": "mess_partita_fischio_doppio",
+    "fanfara": "mess_partita_fanfara",
+    "schermo": "mess_partita_schermo",
+    "terra": "mess_partita_terra",
+    "soffitto": "mess_partita_soffitto",
+    "tavola_contatto": "mess_partita_tavola_di_contatto",
+    "paletta_caduta": "mess_partita_paletta_caduta",
+    "fallo": "mess_partita_fallo",
+    "rottura": "mess_partita_rottura",
+    "recupero": "mess_partita_recupero",
+    "fischio_lungo": "mess_partita_fischio_lungo",
 }
+# Ogni ruolo detto a parole: l'azione che lo fa suonare. Le leggono l'ascolto dei timbri e l'elenco
+# dei suoni per Acu_Maker, suoni_di_mess.txt.
+AZIONI = {
+    "fischio_singolo": "il fischio singolo dell'arbitro, ai falli e alle riprese del gioco",
+    "battuta": "la battuta, la paletta che colpisce la pallina al servizio",
+    "secondo_tocco": "il secondo tocco della battuta col doppio tocco",
+    "colpo_a_vuoto": "il colpo a vuoto in battuta, la paletta che manca la pallina e batte sul tavolo",
+    "rotolamento": "la pallina che rotola, il sonaglio dei pallini, una capriola per giro",
+    "sponda": "la pallina che sbatte sulla sponda o sulla curva di un angolo",
+    "parata": "la parata, la pallina che si ferma sulla paletta",
+    "controllo": "il controllo, la pallina fermata e scossa con la paletta prima del colpo",
+    "colpo": "il colpo d'attacco dello scambio",
+    "corpo": "la pallina che colpisce il corpo di chi difende, il body touch",
+    "goal": "il goal, la pallina che cade nella tasca della porta",
+    "fischio_doppio": "il fischio doppio dell'arbitro, per il goal",
+    "fanfara": "la fanfara del goal, dopo il fischio doppio, dalla testata di chi segna",
+    "schermo": "la pallina che urta lo schermo centrale",
+    "terra": "la pallina che cade a terra fuori dal tavolo",
+    "soffitto": "la pallina che sbatte sul soffitto",
+    "tavola_contatto": "la pallina che sale sulla tavola di contatto in fondo al tavolo",
+    "paletta_caduta": "la paletta che cade, l'infrazione paletta",
+    "fallo": "il fallo, dopo il fischio singolo, dalla testata di chi lo commette",
+    "rottura": "la paletta o la pallina che si rompe",
+    "recupero": "l'arbitro che recupera la pallina prima di consegnarla a chi batte",
+    "fischio_lungo": "il fischio lungo dell'arbitro, a fine set e a fine incontro",
+}
+# I suoni dell'esito, che vengono dopo il fischio: per ognuno il fischio che lo precede.
+ESITI = {"fanfara": E.DOPPIO, "fallo": E.SINGOLO}
 # Le tappe del volo che hanno un suono proprio. Paletta e porta suonano con la parata e il goal;
 # nel riscaldamento, dove il motore non crea parate, la pallina che arriva sulla paletta di chi
 # riceve suona da sé, con il suono della parata.
@@ -304,21 +367,21 @@ def svuota_cache():
     _CACHE.clear()
 
 
-def allunga(score, durata):
-    """Lo score con le durate delle quartine scalate perché il totale sia durata."""
-    score = list(score)
-    totale = sum(float(score[i]) for i in range(1, len(score), 4))
-    fattore = durata / totale
-    for i in range(1, len(score), 4):
-        score[i] = float(score[i]) * fattore
-    return score
+def limita(mono, ginocchio=GINOCCHIO_SORGENTI, tetto=TETTO_SORGENTI):
+    """Il limitatore morbido delle sorgenti: sotto il ginocchio non tocca niente, sopra arrotonda le cime con la tangente iperbolica, senza mai superare il tetto."""
+    fuori = np.abs(mono) > ginocchio
+    if fuori.any():
+        larghezza = tetto - ginocchio
+        mono[fuori] = np.sign(mono[fuori]) * (ginocchio + larghezza * np.tanh((np.abs(mono[fuori]) - ginocchio) / larghezza))
+    return mono
 
 
-def sorgente(ruolo, durata=None, piatto=False, variante=0):
+def sorgente(ruolo, variante=0):
     """
-    La sorgente mono di un ruolo: al centro, allungata se si chiede una durata, senza inviluppo se
-    piatto. I suoni tonali escono sempre uguali e si sintetizzano una volta; quelli di rumore
-    tengono VARIANTI_RUMORE varianti, e variante sceglie quale. KeyError se il preset manca.
+    La sorgente mono di un ruolo, al centro e lunga quanto il suo preset. I suoni tonali escono
+    sempre uguali e si sintetizzano una volta; quelli di rumore tengono VARIANTI_RUMORE varianti, e
+    variante sceglie quale. Il livello è quello del preset per GUADAGNO_TIMBRI, con le cime
+    arrotondate dal limitatore. KeyError se il preset manca.
     """
     from GBUtils import Acusticator
 
@@ -327,41 +390,34 @@ def sorgente(ruolo, durata=None, piatto=False, variante=0):
     if not score:
         raise KeyError(f"Il preset {nome} del ruolo {ruolo} non c'è nella collezione.")
     variante = variante % VARIANTI_RUMORE if kind in KIND_DI_RUMORE else 0
-    chiave = (nome, None if durata is None else round(durata, 3), piatto, variante)
+    chiave = (nome, variante)
     if chiave in _CACHE:
         return _CACHE[chiave]
     score = list(score)
     # Lo spazio lo mette lo Spazio: il panorama proprio del preset si porta al centro.
     for i in range(2, len(score), 4):
         score[i] = 0.0
-    if durata is not None:
-        score = allunga(score, max(durata, 0.02))
-    if piatto:
-        adsr = [0.002, 0.0, 100.0, 0.002]
     stereo = Acusticator.sintetizza(score, kind, adsr, FS)
     # Al centro la legge a potenza costante dà il coseno di 45 gradi per lato: il mono è un canale per la radice di due.
-    mono = (np.asarray(stereo)[:, 0] * math.sqrt(2.0)).astype(np.float32)
+    mono = limita(np.asarray(stereo, dtype=np.float64)[:, 0] * (math.sqrt(2.0) * GUADAGNO_TIMBRI)).astype(np.float32)
     _CACHE[chiave] = mono
     return mono
 
 
-def prepara(taratura=None):
-    """
-    Sintetizza in anticipo tutte le sorgenti della partita, con le varianti dei rumori, i fischi
-    alle durate della taratura e il nastro del rotolamento: la prima composizione costa allora come
-    le altre, e Prosegui non fa aspettare. Si chiama all'apertura della finestra dal vivo.
-    """
-    from motore.taratura import TARATURA
+def durata_della_sorgente(ruolo):
+    """I secondi della sorgente di un ruolo: quelli del suo preset."""
+    return len(sorgente(ruolo)) / FS
 
-    t = taratura or TARATURA
+
+def prepara():
+    """
+    Sintetizza in anticipo tutte le sorgenti della partita, con le varianti dei rumori: la prima
+    composizione costa allora come le altre, e Prosegui non fa aspettare. Si chiama all'apertura
+    della finestra dal vivo.
+    """
     for ruolo in SUONI:
-        if ruolo.startswith("fischio_"):
-            continue
         for variante in range(VARIANTI_RUMORE):
             sorgente(ruolo, variante=variante)
-    for ruolo, durata in (("fischio_singolo", t.FISCHIO_SINGOLO), ("fischio_doppio", t.FISCHIO_DOPPIO), ("fischio_lungo", t.FISCHIO_LUNGO)):
-        sorgente(ruolo, durata)
-    sorgente("rotolamento", FONDO_LUNGO, piatto=True)
 
 
 def _sfuma(mono):
@@ -374,23 +430,58 @@ def _sfuma(mono):
     return mono
 
 
-def nastro(ruolo, durata, numero):
-    """Un tratto lungo durata del nastro di rumore del ruolo, sintetizzato una volta e senza inviluppo; numero sceglie da dove comincia."""
-    n = max(1, round(durata * FS))
-    fondo = sorgente(ruolo, FONDO_LUNGO, piatto=True)
-    margine = round(MARGINE_FONDO * FS)
-    spazio = len(fondo) - 2 * margine - n
-    if spazio < 1:
-        return _sfuma(np.resize(fondo[margine:len(fondo) - margine], n).astype(np.float32))
-    inizio = margine + (numero * 7919) % spazio
-    return _sfuma(fondo[inizio:inizio + n].copy())
+def capriole(tempi, velocita, numero):
+    """
+    Gli istanti delle capriole dei pallini lungo un tratto di rotolamento, dai secondi dal suo
+    inizio e dalle velocità della pallina in quei secondi: una capriola per ogni giro della pallina,
+    con la strada fatta sommata passo per passo, e il giro che varia di SCARTO_DEL_GIRO in più o in
+    meno. Il caso viene dal numero dell'evento, così lo stesso volo suona sempre uguale.
+    """
+    caso = np.random.default_rng(numero)
+    tempi = np.asarray(tempi, dtype=np.float64)
+    velocita = np.maximum(np.asarray(velocita, dtype=np.float64), 0.0)
+    strada = np.concatenate([[0.0], np.cumsum((velocita[1:] + velocita[:-1]) / 2.0 * np.diff(tempi))])
+    istanti = []
+    s = GIRO_PALLINA * caso.uniform(0.0, 1.0)
+    while s < strada[-1]:
+        # Il passo di controllo in cui la strada arriva a s, e dentro il passo in proporzione.
+        i = max(1, int(np.searchsorted(strada, s)))
+        tratto = strada[i] - strada[i - 1]
+        quota = (s - strada[i - 1]) / tratto if tratto > 0 else 0.0
+        istanti.append(float(tempi[i - 1] + quota * (tempi[i] - tempi[i - 1])))
+        s += GIRO_PALLINA * caso.uniform(1.0 - SCARTO_DEL_GIRO, 1.0 + SCARTO_DEL_GIRO)
+    return istanti
+
+
+def sonaglio(ruolo, tempi, velocita, numero):
+    """
+    Il rotolamento come sonaglio: la capriola dei pallini del preset del ruolo posata a ogni giro
+    della pallina, agli istanti che dà capriole, ciascuna con una variante e un volume scelti dal caso
+    dell'evento numero. È lungo quanto il tratto, più la coda dell'ultima capriola.
+    """
+    caso = np.random.default_rng(numero + 1)
+    istanti = capriole(tempi, velocita, numero)
+    lunghezza = max(round(float(tempi[-1]) * FS), 1)
+    pezzi = []
+    for istante in istanti:
+        capriola = sorgente(ruolo, variante=int(caso.integers(VARIANTI_RUMORE)))
+        pezzi.append((round(istante * FS), capriola * np.float32(caso.uniform(VOLUME_MINIMO_CAPRIOLA, 1.0))))
+        lunghezza = max(lunghezza, pezzi[-1][0] + len(capriola))
+    mono = np.zeros(lunghezza, dtype=np.float32)
+    for inizio, capriola in pezzi:
+        mono[inizio:inizio + len(capriola)] += capriola
+    return mono
 
 
 def in_fila(ruolo, durata, numero):
-    """Il preset del ruolo ripetuto alla sua velocità naturale per durata secondi: la pallina scossa nel controllo."""
-    naturale = sorgente(ruolo, variante=numero)
+    """Il preset del ruolo ripetuto alla sua velocità naturale per durata secondi, ogni volta con la variante che segue: la pallina scossa nel controllo."""
     n = max(1, round(durata * FS))
-    return _sfuma(np.tile(naturale, math.ceil(n / len(naturale)))[:n].copy())
+    pezzi = []
+    lunghezza = 0
+    while lunghezza < n:
+        pezzi.append(sorgente(ruolo, variante=numero + len(pezzi)))
+        lunghezza += len(pezzi[-1])
+    return _sfuma(np.concatenate(pezzi)[:n].copy())
 
 
 # La spazializzazione.
@@ -444,8 +535,10 @@ def suoni_fermi(e):
     I suoni istantanei di un evento, come coppie di ruolo e ritardo dal suo istante. Si sceglie dal
     tipo, dall'esito e dalla causa: il colpo a vuoto ha il suo suono, il doppio tocco ne ha due, la
     paletta che cade suona col fallo al posto del colpo o della parata, e la parata che non tocca la
-    pallina resta muta. Fallo, palla morta, chiamate e annunci non hanno suono: si riconoscono dal
-    suono della pallina, dal fischio e dalle parole della cronaca, come vogliono D25 e D28.
+    pallina resta muta. Il fallo si riconosce dal suono della pallina, dal fischio e dalle parole
+    della cronaca, come vogliono D25 e D28; in più, richiesta di Gabriele, dopo il suo fischio
+    singolo arriva il cicalino del fallo, e dopo il fischio doppio del goal la fanfara. Palla morta,
+    chiamate e annunci non hanno suono.
     """
     tipo, esito, causa = e.tipo, e.esito, e.causa
     if tipo == E.BATTUTA:
@@ -459,14 +552,38 @@ def suoni_fermi(e):
     if tipo == E.PARATA:
         return [] if esito == "goal" or causa in CAUSE_SENZA_PARATA else [("parata", 0.0)]
     if tipo == E.FALLO:
-        return [("paletta_caduta", 0.0)] if causa == "paletta_caduta" else []
+        return ([("paletta_caduta", 0.0)] if causa == "paletta_caduta" else []) + [("fallo", ritardo_dell_esito("fallo"))]
     if tipo == E.GOAL:
-        return [("goal", 0.0)]
+        return [("goal", 0.0), ("fanfara", ritardo_dell_esito("fanfara"))]
     if tipo == E.ROTTURA:
         return [("rottura", 0.0)]
     if tipo == E.RECUPERO:
         return [("recupero", 0.0)]
     return []
+
+
+def ritardo_dell_esito(ruolo):
+    """
+    Il ritardo di un suono dell'esito dal goal o dal fallo: il fischio che il motore fa partire nello
+    stesso istante, lungo quanto il suo preset, e il respiro che lo segue.
+    """
+    return durata_della_sorgente(f"fischio_{ESITI[ruolo]}") + RESPIRO_DELL_ESITO
+
+
+def posizione_dell_esito(ruolo, e):
+    """
+    Da dove viene il suono dell'esito: dalla testata di chi l'ha fatto, al centro della sua linea di
+    porta. La fanfara da quella di chi segna, il cicalino del fallo da quella di chi lo commette;
+    chi ascolta li sente vicini se l'ha fatto il suo giocatore, lontani se l'avversario. Se l'evento
+    non dice a chi va il punto, il suono viene dalla posizione dell'evento.
+    """
+    from motore.tavolo import centro_porta
+
+    if e.a_chi not in ("A", "B"):
+        return e.pos
+    if ruolo == "fallo":
+        return centro_porta("B" if e.a_chi == "A" else "A")
+    return centro_porta(e.a_chi)
 
 
 class Varianti:
@@ -519,7 +636,7 @@ def posati_del_volo(e, varianti=None, causa=None):
         # Fra due tappe la velocità cala in modo uniforme: si interpola.
         v = np.interp(volo[0].t + tempi, [tp.t for tp in volo], [tp.v for tp in volo])
         guadagni = GUADAGNO_ROTOLAMENTO * np.clip(np.sqrt(np.maximum(v, 0.0) / V_RIF), 0.15, 1.3)
-        posati.append(Posato("rotolamento", volo[0].t, nastro("rotolamento", durata, e.n), tempi, posizioni, guadagni, e.n))
+        posati.append(Posato("rotolamento", volo[0].t, sonaglio("rotolamento", tempi, v, e.n), tempi, posizioni, guadagni, e.n))
     tappe = TAPPE_SONORE | TAPPE_DEL_RISCALDAMENTO if e.tipo == E.RISCALDAMENTO_COLPO else TAPPE_SONORE
     for tp in volo[1:]:
         ruolo = tappe.get(tp.tipo)
@@ -535,12 +652,14 @@ def posati_dell_evento(e, varianti=None, causa=None):
     """
     if varianti is None:
         varianti = Varianti()
-    posati = [_fermo(ruolo, e.t + ritardo, e.pos, e.n, varianti(ruolo)) for ruolo, ritardo in suoni_fermi(e)]
+    posati = [_fermo(ruolo, e.t + ritardo, posizione_dell_esito(ruolo, e) if ruolo in ESITI else e.pos, e.n, varianti(ruolo))
+              for ruolo, ritardo in suoni_fermi(e)]
     if e.tipo == E.CONTROLLO:
         variante = varianti("controllo")
         posati.append(_fermo("controllo", e.t, e.pos, e.n, variante, in_fila("controllo", max(e.durata, 0.15), variante), GUADAGNO_CONTROLLO))
     elif e.tipo == E.FISCHIO:
-        posati.append(_fermo(f"fischio_{e.fischio}", e.t, e.pos, e.n, mono=sorgente(f"fischio_{e.fischio}", e.durata)))
+        # Il fischio dura quanto il suo preset, non quanto il tempo che il motore gli dà prima della chiamata.
+        posati.append(_fermo(f"fischio_{e.fischio}", e.t, e.pos, e.n))
     if e.volo and e.tipo in CON_VOLO:
         posati.extend(posati_del_volo(e, varianti, causa))
     return posati

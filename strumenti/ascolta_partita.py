@@ -1,34 +1,41 @@
 """
-MESS, l'ascolto libero della partita sonora, il primo ascolto della tappa 10.
+MESS, l'ascolto della partita sonora con i timbri veri, l'ultimo ascolto della tappa 10.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nasce il 2026-10-08 con la decisione D28, che mette gli ascolti in quest'ordine: prima un ascolto
 libero di alcuni punti composti con suoni provvisori, per lati, movimento e tempi; poi i dosaggi
-dello spazio alla cieca; i timbri per ultimi. Questo è il primo dei tre.
-I punti nascono qui, in memoria e sempre uguali: un mondo di giocatori nato con un seme fisso, mai
-salvato, e una serie di incontri giocati dal motore in modalità completa, ciascuno col suo seme.
-Fra tutti i punti giocati lo strumento ne sceglie otto, tipici e diversi fra loro, e li compone al
-volo con strumenti/resa_prototipo.py, senza file WAV: la diagonale da un lato all'altro, la stessa
-diagonale ascoltata dall'altro giocatore, un tuo goal nella porta lontana, il goal di battuta
-dell'avversario, uno scambio lungo, un out con la pallina che cade a terra, uno schermo centrale e
-un fallo che fa un rumore suo, la paletta che cade, o se manca il colpo a vuoto o il doppio tocco.
-Ogni punto si sente dalla testata di chi ascolta, di solito il giocatore A, dal fischio che dà il
-via alla battuta fino al fischio della fine; le parole dell'arbitro non hanno un suono e si leggono
-prima, nella cronaca, dove una riga dice anche da che punto comincia il suono.
+dello spazio alla cieca; i timbri per ultimi. Era l'ascolto libero, coi segnaposto del prototipo
+strumenti/resa_prototipo.py; con la fase dei timbri compone con partita_sonora, cioè con i suoni veri
+della partita dal vivo, e il prototipo resta al banco alla cieca dello spazio.
+Il primo gruppo fa sentire ogni suono della partita da solo, uno per volta, nell'ordine di
+partita_sonora.SUONI, sul modello di ascolta_suoni.py: per ognuno l'azione che lo fa suonare, il nome
+del preset e la sua descrizione, poi Invio per sentirlo e spazio per ripeterlo. Si sente al centro,
+senza lo spazio del tavolo, al livello che ha nella partita a un metro da chi ascolta; il
+rotolamento come una pallina che corre per un secondo e rallenta, il controllo come una pallina
+scossa per quasi un secondo.
+Poi i punti, che nascono qui, in memoria e sempre uguali: un mondo di giocatori nato con un seme
+fisso, mai salvato, e una serie di incontri giocati dal motore in modalità completa, ciascuno col suo
+seme. Fra tutti i punti giocati lo strumento ne sceglie otto, tipici e diversi fra loro, e li compone
+al volo, senza file WAV: la diagonale da un lato all'altro, la stessa diagonale ascoltata dall'altro
+giocatore, un tuo goal nella porta lontana, il goal di battuta dell'avversario, uno scambio lungo, un
+out con la pallina che cade a terra, uno schermo centrale e un fallo che fa un rumore suo, la paletta
+che cade, o se manca il colpo a vuoto o il doppio tocco. Ogni punto si sente dalla testata di chi
+ascolta, di solito il giocatore A, dal fischio che dà il via alla battuta fino alla fine dei suoni
+del punto, fanfara del goal e cicalino del fallo compresi; le parole dell'arbitro non hanno un suono
+e si leggono prima, nella cronaca, dove una riga dice anche da che punto comincia il suono.
 Il protocollo è quello degli ascolti di Gabriele. Prima di suonare lo strumento spiega come
-funziona, con la legenda dei suoni provvisori che si sentono nei punti, uno per riga, e aspetta il
-via, poi lascia qualche secondo di silenzio. I punti stanno in tre gruppi, che si annunciano e si
-possono saltare. Per ogni punto scrive chi sei, dove sta l'avversario e la cronaca normale del
-punto, e aspetta Invio prima di farlo sentire; poi spazio lo ripete, quante volte si vuole, e Invio
-passa al successivo; Escape chiude il gruppo. Un tasto premuto mentre il punto suona lo ferma e
-vale subito: spazio lo fa ripartire, Invio passa oltre, Escape chiude il gruppo; gli altri tasti
-non lo fermano. Ogni gruppo si chiude con il menu comune dei collaudi, di collaudo_comune di
-GBUtils: r riascolta il gruppo, c lascia un commento, Invio lo dà per superato, Escape lo chiude
-senza giudizio. Le impressioni vanno nel file ascolto_partita.txt, nella cartella del programma,
-una riga per voce. Di suo lo strumento non scrive righe vuote, perché enter_escape e gruppo vanno
-a capo da sé; le sole che restano vengono dal menu di collaudo_comune, che qui non si tocca.
-I punti si sentono a un livello fisso, con margine: nessun picco supera il tetto della resa,
-qualunque sia il volume della partita scelto nel gioco, che qui non conta: è il livello che il
-gioco dà al volume della partita predefinito, 95.
+funziona e aspetta il via, poi lascia qualche secondo di silenzio. I gruppi si annunciano e si
+possono saltare. Per ogni voce scrive che cosa si sentirà e aspetta Invio prima di farla sentire;
+poi spazio la ripete, quante volte si vuole, e Invio passa alla successiva; Escape chiude il gruppo.
+Un tasto premuto mentre suona la ferma e vale subito: spazio la fa ripartire, Invio passa oltre,
+Escape chiude il gruppo; gli altri tasti non la fermano. Ogni gruppo si chiude con il menu comune dei
+collaudi, di collaudo_comune di GBUtils: r riascolta il gruppo, c lascia un commento, Invio lo dà per
+superato, Escape lo chiude senza giudizio. Le impressioni vanno nel file ascolto_partita.txt, nella
+cartella del programma, una riga per voce. Di suo lo strumento non scrive righe vuote, perché
+enter_escape e gruppo vanno a capo da sé; le sole che restano vengono dal menu di collaudo_comune,
+che qui non si tocca.
+Tutto si sente al livello che il gioco dà al volume della partita predefinito, 95, con margine:
+nessun picco supera il tetto della partita, qualunque sia il volume scelto nel gioco, che qui non
+conta.
 Uso, dalla cartella del programma: python strumenti/ascolta_partita.py
 """
 
@@ -51,11 +58,12 @@ import resa_prototipo as resa  # noqa: E402
 from collaudo_comune import gruppo  # noqa: E402
 from GBUtils import Acusticator, enter_escape, key  # noqa: E402
 
+import partita_sonora as ps  # noqa: E402
 import percorsi  # noqa: E402
 from ascolta_suoni import SILENZIO_INIZIALE, Annotazioni  # noqa: E402
 from motore import COMPLETO, Incontro, formato_singolare  # noqa: E402
 from motore import cronaca as C  # noqa: E402
-from motore.tavolo import vista  # noqa: E402
+from motore.tavolo import vista, volume  # noqa: E402
 from testi import conta  # noqa: E402
 
 FILE_DEGLI_ESITI = "ascolto_partita.txt"
@@ -74,6 +82,14 @@ CODA = 0.3
 ARRIVI_IN_GIOCO = ("paletta", "corpo", "porta")
 # I tasti che fermano un punto mentre suona.
 TASTI_DEL_PUNTO = (" ", "\r", "\x1b")
+# Il gruppo dei timbri, ogni suono della partita da solo. Si sente al centro, senza lo spazio del
+# tavolo, al livello che ha nella partita a DISTANZA_DEI_TIMBRI centimetri da chi ascolta; il
+# rotolamento come una pallina che corre e rallenta, dalla prima alla seconda velocità, in quei
+# secondi, e il controllo come una pallina scossa per quei secondi.
+TITOLO_DEI_TIMBRI = "Partita, i timbri uno per uno"
+DISTANZA_DEI_TIMBRI = 100.0
+ROTOLAMENTO_DI_PROVA = (600.0, 150.0, 1.0)
+CONTROLLO_DI_PROVA = 0.9
 # L'orologio dell'attesa; le prove lo sostituiscono.
 orologio = time.monotonic
 
@@ -87,8 +103,9 @@ class Candidato(NamedTuple):
 
 class Punto(NamedTuple):
     """
-    Un punto scelto per l'ascolto: la chiave, il titolo, chi ascolta, il punto giocato, le righe da
-    leggere, il buffer da sentire e i ruoli dei suoni che ci sono dentro, per la legenda.
+    Una voce dell'ascolto: la chiave, il titolo, chi ascolta, il punto giocato, le righe da leggere,
+    il buffer da sentire e i ruoli dei suoni che ci sono dentro. Per un timbro del primo gruppo la
+    chiave è il ruolo, il punto giocato manca e le righe sono la descrizione del preset.
     """
     chiave: str
     titolo: str
@@ -238,7 +255,8 @@ SCELTE = (
 )
 # I titoli del fallo rumoroso, secondo la causa trovata.
 TITOLI_DEL_RUMORE = {"paletta_caduta": "la paletta che cade", "battuta_a_vuoto": "il colpo a vuoto in battuta", "battuta_doppio_tocco": "il doppio tocco in battuta"}
-# I gruppi d'ascolto: il titolo, e i punti come chiave della scelta e parte di chi ascolta.
+# I gruppi d'ascolto dei punti, che vengono dopo quello dei timbri: il titolo, e i punti come chiave
+# della scelta e parte di chi ascolta.
 GRUPPI = (
     ("Partita, i lati e il movimento", (("diagonale", "A"), ("diagonale", "B"), ("goal_tuo_lontano", "A"))),
     ("Partita, la battuta e lo scambio", (("goal_di_battuta", "A"), ("scambio_lungo", "A"))),
@@ -249,31 +267,6 @@ TITOLO_DALL_ALTRA_PARTE = "la stessa diagonale, ascoltata dall'altra testata del
 # chi batte non l'ha aspettato.
 INIZIO_COL_FISCHIO = "Qui comincia il suono: il fischio dell'arbitro dà il via."
 INIZIO_CON_LA_BATTUTA = "Qui comincia il suono, con la battuta."
-# La legenda dei suoni provvisori, nell'ordine in cui si incontrano in un punto: per ogni ruolo
-# della resa, l'evento che rappresenta e com'è il segnaposto; il nome del preset lo aggiunge
-# resa.SUONI. Si stampano soltanto i ruoli che si sentono nei punti scelti.
-LEGENDA = {
-    "fischio_singolo": ("Il fischio dell'arbitro, al via e ai falli", "il bip acuto di fine ricerca di Tornello"),
-    "battuta": ("La battuta", "un urto di legno chiaro"),
-    "secondo_tocco": ("Il secondo tocco della battuta col doppio tocco", "un tonfo cupo brevissimo"),
-    "colpo_a_vuoto": ("Il colpo a vuoto in battuta", "un fruscio di pagina che scende"),
-    "colpo": ("Il colpo d'attacco", "un tonfo secco"),
-    "rotolamento": ("La pallina che rotola", "una pioggia fine che la segue nello spazio"),
-    "sponda": ("La pallina sulla sponda", "una carta sfilata dal mazzo"),
-    "parata": ("La parata", "una carta posata sul tavolo"),
-    "controllo": ("Il controllo, la pallina fermata e scossa", "un fruscio di carte rimescolate"),
-    "corpo": ("La pallina sul corpo", "un impatto percussivo"),
-    "goal": ("Il goal, la pallina in porta", "un colpo di grancassa lontano"),
-    "fischio_doppio": ("Il doppio fischio del goal", "due tic vicinissimi"),
-    "schermo": ("La pallina contro lo schermo", "un colpo che sprofonda"),
-    "terra": ("La pallina che cade a terra", "un impatto percussivo"),
-    "soffitto": ("La pallina al soffitto", "un impatto percussivo"),
-    "tavola_contatto": ("La pallina sulla tavola di contatto", "un impatto percussivo"),
-    "paletta_caduta": ("La paletta che cade", "quattro rimbalzi che calano"),
-    "rottura": ("La paletta o la pallina che si rompe", "un colpo di frusta"),
-    "recupero": ("Il recupero della pallina", "carte scartate che volano"),
-    "fischio_lungo": ("Il fischio lungo della fine del set", "un tick acuto"),
-}
 
 
 def scegli(candidati):
@@ -318,27 +311,66 @@ def presentazione(candidato, ascoltatore):
 
 def componi_punto(candidato, ascoltatore):
     """
-    Il buffer da sentire, cioè l'azione del punto composta per chi ascolta, al livello della partita
-    e con l'anticipo di silenzio in testa; e i ruoli dei suoni che ci sono dentro, senza doppioni.
+    Il buffer da sentire, cioè l'azione del punto composta con partita_sonora per chi ascolta, al
+    volume della partita predefinito e con l'anticipo di silenzio in testa; e i ruoli dei suoni che
+    ci sono dentro, senza doppioni.
     """
-    composto = resa.componi(resa.azione(candidato.momento.eventi), ascoltatore)
-    silenzio = np.zeros((round(ANTICIPO * resa.FS), 2), dtype=np.float32)
+    composto = ps.componi(resa.azione(candidato.momento.eventi), ascoltatore)
     ruoli = tuple(dict.fromkeys(p.ruolo for p in composto.posati))
-    return np.concatenate([silenzio, resa.con_margine(composto.buffer)]), ruoli
+    return _con_l_anticipo(ps.per_la_cassa(composto.buffer, ps.VOLUME_DI_PROGETTO)), ruoli
 
 
-def legenda(gruppi):
-    """Le righe della legenda: per ogni suono provvisorio che si sente nei punti dei gruppi, l'evento, com'è e il suo preset."""
-    usati = {ruolo for _titolo, punti in gruppi for punto in punti for ruolo in punto.ruoli}
-    return [f"{evento}: {come}, preset {resa.SUONI[ruolo]}." for ruolo, (evento, come) in LEGENDA.items() if ruolo in usati]
+def _con_l_anticipo(buffer):
+    silenzio = np.zeros((round(ANTICIPO * ps.FS), 2), dtype=np.float32)
+    return np.concatenate([silenzio, np.asarray(buffer, dtype=np.float32)])
+
+
+def sorgente_di_prova(ruolo):
+    """
+    La sorgente mono di un ruolo come la sente il gruppo dei timbri: il preset; per il rotolamento
+    il sonaglio di una pallina che corre e rallenta, col guadagno che la partita gli dà alle sue
+    velocità; per il controllo la pallina scossa, col suo guadagno.
+    """
+    if ruolo == "rotolamento":
+        inizio, fine, secondi = ROTOLAMENTO_DI_PROVA
+        tempi = np.arange(0.0, secondi + ps.PASSO, ps.PASSO)
+        velocita = np.linspace(inizio, fine, len(tempi))
+        mono = ps.sonaglio(ruolo, tempi, velocita, 1)
+        guadagni = ps.GUADAGNO_ROTOLAMENTO * np.clip(np.sqrt(velocita / ps.V_RIF), 0.15, 1.3)
+        return (mono * np.interp(np.arange(len(mono)) / ps.FS, tempi, guadagni)).astype(np.float32)
+    if ruolo == "controllo":
+        return ps.in_fila(ruolo, CONTROLLO_DI_PROVA, 0) * np.float32(ps.GUADAGNO_CONTROLLO)
+    return ps.sorgente(ruolo)
+
+
+def timbri():
+    """
+    Il gruppo dei timbri: ogni suono della partita da solo, nell'ordine di partita_sonora.SUONI, con
+    l'azione, il preset e la sua descrizione, al centro e al livello che ha nella partita a
+    DISTANZA_DEI_TIMBRI centimetri da chi ascolta.
+    """
+    # Al centro la legge a potenza costante dà a ogni canale il mono diviso la radice di due.
+    guadagno = np.float32(volume(DISTANZA_DEI_TIMBRI) / np.sqrt(2.0))
+    voci = []
+    for ruolo, preset in ps.SUONI.items():
+        mono = sorgente_di_prova(ruolo) * guadagno
+        azione = ps.AZIONI[ruolo]
+        titolo = f"{azione[0].upper()}{azione[1:]}, preset {preset}"
+        righe = [Acusticator.descrizione(preset) or "Senza descrizione."]
+        buffer = ps.per_la_cassa(np.stack([mono, mono], axis=1), ps.VOLUME_DI_PROGETTO)
+        voci.append(Punto(ruolo, titolo, "A", None, righe, _con_l_anticipo(buffer), (ruolo,)))
+    return voci
 
 
 def prepara(candidati=None):
-    """I gruppi d'ascolto con i loro punti composti: coppie di titolo e lista di Punto. Una scelta che non ha trovato niente si salta."""
+    """
+    I gruppi d'ascolto: prima quello dei timbri, poi i gruppi dei punti composti; coppie di titolo e
+    lista di Punto. Una scelta che non ha trovato niente si salta.
+    """
     if candidati is None:
         candidati = punti_giocati()
     scelti = scegli(candidati)
-    gruppi = []
+    gruppi = [(TITOLO_DEI_TIMBRI, timbri())]
     for titolo, voci in GRUPPI:
         punti = []
         for chiave, ascoltatore in voci:
@@ -364,10 +396,10 @@ def suona(buffer):
     copre. Spazio, Invio o Escape premuti mentre suona lo fermano, e la funzione restituisce quel
     tasto; None se il punto è finito da sé.
     """
-    if not Acusticator.riproduci(buffer, resa.FS):
+    if not Acusticator.riproduci(buffer, ps.FS):
         print("Il punto non si sente: la scheda audio non risponde.")
         return None
-    scadenza = orologio() + len(buffer) / resa.FS + CODA
+    scadenza = orologio() + len(buffer) / ps.FS + CODA
     while (resto := scadenza - orologio()) > 0:
         tasto = key(attesa=min(resto, SGUARDO), alla_scadenza=None)
         if tasto in TASTI_DEL_PUNTO:
@@ -378,9 +410,10 @@ def suona(buffer):
 
 def ascolta(punti):
     """
-    Fa sentire i punti di un gruppo uno dopo l'altro. Di ognuno scrive il titolo, chi sei e la
-    cronaca, e aspetta Invio prima di suonarlo; poi spazio lo ripete e Invio passa oltre. Escape,
-    in qualunque momento, chiude il gruppo.
+    Fa sentire le voci di un gruppo una dopo l'altra. Di ognuna scrive il titolo e le righe, cioè
+    chi sei e la cronaca per un punto, la descrizione del preset per un timbro, e aspetta Invio
+    prima di suonarla; poi spazio la ripete e Invio passa oltre. Escape, in qualunque momento,
+    chiude il gruppo.
     """
     for numero, punto in enumerate(punti, 1):
         print(f"{numero} di {len(punti)}: {punto.titolo}.")
@@ -403,23 +436,24 @@ def ascolta(punti):
 
 def main():
     gruppi = prepara()
-    quanti = sum(len(punti) for _titolo, punti in gruppi)
-    print(f"Ascolto libero della partita di MESS: {conta(len(gruppi), 'gruppo', 'gruppi')}, {conta(quanti, 'punto', 'punti')}, composti con suoni provvisori.")
-    print("Ogni gruppo si annuncia e si può saltare. Per ogni punto leggi chi sei, dove sta l'avversario e la cronaca; Invio lo fa sentire, "
-          "spazio lo ripete, Invio passa al successivo, Escape chiude il gruppo.")
-    print("Mentre un punto suona, spazio lo fa ripartire, Invio passa oltre ed Escape chiude il gruppo.")
+    quanti_timbri = sum(len(voci) for titolo, voci in gruppi if titolo == TITOLO_DEI_TIMBRI)
+    quanti_punti = sum(len(voci) for titolo, voci in gruppi if titolo != TITOLO_DEI_TIMBRI)
+    print(f"Ascolto della partita di MESS con i timbri veri: {conta(len(gruppi), 'gruppo', 'gruppi')}, "
+          f"{conta(quanti_timbri, 'suono', 'suoni')} uno per uno e {conta(quanti_punti, 'punto', 'punti')} composti.")
+    print(f"Il primo gruppo, {TITOLO_DEI_TIMBRI}, fa sentire ogni suono della partita da solo, al centro, con l'azione, il preset e la sua "
+          "descrizione; gli altri fanno sentire punti interi, con lo spazio del tavolo, dalla testata di chi ascolta.")
+    print("Ogni gruppo si annuncia e si può saltare. Per ogni voce leggi che cosa sentirai; Invio la fa sentire, spazio la ripete, "
+          "Invio passa alla successiva, Escape chiude il gruppo.")
+    print("Mentre suona, spazio la fa ripartire, Invio passa oltre ed Escape chiude il gruppo.")
     print("A fine gruppo: r riascolta, c commenta, Invio lo dà per superato, Escape lo chiude senza giudizio.")
     print(f"Le impressioni vanno nel file {FILE_DEGLI_ESITI}, una riga per voce.")
-    print("I suoni sono provvisori, scelti dalla collezione. Ecco quelli che senti nei punti, con l'evento che rappresentano:")
-    for riga in legenda(gruppi):
-        print(riga)
     # enter_escape e gruppo vanno a capo da sé: un print in più farebbe una riga vuota.
     if not enter_escape("\rInvio per cominciare, Escape per uscire\r"):
         return 0
     time.sleep(SILENZIO_INIZIALE)
     esiti = Annotazioni(percorsi.percorso(FILE_DEGLI_ESITI))
     for titolo, punti in gruppi:
-        if not gruppo(titolo, len(punti), "punti"):
+        if not gruppo(titolo, len(punti), "suoni" if titolo == TITOLO_DEI_TIMBRI else "punti"):
             continue
         ascolta(punti)
         esiti.esito(titolo, riproduci=lambda p=punti: ascolta(p))

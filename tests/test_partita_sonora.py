@@ -143,11 +143,15 @@ def test_la_diagonale_attraversa_il_tavolo():
 
 
 def test_il_suono_si_sceglie_da_tipo_esito_e_causa():
+    fallo, fanfara = ps.ritardo_dell_esito("fallo"), ps.ritardo_dell_esito("fanfara")
     assert ps.suoni_fermi(_evento(1, 0.0, E.BATTUTA, causa="battuta_a_vuoto")) == [("colpo_a_vuoto", 0.0)]
     assert ps.suoni_fermi(_evento(1, 0.0, E.BATTUTA, causa="battuta_doppio_tocco")) == [("battuta", 0.0), ("secondo_tocco", ps.RITARDO_SECONDO_TOCCO)]
     assert ps.suoni_fermi(_evento(1, 0.0, E.COLPO, causa="paletta_caduta")) == []
-    assert ps.suoni_fermi(_evento(1, 0.0, E.FALLO, causa="paletta_caduta")) == [("paletta_caduta", 0.0)]
-    assert ps.suoni_fermi(_evento(1, 0.0, E.FALLO, causa="out_sponda")) == []
+    # Ogni fallo ha il suo cicalino dopo il fischio, che si aggiunge al suono della pallina senza toglierlo.
+    assert ps.suoni_fermi(_evento(1, 0.0, E.FALLO, causa="paletta_caduta")) == [("paletta_caduta", 0.0), ("fallo", fallo)]
+    assert ps.suoni_fermi(_evento(1, 0.0, E.FALLO, causa="out_sponda")) == [("fallo", fallo)]
+    assert ps.suoni_fermi(_evento(1, 0.0, E.GOAL, causa="goal_scambio")) == [("goal", 0.0), ("fanfara", fanfara)]
+    assert ps.suoni_fermi(_evento(1, 0.0, E.PALLA_MORTA, causa="colpo_debole")) == []
     assert ps.suoni_fermi(_evento(1, 0.0, E.PARATA, causa="body_touch")) == []
     assert ps.suoni_fermi(_evento(1, 0.0, E.PARATA, esito="goal")) == []
     assert ps.suoni_fermi(_evento(1, 0.0, E.PARATA, esito="ferma")) == [("parata", 0.0)]
@@ -179,6 +183,217 @@ def test_le_sorgenti_si_preparano_tutte():
     ps.prepara()
     ruoli = {chiave[0] for chiave in ps._CACHE}
     assert ruoli == set(ps.SUONI.values())
+
+
+# I timbri veri, la fase dei timbri di D28: i preset della collezione, il fischietto col suo trillo,
+# i suoni dell'esito dopo il fischio, il sonaglio del rotolamento e i livelli delle sorgenti.
+
+def test_ogni_ruolo_ha_il_suo_timbro_nella_collezione():
+    from GBUtils import Acusticator
+
+    assert set(ps.AZIONI) == set(ps.SUONI) and set(ps.ESITI) <= set(ps.SUONI)
+    for ruolo, preset in ps.SUONI.items():
+        score, kind, _adsr = Acusticator.preset(preset)
+        assert score, f"il preset {preset} del ruolo {ruolo} non c'è nella collezione"
+        assert preset.startswith("mess_partita_") and kind != 2, preset
+        assert Acusticator.descrizione(preset).startswith("MESS, partita dal vivo, "), preset
+        # Nessun volume a portamento scritto come testo: Acusticator e Acu_Maker non lo leggono allo stesso modo.
+        assert all(not isinstance(score[i], str) for i in range(3, len(score), 4)), preset
+        azione = ps.AZIONI[ruolo]
+        assert azione.strip() == azione and azione[-1] not in ".:" and not any(s in azione for s in ("--", "==", "__"))
+
+
+def _trillo(mono):
+    """
+    L'altezza del fischio ciclo per ciclo, dai passaggi per lo zero in salita: gli istanti e le
+    frequenze, mediate su tre cicli d'onda, e quante volte l'altezza sale e scende attorno al centro.
+    """
+    su = np.flatnonzero((mono[:-1] < 0) & (mono[1:] >= 0))
+    esatti = su + mono[su] / (mono[su] - mono[su + 1])
+    frequenze = np.convolve(FS / np.diff(esatti), np.ones(3) / 3, mode="valid")
+    istanti = esatti[2:len(esatti) - 1] / FS
+    scarto = frequenze - np.median(frequenze)
+    return istanti, frequenze, int(np.sum((scarto[:-1] < 0) & (scarto[1:] >= 0)))
+
+
+def _soffi(mono, soglia=0.02):
+    """I tratti in cui il fischio suona, come coppie di secondi d'inizio e di fine, separati da silenzi di almeno 20 ms."""
+    acceso = np.convolve(np.abs(mono) > soglia * float(np.max(np.abs(mono))), np.ones(round(0.002 * FS)), mode="same") > 0
+    cambi = np.flatnonzero(np.diff(acceso.astype(int)))
+    bordi = [0, *(cambi + 1), len(mono)] if acceso[0] else [*(cambi + 1), len(mono)]
+    tratti = [(bordi[i] / FS, bordi[i + 1] / FS) for i in range(0, len(bordi) - 1, 2)]
+    uniti = [tratti[0]]
+    for inizio, fine in tratti[1:]:
+        if inizio - uniti[-1][1] < 0.02:
+            uniti[-1] = (uniti[-1][0], fine)
+        else:
+            uniti.append((inizio, fine))
+    return uniti
+
+
+def test_il_fischio_e_il_fischietto_vero_col_suo_trillo():
+    # Richiesta di Gabriele: un trillo rapidissimo, con l'altezza che sale e scende a sinusoide una
+    # decina di volte, con poca ampiezza, come la pallina dentro il fischietto. Si misura sul buffer.
+    singolo = ps.sorgente("fischio_singolo").astype(np.float64)
+    istanti, frequenze, oscillazioni = _trillo(singolo)
+    durata = len(singolo) / FS
+    centro = float(np.median(frequenze))
+    assert 9 <= oscillazioni <= 11 and durata < 0.4
+    assert 2000 < centro < 4000
+    # Poca ampiezza: l'altezza resta entro un semitono dal centro, ma il trillo si sente, almeno l'uno per cento.
+    escursione = (np.percentile(frequenze, 95) - np.percentile(frequenze, 5)) / 2 / centro
+    assert 0.01 < escursione < 0.06
+    # Rapidissimo, e a sinusoide: una sinusoide alla frequenza del trillo spiega quasi tutto il movimento dell'altezza.
+    ritmo = oscillazioni / (istanti[-1] - istanti[0])
+    assert ritmo > 20
+
+    def spiegato(r):
+        base = np.column_stack([np.sin(2 * np.pi * r * istanti), np.cos(2 * np.pi * r * istanti), np.ones(len(istanti))])
+        residuo = frequenze - base @ np.linalg.lstsq(base, frequenze, rcond=None)[0]
+        return 1 - np.var(residuo) / np.var(frequenze)
+
+    # Il ritmo contato dai passaggi è approssimato: si cerca quello vero poco attorno.
+    assert max(spiegato(r) for r in np.linspace(0.85 * ritmo, 1.15 * ritmo, 61)) > 0.8
+    # Il doppio, per il goal: due soffi dello stesso fischietto, con una pausa breve fra i due.
+    doppio = ps.sorgente("fischio_doppio").astype(np.float64)
+    soffi = _soffi(doppio)
+    assert len(soffi) == 2 and 0.04 <= soffi[1][0] - soffi[0][1] <= 0.12
+    for inizio, fine in soffi:
+        _i, f, oscillazioni_del_soffio = _trillo(doppio[round(inizio * FS):round(fine * FS)])
+        assert 5 <= oscillazioni_del_soffio <= 9 and abs(float(np.median(f)) - centro) < 0.02 * centro
+    # Il lungo, a fine set e a fine incontro: più lungo del singolo, ma breve anche lui.
+    lungo = ps.sorgente("fischio_lungo").astype(np.float64)
+    assert len(_soffi(lungo)) == 1 and 1.5 * durata < len(lungo) / FS < 0.7
+    assert _trillo(lungo)[2] > 15
+
+
+def test_il_fischio_dura_quanto_il_suo_preset():
+    # Non più allungato al tempo che il motore dà al fischio: la pausa del doppio e il lungo restano brevi.
+    for variante, ruolo in ((E.SINGOLO, "fischio_singolo"), (E.DOPPIO, "fischio_doppio"), (E.LUNGO, "fischio_lungo")):
+        fischio = _evento(1, 2.0, E.FISCHIO, (-50.0, 183.0), durata=1.4, fischio=variante)
+        posato = ps.posati_dell_evento(fischio)[0]
+        assert posato.ruolo == ruolo and len(posato.mono) == len(ps.sorgente(ruolo))
+
+
+def _goal_o_fallo(tipo, a_chi, causa):
+    """Un goal o un fallo, col suo fischio nello stesso istante, come li scrive il motore."""
+    parte = "B" if a_chi == "A" else "A"
+    # Il goal entra nella porta di chi lo subisce; il fallo si segna nella metà di chi lo commette.
+    if tipo == E.GOAL:
+        pos = (61.0, 362.0) if a_chi == "A" else (61.0, 4.0)
+    else:
+        pos = (61.0, 30.0) if parte == "A" else (61.0, 336.0)
+    decisivo = _evento(1, 5.0, tipo, pos, causa=causa, a_chi=a_chi, chi=1 if parte == "A" else 2, parte=a_chi if tipo == E.GOAL else parte)
+    fischio = _evento(2, 5.0, E.FISCHIO, (-50.0, 183.0), durata=0.8 if tipo == E.GOAL else 0.35, fischio=E.DOPPIO if tipo == E.GOAL else E.SINGOLO)
+    return [decisivo, fischio]
+
+
+def _energia_del_ruolo(eventi, ruolo, ascoltatore="A"):
+    posato = next(p for p in ps.posa(eventi) if p.ruolo == ruolo)
+    return sum(_energia(ps.spazializza(posato, ascoltatore))), posato
+
+
+def test_dopo_il_goal_la_fanfara():
+    # Richiesta di Gabriele: dopo il goal una piccolissima fanfara di tre o quattro note brevissime.
+    from GBUtils import Acusticator, frequenza_nota
+
+    eventi = _goal_o_fallo(E.GOAL, "A", "goal_scambio")
+    posati = ps.posa(eventi)
+    assert [p.ruolo for p in posati] == ["goal", "fanfara", "fischio_doppio"]
+    goal, fanfara, fischio = posati
+    # Viene dopo il fischio doppio, che parte insieme al goal, con un respiro.
+    assert fischio.t == goal.t and fanfara.t == pytest.approx(fischio.t + len(fischio.mono) / FS + ps.RESPIRO_DELL_ESITO)
+    composta = ps.componi(eventi, "A")
+    inizio_fanfara = round((fanfara.t - composta.t0) * FS)
+    assert np.any(composta.buffer[inizio_fanfara:]) and fanfara.t + len(fanfara.mono) / FS <= composta.t0 + composta.durata
+    # Tre o quattro note brevissime che salgono, e in tutto meno di mezzo secondo.
+    score, _kind, _adsr = Acusticator.preset(ps.SUONI["fanfara"])
+    note = [(score[i], float(score[i + 1])) for i in range(0, len(score), 4) if score[i] != "p"]
+    assert 3 <= len(note) <= 4 and all(durata <= 0.15 for _nota, durata in note) and sum(float(d) for d in score[1::4]) < 0.5
+    assert frequenza_nota(note[-1][0]) > frequenza_nota(note[0][0])
+    # Viene dalla testata di chi segna: chi ascolta da A la sente vicina se segna A, lontana se segna B.
+    vicina, posato_vicino = _energia_del_ruolo(eventi, "fanfara")
+    lontana, posato_lontano = _energia_del_ruolo(_goal_o_fallo(E.GOAL, "B", "goal_scambio"), "fanfara")
+    assert vicina > 4 * lontana
+    assert vista(posato_vicino.posizioni[0], "A")[1] < 50 < 350 < vista(posato_lontano.posizioni[0], "A")[1]
+
+
+def test_il_fallo_si_distingue_dal_goal():
+    # Richiesta di Gabriele: il suono del fallo più evidente, più lungo o di due note, perché si
+    # distingua bene da quello del goal; il fallo resta riconoscibile dal fischio singolo e dalla
+    # pallina, e il cicalino si aggiunge dopo il fischio.
+    from GBUtils import Acusticator, frequenza_nota
+
+    eventi = _goal_o_fallo(E.FALLO, "B", "out_sponda")
+    fallo, fischio = (next(p for p in ps.posa(eventi) if p.ruolo == r) for r in ("fallo", "fischio_singolo"))
+    assert fallo.t == pytest.approx(fischio.t + len(fischio.mono) / FS + ps.RESPIRO_DELL_ESITO)
+    score, _kind, _adsr = Acusticator.preset(ps.SUONI["fallo"])
+    note = [score[i].split(".")[0] for i in range(0, len(score), 4) if score[i] != "p"]
+    fanfara = Acusticator.preset(ps.SUONI["fanfara"])[0]
+    assert len(note) == 2
+    assert len(ps.sorgente("fallo")) > 1.5 * len(ps.sorgente("fanfara"))
+    assert max(frequenza_nota(n) for n in note) < min(frequenza_nota(fanfara[i]) for i in range(0, len(fanfara), 4) if fanfara[i] != "p") / 2
+    # Viene dalla testata di chi commette il fallo: il punto va a B, il fallo è di A, vicino a chi ascolta da A.
+    vicino, _p = _energia_del_ruolo(eventi, "fallo")
+    lontano, _p = _energia_del_ruolo(_goal_o_fallo(E.FALLO, "A", "out_sponda"), "fallo")
+    assert vicino > 4 * lontano
+    # La paletta che cade suona col suo rumore e col cicalino; la palla morta non è un fallo e non ce l'ha.
+    paletta = [p.ruolo for p in ps.posa(_goal_o_fallo(E.FALLO, "B", "paletta_caduta"))]
+    assert paletta.count("paletta_caduta") == 1 and paletta.count("fallo") == 1
+    morta = _evento(1, 5.0, E.PALLA_MORTA, (61.0, 100.0), causa="colpo_debole", a_chi=None)
+    assert [p.ruolo for p in ps.posa([morta])] == []
+
+
+def test_ogni_goal_e_ogni_fallo_dell_incontro_hanno_il_loro_esito():
+    risultato = _incontro(4.0, seme=7).gioca()
+    decisivi = [e for e in risultato.eventi if e.tipo in (E.GOAL, E.FALLO)]
+    assert decisivi
+    for e in decisivi:
+        # Il motore fa partire il fischio nello stesso istante: l'esito arriva dopo di lui.
+        fischio = next(x for x in risultato.eventi if x.n > e.n and x.tipo == E.FISCHIO)
+        assert fischio.t == e.t
+        ruolo = "fanfara" if e.tipo == E.GOAL else "fallo"
+        assert [r for r, _ritardo in ps.suoni_fermi(e)].count(ruolo) == 1
+
+
+def test_il_rotolamento_e_un_sonaglio_una_capriola_per_giro():
+    tempi = np.arange(0.0, 1.0 + ps.PASSO, ps.PASSO)
+    veloce = ps.capriole(tempi, np.full(len(tempi), 500.0), 3)
+    lento = ps.capriole(tempi, np.full(len(tempi), 100.0), 3)
+    # Una capriola per giro della pallina, cioè per ogni circonferenza percorsa, con lo scarto del giro.
+    assert 500.0 / ps.GIRO_PALLINA * 0.8 <= len(veloce) <= 500.0 / ps.GIRO_PALLINA * 1.25
+    assert 100.0 / ps.GIRO_PALLINA * 0.5 <= len(lento) <= 100.0 / ps.GIRO_PALLINA * 1.6
+    assert all(0.0 <= t <= 1.0 for t in veloce) and veloce == sorted(veloce)
+    # Sempre uguale per lo stesso evento, diverso per un altro; ferma, la pallina non suona.
+    assert ps.capriole(tempi, np.full(len(tempi), 500.0), 3) == veloce != ps.capriole(tempi, np.full(len(tempi), 500.0), 4)
+    assert ps.capriole(tempi, np.zeros(len(tempi)), 3) == []
+    # La pallina che rallenta fa le capriole sempre più rade.
+    rallenta = ps.capriole(tempi, np.linspace(600.0, 60.0, len(tempi)), 5)
+    passi = np.diff(rallenta)
+    assert np.mean(passi[-3:]) > 2 * np.mean(passi[:3])
+    sonaglio = ps.sonaglio("rotolamento", tempi, np.full(len(tempi), 500.0), 3)
+    assert len(sonaglio) >= round(tempi[-1] * FS) and np.any(sonaglio)
+    # Nel volo il rotolamento è il sonaglio.
+    volo = traiettoria((110.0, 340.0), (15.0, 30.0), (), 420.0, 20.0, 40.0, 0.12, "paletta")
+    evento = _evento(5, 20.0, E.VOLO, (15.0, 30.0), durata=volo[-1].t - volo[0].t, volo=volo, chi=2, parte="B")
+    rotolamento = next(p for p in ps.posati_del_volo(evento) if p.ruolo == "rotolamento")
+    v = np.interp(volo[0].t + rotolamento.tempi, [tp.t for tp in volo], [tp.v for tp in volo])
+    assert np.array_equal(rotolamento.mono, ps.sonaglio("rotolamento", rotolamento.tempi, v, evento.n))
+
+
+def test_le_sorgenti_stanno_sotto_il_loro_tetto():
+    # I livelli col margine: ogni sorgente si sente, e nessuna supera il tetto delle sorgenti, così un
+    # colpo vicino, anche insieme al fischio, non porta la partita oltre il suo picco di progetto.
+    ps.svuota_cache()
+    for ruolo in ps.SUONI:
+        for variante in range(ps.VARIANTI_RUMORE):
+            picco = float(np.max(np.abs(ps.sorgente(ruolo, variante))))
+            assert 0.05 < picco <= ps.TETTO_SORGENTI, (ruolo, variante, picco)
+    # Il limitatore non tocca niente sotto il ginocchio e arrotonda il resto senza mai arrivare al tetto.
+    prova = np.array([0.1, -0.5, 0.6, 0.9, -3.0, 4.0])
+    limitato = ps.limita(prova.copy())
+    assert np.array_equal(limitato[:3], prova[:3])
+    assert np.all(np.abs(limitato) < ps.TETTO_SORGENTI) and limitato[3] > ps.GINOCCHIO_SORGENTI and limitato[4] < -ps.GINOCCHIO_SORGENTI
 
 
 # La riproduzione.

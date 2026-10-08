@@ -1,15 +1,17 @@
 """
-Test dell'ascolto libero della partita, strumenti/ascolta_partita.py, e del prototipo della resa,
-strumenti/resa_prototipo.py, senza mai suonare: la cassa di Acusticator è sostituita da un
-registratore, e quella vera, se qualcuno la chiamasse, fa fallire la prova. I preset segnaposto:
-esistono, sono tutti diversi, nessuno è della finestra né un'onda quadra. Il suono si sceglie da
-tipo, esito e causa dell'evento; l'azione va dal fischio del via al punto; lo spazio si ribalta per
-l'altro giocatore; i rumori hanno le loro varianti, e due dello stesso ruolo di fila non sono mai
-uguali; la pallina che vola fuori dal tavolo non rotola. Poi lo strumento: compone tutti i punti
-scelti senza suonare e senza scrivere, nessun buffer supera il margine, i punti sono quelli
-dichiarati e sempre gli stessi, la cronaca dice dove comincia il suono e la legenda nomina i suoni
-provvisori; i tasti e il menu di fine gruppo funzionano con una tastiera finta da copione, e lo
-strumento non scrive righe vuote di suo.
+Test dell'ascolto della partita, strumenti/ascolta_partita.py, e del prototipo della resa,
+strumenti/resa_prototipo.py, che resta al banco dello spazio, senza mai suonare: la cassa di
+Acusticator è sostituita da un registratore, e quella vera, se qualcuno la chiamasse, fa fallire la
+prova. I preset segnaposto del prototipo: esistono, sono tutti diversi, nessuno è della finestra né
+un'onda quadra. Il suono si sceglie da tipo, esito e causa dell'evento; l'azione va dal fischio del
+via al punto; lo spazio si ribalta per l'altro giocatore; i rumori hanno le loro varianti, e due
+dello stesso ruolo di fila non sono mai uguali; la pallina che vola fuori dal tavolo non rotola. Poi
+lo strumento, che con la fase dei timbri compone con partita_sonora: il gruppo dei timbri fa sentire
+ogni suono della partita da solo, con l'azione, il preset e la descrizione; i punti scelti si
+compongono senza suonare e senza scrivere, nessun buffer supera il margine, i punti sono quelli
+dichiarati e sempre gli stessi, con la fanfara del goal e il cicalino del fallo, e la cronaca dice
+dove comincia il suono; i tasti e il menu di fine gruppo funzionano con una tastiera finta da
+copione, e lo strumento non scrive righe vuote di suo.
 """
 
 import collections
@@ -28,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 import ascolta_partita as ap
 import resa_prototipo as resa
 
+import partita_sonora as ps
 import percorsi
 import suoni
 from motore import eventi as E
@@ -142,7 +145,13 @@ def gruppi(preparazione):
 
 @pytest.fixture(scope="module")
 def punti(gruppi):
-    return [p for _titolo, punti in gruppi for p in punti]
+    """I punti composti, senza il gruppo dei timbri."""
+    return [p for titolo, punti in gruppi if titolo != ap.TITOLO_DEI_TIMBRI for p in punti]
+
+
+@pytest.fixture(scope="module")
+def timbri(gruppi):
+    return next(voci for titolo, voci in gruppi if titolo == ap.TITOLO_DEI_TIMBRI)
 
 
 def _evento(tipo, n=10, t=5.0, **campi):
@@ -297,8 +306,8 @@ def test_lo_strumento_compone_tutti_i_punti_senza_suonare(preparazione, punti):
     # chiamati, e nella cartella del programma non è nato niente.
     assert chiamate == []
     assert list(cartella.iterdir()) == []
-    assert [titolo for titolo, _punti in gruppi] == [titolo for titolo, _voci in ap.GRUPPI]
-    assert [len(p) for _titolo, p in gruppi] == [3, 2, 3]
+    assert [titolo for titolo, _punti in gruppi] == [ap.TITOLO_DEI_TIMBRI] + [titolo for titolo, _voci in ap.GRUPPI]
+    assert [len(p) for _titolo, p in gruppi] == [len(ps.SUONI), 3, 2, 3]
     anticipo = round(ap.ANTICIPO * resa.FS)
     for punto in punti:
         buffer = punto.buffer
@@ -309,13 +318,30 @@ def test_lo_strumento_compone_tutti_i_punti_senza_suonare(preparazione, punti):
         assert punto.ruoli[0] == "fischio_singolo" and set(punto.ruoli) == set(_ruoli(punto))
 
 
-def test_nessun_punto_supera_il_margine(punti):
+def test_nessun_punto_supera_il_margine(punti, timbri):
+    for punto in [*punti, *timbri]:
+        assert float(np.max(np.abs(punto.buffer))) <= ps.TETTO, punto.chiave
+
+
+def test_i_punti_si_compongono_coi_timbri_veri(punti):
+    # Lo strumento compone con partita_sonora, al volume della partita predefinito: lo stesso buffer
+    # che il gioco darebbe, con l'anticipo di silenzio in testa.
     for punto in punti:
-        assert float(np.max(np.abs(punto.buffer))) <= resa.TETTO, punto.chiave
+        composto = ps.componi(resa.azione(punto.candidato.momento.eventi), punto.ascoltatore)
+        atteso = ps.per_la_cassa(composto.buffer, ps.VOLUME_DI_PROGETTO)
+        anticipo = round(ap.ANTICIPO * ps.FS)
+        assert len(punto.buffer) == anticipo + len(atteso)
+        # Le varianti dei rumori restano in memoria per tutta la sessione: lo stesso punto suona uguale.
+        assert np.array_equal(punto.buffer[anticipo:], atteso)
+    # I goal hanno la fanfara dopo il fischio doppio, i falli il cicalino dopo il fischio singolo.
+    for punto in punti:
+        esito = punto.candidato.momento.esito.esito
+        assert ("fanfara" in punto.ruoli) == (esito == "goal"), punto.chiave
+        assert ("fallo" in punto.ruoli) == (esito == "fallo"), punto.chiave
 
 
 def _ruoli(punto):
-    return collections.Counter(p.ruolo for p in resa.componi(resa.azione(punto.candidato.momento.eventi), punto.ascoltatore).posati)
+    return collections.Counter(p.ruolo for p in ps.componi(resa.azione(punto.candidato.momento.eventi), punto.ascoltatore).posati)
 
 
 def test_i_punti_sono_quelli_dichiarati(punti):
@@ -380,18 +406,30 @@ def test_la_cronaca_dice_dove_comincia_il_suono(punti):
     assert righe[righe.index(ap.INIZIO_CON_LA_BATTUTA) + 1].startswith("Battuta")
 
 
-def test_la_legenda_nomina_i_suoni_che_si_sentono(gruppi):
-    # Ogni ruolo della resa ha la sua voce, e la legenda stampa soltanto quelli dei punti, col loro preset.
-    assert set(ap.LEGENDA) == set(resa.SUONI)
-    usati = {ruolo for _titolo, punti in gruppi for punto in punti for ruolo in punto.ruoli}
-    righe = ap.legenda(gruppi)
-    assert len(righe) == len(usati) == len(set(righe))
-    for ruolo in usati:
-        evento, come = ap.LEGENDA[ruolo]
-        assert f"{evento}: {come}, preset {resa.SUONI[ruolo]}." in righe
-    assert {"fischio_singolo", "battuta", "parata", "sponda", "rotolamento", "controllo", "goal", "fischio_doppio"} <= usati
-    assert righe[0].startswith("Il fischio dell'arbitro")
-    assert all(riga.strip() and not riga.startswith(("-", "=", "_")) for riga in righe)
+def test_il_gruppo_dei_timbri_fa_sentire_ogni_suono_da_solo(timbri):
+    from GBUtils import Acusticator
+
+    # Ogni ruolo della partita una volta, nell'ordine della mappa, con l'azione, il preset e la descrizione.
+    assert [v.chiave for v in timbri] == list(ps.SUONI)
+    anticipo = round(ap.ANTICIPO * ps.FS)
+    for voce in timbri:
+        azione, preset = ps.AZIONI[voce.chiave], ps.SUONI[voce.chiave]
+        assert voce.titolo == f"{azione[0].upper()}{azione[1:]}, preset {preset}"
+        assert voce.righe == [Acusticator.descrizione(preset)] and voce.righe[0].startswith("MESS, partita dal vivo, ")
+        assert voce.candidato is None and voce.ruoli == (voce.chiave,)
+        buffer = voce.buffer
+        assert buffer.dtype == np.float32 and buffer.shape[1] == 2 and not np.any(buffer[:anticipo]) and np.any(buffer[anticipo:])
+        # Al centro: i due canali sono uguali.
+        assert np.array_equal(buffer[:, 0], buffer[:, 1])
+    # Il suono da solo, al livello che ha a un metro: il preset, senza lo spazio del tavolo.
+    battuta = next(v for v in timbri if v.chiave == "battuta")
+    attesa = ps.sorgente("battuta") * np.float32(ap.volume(ap.DISTANZA_DEI_TIMBRI) / np.sqrt(2.0))
+    assert np.allclose(battuta.buffer[anticipo:, 0], attesa, atol=1e-6)
+    # Il rotolamento è una pallina che corre e rallenta per un secondo, il controllo una pallina scossa.
+    rotolamento = next(v for v in timbri if v.chiave == "rotolamento")
+    assert len(rotolamento.buffer) - anticipo >= ap.ROTOLAMENTO_DI_PROVA[2] * ps.FS
+    controllo = next(v for v in timbri if v.chiave == "controllo")
+    assert len(controllo.buffer) - anticipo == round(ap.CONTROLLO_DI_PROVA * ps.FS)
 
 
 def test_i_punti_sono_sempre_gli_stessi():
@@ -468,8 +506,9 @@ def test_il_menu_di_fine_gruppo_scrive_una_riga_per_voce(gruppi, cassa, cartella
     monkeypatch.setattr(ap, "prepara", lambda: gruppi)
     monkeypatch.setattr(ap, "enter_escape", _enter_escape_finta([True]))
     monkeypatch.setattr(ap.time, "sleep", lambda _secondi: None)
-    # Il primo gruppo si ascolta e si commenta, il secondo si salta, il terzo si riascolta con r e si chiude senza giudizio.
-    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True, False, True]))
+    # Il primo gruppo si ascolta e si commenta, il secondo si salta, il terzo si riascolta con r e si
+    # chiude senza giudizio, il quarto si salta.
+    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True, False, True, False]))
     monkeypatch.setattr(collaudo_comune, "dgt", lambda *_a, **_k: "la diagonale si sente bene ")
     primo, terzo = len(gruppi[0][1]), len(gruppi[2][1])
     _tastiera(monkeypatch, ["\r", "\r"] * primo + ["c", "\r"] + ["\r", "\r"] * terzo + ["r"] + ["\r", "\r"] * terzo + ["\x1b"])
@@ -480,10 +519,10 @@ def test_il_menu_di_fine_gruppo_scrive_una_riga_per_voce(gruppi, cassa, cartella
     assert righe[0].startswith(f"{gruppi[0][0]}, ") and righe[0].endswith(": la diagonale si sente bene")
     assert righe[1].startswith(f"{gruppi[2][0]}, ") and righe[1].endswith(": chiuso senza giudizio")
     scritto = capsys.readouterr().out
-    assert scritto.startswith("Ascolto libero della partita di MESS: 3 gruppi, 8 punti, ")
+    assert scritto.startswith(f"Ascolto della partita di MESS con i timbri veri: 4 gruppi, {len(ps.SUONI)} suoni uno per uno e 8 punti composti.")
     assert scritto.rstrip().endswith("Fine dell'ascolto.")
-    # La legenda viene prima del via.
-    assert all(f"\n{riga}\n" in scritto.split("\rInvio per cominciare")[0] for riga in ap.legenda(gruppi))
+    # La spiegazione viene prima del via, e dice del gruppo dei timbri.
+    assert ap.TITOLO_DEI_TIMBRI in scritto.split("\rInvio per cominciare")[0]
     # Le sole righe vuote sono quelle che il menu di collaudo_comune lascia dopo i suoi messaggi.
     righe = scritto.split("\n")
     vuote = [i for i, riga in enumerate(righe[:-1]) if riga == ""]

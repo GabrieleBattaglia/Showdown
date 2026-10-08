@@ -44,10 +44,13 @@ def _sorgenti():
 
 
 def _codice(percorso):
-    """Il testo di un sorgente; per suoni.py soltanto quello che segue la mappa, che nomina tutti gli eventi."""
+    """
+    Il testo di un sorgente; per suoni.py soltanto quello che segue la mappa e le azioni dette a
+    parole, che nominano tutti gli eventi.
+    """
     testo = percorso.read_text(encoding="utf-8")
     if percorso.name == "suoni.py":
-        testo = testo.split("\nEVENTI = ", 1)[1]
+        testo = testo.split("\nEVENTI = ", 1)[1].split("\nAZIONI = ", 1)[1].split("\n}\n", 1)[1]
     return testo
 
 
@@ -120,6 +123,22 @@ def test_i_suoni_della_partita_non_sono_quelli_della_finestra():
         impronte[impronta] = ruolo
 
 
+def _sequenza(preset):
+    """Le note, o le bande del rumore, di un preset, nell'ordine: il suo disegno senza volumi, tempi e onda."""
+    score = Acusticator.preset(preset)[0]
+    return [score[i] for i in range(0, len(score), 4)]
+
+
+def test_nessun_timbro_della_partita_e_quasi_uguale_a_un_altro():
+    # La fase dei timbri: oltre ai doppioni, nessun preset della partita ha la stessa sequenza di note
+    # o di bande di un altro preset della partita o della finestra, cioè lo stesso suono con altri
+    # volumi, altri tempi o un'altra onda.
+    tutti = {**{f"l'evento {e} della finestra": p for e, p in suoni.EVENTI.items()}, **{f"il ruolo {r} della partita": p for r, p in partita_sonora.SUONI.items()}}
+    for ruolo, preset in partita_sonora.SUONI.items():
+        uguali = [chi for chi, altro in tutti.items() if altro != preset and _sequenza(altro) == _sequenza(preset)]
+        assert not uguali, f"il ruolo {ruolo} della partita ha le stesse note o bande di {uguali}"
+
+
 def test_nessuna_onda_quadra_salvo_donazione():
     quadre = [preset for preset in suoni.EVENTI.values() if Acusticator.preset(preset)[1] == 2]
     assert quadre == ["donazione"]
@@ -135,6 +154,15 @@ def test_la_firma_di_mess():
     for preset in suoni.EVENTI.values():
         if preset.startswith("mess_"):
             assert Acusticator.descrizione(preset).startswith("MESS, "), preset
+
+
+def test_ogni_evento_ha_la_sua_azione_detta_a_parole():
+    # L'elenco dei suoni per Acu_Maker dice ogni evento a parole: nessuno manca, nessuno è in più, e
+    # nessuna frase ha separatori o finisce con un segno, perché nel file la seguono i due punti.
+    assert list(suoni.AZIONI) == list(suoni.EVENTI)
+    for evento, azione in suoni.AZIONI.items():
+        assert azione and azione.strip() == azione and azione[-1] not in ".:;,", evento
+        assert not any(s in azione for s in ("--", "==", "__")), evento
 
 
 def test_ogni_evento_e_usato_nel_codice():

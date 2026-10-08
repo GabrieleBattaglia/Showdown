@@ -116,7 +116,7 @@ class FinestraDalVivo(_Dialogo):
         self.Bind(wx.EVT_TIMER, self.al_battito, self.timer)
         self.completa((640, 480))
         # Le sorgenti si sintetizzano adesso, una volta per sessione: la prima tranche parte subito come le altre.
-        ps.prepara(gemello.taratura)
+        ps.prepara()
         self.prosegui.SetFocus()
 
     # Le etichette e il campo della cronaca.
