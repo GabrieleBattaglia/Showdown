@@ -7,7 +7,8 @@ un'onda quadra. Il suono si sceglie da tipo, esito e causa dell'evento; l'azione
 via al punto; lo spazio si ribalta per l'altro giocatore; i rumori hanno le loro varianti, e due
 dello stesso ruolo di fila non sono mai uguali; la pallina che vola fuori dal tavolo non rotola. Poi
 lo strumento, che con la fase dei timbri compone con partita_sonora: il gruppo dei timbri fa sentire
-ogni suono della partita da solo, con l'azione, il preset e la descrizione; i punti scelti si
+ogni suono della partita da solo, con l'azione, il preset e la descrizione, da dove viene nella
+partita, i fischi dall'arbitro e gli esiti dalla testata di chi ascolta; i punti scelti si
 compongono senza suonare e senza scrivere, nessun buffer supera il margine, i punti sono quelli
 dichiarati e sempre gli stessi, con la fanfara del goal e il cicalino del fallo, e la cronaca dice
 dove comincia il suono; i tasti e il menu di fine gruppo funzionano con una tastiera finta da
@@ -35,7 +36,7 @@ import percorsi
 import suoni
 from motore import eventi as E
 from motore.eventi import Evento, Tappa
-from motore.tavolo import vista
+from motore.tavolo import centro_porta, posizione_arbitro, vista
 
 # I messaggi del menu di collaudo_comune, che dopo di sé lascia una riga vuota.
 MESSAGGI_DEL_MENU = ("Annotato.", "Segnato come superato.", "Chiuso.")
@@ -415,16 +416,28 @@ def test_il_gruppo_dei_timbri_fa_sentire_ogni_suono_da_solo(timbri):
     for voce in timbri:
         azione, preset = ps.AZIONI[voce.chiave], ps.SUONI[voce.chiave]
         assert voce.titolo == f"{azione[0].upper()}{azione[1:]}, preset {preset}"
-        assert voce.righe == [Acusticator.descrizione(preset)] and voce.righe[0].startswith("MESS, partita dal vivo, ")
+        posizione = ap.posizione_di_prova(voce.chiave)
+        assert voce.righe == [Acusticator.descrizione(preset), ap.DA_DOVE[posizione]] and voce.righe[0].startswith("MESS, partita dal vivo, ")
         assert voce.candidato is None and voce.ruoli == (voce.chiave,)
         buffer = voce.buffer
         assert buffer.dtype == np.float32 and buffer.shape[1] == 2 and not np.any(buffer[:anticipo]) and np.any(buffer[anticipo:])
-        # Al centro: i due canali sono uguali.
-        assert np.array_equal(buffer[:, 0], buffer[:, 1])
-    # Il suono da solo, al livello che ha a un metro: il preset, senza lo spazio del tavolo.
-    battuta = next(v for v in timbri if v.chiave == "battuta")
-    attesa = ps.sorgente("battuta") * np.float32(ap.volume(ap.DISTANZA_DEI_TIMBRI) / np.sqrt(2.0))
-    assert np.allclose(battuta.buffer[anticipo:, 0], attesa, atol=1e-6)
+        # Dal centro e dalla testata i due canali sono uguali; i fischi vengono dall'arbitro, alla sinistra di chi ascolta.
+        sinistra, destra = (float(np.sum(buffer[:, c].astype(np.float64) ** 2)) for c in (0, 1))
+        if voce.chiave.startswith("fischio_"):
+            assert posizione == ap.DALL_ARBITRO and sinistra > 4 * destra
+        else:
+            assert np.array_equal(buffer[:, 0], buffer[:, 1])
+    # Revisione dei timbri: ogni suono viene da dove viene nella partita, con lo spazio del tavolo,
+    # perché i rapporti di livello fra i timbri siano quelli che si sentono giocando.
+    assert {ruolo: ap.posizione_di_prova(ruolo) for ruolo in ("fischio_singolo", "fanfara", "fallo", "battuta")} == {
+        "fischio_singolo": posizione_arbitro(True), "fanfara": centro_porta("A"), "fallo": centro_porta("A"),
+        "battuta": ap.DAL_CENTRO}
+    assert vista(ap.DAL_CENTRO, "A")[:2] == (0.0, ap.DISTANZA_DEI_TIMBRI)
+    for ruolo in ("battuta", "fischio_singolo", "fallo"):
+        voce = next(v for v in timbri if v.chiave == ruolo)
+        attesa = ps.per_la_cassa(ps.spazializza(ps.Posato(ruolo, 0.0, ps.sorgente(ruolo), np.array([0.0]), [ap.posizione_di_prova(ruolo)]), "A"),
+                                 ps.VOLUME_DI_PROGETTO)
+        assert np.allclose(voce.buffer[anticipo:], attesa, atol=1e-6)
     # Il rotolamento è una pallina che corre e rallenta per un secondo, il controllo una pallina scossa.
     rotolamento = next(v for v in timbri if v.chiave == "rotolamento")
     assert len(rotolamento.buffer) - anticipo >= ap.ROTOLAMENTO_DI_PROVA[2] * ps.FS

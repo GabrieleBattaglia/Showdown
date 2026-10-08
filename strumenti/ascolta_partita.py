@@ -8,10 +8,13 @@ strumenti/resa_prototipo.py; con la fase dei timbri compone con partita_sonora, 
 della partita dal vivo, e il prototipo resta al banco alla cieca dello spazio.
 Il primo gruppo fa sentire ogni suono della partita da solo, uno per volta, nell'ordine di
 partita_sonora.SUONI, sul modello di ascolta_suoni.py: per ognuno l'azione che lo fa suonare, il nome
-del preset e la sua descrizione, poi Invio per sentirlo e spazio per ripeterlo. Si sente al centro,
-senza lo spazio del tavolo, al livello che ha nella partita a un metro da chi ascolta; il
-rotolamento come una pallina che corre per un secondo e rallenta, il controllo come una pallina
-scossa per quasi un secondo.
+del preset, la sua descrizione e da dove viene, poi Invio per sentirlo e spazio per ripeterlo. Ogni
+suono viene da dove viene nella partita, con lo spazio del tavolo, perché i rapporti di livello fra
+i timbri siano quelli veri: i colpi e i suoni della pallina dal centro della tua metà, a un metro da
+chi ascolta; i fischi dall'arbitro, alla tua sinistra a metà tavolo, lontani e un po' incupiti; la
+fanfara e il cicalino del fallo dalla tua testata, come quando l'esito è del tuo giocatore. Il
+rotolamento si sente come una pallina che corre per un secondo e rallenta, il controllo come una
+pallina scossa per quasi un secondo.
 Poi i punti, che nascono qui, in memoria e sempre uguali: un mondo di giocatori nato con un seme
 fisso, mai salvato, e una serie di incontri giocati dal motore in modalità completa, ciascuno col suo
 seme. Fra tutti i punti giocati lo strumento ne sceglie otto, tipici e diversi fra loro, e li compone
@@ -61,9 +64,10 @@ from GBUtils import Acusticator, enter_escape, key  # noqa: E402
 import partita_sonora as ps  # noqa: E402
 import percorsi  # noqa: E402
 from ascolta_suoni import SILENZIO_INIZIALE, Annotazioni  # noqa: E402
+from costanti import ASCOLTO_DIETRO_TESTATA  # noqa: E402
 from motore import COMPLETO, Incontro, formato_singolare  # noqa: E402
 from motore import cronaca as C  # noqa: E402
-from motore.tavolo import vista, volume  # noqa: E402
+from motore.tavolo import CENTRO_X, centro_porta, posizione_arbitro, vista  # noqa: E402
 from testi import conta  # noqa: E402
 
 FILE_DEGLI_ESITI = "ascolto_partita.txt"
@@ -82,12 +86,22 @@ CODA = 0.3
 ARRIVI_IN_GIOCO = ("paletta", "corpo", "porta")
 # I tasti che fermano un punto mentre suona.
 TASTI_DEL_PUNTO = (" ", "\r", "\x1b")
-# Il gruppo dei timbri, ogni suono della partita da solo. Si sente al centro, senza lo spazio del
-# tavolo, al livello che ha nella partita a DISTANZA_DEI_TIMBRI centimetri da chi ascolta; il
-# rotolamento come una pallina che corre e rallenta, dalla prima alla seconda velocità, in quei
+# Il gruppo dei timbri, ogni suono della partita da solo, da dove viene nella partita e con lo
+# spazio del tavolo, così i livelli fra loro sono quelli della partita: i colpi e i suoni della
+# pallina dal centro della metà di chi ascolta, a DISTANZA_DEI_TIMBRI centimetri; i fischi
+# dall'arbitro, alla sinistra di chi ascolta; la fanfara e il cicalino del fallo dalla sua testata.
+# Il rotolamento come una pallina che corre e rallenta, dalla prima alla seconda velocità, in quei
 # secondi, e il controllo come una pallina scossa per quei secondi.
 TITOLO_DEI_TIMBRI = "Partita, i timbri uno per uno"
 DISTANZA_DEI_TIMBRI = 100.0
+DAL_CENTRO = (CENTRO_X, DISTANZA_DEI_TIMBRI - ASCOLTO_DIETRO_TESTATA)
+DALL_ARBITRO = posizione_arbitro(True)
+DALLA_TESTATA = centro_porta("A")
+DA_DOVE = {
+    DAL_CENTRO: "Viene dal centro della tua metà del tavolo, a un metro da te.",
+    DALL_ARBITRO: "Viene dall'arbitro, alla tua sinistra a metà tavolo, come nella partita.",
+    DALLA_TESTATA: "Viene dalla tua testata, come nella partita quando il goal o il fallo è del tuo giocatore.",
+}
 ROTOLAMENTO_DI_PROVA = (600.0, 150.0, 1.0)
 CONTROLLO_DI_PROVA = 0.9
 # L'orologio dell'attesa; le prove lo sostituiscono.
@@ -343,21 +357,29 @@ def sorgente_di_prova(ruolo):
     return ps.sorgente(ruolo)
 
 
+def posizione_di_prova(ruolo):
+    """Da dove viene un ruolo nel gruppo dei timbri: i fischi dall'arbitro, gli esiti dalla testata di chi ascolta, il resto dal centro a un metro."""
+    if ruolo.startswith("fischio_"):
+        return DALL_ARBITRO
+    if ruolo in ps.ESITI:
+        return DALLA_TESTATA
+    return DAL_CENTRO
+
+
 def timbri():
     """
     Il gruppo dei timbri: ogni suono della partita da solo, nell'ordine di partita_sonora.SUONI, con
-    l'azione, il preset e la sua descrizione, al centro e al livello che ha nella partita a
-    DISTANZA_DEI_TIMBRI centimetri da chi ascolta.
+    l'azione, il preset, la sua descrizione e da dove viene, messo nello spazio del tavolo dalla
+    posizione che ha nella partita, per chi ascolta da A.
     """
-    # Al centro la legge a potenza costante dà a ogni canale il mono diviso la radice di due.
-    guadagno = np.float32(volume(DISTANZA_DEI_TIMBRI) / np.sqrt(2.0))
     voci = []
     for ruolo, preset in ps.SUONI.items():
-        mono = sorgente_di_prova(ruolo) * guadagno
+        posizione = posizione_di_prova(ruolo)
+        stereo = ps.spazializza(ps.Posato(ruolo, 0.0, sorgente_di_prova(ruolo), np.array([0.0]), [posizione]), "A")
         azione = ps.AZIONI[ruolo]
         titolo = f"{azione[0].upper()}{azione[1:]}, preset {preset}"
-        righe = [Acusticator.descrizione(preset) or "Senza descrizione."]
-        buffer = ps.per_la_cassa(np.stack([mono, mono], axis=1), ps.VOLUME_DI_PROGETTO)
+        righe = [Acusticator.descrizione(preset) or "Senza descrizione.", DA_DOVE[posizione]]
+        buffer = ps.per_la_cassa(stereo, ps.VOLUME_DI_PROGETTO)
         voci.append(Punto(ruolo, titolo, "A", None, righe, _con_l_anticipo(buffer), (ruolo,)))
     return voci
 
@@ -440,8 +462,10 @@ def main():
     quanti_punti = sum(len(voci) for titolo, voci in gruppi if titolo != TITOLO_DEI_TIMBRI)
     print(f"Ascolto della partita di MESS con i timbri veri: {conta(len(gruppi), 'gruppo', 'gruppi')}, "
           f"{conta(quanti_timbri, 'suono', 'suoni')} uno per uno e {conta(quanti_punti, 'punto', 'punti')} composti.")
-    print(f"Il primo gruppo, {TITOLO_DEI_TIMBRI}, fa sentire ogni suono della partita da solo, al centro, con l'azione, il preset e la sua "
-          "descrizione; gli altri fanno sentire punti interi, con lo spazio del tavolo, dalla testata di chi ascolta.")
+    print(f"Il primo gruppo, {TITOLO_DEI_TIMBRI}, fa sentire ogni suono della partita da solo, con l'azione, il preset e la sua "
+          "descrizione, da dove viene nella partita, perché i livelli fra loro siano quelli veri: i colpi dal centro della tua metà del tavolo, "
+          "i fischi dall'arbitro, alla tua sinistra, la fanfara e il cicalino dalla tua testata. "
+          "Gli altri gruppi fanno sentire punti interi, con lo spazio del tavolo, dalla testata di chi ascolta.")
     print("Ogni gruppo si annuncia e si può saltare. Per ogni voce leggi che cosa sentirai; Invio la fa sentire, spazio la ripete, "
           "Invio passa alla successiva, Escape chiude il gruppo.")
     print("Mentre suona, spazio la fa ripartire, Invio passa oltre ed Escape chiude il gruppo.")

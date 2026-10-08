@@ -12,7 +12,8 @@ vuole saltabile con un tasto, e D29 non ne nomina un altro. Ascolta fino a fine 
 ferma a ogni punto ma solo a fine set, e ha il suo suono anche mentre l'azione suona o è in pausa,
 perché si sappia subito che il tasto è arrivato; Alt+L passa dalla parte dell'altro giocatore anche
 a metà punto, ricomponendo il suono dal punto in cui si è arrivati; Alt+V va alla fine e mostra il
-risultato; Esc esce senza svelarlo, e la vista principale dice dove leggerlo, decisione D30. Più
+risultato; Esc esce senza svelarlo, e la vista principale dice dove leggerlo, decisione D30, ma a
+incontro finito, quando la cronaca l'ha già detto, porta al risultato come il pulsante. Più
 e meno cambiano al volo la velocità di gioco: il motore la usa dal momento seguente, e pause e
 procedura già composte, come la pausa dopo il punto, si ripiegano alla velocità nuova appena il
 suono tace, così il cambio non si sente. A fine incontro il pulsante lo dice e porta al risultato.
@@ -53,7 +54,8 @@ PAUSA = "pausa"
 FINITO = "finito"
 UN_PUNTO = "punto"
 FINO_A_FINE_SET = "set"
-# Come la finestra si è chiusa: con Esc, con Vai alla fine, o dal risultato a incontro finito.
+# Come la finestra si è chiusa: con Esc prima della fine, con Vai alla fine, o dal risultato a
+# incontro finito, col pulsante o con Esc.
 CON_ESC = "esc"
 ALLA_FINE = "fine"
 AL_RISULTATO = "risultato"
@@ -167,7 +169,7 @@ class FinestraDalVivo(_Dialogo):
     # Il suono.
 
     def _componi(self, da, anticipo=None):
-        self.resa = ps.componi(self.segmento.eventi, self.ascoltatore, da=da, fine=self.segmento.fine, anticipo=anticipo, pieghe=self._pieghe)
+        self.resa = ps.componi(self.segmento.udibili, self.ascoltatore, da=da, fine=self.segmento.fine, anticipo=anticipo, pieghe=self._pieghe)
 
     def _per_la_cassa(self):
         return ps.per_la_cassa(self.resa.buffer, self.volume)
@@ -176,12 +178,12 @@ class FinestraDalVivo(_Dialogo):
         """
         Compone il segmento e lo fa partire, dopo anticipo secondi di silenzio. Da fresco comincia
         dalla ripresa del gioco, col silenzio in testa accorciato; altrimenti prosegue dalla fine
-        del segmento di prima, pause comprese. La procedura che il motore ha svolto a un'altra
-        velocità si ripiega subito a quella di adesso.
+        del segmento di prima, pause comprese, tranne la pausa lunga, che il buffer salta. La
+        procedura che il motore ha svolto a un'altra velocità si ripiega subito a quella di adesso.
         """
         da = segmento.inizio if fresco or self.segmento is None else self.segmento.fine
         self.segmento = segmento
-        self._pieghe = ps.ripiega(segmento.procedure, self.velocita)
+        self._pieghe = segmento.pieghe(self.velocita)
         self._da_ripiegare = False
         self._componi(da, ps.ANTICIPO if fresco else None)
         self.riproduttore.suona(self._per_la_cassa(), anticipo=anticipo, sovrapponi=sovrapponi)
@@ -193,7 +195,7 @@ class FinestraDalVivo(_Dialogo):
         Senza sempre ricompone soltanto se le pieghe cambiano. Vero se ha ricomposto.
         """
         adesso = ps.istante_del_motore(posizione, t0, self._pieghe)
-        pieghe = ps.ripiega(self.segmento.procedure, self.velocita, self._pieghe, da=adesso)
+        pieghe = self.segmento.pieghe(self.velocita, self._pieghe, da=adesso)
         self._da_ripiegare = False
         if not sempre and self.resa is not None and pieghe == self._pieghe:
             return False
@@ -211,7 +213,7 @@ class FinestraDalVivo(_Dialogo):
         if posizione is None or self.resa is None or self.riproduttore.in_anticipo():
             return
         adesso = self.resa.istante(posizione)
-        if ps.ripiega(self.segmento.procedure, self.velocita, self._pieghe, da=adesso) == self._pieghe:
+        if self.segmento.pieghe(self.velocita, self._pieghe, da=adesso) == self._pieghe:
             self._da_ripiegare = False
             return
         if self.resa.in_silenzio(posizione):
@@ -233,20 +235,18 @@ class FinestraDalVivo(_Dialogo):
     def _prosegui_di_seguito(self, fresco=False):
         """
         Fino a fine set: il segmento che segue parte appena finisce quello di prima, la cui coda
-        finisce di suonare. Se prima della ripresa del gioco c'è una pausa lunga, time-out, cambio
-        campo o inizio del set, non si sente: resta la pausa di sempre dopo il punto, in silenzio, e
-        il segmento comincia dalla ripresa, come con Prosegui; la pausa lunga è nella cronaca.
+        finisce di suonare, e il suo buffer comincia con la pausa dopo il punto. Se prima della
+        ripresa del gioco c'è una pausa lunga, time-out, cambio campo o inizio del set, non si
+        sente: dopo la pausa di sempre il buffer salta alla ripresa, come fra due punti qualunque, e
+        la pausa lunga è nella cronaca. Siccome la pausa di sempre sta nel buffer, più e meno, la
+        pausa e il cambio di lato la trattano come tutte le altre.
         """
         segmento = self.cronologia.prossimo(self.velocita)
         if segmento is None:
             self._fine_tranche()
             return
         self.tranche.extend(segmento.voci)
-        if not fresco and segmento.pausa_lunga:
-            attesa = segmento.attesa_prima(self.segmento.fine, self.velocita)
-            self._suona_segmento(segmento, fresco=True, sovrapponi=True, anticipo=attesa)
-        else:
-            self._suona_segmento(segmento, fresco=fresco, sovrapponi=not fresco)
+        self._suona_segmento(segmento, fresco=fresco, sovrapponi=not fresco)
         self._aggiorna_prosegui()
 
     def _fine_tranche(self):
@@ -388,9 +388,16 @@ class FinestraDalVivo(_Dialogo):
         self._mostra_guida()
 
     def esci(self, uscita):
-        """Esc, Vai alla fine o il risultato: il suono della partita si ferma con la sua maniglia, e la finestra si chiude."""
+        """
+        Esc, Vai alla fine o il risultato: il suono della partita si ferma con la sua maniglia, e la
+        finestra si chiude. A incontro finito Esc vale come il pulsante del risultato: la fine si è
+        sentita e la cronaca nel campo la dice già, quindi la vista mostra il risultato, con l'esito
+        e i punti allenamento, invece di dire che si è usciti senza vederla.
+        """
         if self.uscita is not None:
             return
+        if uscita == CON_ESC and self.stato == FINITO:
+            uscita = AL_RISULTATO
         self.uscita = uscita
         self.timer.Stop()
         self.riproduttore.ferma()

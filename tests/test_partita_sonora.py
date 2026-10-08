@@ -10,7 +10,8 @@ metà. La cronologia: i segmenti fino a ogni punto, sanzione o fine set, che cop
 la velocità di gioco che accorcia pause e procedura e lascia l'azione a tempo reale, con gli stessi
 punti; i tratti di procedura di ogni segmento e le pieghe che li fanno durare quanto vuole la velocità.
 Dalla decisione D30: il volume della partita, che cresce fino a 100 e al predefinito suona come
-l'ascolto libero, e le pause lunghe di ogni segmento, con la pausa di sempre che resta prima.
+l'ascolto libero, e le pause lunghe di ogni segmento, che il buffer salta, con la pausa di sempre
+che resta prima.
 """
 
 import itertools
@@ -396,6 +397,77 @@ def test_le_sorgenti_stanno_sotto_il_loro_tetto():
     assert np.all(np.abs(limitato) < ps.TETTO_SORGENTI) and limitato[3] > ps.GINOCCHIO_SORGENTI and limitato[4] < -ps.GINOCCHIO_SORGENTI
 
 
+def _ponderazione_a():
+    """Il filtro della ponderazione A, dalla sua forma analogica con la trasformata bilineare."""
+    from scipy.signal import bilinear
+
+    f1, f2, f3, f4 = 20.598997, 107.65265, 737.86223, 12194.217
+    numeratore = [(2 * math.pi * f4) ** 2 * 10 ** (1.9997 / 20), 0, 0, 0, 0]
+    denominatore = np.polymul([1, 4 * math.pi * f4, (2 * math.pi * f4) ** 2], [1, 4 * math.pi * f1, (2 * math.pi * f1) ** 2])
+    denominatore = np.polymul(np.polymul(denominatore, [1, 2 * math.pi * f3]), [1, 2 * math.pi * f2])
+    return bilinear(numeratore, denominatore, FS)
+
+
+def _sonorita(stereo, finestra=0.05):
+    """La sonorità di un suono stereo, in decibel: l'energia ponderata A dei due canali, sui 50 millesimi più forti."""
+    from scipy.signal import lfilter
+
+    b, a = _ponderazione_a()
+    stereo = np.asarray(stereo, dtype=np.float64)
+    energia = sum(lfilter(b, a, np.concatenate([stereo[:, c], np.zeros(2048)])) ** 2 for c in (0, 1))
+    n = round(finestra * FS)
+    return 10 * math.log10(float(np.max(np.convolve(energia, np.ones(n), mode="valid") / n)))
+
+
+def _da_fermo(ruolo, mono, pos, ascoltatore="A"):
+    return ps.spazializza(ps.Posato(ruolo, 0.0, mono, np.array([0.0]), [pos]), ascoltatore)
+
+
+def test_ogni_timbro_si_sente_anche_dal_fondo_del_tavolo():
+    # Revisione dei timbri: lo stesso suono vicino e in fondo al tavolo, per chi ascolta da A. Fra
+    # questi due punti la legge del volume dello spazio approvato da Gabriele toglie al lontano 7,6
+    # decibel, e la cupezza fino a 5 in più ai suoni chiari; ma un timbro che vive quasi tutto sopra
+    # il taglio del lontano, come il controllo di soli pallini fra 2500 e 10000 Hz che perdeva 17
+    # decibel, dall'altra parte del tavolo quasi sparisce. I fischi stanno fuori: vengono sempre
+    # dall'arbitro, mai dal tavolo.
+    vicino, lontano = (61.0, 30.0), (61.0, 340.0)
+    legge = 20 * math.log10(ps.SPAZIO.punto(vicino, "A")[1] / ps.SPAZIO.punto(lontano, "A")[1])
+    tempi = np.arange(0.0, 1.0 + ps.PASSO, ps.PASSO)
+    perdite = {}
+    for ruolo in ps.SUONI:
+        if ruolo.startswith("fischio_"):
+            continue
+        valori = []
+        for variante in range(ps.VARIANTI_RUMORE):
+            if ruolo == "rotolamento":
+                mono = ps.sonaglio(ruolo, tempi, np.full(len(tempi), 400.0), variante)
+            elif ruolo == "controllo":
+                mono = ps.in_fila(ruolo, 0.9, variante) * np.float32(ps.GUADAGNO_CONTROLLO)
+            else:
+                mono = ps.sorgente(ruolo, variante)
+            valori.append(_sonorita(_da_fermo(ruolo, mono, vicino)) - _sonorita(_da_fermo(ruolo, mono, lontano)))
+        perdite[ruolo] = float(np.mean(valori))
+    fuori = {ruolo: round(p, 1) for ruolo, p in perdite.items() if not legge - 2.0 <= p <= legge + 5.0}
+    assert not fuori, f"timbri che dal fondo del tavolo perdono troppo o troppo poco: {fuori}"
+
+
+def test_il_fischio_suona_forte_quanto_nell_ascolto_libero():
+    # Revisione dei timbri: il fischio viene dall'arbitro, a due metri e mezzo e un po' incupito, e
+    # nella partita deve stare sopra i colpi come il segnaposto dell'ascolto libero approvato da
+    # Gabriele; prima dei ritocchi il singolo, il più frequente, era 4,6 decibel sotto. Lo si
+    # confronta col prototipo, dallo stesso punto; gli altri due sono lo stesso fischietto, forti uguali.
+    from motore.tavolo import posizione_arbitro
+
+    sonorita = {}
+    for fischio, durata in ((E.SINGOLO, 0.35), (E.DOPPIO, 0.8), (E.LUNGO, 1.4)):
+        e = _evento(1, 0.0, E.FISCHIO, posizione_arbitro(True), durata=durata, fischio=fischio)
+        sonorita[fischio] = _sonorita(ps.spazializza(ps.posati_dell_evento(e)[0], "A"))
+        if fischio == E.SINGOLO:
+            approvato = _sonorita(resa.spazializza(resa.posati_dell_evento(e)[0], "A"))
+            assert sonorita[fischio] == pytest.approx(approvato, abs=2.0)
+    assert sonorita[E.DOPPIO] == pytest.approx(sonorita[E.SINGOLO], abs=1.0) and sonorita[E.LUNGO] == pytest.approx(sonorita[E.SINGOLO], abs=1.0)
+
+
 # La riproduzione.
 
 def _rumore(secondi):
@@ -685,13 +757,38 @@ def test_la_pausa_di_sempre_prima_della_pausa_lunga():
         segmenti = _segmenti(_incontro(velocita, seme=50), velocita)
         for precedente, segmento in itertools.pairwise(segmenti):
             primo = segmento.eventi[0]
+            if not segmento.pausa_lunga:
+                assert segmento.salti == () and segmento.udibili == segmento.eventi
+                continue
+            # La pausa lunga, dal primo evento alla ripresa del gioco, si salta: i suoi eventi non
+            # suonano, e a ogni velocità il suo tratto dura pochi campioni.
+            assert segmento.salti == ((primo.t, segmento.inizio),)
+            assert segmento.udibili == segmento.eventi[len(segmento.preambolo):] and segmento.udibili[0].t == segmento.inizio
+            for adesso in (velocita, 8):
+                assert ps.secondi_del_buffer(segmento.inizio, primo.t, segmento.pieghe(adesso)) < 5 / FS
+            dopo_il_punto = [ps.secondi_del_buffer(segmento.inizio, precedente.fine, segmento.pieghe(adesso)) for adesso in (velocita, 8)]
             if any(e.tipo == E.TIMEOUT_INIZIO for e in segmento.preambolo):
-                # Dopo il punto il motore lascia la pausa fra i punti, alla velocità di gioco; poi il fischio del time-out.
+                # Dopo il punto il motore lascia la pausa fra i punti, alla velocità di gioco; poi il
+                # fischio del time-out. La pausa resta, e se la velocità cambia si ripiega come le altre.
                 assert precedente.chiusura.tipo == E.PUNTO and primo.tipo == E.FISCHIO
-                assert segmento.attesa_prima(precedente.fine, velocita) == pytest.approx(5.5 / velocita, abs=0.002)
-                # Alla velocità di adesso, se è cambiata, la pausa si ripiega come tutta la procedura.
-                assert segmento.attesa_prima(precedente.fine, 8) == pytest.approx(5.5 / 8, abs=0.002)
+                assert dopo_il_punto == pytest.approx([5.5 / velocita, 5.5 / 8], abs=0.002)
             if precedente.riscaldamento:
                 # Dopo il riscaldamento il primo set comincia subito: la sua pausa lunga non lascia niente prima.
-                assert segmento.pausa_lunga and primo.tipo == E.INIZIO_SET
-                assert segmento.attesa_prima(precedente.fine, velocita) == pytest.approx(0.0, abs=0.002)
+                assert primo.tipo == E.INIZIO_SET
+                assert dopo_il_punto == pytest.approx([0.0, 0.0], abs=0.002)
+
+
+def test_i_salti_si_piegano_quasi_a_zero():
+    procedure = [(1.0, 3.0, 1.0), (5.0, 65.0, 1.0), (70.0, 72.0, 1.0)]
+    salti = ((4.0, 71.0),)
+    pieghe = ps.ripiega(procedure, 4, salti=salti)
+    assert pieghe == ((1.0, 3.0, 0.25), (4.0, 71.0, ps.PIEGA_DEL_SALTO), (71.0, 72.0, 0.25))
+    # Il salto resta piegato a ogni velocità, anche a quella a cui il motore ha svolto la procedura,
+    # e la procedura che sta dentro non conta.
+    assert ps.ripiega(procedure, 1, salti=salti) == ((4.0, 71.0, ps.PIEGA_DEL_SALTO),)
+    # Ripiegando da un istante dentro il salto, quello che è già suonato resta com'era, e il salto continua.
+    assert ps.ripiega(procedure, 8, pieghe, da=30.0, salti=salti) == ((1.0, 3.0, 0.25), (4.0, 71.0, ps.PIEGA_DEL_SALTO), (71.0, 72.0, 0.125))
+    # Il buffer attraversa i 67 secondi del salto in pochi campioni, e l'inverso torna.
+    assert ps.secondi_del_buffer(71.0, 0.0, pieghe) - ps.secondi_del_buffer(4.0, 0.0, pieghe) < 5 / FS
+    for t in (0.5, 2.0, 3.5, 71.5, 80.0):
+        assert ps.istante_del_motore(ps.secondi_del_buffer(t, 0.0, pieghe), 0.0, pieghe) == pytest.approx(t)

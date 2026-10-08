@@ -280,7 +280,8 @@ def test_piu_e_meno_cambiano_la_velocita(vivo, suonati):
     assert vivo.gemello.regia.velocita == 7.0
 
 
-def test_la_fine_dell_incontro_porta_al_risultato(app_wx, suonati):
+@pytest.mark.parametrize("con_esc", [False, True])
+def test_la_fine_dell_incontro_porta_al_risultato(app_wx, suonati, con_esc):
     vivo = Vivo(velocita=8, livello=cronaca.SINTETICA)
     try:
         f = vivo.finestra
@@ -297,7 +298,12 @@ def test_la_fine_dell_incontro_porta_al_risultato(app_wx, suonati):
         f.fino_a_fine_set()
         f.cambia_lato()
         assert suonati[-2:] == ["incontro_finito", "incontro_finito"] and f.ascoltatore == "A"
-        f.al_prosegui()
+        if con_esc:
+            # Revisione della D30: a incontro finito la cronaca dice già chi ha vinto, ed Esc vale
+            # come il pulsante del risultato, invece di dire che si è usciti senza vederne la fine.
+            _tasto(f, wx.WXK_ESCAPE)
+        else:
+            f.al_prosegui()
         assert f.uscita == dal_vivo.AL_RISULTATO and f.GetReturnCode() == wx.ID_OK
         assert vivo.cassa.accese == 0
     finally:
@@ -364,6 +370,22 @@ def _con_il_time_out(segmento):
     return segmento is not None and any(e.tipo == E.TIMEOUT_INIZIO for e in segmento.preambolo)
 
 
+def _fino_al_time_out(vivo):
+    """Col seme 5, fino a fine set dopo il riscaldamento, fino al segmento col time-out; restituisce quello e il segmento di prima."""
+    f = vivo.finestra
+    _salta_il_riscaldamento(vivo)
+    f.fino_a_fine_set()
+    visti = []
+
+    def al_time_out():
+        if not visti or visti[-1] is not f.segmento:
+            visti.append(f.segmento)
+        return _con_il_time_out(f.segmento)
+
+    vivo.scorri_fino(al_time_out)
+    return visti[-1], visti[-2]
+
+
 def test_fino_a_fine_set_il_time_out_non_si_sente(app_wx, suonati):
     # Col seme 5 c'è un time-out nel primo set. Decisione D30: fino a fine set dopo il punto resta
     # la pausa di sempre, in silenzio, e il suono riprende dalla ripresa del gioco, senza il minuto
@@ -371,17 +393,7 @@ def test_fino_a_fine_set_il_time_out_non_si_sente(app_wx, suonati):
     vivo = Vivo(seme=5)
     try:
         f = vivo.finestra
-        _salta_il_riscaldamento(vivo)
-        f.fino_a_fine_set()
-        visti = []
-
-        def al_time_out():
-            if not visti or visti[-1] is not f.segmento:
-                visti.append(f.segmento)
-            return _con_il_time_out(f.segmento)
-
-        vivo.scorri_fino(al_time_out)
-        segmento, precedente = visti[-1], visti[-2]
+        segmento, precedente = _fino_al_time_out(vivo)
         assert segmento.pausa_lunga and precedente.chiusura.tipo == E.PUNTO
         inizio, fine = (next(e.t for e in segmento.eventi if e.tipo == tipo) for tipo in (E.TIMEOUT_INIZIO, E.TIMEOUT_FINE))
         assert fine - inizio == pytest.approx(60.0, abs=0.01)
@@ -389,15 +401,53 @@ def test_fino_a_fine_set_il_time_out_non_si_sente(app_wx, suonati):
         preambolo = {e.n for e in segmento.preambolo}
         assert segmento.eventi[0].tipo == E.FISCHIO and segmento.eventi[0].n in preambolo
         assert not preambolo & {p.evento for p in f.resa.posati}
-        assert f.resa.t0 >= segmento.inizio - ps.TOLLERANZA
-        # Resta la pausa dopo il punto, 5,5 secondi a velocità 1, come fra due punti qualunque.
-        assert f.riproduttore.corrente.anticipo == segmento.attesa_prima(precedente.fine, 1) == pytest.approx(5.5, abs=0.01)
-        assert vivo.scorri_fino(lambda: not f.riproduttore.in_anticipo()) == pytest.approx(5.5, abs=0.1)
+        # Resta la pausa dopo il punto, 5,5 secondi a velocità 1, come fra due punti qualunque: sta
+        # nel buffer, che comincia alla fine del punto, e il minuto del time-out dura pochi campioni.
+        assert f.resa.t0 == pytest.approx(precedente.fine) and f.riproduttore.corrente.anticipo == 0.0
+        assert segmento.salti == ((segmento.eventi[0].t, segmento.inizio),)
+        assert f.resa.secondi(segmento.eventi[0].t) == pytest.approx(5.5, abs=0.01)
+        assert f.resa.secondi(segmento.inizio) - f.resa.secondi(segmento.eventi[0].t) < 5 / FS
+        assert vivo.scorri_fino(lambda: f.riproduttore.posizione() >= f.resa.secondi(segmento.inizio) - 1e-9) == pytest.approx(5.5, abs=0.1)
         # Dopo il time-out la partita va avanti con gli stessi punti, fino a fine set, e la cronaca lo dice.
         vivo.fino_a_fermo()
         assert f.segmento.chiusura.tipo == E.FINE_SET
         assert f.segmento.chiusura.dati["punteggio"] == list(vivo.riferimento.set[0])
         assert "Time-out per " in vivo.testo()
+    finally:
+        vivo.finestra.timer.Stop()
+        vivo.finestra.Destroy()
+
+
+@pytest.mark.parametrize("comando", ["più", "pausa", "lato"])
+def test_la_pausa_prima_del_time_out_e_come_le_altre(app_wx, suonati, comando):
+    # Revisione della D30: fino a fine set la pausa dopo il punto che precede il time-out stava nel
+    # silenzio messo davanti al buffer, dove più non la accorciava, e la pausa e Alt+L la perdevano.
+    # Ora sta nel buffer come fra due punti qualunque: più la accorcia, pausa e Alt+L la conservano.
+    vivo = Vivo(seme=5)
+    try:
+        f = vivo.finestra
+        segmento, _precedente = _fino_al_time_out(vivo)
+        vivo.scorri(1.0)
+        passati = f.riproduttore.posizione()
+        assert passati == pytest.approx(1.0, abs=0.06)
+        if comando == "più":
+            for _ in range(7):
+                f.cambia_velocita(1)
+            assert f.velocita == 8
+            attesa = (5.5 - passati) / 8
+        elif comando == "pausa":
+            f.al_prosegui()
+            assert f.stato == dal_vivo.PAUSA and f.posizione == pytest.approx(passati)
+            f.al_prosegui()
+            attesa = f.riproduttore.corrente.anticipo + 5.5 - passati
+        else:
+            f.cambia_lato()
+            assert f.ascoltatore == "B" and f.riproduttore.corrente.da == pytest.approx(passati)
+            attesa = f.riproduttore.corrente.anticipo + 5.5 - passati
+        assert f.stato == dal_vivo.SUONA and f.segmento is segmento
+        assert vivo.scorri_fino(lambda: f.riproduttore.posizione() >= f.resa.secondi(segmento.inizio) - 1e-9, passo=0.01) == pytest.approx(attesa, abs=0.03)
+        # Il time-out, anche ricomposto, non suona.
+        assert not {e.n for e in segmento.preambolo} & {p.evento for p in f.resa.posati}
     finally:
         vivo.finestra.timer.Stop()
         vivo.finestra.Destroy()

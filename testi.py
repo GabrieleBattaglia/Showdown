@@ -849,7 +849,8 @@ def guida(voci):
 GUIDA_DELLA_PARTITA_DAL_VIVO = (
     "La partita dal vivo si apre scegliendo Assisti nel dialogo dell'amichevole. Lì Invio o spazio sul pulsante Prosegui fanno sentire il gioco "
     "fino al punto seguente, e mentre suona lo mettono in pausa e lo riprendono; Alt+F ascolta fino a fine set, Alt+L passa dalla parte "
-    "dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce senza svelarlo; più e meno cambiano la velocità di gioco; "
+    "dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce senza svelarlo, e a incontro finito porta al risultato; "
+    "più e meno cambiano la velocità di gioco; "
     "F1 rimette la guida dei tasti nel campo della cronaca, che si raggiunge con Tab. Time-out, cambio campo e inizio del set non si "
     "sentono: si leggono nella cronaca, e il suono riprende dalla ripresa del gioco.")
 

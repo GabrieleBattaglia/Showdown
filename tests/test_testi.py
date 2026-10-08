@@ -140,7 +140,7 @@ def test_guida_novita_e_informazioni():
     assert testi.GUIDA_DELLA_PARTITA_DAL_VIVO in guida.splitlines()
     assert all(tasto in testi.GUIDA_DELLA_PARTITA_DAL_VIVO for tasto in ("Prosegui", "Alt+F", "Alt+L", "Alt+V", "Esc", "più e meno", "F1"))
     # Decisione D30: Esc non svela il risultato, e le pause lunghe non si sentono.
-    assert "Esc esce senza svelarlo" in testi.GUIDA_DELLA_PARTITA_DAL_VIVO
+    assert "Esc esce senza svelarlo, e a incontro finito porta al risultato" in testi.GUIDA_DELLA_PARTITA_DAL_VIVO
     assert "Time-out, cambio campo e inizio del set non si sentono" in testi.GUIDA_DELLA_PARTITA_DAL_VIVO
     novita = testi.novita("# Changelog\n\n## [1.3.0] - 2026-10-06\n\n### Un mondo nuovo\n\nIl file `mess_mondo.json` si firma.\n")
     assert novita.splitlines() == ["Changelog.", "Versione 1.3.0 del 2026-10-06.", "Un mondo nuovo.", "Il file mess_mondo.json si firma."]

@@ -28,8 +28,8 @@ D29, tappa 10, i modi di seguirla sono due: Vai alla fine mostra nella vista il 
 allenamento e sotto la cronaca intera; Assisti apre la finestra dal vivo di gui/dal_vivo.py, e
 quando se ne esce con Vai alla fine o dal risultato la vista mostra lo stesso testo. Il punto per
 punto con F8 e Ctrl+F8 non c'è più. L'esito si sente solo quando si mostra, perché la partita dal
-vivo non lo sveli prima; e con la decisione D30 chi esce con Esc non lo vede affatto: la vista dice
-che l'incontro è registrato e dove leggerne il risultato. Nel menu Impostazioni c'è la velocità di
+vivo non lo sveli prima; e con la decisione D30 chi esce con Esc prima della fine non lo vede
+affatto: la vista dice che l'incontro è registrato e dove leggerne il risultato. Nel menu Impostazioni c'è la velocità di
 gioco, e il dialogo degli effetti sonori ha anche il volume della partita. Le parti delle tappe 9 e
 10 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
@@ -664,8 +664,9 @@ class FinestraPrincipale(wx.Frame):
         oggi. Dopo le opzioni l'incontro si gioca e si registra subito e il mondo si salva; con
         Assisti si apre la finestra dal vivo, e quando se ne esce con Alt+V o dal risultato, o
         subito con Vai alla fine, la vista mostra il risultato, i punti allenamento e sotto la
-        cronaca intera. L'esito suona quando si vede, non prima. Chi esce con Esc non lo vede,
-        decisione D30: la vista dice soltanto che l'incontro è registrato e dove leggerne il risultato.
+        cronaca intera. L'esito suona quando si vede, non prima. Chi esce con Esc prima della fine
+        non lo vede, decisione D30: la vista dice soltanto che l'incontro è registrato e dove
+        leggerne il risultato; a incontro finito Esc vale come il pulsante del risultato.
         """
         p = self._attiva()
         if p is None:

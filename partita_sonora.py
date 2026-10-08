@@ -51,8 +51,10 @@ dell'arbitro che la segue, si ripiegano: ogni segmento conosce i suoi tratti di 
 buffer li fa durare quanto vuole la velocità di adesso, spostando quello che viene dopo. L'azione
 non si piega mai.
 Le pause lunghe, cioè time-out, cambio campo e inizio del set, con la decisione D30 non si sentono
-mai: ogni segmento sa se prima della ripresa del gioco ne ha una, e quanto dura la pausa di sempre
-dopo il punto, che resta; le pause lunghe si leggono nella cronaca.
+mai: ogni segmento sa se prima della ripresa del gioco ne ha una, e la salta. I suoi eventi non
+suonano, e il suo tratto si piega quasi a zero; la pausa di sempre dopo il punto, che viene prima,
+resta nel buffer come fra due punti qualunque, e come le altre si ripiega, si ferma e si riprende.
+Le pause lunghe si leggono nella cronaca.
 """
 
 import collections
@@ -104,7 +106,8 @@ TETTO_SORGENTI = 0.8
 # progetto è il più alto misurato dal revisore in 24 incontri, a tre velocità e dalle due testate:
 # 0,7526, del fischio che parte nello stesso campione di un colpo. Con i timbri veri il più alto,
 # in 2502 buffer di 12 incontri a tre velocità e dalle due testate, è 0,68, di un goal insieme al
-# suo fischio doppio: il progetto resta quello, con margine. Dalla decisione D30 la partita ha
+# suo fischio doppio, e resta 0,67 anche dopo la revisione dei timbri, che ha alzato i fischi di
+# quasi 4 decibel: il progetto resta quello, con margine. Dalla decisione D30 la partita ha
 # un volume suo, da 0 a 100, che moltiplica il buffer in proporzione, fino in fondo: a 100 porta il
 # picco di progetto al tetto, e al volume di progetto, 95, il fattore è uno, il livello dell'ascolto
 # libero approvato da Gabriele. Prima era il volume degli effetti, a 50 com'era stato pensato, ma
@@ -125,6 +128,9 @@ TOLLERANZA = 0.001
 # che seguono, quanti ne bastano a coprire un battito della finestra.
 SOGLIA_SILENZIO = 1e-4
 SILENZIO_DAVANTI = 0.06
+# Il fattore della piega di una pausa lunga che non si sente: quasi zero, così il minuto di un
+# time-out dura pochi campioni del buffer, ma non zero, perché istante_del_motore divide per lui.
+PIEGA_DEL_SALTO = 1e-6
 
 # I timbri della partita, i preset della collezione di GBUtils fatti per lei con la V203, uno per
 # ruolo e mai lo stesso per due ruoli. Nessuno è fra quelli della finestra, in suoni.EVENTI, né
@@ -341,20 +347,32 @@ def _fondi(pieghe):
     return tuple(fuse)
 
 
-def ripiega(procedure, velocita, pieghe=(), da=None):
+def _fuori_dai_salti(a, b, salti):
+    """I pezzi dell'intervallo da a a b che restano fuori dai salti, in ordine."""
+    pezzi = [(a, b)]
+    for inizio, fine in salti:
+        pezzi = [pezzo for x, y in pezzi for pezzo in ((x, min(y, inizio)), (max(x, fine), y)) if pezzo[1] - pezzo[0] > 1e-9]
+    return pezzi
+
+
+def ripiega(procedure, velocita, pieghe=(), da=None, salti=()):
     """
     Le pieghe che fanno suonare la procedura di un segmento alla velocità data. procedure sono i
     tratti (a, b, v) di pausa e procedura del segmento, ciascuno svolto dal motore alla velocità v,
     che deve durare (b - a) * v / velocita. Con da, l'istante a cui il suono è arrivato, quello che
-    viene prima resta com'è stato suonato, con le pieghe date, e si ripiega solo il resto.
+    viene prima resta com'è stato suonato, con le pieghe date, e si ripiega solo il resto. salti sono
+    gli intervalli (a, b) del motore che non si sentono, le pause lunghe della decisione D30: a ogni
+    velocità si piegano quasi a zero, di PIEGA_DEL_SALTO, e la procedura che sta dentro non conta.
     """
     nuove = [] if da is None else [(a, min(b, da), f) for a, b, f in pieghe if a < da]
-    fine = -math.inf if da is None else da
+    libero = -math.inf if da is None else da
+    fine = libero
     for a, b, v in sorted(procedure):
         inizio = max(a, fine)
         if b - inizio > 1e-9 and abs(v / velocita - 1.0) > 1e-9:
-            nuove.append((inizio, b, v / velocita))
+            nuove.extend((x, y, v / velocita) for x, y in _fuori_dai_salti(inizio, b, salti))
         fine = max(fine, b)
+    nuove.extend((max(a, libero), b, PIEGA_DEL_SALTO) for a, b in salti if b > max(a, libero))
     return _fondi(nuove)
 
 
@@ -945,13 +963,23 @@ class Segmento:
         """Vero se prima della ripresa del gioco il segmento ha una pausa lunga: un time-out, un cambio campo o l'inizio di un set."""
         return any(e.tipo in PAUSE_LUNGHE for e in self.preambolo)
 
-    def attesa_prima(self, da, velocita):
+    @property
+    def salti(self):
         """
-        I secondi, alla velocità data, fra l'istante da, la fine del segmento di prima, e il primo
-        evento di questo: la pausa di sempre dopo il punto, quella che resta quando la pausa lunga
-        che viene dopo non si sente. Zero se il segmento comincia subito.
+        Le pause lunghe che non si sentono, come intervalli del tempo del motore: se il segmento ne
+        ha una, dal suo primo evento alla ripresa del gioco. La pausa di sempre dopo il punto, che
+        viene prima, resta, ed è procedura come le altre.
         """
-        return max(0.0, secondi_del_buffer(self.voci[0][0].t, da, ripiega(self.procedure, velocita)))
+        return ((self.voci[0][0].t, self.inizio),) if self.pausa_lunga else ()
+
+    @property
+    def udibili(self):
+        """Gli eventi che suonano: tutti, tranne il preambolo che ha una pausa lunga, che si legge soltanto nella cronaca."""
+        return self.eventi[len(self.preambolo):] if self.pausa_lunga else self.eventi
+
+    def pieghe(self, velocita, pieghe=(), da=None):
+        """Le pieghe del segmento alla velocità data, cioè ripiega con la sua procedura e i suoi salti; pieghe e da come in ripiega."""
+        return ripiega(self.procedure, velocita, pieghe, da, self.salti)
 
 
 def set_finito(punteggio, formato):
