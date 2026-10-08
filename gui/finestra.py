@@ -23,11 +23,13 @@ automatico non riesce, dopo il suono dell'operazione si sente quello del salvata
 vista dice il perché. Nel menu Impostazioni c'è il volume degli effetti.
 Dal 2026-10-08, con la tappa 9, c'è il menu Partite, con le scelte di Gabriele: l'amichevole fra un
 tuo tesserato e un giocatore qualunque, ciascuno al massimo una al giorno, si gioca e si registra
-subito, il mondo si salva, e poi la vista la mostra tutta, solo il risultato, oppure un punto alla
-volta con F8, ogni testo al posto del precedente come vuole D17; Ctrl+F8 mostra il resto, e la
-cronaca si salva nel suo file al livello scelto. L'esito si sente solo quando si mostra, perché il
-punto per punto non lo sveli prima. Le parti della tappa 9 sono di Gabriele Battaglia (IZ4APU) &
-ClaudIA (Claude Opus 5.5, UltraCode).
+subito, il mondo si salva, e la cronaca si salva nel suo file al livello scelto. Con la decisione
+D29, tappa 10, i modi di seguirla sono due: Vai alla fine mostra nella vista il risultato, i punti
+allenamento e sotto la cronaca intera; Assisti apre la finestra dal vivo di gui/dal_vivo.py, e
+quando se ne esce, con Esc, con Vai alla fine o dal risultato, la vista mostra lo stesso testo. Il
+punto per punto con F8 e Ctrl+F8 non c'è più. L'esito si sente solo quando si mostra, perché la
+partita dal vivo non lo sveli prima. Nel menu Impostazioni c'è la velocità di gioco. Le parti delle
+tappe 9 e 10 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -43,9 +45,9 @@ import ricerca
 import suoni
 import testi
 from gui import aspetto
+from gui.dal_vivo import ALLA_FINE, FinestraDalVivo
 from gui.dialoghi import (
-    SOLO_IL_RISULTATO,
-    TUTTA_SUBITO,
+    ASSISTI,
     Aspetto,
     Caffe,
     CambiaPolisportiva,
@@ -60,6 +62,7 @@ from gui.dialoghi import (
     PasswordPolisportiva,
     Ricerca,
     SceltaGiocatore,
+    VelocitaDiGioco,
     Vendite,
 )
 from partita import MotorePartita
@@ -69,14 +72,13 @@ TITOLO = "MESS, Manageriale e Simulatore Showdown"
 RIGHE_BARRA = 4
 
 
-class AmichevoleInVista:
+class UltimaAmichevole:
     """
-    L'ultima amichevole della sessione, già giocata e registrata, come la mostra la vista: i testi
-    della cronaca, da mostrare uno alla volta, quanti se ne sono già visti, il livello scelto, che
-    vale anche per il file, il suono dell'esito e le parole dell'esito per la barra di stato.
-    Ricorda anche quando si è giocata, l'istante reale e il giorno simulato: la cronaca si salva più
-    tardi, magari dopo un avanzamento del mondo, e il file deve dire il momento dell'incontro, lo
-    stesso dei diari dei due giocatori.
+    L'ultima amichevole della sessione, già giocata e registrata: il risultato, i nomi della cronaca,
+    il livello scelto, che vale anche per il file, il suono dell'esito e le parole dell'esito per la
+    barra di stato. Ricorda anche quando si è giocata, l'istante reale e il giorno simulato: la
+    cronaca si salva più tardi, magari dopo un avanzamento del mondo, e il file deve dire il momento
+    dell'incontro, lo stesso dei diari dei due giocatori.
     """
 
     def __init__(self, risultato, nomi, livello, esito, istante, data_simulata):
@@ -86,28 +88,10 @@ class AmichevoleInVista:
         self.esito = esito
         self.istante = istante
         self.data_simulata = data_simulata
-        self.testi = testi.testi_della_partita(risultato.momenti, nomi, livello)
-        self.mostrati = 0
         vince = risultato.vincitore
         sa, sb = risultato.set_vinti
         mio, suo = (sa, sb) if vince == "A" else (sb, sa)
         self.evento_esito = f"vince {nomi[vince].testo}, {mio} set a {suo}"
-
-    @property
-    def finita(self):
-        """Vero quando la vista ha già mostrato tutto l'incontro."""
-        return self.mostrati >= len(self.testi)
-
-    def prossimo(self):
-        """Il testo che viene dopo l'ultimo mostrato."""
-        self.mostrati += 1
-        return self.testi[self.mostrati - 1]
-
-    def resto(self):
-        """Tutti i testi non ancora mostrati, che da qui in avanti contano come visti."""
-        rimasti = self.testi[self.mostrati:]
-        self.mostrati = len(self.testi)
-        return rimasti
 
 
 class FinestraPrincipale(wx.Frame):
@@ -132,7 +116,7 @@ class FinestraPrincipale(wx.Frame):
                 self.avanzamento_all_avvio = evento
                 self.ultimo_evento = testo
         self.ultima_ricerca = None
-        # L'ultima amichevole giocata nella sessione, da mostrare con F8 e Ctrl+F8.
+        # L'ultima amichevole giocata nella sessione, di cui si salva la cronaca.
         self.incontro = None
         self._testo_barra = None
         self._errore_aperto = False
@@ -206,9 +190,6 @@ class FinestraPrincipale(wx.Frame):
             ("Pa&rtite", (
                 ("&Amichevole...", "Ctrl+O", self.amichevole),
                 None,
-                ("&Punto successivo", "F8", self.punto_successivo),
-                ("&Resto dell'incontro", "Ctrl+F8", self.resto_dell_incontro),
-                None,
                 ("&Salva la cronaca", "Ctrl+Shift+O", self.salva_cronaca),
             )),
             ("&Mondo", (
@@ -221,6 +202,7 @@ class FinestraPrincipale(wx.Frame):
                 ("&Aspetto, colori e caratteri...", "Ctrl+P", self.cambia_aspetto),
                 ("&Conservazione dei diari...", None, self.cambia_conservazione),
                 ("&Effetti sonori...", None, self.cambia_effetti),
+                ("&Velocità di gioco...", None, self.cambia_velocita),
             )),
             ("&Aiuto", (
                 ("&Guida ai comandi", "F1", lambda: self.mostra(testi.guida(self.voci_guida()), "guida ai comandi", "guida")),
@@ -405,16 +387,19 @@ class FinestraPrincipale(wx.Frame):
             self.mondo.notifica = notifica
         return riuscito, messaggi, avvisi
 
-    def _concludi(self, testo, evento, suono, salvare=True, coda=None):
+    def _concludi(self, testo, evento, suono, salvare=True, coda=None, salvataggio=None):
         """
         La fine di un'operazione sulle polisportive: si salva subito, poi la vista mostra l'esito con
         il suo suono. Se il salvataggio non riesce, la vista aggiunge il perché, e dopo il suono
         dell'operazione si sente quello del salvataggio fallito. coda, se c'è, è un testo lungo da
         mettere dopo il perché, come la cronaca intera di un'amichevole, perché il perché resti a
-        portata di mano e non in fondo a centinaia di righe.
+        portata di mano e non in fondo a centinaia di righe. salvataggio, se c'è, è la coppia di
+        esito e messaggi di un salvataggio già fatto, come quello prima della partita dal vivo.
         """
         riuscito, messaggi = True, []
-        if salvare:
+        if salvataggio is not None:
+            riuscito, messaggi = salvataggio
+        elif salvare:
             riuscito, messaggi, _avvisi = self._salva_raccogliendo()
         if not riuscito:
             testo = "\n".join([testo, *messaggi])
@@ -674,8 +659,10 @@ class FinestraPrincipale(wx.Frame):
         """
         Un'amichevole, regole di Gabriele: il primo giocatore è un tesserato della polisportiva
         attiva, il secondo chiunque altro, e nessuno dei due deve aver già giocato un'amichevole
-        oggi. Dopo le opzioni l'incontro si gioca e si registra subito, il mondo si salva, e la
-        vista lo mostra nel modo scelto. L'esito suona quando si vede, non prima.
+        oggi. Dopo le opzioni l'incontro si gioca e si registra subito e il mondo si salva; con
+        Assisti si apre la finestra dal vivo, e quando se ne esce, o subito con Vai alla fine, la
+        vista mostra il risultato, i punti allenamento e sotto la cronaca intera. L'esito suona
+        quando si vede, non prima.
         """
         p = self._attiva()
         if p is None:
@@ -717,7 +704,11 @@ class FinestraPrincipale(wx.Frame):
         # Il tuo giocatore è tuo per definizione; l'avversario può esserlo anche lui, di una qualunque delle tue polisportive.
         fra_tuoi = avversario.id in self._tuoi()
         istante, data_simulata = adesso(), self.mondo.datetime_corrente_simulazione
-        risultato = motore.gioca_amichevole(tuo.id, avversario.id, set_al_meglio)
+        gemello = None
+        if modo == ASSISTI:
+            risultato, gemello = motore.amichevole_da_assistere(tuo.id, avversario.id, set_al_meglio, velocita=self.impostazioni["velocita_gioco"])
+        else:
+            risultato = motore.gioca_amichevole(tuo.id, avversario.id, set_al_meglio)
         id_vincitore = risultato.parti[0] if risultato.vincitore == "A" else risultato.parti[1]
         if fra_tuoi:
             esito = "amichevole_fra_tuoi"
@@ -725,50 +716,36 @@ class FinestraPrincipale(wx.Frame):
             esito = "amichevole_vinta"
         else:
             esito = "amichevole_persa"
-        self.incontro = v = AmichevoleInVista(risultato, motore.nomi(risultato), livello, esito, istante, data_simulata)
-        if modo == TUTTA_SUBITO:
-            v.resto()
-            # La cronaca intera va in coda, dopo il perché di un salvataggio non riuscito, che così resta in cima.
-            self._concludi(testi.amichevole_solo_risultato(risultato, self.mondo), v.evento_esito, esito,
-                           coda=testi.cronaca_amichevole(risultato, v.nomi, livello))
-        elif modo == SOLO_IL_RISULTATO:
-            v.resto()
-            self._concludi(testi.amichevole_solo_risultato(risultato, self.mondo), v.evento_esito, esito)
-        else:
-            self._concludi(testi.primo_testo_amichevole(v.prossimo()), "amichevole al via", "amichevole_al_via")
+        self.incontro = v = UltimaAmichevole(risultato, motore.nomi(risultato), livello, esito, istante, data_simulata)
+        # Il mondo si salva subito, anche prima della partita dal vivo: chi esce a metà la trova già registrata.
+        riuscito, messaggi, _avvisi = self._salva_raccogliendo()
+        uscita = self._dal_vivo(v, gemello) if gemello is not None else None
+        # Alt+V nella finestra dal vivo: prima i cinque guizzi del salto alla fine, poi l'esito. Se il
+        # salvataggio non è riuscito, dopo l'esito si sente quello, e i guizzi restano fuori: due suoni
+        # messi in coda insieme si sovrapporrebbero.
+        salto = uscita == ALLA_FINE and riuscito
+        # La cronaca intera va in coda, dopo il perché di un salvataggio non riuscito, che così resta in cima.
+        self._concludi(testi.amichevole_solo_risultato(risultato, self.mondo), v.evento_esito, "resto_dell_incontro" if salto else esito,
+                       coda=testi.cronaca_amichevole(risultato, v.nomi, livello), salvataggio=(riuscito, messaggi))
+        if salto:
+            suoni.in_coda(esito)
 
-    def _incontro_da_mostrare(self):
+    def _dal_vivo(self, v, gemello):
         """
-        L'amichevole che F8 e Ctrl+F8 possono ancora mostrare. Se nella sessione non ce n'è, o se è
-        già tutta mostrata, lo dice la vista con il suo suono, e restituisce None.
+        La finestra dal vivo dell'amichevole v, con l'incontro gemello da svolgere; restituisce come se
+        n'è usciti. La velocità di gioco cambiata con più e meno vale anche per le partite che seguono.
         """
-        v = self.incontro
-        if v is None:
-            self.mostra(testi.NESSUNA_AMICHEVOLE, "nessuna amichevole", "nessun_incontro")
-            return None
-        if v.finita:
-            self.mostra(testi.amichevole_finita(v.risultato, self.mondo), "amichevole finita", "incontro_finito")
-            return None
-        return v
-
-    def punto_successivo(self):
-        """F8: il testo che segue, al posto del precedente; l'ultimo, la fine dell'incontro, suona l'esito."""
-        v = self._incontro_da_mostrare()
-        if v is None:
-            return
-        testo = v.prossimo()
-        if v.finita:
-            self.mostra(testi.ultimo_testo_amichevole(testo, v.risultato, self.mondo), v.evento_esito, v.esito)
-        else:
-            self.mostra(testo, f"amichevole, punto {v.mostrati - 1}", "punto_successivo")
-
-    def resto_dell_incontro(self):
-        """Ctrl+F8: tutto quello che mancava, aperto dal risultato; dopo il suo suono, quello dell'esito."""
-        v = self._incontro_da_mostrare()
-        if v is None:
-            return
-        self.mostra(testi.resto_amichevole(v.resto(), v.risultato, self.mondo), v.evento_esito, "resto_dell_incontro")
-        suoni.in_coda(v.esito)
+        dialogo = FinestraDalVivo(self, gemello, v.nomi, v.livello, self.impostazioni["velocita_gioco"], self.impostazioni)
+        try:
+            suoni.suona("amichevole_al_via")
+            self._modale(dialogo)
+            uscita, velocita = dialogo.uscita, dialogo.velocita
+        finally:
+            dialogo.Destroy()
+        if velocita != self.impostazioni["velocita_gioco"]:
+            self.impostazioni = modulo_impostazioni.valide({**self.impostazioni, "velocita_gioco": velocita})
+            modulo_impostazioni.salva(self.impostazioni)
+        return uscita
 
     def salva_cronaca(self):
         """
@@ -820,6 +797,21 @@ class FinestraPrincipale(wx.Frame):
                 suoni.imposta_volume(self.impostazioni["volume_effetti"])
                 salvate = self._salva_impostazioni("effetti_sonori_applicati")
                 self.ultimo_evento = f"volume degli effetti {self.impostazioni['volume_effetti']}" if salvate else "volume degli effetti non salvato"
+                self.aggiorna_barra()
+            else:
+                suoni.suona("annullato")
+        finally:
+            dialogo.Destroy()
+
+    def cambia_velocita(self):
+        """La velocità di gioco della partita dal vivo, decisioni D12 e D29: vale dalla prossima partita, e anche dopo la chiusura."""
+        dialogo = VelocitaDiGioco(self, self.impostazioni["velocita_gioco"])
+        try:
+            suoni.suona("dialogo_velocita_di_gioco")
+            if self._modale(dialogo) == wx.ID_OK and dialogo.risultato is not None:
+                self.impostazioni = modulo_impostazioni.valide({**self.impostazioni, "velocita_gioco": dialogo.risultato})
+                salvate = self._salva_impostazioni("velocita_di_gioco_salvata")
+                self.ultimo_evento = f"velocità di gioco {self.impostazioni['velocita_gioco']}" if salvate else "velocità di gioco non salvata"
                 self.aggiorna_barra()
             else:
                 suoni.suona("annullato")

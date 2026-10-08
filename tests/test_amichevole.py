@@ -1,33 +1,39 @@
 """
-Test dell'amichevole nella finestra, tappa 9, sul desktop nascosto del conftest e senza suonare:
-il menu Partite, il primo giocatore scelto fra i tuoi, l'avversario fra tutti gli altri, chi ha
-già giocato oggi che non compare, le opzioni, il punto per punto fino alla fine, il resto
-dell'incontro, la cronaca tutta subito o solo il risultato, il salvataggio della cronaca in una
-cartella temporanea, con il momento dell'incontro anche se si salva dopo un avanzamento, il perché
-di un mondo non salvato prima della cronaca intera, e i suoni di ogni passo. I dialoghi sono
-sostituiti da risposte scritte.
+Test dell'amichevole nella finestra, tappe 9 e 10, sul desktop nascosto del conftest e senza suonare:
+il menu Partite, che con la decisione D29 non ha più F8 e Ctrl+F8; il primo giocatore scelto fra i
+tuoi, l'avversario fra tutti gli altri, chi ha già giocato oggi che non compare; le opzioni, con i
+due modi Assisti e Vai alla fine e la migrazione di quelli ricordati dalla tappa 9; la finestra dal
+vivo, che si apre con l'incontro già registrato e salvato, e la vista che dopo Esc, Vai alla fine o
+il risultato mostra lo stesso testo di Vai alla fine; la velocità di gioco passata al motore e
+ricordata; il salvataggio della cronaca in una cartella temporanea, con il momento dell'incontro
+anche se si salva dopo un avanzamento; il perché di un mondo non salvato prima della cronaca intera;
+i suoni di ogni passo. I dialoghi sono sostituiti da risposte scritte, la cassa della partita da una
+cassa finta.
 """
 
 import datetime
+import json
 import random
 
 import pytest
 import wx
+from aiuti_dal_vivo import CassaFinta, vieta_la_cassa_vera
 
 import archivio
 import impostazioni
 import partita
+import partita_sonora
 import testi
 from costanti import CARTELLA_CRONACHE, FILE_MONDO
-from gui import dialoghi
+from gui import dal_vivo, dialoghi
 from gui.finestra import FinestraPrincipale
 from modelli import Polisportiva
 from mondo import Mondo
 from motore import cronaca
 from utilita import adesso, adesso_utc
 
-# Le scelte delle opzioni nell'ordine del dialogo: set, modo di mostrare, livello.
-PUNTO, TUTTA, RISULTATO = 0, 1, 2
+# Le scelte delle opzioni nell'ordine del dialogo: set, modo di seguire l'incontro, livello.
+ASSISTI, FINE = 0, 1
 SINTETICA, NORMALE, TECNICA = 0, 1, 2
 
 
@@ -48,6 +54,15 @@ def mondo():
     return m
 
 
+@pytest.fixture(autouse=True)
+def cassa(monkeypatch):
+    """La cassa della partita è finta, e quella vera di Acusticator fa fallire chi la chiama."""
+    vieta_la_cassa_vera(monkeypatch)
+    finta = CassaFinta()
+    monkeypatch.setattr(partita_sonora, "Cassa", lambda: finta)
+    return finta
+
+
 @pytest.fixture
 def finestra(app_wx, mondo, monkeypatch):
     monkeypatch.setattr(wx.Dialog, "ShowModal", lambda self: wx.ID_CANCEL)
@@ -61,18 +76,30 @@ def finestra(app_wx, mondo, monkeypatch):
     wx.Yield()
 
 
-class Scelte:
-    """Le risposte scritte ai dialoghi dell'amichevole: i due giocatori, le opzioni, e gli elenchi che i dialoghi hanno mostrato."""
+def _esce_con_esc(finestra_dal_vivo):
+    finestra_dal_vivo.esci(dal_vivo.CON_ESC)
 
-    def __init__(self, monkeypatch, tuo, avversario, set_scelti=0, modo=PUNTO, livello=NORMALE, annulla_opzioni=False):
+
+class Scelte:
+    """
+    Le risposte scritte ai dialoghi dell'amichevole: i due giocatori, le opzioni, e quello che si fa
+    nella finestra dal vivo, una funzione che la riceve; in elenchi e titoli restano gli elenchi e i
+    titoli dei dialoghi, in iniziali il modo da cui il dialogo delle opzioni è partito.
+    """
+
+    def __init__(self, monkeypatch, tuo, avversario, set_scelti=0, modo=FINE, livello=NORMALE, annulla_opzioni=False, nel_vivo=_esce_con_esc):
         self.giocatori = [tuo, avversario]
         self.elenchi = []
         self.titoli = []
         self.opzioni = (set_scelti, modo, livello)
         self.annulla_opzioni = annulla_opzioni
+        self.nel_vivo = nel_vivo
+        self.iniziali = None
+        self.dal_vivo = []
         # Funzioni e non metodi legati: sulla classe del dialogo ricevono il dialogo come primo argomento.
         monkeypatch.setattr(dialoghi.SceltaGiocatore, "ShowModal", lambda dialogo: self.scegli(dialogo))
         monkeypatch.setattr(dialoghi.OpzioniAmichevole, "ShowModal", lambda dialogo: self.opzioni_scelte(dialogo))
+        monkeypatch.setattr(dal_vivo.FinestraDalVivo, "ShowModal", lambda dialogo: self.assisti(dialogo))
 
     def scegli(self, dialogo):
         self.elenchi.append([g.id for g in dialogo.tutti])
@@ -83,12 +110,18 @@ class Scelte:
         return wx.ID_OK
 
     def opzioni_scelte(self, dialogo):
+        self.iniziali = dialogo.modo.GetStringSelection()
         if self.annulla_opzioni:
             return wx.ID_CANCEL
         for controllo, scelta in zip((dialogo.set, dialogo.modo, dialogo.livello), self.opzioni, strict=True):
             controllo.SetSelection(scelta)
         dialogo.conferma()
         return wx.ID_OK
+
+    def assisti(self, dialogo):
+        self.dal_vivo.append(dialogo)
+        self.nel_vivo(dialogo)
+        return dialogo.GetReturnCode()
 
 
 def _esito_atteso(finestra, tuo):
@@ -97,83 +130,149 @@ def _esito_atteso(finestra, tuo):
     return "amichevole_vinta" if vincitore == tuo else "amichevole_persa"
 
 
+def _testo_alla_fine(finestra):
+    v = finestra.incontro
+    return f"{testi.amichevole_solo_risultato(v.risultato, finestra.mondo)}\n{testi.cronaca_amichevole(v.risultato, v.nomi, v.livello)}"
+
+
+# Il menu.
+
 def test_il_menu_partite_e_la_guida(finestra):
     titoli = [titolo for titolo, _voci in finestra.voci_menu()]
     assert titoli.index("Pa&rtite") == titoli.index("&Polisportive") + 1
     # Ogni titolo della barra ha la sua lettera: Partite usa la R, perché la P è di Polisportive.
     lettere = [titolo[titolo.index("&") + 1].lower() for titolo in titoli]
     assert len(lettere) == len(set(lettere)), lettere
-    voci = {voce[0]: voce[1] for _t, elenco in finestra.voci_menu() for voce in filter(None, elenco)}
-    assert voci["&Amichevole..."] == "Ctrl+O" and voci["&Punto successivo"] == "F8"
-    assert voci["&Resto dell'incontro"] == "Ctrl+F8" and voci["&Salva la cronaca"] == "Ctrl+Shift+O"
+    partite = dict(finestra.voci_menu())["Pa&rtite"]
+    assert [(voce[0], voce[1]) for voce in partite if voce] == [("&Amichevole...", "Ctrl+O"), ("&Salva la cronaca", "Ctrl+Shift+O")]
+    # F8 e Ctrl+F8 tornano liberi: il punto per punto è diventato la partita dal vivo.
+    tasti = [voce[1] for _t, elenco in finestra.voci_menu() for voce in filter(None, elenco)]
+    assert "F8" not in tasti and "Ctrl+F8" not in tasti
     guida = testi.guida(finestra.voci_guida())
-    assert "Menu Partite: Amichevole, Ctrl+O; Punto successivo, F8; Resto dell'incontro, Ctrl+F8; Salva la cronaca, Ctrl+Maiusc+O." in guida
+    assert "Menu Partite: Amichevole, Ctrl+O; Salva la cronaca, Ctrl+Maiusc+O." in guida
+    assert "F8" not in guida and "Punto successivo" not in guida
 
 
-def test_senza_un_amichevole_i_comandi_lo_dicono(finestra, suonati):
-    for comando in (finestra.punto_successivo, finestra.resto_dell_incontro, finestra.salva_cronaca):
-        finestra.vista.ChangeValue("")
-        comando()
-        assert finestra.vista.GetValue() == testi.NESSUNA_AMICHEVOLE
-    assert suonati == ["nessun_incontro"] * 3
-    assert finestra.ultimo_evento == "nessuna amichevole"
+def test_senza_un_amichevole_salva_la_cronaca_lo_dice(finestra, suonati):
+    finestra.salva_cronaca()
+    assert finestra.vista.GetValue() == testi.NESSUNA_AMICHEVOLE
+    assert suonati == ["nessun_incontro"] and finestra.ultimo_evento == "nessuna amichevole"
 
 
-def test_il_punto_per_punto_fino_alla_fine(finestra, suonati, monkeypatch, cartella_di_prova):
+# Assisti: la finestra dal vivo.
+
+def test_assisti_apre_la_finestra_dal_vivo_con_l_incontro_gia_registrato(finestra, suonati, monkeypatch, cartella_di_prova, cassa):
     mondo = finestra.mondo
-    scelte = Scelte(monkeypatch, 2, 7)
+    visto = {}
+
+    def nel_vivo(f):
+        # L'incontro è già giocato, registrato e salvato prima che la partita cominci.
+        visto["partite"] = mondo.giocatori[2].partitevinte + mondo.giocatori[2].partiteperse
+        visto["salvati"] = {g["id"]: g for g in archivio.leggi(cartella_di_prova / FILE_MONDO)["mondo"]["giocatori"]}
+        visto["velocita"] = f.velocita
+        f.al_prosegui()
+        f.al_prosegui()
+        f.al_prosegui()
+        f.esci(dal_vivo.CON_ESC)
+
+    scelte = Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=nel_vivo)
     finestra.amichevole()
-    # Il tuo giocatore si sceglie fra i tuoi tesserati, l'avversario fra tutti gli altri.
     assert scelte.elenchi[0] == [2, 5, 9]
     assert scelte.elenchi[1] == sorted(gid for gid in mondo.giocatori if gid != 2)
-    assert scelte.titoli == ["Amichevole, il tuo giocatore di Club Di Prova", f"Amichevole, l'avversario di {testi.nome_completo(mondo.giocatori[2])}"]
-    assert suonati == ["dialogo_amichevole", "dialogo_avversario", "dialogo_opzioni_amichevole", "amichevole_al_via"]
-    v = finestra.incontro
-    primo = finestra.vista.GetValue()
-    assert primo.startswith("Inizio dell'incontro: ") and primo.endswith(testi.AVANTI_UN_PUNTO)
-    assert finestra.ultimo_evento == "amichevole al via"
-    # L'incontro è già giocato, registrato e salvato: il diario e il salvataggio lo sanno.
-    assert mondo.giocatori[2].partitevinte + mondo.giocatori[2].partiteperse == 1
-    salvati = {g["id"]: g for g in archivio.leggi(cartella_di_prova / FILE_MONDO)["mondo"]["giocatori"]}
-    assert salvati[2]["ultima_amichevole"] == salvati[7]["ultima_amichevole"] == mondo.datetime_corrente_simulazione.isoformat()
-    testi_visti = [primo]
-    while not v.finita:
-        finestra.punto_successivo()
-        testi_visti.append(finestra.vista.GetValue())
-    assert len(testi_visti) == len(v.testi) == v.risultato.incontro.punti_giocati + 2
-    assert all(t.startswith("Set ") for t in testi_visti[1:-1])
+    assert len(scelte.dal_vivo) == 1 and scelte.dal_vivo[0].uscita == dal_vivo.CON_ESC
+    assert visto["partite"] == 1 and visto["velocita"] == 1
+    assert visto["salvati"][2]["ultima_amichevole"] == visto["salvati"][7]["ultima_amichevole"] == mondo.datetime_corrente_simulazione.isoformat()
+    # Il gemello rigioca lo stesso incontro registrato.
+    assert scelte.dal_vivo[0].cronologia.incontro.seme == finestra.incontro.risultato.seme
+    esito = _esito_atteso(finestra, 2)
+    assert suonati == ["dialogo_amichevole", "dialogo_avversario", "dialogo_opzioni_amichevole", "amichevole_al_via", "riscaldamento_saltato", esito]
+    # Uscendo, la vista mostra lo stesso testo di Vai alla fine, aperto dal risultato.
+    testo = finestra.vista.GetValue()
+    assert testo == _testo_alla_fine(finestra)
+    assert testo.startswith("Vince ") and "Punti allenamento: " in testo.splitlines()[1] and "\n\n" not in testo
     assert finestra.ultimo_evento.startswith("vince ")
-    ultimo = testi_visti[-1]
-    # Anche l'ultimo testo, come vuole D17, si apre con il dato essenziale: il risultato, non il fischio.
-    assert ultimo.splitlines()[0] == testi.risultato_amichevole(v.risultato, mondo) and ultimo.startswith("Vince ")
-    assert "Fine dell'incontro: vince " in ultimo and "Punti allenamento: " in ultimo and ultimo.endswith(testi.SALVA_LA_CRONACA)
-    assert not any("\n\n" in t for t in testi_visti)
-    assert suonati[4:] == ["punto_successivo"] * (len(v.testi) - 2) + [_esito_atteso(finestra, 2)]
-    # Finito l'incontro, F8 e Ctrl+F8 lo dicono.
-    finestra.punto_successivo()
-    assert finestra.vista.GetValue().startswith("L'amichevole è già tutta mostrata. Vince ")
-    finestra.resto_dell_incontro()
-    assert suonati[-2:] == ["incontro_finito", "incontro_finito"]
-    # La cronaca si salva nella cartella delle cronache, al livello scelto.
-    finestra.salva_cronaca()
-    file = list((cartella_di_prova / CARTELLA_CRONACHE).iterdir())
-    assert len(file) == 1
-    assert finestra.vista.GetValue() == f"La cronaca normale dell'amichevole fra {v.nomi['A'].testo} e {v.nomi['B'].testo} è nel file {file[0]}."
-    assert suonati[-1] == "cronaca_salvata" and finestra.ultimo_evento == "cronaca salvata"
-    scritto = file[0].read_text(encoding="utf-8")
-    assert scritto.startswith(f"Cronaca dell'incontro fra {v.nomi['A'].testo} e {v.nomi['B'].testo}, singolare al meglio dei 3 set.")
-    assert "Il seme della partita è " in scritto and "Fine dell'incontro: vince " in scritto and "\n\n" not in scritto
+    assert len(cassa.buffer) == 2 and cassa.accese == 0
+
+
+def test_vai_alla_fine_dalla_finestra_dal_vivo(finestra, suonati, monkeypatch, cassa):
+    def nel_vivo(f):
+        f.al_prosegui()
+        f.fino_a_fine_set()
+        f.alla_fine.Command(wx.CommandEvent(wx.wxEVT_BUTTON, f.alla_fine.GetId()))
+
+    Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=nel_vivo)
+    finestra.amichevole()
+    # Alt+F mentre suona il riscaldamento ha il suo suono; poi i guizzi del salto alla fine, e l'esito; il suono della partita è fermo.
+    assert suonati[-4:] == ["amichevole_al_via", "dal_vivo_fino_a_fine_set", "resto_dell_incontro", _esito_atteso(finestra, 2)]
+    assert finestra.vista.GetValue() == _testo_alla_fine(finestra)
+    assert cassa.accese == 0
+
+
+def test_la_velocita_cambiata_dal_vivo_si_ricorda(finestra, suonati, monkeypatch, cartella_di_prova):
+    def nel_vivo(f):
+        for _ in range(2):
+            evento = wx.KeyEvent(wx.wxEVT_CHAR_HOOK)
+            evento.SetKeyCode(ord("+"))
+            evento.SetUnicodeKey(ord("+"))
+            f._tasto(evento)
+        f.esci(dal_vivo.CON_ESC)
+
+    Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=nel_vivo)
+    finestra.amichevole()
+    assert suonati.count("dal_vivo_piu_veloce") == 2
+    assert finestra.impostazioni["velocita_gioco"] == 3 and impostazioni.carica()["velocita_gioco"] == 3
+    # La prossima partita dal vivo parte a quella velocità, e il motore la usa.
+    finestra.mondo.datetime_corrente_simulazione += datetime.timedelta(days=1)
+    visto = {}
+
+    def guarda(f):
+        f.al_prosegui()
+        visto["velocita"] = (f.velocita, f.cronologia.incontro.regia.velocita)
+        f.esci(dal_vivo.CON_ESC)
+
+    Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=guarda)
+    finestra.amichevole()
+    assert visto["velocita"] == (3, 3.0)
+
+
+def test_l_amichevole_da_assistere_nel_motore(mondo):
+    motore = partita.MotorePartita(mondo)
+    risultato, gemello = motore.amichevole_da_assistere(2, 7, 3, seme=99, velocita=5)
+    assert risultato.seme == gemello.seme == 99 and gemello.regia.velocita == 5.0
+    assert risultato.registrazione and mondo.giocatori[7].ultima_amichevole == mondo.datetime_corrente_simulazione
+    # Il gemello nasce prima della registrazione e rigioca gli stessi punti, a un'altra velocità.
+    rigiocato = gemello.gioca()
+    assert rigiocato.set == risultato.set and [p.esito for p in rigiocato.punti] == [p.esito for p in risultato.punti]
+    assert rigiocato.durata_simulata < risultato.durata_simulata
+    with pytest.raises(ValueError, match="già giocato"):
+        motore.amichevole_da_assistere(2, 5, 3)
+
+
+# Vai alla fine.
+
+def test_vai_alla_fine_mostra_risultato_e_cronaca(finestra, suonati, monkeypatch, cartella_di_prova, cassa):
+    mondo = finestra.mondo
+    scelte = Scelte(monkeypatch, 2, 7, modo=FINE)
+    finestra.amichevole()
+    assert scelte.dal_vivo == [] and cassa.buffer == []
+    assert scelte.titoli == ["Amichevole, il tuo giocatore di Club Di Prova", f"Amichevole, l'avversario di {testi.nome_completo(mondo.giocatori[2])}"]
+    assert suonati == ["dialogo_amichevole", "dialogo_avversario", "dialogo_opzioni_amichevole", _esito_atteso(finestra, 2)]
+    testo = finestra.vista.GetValue()
+    assert testo == _testo_alla_fine(finestra)
+    assert testo.splitlines()[0] == testi.risultato_amichevole(finestra.incontro.risultato, mondo)
+    assert "Battuta destra di " in testo or "Battuta sinistra di " in testo
+    salvati = {g["id"]: g for g in archivio.leggi(cartella_di_prova / FILE_MONDO)["mondo"]["giocatori"]}
+    assert salvati[2]["ultima_amichevole"] == mondo.datetime_corrente_simulazione.isoformat()
 
 
 def test_un_amichevole_al_giorno_nella_finestra(finestra, suonati, monkeypatch):
     mondo = finestra.mondo
-    Scelte(monkeypatch, 5, 9, modo=RISULTATO)
+    Scelte(monkeypatch, 5, 9)
     finestra.amichevole()
     # Fra due tuoi tesserati l'esito è la stretta di mano.
     assert suonati[-1] == "amichevole_fra_tuoi"
-    assert finestra.incontro.finita
     testo = finestra.vista.GetValue()
-    assert testo.startswith("Vince ") and testo.splitlines()[1].startswith("Punti allenamento: ") and testo.endswith(testi.SALVA_LA_CRONACA)
+    assert testo.startswith("Vince ") and testo.splitlines()[1].startswith("Punti allenamento: ")
     # Chi ha giocato oggi non compare più negli elenchi.
     scelte = Scelte(monkeypatch, 2, 3, annulla_opzioni=True)
     finestra.amichevole()
@@ -197,9 +296,8 @@ def test_un_amichevole_al_giorno_nella_finestra(finestra, suonati, monkeypatch):
     assert suonati[-2:] == ["dialogo_amichevole", "nessun_giocatore_oggi"]
 
 
-def test_tutta_subito_e_il_resto_dell_incontro(finestra, suonati, monkeypatch, cartella_di_prova):
-    mondo = finestra.mondo
-    Scelte(monkeypatch, 9, 11, set_scelti=1, modo=TUTTA, livello=SINTETICA)
+def test_al_meglio_dei_5_e_la_cronaca_salvata(finestra, suonati, monkeypatch, cartella_di_prova):
+    Scelte(monkeypatch, 9, 11, set_scelti=1, modo=FINE, livello=SINTETICA)
     finestra.amichevole()
     v = finestra.incontro
     assert v.risultato.formato.set_al_meglio == 5 and v.livello == cronaca.SINTETICA
@@ -207,48 +305,23 @@ def test_tutta_subito_e_il_resto_dell_incontro(finestra, suonati, monkeypatch, c
     assert testo.startswith("Vince ") and "Amichevole al meglio dei 5 set." in testo.splitlines()[0]
     assert "Battuta di " in testo and "\n\n" not in testo
     assert suonati[-1] == _esito_atteso(finestra, 9)
-    finestra.punto_successivo()
-    assert suonati[-1] == "incontro_finito"
     finestra.salva_cronaca()
-    file = next((cartella_di_prova / CARTELLA_CRONACHE).iterdir())
-    assert "La cronaca sintetica dell'amichevole" in finestra.vista.GetValue()
-    assert "Battuta di " in file.read_text(encoding="utf-8")
-    # Un'altra amichevole, il giorno dopo: due punti con F8, poi tutto il resto con Ctrl+F8.
-    mondo.datetime_corrente_simulazione += datetime.timedelta(days=1)
-    Scelte(monkeypatch, 2, 11, livello=TECNICA)
-    finestra.amichevole()
-    finestra.punto_successivo()
-    finestra.punto_successivo()
-    assert finestra.ultimo_evento == "amichevole, punto 2"
-    finestra.resto_dell_incontro()
-    v = finestra.incontro
-    testo = finestra.vista.GetValue()
-    assert v.finita and testo.startswith("Vince ") and "(secondo " in testo
-    assert testo.splitlines()[0] == testi.risultato_amichevole(v.risultato, mondo)
-    assert suonati[-4:] == ["punto_successivo", "punto_successivo", "resto_dell_incontro", _esito_atteso(finestra, 2)]
+    file = list((cartella_di_prova / CARTELLA_CRONACHE).iterdir())
+    assert len(file) == 1
+    assert finestra.vista.GetValue() == f"La cronaca sintetica dell'amichevole fra {v.nomi['A'].testo} e {v.nomi['B'].testo} è nel file {file[0]}."
+    assert suonati[-1] == "cronaca_salvata" and finestra.ultimo_evento == "cronaca salvata"
+    scritto = file[0].read_text(encoding="utf-8")
+    assert scritto.startswith(f"Cronaca dell'incontro fra {v.nomi['A'].testo} e {v.nomi['B'].testo}, singolare al meglio dei 5 set.")
+    assert "Il seme della partita è " in scritto and "Fine dell'incontro: vince " in scritto and "\n\n" not in scritto
 
 
-def test_la_cronaca_che_non_si_salva_e_il_mondo_che_non_si_salva(finestra, suonati, monkeypatch):
+@pytest.mark.parametrize("modo", [ASSISTI, FINE])
+def test_il_mondo_che_non_si_salva_e_la_cronaca_che_non_si_salva(finestra, suonati, monkeypatch, modo):
     def guasto(*_args, **_kwargs):
         raise OSError("disco pieno")
 
     monkeypatch.setattr(archivio, "scrivi", guasto)
-    Scelte(monkeypatch, 2, 4)
-    finestra.amichevole()
-    assert suonati[-2:] == ["amichevole_al_via", "salvataggio_non_riuscito"]
-    assert finestra.vista.GetValue().endswith("Salvataggio non riuscito: disco pieno. Il salvataggio precedente è rimasto com'era.")
-    monkeypatch.setattr(cronaca, "salva", guasto)
-    finestra.salva_cronaca()
-    assert finestra.vista.GetValue() == "La cronaca dell'amichevole non si è potuta salvare: disco pieno."
-    assert suonati[-1] == "cronaca_non_salvata"
-
-
-def test_tutta_subito_col_mondo_che_non_si_salva(finestra, suonati, monkeypatch):
-    def guasto(*_args, **_kwargs):
-        raise OSError("disco pieno")
-
-    monkeypatch.setattr(archivio, "scrivi", guasto)
-    Scelte(monkeypatch, 2, 4, modo=TUTTA)
+    Scelte(monkeypatch, 2, 4, modo=modo)
     finestra.amichevole()
     v = finestra.incontro
     righe = finestra.vista.GetValue().splitlines()
@@ -257,23 +330,23 @@ def test_tutta_subito_col_mondo_che_non_si_salva(finestra, suonati, monkeypatch)
     assert righe[:len(testa)] == testa
     assert righe[len(testa)] == "Salvataggio non riuscito: disco pieno. Il salvataggio precedente è rimasto com'era."
     assert righe[len(testa) + 1:] == testi.cronaca_amichevole(v.risultato, v.nomi, v.livello).splitlines()
-    assert len(righe) > len(testa) + 20
     assert suonati[-2:] == [_esito_atteso(finestra, 2), "salvataggio_non_riuscito"]
+    monkeypatch.setattr(cronaca, "salva", guasto)
+    finestra.salva_cronaca()
+    assert finestra.vista.GetValue() == "La cronaca dell'amichevole non si è potuta salvare: disco pieno."
+    assert suonati[-1] == "cronaca_non_salvata"
 
 
 @pytest.mark.parametrize("livello", [SINTETICA, TECNICA])
-def test_l_ultimo_punto_si_apre_col_risultato_a_ogni_livello(finestra, monkeypatch, livello):
-    Scelte(monkeypatch, 2, 7, livello=livello)
+def test_il_testo_si_apre_col_risultato_a_ogni_livello(finestra, monkeypatch, livello):
+    Scelte(monkeypatch, 2, 7, modo=ASSISTI, livello=livello)
     finestra.amichevole()
-    v = finestra.incontro
-    while not v.finita:
-        finestra.punto_successivo()
-    assert finestra.vista.GetValue().splitlines()[0] == testi.risultato_amichevole(v.risultato, finestra.mondo)
+    assert finestra.vista.GetValue().splitlines()[0] == testi.risultato_amichevole(finestra.incontro.risultato, finestra.mondo)
 
 
 def test_la_cronaca_salvata_dopo_un_avanzamento_dice_quando_si_e_giocata(finestra, monkeypatch, cartella_di_prova):
     mondo = finestra.mondo
-    Scelte(monkeypatch, 2, 7, modo=RISULTATO)
+    Scelte(monkeypatch, 2, 7)
     prima = adesso()
     finestra.amichevole()
     dopo = adesso()
@@ -305,19 +378,22 @@ def test_senza_polisportiva_o_senza_tesserati(finestra, suonati):
     assert suonati == ["rosa_vuota", "nessuna_polisportiva_attiva"]
 
 
+# Il dialogo delle opzioni e la migrazione.
+
 def test_il_dialogo_delle_opzioni(app_wx, mondo):
     dialogo = dialoghi.OpzioniAmichevole(None, mondo, mondo.giocatori[2], mondo.giocatori[3])
     try:
         assert dialogo.set.GetStringSelection() == "Al meglio di 3 set"
-        assert dialogo.modo.GetStringSelection() == "Un punto alla volta"
+        assert [dialogo.modo.GetString(i) for i in range(dialogo.modo.GetCount())] == ["Assisti", "Vai alla fine"]
+        assert dialogo.modo.GetStringSelection() == "Assisti"
         assert dialogo.livello.GetStringSelection() == "Normale"
         dialogo.conferma()
-        assert dialogo.risultato == (3, dialoghi.UN_PUNTO_ALLA_VOLTA, cronaca.NORMALE)
+        assert dialogo.risultato == (3, dialoghi.ASSISTI, cronaca.NORMALE)
         dialogo.set.SetSelection(1)
-        dialogo.modo.SetSelection(2)
+        dialogo.modo.SetSelection(1)
         dialogo.livello.SetSelection(2)
         dialogo.conferma()
-        assert dialogo.risultato == (5, dialoghi.SOLO_IL_RISULTATO, cronaca.TECNICA)
+        assert dialogo.risultato == (5, dialoghi.VAI_ALLA_FINE, cronaca.TECNICA)
         assert dialogo.GetReturnCode() == wx.ID_OK
     finally:
         dialogo.Destroy()
@@ -325,16 +401,33 @@ def test_il_dialogo_delle_opzioni(app_wx, mondo):
 
 def test_le_opzioni_dell_amichevole_si_ricordano(app_wx, mondo):
     # Il dialogo riparte dalle ultime scelte, e le impostazioni le conservano anche dopo la chiusura.
-    dialogo = dialoghi.OpzioniAmichevole(None, mondo, mondo.giocatori[2], mondo.giocatori[3], (5, dialoghi.TUTTA_SUBITO, cronaca.SINTETICA))
+    dialogo = dialoghi.OpzioniAmichevole(None, mondo, mondo.giocatori[2], mondo.giocatori[3], (5, dialoghi.VAI_ALLA_FINE, cronaca.SINTETICA))
     try:
         assert dialogo.set.GetStringSelection() == "Al meglio di 5 set"
-        assert dialogo.modo.GetStringSelection() == "Tutta subito"
+        assert dialogo.modo.GetStringSelection() == "Vai alla fine"
         assert dialogo.livello.GetStringSelection() == "Sintetica"
     finally:
         dialogo.Destroy()
-    salvate = impostazioni.valide({"amichevole_set": 5, "amichevole_modo": "risultato", "amichevole_livello": "tecnica"})
-    assert (salvate["amichevole_set"], salvate["amichevole_modo"], salvate["amichevole_livello"]) == (5, "risultato", "tecnica")
+    salvate = impostazioni.valide({"amichevole_set": 5, "amichevole_modo": "fine", "amichevole_livello": "tecnica"})
+    assert (salvate["amichevole_set"], salvate["amichevole_modo"], salvate["amichevole_livello"]) == (5, "fine", "tecnica")
     rovinate = impostazioni.valide({"amichevole_set": 4, "amichevole_modo": "boh", "amichevole_livello": True})
-    assert (rovinate["amichevole_set"], rovinate["amichevole_modo"], rovinate["amichevole_livello"]) == (3, "punto", "normale")
-    assert set(impostazioni.MODI_DELL_AMICHEVOLE) == {chiave for chiave, _nome in dialoghi.MODI_DI_MOSTRARE}
+    assert (rovinate["amichevole_set"], rovinate["amichevole_modo"], rovinate["amichevole_livello"]) == (3, "assisti", "normale")
+    assert set(impostazioni.MODI_DELL_AMICHEVOLE) == {chiave for chiave, _nome in dialoghi.MODI_DI_SEGUIRE}
     assert set(impostazioni.LIVELLI_DELL_AMICHEVOLE) == {chiave for chiave, _nome in dialoghi.LIVELLI_DI_CRONACA}
+
+
+@pytest.mark.parametrize(("di_prima", "adesso_vale"), [("punto", "assisti"), ("tutta", "fine"), ("risultato", "fine"), ("assisti", "assisti"),
+                                                      ("fine", "fine"), (None, "assisti"), (["punto"], "assisti")])
+def test_i_modi_ricordati_dalla_tappa_9_si_migrano(di_prima, adesso_vale):
+    assert impostazioni.valide({"amichevole_modo": di_prima})["amichevole_modo"] == adesso_vale
+
+
+def test_il_file_delle_impostazioni_di_prima_si_migra(finestra, monkeypatch, cartella_di_prova):
+    # Il file scritto dalla tappa 9, con un punto alla volta: il dialogo parte da Assisti, e il file si riscrive migrato.
+    (cartella_di_prova / impostazioni.FILE_IMPOSTAZIONI).write_text(json.dumps({**impostazioni.PREDEFINITE, "amichevole_modo": "tutta"}), encoding="utf-8")
+    finestra.impostazioni = impostazioni.carica()
+    assert finestra.impostazioni["amichevole_modo"] == "fine"
+    scelte = Scelte(monkeypatch, 2, 7, modo=ASSISTI)
+    finestra.amichevole()
+    assert scelte.iniziali == "Vai alla fine"
+    assert json.loads((cartella_di_prova / impostazioni.FILE_IMPOSTAZIONI).read_text(encoding="utf-8"))["amichevole_modo"] == "assisti"

@@ -18,9 +18,11 @@ o torna pieno mentre si scrive lo fa sentire, perché lo screen reader non lo le
 sostituisce il campanello di Windows, che diceva soltanto che qualcosa non andava. C'è anche il
 dialogo del volume degli effetti, che fa sentire il suono di prova a ogni ritocco.
 Dal 2026-10-08, con l'amichevole della tappa 9, c'è il dialogo delle sue opzioni, scelte di
-Gabriele: al meglio di 3 o di 5 set, come mostrare la cronaca nella vista e il suo livello, che è
+Gabriele: al meglio di 3 o di 5 set, come seguire l'incontro e il livello della cronaca, che è
 anche quello del file della cronaca. La scelta dei due giocatori usa la scelta del giocatore di
-sempre, con l'elenco ristretto a chi oggi può giocare.
+sempre, con l'elenco ristretto a chi oggi può giocare. Con la decisione D29 i modi diventano
+Assisti e Vai alla fine, e arriva il dialogo della velocità di gioco; la finestra dal vivo sta in
+gui/dal_vivo.py.
 """
 
 import contextlib
@@ -44,11 +46,11 @@ PAYPAL_URL = "https://paypal.me/GabrieleBattaglia780"
 # Quanto aspettano, dopo l'ultima cifra scritta o l'ultima freccia, il suono di prova del volume e il
 # tic della probabilità d'ingaggio: così non suonano a ogni cifra.
 RITARDO_DEL_SUONO_AL_VOLO = 350
-# Come la vista mostra un'amichevole, con le parole del dialogo delle opzioni; il primo è il predefinito.
-UN_PUNTO_ALLA_VOLTA = "punto"
-TUTTA_SUBITO = "tutta"
-SOLO_IL_RISULTATO = "risultato"
-MODI_DI_MOSTRARE = ((UN_PUNTO_ALLA_VOLTA, "Un punto alla volta"), (TUTTA_SUBITO, "Tutta subito"), (SOLO_IL_RISULTATO, "Solo il risultato"))
+# I due modi di seguire un'amichevole della decisione D29, con le parole del dialogo delle opzioni; il
+# primo è il predefinito. Assisti apre la finestra dal vivo, Vai alla fine mostra il risultato e la cronaca.
+ASSISTI = "assisti"
+VAI_ALLA_FINE = "fine"
+MODI_DI_SEGUIRE = ((ASSISTI, "Assisti"), (VAI_ALLA_FINE, "Vai alla fine"))
 # I livelli della cronaca, con la normale come predefinita.
 LIVELLI_DI_CRONACA = ((cronaca.SINTETICA, "Sintetica"), (cronaca.NORMALE, "Normale"), (cronaca.TECNICA, "Tecnica"))
 
@@ -932,11 +934,11 @@ class Vendite(_Dialogo):
 class OpzioniAmichevole(_Dialogo):
     """
     Le opzioni dell'amichevole fra due giocatori già scelti: al meglio di 3 o di 5 set, come
-    mostrare la cronaca, un punto alla volta, tutta subito o solo il risultato, e il suo livello,
-    sintetica, normale o tecnica, che vale anche per il file. I predefiniti sono quelli scelti da
-    Gabriele: 3 set, un punto alla volta, normale; dall'8 ottobre 2026 il dialogo riparte dalle
-    ultime scelte, che riceve in iniziali come terna di set, modo e livello. In risultato restano le
-    tre scelte.
+    seguirla, e il livello della cronaca, sintetica, normale o tecnica, che vale anche per il file.
+    Con la decisione D29 i modi di seguirla sono due: Assisti, la partita dal vivo, e Vai alla fine,
+    il risultato con la cronaca intera sotto. I predefiniti sono quelli scelti da Gabriele: 3 set,
+    Assisti, normale; dall'8 ottobre 2026 il dialogo riparte dalle ultime scelte, che riceve in
+    iniziali come terna di set, modo e livello. In risultato restano le tre scelte.
     """
 
     def __init__(self, genitore, mondo, primo, secondo, iniziali=None):
@@ -946,12 +948,12 @@ class OpzioniAmichevole(_Dialogo):
         self.sizer.Add(wx.StaticText(self.pannello, label=chi), 0, wx.ALL, 8)
         self.etichetta("&Set dell'incontro")
         self.set = self.aggiungi(wx.Choice(self.pannello, choices=[f"Al meglio di {n} set" for n in SET_AMMESSI]))
-        self.etichetta("&Come mostrare la cronaca")
-        self.modo = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome in MODI_DI_MOSTRARE]))
+        self.etichetta("&Come seguire l'incontro")
+        self.modo = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome in MODI_DI_SEGUIRE]))
         self.etichetta("&Livello della cronaca, anche per il file")
         self.livello = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome in LIVELLI_DI_CRONACA]))
-        set_al_meglio, modo, livello = iniziali or (SET_AMMESSI[0], UN_PUNTO_ALLA_VOLTA, cronaca.NORMALE)
-        modi = [chiave for chiave, _nome in MODI_DI_MOSTRARE]
+        set_al_meglio, modo, livello = iniziali or (SET_AMMESSI[0], ASSISTI, cronaca.NORMALE)
+        modi = [chiave for chiave, _nome in MODI_DI_SEGUIRE]
         livelli = [chiave for chiave, _nome in LIVELLI_DI_CRONACA]
         self.set.SetSelection(SET_AMMESSI.index(set_al_meglio) if set_al_meglio in SET_AMMESSI else 0)
         self.modo.SetSelection(modi.index(modo) if modo in modi else 0)
@@ -962,7 +964,31 @@ class OpzioniAmichevole(_Dialogo):
         self.set.SetFocus()
 
     def conferma(self, event=None):
-        self.risultato = (SET_AMMESSI[self.set.GetSelection()], MODI_DI_MOSTRARE[self.modo.GetSelection()][0], LIVELLI_DI_CRONACA[self.livello.GetSelection()][0])
+        self.risultato = (SET_AMMESSI[self.set.GetSelection()], MODI_DI_SEGUIRE[self.modo.GetSelection()][0], LIVELLI_DI_CRONACA[self.livello.GetSelection()][0])
+        self.chiudi(wx.ID_OK)
+
+
+class VelocitaDiGioco(_Dialogo):
+    """
+    La velocità di gioco della partita dal vivo, decisioni D12 e D29, sul modello della velocità di
+    combattimento di Terminal Beast, adattato: là un numero di millesimi fra un'azione e l'altra, qui
+    un numero da 1 a 8 che divide le pause e la procedura dell'arbitro, mai l'azione. In risultato
+    resta la velocità scelta.
+    """
+
+    def __init__(self, genitore, velocita):
+        super().__init__(genitore, "Velocità di gioco")
+        self.risultato = None
+        self.sizer.Add(wx.StaticText(self.pannello, label=testi.SPIEGAZIONE_VELOCITA), 0, wx.ALL, 8)
+        self.etichetta(f"&Velocità di gioco, da {modulo_impostazioni.VELOCITA_MINIMA} a {modulo_impostazioni.VELOCITA_MASSIMA}")
+        self.velocita = self.aggiungi(wx.SpinCtrl(self.pannello, min=modulo_impostazioni.VELOCITA_MINIMA, max=modulo_impostazioni.VELOCITA_MASSIMA, initial=velocita))
+        salva, _annulla = self.pulsanti((wx.ID_OK, "&Salva"), (wx.ID_CANCEL, "Annulla"))
+        salva.Bind(wx.EVT_BUTTON, self.conferma)
+        self.completa((440, 240))
+        self.velocita.SetFocus()
+
+    def conferma(self, event=None):
+        self.risultato = self.velocita.GetValue()
         self.chiudi(wx.ID_OK)
 
 

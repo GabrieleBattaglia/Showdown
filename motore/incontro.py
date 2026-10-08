@@ -176,9 +176,14 @@ class Incontro:
     sostituzioni in corsa non si vedono: è uno scostamento voluto dalla regola IBSA 22.8,
     decisione D26 di Gabriele. Una riserva gioca soltanto se la squadra la mette fra i primi tre,
     e allora gioca tutta la gara.
+    velocita è la velocità di gioco della decisione D29, che in modalità completa divide le pause e
+    la procedura dell'arbitro e mai l'azione; la partita dal vivo la cambia anche a metà incontro con
+    imposta_velocita, e il cambio vale dal momento che segue. Non tocca né i punti né il loro ordine:
+    con lo stesso seme l'incontro dà lo stesso risultato a ogni velocità.
     """
 
-    def __init__(self, parte_a, parte_b, formato, *, seme=None, dettaglio=COMPLETO, taratura=TARATURA, riscaldamento=True, timeout=True, dado=None):
+    def __init__(self, parte_a, parte_b, formato, *, seme=None, dettaglio=COMPLETO, taratura=TARATURA, riscaldamento=True, timeout=True, dado=None,
+                 velocita=1.0):
         if dettaglio not in (ESSENZIALE, COMPLETO):
             raise ValueError(f"Dettaglio sconosciuto: {dettaglio}.")
         self.formato = formato
@@ -217,6 +222,7 @@ class Incontro:
         self.regia = None
         if self.completo:
             self.regia = Regia(self.rng_scena, t, formato, self.campo)
+            self.imposta_velocita(velocita)
         # Lo stato dell'arbitro.
         self.set_n = 0
         self.punteggio = [0, 0]
@@ -245,6 +251,14 @@ class Incontro:
         self._iniziato = False
 
     # Lo stato, per la live e la barra braille.
+
+    def imposta_velocita(self, velocita):
+        """La velocità di gioco da qui in avanti, maggiore di zero; in modalità essenziale non ci sono tempi, e non cambia niente."""
+        velocita = float(velocita)
+        if not velocita > 0:
+            raise ValueError("La velocità di gioco deve essere maggiore di zero.")
+        if self.regia is not None:
+            self.regia.velocita = velocita
 
     def stato(self):
         battitore = None

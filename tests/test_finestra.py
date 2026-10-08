@@ -71,7 +71,7 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
     con_dialogo = {finestra.scheda_giocatore, finestra.diario_giocatore, finestra.cerca, finestra.cambia_aspetto, finestra.cambia_conservazione,
                    finestra.caffe, finestra.esci, finestra.vai_alla_vista, finestra.vai_alla_barra, finestra.nuova_polisportiva,
                    finestra.cambia_polisportiva, finestra.mercato, finestra.svincola, finestra.password_polisportiva, finestra.chiudi_polisportiva,
-                   finestra.cambia_effetti, finestra.amichevole}
+                   finestra.cambia_effetti, finestra.cambia_velocita, finestra.amichevole}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -83,9 +83,9 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
             assert finestra.vista.GetValue(), testo
             assert "\n\n" not in finestra.vista.GetValue(), testo
             provate += 1
-    # Le voci delle partite, senza un'amichevole nella sessione, lo dicono nella vista.
-    assert provate == 25
-    assert finestra.comandi == 25
+    # Salva la cronaca, senza un'amichevole nella sessione, lo dice nella vista.
+    assert provate == 23
+    assert finestra.comandi == 23
 
 
 def test_i_menu_hanno_tasti_e_lettere_non_ripetuti(finestra):
@@ -555,7 +555,41 @@ def test_annullare_un_dialogo_suona(finestra, suonati):
     finestra.cerca()
     finestra.cambia_aspetto()
     finestra.cambia_effetti()
-    assert suonati == ["dialogo_scheda_giocatore", "annullato", "dialogo_ricerca", "annullato", "dialogo_aspetto", "annullato", "dialogo_effetti_sonori", "annullato"]
+    finestra.cambia_velocita()
+    assert suonati == ["dialogo_scheda_giocatore", "annullato", "dialogo_ricerca", "annullato", "dialogo_aspetto", "annullato", "dialogo_effetti_sonori", "annullato",
+                       "dialogo_velocita_di_gioco", "annullato"]
+
+
+def test_la_velocita_di_gioco(finestra, suonati, monkeypatch, cartella_di_prova):
+    # Sul modello di Terminal Beast: un numero solo, che si salva nelle impostazioni e vale per tutte le partite dal vivo.
+    def scegli(velocita):
+        def mostra(self):
+            assert self.velocita.GetValue() == finestra.impostazioni["velocita_gioco"]
+            assert (self.velocita.GetMin(), self.velocita.GetMax()) == (impostazioni.VELOCITA_MINIMA, impostazioni.VELOCITA_MASSIMA)
+            self.velocita.SetValue(velocita)
+            self.conferma()
+            return wx.ID_OK
+        return mostra
+
+    voci = {voce[0]: voce for _t, elenco in finestra.voci_menu() for voce in filter(None, elenco)}
+    assert voci["&Velocità di gioco..."][1] is None
+    assert impostazioni.carica()["velocita_gioco"] == 1
+    monkeypatch.setattr(dialoghi.VelocitaDiGioco, "ShowModal", scegli(4))
+    finestra.cambia_velocita()
+    assert suonati == ["dialogo_velocita_di_gioco", "velocita_di_gioco_salvata"]
+    assert impostazioni.carica()["velocita_gioco"] == 4 and finestra.impostazioni["velocita_gioco"] == 4
+    assert finestra.ultimo_evento == "velocità di gioco 4"
+    # Un file che non si scrive lo dice la barra, e la velocità vale comunque per la sessione.
+    monkeypatch.setattr(impostazioni, "salva", lambda _impostazioni: False)
+    monkeypatch.setattr(dialoghi.VelocitaDiGioco, "ShowModal", scegli(8))
+    finestra.cambia_velocita()
+    assert suonati[-1] == "impostazioni_non_salvate" and finestra.ultimo_evento == "velocità di gioco non salvata"
+    assert finestra.impostazioni["velocita_gioco"] == 8
+
+
+@pytest.mark.parametrize(("valore", "letto"), [(1, 1), (8, 8), (5, 5), (0, 1), (9, 1), (True, 1), ("3", 1), (2.5, 1), (None, 1)])
+def test_la_velocita_si_valida(valore, letto):
+    assert impostazioni.valide({"velocita_gioco": valore})["velocita_gioco"] == letto
 
 
 @pytest.mark.parametrize(("origine", "avvisi", "atteso"), [

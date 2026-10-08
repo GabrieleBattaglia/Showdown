@@ -12,11 +12,16 @@ la metà, e le parti più piane, come gli echi, restano nella stessa proporzione
 Nessun suono blocca la finestra, salvo quello dell'uscita, che aspetta di finire con una scadenza
 perché il programma non lo tronchi chiudendosi. Due suoni non si sovrappongono: quello che deve
 seguirne un altro si mette in coda, e parte quando il primo è finito.
-I suoni della partita non stanno qui: arriveranno con la tappa 10, secondo la decisione D11.
+I suoni della partita non stanno qui ma in partita_sonora.py, con la tappa 10, e nessuno è uguale a
+un suono della finestra: lo controlla una prova.
 Dal 2026-10-08, con l'amichevole della tappa 9 nella finestra, c'è il gruppo delle partite: i
 dialoghi dell'amichevole, i suoi esiti, il punto per punto e la cronaca salvata, quattordici suoni
-nuovi entrati nella collezione con la V201. Sono suoni della finestra, non della partita: colpi,
-goal e fischi restano alla tappa 10.
+nuovi entrati nella collezione con la V201. Sono suoni della finestra, non della partita.
+Con la decisione D29 arrivano i comandi della partita dal vivo: pausa, ripresa, ascolto fino a fine
+set, cambio di lato e velocità, e la velocità di gioco nelle impostazioni. Quattro suoni sono nuovi,
+mess_fino_a_fine_set, mess_dall_altra_parte, mess_velocita_di_gioco e mess_velocita_salvata, e
+cinque della collezione portano la firma di MESS, con la V202; i quattro del punto per punto passano
+ai comandi della finestra dal vivo.
 """
 
 import sys
@@ -79,6 +84,9 @@ GRUPPI = (
         "dialogo_effetti_sonori": "meteora_impostazioni",
         "prova_volume_effetti": "mess_prova_volume",
         "effetti_sonori_applicati": "conferma",
+        # La velocità di gioco della partita dal vivo: il tic tac di un metronomo, e tre note che scendono e si posano.
+        "dialogo_velocita_di_gioco": "mess_velocita_di_gioco",
+        "velocita_di_gioco_salvata": "mess_velocita_salvata",
     }),
     ("Mondo, i giocatori", {
         "dialogo_scheda_giocatore": "pokermachine_raddoppio_carta",
@@ -203,15 +211,28 @@ GRUPPI = (
         "amichevole_vinta": "mess_amichevole_vinta",
         "amichevole_persa": "mess_amichevole_persa",
         "amichevole_fra_tuoi": "mess_stretta_di_mano",
-        # Il punto per punto: il via, un guizzo minimo a ogni F8, lo stesso guizzo cinque volte per
-        # il resto dell'incontro, e la cadenza di chi chiede ancora quando è finito.
-        "amichevole_al_via": "mess_conto_alla_rovescia",
-        "punto_successivo": "mess_punto_successivo",
-        "resto_dell_incontro": "mess_resto_dell_incontro",
-        "incontro_finito": "mess_incontro_finito",
         "nessun_incontro": "mess_nessun_incontro",
         "cronaca_salvata": "mess_cronaca_salvata",
         "cronaca_non_salvata": "mess_cronaca_non_salvata",
+    }),
+    ("Partite, la partita dal vivo", {
+        # Dalla decisione D29 il punto per punto con F8 è diventato la partita dal vivo, che riusa i
+        # suoi suoni: il conto alla rovescia apre la finestra, il guizzo salta il riscaldamento, i
+        # cinque guizzi vanno alla fine con Alt+V, e la cadenza risponde ai comandi a incontro finito.
+        "amichevole_al_via": "mess_conto_alla_rovescia",
+        "riscaldamento_saltato": "mess_punto_successivo",
+        "resto_dell_incontro": "mess_resto_dell_incontro",
+        "incontro_finito": "mess_incontro_finito",
+        # Il cronometro che si ferma e riparte, la scala che sale di filato fino a fine set, il giro
+        # del tavolo per l'altra testata, e il metronomo che accelera, rallenta o bussa contro il
+        # fondo scala.
+        "dal_vivo_pausa": "meditimer_cronometro_pausa",
+        "dal_vivo_ripresa": "meditimer_cronometro_ripreso",
+        "dal_vivo_fino_a_fine_set": "mess_fino_a_fine_set",
+        "dal_vivo_cambio_lato": "mess_dall_altra_parte",
+        "dal_vivo_piu_veloce": "meteora_velocita_su",
+        "dal_vivo_piu_lenta": "meteora_velocita_giu",
+        "dal_vivo_velocita_al_limite": "meteora_velocita_al_limite",
     }),
 )
 EVENTI = {evento: preset for _titolo, gruppo in GRUPPI for evento, preset in gruppo.items()}
