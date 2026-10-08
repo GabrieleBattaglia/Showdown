@@ -4,6 +4,12 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py: sono le costanti che
 stavano in testa al vecchio file, con i valori invariati. Le tabelle dei menu del programma
 testuale stanno invece in cli.py, perché sono interfaccia e non regole.
+Con la tappa 9, il 2026-10-07, il motore di partita è nuovo, e qui restano soltanto le regole
+IBSA della decisione D25, le misure del tavolo e i numeri del mondo, cioè temperamento,
+infortuni e valore complessivo; i numeri regolabili del motore stanno in motore/taratura.py.
+Se ne sono andate le costanti del vecchio motore: il limite dei 17 punti, i margini, le soglie
+scalate, la resistenza a gradini, la mappa delle difese e il registro unico delle partite.
+Le parti nuove sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -33,49 +39,73 @@ PROB_CHIUSURA_BASE_GIORNALIERA = 0.3
 FATTORE_PROB_GLORIA = 0.5
 FATTORE_PROB_TESSERATI = 0.5
 MAX_PROB_CHIUSURA_GIORNALIERA = 2.0
-# Quale difesa contrasta ciascun colpo d'attacco.
-MAPPA_CONTRASTO_SKILL = {
-    'battutasx_base': 'chiusurasx_base', 'battutadx_base': 'chiusuradx_base',
-    'singolaspondasx_base': 'chiusuradx_base', 'singolaspondadx_base': 'chiusurasx_base',
-    'diagonalesx_base': 'chiusuradx_base',  # Assumendo difesa incrociata
-    'diagonaledx_base': 'chiusurasx_base',  # Assumendo difesa incrociata
-    'lungolineasx_base': 'chiusurasx_base',
-    'lungolineadx_base': 'chiusuradx_base',
-    'doppiaspondasx_base': 'chiusuradx_base',
-    'doppiaspondadx_base': 'chiusurasx_base',
-    'triplaspondasx_base': 'chiusuradx_base',
-    'triplaspondadx_base': 'chiusurasx_base',
-    'bomba_base': 'tenutapaletta_base',
-    'attacco_base': 'difesa_base',
-}
-# Simulazione della partita.
+# Le regole della partita, tappa 9, decisione D25, dal regolamento IBSA 2025-2028: il goal vale 2
+# punti, ogni errore di gioco 1 all'avversario, la penalità 2. Il set lo vince chi arriva ad almeno
+# 11 punti con 2 di scarto, senza tetto; ogni giocatore batte due volte di seguito.
 PUNTI_PER_GOAL = 2
 PUNTI_PER_FALLO_AVVERSARIO = 1
+PUNTI_PER_PENALITA = 2
 PUNTI_VITTORIA_SET_BASE = 11
 PUNTI_VANTAGGIO_NECESSARI = 2
-PUNTI_LIMITE_SET = 17
 SERVIZI_CONSECUTIVI_PER_GIOCATORE = 2
-MARGINE_GOAL = 5.0
-MARGINE_DIFESA = 3.0
-PROB_FALLO_SU_FALLIMENTO_NORMALE = 20.0
-PROB_PALLAMORTA_SU_FALLIMENTO_NORMALE = 5.0
-FATTORE_BONUS_DIFESA_SU_RITORNO_FACILE = 1.4  # Bonus moltiplicativo difesa
-VALORE_AZIONE_BONUS_BATTUTA = 25
-ETA_MIN_CALO_RES = 20.0
-ETA_MAX_CALO_RES = 55.0
-TARGET_MIN_PERC_RES_SET5 = 0.45  # Target resistenza % set 5 per giovani
-TARGET_MAX_PERC_RES_SET5 = 0.06  # Target resistenza % set 5 per vecchi
+# Gli incontri sono al meglio di 3 o di 5 set, e nell'ultimo set possibile si cambia campo a 6 punti.
+SET_AMMESSI = (3, 5)
+PUNTI_CAMBIO_CAMPO_ULTIMO_SET = 6
+# La gara a squadre: un set a 31, tre servizi a testa, cambio campo a 16, squadre miste da 3 a 6.
+PUNTI_SET_SQUADRE = 31
+SERVIZI_SQUADRE = 3
+PUNTI_CAMBIO_CAMPO_SQUADRE = 16
+GIOCATORI_SQUADRA_MIN = 3
+GIOCATORI_SQUADRA_MAX = 6
+GIOCATORI_AL_TAVOLO = 3
+# Time-out, riscaldamento e pause, in secondi dove sono durate. Nella gara a squadre non ci sono
+# sostituzioni durante l'incontro, decisione D26: uno scostamento voluto dalla regola IBSA 22.8.
+TIMEOUT_PER_SET = 1
+TIMEOUT_SQUADRE = 1
+RISCALDAMENTO_SINGOLARE = 60
+RISCALDAMENTO_SQUADRE = 90
+AVVISI_RISCALDAMENTO_SINGOLARE = (45,)
+# Nella gara a squadre l'arbitro chiama 30 secondi ogni 30 secondi, regola IBSA 22.3.
+AVVISI_RISCALDAMENTO_SQUADRE = (30, 60)
+DURATA_PAUSA = 60
+AVVISO_PAUSA = 45
+# Il tavolo IBSA, in centimetri: 366 per 122, lo schermo a metà, le porte alle testate.
+LARGHEZZA_TAVOLO = 122
+LUNGHEZZA_TAVOLO = 366
+META_TAVOLO = 183
+RAGGIO_CURVE = 23
+ALTEZZA_SPONDE = 14
+LUCE_SCHERMO = 10
+ALTEZZA_SCHERMO = 42
+RAGGIO_TASCA = 15
+# L'area di porta è un semicerchio di 40 cm di diametro attorno alla tasca.
+RAGGIO_AREA_PORTA = 20
+SPORGENZA_TAVOLA_CONTATTO = 5
+RAGGIO_PALLINA = 3
+MEZZA_ZONA_CENTRALE = 20
+DISTANZA_ARBITRO = 50
+ASCOLTO_DIETRO_TESTATA = 40
+VOLUME_RIFERIMENTO_CM = 150
+# I colpi dello scambio e le battute, coi nomi delle caratteristiche senza _base.
+COLPI_DELLO_SCAMBIO = ("lungolineasx", "lungolineadx", "diagonalesx", "diagonaledx", "singolaspondasx", "singolaspondadx",
+                       "doppiaspondasx", "doppiaspondadx", "triplaspondasx", "triplaspondadx", "bomba")
+COLPI_DI_BATTUTA = ("battutasx", "battutadx")
+# Le modalità della vecchia firma di gioca_partita, che la facciata di partita.py conserva.
 MODALITA_OUTPUT_RISULTATO = 'risultato'
 MODALITA_OUTPUT_CONSOLE = 'console'
 MODALITA_OUTPUT_FILE = 'file'
-NOME_FILE_LOG_PARTITE = "log_partite_showdown.txt"
+# Dalla tappa 9 ogni partita ha la sua cronaca, in un file di questa cartella.
+CARTELLA_CRONACHE = "cronache"
 NOME_FILE_LOG_USCITE = "vecchie_glorie.log"
-# Scala della soglia di successo di un'azione.
-SCALING_K_DIFESA_ICV = 0.55  # Moltiplicatore ICV per stimare capacità difensiva generica
-SCALING_SOGLIA_BASE = 50.0  # Punto medio della soglia di successo (tra 5 e 95)
-SCALING_MODIFICATORE_MAX = 40.0  # Massimo scostamento (+/-) dalla soglia base
-SCALING_RANGE_DELTA_EFF = 100.0  # Stima del range realistico di delta_azione (es. da -50 a +50)
-# Infortuni.
+# Il temperamento, da 0, calmissimo, a 100, impetuoso: nasce dal numero del giocatore e si calma
+# con gli anni, dieci punti a 65 anni; la scheda lo dice a parole con queste fasce.
+TEMPERAMENTO_MEDIA = 50.0
+TEMPERAMENTO_DEVIAZIONE = 18.0
+ETA_INIZIO_CALMA = 25.0
+CALMA_PER_ANNO = 0.25
+FASCE_TEMPERAMENTO = ((25.0, "molto calmo", False), (42.0, "calmo", True), (58.0, "equilibrato", True), (75.0, "focoso", True), (None, "impetuoso", True))
+# Infortuni. Dalla tappa 9 crescono col carico della partita, e l'ambidestro ha una probabilità un
+# po' più bassa al posto di quella divisa per cinque.
 PROB_INFORTUNIO_BASE_PER_PARTITA = 0.015
 ETA_INIZIO_AUMENTO_PROB_INFORTUNIO_ANNI = 30.0
 ETA_MAX_PROB_INFORTUNIO_ANNI = 75.0
@@ -83,6 +113,29 @@ PROB_INFORTUNIO_AUMENTO_MAX_PERC = 10.0
 INFORTUNIO_DURATA_MIN_GIORNI = 3
 INFORTUNIO_DURATA_MAX_GIORNI_ETA = 35
 INFORTUNIO_MALUS_MAX_RESISTENZA = 10
+FATTORE_INFORTUNIO_AMBIDESTRO = 0.8
+# Le azioni di un incontro al meglio dei 3 per cui il carico vale 1. Era 130, tarato sulla sola
+# popolazione di prova allenata, dove le partite sono corte; nel mondo salvato e fra giocatori mai
+# allenati le partite sono più lunghe, e gli infortuni uscivano dal 10 per cento in più di prima.
+# Con 150 stanno nella banda in tutti e tre i mondi.
+AZIONI_RIFERIMENTO_INFORTUNIO = 150
+CARICO_INFORTUNIO_MINIMO = 0.7
+CARICO_INFORTUNIO_MASSIMO = 1.5
+# Le sedi degli infortuni: codice, frase con l'articolo, braccio, peso per il destrimano e fattore
+# di durata. Per il mancino i pesi delle braccia si scambiano, per l'ambidestro se ne fa la media.
+# La sede non precisata viene soltanto dalla migrazione al formato 5, e ferma tutti come prima.
+SEDE_NON_PRECISATA = "non_precisata"
+SEDI_INFORTUNIO = (
+    ("spalla_dx", "alla spalla destra", "dx", 12, 1.0),
+    ("gomito_dx", "al gomito destro", "dx", 9, 1.0),
+    ("polso_dx", "al polso destro", "dx", 9, 1.0),
+    ("spalla_sx", "alla spalla sinistra", "sx", 3, 1.0),
+    ("gomito_sx", "al gomito sinistro", "sx", 2, 1.0),
+    ("polso_sx", "al polso sinistro", "sx", 3, 1.0),
+    ("schiena", "alla schiena", None, 22, 1.1),
+    ("ginocchio", "al ginocchio", None, 20, 1.2),
+    ("caviglia", "alla caviglia", None, 20, 0.8),
+)
 # Punti esperienza guadagnati in partita.
 XP_VITTORIA_2_0 = 4
 XP_VITTORIA_2_1 = 3
@@ -275,6 +328,36 @@ NOME_ATTR_TO_DISPLAY_MAP = {
     "triplaspondasx_allenata": "Tripla Sponda Sinistra",
 }
 MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'ipovedente': 'P', 'giocorapido': 'R', 'cambiovelocita': 'V'}
+# Il valore complessivo, dalla tappa 9 (problema P14): le caratteristiche entrano per ruolo, con
+# chiusure e blocchi di dritto e di rovescio, così un mancino specchiato vale quanto il destrimano
+# di partenza; ciascuna ha un peso, e i tratti hanno il loro. Fino alla tappa 8 i pesi erano tutti
+# a 1, con 33 punti per ambidestro, gioco rapido e cambio di velocità. Quelli qui sotto li ha
+# misurati sul motore nuovo strumenti/taratura_valore.py, sugli incontri al meglio dei 3, l'ultima
+# volta l'8 ottobre 2026 dopo la revisione della decisione D26, che ha dimezzato il peso della
+# precisione nelle qualità: sono in punti di caratteristica, con la media delle caratteristiche
+# di gioco a 1, e sono la media di quattro semi, 9, 19, 29 e 39, perché con un seme solo il
+# mancino andava da 2,9 a 5,6 punti di valore. A e B riportano la somma sulla scala del valore, e
+# dalla decisione D26 si cercano con strumenti/simulazione_lunga.py --cerca-scala: B per
+# bisezione, perché in dieci anni simulati su quattro semi la cassa mediana delle polisportive del
+# computer torni sui 5000 euro della tappa 8, e A perché la mediana del valore nel mondo maturo
+# stia a 135,5, così lo stipendio mediano resta fra 210 e 220 euro. Il valore è più largo di
+# prima: nel mondo maturo va da 94 a 178 dal decimo al novantesimo percentile, e gli stipendi più
+# bassi scendono a 90 euro. Le coppie
+# speculari di colpi hanno un peso solo; le fisiche, che vanno da 0 a 10, pesano per punto
+# quattro volte tanto, e la precisione, che entra in tutte le qualità, più di tutte, ma la metà
+# di prima.
+CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
+                          "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
+PESI_VALORE = {
+    "lungolineasx": 0.44, "lungolineadx": 0.44, "diagonalesx": 0.49, "diagonaledx": 0.49, "singolaspondasx": 0.48, "singolaspondadx": 0.48,
+    "doppiaspondasx": 0.45, "doppiaspondadx": 0.45, "triplaspondasx": 0.33, "triplaspondadx": 0.33, "bomba": 0.36, "battutasx": 0.78,
+    "battutadx": 0.78, "chiusura_dritto": 2.22, "chiusura_rovescio": 2.81, "blocco_dritto": 1.35, "blocco_rovescio": 1.61, "difesa": 3.38,
+    "tenutapaletta": 1.26, "controllopalla": 0.81, "attacco": 1.29, "precisione": 10.04, "forza": 5.18, "resistenza": 4.71,
+}
+PESI_TRATTI = {"mancino": 2.9, "ambidestro": 3.4, "giocorapido": 1.2, "cambiovelocita": 4.5}
+SCALA_VALORE_A = -82.61
+SCALA_VALORE_B = 1.3878
+SOGLIA_PESO_INERTE = 0.25
 
 
 def discrepanze_raggruppamenti():

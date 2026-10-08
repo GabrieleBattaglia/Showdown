@@ -12,6 +12,12 @@ imposte, e gli ipovedenti chiedono il 10 per cento di gloria in meno, secondo la
 Dalla tappa 8 c'è l'economia della decisione D22: il giocatore ha esperienza di carriera,
 fedeltà e pazienza verso il suo club, stipendi arretrati e forse il tratto della bandiera; la
 polisportiva ha una cassa, i tesserati in vendita, i bilanci mensili e i conti del mese.
+Dalla tappa 9, il 2026-10-07, il giocatore ha un temperamento, da calmissimo a impetuoso, che nasce dal
+suo numero e si calma con gli anni senza toccare il caso del mondo; un infortunio ha la sua sede, e
+puo_giocare dice se il giocatore può scendere in campo, cosa che l'ambidestro fa anche con un braccio
+fermo. Il valore complessivo lo calcola valore.py, con le caratteristiche per ruolo e i loro pesi.
+Il salvataggio è al formato 5, che aggiunge temperamento e sede dell'infortunio. Le parti della tappa
+9 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Dalla tappa 3 ogni modello sa scriversi come dizionario per il salvataggio JSON, con a_dizionario,
 e ricostruirsi da lì, con da_dizionario, controllando ogni campo. Gli elenchi CAMPI_GIOCATORE e
 CAMPI_POLISPORTIVA dicono quali attributi si salvano e di che tipo sono: i valori che si possono
@@ -24,6 +30,7 @@ import math
 import random
 
 import descrizioni
+import valore
 from costanti import (
     ACCETTAZIONE_PROB_MAX,
     ACCETTAZIONE_PROB_MID,
@@ -37,12 +44,14 @@ from costanti import (
     ATTRIBUTI_ALLENABILI,
     ATTRIBUTI_BASE_CON_ALLENABILI,
     ATTRIBUTI_INVECCHIABILI,
+    CALMA_PER_ANNO,
     CAPITALE_INIZIALE,
     CARATTERISTICHE_ATTACCO_BASE,
     CARATTERISTICHE_CONTROLLO_BASE,
     CARATTERISTICHE_DIFESA_BASE,
     CARATTERISTICHE_FISICHE_BASE,
     DATA_NESSUN_MOVIMENTO,
+    ETA_INIZIO_CALMA,
     ETA_MAX_CREAZIONE_ANNI,
     ETA_MAX_MORTE_GIORNI,
     ETA_MAX_RITIRO_GIORNI,
@@ -74,6 +83,10 @@ from costanti import (
     NOME_ATTR_TO_DISPLAY_MAP,
     PROB_ARCHETIPO_CASUALE_CREAZIONE,
     PROBABILITA_BANDIERA_CREAZIONE,
+    SEDE_NON_PRECISATA,
+    SEDI_INFORTUNIO,
+    TEMPERAMENTO_DEVIAZIONE,
+    TEMPERAMENTO_MEDIA,
     VERSIONE,
     giorni_da_anni,
 )
@@ -103,6 +116,21 @@ def probabilita_accettazione(g_off, g_rich):
     pos = (diff - d_min) / d_range
     prob = ACCETTAZIONE_PROB_MIN + pos * (ACCETTAZIONE_PROB_MAX - ACCETTAZIONE_PROB_MIN)
     return max(ACCETTAZIONE_PROB_MIN, min(prob, ACCETTAZIONE_PROB_MAX))
+
+
+def temperamento_innato(id_giocatore):
+    """
+    Il temperamento con cui nasce un giocatore, da 0, calmissimo, a 100, impetuoso, con un
+    decimale: una gaussiana attorno a 50 tirata da un generatore tutto suo, nato dal numero del
+    giocatore. Il caso del mondo non si tocca, quindi la nascita resta quella di prima, e lo
+    stesso numero dà sempre lo stesso temperamento: serve alla nascita e alla migrazione.
+    """
+    tiro = random.Random(f"MESS-temperamento-{id_giocatore}").gauss(TEMPERAMENTO_MEDIA, TEMPERAMENTO_DEVIAZIONE)
+    return round(max(0.0, min(100.0, tiro)), 1)
+
+
+SEDI_AMMESSE = frozenset((SEDE_NON_PRECISATA, *(sede[0] for sede in SEDI_INFORTUNIO)))
+_SEDI_DI_BRACCIO = frozenset(sede[0] for sede in SEDI_INFORTUNIO if sede[2] is not None)
 
 
 def e_fisica(nome_allenato):
@@ -140,6 +168,7 @@ CAMPI_GIOCATORE = (
     ("goalsfatti", int), ("goalssubiti", int), ("archetipo_allenamento", str),
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int), ("diario", DIARIO),
     ("esperienza", float), ("fedelta", float), ("pazienza", float), ("arretrati", int), ("bandiera", bool),
+    ("temperamento", float), ("infortunio_sede", TESTO_O_NULLA),
     *((nome, float) for nome in ATTRIBUTI_INVECCHIABILI),
 )
 # Per i giocatori senza tratti, che non possono ricalcolare il loro aspetto.
@@ -276,6 +305,9 @@ def _campi_da_dizionario(oggetto, dati, campi, chi):
 class Giocatore:
     def __init__(self, id_giocatore, datetime_creazione_sim, **kwargs):
         self.id = id_giocatore
+        # Il temperamento nasce dal numero del giocatore, senza toccare il caso del mondo.
+        self.temperamento = temperamento_innato(id_giocatore)
+        self.infortunio_sede = None
         self.nome = "*"
         self.cognome = "*"
         self.appartenenza = "*"
@@ -441,6 +473,10 @@ class Giocatore:
         _campi_da_dizionario(g, dati, CAMPI_GIOCATORE, chi)
         if g.sesso not in ('m', 'f'):
             raise ValueError(f"{chi}: il campo sesso non è valido: {g.sesso!r}")
+        if not 0.0 <= g.temperamento <= 100.0:
+            raise ValueError(f"{chi}: il campo temperamento non è valido: {g.temperamento!r}")
+        if g.infortunio_sede is not None and g.infortunio_sede not in SEDI_AMMESSE:
+            raise ValueError(f"{chi}: il campo infortunio_sede non è valido: {g.infortunio_sede!r}")
         tratti = dati.get("tratti")
         if tratti is not None:
             if not isinstance(tratti, dict):
@@ -490,6 +526,20 @@ class Giocatore:
     @property
     def eta_anni(self):
         return self.eta / ANNO_SIMULAZIONE_GIORNI if ANNO_SIMULAZIONE_GIORNI > 0 else 0.0
+
+    @property
+    def temperamento_attuale(self):
+        """Il temperamento di oggi: si calma senza caso di un quarto di punto all'anno dopo i 25, dieci punti a 65 anni."""
+        return max(0.0, self.temperamento - CALMA_PER_ANNO * max(0.0, self.eta_anni - ETA_INIZIO_CALMA))
+
+    @property
+    def puo_giocare(self):
+        """Vero se il giocatore può scendere in campo: non ritirato e non infortunato, oppure ambidestro con un braccio fermo."""
+        if self.ritirato:
+            return False
+        if not self.infortunato:
+            return True
+        return bool(self.ambidestro) and self.infortunio_sede in _SEDI_DI_BRACCIO
 
     def _riga_caratteristica(self, nome_b):
         tot = self._get_valore_totale(nome_b)
@@ -574,11 +624,13 @@ class Giocatore:
                 f"{eta_vis:<8} {sesso} ICV:{self.indice_collettivo_valore:6.1f} XP:{xp:<5} {stato}{flags_str}")
 
     def aggiorna_icv(self):
-        """Ricalcola l'indice collettivo di valore: tutte le caratteristiche più 33 punti per ogni tratto speciale."""
-        self.icv_base = sum(getattr(self, attr, 0.0) for attr in ATTRIBUTI_BASE_CON_ALLENABILI)
-        self.icv_allenato = sum(getattr(self, attr, 0.0) for attr in ATTRIBUTI_ALLENABILI)
-        bonus = sum(33 for flag in ['ambidestro', 'giocorapido', 'cambiovelocita'] if getattr(self, flag, False))
-        self.indice_collettivo_valore = self.icv_base + self.icv_allenato + bonus
+        """
+        Ricalcola l'indice collettivo di valore con valore.py: la parte innata con i tratti, la parte
+        allenata, e la loro somma. Con i pesi iniziali è l'indice di prima: tutte le caratteristiche
+        più 33 punti per ogni tratto speciale.
+        """
+        self.icv_base, self.icv_allenato = valore.parti(self)
+        self.indice_collettivo_valore = self.icv_base + self.icv_allenato
 
     def _genera_descrizione_fisica(self):
         """

@@ -11,11 +11,16 @@ secondo la decisione D10: una riga d'intestazione con i dati principali separati
 verticale, poi i blocchi annunciati da un'etichetta fra parentesi quadre, le caratteristiche due
 per riga con l'aggettivo alla Hattrick e il valore fra parentesi, le classifiche con posizione e
 percentuale.
+Dalla tappa 9, il 2026-10-07, la scheda dice il carattere del giocatore a parole e accordato, mai
+col numero, e la sede dell'infortunio; la cronaca di un incontro, presa dagli eventi del motore, si
+divide in testi da mostrare un punto alla volta, ciascuno aperto dal punteggio, come vuole la
+decisione D17. Le parti nuove sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
 
 import economia
+import infortuni
 import mercato
 import version
 from archivio import NATO
@@ -27,11 +32,13 @@ from costanti import (
     CARATTERISTICHE_DIFESA_BASE,
     CARATTERISTICHE_FISICHE_BASE,
     ESPERIENZA_MASSIMA,
+    FASCE_TEMPERAMENTO,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
     MAX_TOTALE_SKILL_GIOCO,
     NOME_ATTR_TO_DISPLAY_MAP,
 )
+from motore import cronaca
 from utilita import MESI, converti_giorni_sim, data_breve, formatta_eta_sim, in_ora_locale
 from utilita import accorda as accorda_sesso
 
@@ -164,8 +171,27 @@ def stato(g, mondo):
     else:
         testo = f"{accorda(g, 'tesserato')} con {g.appartenenza}"
     if g.infortunato and g.infortunio_fine_datetime:
-        testo += f", {accorda(g, 'infortunato')} fino al {data_lunga(g.infortunio_fine_datetime)}"
+        testo += f", {infortunio(g)}"
     return testo
+
+
+def infortunio(g):
+    """L'infortunio a parole, con la sede se si sa: infortunata al polso destro fino al 3 marzo 2026 alle 9:00."""
+    dove = infortuni.frase_sede(g.infortunio_sede)
+    testo = accorda(g, "infortunato") + (f" {dove}" if dove else "")
+    testo += f" fino al {data_lunga(g.infortunio_fine_datetime)}"
+    if infortuni.gioca_con_l_altro_braccio(g, g.infortunio_sede):
+        testo += ", ma gioca con l'altro braccio"
+    return testo
+
+
+def carattere(g):
+    """Il temperamento di oggi a parole e accordato, con le fasce di costanti.py: focoso, focosa."""
+    attuale = g.temperamento_attuale
+    for limite, parola, compreso in FASCE_TEMPERAMENTO:
+        if limite is None or attuale < limite or (compreso and attuale == limite):
+            return accorda(g, parola)
+    return accorda(g, FASCE_TEMPERAMENTO[-1][1])
 
 
 def riga_giocatore(g, mondo):
@@ -218,9 +244,10 @@ def scheda_giocatore(g, mondo):
         f"Descrizione: {g.descrizione_fisica}",
         f"Fisico: {g.altezza} cm e {g.peso} kg | Tendenza: {tendenza(g)} | Punti allenamento: {intero(g.puntiesperienza or 0)} | Gloria richiesta: {intero(g.gloria_richiesta)}",
     ]
-    tratti = f"Tratti: {unisci(tratti_speciali(g)) or 'nessuno in particolare'}"
+    tratti = f"Tratti: {unisci(tratti_speciali(g)) or 'nessuno in particolare'} | Carattere: {carattere(g)}"
     if g.infortunato and g.infortunio_fine_datetime:
-        tratti += f" | {accorda(g, 'Infortunato')} fino al {data_lunga(g.infortunio_fine_datetime)}"
+        testo = infortunio(g)
+        tratti += f" | {testo[0].upper()}{testo[1:]}"
     righe.append(tratti)
     righe.extend(_economia_del_giocatore(g, mondo))
     for titolo, gruppo in GRUPPI:
@@ -838,3 +865,42 @@ def novita(testo_changelog):
                 riga += "."
         righe.append(riga)
     return "\n".join(righe)
+
+
+# La cronaca di un incontro, per la finestra.
+
+def testi_della_partita(momenti, nomi, livello="normale"):
+    """
+    La cronaca di un incontro divisa in testi da mostrare uno alla volta, al posto del precedente
+    come vuole la decisione D17: i preliminari, poi ogni punto con le palle ferme che lo precedono,
+    e la fine di un set insieme al punto che la chiude. Ogni testo di un punto si apre con il set e
+    il punteggio di partenza. I momenti sono quelli del risultato di un incontro in modalità completa.
+    """
+    testi = []
+    in_attesa = []
+    punteggio = (0, 0)
+    for momento in momenti:
+        righe = cronaca.righe_del_momento(momento, nomi, livello)
+        tipi = {evento.tipo for evento in momento.eventi}
+        if momento.genere == "preliminari" or momento.genere == "chiusura":
+            testi.append("\n".join(in_attesa + righe))
+            in_attesa = []
+        elif momento.genere == "punto":
+            set_n = momento.esito.set_n
+            apertura = f"Set {set_n}, {nomi['A'].testo} {punteggio[0]}, {nomi['B'].testo} {punteggio[1]}."
+            testi.append("\n".join([apertura, *in_attesa, *righe]))
+            in_attesa = []
+            punteggio = momento.esito.punteggio
+        elif "FINE_SET" in tipi and testi:
+            # Una penalità può chiudere il set a palla ferma: le sue righe, rimaste in attesa,
+            # vanno prima del fischio lungo, non nel primo punto del set che segue.
+            testi[-1] += "\n" + "\n".join(in_attesa + righe)
+            in_attesa = []
+        else:
+            in_attesa.extend(righe)
+            for evento in momento.eventi:
+                if evento.tipo == "INIZIO_SET":
+                    punteggio = (0, 0)
+                elif evento.tipo == "PENALITA":
+                    punteggio = evento.punteggio
+    return [testo for testo in testi if testo]

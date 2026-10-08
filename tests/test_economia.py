@@ -1,7 +1,8 @@
 """
 Test della tappa 8: l'economia delle decisioni D22 e D23. Stipendi, ingaggi, sponsor e valori di
 mercato; i conti del primo del mese, con arretrati, pazienza, partenze e bandiere; pagamenti,
-vendite, acquisti e offerte d'acquisto; le scelte del computer; la migrazione al formato 4; i testi.
+vendite, acquisti e offerte d'acquisto; le scelte del computer; la migrazione al formato 4, che dalla
+tappa 9 prosegue fino al 5; i testi.
 """
 
 import datetime
@@ -272,7 +273,7 @@ def test_un_salvataggio_del_formato_3_si_aggiorna(mondo, cartella_di_prova):
     assert ricaricato.giocatori[5].fedelta == 0. and ricaricato.giocatori[5].pazienza == 100.
     assert all(g.bandiera == (g.id % 100 == 0) for g in ricaricato.giocatori.values())
     assert archivio.salva(ricaricato)
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 4
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 5
 
 
 def test_i_testi_dell_economia(mondo):
