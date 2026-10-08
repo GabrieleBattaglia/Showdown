@@ -21,7 +21,14 @@ DIMENSIONE_MINIMA = 8
 DIMENSIONE_MASSIMA = 72
 VOLUME_MINIMO = 0
 VOLUME_MASSIMO = 100
-PREDEFINITE = {"dimensione": 12, "colore_testo": [0, 100, 0], "colore_sfondo": [0, 0, 0], "volume_effetti": 50}
+# Le opzioni dell'amichevole si ricordano, scelta di Gabriele dell'8 ottobre 2026: i valori sono
+# quelli del dialogo OpzioniAmichevole e del livello della cronaca del motore, scritti qui per non far
+# dipendere le impostazioni dalla finestra.
+SET_DELL_AMICHEVOLE = (3, 5)
+MODI_DELL_AMICHEVOLE = ("punto", "tutta", "risultato")
+LIVELLI_DELL_AMICHEVOLE = ("sintetica", "normale", "tecnica")
+PREDEFINITE = {"dimensione": 12, "colore_testo": [0, 100, 0], "colore_sfondo": [0, 0, 0], "volume_effetti": 50,
+               "amichevole_set": 3, "amichevole_modo": "punto", "amichevole_livello": "normale"}
 
 
 def _colore_valido(valore):
@@ -42,6 +49,10 @@ def valide(dati):
     volume = dati.get("volume_effetti")
     if isinstance(volume, int) and not isinstance(volume, bool) and VOLUME_MINIMO <= volume <= VOLUME_MASSIMO:
         risultato["volume_effetti"] = volume
+    for chiave, ammessi in (("amichevole_set", SET_DELL_AMICHEVOLE), ("amichevole_modo", MODI_DELL_AMICHEVOLE), ("amichevole_livello", LIVELLI_DELL_AMICHEVOLE)):
+        valore = dati.get(chiave)
+        if not isinstance(valore, bool) and valore in ammessi:
+            risultato[chiave] = valore
     return risultato
 
 

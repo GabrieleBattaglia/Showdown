@@ -26,7 +26,10 @@ nei tesserati né ritirati né assenti. Il formato 4, della tappa 8, aggiunge l'
 vendite e bilanci delle polisportive, esperienza, fedeltà, pazienza, arretrati e bandiera dei
 giocatori. Il formato 5, della tappa 9, del 2026-10-07, aggiunge a ogni giocatore il temperamento,
 ricavato dal suo numero come alla nascita, e la sede dell'infortunio: non precisata per chi era già
-infortunato, che resta fermo come prima. Il valore complessivo non si salva, e si ricalcola alla
+infortunato, che resta fermo come prima; dal 2026-10-08, prima che il formato fosse pubblicato,
+anche la data simulata dell'ultima amichevole, vuota per tutti, perché nessuno ne aveva ancora
+giocate con la regola di una al giorno; un salvataggio del 5 scritto prima di quel giorno, senza
+il campo, si legge lo stesso e lo riceve vuoto. Il valore complessivo non si salva, e si ricalcola alla
 lettura con i pesi del momento. Un salvataggio di un formato vecchio si aggiorna da solo alla
 lettura, e si riscrive nel formato nuovo al primo salvataggio; le versioni di prima rifiutano un
 salvataggio di un formato più recente, con il loro messaggio.
@@ -182,7 +185,23 @@ def leggi(percorso):
             MIGRAZIONI[documento["formato"]](documento)
         except (KeyError, TypeError, ValueError, AttributeError) as e:
             raise ErroreSalvataggio(f"il salvataggio del formato {documento['formato']} non si è potuto aggiornare: {e}") from e
+    _completa_formato_5(documento)
     return documento
+
+
+def _completa_formato_5(documento):
+    """
+    Il formato 5 si è allungato il 2026-10-08, prima di essere pubblicato, con la data dell'ultima
+    amichevole: i salvataggi del 5 scritti prima, compresa la loro copia di sicurezza, non ce l'hanno,
+    e la ricevono vuota come nella migrazione dal 4. Un documento rovinato resta com'è: lo rifiuta
+    poi il controllo dei campi, con il suo messaggio.
+    """
+    mondo = documento.get("mondo")
+    giocatori = mondo.get("giocatori") if isinstance(mondo, dict) else None
+    if isinstance(giocatori, list):
+        for g in giocatori:
+            if isinstance(g, dict):
+                g.setdefault("ultima_amichevole", None)
 
 
 def _dal_formato_1(documento):
@@ -280,11 +299,13 @@ def _dal_formato_4(documento):
     """
     Dal formato 4 al 5, con la tappa 9: ogni giocatore riceve il temperamento che avrebbe avuto
     alla nascita, ricavato dal suo numero senza toccare il caso, e la sede dell'infortunio, non
-    precisata per chi è infortunato, così resta fermo come prima, e nessuna per gli altri.
+    precisata per chi è infortunato, così resta fermo come prima, e nessuna per gli altri. La data
+    dell'ultima amichevole resta vuota: tutti possono giocarne una già oggi.
     """
     for g in documento["mondo"]["giocatori"]:
         g.setdefault("temperamento", temperamento_innato(g["id"]))
         g.setdefault("infortunio_sede", SEDE_NON_PRECISATA if g["infortunato"] else None)
+        g.setdefault("ultima_amichevole", None)
     documento["formato"] = 5
 
 

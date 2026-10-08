@@ -15,6 +15,9 @@ Dalla tappa 9, il 2026-10-07, la scheda dice il carattere del giocatore a parole
 col numero, e la sede dell'infortunio; la cronaca di un incontro, presa dagli eventi del motore, si
 divide in testi da mostrare un punto alla volta, ciascuno aperto dal punteggio, come vuole la
 decisione D17. Le parti nuove sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2026-10-08 ci sono i testi dell'amichevole della finestra: il risultato, aperto da chi vince,
+il primo e l'ultimo testo del punto per punto, il resto dell'incontro, la cronaca salvata, e il
+perché quando oggi nessuno può giocare.
 """
 
 import datetime
@@ -904,3 +907,85 @@ def testi_della_partita(momenti, nomi, livello="normale"):
                 elif evento.tipo == "PENALITA":
                     punteggio = evento.punteggio
     return [testo for testo in testi if testo]
+
+
+# L'amichevole nella finestra, tappa 9: risultato, testi del punto per punto e cronaca salvata.
+
+AVANTI_UN_PUNTO = "F8 mostra il punto successivo, Ctrl+F8 tutto il resto dell'incontro."
+SALVA_LA_CRONACA = "La cronaca dell'incontro si salva in un file con Ctrl+Maiusc+O."
+NESSUNA_AMICHEVOLE = "Nella sessione non hai ancora giocato un'amichevole: se ne gioca una con Ctrl+O."
+
+
+def risultato_amichevole(risultato, mondo):
+    """Il risultato di un'amichevole, aperto dal dato essenziale: chi vince, i set, contro chi e i parziali dal punto di vista di chi vince."""
+    id_a, id_b = risultato.parti
+    vince_a = risultato.vincitore == "A"
+    vincitore, perdente = (mondo.giocatori[id_a], mondo.giocatori[id_b]) if vince_a else (mondo.giocatori[id_b], mondo.giocatori[id_a])
+    sa, sb = risultato.set_vinti
+    mio, suo = (sa, sb) if vince_a else (sb, sa)
+    parziali = ", ".join(f"{a} a {b}" if vince_a else f"{b} a {a}" for a, b in risultato.set)
+    return (f"Vince {nome_completo(vincitore)}, {mio} set a {suo} contro {nome_completo(perdente)}: {parziali}. "
+            f"Amichevole al meglio dei {risultato.formato.set_al_meglio} set.")
+
+
+def _dopo_il_risultato(risultato, mondo):
+    """Il risultato, quello che l'amichevole ha portato nel mondo, punti allenamento e infortuni, e come salvarne la cronaca."""
+    return [risultato_amichevole(risultato, mondo), *(risultato.registrazione or []), SALVA_LA_CRONACA]
+
+
+def amichevole_solo_risultato(risultato, mondo):
+    return "\n".join(_dopo_il_risultato(risultato, mondo))
+
+
+def cronaca_amichevole(risultato, nomi, livello):
+    """
+    La cronaca intera dell'amichevole al livello scelto, per chi la vuole tutta subito: la vista la
+    mette dopo il risultato e dopo il perché di un salvataggio non riuscito, che in fondo a centinaia
+    di righe nessuno troverebbe.
+    """
+    return "\n".join(cronaca.componi(risultato.momenti, nomi, livello))
+
+
+def primo_testo_amichevole(testo):
+    """Il primo testo del punto per punto, i preliminari, con i tasti per andare avanti."""
+    return f"{testo}\n{AVANTI_UN_PUNTO}"
+
+
+def ultimo_testo_amichevole(testo, risultato, mondo):
+    """
+    L'ultimo testo del punto per punto, la fine dell'incontro. Come vuole D17 si apre con il dato
+    essenziale, il risultato, e non con il fischio; poi la chiusura, la registrazione e come salvare
+    la cronaca.
+    """
+    return "\n".join([risultato_amichevole(risultato, mondo), testo, *(risultato.registrazione or []), SALVA_LA_CRONACA])
+
+
+def resto_amichevole(testi_rimasti, risultato, mondo):
+    """Il resto dell'incontro tutto insieme: il risultato davanti, come vuole D17, poi i testi che mancavano."""
+    return "\n".join([*_dopo_il_risultato(risultato, mondo), *testi_rimasti])
+
+
+def amichevole_finita(risultato, mondo):
+    return f"L'amichevole è già tutta mostrata. {risultato_amichevole(risultato, mondo)}\nCon Ctrl+Maiusc+O ne salvi la cronaca, con Ctrl+O ne giochi un'altra."
+
+
+def nessuno_per_l_amichevole(mondo, ora, poli=None, primo=None):
+    """
+    Perché oggi l'amichevole non si gioca: nessun tesserato della polisportiva, o nessun avversario
+    del primo giocatore, può giocare; e fra quanto arriva il giorno simulato dopo. ora è in UTC.
+    """
+    if primo is None:
+        chi = f"Oggi nessun tesserato di {poli.nome} può giocare un'amichevole"
+    else:
+        chi = f"Oggi nessun altro giocatore può giocare un'amichevole contro {nome_completo(primo)}"
+    prossimo = mondo.prossimo_avanzamento()
+    quando = f"Il prossimo giorno simulato arriva fra {durata(prossimo - ora)}." if prossimo > ora else "Il prossimo giorno simulato arriva entro un minuto."
+    return f"{chi}: ognuno ne gioca al massimo una per giorno simulato, e chi è infortunato o ritirato non gioca. {quando}"
+
+
+def cronaca_salvata(percorso, livello, nomi):
+    return f"La cronaca {livello} dell'amichevole fra {nomi['A'].testo} e {nomi['B'].testo} è nel file {percorso}."
+
+
+def cronaca_non_salvata(errore):
+    return f"La cronaca dell'amichevole non si è potuta salvare: {errore}."

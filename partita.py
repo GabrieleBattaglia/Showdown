@@ -14,6 +14,11 @@ ognuno gioca con la sua stanchezza. La vecchia firma di gioca_partita resta, con
 solo il risultato, la cronaca punto per punto nella console, e la cronaca su file.
 Il motore non stampa e non chiede nulla: le righe le consegna alla funzione mostra, e dove aspetta
 un tasto chiama la funzione pausa. Le passa chi lo usa; se non le passa, lavora in silenzio.
+Dal 2026-10-08, regola di Gabriele, ogni giocatore gioca al massimo un'amichevole per giorno
+simulato, perché ogni amichevole dà punti allenamento: la facciata la controlla prima di giocare,
+per la finestra e per l'interfaccia testuale, e alla registrazione segna il giorno nei due giocatori.
+Le partite del torneo, e quelle giocate senza registrarle, non contano. La cronaca su file può
+ricevere il momento reale e il giorno simulato dell'incontro, per chi la salva più tardi.
 """
 
 import random
@@ -80,6 +85,23 @@ class MotorePartita:
             return "Uno o entrambi infortunati."
         return None
 
+    def problema_amichevole(self, id_g1, id_g2):
+        """None se i due possono giocare un'amichevole oggi, altrimenti il motivo: quelli dell'incontro, e l'amichevole già giocata nel giorno simulato."""
+        errore = self.problema_incontro(id_g1, id_g2)
+        if errore:
+            return errore
+        oggi = self.mondo.datetime_corrente_simulazione
+        gia = [g for g in (self.giocatori[id_g1], self.giocatori[id_g2]) if g.ha_giocato_amichevole(oggi)]
+        if not gia:
+            return None
+        chi = " e ".join(f"{g.nome} {g.cognome}" for g in gia)
+        return f"Oggi {chi} {'ha' if len(gia) == 1 else 'hanno'} già giocato un'amichevole: se ne gioca al massimo una per giorno simulato."
+
+    def disponibili(self, giocatori):
+        """Fra i giocatori dati, quelli che possono giocare un'amichevole oggi, in ordine di numero."""
+        oggi = self.mondo.datetime_corrente_simulazione
+        return sorted((g for g in giocatori if g.puo_giocare_amichevole(oggi)), key=lambda g: g.id)
+
     def nomi(self, risultato):
         """I nomi della cronaca per un incontro fra giocatori del mondo: un singolare, o una gara a squadre col nome delle squadre."""
         a, b = risultato.parti
@@ -94,7 +116,8 @@ class MotorePartita:
         """
         Simula una partita fra due giocatori e ne restituisce il risultato, nel dizionario di
         sempre più seme, risultato ed eventi. Con modalità risultato si gioca in modalità
-        essenziale; con console e file in modalità completa, con la cronaca.
+        essenziale; con console e file in modalità completa, con la cronaca. Senza torneo, ed
+        è l'amichevole dell'interfaccia testuale, vale la regola di una al giorno, se si registra.
         """
         risposta = {
             'id_originale_g1': id_g1, 'id_originale_g2': id_g2, 'num_set_target': num_set_target,
@@ -103,7 +126,7 @@ class MotorePartita:
             'stats_g2': {'goal': 0, 'falli_fatti': 0, 'falli_subiti': 0, 'penalita': 0},
             'log_partita_completa': [], 'log_path': None, 'error': None, 'seme': None, 'risultato': None, 'eventi': None,
         }
-        errore = self.problema_incontro(id_g1, id_g2)
+        errore = self.problema_amichevole(id_g1, id_g2) if registra and not info_torneo else self.problema_incontro(id_g1, id_g2)
         formato = None
         if errore is None:
             try:
@@ -174,9 +197,10 @@ class MotorePartita:
     def gioca_amichevole(self, id_g1, id_g2, set_al_meglio=3, seme=None):
         """
         Un'amichevole in modalità completa, registrata subito: restituisce il RisultatoIncontro,
-        con le frasi della registrazione nel campo registrazione. ValueError se non si può giocare.
+        con le frasi della registrazione nel campo registrazione. ValueError se non si può giocare,
+        anche perché uno dei due ha già giocato un'amichevole oggi.
         """
-        errore = self.problema_incontro(id_g1, id_g2)
+        errore = self.problema_amichevole(id_g1, id_g2)
         if errore:
             raise ValueError(errore)
         formato = formato_singolare(set_al_meglio)
@@ -205,7 +229,9 @@ class MotorePartita:
         """
         Porta il risultato di un singolare nel mondo: partite e set vinti e persi, goal fatti e
         subiti, punti allenamento con i bonus del torneo e dell'underdog, i diari, e gli infortuni
-        con la loro sede. Restituisce le frasi da mostrare. La gara a squadre non si registra.
+        con la loro sede. Senza torneo è un'amichevole, e i due giocatori ricordano il giorno
+        simulato in cui l'hanno giocata. Restituisce le frasi da mostrare. La gara a squadre non si
+        registra.
         """
         if risultato.formato.tipo != "singolare":
             return []
@@ -238,6 +264,8 @@ class MotorePartita:
                 xp_perd += XP_BONUS_UNDERDOG
         g_vinc.puntiesperienza = max(0, int(g_vinc.puntiesperienza or 0) + xp_vinc)
         g_perd.puntiesperienza = max(0, int(g_perd.puntiesperienza or 0) + xp_perd)
+        if not info_torneo:
+            g_vinc.ultima_amichevole = g_perd.ultima_amichevole = self.mondo.datetime_corrente_simulazione
         self._annota_risultato(g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, info_torneo)
         frasi = [f"Punti allenamento: {xp_vinc} a {g_vinc.nome} {g_vinc.cognome}, {xp_perd} a {g_perd.nome} {g_perd.cognome}."]
         caso_degli_infortuni = random.Random(f"infortuni-{risultato.seme}")
@@ -258,13 +286,19 @@ class MotorePartita:
 
     # La cronaca su file.
 
-    def salva_cronaca(self, risultato, livello=C.NORMALE):
-        """Scrive la cronaca dell'incontro in un file della cartella cronache e ne restituisce il percorso."""
+    def salva_cronaca(self, risultato, livello=C.NORMALE, istante=None, data_simulata=None):
+        """
+        Scrive la cronaca dell'incontro in un file della cartella cronache e ne restituisce il
+        percorso. istante e data_simulata sono il momento reale e il giorno simulato dell'incontro,
+        per l'intestazione e il nome del file: chi salva più tardi, come la finestra, li ha fissati
+        quando si è giocato; senza, valgono quelli di adesso, che per chi salva subito sono gli stessi.
+        """
         if risultato.momenti is None:
             raise ValueError("La cronaca c'è soltanto per gli incontri giocati in modalità completa.")
         nomi = self.nomi(risultato)
-        istante = adesso()
-        righe = C.intestazione(risultato, nomi, istante, self.mondo.datetime_corrente_simulazione)
+        istante = istante or adesso()
+        data_simulata = data_simulata or self.mondo.datetime_corrente_simulazione
+        righe = C.intestazione(risultato, nomi, istante, data_simulata)
         righe += C.componi(risultato.momenti, nomi, livello)
         righe += C.riepilogo(risultato, nomi)
         return C.salva(righe, C.nome_file(nomi, istante))

@@ -18,6 +18,9 @@ puo_giocare dice se il giocatore può scendere in campo, cosa che l'ambidestro f
 fermo. Il valore complessivo lo calcola valore.py, con le caratteristiche per ruolo e i loro pesi.
 Il salvataggio è al formato 5, che aggiunge temperamento e sede dell'infortunio. Le parti della tappa
 9 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2026-10-08, regola di Gabriele per le amichevoli della finestra, ogni giocatore ne gioca al
+massimo una per giorno simulato, perché ogni amichevole dà punti allenamento: il giocatore ricorda
+la data simulata dell'ultima, nel campo ultima_amichevole, salvato anche lui nel formato 5.
 Dalla tappa 3 ogni modello sa scriversi come dizionario per il salvataggio JSON, con a_dizionario,
 e ricostruirsi da lì, con da_dizionario, controllando ogni campo. Gli elenchi CAMPI_GIOCATORE e
 CAMPI_POLISPORTIVA dicono quali attributi si salvano e di che tipo sono: i valori che si possono
@@ -168,7 +171,7 @@ CAMPI_GIOCATORE = (
     ("goalsfatti", int), ("goalssubiti", int), ("archetipo_allenamento", str),
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int), ("diario", DIARIO),
     ("esperienza", float), ("fedelta", float), ("pazienza", float), ("arretrati", int), ("bandiera", bool),
-    ("temperamento", float), ("infortunio_sede", TESTO_O_NULLA),
+    ("temperamento", float), ("infortunio_sede", TESTO_O_NULLA), ("ultima_amichevole", DATA_O_NULLA),
     *((nome, float) for nome in ATTRIBUTI_INVECCHIABILI),
 )
 # Per i giocatori senza tratti, che non possono ricalcolare il loro aspetto.
@@ -308,6 +311,8 @@ class Giocatore:
         # Il temperamento nasce dal numero del giocatore, senza toccare il caso del mondo.
         self.temperamento = temperamento_innato(id_giocatore)
         self.infortunio_sede = None
+        # La data simulata dell'ultima amichevole: chi nasce non ne ha ancora giocate.
+        self.ultima_amichevole = None
         self.nome = "*"
         self.cognome = "*"
         self.appartenenza = "*"
@@ -540,6 +545,17 @@ class Giocatore:
         if not self.infortunato:
             return True
         return bool(self.ambidestro) and self.infortunio_sede in _SEDI_DI_BRACCIO
+
+    def ha_giocato_amichevole(self, oggi):
+        """Vero se il giocatore ha già giocato un'amichevole nel giorno simulato di oggi, che è una data con l'ora."""
+        return self.ultima_amichevole is not None and self.ultima_amichevole.date() == oggi.date()
+
+    def puo_giocare_amichevole(self, oggi):
+        """
+        Vero se il giocatore può giocare un'amichevole oggi: deve poter scendere in campo, e non
+        averne già giocata una nel giorno simulato, perché ognuno ne gioca al massimo una al giorno.
+        """
+        return self.puo_giocare and not self.ha_giocato_amichevole(oggi)
 
     def _riga_caratteristica(self, nome_b):
         tot = self._get_valore_totale(nome_b)
