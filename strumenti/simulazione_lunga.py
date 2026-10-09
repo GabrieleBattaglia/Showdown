@@ -23,6 +23,21 @@ calcolano l'A che tiene la mediana del valore a 135,5 e il B che porta lo stipen
 percentile a 105; si rifà la corsa con la scala nuova, due o tre volte, finché non si sposta più.
 Poi una bisezione cerca soltanto lo sponsor per punto di gloria, con la quota sul valore fissa,
 perché la cassa mediana torni a 5.000 euro.
+Con --prova-lunga i semi vivono 60 anni in parallelo, se non si dice altro: per decennio il valore
+mediano, gli stipendi e le casse, e anno per anno il controllo che il computer resti in grado di
+pagare, con i tesserati almeno all'85 per cento dei giocatori in attività e la cassa mediana fra
+2.000 e 15.000 euro. È il controllo sul mondo a regime: la scala si tara all'anno 10, e da lì il
+mondo deriva.
+Con --scenario-utente, all'anno 10 nasce una polisportiva dell'utente che allena: tessera al mercato
+i quindici liberi più forti fino a 30 anni che può pagare con la regola del computer, così il monte
+stipendi parte vicino al suo limite, e riempie allo stesso modo i posti che si liberano; ognuno gioca un'amichevole ogni due
+giorni contro un compagno; ogni giorno Allena tutti spende i punti di tutti secondo il programma;
+ogni rinnovo si propone alla richiesta, se la cassa lo regge con la regola del computer; gli
+arretrati, se ce ne sono, si pagano appena la cassa lo permette. Dieci anni. Anno per anno dice la
+cassa, lo sponsor contro gli stipendi pagati, i rinnovi mancati per mancanza di soldi, i tesserati
+dell'utente tornati liberi e quanti di loro ha preso qualcun altro, e la quota dei primi 100 del
+mondo per valore che sono tesserati. I bersagli: lo sponsor dell'utente, in media sull'anno, non
+supera il 120 per cento degli stipendi che paga, e almeno l'80 per cento dei primi 100 è tesserato.
 Non tocca mai il mondo salvato: la cartella del programma è spostata in quella temporanea, che
 alla fine si cancella; scala e sponsor provati vivono soltanto nei processi della simulazione.
 Uso, dalla cartella del progetto o da qualunque altra:
@@ -30,6 +45,8 @@ Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/simulazione_lunga.py --anni 10 --seme 2026 --rapporto economia.txt
     python strumenti/simulazione_lunga.py --scala -58,25 1,2532 --semi 2026 7 13 21
     python strumenti/simulazione_lunga.py --cerca-economia --semi 2026 7 13 21 --cassa 5000
+    python strumenti/simulazione_lunga.py --prova-lunga --semi 2026 7 13 21 --rapporto lunga.txt
+    python strumenti/simulazione_lunga.py --scenario-utente --semi 2026 7 13 21 --rapporto utente.txt
 """
 
 import argparse
@@ -49,13 +66,17 @@ RADICE = Path(__file__).resolve().parent.parent
 if str(RADICE) not in sys.path:
     sys.path.insert(0, str(RADICE))
 
+import allenamento  # noqa: E402
 import archivio  # noqa: E402
 import classe  # noqa: E402
+import contratti  # noqa: E402
 import costanti  # noqa: E402
 import economia  # noqa: E402
 import percorsi  # noqa: E402
 import valore  # noqa: E402
 from mondo import DURATA_TICK, Mondo  # noqa: E402
+from motore import ESSENZIALE, SINGOLARE_3, simula_incontro  # noqa: E402
+from partita import MotorePartita  # noqa: E402
 
 # Quanti giorni simulati fanno un anno per l'età dei giocatori: con 108 avanzamenti un giocatore
 # invecchia di un anno, ed è la misura usata dalle simulazioni della tappa 6 e della tappa 8.
@@ -77,7 +98,21 @@ MEDIANA_DEL_VALORE = 135.5
 STIPENDIO_AL_DECIMO = 105.0
 FASCE_ETA = ((9, 20), (20, 35), (35, 50), (50, 76))
 # Le voci del riepilogo che si sommano anno per anno.
-VOCI_DELL_ANNO = ("rinnovi_cpu", "contratti_scaduti", "infortunati_in_seduta", "autoallenati", "partiti")
+VOCI_DELL_ANNO = ("rinnovi_cpu", "contratti_scaduti", "infortunati_in_seduta", "autoallenati", "partiti", "tuoi_scaduti", "tuoi_partiti", "tuoi_non_pagati")
+# La prova lunga: quanti anni, se non si dice altro, e i bersagli di solvibilità del computer, anno per anno.
+ANNI_PROVA_LUNGA = 60
+TESSERATI_MINIMI_PROVA_LUNGA = 85.0
+CASSA_MEDIANA_PROVA_LUNGA = (2000.0, 15000.0)
+# Lo scenario dell'utente: quando nasce la sua polisportiva e per quanti anni allena, quanti tesserati
+# tiene, fino a che età li sceglie al mercato, quanto offre in più dell'ingaggio chiesto, e i bersagli.
+ANNI_PRIMA_DELL_UTENTE = 10
+ANNI_DELL_UTENTE = 10
+NOME_UTENTE = "Polisportiva Utente"
+TESSERATI_UTENTE = 15
+ETA_MASSIMA_UTENTE = 30.0
+RIALZO_INGAGGIO_UTENTE = 1.3
+SPONSOR_SU_STIPENDI_MASSIMO = 120.0
+PRIMI_100_TESSERATI_MINIMI = 80.0
 
 
 def numero(valore_numerico, decimali=0):
@@ -131,8 +166,10 @@ def misure(mondo, dell_anno=None):
     for g in attivi:
         lettera = classe.classe(g).codice[0]
         lettere[lettera] = lettere.get(lettera, 0) + 1
+    primi = sorted(attivi, key=lambda g: g.indice_collettivo_valore, reverse=True)[:100]
     return {
         "attivi": len(attivi), "tesserati": len(tesserati), "polisportive": len(cpu),
+        "primi_100": 100.0 * sum(1 for g in primi if g.appartenenza != "*") / max(1, len(primi)),
         "stipendi": (percentile(stipendi, 0.1), percentile(stipendi, 0.5), percentile(stipendi, 0.9)),
         "casse": (percentile(casse, 0.1), percentile(casse, 0.5), percentile(casse, 0.9)),
         "monte_su_sponsor": monte / max(1, sponsor),
@@ -151,15 +188,19 @@ def riga_dell_anno(anno, m, millisecondi):
     return (f"Anno {anno}: {m['attivi']} giocatori in attività, {numero(100 * m['tesserati'] / max(1, m['attivi']))} per cento tesserati, "
             f"{m['polisportive']} polisportive del computer. Stipendi pagati {numero(s10)}, {numero(s50)} e {numero(s90)} euro al decimo, cinquantesimo e novantesimo percentile; "
             f"casse {numero(c10)}, {numero(c50)} e {numero(c90)} euro; il monte stipendi è il {numero(100 * m['monte_su_sponsor'])} per cento dello sponsor. "
-            f"Valore {numero(v10)}, {numero(v50)} e {numero(v90)}. Per fasce d'età: {fasce}. Classi per lettera, per cento: {lettere}. "
+            f"Valore {numero(v10)}, {numero(v50)} e {numero(v90)}; dei primi 100 per valore è tesserato il {numero(m['primi_100'])} per cento. "
+            f"Per fasce d'età: {fasce}. Classi per lettera, per cento: {lettere}. "
             f"Nell'anno: {anno_trascorso}. Un giorno simulato chiede {numero(millisecondi)} millisecondi.")
 
 
-def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True):
+def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True, ogni_giorno=None, annuali=None):
     """
     Fa nascere un mondo in una cartella temporanea e lo fa avanzare di tanti anni simulati.
     Restituisce il mondo e le righe del racconto; la cartella si cancella alla fine. Il caso del
-    mondo si rimette com'era, così chi chiama non si accorge della simulazione.
+    mondo si rimette com'era, così chi chiama non si accorge della simulazione. Con ogni_giorno,
+    una funzione, la chiama dopo ogni giorno simulato col mondo, il numero del giorno e il
+    riepilogo dell'avanzamento: è lì che agisce l'utente dello scenario. Con annuali, un elenco,
+    vi aggiunge le misure di ogni anno, con l'anno e i millisecondi del giorno.
     """
     cartella = tempfile.mkdtemp(prefix="mess_simulazione_lunga_")
     cartella_vera = percorsi.cartella
@@ -180,14 +221,20 @@ def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True):
             rapporto = mondo.processa_tempo_trascorso(mondo.datetime_ultimo_run_reale + DURATA_TICK)
             for voce in VOCI_DELL_ANNO:
                 dell_anno[voce] += rapporto[voce]
+            if ogni_giorno is not None:
+                ogni_giorno(mondo, giorno, rapporto)
             if giorno % GIORNI_PER_ANNO == 0:
                 adesso = time.perf_counter()
                 millisecondi = (adesso - ultimo) * 1000 / GIORNI_PER_ANNO
-                if misura_ogni_anno or giorno == giorni:
-                    riga = riga_dell_anno(giorno // GIORNI_PER_ANNO, misure(mondo, dell_anno), millisecondi)
-                    righe.append(riga)
-                    if stampa:
-                        stampa(riga)
+                if misura_ogni_anno or giorno == giorni or annuali is not None:
+                    m = misure(mondo, dell_anno)
+                    if annuali is not None:
+                        annuali.append({**m, "numero_anno": giorno // GIORNI_PER_ANNO, "millisecondi": millisecondi})
+                    if misura_ogni_anno or giorno == giorni:
+                        riga = riga_dell_anno(giorno // GIORNI_PER_ANNO, m, millisecondi)
+                        righe.append(riga)
+                        if stampa:
+                            stampa(riga)
                 dell_anno = dict.fromkeys(VOCI_DELL_ANNO, 0)
                 ultimo = time.perf_counter()
     finally:
@@ -336,13 +383,218 @@ def cerca_economia(anni, semi, cassa_bersaglio, processi, giri=3, passi=6, stamp
     return a, b, sponsor, righe
 
 
+def _anni_della_prova_lunga(anni, seme):
+    """Una prova lunga in un processo a parte: le misure di ogni anno."""
+    annuali = []
+    simula(anni, seme, stampa=None, misura_ogni_anno=False, annuali=annuali)
+    return seme, annuali
+
+
+def fuori_dalla_solvibilita(annuali):
+    """Gli anni in cui il computer non resta in grado di pagare: tesserati sotto l'85 per cento, o cassa mediana fuori da 2.000 e 15.000 euro."""
+    fuori = []
+    for m in annuali:
+        tesserati = 100.0 * m["tesserati"] / max(1, m["attivi"])
+        cassa = m["casse"][1]
+        if tesserati < TESSERATI_MINIMI_PROVA_LUNGA or not CASSA_MEDIANA_PROVA_LUNGA[0] <= cassa <= CASSA_MEDIANA_PROVA_LUNGA[1]:
+            fuori.append((m["numero_anno"], tesserati, cassa))
+    return fuori
+
+
+def prova_lunga(anni, semi, processi, stampa=print):
+    """
+    La prova lunga: tanti anni su più semi in parallelo. Per decennio il valore mediano, gli
+    stipendi pagati e le casse del computer; anno per anno il controllo di solvibilità.
+    Restituisce le righe del racconto.
+    """
+    from simulazione_lunga import _anni_della_prova_lunga as lavoro
+    with ProcessPoolExecutor(max_workers=max(1, min(processi, len(semi)))) as esecutore:
+        risultati = dict(f.result() for f in [esecutore.submit(lavoro, anni, seme) for seme in semi])
+    righe = [f"Prova lunga, {anni} anni sui semi {', '.join(str(s) for s in semi)}."]
+    for decennio in range(10, anni + 1, 10):
+        voci = []
+        for seme in semi:
+            m = next(x for x in risultati[seme] if x["numero_anno"] == decennio)
+            s10, s50, s90 = m["stipendi"]
+            voci.append(f"seme {seme}: valore mediano {numero(m['valore'][1], 1)}, stipendi {numero(s10)}, {numero(s50)} e {numero(s90)}, cassa mediana {numero(m['casse'][1])}, "
+                        f"tesserati {numero(100 * m['tesserati'] / max(1, m['attivi']))} per cento su {m['attivi']}, primi 100 tesserati al {numero(m['primi_100'])} per cento, "
+                        f"un giorno {numero(m['millisecondi'])} millisecondi")
+        righe.append(f"Anno {decennio}: " + "; ".join(voci) + ".")
+    for seme in semi:
+        fuori = fuori_dalla_solvibilita(risultati[seme])
+        if fuori:
+            righe.append(f"Seme {seme}, anni fuori dalla solvibilità: " + "; ".join(f"anno {a}, tesserati {numero(t)} per cento, cassa mediana {numero(c)}" for a, t, c in fuori) + ".")
+        else:
+            righe.append(f"Seme {seme}: per tutti i {anni} anni tesserati almeno all'{numero(TESSERATI_MINIMI_PROVA_LUNGA)} per cento e cassa mediana fra "
+                         f"{numero(CASSA_MEDIANA_PROVA_LUNGA[0])} e {numero(CASSA_MEDIANA_PROVA_LUNGA[1])} euro, dentro.")
+    for riga in righe:
+        if stampa:
+            stampa(riga)
+    return righe, risultati
+
+
+class ScenarioUtente:
+    """
+    L'utente che allena e rinnova, dal giorno in cui nasce la sua polisportiva: tessera i giovani più
+    forti fra i liberi, gioca le amichevoli, spende tutti i punti, rinnova chi può pagare e paga gli
+    arretrati. Conta, anno per anno, quello che serve ai bersagli dello scenario.
+    """
+
+    def __init__(self, primo_giorno, seme):
+        self.primo_giorno = primo_giorno
+        self.rng = random.Random(f"scenario-utente-{seme}")
+        self.poli = None
+        self.motore = None
+        self.ieri = set()
+        self.liberati = set()
+        self.mancati = set()
+        self.anni = []
+        self.anno = self._anno_vuoto()
+
+    @staticmethod
+    def _anno_vuoto():
+        return {"sponsor": 0, "sponsor_valore": 0.0, "stipendi": 0, "giorni": 0, "cassa_minima": None, "tesserati": 0, "andati_via": 0, "rinnovi": 0, "rinnovi_rifiutati": 0,
+                "rinnovi_mancati": 0, "amichevoli": 0, "spese": 0}
+
+    def __call__(self, mondo, giorno, rapporto):
+        if giorno < self.primo_giorno:
+            return
+        if self.poli is None:
+            self.poli = mondo.fonda_polisportiva(NOME_UTENTE, attiva=True)
+            self.motore = MotorePartita(mondo)
+        poli = self.poli
+        oggi = mondo.datetime_corrente_simulazione
+        rosa_di_oggi = set(poli.tesserati)
+        andati = self.ieri - rosa_di_oggi
+        self.liberati |= andati
+        self.anno["andati_via"] += len(andati)
+        self._paga_arretrati(mondo)
+        self._tessera(mondo)
+        self._amichevoli(mondo, giorno)
+        self._allena(mondo, oggi)
+        self._rinnovi(mondo, oggi)
+        rosa = mondo._rosa(poli)
+        self.anno["sponsor"] += mondo.sponsor(poli)
+        self.anno["sponsor_valore"] += costanti.QUOTA_SPONSOR_SUL_VALORE * sum(economia.valore_di_mercato_pieno(g) for g in rosa if not g.ritirato)
+        self.anno["stipendi"] += mondo.monte_stipendi(poli)
+        self.anno["giorni"] += 1
+        self.anno["cassa_minima"] = poli.cassa if self.anno["cassa_minima"] is None else min(self.anno["cassa_minima"], poli.cassa)
+        self.ieri = set(poli.tesserati)
+        if (giorno - self.primo_giorno + 1) % GIORNI_PER_ANNO == 0:
+            liberi_ora = [mondo.giocatori[gid] for gid in self.liberati if gid in mondo.giocatori and gid not in mondo._ids_morti_processati_sessione]
+            presi = sum(1 for g in liberi_ora if g.appartenenza not in ("*", poli.nome))
+            primi = misure(mondo)["primi_100"]
+            self.anni.append({**self.anno, "cassa": poli.cassa, "tesserati": len(rosa), "liberati": len(self.liberati), "presi_da_altri": presi,
+                              "valore_medio": statistics.fmean(g.indice_collettivo_valore for g in rosa) if rosa else 0.0,
+                              "stipendio_medio": statistics.fmean(economia.stipendio_pagato(g) for g in rosa) if rosa else 0.0,
+                              "richiesto_medio": statistics.fmean(economia.stipendio(g) for g in rosa) if rosa else 0.0,
+                              "classe_migliore": min((classe.classe(g).livello for g in rosa), default=100), "primi_100": primi})
+            self.anno = self._anno_vuoto()
+
+    def _paga_arretrati(self, mondo):
+        for g in sorted(mondo._rosa(self.poli), key=lambda g: g.pazienza):
+            importo = min(g.arretrati, self.poli.cassa)
+            if importo > 0:
+                mondo.paga(self.poli, g, importo)
+
+    def _tessera(self, mondo):
+        """Riempie la rosa con i liberi più forti fino a 30 anni, offrendo il 30 per cento in più dell'ingaggio, se il monte stipendi sta nella regola del computer."""
+        poli = self.poli
+        if len(poli.tesserati) >= TESSERATI_UTENTE or mondo.mosse_rimaste(poli) <= 0:
+            return
+        liberi = [g for g in mondo.trova_giocatori_liberi_ordinati().values() if g.puo_giocare and g.eta_anni <= ETA_MASSIMA_UTENTE]
+        for g in liberi:
+            if len(poli.tesserati) >= TESSERATI_UTENTE or mondo.mosse_rimaste(poli) <= 0:
+                return
+            ingaggio = economia.arrotonda(economia.ingaggio_richiesto(g, poli) * RIALZO_INGAGGIO_UTENTE)
+            monte = mondo.monte_stipendi(poli) + economia.stipendio(g)
+            sponsor = mondo.sponsor(poli) + costanti.QUOTA_SPONSOR_SUL_VALORE * economia.valore_di_mercato_pieno(g)
+            if ingaggio + monte > poli.cassa or monte > sponsor + (poli.cassa - ingaggio) / costanti.PARTI_DI_CASSA_PER_STIPENDI:
+                continue
+            if mondo.problema_offerta(poli, g, ingaggio) is None:
+                mondo.offerta(poli, g, ingaggio)
+
+    def _amichevoli(self, mondo, giorno):
+        """Un'amichevole ogni due giorni per ciascuno, contro un compagno: oggi gioca metà della rosa, a coppie."""
+        rosa = sorted(mondo._rosa(self.poli), key=lambda g: g.id)
+        di_turno = [g for i, g in enumerate(rosa) if (i + giorno) % 2 == 0 and g.puo_giocare_amichevole(mondo.datetime_corrente_simulazione)]
+        for a, b in zip(di_turno[0::2], di_turno[1::2], strict=False):
+            risultato = simula_incontro(a, b, SINGOLARE_3, seme=self.rng.getrandbits(63), dettaglio=ESSENZIALE)
+            self.motore.registra(risultato)
+            self.anno["amichevoli"] += 1
+
+    def _allena(self, mondo, oggi):
+        for g in mondo._rosa(self.poli):
+            if allenamento.puo_allenarsi(g) and g.punti_allenamento >= 1.0 and allenamento.allena_secondo_programma(g, data=oggi):
+                self.anno["spese"] += 1
+
+    def _rinnovi(self, mondo, oggi):
+        """Propone il rinnovo a chi è nella finestra, alla richiesta e alla durata proposta, se il monte stipendi nuovo sta nella regola del computer."""
+        poli = self.poli
+        for g in mondo._rosa(poli):
+            if mondo.problema_rinnovo(poli, g) is not None:
+                continue
+            mesi = contratti.durata_proposta(g)
+            richiesta = contratti.richiesta_rinnovo(g, poli, mesi)
+            monte = mondo.monte_stipendi(poli) - economia.stipendio_pagato(g) + richiesta
+            if monte > mondo.sponsor(poli) + poli.cassa / costanti.PARTI_DI_CASSA_PER_STIPENDI:
+                if g.id not in self.mancati:
+                    self.mancati.add(g.id)
+                    self.anno["rinnovi_mancati"] += 1
+                continue
+            accetta, _probabilita, _richiesta = mondo.rinnova(poli, g, max(costanti.STIPENDIO_MINIMO, richiesta), mesi)
+            self.anno["rinnovi" if accetta else "rinnovi_rifiutati"] += 1
+
+
+def _scenario_di_un_seme(seme, anni_prima, anni_utente):
+    """Lo scenario dell'utente su un seme, in un processo a parte: gli anni dell'utente e le misure del mondo di ogni anno."""
+    scenario = ScenarioUtente(anni_prima * GIORNI_PER_ANNO + 1, seme)
+    annuali = []
+    simula(anni_prima + anni_utente, seme, stampa=None, misura_ogni_anno=False, ogni_giorno=scenario, annuali=annuali)
+    return seme, scenario.anni, annuali
+
+
+def scenario_utente(semi, processi, anni_prima=ANNI_PRIMA_DELL_UTENTE, anni_utente=ANNI_DELL_UTENTE, stampa=print):
+    """Lo scenario dell'utente che allena e rinnova, su più semi in parallelo: le righe del racconto, con i bersagli."""
+    from simulazione_lunga import _scenario_di_un_seme as lavoro
+    with ProcessPoolExecutor(max_workers=max(1, min(processi, len(semi)))) as esecutore:
+        risultati = [f.result() for f in [esecutore.submit(lavoro, seme, anni_prima, anni_utente) for seme in semi]]
+    righe = [f"Scenario dell'utente che allena e rinnova: la sua polisportiva nasce all'anno {anni_prima} e vive {anni_utente} anni, sui semi "
+             f"{', '.join(str(s) for s in semi)}. Tiene {TESSERATI_UTENTE} tesserati, scelti fra i liberi più forti fino a {numero(ETA_MASSIMA_UTENTE)} anni con "
+             f"l'ingaggio chiesto più il {numero(100 * (RIALZO_INGAGGIO_UTENTE - 1))} per cento; ognuno gioca un'amichevole ogni due giorni contro un compagno; "
+             "ogni giorno Allena tutti; i rinnovi alla richiesta, se il monte stipendi sta nella regola del computer."]
+    esiti = {"sponsor": True, "primi": True}
+    for seme, anni, annuali in risultati:
+        for indice, a in enumerate(anni, start=1):
+            rapporto = 100.0 * a["sponsor"] / max(1, a["stipendi"])
+            esiti["sponsor"] = esiti["sponsor"] and rapporto <= SPONSOR_SU_STIPENDI_MASSIMO
+            esiti["primi"] = esiti["primi"] and a["primi_100"] >= PRIMI_100_TESSERATI_MINIMI
+            righe.append(f"Seme {seme}, anno {indice} dell'utente: cassa {numero(a['cassa'])} euro, la più bassa {numero(a['cassa_minima'] or 0)}; "
+                         f"lo sponsor è il {numero(rapporto)} per cento degli stipendi pagati, la sua parte legata al valore della rosa il "
+                         f"{numero(100.0 * a['sponsor_valore'] / max(1, a['stipendi']))}; {a['tesserati']} tesserati, valore medio {numero(a['valore_medio'], 1)}, "
+                         f"la classe migliore {classe.codice(a['classe_migliore'])}; stipendio pagato medio {numero(a['stipendio_medio'])} euro, richiesto {numero(a['richiesto_medio'])}; "
+                         f"rinnovi {a['rinnovi']}, rifiutati {a['rinnovi_rifiutati']}, mancati per mancanza di soldi {a['rinnovi_mancati']}; "
+                         f"andati via {a['andati_via']}, tornati liberi finora {a['liberati']}, di cui presi da altri {a['presi_da_altri']}; "
+                         f"amichevoli {a['amichevoli']}, spese {a['spese']}; dei primi 100 del mondo è tesserato il {numero(a['primi_100'])} per cento.")
+        ultimo = annuali[-1]
+        righe.append(f"Seme {seme}, il mondo alla fine: {ultimo['attivi']} giocatori in attività, tesserati al {numero(100 * ultimo['tesserati'] / max(1, ultimo['attivi']))} "
+                     f"per cento, cassa mediana del computer {numero(ultimo['casse'][1])} euro, valore mediano {numero(ultimo['valore'][1], 1)}.")
+    righe.append(f"I bersagli dello scenario: lo sponsor dell'utente, in media sull'anno, non supera il {numero(SPONSOR_SU_STIPENDI_MASSIMO)} per cento degli stipendi pagati, "
+                 f"{'dentro' if esiti['sponsor'] else 'FUORI'}; dei primi 100 del mondo è tesserato almeno l'{numero(PRIMI_100_TESSERATI_MINIMI)} per cento, "
+                 f"{'dentro' if esiti['primi'] else 'FUORI'}.")
+    for riga in righe:
+        if stampa:
+            stampa(riga)
+    return righe, risultati
+
+
 def _decimale(testo):
     return float(testo.replace(",", "."))
 
 
 def main():
     parser = argparse.ArgumentParser(description="Simula il mondo di MESS per molti anni in una cartella temporanea e controlla l'economia.")
-    parser.add_argument("--anni", type=int, default=10, help="quanti anni simulare, 10 se non indicato")
+    parser.add_argument("--anni", type=int, default=None, help="quanti anni simulare, 10 se non indicato, 60 con --prova-lunga")
     parser.add_argument("--seme", type=int, default=2026, help="il seme del caso del mondo, 2026 se non indicato")
     parser.add_argument("--rapporto", type=Path, default=None, help="salva il racconto anche in questo file")
     parser.add_argument("--semi", type=int, nargs="+", default=None, help="più semi in parallelo, per --scala e --cerca-economia; 2026, 7, 13 e 21 se non indicati")
@@ -353,10 +605,21 @@ def main():
     parser.add_argument("--giri", type=int, default=3, help="i giri della scala in forma chiusa, 3 se non indicati")
     parser.add_argument("--passi", type=int, default=6, help="i passi della bisezione dello sponsor, 6 se non indicati")
     parser.add_argument("--processi", type=int, default=min(8, os.cpu_count() or 1), help="quanti semi simulare insieme, fino a 8 se il computer li ha")
+    parser.add_argument("--prova-lunga", action="store_true", help="i semi per 60 anni, o quelli indicati, con il controllo di solvibilità anno per anno")
+    parser.add_argument("--scenario-utente", action="store_true", help="dall'anno 10 una polisportiva dell'utente che allena e rinnova, per dieci anni")
     argomenti = parser.parse_args()
     inizio = time.perf_counter()
     semi = argomenti.semi or [2026, 7, 13, 21]
-    if argomenti.cerca_economia:
+    argomenti.anni = argomenti.anni or (ANNI_PROVA_LUNGA if argomenti.prova_lunga else 10)
+    if argomenti.prova_lunga:
+        righe, _risultati = prova_lunga(argomenti.anni, semi, argomenti.processi)
+        righe.append(f"Prova completata in {numero(time.perf_counter() - inizio)} secondi.")
+        print(righe[-1])
+    elif argomenti.scenario_utente:
+        righe, _risultati = scenario_utente(semi, argomenti.processi)
+        righe.append(f"Scenario completato in {numero(time.perf_counter() - inizio)} secondi.")
+        print(righe[-1])
+    elif argomenti.cerca_economia:
         _a, _b, _s, righe = cerca_economia(argomenti.anni, semi, argomenti.cassa, argomenti.processi, argomenti.giri, argomenti.passi, sponsor_iniziale=argomenti.sponsor)
         righe = [f"Taratura dell'economia, {argomenti.anni} anni sui semi {', '.join(str(s) for s in semi)}, cassa mediana cercata {numero(argomenti.cassa)} euro.",
                  *righe, f"Ricerca completata in {numero(time.perf_counter() - inizio)} secondi."]

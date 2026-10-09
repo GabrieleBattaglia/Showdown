@@ -203,8 +203,10 @@ CAPITALE_INIZIALE = 20_000
 # per ogni punto di gloria, che la simulazione lunga ritocca, più il 9 per cento al mese del valore
 # di mercato pieno dei tesserati, che resta fisso. Fino alla tappa 10 erano 35 euro per la gloria.
 # Il punto di partenza era 18; la prima taratura grezza del 2026-10-09, simulazione_lunga.py
-# --cerca-economia su quattro semi, ha trovato 16,2, con la cassa mediana del computer a 5.000 euro.
-SPONSOR_PER_GLORIA = 16.2
+# --cerca-economia su quattro semi, aveva trovato 16,2, e la taratura fine dello stesso giorno, dopo
+# quella del motore e coi pesi nuovi, 16,1: la cassa mediana del computer all'anno 10 sta fra 4.870
+# e 5.110 euro sui quattro semi, in media 5.010.
+SPONSOR_PER_GLORIA = 16.1
 QUOTA_SPONSOR_SUL_VALORE = 0.09
 STIPENDIO_DI_RIFERIMENTO = 200
 VALORE_DI_RIFERIMENTO = 140
@@ -498,10 +500,13 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # quattro volte tanto, e la precisione, che entra in tutte le qualità, più di tutte, ma la metà
 # di prima. Dalla tappa 11 la scala si tara col mondo che si allena, all'anno 10 della simulazione
 # lunga, con --cerca-economia: A tiene la mediana del valore dei giocatori in attività a 135,5, B
-# porta lo stipendio pagato al decimo percentile dei tesserati a 105 euro. La prima taratura
-# grezza, del 2026-10-09, ha dato A -49,68 e B 1,1302: stipendio mediano 210 euro, decimo
-# percentile 100, novantesimo 510, tesserati al 90 per cento, cassa mediana del computer a 5.000
-# euro. Fino alla tappa 10 erano A -82,61 e B 1,3878, che la migrazione conserva per i contratti.
+# porta lo stipendio pagato al decimo percentile dei tesserati a 105 euro. La taratura fine del
+# 9 ottobre 2026, dopo quella del motore e coi pesi nuovi, ha dato A -50,68 e B 1,1414: sui quattro
+# semi, all'anno 10, stipendio pagato mediano 210 o 220 euro, decimo percentile 100, novantesimo
+# da 510 a 520, tesserati al 90 o 91 per cento, cassa mediana del computer attorno ai 5.000 euro,
+# mediana del valore da 135,4 a 136,0. La prima taratura grezza aveva dato A -49,68 e B 1,1302, coi
+# pesi della tappa 9. Fino alla tappa 10 erano A -82,61 e B 1,3878, che la migrazione conserva per
+# i contratti.
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
 PESI_VALORE = {
@@ -511,8 +516,8 @@ PESI_VALORE = {
     "tenutapaletta": 1.22, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.36, "forza": 5.54, "resistenza": 3.71,
 }
 PESI_TRATTI = {"mancino": 2.4, "ambidestro": 3.4, "giocorapido": 1.0, "cambiovelocita": 4.6}
-SCALA_VALORE_A = -49.68
-SCALA_VALORE_B = 1.1302
+SCALA_VALORE_A = -50.68
+SCALA_VALORE_B = 1.1414
 SOGLIA_PESO_INERTE = 0.25
 
 

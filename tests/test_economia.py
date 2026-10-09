@@ -88,7 +88,7 @@ def test_ingaggio_reputazione_e_sponsor(mondo):
     assert economia.fattore_reputazione(g, poli) == 2.
     poli.gloria = 100
     # Dalla tappa 11 lo sponsor è metà per la gloria e metà per il valore della rosa.
-    assert economia.sponsor_mensile(poli, []) == 100 * SPONSOR_PER_GLORIA
+    assert economia.sponsor_mensile(poli, []) == economia.arrotonda(100 * SPONSOR_PER_GLORIA)
     rosa = [mondo.giocatori[gid] for gid in (1, 2, 3)]
     atteso = economia.arrotonda(100 * SPONSOR_PER_GLORIA + QUOTA_SPONSOR_SUL_VALORE * sum(economia.valore_di_mercato_pieno(g) for g in rosa))
     assert economia.sponsor_mensile(poli, rosa) == atteso

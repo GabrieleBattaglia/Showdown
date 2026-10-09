@@ -5,8 +5,9 @@ mediana e monte stipendi, le coppie speculari di colpi e battute che hanno un pe
 ricerca della scala vera per bisezione di strumenti/simulazione_lunga.py, con una simulazione
 finta. Dalla revisione di D26: la resistenza ha un prezzo solo, la verifica a coppie somma più
 gruppi con poche partite, e la sonda della stanchezza del banco misura soltanto giocatori che
-possono esistere. Dalla tappa 11: la costanza nella popolazione di prova e nella regressione, e le
-parti pure del giro degli estremi del motore, cioè la resa di un tratto e i verdetti dei bersagli.
+possono esistere. Dalla tappa 11: la costanza nella popolazione di prova e nella regressione, le
+parti pure del giro degli estremi del motore, cioè la resa di un tratto e i verdetti dei bersagli, e
+il controllo di solvibilità della prova lunga.
 """
 
 import hashlib
@@ -192,6 +193,12 @@ def test_le_prove_del_giro_degli_estremi(monkeypatch):
     lotti, esiti = be.gioca_prova(("triplaspondasx",), 1.0)
     assert sum(lotto["giocate"] for lotto in lotti) == 8 and esiti["incontri"] == 8
     assert be.misure_esiti(esiti)["punti_per_set"] > 0
+
+
+def test_il_controllo_di_solvibilita_della_prova_lunga():
+    anni = [{"numero_anno": 1, "tesserati": 90, "attivi": 100, "casse": (0, 5000, 0)}, {"numero_anno": 2, "tesserati": 80, "attivi": 100, "casse": (0, 5000, 0)},
+            {"numero_anno": 3, "tesserati": 90, "attivi": 100, "casse": (0, 1500, 0)}, {"numero_anno": 4, "tesserati": 90, "attivi": 100, "casse": (0, 16000, 0)}]
+    assert [anno for anno, _t, _c in sl.fuori_dalla_solvibilita(anni)] == [2, 3, 4]
 
 
 def test_la_sonda_della_stanchezza_misura_giocatori_possibili():
