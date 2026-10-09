@@ -11,6 +11,7 @@ import math
 import random
 
 import pytest
+from aiuti_formati import al_formato_5
 
 import archivio
 import economia
@@ -255,7 +256,7 @@ def test_un_salvataggio_del_formato_3_si_aggiorna(mondo, cartella_di_prova):
     poli = _club(mondo, 2)
     for gid in (1, 2):
         mondo.giocatori[gid].diario[0]["data"] = INIZIO - datetime.timedelta(days=90)
-    contenuto = archivio.componi(mondo)
+    contenuto = al_formato_5(archivio.componi(mondo))
     dati = contenuto["mondo"]
     for p in dati["polisportive"].values():
         for campo in ("cassa", "in_vendita", "bilanci", "conti_del_mese"):
@@ -273,7 +274,7 @@ def test_un_salvataggio_del_formato_3_si_aggiorna(mondo, cartella_di_prova):
     assert ricaricato.giocatori[5].fedelta == 0. and ricaricato.giocatori[5].pazienza == 100.
     assert all(g.bandiera == (g.id % 100 == 0) for g in ricaricato.giocatori.values())
     assert archivio.salva(ricaricato)
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 5
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 6
 
 
 def test_i_testi_dell_economia(mondo):

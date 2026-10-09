@@ -35,6 +35,16 @@ lettura, e si riscrive nel formato nuovo al primo salvataggio; le versioni di pr
 salvataggio di un formato più recente, con il loro messaggio.
 Dal 2026-10-07, per gli effetti sonori della decisione D24, salva_con_avvisi restituisce a parte
 gli avvisi di un salvataggio riuscito, perché la finestra li faccia sentire con un suono loro.
+Il formato 6, della tappa 11, del 2026-10-09, decisione D31: i punti allenamento con la virgola, al
+posto dei vecchi punti esperienza; l'indole al posto dell'archetipo, con il programma e l'intensità;
+i tratti rari dell'allenamento e l'ambizione, ricavati dal numero del giocatore come alla nascita; la
+costanza recente, zero per tutti; i contratti. La migrazione è l'unico posto in cui i contratti si
+danno d'ufficio: i tesserati ricevono un contratto con lo stipendio che hanno, calcolato con i pesi e
+la scala della versione 1.50.0, conservati qui come costanti storiche, così la nuova taratura del
+valore non cambia lo stipendio a nessuno fino al rinnovo. Le caratteristiche non si toccano: senza
+i tetti propri dell'allenata ogni valore di oggi resta valido così com'è. Alla lettura si controlla
+la coerenza fra contratti e appartenenza, e un salvataggio incoerente si rifiuta, con il ripiego
+sulla copia di sempre: il salvataggio non si ripara mai in silenzio.
 """
 
 import contextlib
@@ -45,19 +55,27 @@ import hmac
 import json
 import os
 import shutil
+import types
 import zlib
 
+import contratti
+import economia
 import percorsi
+import tratti
+import valore
 from costanti import (
     CAPITALE_INIZIALE,
     ESPERIENZA_MASSIMA,
-    ESPERIENZA_PER_MESE,
     FEDELTA_MASSIMA,
     FEDELTA_PER_MESE,
     FILE_MONDO,
     FILE_MONDO_COPIA,
     FILE_MONDO_COPIA_VECCHIO,
     FILE_MONDO_VECCHIO,
+    INDOLE_PREDEFINITA,
+    INTENSITA_PREDEFINITA,
+    MAPPA_ARCHETIPI_INDOLI,
+    MESI_MINIMI_MIGRAZIONE,
     NUM_GIOCATORI_INIZIALI,
     SEDE_NON_PRECISATA,
     VERSIONE,
@@ -67,13 +85,28 @@ from mondo import CONSERVAZIONE_PREDEFINITA
 from utilita import adesso, adesso_utc
 
 APPLICAZIONE = "MESS"
-FORMATO = 5
+FORMATO = 6
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Da dove viene il mondo appena caricato.
 NATO = "nato"
 CARICATO = "caricato"
 DALLA_COPIA = "dalla_copia"
+
+
+# Le costanti storiche delle migrazioni, che non cambiano più. L'esperienza che i formati fino al 3
+# davano per ogni mese passato nel club, e i pesi e la scala del valore della versione 1.50.0, con
+# cui la migrazione dal formato 5 calcola lo stipendio dei contratti dei tesserati di allora.
+ESPERIENZA_PER_MESE_FORMATO_3 = 0.1
+PESI_VALORE_FORMATO_5 = {
+    "lungolineasx": 0.44, "lungolineadx": 0.44, "diagonalesx": 0.49, "diagonaledx": 0.49, "singolaspondasx": 0.48, "singolaspondadx": 0.48,
+    "doppiaspondasx": 0.45, "doppiaspondadx": 0.45, "triplaspondasx": 0.33, "triplaspondadx": 0.33, "bomba": 0.36, "battutasx": 0.78,
+    "battutadx": 0.78, "chiusura_dritto": 2.22, "chiusura_rovescio": 2.81, "blocco_dritto": 1.35, "blocco_rovescio": 1.61, "difesa": 3.38,
+    "tenutapaletta": 1.26, "controllopalla": 0.81, "attacco": 1.29, "precisione": 10.04, "forza": 5.18, "resistenza": 4.71,
+}
+PESI_TRATTI_FORMATO_5 = {"mancino": 2.9, "ambidestro": 3.4, "giocorapido": 1.2, "cambiovelocita": 4.5}
+SCALA_A_FORMATO_5 = -82.61
+SCALA_B_FORMATO_5 = 1.3878
 
 
 class ErroreSalvataggio(Exception):
@@ -287,7 +320,7 @@ def _dal_formato_3(documento):
         p.setdefault("conti_del_mese", dict.fromkeys(VOCI_CONTI, 0))
     for g in dati["giocatori"]:
         mesi = _mesi_nel_club(g, oggi)
-        g.setdefault("esperienza", round(min(ESPERIENZA_MASSIMA, mesi * ESPERIENZA_PER_MESE), 2))
+        g.setdefault("esperienza", round(min(ESPERIENZA_MASSIMA, mesi * ESPERIENZA_PER_MESE_FORMATO_3), 2))
         g.setdefault("fedelta", round(min(FEDELTA_MASSIMA, mesi * FEDELTA_PER_MESE), 2))
         g.setdefault("pazienza", 100.)
         g.setdefault("arretrati", 0)
@@ -309,7 +342,52 @@ def _dal_formato_4(documento):
     documento["formato"] = 5
 
 
-MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4}
+def stipendio_della_1_50(dati_giocatore):
+    """
+    Lo stipendio che un giocatore del formato 5 chiedeva con la versione 1.50.0: su una vista leggera
+    del suo dizionario, con i pesi e la scala di allora, conservati qui come costanti storiche.
+    """
+    vista = types.SimpleNamespace(**dati_giocatore)
+    vista.indice_collettivo_valore = valore.indice(vista, PESI_VALORE_FORMATO_5, PESI_TRATTI_FORMATO_5, SCALA_A_FORMATO_5, SCALA_B_FORMATO_5)
+    return economia.stipendio(vista)
+
+
+def _dal_formato_5(documento):
+    """
+    Dal formato 5 al 6, con la tappa 11, decisione D31. I punti esperienza diventano punti
+    allenamento, con la virgola; l'archetipo diventa l'indole, con la mappa dei nove nomi di prima,
+    e il programma parte uguale all'indole, a intensità normale. Talento, apprendista rapido,
+    maturazione e ambizione vengono dal numero del giocatore, come alla nascita; la costanza parte
+    da zero. Le caratteristiche non si toccano. I tesserati ricevono un contratto con lo stipendio
+    che hanno, calcolato come nella versione 1.50.0, e una scadenza di almeno un anno di calendario,
+    o della durata che propongono se è più lunga, perché non scadano tutti nei primi mesi; i liberi
+    non hanno contratto, e nessuno ha rinnovi o proposte in corso.
+    """
+    dati = documento["mondo"]
+    oggi = datetime.datetime.fromisoformat(dati["data_simulata"])
+    for g in dati["giocatori"]:
+        punti = g.pop("puntiesperienza", 0)
+        g.setdefault("punti_allenamento", float(punti))
+        archetipo = g.pop("archetipo_allenamento", None)
+        g.setdefault("indole", MAPPA_ARCHETIPI_INDOLI.get(archetipo, INDOLE_PREDEFINITA))
+        g.setdefault("programma", g["indole"])
+        g.setdefault("intensita", INTENSITA_PREDEFINITA)
+        for campo, innato in tratti.tratti_innati(g["id"]).items():
+            g.setdefault(campo, innato)
+        g.setdefault("ambizione", tratti.ambizione_innata(g["id"]))
+        g.setdefault("costanza", 0.0)
+        if "contratto_stipendio" in g:
+            continue
+        g.update(contratto_stipendio=0, contratto_scadenza=None, rinnovo_stipendio=0, rinnovo_scadenza=None, proposte_rinnovo=0, ultima_trattativa=None)
+        if g["appartenenza"] != "*":
+            vista = types.SimpleNamespace(**g)
+            g["contratto_stipendio"] = stipendio_della_1_50(g)
+            mesi = max(MESI_MINIMI_MIGRAZIONE, contratti.durata_proposta(vista))
+            g["contratto_scadenza"] = contratti.scadenza_dopo(oggi, mesi).isoformat()
+    documento["formato"] = 6
+
+
+MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5}
 
 
 def _conservazione_da_json(valore):
@@ -359,6 +437,8 @@ def costruisci(documento, mondo):
         attiva = dati["polisportiva_attiva"]
         if attiva is not None and attiva not in polisportive:
             raise ValueError(f"Mondo: la polisportiva attiva {attiva!r} non esiste")
+        for g in giocatori.values():
+            controlla_contratto(g, polisportive)
     except KeyError as e:
         raise ErroreSalvataggio(f"manca il dato {e}") from e
     except (TypeError, ValueError, AttributeError) as e:
@@ -371,6 +451,27 @@ def costruisci(documento, mondo):
     mondo.prossimo_id = max(prossimo_id, max(giocatori, default=0) + 1)
     mondo.conservazione_diari = conservazione
     mondo.vecchie_glorie = vecchie_glorie
+
+
+def controlla_contratto(g, polisportive):
+    """
+    La coerenza fra contratto e appartenenza di un giocatore letto dal salvataggio, ValueError se non
+    va: un tesserato ha uno stipendio e una scadenza al primo del mese; un libero non ha né contratto
+    né rinnovo; un rinnovo ha stipendio e scadenza insieme; un'intensità diversa da normale l'ha
+    soltanto un tesserato dell'utente.
+    """
+    chi = f"Giocatore {g.id}"
+    if g.appartenenza != "*":
+        if g.contratto_stipendio <= 0 or g.contratto_scadenza is None or g.contratto_scadenza.day != 1:
+            raise ValueError(f"{chi}: è tesserato con {g.appartenenza} senza un contratto valido")
+    elif g.contratto_stipendio or g.contratto_scadenza is not None or g.rinnovo_stipendio or g.rinnovo_scadenza is not None:
+        raise ValueError(f"{chi}: è libero ma ha un contratto o un rinnovo")
+    if (g.rinnovo_stipendio > 0) != (g.rinnovo_scadenza is not None) or (g.rinnovo_scadenza is not None and g.rinnovo_scadenza.day != 1):
+        raise ValueError(f"{chi}: il rinnovo concordato non è valido")
+    if g.intensita != INTENSITA_PREDEFINITA:
+        club = polisportive.get(g.appartenenza)
+        if club is None or club.is_cpu_controlled:
+            raise ValueError(f"{chi}: soltanto un tesserato dell'utente si allena a intensità {g.intensita}")
 
 
 def _metti_da_parte(*file_da_salvare):

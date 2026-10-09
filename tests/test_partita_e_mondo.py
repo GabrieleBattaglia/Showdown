@@ -54,7 +54,7 @@ def test_partita_silenziosa_e_coerente(mondo, capsys):
         assert max(a, b) >= 11
     vincitore = mondo.giocatori[risultato["vincitore_id"]]
     assert vincitore.partitevinte == 1
-    assert vincitore.puntiesperienza > 0
+    assert vincitore.punti_allenamento > 0
 
 
 def test_partita_con_mostra_e_cronaca_su_file(mondo, cartella_di_prova):

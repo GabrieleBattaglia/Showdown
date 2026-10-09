@@ -12,22 +12,28 @@ Dalla tappa 9, il 2026-10-07, l'amichevole si gioca col motore nuovo, soltanto a
 5 set, con la cronaca nuova e senza trattini nei testi; può giocare anche l'ambidestro con un braccio
 infortunato, che continua con l'altro. Dal 2026-10-08 vale anche qui la regola di Gabriele: al
 massimo un'amichevole per giocatore in ogni giorno simulato.
+Dalla tappa 11, il 2026-10-09, l'allenamento segue la decisione D31: per una caratteristica si
+vedono il totale, il tetto e il costo del prossimo punto, si sceglie quanti punti allenamento
+spendere, si legge l'anteprima e si conferma; la voce asterisco spende tutto secondo il programma.
+La regola d'abbandono del vecchio problema P8 non c'è più: al suo posto ci sono i contratti, e il
+tesseramento dice prima la proposta di contratto del giocatore.
 """
 
 import datetime
-import math
 import time
 
 from GBUtils import dgt, key, menu
 
 import archivio
-from allenamento import calcola_costo_xp_per_punto, guadagno, limiti
+import contratti
+from allenamento import allena_secondo_programma, anteprima, costo_del_prossimo_punto, puo_allenarsi, spendi, tetto, totale
 from costanti import ANNO_SIMULAZIONE_GIORNI as anno
 from costanti import (
     ATTRIBUTI_ALLENABILI_MAP,
     ATTRIBUTI_BASE_CON_ALLENABILI,
     CARATTERISTICHE_FISICHE_BASE,
     ETA_MAX_MORTE_ANNI,
+    INDOLI,
     LIMITE_MOVIMENTI_PER_TICK,
     MAPPA_FLAG_SOMMARIO,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
@@ -43,9 +49,8 @@ from costanti import (
     VERSIONE,
 )
 from economia import ingaggio_richiesto, stipendio
-from modelli import e_fisica
 from partita import MotorePartita
-from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, formatta_eta_sim
+from utilita import accorda, adesso, adesso_utc, converti_in_tempo, data_breve, formatta_eta_sim
 
 MAINMENU = {
     'AGT': 'Allena Giocatori Tesserati;', 'CEG': 'CErca Giocatori;', 'CLA': 'CLAssifica Globale Giocatori (per ICV);',
@@ -68,7 +73,8 @@ MENU_ALLENAMENTO = {
     "CDA": "Chiusura DX;", "BSA": "Blocco SX;", "BDA": "Blocco DX;", "CPA": "Controllo palla;", "ATA": "Attacco;",
     "BTSA": "Battuta SX;", "BTDA": "Battuta DX;", "BA": "Bomba;", "LLSA": "Lungolinea SX;", "LLDA": "Lungolinea DX;",
     "DSA": "Diagonale SX;", "DDA": "Diagonale DX;", "SSS": "S.Sponda SX;", "SSD": "S.Sponda DX;", "DPSA": "D.Sponda SX;",
-    "DPDA": "D.Sponda DX;", "TPSA": "T.Sponda SX;", "TPDA": "T.Sponda DX;", "": "Termina allenamento atleta;"
+    "DPDA": "D.Sponda DX;", "TPSA": "T.Sponda SX;", "TPDA": "T.Sponda DX;", "*": "Allenamento completo secondo il programma;",
+    "": "Termina allenamento atleta;"
 }
 MENU_RICERCA = {
     "ICV": "ICV;", "ETA": "Eta (anni sim);", "NOME": "Nome;", "COGNOME": "Cognome;", "IPO": "Ipovedente (s/n);",
@@ -263,13 +269,13 @@ class InterfacciaTestuale:
             print("\n\tNessun giocatore nel range.")
             return
         print(f"\n--- Classifica Globale (Posizioni {idx_start + 1} - {idx_end}) ---")
-        hdr = f"{'Pos':<5} {'ID':<5} {'Età(A/M/G)':<10} {'Archetipo':<25} {'ICV':<8} {'Club':<15} {'Nome Cognome'}"
+        hdr = f"{'Pos':<5} {'ID':<5} {'Età(A/M/G)':<10} {'Indole':<25} {'ICV':<8} {'Club':<15} {'Nome Cognome'}"
         print(hdr)
         print("-" * (len(hdr) + 5))
         for i, g in enumerate(da_vis):
             pos = idx_start + i + 1
             eta = formatta_eta_sim(g.eta, True)
-            arch = getattr(g, 'archetipo_allenamento', 'N/D')[:25]
+            arch = INDOLI[g.indole]["nome"][:25]
             icv = f"{g.indice_collettivo_valore:.1f}"
             prefix = "->" if pos == pos_target else "  "
             print(f"{prefix}{pos:<3} {g.id:<5} {eta:<10} {arch:<25} {icv:<8} {self._club(g):<15} {g.nome} {g.cognome}")
@@ -517,7 +523,7 @@ class InterfacciaTestuale:
         else:
             print("\n\tNessuna poli attiva.")
 
-    # Allenamento.
+    # Allenamento, tappa 11: la spesa a mano su una caratteristica, o l'allenamento completo secondo il programma.
 
     def allenamento_giocatori_tesserati(self):
         if not self.attiva:
@@ -525,60 +531,41 @@ class InterfacciaTestuale:
             return
         poli = self.attiva
         print(f"\n--- Allenamenti {poli.nome} ---")
-        allenabili = [gid for gid in list(poli.tesserati) if gid in self.giocatori and gid not in self.morti and not self.giocatori[gid].ritirato
-                      and not self.giocatori[gid].infortunato and int(self.giocatori[gid].puntiesperienza or 0) > 0]
+        allenabili = [gid for gid in list(poli.tesserati) if gid in self.giocatori and gid not in self.morti and puo_allenarsi(self.giocatori[gid])
+                      and self.giocatori[gid].punti_allenamento >= 0.1]
         if not allenabili:
-            print("\nNessun atleta idoneo.")
+            print("\nNessun atleta idoneo: servono punti allenamento, e chi è infortunato non si allena.")
             return
-        print(f"{len(allenabili)} atleti con XP.")
+        print(f"{len(allenabili)} atleti con punti allenamento.")
         n_allenati = 0
-        lasciati = []
         for gid in allenabili:
-            if gid not in self.giocatori or self.giocatori[gid].appartenenza != poli.nome:
-                continue
             g = self.giocatori[gid]
-            xp_pre = g.puntiesperienza
+            punti_pre = g.punti_allenamento
             icv_pre = g.indice_collettivo_valore
             self._allena_singolo_giocatore(g)
-            if g.puntiesperienza < xp_pre:
+            if g.punti_allenamento < punti_pre:
                 n_allenati += 1
-                g.aggiorna_icv()
-                icv_post = g.indice_collettivo_valore
-                print(f"-> XP Spesi:{xp_pre - g.puntiesperienza}. ICV:{icv_pre:.1f}->{icv_post:.1f}")
-                g_rich = g.gloria_richiesta
-                p_gloria = poli.gloria
-                prob_esc = max(0., 100. - self.mondo.probabilita_accettazione(p_gloria, g_rich))
-                print(f"-> Valutaz: G.Rich={g_rich}, G.Poli={p_gloria} => P.Uscita={prob_esc:.1f}%")
-                if caso(prob_esc):
-                    print(f"!!! INSODDISFATTO: {g.nome} lascia!")
-                    lasciati.append((gid, g.nome, g.cognome))
-                    poli_lasc = g.appartenenza
-                    g.appartenenza = "*"
-                    self.mondo.annota(g, f"Lascia {poli_lasc}, {accorda(g.sesso, 'insoddisfatto')}.")
-                    if poli_lasc in self.polisportive:
-                        self.polisportive[poli_lasc].rimuovi_tesserato(gid, icv_post)
-                        self.mondo.annota(self.polisportive[poli_lasc], f"{g.nome} {g.cognome} se ne va, {accorda(g.sesso, 'insoddisfatto')}.")
+                print(f"-> Punti allenamento spesi: {punti_pre - g.punti_allenamento:.1f}. Valore: {icv_pre:.1f} -> {g.indice_collettivo_valore:.1f}")
         poli.aggiorna_ict(self.giocatori, self.morti)
         poli.aggiorna_gloria(self.giocatori, self.morti)
         print(f"\n--- Allenamento {poli.nome} terminato ({n_allenati} allenati) ---")
-        if lasciati:
-            print("Atleti che hanno lasciato:")
-            for id_l, n, c in lasciati:
-                print(f"- ID:{id_l} {n} {c}")
         print(f"Stato finale {poli.nome}: ICT={poli.indicecollettivotesserati:.1f}, G={poli.gloria}")
 
     def _allena_singolo_giocatore(self, g):
-        while int(g.puntiesperienza or 0) > 0:
-            print(f"\nAllenando: {g.nome} {g.cognome} (ID:{g.id}, XP:{int(g.puntiesperienza or 0)})")
-            if g.infortunato:
-                print(f"{g.nome} infortunato.")
+        while g.punti_allenamento >= 0.1:
+            print(f"\nAllenando: {g.nome} {g.cognome} (ID:{g.id}), punti allenamento: {g.punti_allenamento:.1f}, programma {INDOLI[g.programma]['nome']}")
+            if not puo_allenarsi(g):
+                print(f"{g.nome} è {accorda(g.sesso, 'infortunato')}: non si allena.")
                 return
             if g.ipovedente:
-                print("(Ipovedente - Sconto XP)")
+                print("(Ipovedente: 7 per cento di sconto sulle caratteristiche di gioco)")
             try:
                 scelta = menu(d=MENU_ALLENAMENTO, p="Caratteristica (ESC/Invio=Fine)? ", keyslist=True, pager=PAGINAZIONE_LISTE, show=True, show_on_filter=True)
                 if scelta is None or scelta == '':
                     break
+                if scelta == "*":
+                    self._allenamento_completo(g)
+                    continue
                 attr_a = ATTRIBUTI_ALLENABILI_MAP.get(scelta.lower())
                 if not attr_a or not hasattr(g, attr_a):
                     print("\n\tCodice non valido.")
@@ -589,53 +576,47 @@ class InterfacciaTestuale:
                 break
         print(f"\nFine allenamento per {g.nome}.")
 
-    def _allena_caratteristica(self, g, scelta, attr_a):
-        """Una spesa di esperienza su una caratteristica, con proposta e conferma."""
-        is_f = e_fisica(attr_a)
-        nome_d = MENU_ALLENAMENTO.get(scelta, "?").replace(';', '')
-        val_a = getattr(g, attr_a, 0.)
-        val_b = getattr(g, attr_a.replace('_allenata', '_base'), 0.)
-        lim_a, lim_t = limiti(attr_a)
-        val_t = val_b + val_a
-        print(f"\nScelto: {nome_d}")
-        print(f" Allenato:{val_a:.3f}(max {lim_a:.1f})")
-        print(f" Totale:{val_t:.3f}(max {lim_t:.1f})")
-        if val_a >= lim_a or val_t >= lim_t:
-            print("** Già al massimo! **")
-            input(" INVIO...")
-            return
-        costo_pt = calcola_costo_xp_per_punto(val_a, is_f, g.ipovedente)
-        print(f" Costo:{costo_pt:.1f} XP/+1.0pt")
-        xp_max = int(g.puntiesperienza or 0)
-        xp_spend = int(dgt(f"XP da spendere (max {xp_max}, 0=Annulla)? ", "i", imin=0, imax=xp_max))
-        if xp_spend == 0:
+    def _allenamento_completo(self, g):
+        """L'allenamento completo: tutti i punti secondo il programma, con conferma."""
+        if key(f"\rSpendere tutti i {g.punti_allenamento:.1f} punti secondo il programma {INDOLI[g.programma]['nome']}? (S/n)\r").lower() == 'n':
             print("-> Annullato.")
             return
-        n_a_f, _guadagno, limitato = guadagno(val_a, val_b, xp_spend, costo_pt, lim_a, lim_t)
-        guad_eff = max(0., n_a_f - val_a)
-        xp_eff = xp_spend
-        if limitato:
-            xp_eff = min(xp_spend, math.ceil(guad_eff * costo_pt), xp_max)
-            print("INFO: Guadagno limitato.")
-        xp_eff = min(xp_eff, xp_max)
-        xp_rimb = xp_spend - xp_eff
-        if xp_eff > 0 and guad_eff > 1e-4:
-            print(f"\nProposta: Spendi {xp_eff} XP per +{guad_eff:.3f} pt.")
-            if xp_rimb > 0:
-                print(f"({xp_spend}-{xp_rimb}={xp_eff})")
-            print(f" {nome_d}(Allenata)-> {n_a_f:.3f}")
-            print(f" Totale-> {val_b + n_a_f:.3f}")
-            if key(" Confermi(S/n)? ").lower() != 'n':
-                setattr(g, attr_a, n_a_f)
-                g.puntiesperienza = max(0, xp_max - xp_eff)
-                g.annota_allenamento(self.data_sim, attr_a.replace('_allenata', '_base'), val_b + val_a, val_b + n_a_f)
-                print("-> Applicato!")
-            else:
-                print("-> Annullato.")
+        icv_pre = g.indice_collettivo_valore
+        spese = allena_secondo_programma(g, self.data_sim)
+        for s in spese:
+            if s.a - s.da >= 0.1:
+                print(f" {NOME_ATTR_TO_DISPLAY_MAP[s.caratteristica + "_base"]}: {s.da:.1f} -> {s.a:.1f}")
+        print(f"-> Applicato! Valore {icv_pre:.1f} -> {g.indice_collettivo_valore:.1f}")
+
+    def _allena_caratteristica(self, g, scelta, attr_a):
+        """Una spesa di punti allenamento su una caratteristica, con anteprima e conferma."""
+        nome_d = MENU_ALLENAMENTO.get(scelta, "?").replace(';', '')
+        totale_ora = totale(g, attr_a)
+        massimo = tetto(attr_a)
+        print(f"\nScelto: {nome_d}")
+        print(f" Totale: {totale_ora:.2f} (tetto {massimo:.0f})")
+        if totale_ora >= massimo - 1e-9:
+            print("** Già al massimo! **")
+            return
+        print(f" Il prossimo punto costa {costo_del_prossimo_punto(g, attr_a):.1f} punti allenamento.")
+        punti_max = int(g.punti_allenamento)
+        if punti_max <= 0:
+            print("Meno di un punto allenamento: si spende con l'allenamento completo, voce asterisco.")
+            return
+        punti = int(dgt(f"Punti allenamento da spendere (max {punti_max}, 0=Annulla)? ", "i", imin=0, imax=punti_max))
+        if punti == 0:
+            print("-> Annullato.")
+            return
+        spesa = anteprima(g, attr_a, punti)
+        print(f"\nAnteprima: {nome_d} da {spesa.da:.2f} a {spesa.a:.2f}, con {spesa.punti:.1f} punti allenamento.")
+        if spesa.punti < punti:
+            print(f"Al tetto ne bastano {spesa.punti:.1f}: gli altri restano nel portafoglio.")
+        if key("\r Confermi (S/n)?\r").lower() != 'n':
+            icv_pre = g.indice_collettivo_valore
+            spendi(g, attr_a, punti, self.data_sim)
+            print(f"-> Applicato! Valore {icv_pre:.1f} -> {g.indice_collettivo_valore:.1f}")
         else:
-            print("\nNessun allenamento.")
-            if xp_rimb > 0 and xp_spend > 0:
-                print(f"({xp_spend} XP rimborsati).")
+            print("-> Annullato.")
 
     # Partite.
 
@@ -899,7 +880,10 @@ class InterfacciaTestuale:
                 print(f"\n\t{problema}")
                 return
             richiesta = ingaggio_richiesto(g, poli)
-            print(f"\tChiede {richiesta} euro d'ingaggio e {stipendio(g)} euro al mese. Cassa: {poli.cassa} euro.")
+            mesi = contratti.durata_proposta(g)
+            scadenza = contratti.scadenza_dopo(self.data_sim, mesi)
+            print(f"\tPropone un contratto di {mesi} mesi, fino al {data_breve(scadenza)}, a {stipendio(g)} euro al mese fissi.")
+            print(f"\tChiede {richiesta} euro d'ingaggio. Cassa: {poli.cassa} euro.")
             if poli.cassa <= 0:
                 print("\n\tCassa vuota.")
                 return

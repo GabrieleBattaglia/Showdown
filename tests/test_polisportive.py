@@ -11,6 +11,7 @@ import random
 import re
 
 import pytest
+from aiuti_formati import al_formato_5
 
 import archivio
 import mondo as modulo_mondo
@@ -235,7 +236,7 @@ def test_un_salvataggio_del_formato_2_si_aggiorna(mondo, cartella_di_prova):
     for gid in (1, 2, 3):
         mondo._tessera(cpu, mondo.giocatori[gid])
     mondo._tessera(mia, mondo.giocatori[4])
-    contenuto = archivio.componi(mondo)
+    contenuto = al_formato_5(archivio.componi(mondo))
     # Com'era il formato 2: la polisportiva del computer registrata sotto il nome generato, con il nome ritoccato
     # dalle maiuscole nella scheda e nei tesserati; un ritirato e un assente ancora fra i tesserati.
     dati = contenuto["mondo"]

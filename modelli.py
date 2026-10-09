@@ -25,6 +25,13 @@ Dalla tappa 3 ogni modello sa scriversi come dizionario per il salvataggio JSON,
 e ricostruirsi da lì, con da_dizionario, controllando ogni campo. Gli elenchi CAMPI_GIOCATORE e
 CAMPI_POLISPORTIVA dicono quali attributi si salvano e di che tipo sono: i valori che si possono
 ricalcolare, come l'indice di valore o la descrizione fisica, non si salvano e si ricalcolano.
+Dalla tappa 11, il 2026-10-09, decisione D31, il giocatore ha i punti allenamento in un numero con
+la virgola, al posto dei vecchi punti esperienza interi; un'indole, che nasce dalle caratteristiche
+innate e non cambia mai, al posto dell'archetipo; il programma d'allenamento e l'intensità; i tratti
+rari dell'allenamento e l'ambizione, nati dal suo numero; la costanza recente; il contratto, con il
+rinnovo concordato e le proposte della finestra. La parte allenata non ha più tetti suoi: c'è
+soltanto quello del totale. Il declino comincia secondo la maturazione, e il diario ha una voce sola
+per ogni spesa d'allenamento. Il salvataggio passa al formato 6.
 """
 
 import contextlib
@@ -33,6 +40,7 @@ import math
 import random
 
 import descrizioni
+import tratti
 import valore
 from costanti import (
     ACCETTAZIONE_PROB_MAX,
@@ -43,7 +51,6 @@ from costanti import (
     AGING_START_AGE_GIORNI,
     ALLENATE_FISICHE,
     ANNO_SIMULAZIONE_GIORNI,
-    ARCHETIPI_ALLENAMENTO,
     ATTRIBUTI_ALLENABILI,
     ATTRIBUTI_BASE_CON_ALLENABILI,
     ATTRIBUTI_INVECCHIABILI,
@@ -69,12 +76,15 @@ from costanti import (
     FATTORE_GLORIA_RICHIESTA_IPOVEDENTE,
     GLORIA_RICHIESTA_FISSA,
     GLORIA_RICHIESTA_MINIMA_ASSOLUTA,
+    INDOLE_PREDEFINITA,
+    INDOLI,
+    INTENSITA,
+    INTENSITA_PREDEFINITA,
     K_ICV_GLORIA_RICHIESTA,
     LIMITE_MOVIMENTI_PER_TICK,
     MAPPA_FLAG_SOMMARIO,
+    MATURAZIONI,
     MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM,
-    MAX_ALLENATO_FISICO,
-    MAX_ALLENATO_SKILL,
     MAX_FATTORE_ETA_GLORIA,
     MAX_GLORIA_RICHIESTA,
     MAX_PRECISIONE_RESISTENZA,
@@ -84,10 +94,12 @@ from costanti import (
     MAX_TOTALE_SKILL_GIOCO,
     MIN_FATTORE_ETA_GLORIA,
     NOME_ATTR_TO_DISPLAY_MAP,
-    PROB_ARCHETIPO_CASUALE_CREAZIONE,
+    PROB_INDOLE_CASUALE,
     PROBABILITA_BANDIERA_CREAZIONE,
+    PROPOSTE_RINNOVO_MASSIME,
     SEDE_NON_PRECISATA,
     SEDI_INFORTUNIO,
+    SOGLIA_INDOLE,
     TEMPERAMENTO_DEVIAZIONE,
     TEMPERAMENTO_MEDIA,
     VERSIONE,
@@ -165,15 +177,23 @@ CAMPI_GIOCATORE = (
     ("id", int), ("nome", str), ("cognome", str), ("appartenenza", str), ("sesso", str),
     ("eta", int), ("etaritiro", int), ("etamorte", int), ("versione", str),
     ("datetime_creazione_sim", DATA), ("datacreazione_reale", DATA),
-    ("puntiesperienza", int), ("mancino", bool), ("ambidestro", bool), ("ipovedente", bool),
+    ("punti_allenamento", float), ("mancino", bool), ("ambidestro", bool), ("ipovedente", bool),
     ("giocorapido", bool), ("cambiovelocita", bool), ("infortunato", bool), ("infortunio_fine_datetime", DATA_O_NULLA),
     ("ritirato", bool), ("partitevinte", int), ("partiteperse", int), ("setsvinti", int), ("setspersi", int),
-    ("goalsfatti", int), ("goalssubiti", int), ("archetipo_allenamento", str),
+    ("goalsfatti", int), ("goalssubiti", int), ("indole", str),
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int), ("diario", DIARIO),
     ("esperienza", float), ("fedelta", float), ("pazienza", float), ("arretrati", int), ("bandiera", bool),
     ("temperamento", float), ("infortunio_sede", TESTO_O_NULLA), ("ultima_amichevole", DATA_O_NULLA),
+    # Dalla tappa 11, formato 6: programma e intensità dell'allenamento, tratti rari, ambizione,
+    # costanza recente, contratto e rinnovo.
+    ("programma", str), ("intensita", str), ("talento", bool), ("apprendista_rapido", bool), ("maturazione", TESTO_O_NULLA),
+    ("ambizione", float), ("costanza", float), ("contratto_stipendio", int), ("contratto_scadenza", DATA_O_NULLA),
+    ("rinnovo_stipendio", int), ("rinnovo_scadenza", DATA_O_NULLA), ("proposte_rinnovo", int), ("ultima_trattativa", DATA_O_NULLA),
     *((nome, float) for nome in ATTRIBUTI_INVECCHIABILI),
 )
+# I campi del contratto, con il loro valore per chi non ne ha.
+CAMPI_CONTRATTO_VUOTO = {"contratto_stipendio": 0, "contratto_scadenza": None, "rinnovo_stipendio": 0, "rinnovo_scadenza": None,
+                         "proposte_rinnovo": 0, "ultima_trattativa": None}
 # Per i giocatori senza tratti, che non possono ricalcolare il loro aspetto.
 CAMPI_ASPETTO = (("altezza", int), ("peso", int), ("descrizione_fisica", str))
 CAMPI_POLISPORTIVA = (
@@ -214,6 +234,41 @@ def annota_allenamento(diario, data, nome_base, da, a):
         diario.insert(0, {"data": data, "allenamento": nome_base, "da": da, "a": a})
 
 
+def annota_spesa(diario, data, spese, punti, valore_da, valore_a, fondi=False):
+    """
+    Annota una spesa d'allenamento in una voce sola, tappa 11: le caratteristiche salite, terne di
+    nome con _base, totale prima e dopo; i punti spesi; il valore prima e dopo. Con fondi, una spesa
+    su una sola caratteristica si fonde con la voce in cima se è dello stesso giorno simulato e
+    riguarda soltanto la stessa caratteristica: è la spesa a mano ripetuta, che resta una voce sola,
+    con il valore di partenza della prima e quello d'arrivo dell'ultima.
+    """
+    elenco = [[nome_base, float(da), float(a)] for nome_base, da, a in spese]
+    if fondi and len(elenco) == 1 and diario:
+        cima = diario[0]
+        if "spesa" in cima and len(cima["spesa"]) == 1 and cima["spesa"][0][0] == elenco[0][0] and cima["data"].date() == data.date():
+            cima["spesa"][0][2] = elenco[0][2]
+            cima["punti"] = cima["punti"] + float(punti)
+            cima["valore"][1] = float(valore_a)
+            cima["data"] = data
+            return
+    diario.insert(0, {"data": data, "spesa": elenco, "punti": float(punti), "valore": [float(valore_da), float(valore_a)]})
+
+
+def _numero(valore):
+    return isinstance(valore, (int, float)) and not isinstance(valore, bool)
+
+
+def _spesa_da_json(voce):
+    """Vero se la voce di una spesa d'allenamento letta dal salvataggio è ben fatta."""
+    spese = voce.get("spesa")
+    valori = voce.get("valore")
+    if not isinstance(spese, list) or not spese or not _numero(voce.get("punti")) or not isinstance(valori, list) or len(valori) != 2:
+        return False
+    if not all(_numero(v) for v in valori):
+        return False
+    return all(isinstance(s, list) and len(s) == 3 and s[0] in ATTRIBUTI_BASE_CON_ALLENABILI and _numero(s[1]) and _numero(s[2]) for s in spese)
+
+
 def _voce_da_json(voce, chi):
     """Una voce di diario letta dal salvataggio e controllata; ValueError se non va."""
     errore = ValueError(f"{chi}: una voce del diario non è valida: {voce!r}")
@@ -228,7 +283,19 @@ def _voce_da_json(voce, chi):
     numeri = all(isinstance(voce.get(chiave), (int, float)) and not isinstance(voce.get(chiave), bool) for chiave in ("da", "a"))
     if set(voce) == {"data", "allenamento", "da", "a"} and voce["allenamento"] in ATTRIBUTI_BASE_CON_ALLENABILI and numeri:
         return {"data": data, "allenamento": voce["allenamento"], "da": float(voce["da"]), "a": float(voce["a"])}
+    if set(voce) == {"data", "spesa", "punti", "valore"} and _spesa_da_json(voce):
+        return {"data": data, "spesa": [[s[0], float(s[1]), float(s[2])] for s in voce["spesa"]], "punti": float(voce["punti"]),
+                "valore": [float(v) for v in voce["valore"]]}
     raise errore
+
+
+def _voce_a_json(voce):
+    """Una voce di diario per il salvataggio: la data in testo, e gli elenchi copiati, perché il documento non li condivida col diario."""
+    copia = {**voce, "data": voce["data"].isoformat()}
+    if "spesa" in voce:
+        copia["spesa"] = [list(s) for s in voce["spesa"]]
+        copia["valore"] = list(voce["valore"])
+    return copia
 
 
 def a_json(valore, tipo):
@@ -240,7 +307,7 @@ def a_json(valore, tipo):
     if tipo == CONTI:
         return {voce: int(valore[voce]) for voce in VOCI_CONTI}
     if tipo == DIARIO:
-        return [{**voce, "data": voce["data"].isoformat()} for voce in valore]
+        return [_voce_a_json(voce) for voce in valore]
     if tipo in (DATA, DATA_O_NULLA):
         return None if valore is None else valore.isoformat()
     if tipo == TESTO_O_NULLA:
@@ -305,6 +372,57 @@ def _campi_da_dizionario(oggetto, dati, campi, chi):
         setattr(oggetto, campo, da_json(dati[campo], tipo, chi, campo))
 
 
+def punteggi_delle_indoli(g):
+    """
+    Il punteggio standardizzato di ogni indole, completa esclusa: la media dell'innata relativa,
+    base sul tetto del totale, sulle caratteristiche principali, meno la media su tutte le 24,
+    diviso la radice di un ennesimo meno un ventiquattresimo, con n le principali. È la
+    deviazione attesa di quella differenza: senza, le indoli con due principali vincerebbero
+    soltanto perché la media di due numeri varia molto più di quella di otto.
+    """
+    relativi = {nome_base[:-5]: getattr(g, nome_base, 0.0) / (MAX_TOTALE_PRECISIONE_RESISTENZA if nome_base in CARATTERISTICHE_FISICHE_BASE else MAX_TOTALE_SKILL_GIOCO)
+                for nome_base in ATTRIBUTI_BASE_CON_ALLENABILI}
+    n_tutte = len(relativi)
+    media = sum(relativi.values()) / n_tutte
+    punteggi = {}
+    for chiave, indole in INDOLI.items():
+        principali = indole["principali"]
+        if not principali:
+            continue
+        n = len(principali)
+        punteggi[chiave] = (sum(relativi[c] for c in principali) / n - media) / math.sqrt(1.0 / n - 1.0 / n_tutte)
+    return punteggi
+
+
+def indole_dalle_innate(g):
+    """L'indole che le caratteristiche innate suggeriscono: quella col punteggio più alto, se supera la soglia, altrimenti completa."""
+    punteggi = punteggi_delle_indoli(g)
+    migliore = max(punteggi, key=punteggi.get)
+    return migliore if punteggi[migliore] > SOGLIA_INDOLE else INDOLE_PREDEFINITA
+
+
+def _controlla_campi_della_tappa_11(g, chi):
+    """I controlli dei campi del formato 6: indole e programma, intensità, maturazione, ambizione, costanza, contratto; ValueError se uno non va."""
+    sbagliati = []
+    if g.indole not in INDOLI:
+        sbagliati.append("indole")
+    if g.programma not in INDOLI:
+        sbagliati.append("programma")
+    if g.intensita not in INTENSITA:
+        sbagliati.append("intensita")
+    if g.maturazione is not None and g.maturazione not in MATURAZIONI:
+        sbagliati.append("maturazione")
+    if not 0.0 <= g.ambizione <= 100.0:
+        sbagliati.append("ambizione")
+    for campo in ("costanza", "punti_allenamento", "contratto_stipendio", "rinnovo_stipendio"):
+        if getattr(g, campo) < 0:
+            sbagliati.append(campo)
+    if not 0 <= g.proposte_rinnovo <= PROPOSTE_RINNOVO_MASSIME:
+        sbagliati.append("proposte_rinnovo")
+    if sbagliati:
+        raise ValueError(f"{chi}: il campo {sbagliati[0]} non è valido: {getattr(g, sbagliati[0])!r}")
+
+
 class Giocatore:
     def __init__(self, id_giocatore, datetime_creazione_sim, **kwargs):
         self.id = id_giocatore
@@ -325,7 +443,17 @@ class Giocatore:
         self.descrizione_fisica = ""
         self.datetime_creazione_sim = datetime_creazione_sim
         self.datacreazione_reale = adesso()
-        self.puntiesperienza = 0
+        self.punti_allenamento = 0.0
+        # La tappa 11: i tratti rari dell'allenamento e l'ambizione nascono dal numero del giocatore,
+        # senza toccare il caso del mondo; la costanza parte da zero, e senza contratto.
+        innati = tratti.tratti_innati(id_giocatore)
+        self.talento = innati["talento"]
+        self.apprendista_rapido = innati["apprendista_rapido"]
+        self.maturazione = innati["maturazione"]
+        self.ambizione = tratti.ambizione_innata(id_giocatore)
+        self.costanza = 0.0
+        self.intensita = INTENSITA_PREDEFINITA
+        self.annulla_contratto()
         self.mancino = caso(8.5)
         self.ambidestro = caso(4.25) if not self.mancino else False
         self.infortunato = False
@@ -347,7 +475,7 @@ class Giocatore:
         self.icv_base = 0.0
         self.icv_allenato = 0.0
         self.indice_collettivo_valore = 0.0
-        self.archetipo_allenamento = "Non Definito"
+        self.indole = None
         self.ori = 0
         self.argenti = 0
         self.bronzi = 0
@@ -366,12 +494,13 @@ class Giocatore:
             self.nome, self.cognome = genera_identita(self.sesso)
         for attr, default in [('forza_base', 0.0), ('forza_allenata', 0.0),
                               ('ipovedente', False), ('infortunato', False), ('infortunio_fine_datetime', None),
-                              ('archetipo_allenamento', "Non Definito"), ('datacreazione_reale', self.datetime_creazione_sim),
+                              ('datacreazione_reale', self.datetime_creazione_sim),
                               ('descrizione_fisica', ''), ('ori', 0), ('argenti', 0), ('bronzi', 0), ('legni', 0)]:
             if not hasattr(self, attr) or (getattr(self, attr, None) is None and default is not None):
                 setattr(self, attr, default)
-        if self.archetipo_allenamento == "Non Definito":
-            self._assegna_archetipo_iniziale()
+        if self.indole not in INDOLI:
+            self._assegna_indole()
+        self.programma = self.indole
         self.aggiorna_icv()
         if not self.descrizione_fisica:
             self._genera_descrizione_fisica()
@@ -388,6 +517,11 @@ class Giocatore:
     def annota(self, data, testo):
         """Una voce nuova nel diario del giocatore, con la data simulata."""
         annota_diario(self.diario, data, testo)
+
+    def annulla_contratto(self):
+        """Toglie contratto, rinnovo, proposte e trattativa: è lo stato di chi è libero."""
+        for campo, vuoto in CAMPI_CONTRATTO_VUOTO.items():
+            setattr(self, campo, vuoto)
 
     def annota_allenamento(self, data, nome_base, da, a):
         """Un allenamento nel diario, fuso con il precedente se riguarda la stessa caratteristica."""
@@ -408,8 +542,9 @@ class Giocatore:
                 except (TypeError, ValueError):
                     setattr(self, chiave, 0.0)
                     continue
-                lim_a = MAX_ALLENATO_FISICO if e_fisica(chiave) else MAX_ALLENATO_SKILL
-                setattr(self, chiave, max(0.0, min(val_f, lim_a)))
+                # Un solo tetto, quello del totale: poi _rispetta_tetti porta l'allenata al tetto meno l'innata.
+                lim_t = MAX_TOTALE_PRECISIONE_RESISTENZA if e_fisica(chiave) else MAX_TOTALE_SKILL_GIOCO
+                setattr(self, chiave, max(0.0, min(val_f, lim_t)))
             elif chiave == 'datetime_creazione_sim':
                 if isinstance(valore, datetime.datetime):
                     self.datetime_creazione_sim = valore
@@ -418,8 +553,8 @@ class Giocatore:
                     self.datacreazione_reale = valore
             elif chiave == 'infortunio_fine_datetime':
                 self.infortunio_fine_datetime = valore if isinstance(valore, datetime.datetime) else None
-            elif chiave == 'archetipo_allenamento':
-                self.archetipo_allenamento = valore if isinstance(valore, str) else "Non Definito"
+            elif chiave == 'indole':
+                self.indole = valore if valore in INDOLI else None
             elif chiave == 'descrizione_fisica':
                 self.descrizione_fisica = valore[:500] if isinstance(valore, str) else ""
             elif hasattr(self, chiave):
@@ -431,13 +566,7 @@ class Giocatore:
     def _imposta_attributo(self, chiave, valore):
         """Imposta un attributo esistente convertendo il valore al tipo che ha già, se si può."""
         nuovo = valore
-        if chiave == 'puntiesperienza' and not isinstance(valore, int):
-            try:
-                nuovo = int(valore)
-            except (TypeError, ValueError):
-                setattr(self, chiave, valore)
-                return
-        elif chiave in ['etaritiro', 'etamorte'] and not isinstance(valore, int):
+        if chiave in ['etaritiro', 'etamorte'] and not isinstance(valore, int):
             try:
                 nuovo = giorni_da_anni(float(valore) / 10.)
             except (TypeError, ValueError):
@@ -448,7 +577,11 @@ class Giocatore:
             setattr(self, chiave, valore)
 
     def _rispetta_tetti(self):
-        """Riporta ogni caratteristica entro il tetto del totale fra parte innata e allenata."""
+        """
+        Riporta ogni caratteristica entro il tetto del totale fra parte innata e allenata, che dalla
+        tappa 11 è l'unico tetto: l'allenata arriva fino al tetto meno l'innata. Su un salvataggio
+        valido non cambia niente.
+        """
         for nome_base in ATTRIBUTI_BASE_CON_ALLENABILI:
             nome_allenato = nome_base.replace('_base', '_allenata')
             max_totale_skill = MAX_TOTALE_PRECISIONE_RESISTENZA if nome_base in CARATTERISTICHE_FISICHE_BASE else MAX_TOTALE_SKILL_GIOCO
@@ -482,6 +615,7 @@ class Giocatore:
             raise ValueError(f"{chi}: il campo temperamento non è valido: {g.temperamento!r}")
         if g.infortunio_sede is not None and g.infortunio_sede not in SEDI_AMMESSE:
             raise ValueError(f"{chi}: il campo infortunio_sede non è valido: {g.infortunio_sede!r}")
+        _controlla_campi_della_tappa_11(g, chi)
         tratti = dati.get("tratti")
         if tratti is not None:
             if not isinstance(tratti, dict):
@@ -597,7 +731,8 @@ class Giocatore:
                f"Descrizione: {getattr(self, 'descrizione_fisica', '(N/D)')}",
                f"Scoperto (sim): {self.datetime_creazione_sim:%Y-%m-%d %H:%M}", f"Scoperto (reale): {self.datacreazione_reale:%Y-%m-%d %H:%M}",
                f"Versione Creazione: {self.versione}", f"{compl}", f"Altezza: {self.altezza} cm, Peso: {self.peso} kg",
-               f"XP: {self.puntiesperienza}", f"ICV Tot: {self.indice_collettivo_valore:.2f} (B: {self.icv_base:.2f}, A: {self.icv_allenato:.2f})",
+               f"Punti allenamento: {self.punti_allenamento:.1f}", f"Indole: {INDOLI[self.indole]['nome']}, programma {INDOLI[self.programma]['nome']}, intensità {self.intensita}",
+               f"ICV Tot: {self.indice_collettivo_valore:.2f} (B: {self.icv_base:.2f}, A: {self.icv_allenato:.2f})",
                f"Gloria Rich: {self.gloria_richiesta}"]
         for titolo, gruppo in (("\nCaratteristiche Fisiche:", CARATTERISTICHE_FISICHE_BASE), ("\nCaratteristiche Difensive:", CARATTERISTICHE_DIFESA_BASE),
                                ("\nCaratteristiche Offensive:", CARATTERISTICHE_ATTACCO_BASE), ("\nPolivalenti:", CARATTERISTICHE_CONTROLLO_BASE)):
@@ -635,9 +770,9 @@ class Giocatore:
         stato = "Ritirato" if self.ritirato else "Libero" if self.appartenenza == "*" else f"({self.appartenenza[:10]})"
         flags = "".join([f for a, f in MAPPA_FLAG_SOMMARIO.items() if getattr(self, a, False)])
         flags_str = f" [{flags}]" if flags else ""
-        xp = int(self.puntiesperienza or 0)
+        punti = int(self.punti_allenamento or 0)
         return (f"ID:{self.id:<4d} {self.nome[:15]:<15} {self.cognome[:15]:<15} "
-                f"{eta_vis:<8} {sesso} ICV:{self.indice_collettivo_valore:6.1f} XP:{xp:<5} {stato}{flags_str}")
+                f"{eta_vis:<8} {sesso} ICV:{self.indice_collettivo_valore:6.1f} PA:{punti:<5} {stato}{flags_str}")
 
     def aggiorna_icv(self):
         """
@@ -664,37 +799,25 @@ class Giocatore:
         self.altezza, self.peso = descrizioni.fisico(tratti, self.sesso, self.eta_anni)
         self.descrizione_fisica = descrizioni.descrivi(tratti, self.sesso, self.eta_anni)
 
-    def _assegna_archetipo_iniziale(self):
-        sugg = self._determina_archetipo_da_base()
-        if sugg and sugg in ARCHETIPI_ALLENAMENTO and not caso(PROB_ARCHETIPO_CASUALE_CREAZIONE):
-            self.archetipo_allenamento = sugg
-        else:
-            validi = list(ARCHETIPI_ALLENAMENTO.keys())
-            self.archetipo_allenamento = random.choice(validi) if validi else "TuttofareBilanciato"
-
-    def _determina_archetipo_da_base(self):
-        """L'archetipo di allenamento che meglio si adatta alle caratteristiche innate, o None."""
-        stats = {'fis': CARATTERISTICHE_FISICHE_BASE, 'att': CARATTERISTICHE_ATTACCO_BASE, 'dif': CARATTERISTICHE_DIFESA_BASE, 'ctrl': CARATTERISTICHE_CONTROLLO_BASE,
-                 'bloc': ['bloccosx_base', 'bloccodx_base'], 'batt': ['battutasx_base', 'battutadx_base']}
-        medie = {k: sum(getattr(self, s, 0.) for s in v) / len(v) if v else 0. for k, v in stats.items()}
-        pesi = {"MuroFisico": medie['fis'] * 2.5, "AttaccantePuro": medie['att'], "DifensoreRoccioso": medie['dif'],
-                "SpecialistaBlocchiDifesa": medie['bloc'] * 1.5 + medie['dif'] * .5, "SpecialistaBlocchiAttacco": medie['bloc'] * 1.5 + medie['att'] * .5,
-                "SpecialistaBlocchiControllo": medie['bloc'] * 1.5 + medie['ctrl'] * .5, "SpecialistaBattutaBlocco": medie['batt'] * 1.5 + medie['bloc'] * .5,
-                "CecchinoPreciso": medie['ctrl']}
-        soglia = 5.
-        validi = {k: v for k, v in pesi.items() if v >= soglia}
-        if not validi:
-            return None
-        sugg = max(validi, key=validi.get)
-        if medie['dif'] > 8. and medie['bloc'] > 8.:
-            sugg = "SpecialistaBlocchiDifesa"
-        return sugg if sugg in ARCHETIPI_ALLENAMENTO else None
+    def _assegna_indole(self):
+        """
+        L'indole della nascita, tappa 11: quella col punteggio standardizzato più alto, se supera la
+        soglia, altrimenti completa. Una volta su dieci, come prima l'archetipo, si tira a caso.
+        """
+        if caso(PROB_INDOLE_CASUALE):
+            self.indole = random.choice(list(INDOLI))
+            return
+        self.indole = indole_dalle_innate(self)
 
     def _applica_declino_aggregato(self, giorni_passati):
-        """Il declino dovuto all'età per i giorni trascorsi, dai 50 anni in poi."""
-        if giorni_passati <= 0 or self.eta < AGING_START_AGE_GIORNI or ANNO_SIMULAZIONE_GIORNI <= 0:
+        """
+        Il declino dovuto all'età per i giorni trascorsi: dai 50 anni, e dalla tappa 11 dai 44 per la
+        maturazione precoce e dai 56 per la tardiva, con la stessa curva spostata.
+        """
+        inizio = tratti.giorni_inizio_declino(self)
+        if giorni_passati <= 0 or self.eta < inizio or ANNO_SIMULAZIONE_GIORNI <= 0:
             return
-        prog_eta = max(0, self.eta - AGING_START_AGE_GIORNI)
+        prog_eta = max(0, self.eta - inizio)
         range_decl = max(1, AGING_PEAK_AGE_GIORNI - AGING_START_AGE_GIORNI)
         aging_f = min(1.0, prog_eta / range_decl)
         reduc_ann = aging_f * MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM

@@ -37,6 +37,7 @@ from costanti import (
     CARATTERISTICHE_FISICHE_BASE,
     ESPERIENZA_MASSIMA,
     FASCE_TEMPERAMENTO,
+    INDOLI,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
     MAX_TOTALE_SKILL_GIOCO,
@@ -49,12 +50,6 @@ from utilita import accorda as accorda_sesso
 # La scala degli aggettivi delle schede di Terminal Beast, da 0 a 20.
 AGGETTIVI = ("Inesistente", "Disastroso", "Tremendo", "Scarso", "Debole", "Insufficiente", "Accettabile", "Buono", "Eccellente", "Formidabile",
              "Straordinario", "Splendido", "Magnifico", "Fuoriclasse", "Sovrannaturale", "Titanico", "Extraterrestre", "Mitico", "Magico", "Utopico", "Divino")
-NOMI_ARCHETIPI = {
-    "AttaccantePuro": "attaccante puro", "DifensoreRoccioso": "difensore roccioso", "MuroFisico": "muro fisico",
-    "SpecialistaBlocchiDifesa": "specialista di blocchi e difesa", "SpecialistaBlocchiAttacco": "specialista di blocchi e attacco",
-    "SpecialistaBlocchiControllo": "specialista di blocchi e controllo", "SpecialistaBattutaBlocco": "specialista di battuta e blocco",
-    "CecchinoPreciso": "cecchino preciso", "TuttofareBilanciato": "tuttofare bilanciato",
-}
 GRUPPI = (("CARATTERISTICHE FISICHE", CARATTERISTICHE_FISICHE_BASE), ("DIFESA", CARATTERISTICHE_DIFESA_BASE),
           ("ATTACCO", CARATTERISTICHE_ATTACCO_BASE), ("POLIVALENTI", CARATTERISTICHE_CONTROLLO_BASE))
 LARGHEZZA_BARRA = 40
@@ -122,8 +117,15 @@ def anni(g):
     return int(g.eta_anni)
 
 
-def tendenza(g):
-    return NOMI_ARCHETIPI.get(g.archetipo_allenamento, g.archetipo_allenamento)
+def indole(g):
+    """L'indole del giocatore a parole, come da muro o di rimessa."""
+    return INDOLI[g.indole]["nome"]
+
+
+def punti(valore):
+    """Una quantità di punti allenamento: senza decimali quando è intera, altrimenti con uno, 38,5."""
+    arrotondato = round(valore, 1)
+    return intero(arrotondato) if arrotondato == int(arrotondato) else numero(arrotondato)
 
 
 def nome_caratteristica(nome_base):
@@ -219,14 +221,14 @@ def tratti_speciali(g):
 
 
 def _classifiche(g, mondo):
-    """Le tre classifiche di Terminal Beast adattate: generale, del proprio sesso, della propria tendenza."""
+    """Le tre classifiche di Terminal Beast adattate: generale, del proprio sesso, della propria indole."""
     in_attivita = sorted(attivi(mondo), key=lambda x: x.indice_collettivo_valore, reverse=True)
     if g not in in_attivita:
         return []
     righe = []
     for titolo, gruppo in (("Classifica generale", in_attivita),
                            ("Classifica maschile" if g.sesso == "m" else "Classifica femminile", [x for x in in_attivita if x.sesso == g.sesso]),
-                           (f"Classifica di tendenza ({tendenza(g)})", [x for x in in_attivita if x.archetipo_allenamento == g.archetipo_allenamento])):
+                           (f"Classifica d'indole ({indole(g)})", [x for x in in_attivita if x.indole == g.indole])):
         posizione = gruppo.index(g) + 1
         righe.append(f"{titolo}: {posizione}° ({numero(percentuale_classifica(posizione, len(gruppo)))}%) su {len(gruppo)}")
     return righe
@@ -246,7 +248,7 @@ def scheda_giocatore(g, mondo):
     righe = [
         f"[{etichetta}] ID: {g.id} | {nome_completo(g)} | {'Uomo' if g.sesso == 'm' else 'Donna'}, {anni(g)} anni | Valore: {numero(g.indice_collettivo_valore)}",
         f"Descrizione: {g.descrizione_fisica}",
-        f"Fisico: {g.altezza} cm e {g.peso} kg | Tendenza: {tendenza(g)} | Punti allenamento: {intero(g.puntiesperienza or 0)} | Gloria richiesta: {intero(g.gloria_richiesta)}",
+        f"Fisico: {g.altezza} cm e {g.peso} kg | Indole: {indole(g)} | Punti allenamento: {punti(g.punti_allenamento)} | Gloria richiesta: {intero(g.gloria_richiesta)}",
     ]
     tratti = f"Tratti: {unisci(tratti_speciali(g)) or 'nessuno in particolare'} | Carattere: {carattere(g)}"
     if g.infortunato and g.infortunio_fine_datetime:
@@ -335,7 +337,7 @@ def classifica(mondo):
     if not ordinati:
         return "Nessun giocatore in attività."
     righe = [f"Classifica per valore dei {len(ordinati)} giocatori in attività."]
-    righe.extend(f"{i}. {nome_completo(g)} (ID {g.id}), valore {numero(g.indice_collettivo_valore)}, {anni(g)} anni, {tendenza(g)}, {_club(g)}"
+    righe.extend(f"{i}. {nome_completo(g)} (ID {g.id}), valore {numero(g.indice_collettivo_valore)}, {anni(g)} anni, {indole(g)}, {_club(g)}"
                  for i, g in enumerate(ordinati, 1))
     return "\n".join(righe)
 
@@ -460,7 +462,7 @@ def scheda_polisportiva(p, mondo):
         ipovedenti = sum(1 for g in presenti if g.ipovedente)
         righe.append(f"{conta(uomini, 'uomo', 'uomini')} e {conta(len(presenti) - uomini, 'donna', 'donne')}, età media {eta_media} anni, {conta(ipovedenti, 'ipovedente', 'ipovedenti')}.")
         for g in sorted(presenti, key=lambda x: x.indice_collettivo_valore, reverse=True):
-            riga = f"{nome_completo(g)} (ID {g.id}), {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio(g))}, {tendenza(g)}, {stato(g, mondo)}"
+            riga = f"{nome_completo(g)} (ID {g.id}), {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio(g))}, {indole(g)}, {stato(g, mondo)}"
             if g.arretrati:
                 riga += f", {attesa(g)}"
             if g.id in p.in_vendita:

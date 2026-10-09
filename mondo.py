@@ -36,8 +36,9 @@ import datetime
 import math
 import random
 
+import contratti
 import percorsi
-from allenamento import esegui_auto_allenamento
+from allenamento import allena_secondo_programma
 from costanti import (
     ANNO_SIMULAZIONE_GIORNI,
     BILANCI_CONSERVATI,
@@ -52,6 +53,7 @@ from costanti import (
     FEDELTA_PER_MESE,
     GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET,
     IMPORTANZA_MASSIMA,
+    INTENSITA_PREDEFINITA,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_PROB_CHIUSURA_GIORNALIERA,
     MESI_DI_INGAGGIO,
@@ -70,6 +72,7 @@ from costanti import (
     SCARTI_MASSIMI_CPU,
     SOGLIA_GLORIA_BASSA_CHIUSURA,
     SOGLIA_MINIMA_TESSERATI_CHIUSURA,
+    SOGLIA_SPESA_AUTONOMI,
 )
 from economia import (
     arrotonda,
@@ -266,16 +269,25 @@ class Mondo:
         poli.cassa -= ingaggio
         poli.conti_del_mese["ingaggi"] += ingaggio
 
-    def _entra(self, poli, g):
-        """Il giocatore entra nella polisportiva: la fedeltà riparte da zero, la pazienza è piena, nessun arretrato."""
+    def _entra(self, poli, g, data=None):
+        """
+        Il giocatore entra nella polisportiva: la fedeltà riparte da zero, la pazienza è piena, nessun
+        arretrato. Dalla tappa 11 firma un contratto, ed è il solo punto da cui si firma: ci passano
+        l'ingaggio, le mosse del computer e gli acquisti, perché comprare vuol dire firmare un
+        contratto nuovo col compratore. Lo stipendio è quello che chiede oggi, la durata quella che
+        propone; il programma riparte dalla sua indole, a intensità normale.
+        """
         g.appartenenza = poli.nome
         poli.aggiungi_tesserato(g.id, g.indice_collettivo_valore)
         g.fedelta = 0.
         g.pazienza = 100.
         g.arretrati = 0
+        contratti.stipula(g, data or self.datetime_corrente_simulazione, stipendio(g), contratti.durata_proposta(g))
+        g.programma = g.indole
+        g.intensita = INTENSITA_PREDEFINITA
 
     def _tessera(self, poli, g, data=None, ingaggio=None):
-        self._entra(poli, g)
+        self._entra(poli, g, data)
         con_ingaggio = f", con un ingaggio di {scritta_in_euro(ingaggio)}" if ingaggio else ""
         self.annota(g, f"{accorda(g.sesso, 'Tesserato')} con {poli.nome}{con_ingaggio}.", data)
         self.annota(poli, f"Tesserato {nome_completo(g)}{con_ingaggio}.", data)
@@ -283,7 +295,9 @@ class Mondo:
     def _lascia(self, poli, g):
         """
         Il giocatore esce dall'elenco dei tesserati e torna libero, senza voci di diario: le
-        scrive chi chiama. Esce anche dalla vendita, e i suoi arretrati non li aspetta più.
+        scrive chi chiama. Esce anche dalla vendita, e i suoi arretrati non li aspetta più. Dalla
+        tappa 11 il contratto si cancella, con rinnovo e proposte, e programma e intensità tornano
+        quelli della sua indole.
         """
         poli.rimuovi_tesserato(g.id, g.indice_collettivo_valore)
         poli.in_vendita.pop(g.id, None)
@@ -291,6 +305,9 @@ class Mondo:
         g.fedelta = 0.
         g.pazienza = 100.
         g.arretrati = 0
+        g.annulla_contratto()
+        g.programma = g.indole
+        g.intensita = INTENSITA_PREDEFINITA
 
     # Arretrati, vendite e acquisti.
 
@@ -431,7 +448,7 @@ class Mondo:
         venditore.conti_del_mese["vendite"] += prezzo
         venditore.conti_del_mese["arretrati"] += saldati
         self._lascia(venditore, g)
-        self._entra(compratore, g)
+        self._entra(compratore, g, data)
         cifra = scritta_in_euro(prezzo)
         self.annota(g, f"{accorda(g.sesso, 'Venduto')} da {venditore.nome} a {compratore.nome} per {cifra}.", data)
         self.annota(venditore, f"Venduto {nome_completo(g)} a {compratore.nome} per {cifra}.", data)
@@ -652,7 +669,7 @@ class Mondo:
             return False
         self._lascia(poli, debole)
         self._paga_ingaggio(poli, offerta)
-        self._entra(poli, nuovo)
+        self._entra(poli, nuovo, data)
         vetrina.togli(posto)
         self.annota(nuovo, f"{accorda(nuovo.sesso, 'Tesserato')} con {poli.nome}, con un ingaggio di {scritta_in_euro(offerta)}.", data)
         self.annota(debole, f"{accorda(debole.sesso, 'Svincolato')} da {poli.nome}, che al suo posto ha tesserato {nome_completo(nuovo)}.", data)
@@ -838,6 +855,10 @@ class Mondo:
         self._ids_morti_processati_sessione.add(gid)
         g.ritirato = True
         g.appartenenza = "*"
+        # Dalla tappa 11 sul giocatore uscito di scena non resta nessun contratto.
+        g.annulla_contratto()
+        g.programma = g.indole
+        g.intensita = INTENSITA_PREDEFINITA
         self._registra_uscita(g, motivo, data, club)
 
     def _fai_invecchiare(self, data, rapporto):
@@ -950,12 +971,10 @@ class Mondo:
             self._primo_del_mese(data, rapporto)
         vivi = [g for gid, g in self.giocatori.items() if gid not in self._ids_morti_processati_sessione]
         for g in vivi:
-            if not g.ritirato and not g.infortunato and int(g.puntiesperienza or 0) > 0:
-                if g.appartenenza == "*" or (g.appartenenza in self.polisportive and self.polisportive[g.appartenenza].is_cpu_controlled):
-                    xp_pre = g.puntiesperienza
-                    esegui_auto_allenamento(g, data)
-                    if g.puntiesperienza < xp_pre:
-                        rapporto["autoallenati"] += 1
+            if not g.ritirato and g.punti_allenamento >= SOGLIA_SPESA_AUTONOMI:
+                club = self.polisportive.get(g.appartenenza)
+                if (club is None or club.is_cpu_controlled) and allena_secondo_programma(g, programma=g.indole):
+                    rapporto["autoallenati"] += 1
         venduti_tuoi = sum(len(p.in_vendita) for p in self.polisportive.values() if not p.is_cpu_controlled)
         tesserati, svincolati, comprati = self._esegui_logica_cpu_polisportive(data)
         rapporto["tesserati_cpu"] += tesserati

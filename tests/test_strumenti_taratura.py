@@ -8,6 +8,7 @@ gruppi con poche partite, e la sonda della stanchezza del banco misura soltanto 
 possono esistere.
 """
 
+import hashlib
 import math
 import random
 import statistics
@@ -19,6 +20,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 
 import banco_partite as bp
+import popolazione_di_prova as pp
 import simulazione_lunga as sl
 import taratura_valore as tv
 from aiuti_motore import giocatore
@@ -116,3 +118,32 @@ def test_la_sonda_della_stanchezza_misura_giocatori_possibili():
     for descrizione, _anni, innata, allenata, _dove, _intervallo in bp.CASI_FATICA:
         assert 0.0 <= innata <= innata_massima, descrizione
         assert 0.0 <= allenata <= costanti.MAX_ALLENATO_FISICO, descrizione
+
+
+# Le impronte delle caratteristiche di due popolazioni di prova, prese con il codice della versione
+# 1.50.0, prima della tappa 11: 400 giocatori col seme 9 e 300 col seme 19 dal numero 500001.
+IMPRONTE_DELLA_1_50 = {(400, 9): "30b1f475249eb057d4d2e7fb82c691e0fdd6cf0d32bf40666f7983b83b76b971",
+                       (300, 19): "91a99f5d97f0b14fc53496c49816faec9913f7292686336794dd2b7f96d44bfa"}
+
+
+def _impronta(giocatori):
+    righe = []
+    for g in giocatori:
+        valori = [round(getattr(g, n), 9) for n in costanti.ATTRIBUTI_INVECCHIABILI]
+        righe.append(f"{g.id}:{g.sesso}:{g.eta}:{g.mancino}:{g.ambidestro}:{g.ipovedente}:{g.giocorapido}:{g.cambiovelocita}:{round(g.esperienza, 6)}:{valori}")
+    return hashlib.sha256("\n".join(righe).encode()).hexdigest()
+
+
+def test_la_popolazione_di_prova_resta_quella_della_1_50_salvo_la_costanza():
+    # Tappa 11, risposta 6: senza i tetti dell'allenata nel gioco, la popolazione tiene le sue bande, e
+    # la regressione del valore resta sulla stessa popolazione; la costanza viene da un generatore a parte.
+    for (quanti, seme), impronta in IMPRONTE_DELLA_1_50.items():
+        giocatori = pp.genera(quanti, seme, primo_id=1 if seme == 9 else 500_001)
+        assert _impronta(giocatori) == impronta
+        assert all(0.0 <= g.costanza <= costanti.COSTANZA_PIENA for g in giocatori)
+        assert max(g.costanza for g in giocatori) > 1.5
+        for g in giocatori:
+            for nome in costanti.ATTRIBUTI_ALLENABILI:
+                banda = pp.BANDA_ALLENATA_FISICA if nome in costanti.ALLENATE_FISICHE else pp.BANDA_ALLENATA_GIOCO
+                assert getattr(g, nome) <= banda
+    assert (pp.BANDA_ALLENATA_FISICA, pp.BANDA_ALLENATA_GIOCO) == (5.0, 20.0)

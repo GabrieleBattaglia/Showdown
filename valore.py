@@ -50,6 +50,36 @@ def caratteristiche(g, parte="totale"):
     return {nome: valori[nome] for nome in CARATTERISTICHE_VALORE}
 
 
+def nome_semplice(nome):
+    """Il nome di una caratteristica senza il suffisso della parte: chiusurasx per chiusurasx_base e chiusurasx_allenata."""
+    for suffisso in ("_allenata", "_base"):
+        if nome.endswith(suffisso):
+            return nome[:-len(suffisso)]
+    return nome
+
+
+def peso_per_punto(g, nome, pesi=None):
+    """
+    Quanta somma pesata vale un punto in più della caratteristica, per quel giocatore: il peso del
+    ruolo che la caratteristica ha per lui. La chiusura sinistra è di rovescio per il destrimano e
+    di dritto per il mancino; per l'ambidestro, che ha la media dei due lati in tutti e due i ruoli,
+    vale la media dei due pesi. Lo stesso per i blocchi. Dalla tappa 11 è la base del costo
+    dell'allenamento, che è in somma pesata e quindi non dipende dalla scala A e B.
+    """
+    pesi = PESI_VALORE if pesi is None else pesi
+    nome = nome_semplice(nome)
+    ruolo = nome[:-2]
+    if ruolo not in ("chiusura", "blocco"):
+        return pesi[nome]
+    dritto, rovescio = pesi[ruolo + "_dritto"], pesi[ruolo + "_rovescio"]
+    if getattr(g, "ambidestro", False):
+        return (dritto + rovescio) / 2.0
+    sinistro = nome.endswith("sx")
+    if getattr(g, "mancino", False):
+        return dritto if sinistro else rovescio
+    return rovescio if sinistro else dritto
+
+
 def tratti(g):
     """I tratti speciali che entrano nel valore, vero o falso."""
     return {nome: bool(getattr(g, nome, False)) for nome in TRATTI}

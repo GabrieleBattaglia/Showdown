@@ -1,6 +1,8 @@
 """
 Test della nascita dei giocatori, della gloria richiesta, della probabilità di accettazione e delle polisportive.
 Dalla tappa 9 l'indice di valore si confronta con valore.indice, che con i pesi della tappa 8 dà la formula di prima.
+Dalla tappa 11 il giocatore nasce con un'indole al posto dell'archetipo, i punti allenamento con la virgola, i
+tratti rari dell'allenamento, l'ambizione e i campi del contratto, vuoti; l'allenata arriva fino al tetto del totale.
 """
 
 import datetime
@@ -11,7 +13,6 @@ import pytest
 
 import valore
 from costanti import (
-    ARCHETIPI_ALLENAMENTO,
     ATTRIBUTI_ALLENABILI,
     ATTRIBUTI_BASE_CON_ALLENABILI,
     CARATTERISTICHE_FISICHE_BASE,
@@ -19,6 +20,8 @@ from costanti import (
     ETA_MAX_CREAZIONE_GIORNI,
     ETA_MIN_CREAZIONE_GIORNI,
     GLORIA_RICHIESTA_MINIMA_ASSOLUTA,
+    INDOLI,
+    INTENSITA,
     MAX_GLORIA_RICHIESTA,
     MAX_PRECISIONE_RESISTENZA,
     MAX_SKILL_VALUE,
@@ -41,7 +44,11 @@ def test_nascita_dentro_i_limiti(giocatori):
         assert ETA_MIN_CREAZIONE_GIORNI <= g.eta <= ETA_MAX_CREAZIONE_GIORNI
         assert g.eta < g.etaritiro and g.eta < g.etamorte
         assert g.nome and g.cognome and g.nome != "*"
-        assert g.archetipo_allenamento in ARCHETIPI_ALLENAMENTO
+        assert g.indole in INDOLI and g.programma == g.indole and g.intensita in INTENSITA
+        assert g.punti_allenamento == 0.0 and isinstance(g.punti_allenamento, float)
+        assert g.costanza == 0.0 and 0.0 <= g.ambizione <= 100.0
+        assert g.maturazione in (None, "precoce", "tardiva")
+        assert (g.contratto_stipendio, g.contratto_scadenza, g.rinnovo_stipendio, g.rinnovo_scadenza, g.proposte_rinnovo, g.ultima_trattativa) == (0, None, 0, None, 0, None)
         assert g.descrizione_fisica
         assert not (g.mancino and g.ambidestro)
         for nome_base in ATTRIBUTI_BASE_CON_ALLENABILI:
@@ -64,12 +71,15 @@ def test_indice_di_valore(giocatori):
 
 def test_parametri_alla_nascita():
     random.seed(1)
-    g = Giocatore(7, NASCITA, ipovedente="s", eta=1500, attacco_allenata=99, precisione_allenata="3.5", puntiesperienza="12")
+    g = Giocatore(7, NASCITA, ipovedente="s", eta=1500, attacco_allenata=99, precisione_allenata="3.5", punti_allenamento="12.5", indole="muro")
     assert g.ipovedente is True
     assert g.eta == 1500
-    assert g.attacco_allenata == 20.0
+    # Dalla tappa 11 l'allenata arriva fino al tetto del totale meno l'innata, non più a 20.
+    assert g.attacco_allenata == pytest.approx(40.0 - g.attacco_base)
+    assert g.attacco_allenata > 20.0
     assert g.precisione_allenata == 3.5
-    assert g.puntiesperienza == 12
+    assert g.punti_allenamento == 12.5
+    assert g.indole == g.programma == "muro"
 
 
 def _giocatore_neutro(eta_anni, icv):
@@ -165,7 +175,10 @@ def test_giocatore_senza_tratti_salva_il_suo_aspetto():
     assert vars(Giocatore.da_dizionario(dati)) == vars(g)
 
 
-@pytest.mark.parametrize(("campo", "valore"), [("eta", "dieci"), ("puntiesperienza", True), ("mancino", 1), ("forza_base", None), ("datacreazione_reale", "ieri")])
+@pytest.mark.parametrize(("campo", "valore"), [("eta", "dieci"), ("punti_allenamento", True), ("mancino", 1), ("forza_base", None), ("datacreazione_reale", "ieri"),
+                                              ("indole", "AttaccantePuro"), ("programma", "nessuno"), ("intensita", "massima"), ("maturazione", "tarda"),
+                                              ("ambizione", 101.0), ("costanza", -0.1), ("contratto_stipendio", -5), ("proposte_rinnovo", 4),
+                                              ("punti_allenamento", -1.0), ("contratto_scadenza", "domani"), ("talento", "sì")])
 def test_giocatore_con_un_campo_non_valido(giocatori, campo, valore):
     dati = giocatori[0].a_dizionario()
     dati[campo] = valore

@@ -3,10 +3,10 @@ Test dell'archivio JSON firmato, tutti in una cartella temporanea: salvataggio e
 copia di sicurezza, firma che scopre le modifiche, ripiego sulla copia, quarantena e blocco dei
 salvataggi, formato, identificativi che non si riusano, nascita del mondo nuovo. Dalla tappa 9 anche
 il formato 5, con il temperamento ricavato dal numero del giocatore e la sede dell'infortunio, e dal
-2026-10-08 la data simulata dell'ultima amichevole, per la regola di una al giorno.
+2026-10-08 la data simulata dell'ultima amichevole, per la regola di una al giorno. Dalla tappa 11 il
+formato 6, con la migrazione che dà i contratti ai tesserati e il rifiuto dei salvataggi incoerenti.
 """
 
-import copy
 import datetime
 import gzip
 import json
@@ -14,8 +14,11 @@ import os
 import random
 
 import pytest
+from aiuti_formati import al_formato_5
 
 import archivio
+import contratti
+import tratti
 from costanti import FILE_MONDO, FILE_MONDO_COPIA, FILE_MONDO_COPIA_VECCHIO, FILE_MONDO_VECCHIO
 from modelli import Giocatore, Polisportiva, temperamento_innato
 from mondo import CONSERVAZIONE_PREDEFINITA, DECESSO, Mondo
@@ -35,8 +38,7 @@ def _mondo_popolato():
     m.crea_polisportiva_cpu(INIZIO)
     mia = Polisportiva("Club Di Prova", "segreta", INIZIO)
     m.polisportive[mia.nome] = mia
-    mia.aggiungi_tesserato(3, m.giocatori[3].indice_collettivo_valore)
-    m.giocatori[3].appartenenza = mia.nome
+    m._entra(mia, m.giocatori[3])
     m.miapolisportiva_attiva = mia
     return m
 
@@ -82,17 +84,17 @@ def test_il_salvataggio_precedente_diventa_la_copia(cartella_di_prova):
     m = _mondo_popolato()
     archivio.salva(m)
     primo = (cartella_di_prova / FILE_MONDO).read_bytes()
-    m.giocatori[1].puntiesperienza = 77
+    m.giocatori[1].punti_allenamento = 77.0
     archivio.salva(m)
     assert (cartella_di_prova / FILE_MONDO_COPIA).read_bytes() == primo
     assert set(os.listdir(cartella_di_prova)) == {FILE_MONDO, FILE_MONDO_COPIA}
 
 
 def _due_salvataggi(cartella):
-    """Salva due volte, la seconda con 77 punti esperienza al giocatore 1; restituisce il percorso del salvataggio."""
+    """Salva due volte, la seconda con 77 punti allenamento al giocatore 1; restituisce il percorso del salvataggio."""
     m = _mondo_popolato()
     archivio.salva(m)
-    m.giocatori[1].puntiesperienza = 77
+    m.giocatori[1].punti_allenamento = 77.0
     archivio.salva(m)
     return cartella / FILE_MONDO
 
@@ -100,12 +102,12 @@ def _due_salvataggi(cartella):
 def test_la_firma_scopre_una_modifica_e_si_usa_la_copia(cartella_di_prova):
     percorso = _due_salvataggi(cartella_di_prova)
     testo = _testo(percorso)
-    manomesso = testo.replace('"puntiesperienza":77', '"puntiesperienza":9999')
+    manomesso = testo.replace('"punti_allenamento":77.0', '"punti_allenamento":9999.0')
     assert manomesso != testo
     _comprimi(percorso, manomesso)
     messaggi = []
     ricaricato = _ricarica(messaggi)
-    assert ricaricato.giocatori[1].puntiesperienza == 0
+    assert ricaricato.giocatori[1].punti_allenamento == 0.0
     assert "la firma non corrisponde" in messaggi[0]
     assert "ha preso il suo posto" in messaggi[0]
     assert messaggi[1].startswith("Mondo caricato dalla copia:")
@@ -123,7 +125,7 @@ def test_spazi_e_a_capo_non_contano(cartella_di_prova):
     messaggi = []
     ricaricato = _ricarica(messaggi)
     assert messaggi[0].startswith("Mondo caricato:")
-    assert ricaricato.giocatori[1].puntiesperienza == 77
+    assert ricaricato.giocatori[1].punti_allenamento == 77.0
 
 
 def test_se_manca_il_principale_si_usa_la_copia(cartella_di_prova):
@@ -132,7 +134,7 @@ def test_se_manca_il_principale_si_usa_la_copia(cartella_di_prova):
     messaggi = []
     ricaricato = _ricarica(messaggi)
     assert f"il file {FILE_MONDO} non c'è" in messaggi[0]
-    assert ricaricato.giocatori[1].puntiesperienza == 0
+    assert ricaricato.giocatori[1].punti_allenamento == 0.0
     assert percorso.exists()
     assert not (cartella_di_prova / archivio.CARTELLA_QUARANTENA).exists()
 
@@ -228,8 +230,8 @@ def test_al_salvataggio_le_voci_vecchie_si_tolgono(cartella_di_prova):
 
 
 def _al_formato_1(contenuto):
-    """Un contenuto del formato 2 riportato com'era nel formato 1: ora locale senza fuso, niente diari, conservazione e vecchie glorie."""
-    vecchio = copy.deepcopy(contenuto)
+    """Un contenuto del formato 6 riportato com'era nel formato 1: ora locale senza fuso, niente diari, conservazione e vecchie glorie."""
+    vecchio = al_formato_5(contenuto)
     dati = vecchio["mondo"]
     ultimo = datetime.datetime.fromisoformat(dati["ultimo_avanzamento"])
     dati["ultimo_avanzamento"] = ultimo.astimezone().replace(tzinfo=None).isoformat()
@@ -307,8 +309,8 @@ def test_il_vecchio_salvataggio_si_legge_e_si_sostituisce(cartella_di_prova):
 # Il formato 5 della tappa 9: temperamento, sede dell'infortunio e data dell'ultima amichevole.
 
 def _al_formato_4(contenuto):
-    """Un contenuto del formato 5 riportato com'era nel formato 4: senza temperamento, sede dell'infortunio e ultima amichevole."""
-    vecchio = copy.deepcopy(contenuto)
+    """Un contenuto del formato 6 riportato com'era nel formato 4: senza temperamento, sede dell'infortunio e ultima amichevole."""
+    vecchio = al_formato_5(contenuto)
     for g in vecchio["mondo"]["giocatori"]:
         del g["temperamento"]
         del g["infortunio_sede"]
@@ -338,7 +340,7 @@ def test_un_salvataggio_del_formato_4_si_aggiorna(cartella_di_prova):
     assert not ricaricato.giocatori[4].puo_giocare and ricaricato.giocatori[4].infortunio_sede == "non_precisata"
     assert archivio.salva(ricaricato)
     riletto = _ricarica()
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 5
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 6
     for gid, g in riletto.giocatori.items():
         assert vars(g) == vars(ricaricato.giocatori[gid])
 
@@ -371,8 +373,7 @@ def test_temperamento_e_sede_non_validi_rifiutati(campo, valore):
 
 def test_un_formato_5_senza_l_ultima_amichevole_si_legge(cartella_di_prova):
     # Così scrive main prima del 2026-10-08: formato 5, ma senza la data dell'ultima amichevole, nel salvataggio e nella copia.
-    contenuto = archivio.componi(_mondo_popolato())
-    assert contenuto["formato"] == 5
+    contenuto = al_formato_5(archivio.componi(_mondo_popolato()))
     for g in contenuto["mondo"]["giocatori"]:
         del g["ultima_amichevole"]
     testo = json.dumps({**contenuto, "firma": archivio.firma(contenuto)})
@@ -404,3 +405,73 @@ def test_l_ultima_amichevole_si_salva_e_si_rilegge(cartella_di_prova):
     assert ricaricato.giocatori[2].ha_giocato_amichevole(INIZIO + datetime.timedelta(hours=3))
     assert not ricaricato.giocatori[2].ha_giocato_amichevole(INIZIO + datetime.timedelta(days=1))
     assert ricaricato.giocatori[3].ultima_amichevole is None
+
+
+# Il formato 6 della tappa 11: punti allenamento, indole, tratti rari, ambizione, costanza e contratti.
+
+def test_un_salvataggio_del_formato_5_si_aggiorna(cartella_di_prova):
+    mondo = _mondo_popolato()
+    mondo.giocatori[2].punti_allenamento = 1234.0
+    mondo.giocatori[2].diario.insert(0, {"data": INIZIO, "allenamento": "attacco_base", "da": 10.0, "a": 10.5})
+    for gid in (5, 6):
+        mondo._entra(mondo.polisportive["Club Di Prova"], mondo.giocatori[gid])
+    vecchio = al_formato_5(archivio.componi(mondo))
+    for g in vecchio["mondo"]["giocatori"]:
+        g["archetipo_allenamento"] = "DifensoreRoccioso" if g["id"] == 2 else "Non Definito" if g["id"] == 4 else g["archetipo_allenamento"]
+    attesi = {g["id"]: archivio.stipendio_della_1_50(g) for g in vecchio["mondo"]["giocatori"]}
+    _comprimi(cartella_di_prova / FILE_MONDO, json.dumps({**vecchio, "firma": archivio.firma(vecchio)}))
+    m = _ricarica()
+    assert json.loads(_testo(cartella_di_prova / FILE_MONDO))["formato"] == 5
+    for gid, g in m.giocatori.items():
+        prima = mondo.giocatori[gid]
+        # Le caratteristiche, innate e allenate, non si toccano: senza i tetti dell'allenata ogni valore resta valido.
+        for nome in (n for n in vars(prima) if n.endswith(("_base", "_allenata"))):
+            assert getattr(g, nome) == getattr(prima, nome), (gid, nome)
+        assert g.esperienza == prima.esperienza and g.costanza == 0.0
+        assert (g.talento, g.apprendista_rapido, g.maturazione) == tuple(tratti.tratti_innati(gid).values())
+        assert g.ambizione == tratti.ambizione_innata(gid)
+        assert g.programma == g.indole and g.intensita == "normale"
+        if g.appartenenza == "*":
+            assert (g.contratto_stipendio, g.contratto_scadenza) == (0, None)
+        else:
+            assert g.contratto_stipendio == attesi[gid]
+            assert g.contratto_scadenza == contratti.scadenza_dopo(INIZIO, max(12, contratti.durata_proposta(g)))
+        assert (g.rinnovo_stipendio, g.rinnovo_scadenza, g.proposte_rinnovo, g.ultima_trattativa) == (0, None, 0, None)
+    assert m.giocatori[2].punti_allenamento == 1234.0 and m.giocatori[2].indole == "difensiva"
+    assert m.giocatori[4].indole == "completa"
+    assert {gid for gid, g in m.giocatori.items() if g.contratto_stipendio} == {3, 5, 6}
+    assert archivio.salva(m)
+    assert archivio.leggi(cartella_di_prova / FILE_MONDO)["formato"] == 6
+
+
+@pytest.mark.parametrize("guasto", ["tesserato_senza_contratto", "libero_con_contratto", "rinnovo_a_meta", "scadenza_non_al_primo", "intensa_da_libero"])
+def test_un_formato_6_incoerente_si_rifiuta(guasto):
+    contenuto = archivio.componi(_mondo_popolato())
+    giocatori = {g["id"]: g for g in contenuto["mondo"]["giocatori"]}
+    if guasto == "tesserato_senza_contratto":
+        giocatori[3].update(contratto_stipendio=0, contratto_scadenza=None)
+    elif guasto == "libero_con_contratto":
+        giocatori[1].update(contratto_stipendio=200, contratto_scadenza="2027-01-01T00:00:00")
+    elif guasto == "rinnovo_a_meta":
+        giocatori[3]["rinnovo_stipendio"] = 300
+    elif guasto == "scadenza_non_al_primo":
+        giocatori[3]["contratto_scadenza"] = "2027-01-02T00:00:00"
+    else:
+        giocatori[1]["intensita"] = "intensa"
+    vuoto = Mondo()
+    with pytest.raises(archivio.ErroreSalvataggio, match="Giocatore"):
+        archivio.costruisci(contenuto, vuoto)
+    assert vuoto.giocatori == {}
+
+
+def test_un_rinnovo_concordato_e_l_intensita_si_salvano(cartella_di_prova):
+    m = _mondo_popolato()
+    g = m.giocatori[3]
+    contratti.concorda_rinnovo(g, 450, 10)
+    g.intensita = "intensa"
+    g.costanza = 1.234
+    g.ultima_trattativa = INIZIO
+    g.proposte_rinnovo = 2
+    assert archivio.salva(m)
+    r = _ricarica().giocatori[3]
+    assert vars(r) == vars(g)

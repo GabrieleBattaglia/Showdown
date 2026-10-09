@@ -285,8 +285,8 @@ class MotorePartita:
                 xp_vinc += XP_BONUS_UNDERDOG
             else:
                 xp_perd += XP_BONUS_UNDERDOG
-        g_vinc.puntiesperienza = max(0, int(g_vinc.puntiesperienza or 0) + xp_vinc)
-        g_perd.puntiesperienza = max(0, int(g_perd.puntiesperienza or 0) + xp_perd)
+        g_vinc.punti_allenamento += xp_vinc
+        g_perd.punti_allenamento += xp_perd
         if not info_torneo:
             g_vinc.ultima_amichevole = g_perd.ultima_amichevole = self.mondo.datetime_corrente_simulazione
         self._annota_risultato(g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, info_torneo)

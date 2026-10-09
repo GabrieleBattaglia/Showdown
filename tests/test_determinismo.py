@@ -16,8 +16,8 @@ import allenamento, modelli
 random.seed(5)
 giocatori = [modelli.Giocatore(i, datetime.datetime(2026, 1, 1)) for i in range(1, 41)]
 for g in giocatori:
-    g.puntiesperienza = 1500
-    allenamento.esegui_auto_allenamento(g)
+    g.punti_allenamento = 1500.0
+    allenamento.allena_secondo_programma(g)
 dati = [g.a_dizionario() for g in giocatori]
 for d in dati:
     d.pop("datacreazione_reale")
