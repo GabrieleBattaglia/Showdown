@@ -446,7 +446,7 @@ CASI_FATICA = (
 )
 
 
-def sonda_fatica(giocatori, quante, rng, opzioni):
+def sonda_fatica(giocatori, quante, rng, opzioni, solo_quinto=False):
     """
     La stanchezza a fine incontro al meglio di 5. Ogni caso nasce da giocatori a caso, cambiando età
     e resistenza: la popolazione di prova nasce fra 9 e 45 anni, e senza la sonda gli anziani non ci
@@ -455,9 +455,13 @@ def sonda_fatica(giocatori, quante, rng, opzioni):
     molto resistente e allenato che deve reggere cinque set senza risentirne troppo, e l'anziano
     poco resistente che invece perde molto, giocano contro il proprio gemello, uguale a lui, perché
     l'incontro sia equilibrato e arrivi spesso al quinto set: conta l'efficienza a fine quinto set.
+    Con solo_quinto si giocano soltanto questi ultimi: li usa il giro degli estremi del motore,
+    strumenti/banco_estremi.py, anche sui campioni con tutto al tetto.
     """
     righe = []
     for descrizione, anni, innata, allenata, costanza, dove, intervallo in CASI_FATICA:
+        if solo_quinto and dove != "quinto":
+            continue
         efficienze = []
         for _ in range(quante):
             g, avversario = rng.sample(giocatori, 2)

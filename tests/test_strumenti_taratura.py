@@ -5,7 +5,8 @@ mediana e monte stipendi, le coppie speculari di colpi e battute che hanno un pe
 ricerca della scala vera per bisezione di strumenti/simulazione_lunga.py, con una simulazione
 finta. Dalla revisione di D26: la resistenza ha un prezzo solo, la verifica a coppie somma più
 gruppi con poche partite, e la sonda della stanchezza del banco misura soltanto giocatori che
-possono esistere.
+possono esistere. Dalla tappa 11 le parti pure del giro degli estremi del motore: la resa di un
+tratto e i verdetti dei bersagli.
 """
 
 import hashlib
@@ -19,6 +20,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 
+import banco_estremi as be
 import banco_partite as bp
 import popolazione_di_prova as pp
 import simulazione_lunga as sl
@@ -122,6 +124,62 @@ def test_la_verifica_a_coppie_somma_i_gruppi_e_da_il_mancino_per_seme():
     assert righe[0].startswith("Quinto passo, la verifica a coppie: 4 soggetti destrimani in 2 gruppi")
     assert len(righe) == 2 + len(tv.VERIFICHE)
     assert righe[-1].startswith("Il mancino gruppo per gruppo")
+
+
+def _lotti(fatti, subiti, somma):
+    return [{"fatti": fatti, "subiti": subiti, "vinte": 0, "giocate": 1, "somma": somma, "soggetti": 1} for _l in range(be.LOTTI)]
+
+
+def test_la_resa_di_un_tratto_del_giro_degli_estremi():
+    # La resa è il rating guadagnato per punto di somma pesata, e il suo errore viene dai lotti; nessuna resa se la somma non cresce.
+    prima = _lotti(1000, 1000, 150.0)
+    dopo = _lotti(1100, 1000, 160.0)
+    dopo[0]["fatti"] = 1200
+    resa, errore = be.resa_di_un_tratto(prima, dopo)
+    assert resa == pytest.approx(math.log(sum(x["fatti"] for x in dopo) / sum(x["subiti"] for x in dopo)) / 10.0)
+    assert 0.0 < errore < resa
+    assert be.resa_di_un_tratto(prima, _lotti(1100, 1000, 150.0)) is None
+    rese = be.rese_della_prova(prima, [dopo, _lotti(1300, 1000, 170.0)])
+    assert len(rese) == 2 and rese[1][0] > 0
+
+
+def test_i_verdetti_del_giro_degli_estremi():
+    # Troppo sopra 1,5 volte la resa di riferimento oltre il 30 per cento, incerto con l'errore grande,
+    # scende se il rating cala oltre il rumore, satura sotto metà; il primo tratto non è mai troppo.
+    rif = 0.01
+    rese = [(0.03, 0.001), (0.03, 0.001), (0.03, 0.005), (-0.01, 0.001), (0.002, 0.001), (0.01, 0.001), None]
+    giudizi = dict(be.verdetto_dei_tratti(rese, rif))
+    assert 0.30 not in giudizi
+    assert giudizi[0.45] == "troppo" and giudizi[0.60] == "troppo, ma incerto" and giudizi[0.70] == "scende" and giudizi[0.80] == "satura"
+    assert 0.90 not in giudizi and 1.00 not in giudizi
+    assert dict(be.verdetto_dei_tratti([(0.01, 0.003), *[(0.01, 0.0001)] * 6], rif)) == {0.30: "incerto"}
+    gemelli = {"attacchi_per_punto": 4.5}
+    buono = {"attacchi_per_punto": 7.0, "punti_per_set": 11.5, "falli_per_punto": 0.4, "limite_tecnico": 0}
+    assert all(dentro for _frase, dentro in be.verdetto_dei_campioni(buono, gemelli))
+    cattivo = {"attacchi_per_punto": 10.0, "punti_per_set": 9.0, "falli_per_punto": 0.1, "limite_tecnico": 2}
+    assert not any(dentro for _frase, dentro in be.verdetto_dei_campioni(cattivo, gemelli))
+
+
+def test_le_prove_del_giro_degli_estremi(monkeypatch):
+    # Ventiquattro caratteristiche da sole, le otto coppie di lato, tutti i colpi insieme e tutto; i
+    # sedici gruppi della taratura del valore coprono ogni caratteristica una volta; portare a un
+    # livello non toglie mai l'allenata che c'è già.
+    prove = be.prove()
+    assert len(prove) == 24 + 8 + 2 and prove[-1][0] == "tutto"
+    nomi = sorted(c for gruppo in be.GRUPPI.values() for c in gruppo)
+    assert len(be.GRUPPI) == 16 and nomi == sorted(c[:-9] for c in costanti.ATTRIBUTI_ALLENABILI)
+    assert {nomi for _nome, nomi in be.scelte("colpi")} >= {(c,) for c in be.COLPI}
+    g = giocatore(1, triplaspondasx_base=6.0, triplaspondasx_allenata=10.0)
+    assert be.portato(g, ("triplaspondasx",), 0.7).triplaspondasx_allenata == pytest.approx(22.0)
+    assert be.portato(g, ("triplaspondasx",), 0.3).triplaspondasx_allenata == 10.0 and g.triplaspondasx_allenata == 10.0
+    monkeypatch.setattr(be, "NATI", 600)
+    soggetti, avversari, (basso, alto) = be.soggetti_e_avversari(4, 6, 5)
+    assert len(soggetti) == 4 and len(avversari) == 6 and basso < alto
+    assert all(be.senza_tratti(g) and basso <= be.valore.somma_pesata(g) <= alto for g in soggetti + avversari)
+    be.prepara(soggetti, avversari, 8, 5, be.TARATURA)
+    lotti, esiti = be.gioca_prova(("triplaspondasx",), 1.0)
+    assert sum(lotto["giocate"] for lotto in lotti) == 8 and esiti["incontri"] == 8
+    assert be.misure_esiti(esiti)["punti_per_set"] > 0
 
 
 def test_la_sonda_della_stanchezza_misura_giocatori_possibili():
