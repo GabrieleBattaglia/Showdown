@@ -13,9 +13,11 @@ import pytest
 
 import cli
 import infortuni as modulo_infortuni
+import mondo as modulo_mondo
 import testi
 import valore
 from costanti import (
+    ANNO_SIMULAZIONE_GIORNI,
     CARTELLA_CRONACHE,
     COSTANZA_PER_PARTITA,
     DECADIMENTO_COSTANZA,
@@ -409,3 +411,22 @@ def test_il_primo_del_mese_calano_i_livelli_alti(mondo):
     mondo._mantenimento_del_mese(datetime.datetime(2026, 3, 1, 12, 0))
     assert g.difesa_allenata < 40.0 - g.difesa_base - 0.5
     assert g.attacco_allenata == 1.0 or g.apprendista_rapido
+
+
+def test_il_valore_dei_ritirati_si_ricalcola_il_primo_del_mese(mondo, monkeypatch):
+    """
+    I ritirati vivi, a regime quasi seimila, non si ricalcolano ogni giorno: il loro valore serve
+    alla scheda, alla ricerca e alle vecchie glorie, e si ricalcola il primo del mese, al ritiro e
+    all'uscita di scena. Chi è nel declino e gioca ancora si ricalcola ogni giorno.
+    """
+    monkeypatch.setattr(modulo_mondo, "PROB_USCITA_PREMATURA_GIORNALIERA", 0)
+    ritirato, attivo = mondo.giocatori[5], mondo.giocatori[6]
+    for g, ritirato_o_no in ((ritirato, True), (attivo, False)):
+        g.ritirato, g.appartenenza = ritirato_o_no, "*"
+        g.eta, g.etamorte, g.etaritiro = int(70 * ANNO_SIMULAZIONE_GIORNI), int(100 * ANNO_SIMULAZIONE_GIORNI), int(90 * ANNO_SIMULAZIONE_GIORNI)
+        g.indice_collettivo_valore = -1.0
+    mondo._un_giorno(datetime.datetime(2026, 1, 15, 12, 0), Mondo.rapporto_vuoto(INIZIO))
+    assert ritirato.indice_collettivo_valore == -1.0
+    assert attivo.indice_collettivo_valore == pytest.approx(valore.indice(attivo))
+    mondo._un_giorno(datetime.datetime(2026, 2, 1, 12, 0), Mondo.rapporto_vuoto(INIZIO))
+    assert ritirato.indice_collettivo_valore == pytest.approx(valore.indice(ritirato))
