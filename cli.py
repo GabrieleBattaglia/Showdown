@@ -928,7 +928,7 @@ class InterfacciaTestuale:
                 return
             buonuscita = contratti.buonuscita(g, self.data_sim)
             if buonuscita:
-                print(f"\tGli restano {contratti.mesi_al_termine(g, self.data_sim):.1f} mesi di contratto: la buonuscita è di {buonuscita} euro.")
+                print(f"\t{'Le' if g.sesso == 'f' else 'Gli'} restano {contratti.mesi_al_termine(g, self.data_sim):.1f} mesi di contratto: la buonuscita è di {buonuscita} euro.")
             if key(f"\rConfermi lo svincolo di {g.nome} {g.cognome}(ID:{gid})? (s/N)\r").lower() != 's':
                 print("\nAnnullato.")
                 return
