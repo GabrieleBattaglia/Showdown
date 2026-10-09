@@ -39,6 +39,7 @@ import datetime
 import math
 import random
 
+import classe
 import descrizioni
 import tratti
 import valore
@@ -732,7 +733,9 @@ class Giocatore:
                f"Descrizione: {getattr(self, 'descrizione_fisica', '(N/D)')}",
                f"Scoperto (sim): {self.datetime_creazione_sim:%Y-%m-%d %H:%M}", f"Scoperto (reale): {self.datacreazione_reale:%Y-%m-%d %H:%M}",
                f"Versione Creazione: {self.versione}", f"{compl}", f"Altezza: {self.altezza} cm, Peso: {self.peso} kg",
-               f"Punti allenamento: {self.punti_allenamento:.1f}", f"Indole: {INDOLI[self.indole]['nome']}, programma {INDOLI[self.programma]['nome']}, intensità {self.intensita}",
+               f"Punti allenamento: {self.punti_allenamento:.1f}", f"Classe: {classe.classe(self).codice}",
+               f"Indole: {INDOLI[self.indole]['nome']}, programma {INDOLI[self.programma]['nome']}, intensità {self.intensita}",
+               self._riga_contratto(),
                f"ICV Tot: {self.indice_collettivo_valore:.2f} (B: {self.icv_base:.2f}, A: {self.icv_allenato:.2f})",
                f"Gloria Rich: {self.gloria_richiesta}"]
         for titolo, gruppo in (("\nCaratteristiche Fisiche:", CARATTERISTICHE_FISICHE_BASE), ("\nCaratteristiche Difensive:", CARATTERISTICHE_DIFESA_BASE),
@@ -763,6 +766,15 @@ class Giocatore:
             out.append("  Medaglie: Nessuna")
         out.append("-" * 75)
         return "\n".join(out)
+
+    def _riga_contratto(self):
+        """Il contratto nella scheda dell'interfaccia testuale."""
+        if self.contratto_scadenza is None:
+            return "Contratto: nessuno"
+        riga = f"Contratto: {self.contratto_stipendio} euro al mese fino al {self.contratto_scadenza:%d/%m/%Y}"
+        if self.rinnovo_scadenza is not None:
+            riga += f", rinnovato a {self.rinnovo_stipendio} euro fino al {self.rinnovo_scadenza:%d/%m/%Y}"
+        return riga
 
     def sommario(self):
         """Il giocatore in una riga."""

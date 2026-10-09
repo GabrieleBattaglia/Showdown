@@ -5,8 +5,10 @@ import random
 
 import pytest
 
+import classe
 import mercato
 import ricerca
+from costanti import INDOLI
 from modelli import Polisportiva
 from mondo import Mondo
 
@@ -65,7 +67,7 @@ def test_ambiti(mondo):
 def test_caratteristiche_di_gioco(mondo):
     trovati = ricerca.cerca(mondo, "attivi", "bomba_base", "maggiore", 5)
     assert all(mondo.giocatori[g]._get_valore_totale("bomba_base") > 5 for g in trovati)
-    assert len(ricerca.CRITERI) == 35
+    assert len(ricerca.CRITERI) == 45
     with pytest.raises(ValueError):
         ricerca.cerca(mondo, "tutti", "valore", "contiene", 3)
 
@@ -99,3 +101,26 @@ def test_i_candidati_del_mercato(mondo):
     valori = [c.giocatore.indice_collettivo_valore for c in mercato.candidati(mondo, poli)]
     assert valori == sorted(valori, reverse=True)
     assert all(c.costo <= 500 for c in mercato.candidati(mondo, poli, (), "liberi", 500))
+
+
+
+def test_i_criteri_della_tappa_11(mondo):
+    mondo.datetime_corrente_simulazione = ORA
+    mia = mondo.fonda_polisportiva("Club della ricerca")
+    mondo._entra(mia, mondo.giocatori[1])
+    g = mondo.giocatori[1]
+    g.punti_allenamento = 42.0
+    assert ricerca.cerca(mondo, "tutti", "punti_allenamento", "maggiore", 41) == [1]
+    con_contratto = ricerca.cerca(mondo, "tutti", "mesi_contratto", "maggiore", 3)
+    assert con_contratto == [1]
+    assert ricerca.cerca(mondo, "tutti", "mesi_contratto", "minore", 0.5) == [gid for gid in mondo.giocatori if gid != 1]
+    forti = ricerca.cerca(mondo, "tutti", "classe", "minore", 60)
+    assert all(classe.classe(mondo.giocatori[gid]).livello < 60 for gid in forti)
+    assert 1 in ricerca.cerca(mondo, "tutti", "indole", "contiene", INDOLI[g.indole]["nome"].upper())
+    talenti = ricerca.cerca(mondo, "tutti", "talento", "si")
+    assert talenti == [gid for gid, x in mondo.giocatori.items() if x.talento]
+    precoci = ricerca.cerca(mondo, "tutti", "precoce", "si")
+    assert precoci == [gid for gid, x in mondo.giocatori.items() if x.maturazione == "precoce"]
+    ambiziosi = ricerca.cerca(mondo, "tutti", "ambizione", "maggiore", 60)
+    assert ambiziosi == [gid for gid, x in mondo.giocatori.items() if x.ambizione > 60]
+    assert ricerca.cerca(mondo, "tutti", "esperienza", "maggiore", -1) == sorted(mondo.giocatori)
