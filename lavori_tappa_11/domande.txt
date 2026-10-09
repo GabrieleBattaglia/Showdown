@@ -1,0 +1,141 @@
+SINTESI: Come funziona oggi. I punti allenamento (PA) li danno solo le amichevoli dell'utente, cioè MotorePartita.registra in partita.py: in media 2,7 a incontro al meglio dei 3 e 4,7 al meglio dei 5, e vanno anche all'avversario autonomo. Si spendono solo con Showdown.py --testo, comando AGT di cli.py. Nella finestra si accumulano e basta. Un punto costa da 25 a 500 PA secondo il livello allenato, le fisiche il doppio, e agli ipovedenti le caratteristiche di gioco costano il 7 per cento in meno. L'autoallenamento di liberi e computer è fermo, perché non ricevono mai PA. L'esperienza di carriera cresce solo col tempo passato in un club: circa 0,355 punti per anno simulato, quindi per il tetto di 20 ci vogliono 56 anni.
+Cosa non va.
+1. P8: dopo un allenamento l'uscita arriva fino al 97 per cento. La regola guarda ancora la gloria e scavalca Mondo._lascia.
+2. guadagno() fa pagare tutta la spesa al costo del livello di partenza: da 0 a 20 costa 500 PA in un colpo e 3361 a rate.
+3. Le chiavi delle strategie degli archetipi non corrispondono: in costanti sono percentuale, quota_fissa e obiettivo_punti, il codice cerca perc, quota e obiettivo.
+4. La precisione domina: rende 0,279 di valore per PA, una volta e mezza la difesa.
+5. La resistenza allenata conta due volte, nel totale e in campo.allenamento().
+6. Al meglio dei 5 un incontro dà il 74 per cento di PA in più.
+7. Il bonus underdog è un premio di consolazione: va al più debole anche quando perde.
+8. Lo stipendio esponenziale crolla se gli autonomi si allenano: in dieci anni i tesserati scendono dal 90 al 10 per cento e le casse del computer vanno a zero.
+9. I tetti dei totali, 40 e 10, non si raggiungono mai: al massimo si arriva a 32 e a 8.
+10. Lo stipendio dei più deboli è di 90 euro, contro i 105 di D26 e la banda 120-150 della tappa 8.
+Attenzione: la scala della classe è già decisa nel piano, con Gabriele, l'8 ottobre. Va da A1 a K0, cento livelli, si chiama classe, conta l'esperienza per il 30 per cento e le caratteristiche per il 70, e nella scheda mostra gli aggettivi di Hattrick con i numeri. Le due analisi lo davano ancora per aperto: il conto dei livelli non va richiesto. Restano aperte solo le soglie, la base del 70 per cento e l'esperienza che cresce giocando, cioè le domande del gruppo 6.
+Le strade possibili. Consiglio il modello misto: le partite, più una piccola base giornaliera, danno PA, e un programma per giocatore li spende da solo. Lo stesso sistema vale per gli autonomi. Lo stipendio va frenato in alto e l'economia ritarata con strumenti/simulazione_lunga.py, aggiornando BERSAGLI.
+Cose che decido da sola, senza chiedere:
+1. Correggo le chiavi degli archetipi.
+2. Il prezzo sale punto per punto.
+3. Se una regola d'uscita resta, passa da Mondo._lascia.
+4. A1 corrisponde al massimo davvero raggiungibile.
+5. Mostro la percentuale verso la classe successiva.
+6. Il dialogo d'allenamento accessibile nella finestra, e la voce del menu Giocatori che sostituisce la riga 56 del piano.
+Se Gabriele sceglie i punti spesi a mano, il gruppo 3 cambia: Programma diventa la scelta di una caratteristica, Scadenza decade, Velocità e Osmosi restano.
+Le domande vanno poste un gruppo alla volta, perché con più domande insieme a volte arriva solo l'ultima risposta.
+Da segnalare a Gabriele: durante la ricerca WebFetch ha salvato da sé un PDF di British Blind Sport, illeggibile, in C:\Users\Utente\.claude\projects\E--git\dc4e79db-fff5-47c7-a3b0-cdd305309903\tool-results\webfetch-1791492561255-uqrs4d.pdf. Va deciso se cancellarlo.
+Non ho modificato nessun file. Ho letto piano_di_sviluppo.txt, righe 21, 41-50, 56, 84 e 85.
+
+#### Le scelte di fondo
+- [Modello] Come si allena un giocatore? Oggi le partite danno punti allenamento e li spendi tu a mano, caratteristica per caratteristica, su 24 in tutto. Nella finestra per ora non si possono nemmeno spendere.
+    * Misto: punti e programma (consigliata): Le partite continuano a dare punti allenamento, come vuole D27, ma li spende da solo un programma che scegli tu per ogni giocatore, per esempio parate o sponde. Niente conti a mano su 24 caratteristiche, e lo stesso sistema vale per liberi e computer.
+    * Punti spesi a mano: Come oggi, con i costi rivisti: scegli tu caratteristica e quantità, nella finestra e nell'interfaccia testuale. Massimo controllo, ma molto lavoro con 15 tesserati.
+    * Programma alla Hattrick: I punti allenamento spariscono. A ogni scadenza chi ha giocato cresce da solo nel programma scelto, con una formula alla Schum che tiene conto di livello, età, intensità e partecipazione. L'amichevole conta come presenza, non come punti.
+- [Progressi] Da dove vengono i progressi? Oggi solo dalle amichevoli che organizzi tu: per far crescere al massimo 15 tesserati servirebbero 45 amichevoli per ogni giorno vero. Fino alla tappa 12 liberi e computer non giocano mai.
+    * Sedute quotidiane più partite (consigliata): Ogni giorno simulato in una polisportiva dà una piccola base, come le sedute in palestra, e ogni incontro giocato dà molto di più. Giocare conviene, ma chi non gioca non resta fermo.
+    * Solo dalle partite: Come oggi, cresce solo chi gioca: prima della tappa 12 vuol dire amichevoli organizzate a mano, poi anche i tornei.
+    * Solo dalle sedute: Cresce chi è in una polisportiva, giorno per giorno. Le partite danno esperienza ma non allenamento, quindi il limite di un'amichevole al giorno di D27 perde il suo motivo.
+- [Chi decide] Chi sceglie che cosa allenano i tuoi tesserati?
+    * Tu, giocatore per giocatore (consigliata): Ogni tesserato ha il suo programma, che scegli tu. Chi arriva nuovo parte da quello della sua Tendenza finché non lo cambi. Lo showdown è individuale, e ognuno ha i suoi punti deboli.
+    * Tu, uno per polisportiva: Come in Hattrick, un solo tipo di allenamento per tutta la rosa: è una scelta strategica e dà meno lavoro, ma tutti allenano la stessa cosa.
+    * Il giocatore da sé: Ognuno segue la sua Tendenza, come i liberi e il computer, e tu puoi cambiarla solo di rado. Poco lavoro e poco controllo.
+- [Età] Quanto conta l'età nell'allenamento? Oggi niente: un sessantenne impara come un ragazzo, e l'età conta solo nel declino dopo i 50 anni.
+    * Curva dolce di Hattrick (consigliata): Il fattore di Hattrick, 54 diviso l'età più 37: vale 1,17 a 9 anni, 1,04 a 15, 0,81 a 30, 0,62 a 50 e 0,48 a 75. È credibile per uno sport che si gioca fino a 60-75 anni.
+    * Curva ripida: I ragazzi imparano molto più in fretta, e dopo i 40 anni si migliora pochissimo: i giovani diventano il vero investimento.
+    * Nessun effetto: Come oggi, tutti imparano allo stesso ritmo.
+
+#### Quanto si cresce e chi paga
+- [Ritmo] Quanto deve far crescere l'allenamento? Il valore alla nascita ha mediana 136 e massimo 264. Una carriera, dai 15 ai 58 anni, dura circa 4 anni veri.
+    * Un campione per carriera (consigliata): Un giocatore medio allenato con costanza sale da 140 a circa 250 in una decina d'anni simulati, cioè un anno vero, e a fine carriera arriva verso 300; i più dotati superano 350. È lo spirito di Hattrick, dove l'allenamento porta da debole a sovrannaturale.
+    * Un ritocco: Al massimo 50-60 punti in una carriera: un 140 arriva a 200, e conta soprattutto il talento di nascita.
+    * L'allenamento domina: Oltre 300 punti in una carriera, fino a 400-500: chiunque giochi molto diventa fortissimo, e l'economia va rifatta da capo.
+- [Stipendi] L'allenamento rompe l'economia, perché lo stipendio sale del 2,5 per cento per ogni punto di valore, senza limiti. Un anno di amichevoli ben spese porta un giocatore da 200 a 730 euro al mese, cinque anni a 11610. Se anche liberi e computer si allenassero, in dieci anni i tesserati scenderebbero dal 90 al 10 per cento, e le casse del computer a zero. Come lo sistemiamo?
+    * Stipendio frenato e ritaratura (consigliata): Fino ai più forti di oggi, circa 260 di valore, lo stipendio resta com'è; oltre cresce molto più piano. Poi si ritara tutta l'economia sulla simulazione lunga, con l'allenamento acceso, perché il computer tesseri ancora nove giocatori su dieci, come vuole D23.
+    * Stipendio com'è, crescita frenata: La formula non si tocca, e l'allenamento resta piccolo, perché i valori stiano vicini a quelli di oggi.
+    * Più entrate per chi allena: Lo stipendio resta, ma crescono le entrate: uno sponsor più legato al valore della rosa e, con la tappa 12, i premi dei tornei. Oggi allenare è una perdita netta per la cassa.
+- [Calo] Oltre all'invecchiamento, i livelli si possono perdere? Oggi si cala solo dopo i 50 anni, fino all'1,8 per cento l'anno, e un livello raggiunto non si perde mai.
+    * Mantenimento dei livelli alti (consigliata): Come nel modello di Hattrick, i livelli molto alti calano un poco se non si continuano ad allenare, e dai 50 anni resta il declino di oggi. Tiene il mondo stabile e frena la corsa degli stipendi.
+    * Solo la vecchiaia: Come oggi: quello che si guadagna resta fino ai 50 anni.
+    * Disallenamento per tutti: Chiunque smetta di allenarsi o di giocare perde qualcosa, anche ai livelli bassi.
+- [Abbandono] La regola P8: dopo ogni allenamento un tesserato può andarsene. Sotto i 40 anni succede quasi sempre, fino al 97 per cento, perché la regola guarda ancora la gloria e non l'ingaggio in euro della tappa 8. Oggi esiste solo nell'interfaccia testuale.
+    * Toglierla (consigliata): Il prezzo dell'allenamento è già lo stipendio che sale, con la pazienza e gli arretrati di D22. Hattrick non punisce mai chi allena.
+    * Legata alla fedeltà: Un tesserato molto migliorato e con poca fedeltà può chiedere, di rado, di andare in un club più glorioso, con le regole d'uscita normali: vendita, arretrati, pazienza.
+
+#### Il programma d'allenamento
+- [Programma] Che cosa si sceglie nel programma di un giocatore? I gruppi ricalcano l'allenamento vero dello showdown: battute; colpi diretti, cioè lungolinea, diagonale e bomba; sponde; parate, cioè chiusure, blocchi e difesa; controllo palla e tenuta della paletta; attacco e gioco; preparazione atletica, cioè resistenza, forza e precisione.
+    * Gruppo più quota atletica (consigliata): Scegli uno dei sei gruppi tecnici, con il lato: dritto, rovescio o entrambi. Una quota fissa, per esempio il 15 per cento, va sempre alla preparazione atletica, come la quota di resistenza di Hattrick e come nei corsi tedeschi.
+    * Gruppo, atletica compresa: Sette gruppi, e l'atletica è uno di loro: o tecnica o fisico, mai insieme.
+    * Una caratteristica alla volta: Come oggi, una delle 24 caratteristiche: scelta più precisa, ma più lavoro.
+- [Velocità] A parità d'impegno, quanto cresce ogni caratteristica? Oggi un punto di precisione vale 13,9 di valore e uno di tripla sponda 0,46, ma le fisiche costano solo il doppio. Per valore guadagnato la precisione rende 11 volte un colpo, e allenare altro non conviene quasi mai.
+    * Tarata sul valore (consigliata): Ogni giorno d'allenamento compra più o meno lo stesso valore, qualunque cosa alleni: la precisione sale piano, le sponde in fretta. Si sceglie secondo lo stile e i punti deboli, non secondo il conto.
+    * Fisiche al doppio, come oggi: La precisione resta di gran lunga l'investimento migliore.
+    * Uguale per tutte: Ogni punto costa lo stesso, e la precisione domina ancora di più.
+- [Osmosi] Giocando si migliorano anche i colpi che si usano? Il motore sa quali colpi e quali parate ha giocato ciascuno in ogni incontro.
+    * Sì, un poco (consigliata): I colpi e le parate usati in partita crescono un poco da soli, circa un sesto dell'allenamento principale, come l'osmosi di Hattrick: chi gioca molto di sponda migliora le sponde.
+    * No: Cresce soltanto quello che allena il programma.
+- [Scadenza] Quando arrivano i progressi?
+    * A ogni giorno simulato (consigliata): Tre volte per giorno vero, a ogni avanzamento del mondo, a piccoli passi e insieme all'amichevole del giorno di D27.
+    * Una volta al giorno vero: Ogni tre giorni simulati, un appuntamento fisso come il giovedì dell'allenamento di Hattrick, con la notizia di chi è salito.
+    * Ogni settimana simulata: Ogni sette giorni simulati, cioè circa ogni due giorni veri e un terzo.
+
+#### Partite, fatica e infortuni
+- [Set e punti] Al meglio dei 5 un'amichevole dà il 74 per cento di punti allenamento in più che al meglio dei 3. Chi allena giocherebbe sempre a 5 set, mentre D26 li vuole rari, solo per tornei e finali.
+    * Stessi punti per incontro (consigliata): Un incontro vale lo stesso allenamento a 3 o a 5 set, al massimo con poco in più per i 5. Il formato si sceglie per il gioco, non per i punti.
+    * In proporzione ai set: Come oggi: più set, più punti.
+- [Sorpresa] Il premio al più debole: oggi, quando il distacco di valore è almeno del 25 per cento, il più debole prende un punto allenamento in più, anche se perde.
+    * Solo al debole che vince (consigliata): Diventa un premio alla sorpresa: battere uno molto più forte insegna di più.
+    * Sempre al debole, come oggi: Un premio di consolazione: giocare contro i forti conviene comunque.
+    * Toglierlo: Contano solo il risultato e i set.
+- [Intensità] Si può scegliere quanto duramente si allena un giocatore? Nella realtà si va da una seduta alla settimana degli amatori alle sette ore al giorno dei raduni della nazionale.
+    * Per giocatore, con infortuni (consigliata): Leggera, normale o intensa per ogni tesserato. Intensa fa crescere più in fretta, ma alza il rischio d'infortunio attraverso il fattore di carico di D26: serve a spingere un atleta prima di un torneo.
+    * Una per polisportiva: Come in Hattrick, un'intensità sola per tutta la rosa, sempre legata agli infortuni.
+    * Nessuna intensità: Tutti si allenano allo stesso modo.
+- [Stanchezza] D26 dice che in partita la stanchezza dipende anche da quanto il giocatore si allena. Per ora il motore usa al suo posto la resistenza allenata, che così conta due volte: il primo punto rende più di quanto dica il valore, e cinque punti molto meno.
+    * Dalla costanza recente (consigliata): Chi si è allenato o ha giocato con regolarità nelle ultime settimane si stanca meno, chi è rimasto fermo a lungo di più. La resistenza allenata conta una volta sola, e il valore torna giusto.
+    * Dalla resistenza allenata: Come oggi: chi allena la resistenza ne guadagna due volte.
+
+#### Liberi, computer e regole particolari
+- [Autonomi] Come si allenano i liberi e i tesserati del computer? Oggi quasi mai: ricevono punti solo quando giocano contro di te. Quando li spendono li sparpagliano, e ottengono il 58 per cento del valore che darebbe una spesa oculata.
+    * Liberi a metà velocità (consigliata): I tesserati del computer si allenano come i tuoi, con un programma scelto secondo la loro Tendenza da una polisportiva che ragiona. I liberi, senza club, si allenano da soli a metà velocità: tesserare un libero lo fa crescere.
+    * Tutti uguali: Liberi, computer e tuoi tesserati crescono allo stesso ritmo.
+    * Liberi fermi: Si allena solo chi ha una polisportiva, come succede oggi all'esperienza di carriera.
+- [Ipovedenti] Agli ipovedenti l'allenamento delle caratteristiche di gioco costa il 7 per cento in meno. In partita la mascherina rende tutti uguali, e il motore ignora il tratto. Gli ipovedenti sono il 65 per cento dei nati, e chiedono già il 10 per cento di gloria in meno, per D19.
+    * Toglierlo (consigliata): Tutti imparano allo stesso ritmo, come in partita sono tutti uguali.
+    * Tenerlo in allenamento: Chi vede un poco impara qualcosa in più guardando, fuori dalla partita: resta il vantaggio di oggi.
+- [Precisione] La precisione è la qualità più forte: contro un pari valore, cinque punti allenati portano dal 50 all'88,6 per cento di vittorie. D26 ne ha già dimezzato il peso, quando portavano dal 53 al 96.
+    * Com'è, pagata il giusto (consigliata): Nel motore resta com'è. Con la velocità tarata sul valore costa in proporzione, e cinque punti diventano un traguardo lungo.
+    * Ridurne ancora il peso: Un altro taglio nel motore, perché cinque punti valgano quanto la forza, circa il 75 per cento di vittorie.
+    * Tetto allenato più basso: Si possono allenare al massimo 3 punti di precisione invece di 5.
+- [Paga minima] Quanto deve guadagnare un tesserato fra i più deboli, al decimo percentile? Oggi prende 90 euro al mese; D26 parlava di circa 105, la tappa 8 voleva fra 120 e 150. È il bersaglio della ritaratura.
+    * Circa 105, come D26 (consigliata): Si conferma quello che avevi accettato dopo la taratura del motore.
+    * Fra 120 e 150: Si torna alla banda della tappa 8: i deboli costano un po' di più alle polisportive.
+    * 90 va bene: Si tiene il risultato di oggi e si aggiorna la banda.
+
+#### Esperienza e classe
+- [Esperienza] Da dove viene l'esperienza di carriera? Oggi solo dal tempo passato in una polisportiva, 0,1 punti al mese. Nella classe pesa il 30 per cento, e in partita aiuta a leggere l'avversario e a sbagliare meno.
+    * Tempo e partite (consigliata): Un po' ogni mese in una polisportiva, come oggi, più un po' per ogni incontro giocato. I tornei della tappa 12 ne danno molta più delle amichevoli, come in Hattrick la coppa rispetto all'amichevole. Anche un libero che gioca guadagna esperienza.
+    * Solo dalle partite: Il tempo non conta: è esperto chi ha giocato tanto.
+    * Solo dal tempo, più veloce: Come oggi, ma più in fretta; le partite non contano.
+- [Ritmo esp.] Quanto in fretta si arriva al massimo dell'esperienza, cioè a 20 punti? Oggi servono 56 anni simulati, più di una carriera: dopo dieci anni in un club si è a 3,5. Ogni punto alza lo stipendio del 3 per cento.
+    * A fine carriera (consigliata): Un giocatore molto attivo arriva a 20 dopo 35-40 anni di gioco, e a metà carriera è a metà strada. Un veterano vale davvero di più.
+    * A metà carriera: Venti punti in circa vent'anni: a 35 anni i più attivi sono già al massimo.
+    * Lento come oggi: L'esperienza resta un vantaggio piccolo, e nella classe pesa poco.
+- [Base classe] Nella classe le caratteristiche pesano il 70 per cento. Come si contano?
+    * Il valore pesato (consigliata): Si usa il valore di oggi, che pesa ogni punto per quanto fa vincere: un punto di precisione conta 13,9, uno di tripla sponda 0,46. La classe dice davvero chi è più forte.
+    * Somma semplice dei punti: Ogni punto conta uguale, fisico o di gioco: la classe dice quanto un giocatore ha lavorato più che quanto vince.
+- [Soglie] Le soglie della classe vanno da K0, il minimo di tutto, ad A1, il massimo di tutto. Con classi tutte larghe uguali i nati starebbero fra J4 e H9, con la mediana su I7. I più forti, dopo dieci anni d'allenamento, arriverebbero attorno a H0. Dalla A alla F non ci sarebbe nessuno.
+    * Curva fitta in basso (consigliata): Soglie fissate una volta per sempre, ma più strette dove stanno i giocatori veri: i nati fra le classi I e F, i migliori dopo una carriera fra D e C. A e B restano per chi è vicino alla perfezione, come i livelli divini di Hattrick.
+    * Tutte larghe uguali: Semplici e oneste: i giocatori veri occupano poche lettere basse, e il resto della scala resta vuoto.
+    * Percentili di un mondo maturo: Si simula un mondo allenato per anni, si fissano le soglie sulle sue posizioni e poi non cambiano più. Le classi sono ben distribuite, ma dipendono dalla taratura di oggi.
+
+#### Novità facoltative
+- [Allenatore] Ci vuole un allenatore? In Hattrick allenatore e assistenti decidono quanto rende l'allenamento, e costano.
+    * Non per ora (consigliata): La tappa 11 resta concentrata sull'allenamento; l'allenatore può arrivare più avanti, magari con la tappa 12.
+    * Uno per polisportiva: Un allenatore con un livello e uno stipendio: più è bravo, più in fretta si cresce, e allenare comincia a costare euro.
+    * Ex giocatori come allenatori: Le vecchie glorie e i ritirati possono diventare allenatori, con un livello che viene dalla loro carriera e magari una specialità: attacco, difesa o fisico.
+- [Tratti] Nascono tratti rari legati all'allenamento, come nei gestionali di tennis?
+    * Nessuno (consigliata): Bastano età, programma e intensità; i tratti si possono aggiungere più avanti.
+    * Solo il talento: Un giocatore su dieci, o meno, impara più in fretta.
+    * Tre tratti rari: Talento, che impara in fretta; apprendista rapido, che impara e dimentica in fretta; maturazione precoce o tardiva, che sposta gli anni migliori.
+- [Forma] Arriva la forma alla Hattrick, cioè una condizione del momento che sale e scende e cambia il rendimento in partita?
+    * Rimandata (consigliata): È una caratteristica nuova che tocca il motore e il valore: meglio aggiungerla più avanti, quando il mondo giocherà da solo con la tappa 12.
+    * Sì, con la tappa 11: Forma da disastrosa a eccellente, legata all'intensità e al riposo.
+    * No: Non serve: in partita bastano la stanchezza e il temperamento.

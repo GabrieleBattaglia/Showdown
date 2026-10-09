@@ -1,0 +1,194 @@
+#### Premessa e metodo
+Ricerca fatta con WebSearch, WebFetch e con la lettura via gh del codice pubblico di Hattrick Organizer (HO), il programma della comunità che ricostruisce le formule di Hattrick. Le pagine ufficiali di Hattrick (wiki.hattrick.org e hattrick.org/Help) rispondono 403 a WebFetch: i loro contenuti li ho presi dai riassunti dei risultati di ricerca e da guide della comunità. Per Sokker, Trophy Manager e i gestionali di tennis le fonti in rete sono scarse. Le misure su MESS sono di tre script in C:\Users\Utente\AppData\Local\Temp\claude\E--git\dc4e79db-fff5-47c7-a3b0-cdd305309903\scratchpad\ricerca_allenamento: misura_scala.py (giocatori nati in memoria con strumenti/popolazione_di_prova.py), misura_mondo_copia.py (una copia del salvataggio, poi cancellata), schum.py (la formula di Hattrick). Tutti lanciati con python -B. Nessun file del progetto o di GBUtils è stato toccato.
+#### Hattrick: il ciclo dell'allenamento e chi si allena
+L'aggiornamento dell'allenamento è uno solo alla settimana. Per tutta la squadra il manager sceglie un tipo di allenamento, un'intensità da 0 a 100 e una quota di resistenza (stamina share), cioè la percentuale dell'allenamento che va alla resistenza.
+Si allena solo chi gioca. Ogni giocatore riceve al massimo 90 minuti di allenamento a settimana nei ruoli allenabili; con meno minuti l'effetto è proporzionale (50 minuti valgono 50/90), oltre i 90 non c'è niente in più. Se nella settimana ha giocato in due ruoli, vale quello che rende di più. Campionato, coppa e amichevoli contano allo stesso modo; le partite per altre squadre, come la nazionale, danno solo forma. Per questo i manager giocano un'amichevole ogni settimana: serve a riempire tutti i posti di allenamento.
+Il ruolo decide quanto si prende: pieno; metà, come l'ala allenata in regia; osmosi per chi gioca in altri ruoli, cioè un sesto o un ottavo secondo il tipo. Ci sono undici tipi: portiere, difesa, regia, ala (cross), attacco, calci piazzati, tiro, passaggi corti, passaggi filtranti, difesa a zona e attacchi sulle ali. I piazzati allenano tutti i giocatori in campo, con il 25 per cento in più al battitore e al portiere.
+La resistenza vale per tutta la rosa. Il vecchio manuale dà il 100 per cento a chi ha giocato 90 minuti e il 75 per cento, più una parte per ogni minuto, agli altri. Si consiglia una quota fra il 10 e il 15 per cento, perché oltre il 15 è troppo. Gli anziani ne hanno bisogno di più per mantenersi, e la resistenza rende meno quando l'intensità è alta.
+Una guida del 2024 riassume la pratica: intensità 100, resistenza 10 per cento, due assistenti e un medico. Si comprano diciassettenni, si allenano per almeno 35 settimane e si vendono fra splendido (11) e sovrannaturale (14). L'allenamento è anche un mestiere economico.
+Per MESS. L'equivalente dei 90 minuti è la partecipazione nel periodo: per esempio aver giocato almeno un incontro, o un numero di set. Il tetto di D27, un'amichevole al giorno, fa già da tetto settimanale, perché più partite non danno più allenamento. La preparazione atletica di tutta la rosa e i colpi solo per chi ha giocato ricalcano la quota di resistenza di Hattrick.
+#### Hattrick: la formula di Schum, con i numeri
+Hattrick non pubblica la sua formula. La comunità usa quella del ricercatore Schum, scritta nel codice di HO (WeeklyTrainingType.java). La crescita settimanale, in livelli, è:
+T = f(livello) x K(allenatore) x K(assistenti) x K(intensità) x (1 - quota di resistenza) x K(tipo) x K(età) x K(minuti).
+f(livello) vale 16,289 x e^(-0,1396 x livello) sotto il 9, e 54,676 / livello - 1,438 dal 9 in su.
+K(allenatore) va da 0,7343 a 1,0375 per i livelli 4, 5, 6, 7 e 8 (debole, insufficiente, accettabile, buono, eccellente): 0,7343; 0,8324; 0,92; 1; 1,0375.
+K(assistenti) è 1 + 0,035 per ogni livello di assistente, sommati fino a 10, quindi al massimo 1,35. Con la riforma dello staff il guadagno per livello è passato da 3,2 a 3,5 per cento.
+K(intensità) è l'intensità divisa per 100.
+K(età) è 54 / (età + 37): 1 a 17 anni, 0,947 a 20, 0,871 a 25, 0,806 a 30, 0,75 a 35.
+K(tipo): portiere 5,10 per cento, difesa 2,88, regia 3,36, ala 4,80, passaggi 3,60, attacco 3,24, piazzati 14,70; tiro 1,5, passaggi corti 3,15, difesa a zona 1,38, attacchi sulle ali 3,12.
+K(minuti) somma i minuti pieni, quelli a metà e quelli di osmosi a un sesto, fino a 90.
+Le settimane per salire di un livello vengono da schum.py, in regia a 17 anni, con allenatore buono, 10 livelli di assistenti, intensità 100 e resistenza al 10 per cento: 2,3 da 3 a 4; 3,0 da 5 a 6; 4,0 da 7 a 8; 5,3 da 9 a 10; 6,9 da 11 a 12; 8,8 da 13 a 14; 11,1 da 15 a 16; 13,8 da 17 a 18. A 30 anni serve circa un quarto in più (da 7 a 8 ne servono 5,0).
+Da 7 a 8 per tipo: portiere 2,6, ala 2,8, passaggi 3,7, regia 4,0, attacco 4,1, difesa 4,7, piazzati 0,9.
+Le condizioni contano. Da 7 a 8 in regia: allenatore debole senza assistenti 7,3 settimane; intensità 80, 5,0; resistenza al 25 per cento, 4,8; 45 minuti a settimana, 8,0.
+La regia da 5 a 14, partendo a 17 anni, richiede 51 settimane, cioè un anno vero. La wiki ufficiale, sempre per la regia, dà circa 7 settimane senza assistenti, 6 con un assistente di livello 5 e 5 con due.
+Il tempo per livello cresce di circa 4,6 volte fra il livello 5 e il 17. In MESS il costo di un punto cresce di 20 volte, da 25 a 500 punti allenamento.
+#### Hattrick: età e calo delle abilità
+Anche il calo, nel modello di Schum (SkillDrops.java di HO), avviene durante l'aggiornamento dell'allenamento. Toglie una quota DropLevel = DropL + DropLA.
+DropL dipende solo dal livello: è zero sotto il 14 (sovrannaturale), poi cresce con un polinomio cubico. Mantenere i livelli altissimi costa anche ai giovani.
+DropLA dipende da livello ed età: è zero sotto i 31 anni, poi vale m x livello + n, con m che sale da 0,00031 a 31 anni a 0,0146 a 37, cioè quasi cinquanta volte.
+Una guida del 2015 conferma: il calo comincia verso i 30 anni e cresce con l'età e con il livello; dal titanico in su arriva anche prima.
+Altri modelli. In Dugout-Online, dai 27 anni ogni aggiornamento toglie una percentuale dei punti accumulati, e dai 32 toglie punti a quattro abilità tecniche e due fisiche scelte a caso, senza mai scendere sotto 15; velocità e forza hanno un tetto nascosto. In Hourra Football Manager, dai 17 anni le abilità non allenate possono perdere punti, e dai 30 le partite ufficiali non danno più punti.
+In MESS oggi il declino comincia a 50 anni e arriva a 90, fino all'1,8 per cento l'anno, moltiplicato su base e allenato; non esiste un costo di mantenimento.
+Applicato alle età di MESS, il K(età) di Hattrick dà: 9 anni 1,17; 15 anni 1,04; 30 anni 0,81; 50 anni 0,62; 60 anni 0,56; 75 anni 0,48. È già una curva credibile per uno sport che si gioca fino a 60-75 anni.
+#### Hattrick: intensità, forma, infortuni, staff, fedeltà
+Intensità. La guida ufficiale dice che con un'intensità più alta l'allenamento è più veloce e la forma migliora, ma crescono gli infortuni, che si compensano con lo staff medico. Le voci della comunità aggiungono che i cambi bruschi d'intensità fanno crollare la forma.
+Forma. La scala va da 1 a 8, da disastrosa a eccellente. Dietro c'è una forma di fondo nascosta, ricalcolata in media ogni due settimane, verso cui si muove la forma attuale. Il form coach, che prima si chiamava fisioterapista, alza la forma di fondo di 0,2 livelli per ogni suo livello. Una quota di resistenza alta abbassa la forma attuale, non quella di fondo. In partita, nel modello di HO, la forma moltiplica l'abilità per 0,378 x radice di (forma - 1): eccellente vale 1, accettabile 0,85, scarsa 0,53.
+Staff. Gli assistenti allenatori sommano i loro livelli, fino a 10. Il medico, nel vecchio manuale il dottore, accelera il recupero. Il form coach e lo psicologo completano lo staff. I posti disponibili sono cambiati nel tempo: le pagine dicono 3, 4 o 5.
+Allenatore. Ha un livello, da debole a eccellente, e un orientamento. Si può prendere un giocatore con buon carisma ed esperienza e trasformarlo in allenatore: la guida del 2024 lo fa giocare 16 settimane per fargli raggiungere un'esperienza buona, poi lo converte.
+Fedeltà, club madre ed esperienza. In HO la fedeltà aggiunge a ogni abilità la fedeltà diviso 19, cioè fino a un livello circa; chi è cresciuto nel vivaio prende +1,5. L'esperienza dà un bonus logaritmico, log10(esperienza) x 4/3.
+Per MESS. L'intensità può moltiplicare il fattore di carico degli infortuni di D26, oggi fra 0,7 e 1,5. L'allenatore potrebbe uscire dalle vecchie glorie, come in Hattrick si converte un giocatore. La fedeltà di D22 c'è già e potrebbe dare un piccolo bonus. La forma in MESS non esiste: sarebbe una caratteristica nuova.
+#### Hattrick: scale e nomi dei livelli, e la scala a lettere di Gabriele
+Le abilità di Hattrick hanno 21 livelli, da 0 a 20, presi dalla traduzione italiana di HO, che è della comunità: quella ufficiale del gioco può cambiare qualche parola. Eccoli: inesistente, disastroso, tremendo, scarso, debole, insufficiente, accettabile, buono, eccellente, formidabile, straordinario, splendido, magnifico, fuoriclasse, sovrannaturale, titanico, extraterrestre, mitico, magico, utopico, divino. In inglese vanno da non-existent a divine.
+La stessa scala vale per esperienza, carisma e fedeltà. La forma ha 8 livelli, lo spirito di squadra 11 (da guerra aperta ad al settimo cielo), la fiducia 10.
+I sottolivelli non si vedono mai: i giocatori li stimano dallo stipendio (lo fa l'estensione SkillValue) e dalle settimane passate, e HO li ricalcola. Anche Sokker ha una scala a nomi che arriva a superdivine, ma non sono riuscita a verificarla per intero.
+Per la scala di Gabriele. La lettera fa da macrolivello, come i nomi di Hattrick; la cifra è il sottolivello che Hattrick nasconde e che MESS mostrerebbe.
+Il conto. Se la lettera sono le decine e la cifra le unità, con J0 = 100 e I9 = 99 si arriva ad A0 = 10. Da J0 ad A1 i livelli sono 90 (da 100 a 11), da J0 ad A0 sono 91. Per averne 100 esatti la cifra deve scendere dentro ogni lettera, da J9 (il più basso, 100) ad A0 (il più alto, 1). In quel caso il più basso non è J0 e il più alto non è A1.
+Il valore, misurato con misura_scala.py:
+nati senza allenamento: media 135, primo percentile 64, mediana 135, novantanovesimo percentile 209, massimo 240;
+popolazione di prova (60 per cento allenati con 0-220 punti): mediana 193, novantanovesimo percentile 505;
+con 400 punti allenati a testa: mediana 561;
+con tutto l'allenabile al tetto: da 780 a 936, mediana 857.
+Con soglie lineari di 10 punti per gradino, dove il gradino è 100 meno il valore diviso 10:
+nati da I8 (28) a G6 (240), mediana 135 su H7, novantanovesimo percentile su H0;
+400 punti allenati: mediana su D4;
+tutto al tetto: fra A4 e A1.
+Le lettere da A a D resterebbero quasi irraggiungibili, come i livelli divini di Hattrick. In alternativa: soglie geometriche, coerenti con lo stipendio esponenziale, oppure soglie fissate una volta per tutte sui percentili di un mondo maturo.
+L'esperienza va da 0 a 20 (ESPERIENZA_MASSIMA): fa 0,2 per gradino con 100 livelli, 0,222 con 90.
+#### Hattrick: esperienza dalle partite
+I valori sono storici, ricostruiti dai giocatori fra il 2003 e il 2005 e non ufficiali. Ogni partita vale: campionato 1, coppa 2, nazionale 3, amichevole internazionale 0,2, amichevole 0,1. Per salire di un livello d'esperienza servono fra 20 e 45 di questi punti, cioè circa un livello ogni stagione e mezza giocando il campionato.
+Il principio resta valido: l'amichevole allena come una partita vera, ma dà pochissima esperienza; la partita importante dà più esperienza.
+Per MESS. Le amichevoli danno punti allenamento (D27), mentre l'esperienza di carriera cresce col tempo passato nel club (D22). I tornei della tappa 12 potrebbero dare più esperienza delle amichevoli, come la coppa e la nazionale in Hattrick.
+#### Altri gestionali
+Football Manager. La settimana è fatta di sedute. L'intensità di ogni giorno si confronta con quella di una partita, e solo il giorno della partita arriva al 100 per cento. Un carico alto fa crescere più in fretta, ma porta infortuni; nelle settimane con due partite si tolgono le sedute fisiche pesanti. C'è un focus di reparto, 60 per cento a un reparto e 20 agli altri due, più un allenamento individuale per ruolo e attributo. Dai 18 anni contano soprattutto le partite vere. Il potenziale è un tetto nascosto, e personalità, determinazione e professionalità decidono quanto ci si avvicina. Con il mentoring un veterano segue tre o quattro giovani e passa loro tratti di carattere. In MESS: tratto di professionalità, mentore fra i tesserati.
+Hourra Football Manager. Ogni giocatore ha una curva di crescita nascosta, fra quattro tipi: Young, Continual, Ordinary, Late. Prende punti dalle partite ufficiali e dagli allenamenti, ma dai 30 anni le partite non ne danno più. La forma fisica da partita si recupera solo col riposo. In MESS: curva di maturazione come tratto, precoce o tardivo.
+Dugout-Online. Ogni abilità accumula punti allenamento, e con 1200 punti sale; senza abbastanza talento ci riesce una volta su otto. Gli allenatori specialisti rendono il 100 per cento nella loro area, quelli generici il 15. Ogni allenatore regge 7 giocatori: oltre, l'efficienza crolla fino al 10 per cento. Il rating di ruolo cresce solo giocando, mai più di 2 punti sopra l'abilità tecnica migliore. In MESS: talento uguale al valore innato, rosa da 15 tesserati con un tetto di allievi per allenatore.
+Top Eleven. Tre tipi di seduta, stretching, cardio e partitella, consumano energia diversa e danno progressi diversi; il guadagno dipende da condizione, intensità, età e potenziale.
+eFootball e PES. A ogni salita di livello arrivano punti di progressione, da assegnare a mano o in automatico. Le curve di crescita e declino per età esistono da PES 3. È il modello più vicino ai punti allenamento di oggi in MESS.
+Sokker. Talento nascosto che accelera la crescita, giovani più veloci, declino dai 30 anni. Le fonti sono scarse.
+Trophy Manager. Niente di verificabile oltre al ritmo settimanale; gli script dei fan parlano di tassi fisici, tattici e tecnici e di picchi.
+Tennis Manager 2024-26. Lo sport è uno contro uno come lo showdown. Programmi fisici, tecnici, mentali e tattici, sedute dedicate alla forma o alle abilità, pianificati per periodi della stagione; intensità legata agli infortuni e alle ricadute; un'agenda per ogni giocatore.
+Tennis Elbow Manager 2. Fino a nove giocatori, con talenti: l'apprendista rapido impara e dimentica più in fretta, Forever Young rallenta il calo fisico, Prodigy cresce verso il potenziale più in fretta. Le partite di allenamento contro il computer consumano freschezza, che torna con yoga o allenamento mentale; secondo un utente, i giocatori del computer non migliorano se non giocano. In MESS: tratti rari legati all'allenamento, e la freschezza come stanchezza fra un giorno e l'altro.
+#### Lo showdown vero: cosa e come si allena
+Tecnica, secondo Showdown Verband Deutschland (showdown-germany.de). Il colpo parte dal corpo intero, ginocchia, busto e avambraccio, e chiude col polso; precisione e potenza contano allo stesso modo.
+Battuta. Il battitore sceglie con calma la posizione, quindi la battuta conta molto: un buon giocatore deve averne almeno tre diverse, precise e dure.
+Rovescio e dritto. Il rovescio è il colpo più usato perché copre la zona più ampia. Il dritto è più difficile, copre meno e spesso obbliga a spostarsi, ma eseguito col busto è più potente, e chi non lo usa diventa prevedibile.
+Sponde. I colpi a due e tre sponde sono comuni fra i migliori, ma richiedono forza e quasi sempre il dritto. Il lungolinea intorno all'angolo è popolare, ma si para facilmente o, se troppo forte, scavalca la porta. Vince la varietà dei colpi e la loro combinazione.
+Difesa. Si muove la paletta con rapidità ma controllo, in semicerchio vicino alla linea dell'area di porta. Quando non si capisce da dove arriva la pallina, si torna in posizione base, con la paletta 5 centimetri davanti all'area e inclinata in avanti.
+Controllo palla. Dopo la parata si ferma la pallina contro la sponda o la si incastra in un angolo, poi ci sono due secondi per attaccare.
+Tattica. Più i due sono alla pari, più conta: preparare un attacco in più colpi e chiuderlo a sorpresa, provare e sfruttare i punti deboli, logorare con l'attacco continuo.
+Come si allena.
+Corso al Deutsches Tischtennis-Zentrum (Borussia Düsseldorf), prima dei campionati tedeschi: la mattina controllo palla e preparazione atletica; nella seconda sessione, più lunga, colpi, tattica e partite in condizioni di gara.
+Centro di Herne: nell'allenamento libero cambi di ritmo e tiri a tre sponde.
+Nazionale FISPIC prima dei Mondiali 2025 di Silvi: raduno all'Aquila dal 22 al 25 maggio 2025 con sette atleti e il tecnico Marco Spinelli; due sessioni al giorno, 8:30-12 e 15:30-19, cioè sette ore. La pagina non dice i contenuti.
+Studio russo (Kielevyaynen e Lukina, 2025, università di Petrozavodsk): 12 atleti fra 25 e 50 anni seguiti per due anni. Si allenavano 2-2,5 ore a settimana con l'istruttore (riscaldamento con musica, partite, giocoleria a occhi chiusi, equilibrio) e tre volte a settimana da soli a casa. Sono migliorati il riflesso (righello che cade: da 30,1 a 23,0 centimetri), l'equilibrio, la riproduzione di distanze e tempi e il dosaggio della forza; la forza della mano invece è calata. Il campione è troppo piccolo per la significatività.
+Università Masaryk di Brno: una volta a settimana per 90 minuti. Prima impugnatura, colpo, arresto della pallina e battuta; poi attacco, difesa e tattica del doppio; la parte più grande è il gioco.
+IBSA dice di avere materiali per gli allenatori, ma la pagina pubblica è vuota. In rete è citato un manuale tedesco, il Lehrbuch Showdown di Moritz Klotz, che non ho potuto verificare.
+In Italia (FISPIC). La mascherina rende tutti uguali in partita. La stagione ha giornate di Serie A1 e A2, una fase finale del Campionato italiano e una graduatoria triennale: utile per la tappa 12.
+Non ho trovato studi sugli infortuni nello showdown. Nel tennistavolo, sport vicino, le revisioni indicano tronco e arti inferiori, e uno studio piccolo collega il carico di allenamento agli infortuni. La protezione della mano col guanto serve contro i colpi forti.
+#### Lo showdown vero, tradotto nelle caratteristiche di MESS
+Una proposta di gruppi di esercizi, ciascuno sulle caratteristiche allenabili che MESS ha già.
+1. Battute: battutasx e battutadx, con un po' di precisione. Ricalca la regola delle tre battute diverse.
+2. Colpi diretti: lungolinea e diagonale sx e dx, più la bomba.
+3. Sponde: singola, doppia e tripla sponda sx e dx; la tripla chiede forza, come nel reale.
+4. Parate: chiusura sx e dx, blocco sx e dx, difesa.
+5. Controllo e paletta: controllo palla, tenuta della paletta.
+6. Tattica e gara: attacco, più la lettura del gioco che oggi viene dall'esperienza. Corrisponde alle partite in condizioni di gara dei corsi tedeschi.
+7. Preparazione atletica: resistenza e forza, più la precisione come coordinazione, come nello studio di Petrozavodsk.
+Il lato, dritto o rovescio, si sceglie dentro il gruppo, o si allena il lato debole: per il mancino D26 specchia già i lati.
+L'ascolto della pallina non è una caratteristica di MESS. Può restare implicito nelle parate e nella chiusura, oppure diventare una caratteristica nuova: è una scelta di Gabriele.
+Il ritmo reale va da una o due sedute a settimana per gli amatori a sette ore al giorno nei raduni della nazionale. Si traduce bene in un'intensità per giocatore o per polisportiva.
+#### Misure su MESS
+1. Quanto vale un punto allenato, sulla media di 300 nati:
+precisione 13,9 punti di valore; forza 7,2; resistenza 6,5; difesa 4,7;
+chiusura sx 3,8; chiusura dx 3,2; blocco sx 2,2; blocco dx 1,9;
+attacco 1,8; tenuta della paletta 1,75; controllo palla 1,1; battute 1,1;
+diagonali 0,68; singole sponde 0,67; doppie sponde 0,62; lungolinea 0,61;
+bomba 0,50; triple sponde 0,46.
+Le fisiche costano il doppio ma rendono da 10 a 30 volte di più: allenare la precisione è di gran lunga il modo più rapido per alzare valore e vittorie.
+2. I tempi con le regole di oggi (XP_COSTO_SKILL_BREAKPOINTS da 25 a 500). Per l'allenato di una caratteristica di gioco servono:
+1 punto, 29 punti allenamento; 5 punti, 229; 10 punti, 670; 15 punti, 1462; 20 punti, 3360.
+Per una fisica: 1 punto, 58; 5 punti, 458.
+Con una media di 2,5 punti allenamento per incontro al meglio dei 3, e un incontro per giorno simulato (il massimo di D27):
+da 0 a 1, 12 incontri, cioè 4 giorni veri;
+da 0 a 5, 92 incontri, 31 giorni veri;
+da 0 a 10, 268 incontri, 89 giorni veri;
+da 0 a 20, 1344 incontri, 448 giorni veri.
+E questo per una sola delle 24 caratteristiche. Hattrick porta una sola abilità dal livello 5 al 14 in un anno vero.
+3. Il tempo di MESS. L'anno d'età dura 108 giorni simulati, cioè 36 giorni veri; un anno vero fa invecchiare un giocatore di circa 10 anni. Una carriera dai 15 ai 58 anni dura circa 4,2 anni veri; in Hattrick dai 17 ai 35 anni ne servono circa 5,5. In Hattrick un giovane veloce sale di un livello ogni 4-5 settimane, circa 35 giorni veri, cioè circa un anno d'età di MESS.
+4. Il salvataggio vero, letto da una copia: 61 giocatori, nessuno con allenato, punti allenamento o esperienza; il valore non è salvato, si ricalcola. Cambiare le regole ora non toglie nulla a nessuno.
+#### Proposte per la tappa 11 (da discutere, nulla deciso)
+A. Il modello, in tre varianti.
+A1. Punti allenamento da spendere a mano, come oggi, con costi rivisti.
+A2. Alla Hattrick: ogni giocatore ha un programma, cioè un gruppo di esercizi, e cresce da solo a ogni scadenza con una formula alla Schum: f(livello) x allenatore x intensità x (1 - quota fisica) x velocità del gruppo x K(età) x partecipazione.
+A3. Misto: le partite danno punti allenamento, che restano il carburante di D22 e D27, e il programma li spende da solo secondo il gruppo scelto.
+A2 e A3 tolgono a Gabriele il lavoro manuale di spendere i punti su 24 caratteristiche, e funzionano allo stesso modo per gli autonomi e per il computer.
+B. La scadenza: ogni giorno simulato (8 ore vere), ogni tre giorni simulati (una volta al giorno vero, come il giovedì di Hattrick) o ogni settimana simulata (circa 2,3 giorni veri).
+C. La velocità per gruppo. Come il K(tipo) di Hattrick, si tara sul peso nel valore: così un giorno d'allenamento rende più o meno lo stesso valore qualunque cosa si alleni, e la precisione non diventa l'unica scelta sensata.
+D. La partecipazione. Si allena pieno solo chi ha giocato nel periodo, gli altri poco; la preparazione atletica vale per tutti, come la resistenza in Hattrick.
+E. L'osmosi. Il motore sa quali colpi ha usato ciascuno: quei colpi crescono un poco da soli, per esempio un sesto, come l'osmosi di Hattrick e il principio che si impara giocando.
+F. L'età: K(età) = 54 / (età + 37), già adatto alle età di MESS.
+G. Il mantenimento. I livelli molto alti calano un poco se non si allenano (DropL di Schum), e dai 50 anni resta il declino di oggi. Serve a tenere stabile il mondo.
+H. L'intensità, per giocatore o per polisportiva, moltiplica la crescita e il fattore di carico degli infortuni di D26.
+I. L'allenatore: un livello per polisportiva, magari preso dalle vecchie glorie o dagli ex giocatori, con eventuali specialità, attacco, difesa o fisico, alla Dugout-Online, e un tetto di allievi.
+J. I tratti: talento (l'innato accelera), apprendista rapido (impara e dimentica in fretta), maturazione precoce o tardiva. Da tenere rari.
+K. Il P8. La regola dell'abbandono dopo l'allenamento sparisce: il costo dell'allenare è già lo stipendio che sale (D22) con la sua pazienza. Hattrick non punisce mai chi allena. Lo sconto del 7 per cento agli ipovedenti, se resta, vale solo in allenamento, perché senza mascherina si impara anche guardando; la fonte di Brno nota che l'apprendimento motorio dipende dal grado del deficit visivo. Si può anche togliere.
+L. La scala a lettere per valore ed esperienza. Facoltativa anche per le singole caratteristiche, come fa Hattrick con tutte le abilità. La cifra mostra il sottolivello, e una percentuale verso il gradino successivo piacerebbe a Gabriele, che ama i numeri.
+#### Domande da porre a Gabriele, chiuse e con le opzioni
+Meglio due o tre alla volta: con troppe domande insieme a volte arriva solo l'ultima risposta.
+1. Modello: A1 punti da spendere a mano come oggi; A2 programma alla Hattrick con crescita automatica; A3 misto, le partite danno punti e il programma li spende.
+2. Scadenza: ogni giorno simulato; una volta al giorno vero (tre giorni simulati); ogni settimana simulata.
+3. Cosa si sceglie: un gruppo di esercizi per giocatore; una caratteristica per giocatore come oggi; un tipo per tutta la polisportiva come Hattrick.
+4. Intensità: nessuna; una per polisportiva; una per giocatore. Legata agli infortuni: sì o no.
+5. Fisico: quota fissa alla Hattrick per tutti; gruppo separato da scegliere.
+6. Allenatore: nessuno; uno per polisportiva con un livello; allenatore più assistenti.
+7. Età: fattore di Hattrick 54/(età+37); curva più ripida; nessun effetto.
+8. Calo: solo l'invecchiamento dai 50 come oggi; anche il mantenimento dei livelli alti; anche il disallenamento generale.
+9. Chi si allena: solo chi ha giocato nel periodo; tutti, ma chi ha giocato di più; tutti uguale.
+10. Osmosi dei colpi giocati: sì o no.
+11. Velocità: uguale per tutte le caratteristiche; tarata sul peso nel valore.
+12. Abbandono dopo l'allenamento (P8): toglierlo; tenerlo attenuato.
+13. Sconto ipovedenti: toglierlo; tenerlo solo in allenamento; trasformarlo in tratto.
+14. Scala a lettere: 90 livelli da J0 ad A1; 91 da J0 ad A0; 100 da J9 ad A0. Soglie: lineari da 10 punti; geometriche; percentili fissati una volta.
+15. Scala anche per le singole caratteristiche: sì o no. Sottolivello mostrato con la percentuale: sì o no.
+16. Forma alla Hattrick: sì; no; rimandata.
+17. Autoallenamento di liberi e computer: stesso sistema con il programma scelto dall'archetipo; più lento; fermo per i liberi.
+18. Economia: tetti alla crescita; stipendio rivisto perché non sia un esponenziale senza limiti; ritaratura con la simulazione lunga dopo l'allenamento.
+#### Fonti
+Hattrick e HO:
+https://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/java/core/training/WeeklyTrainingType.java
+https://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/java/core/training/SkillDrops.java
+https://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/java/core/constants/player/PlayerAbility.kt
+https://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/resources/language/Italiano.properties
+https://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/java/core/rating/RatingPredictionModel.java
+https://hattrickknv.wordpress.com/training/
+https://hattrickguide.wordpress.com/
+https://wiki.hattrick.org/wiki/Newbie_Guide
+https://wiki.hattrick.org/wiki/Form_Coach
+https://wiki.hattrick.org/wiki/Assistant_coach
+https://wiki.hattrick.org/wiki/New_Season:_Staff_&_Economy_changes
+https://wiki.hattrick.org/wiki/Rules
+https://wiki.hattrick.org/wiki/Manual
+https://www.hattrick.org/en/Help/BeginnersGuide.aspx
+https://forums.operationsports.com/fofc/archive/index.php/t-28536.html
+Altri gestionali:
+https://www.dugout-online.com/helpmain/hlp_training/Training-guide
+https://www.hourra-manager.com/football-manager-wiki/en/the-players
+https://www.fmscout.com/a-back-to-basics-05-training-explained.html
+https://footballmanager.com/node/918
+https://top-eleven.fandom.com/wiki/Training
+https://www.konami.com/efootball/fr/page/overview
+https://kids.kiddle.co/Sokker
+https://store.epicgames.com/p/tennis-manager-2024-6f4c03
+https://www.magicgameworld.com/?p=126381
+https://steamcommunity.com/app/760630/discussions/0/2997674644686060605
+Showdown:
+https://www.showdown-germany.de/uber-showdown/uber-das-spiel/
+https://www.borussia-duesseldorf.com/verein/para-sport/news/showdown-lehrgang-im-dttz-1
+https://fispic.it/showdown-ultimo-raduno-della-nazionale-in-vista-dei-mondiali/
+https://fispic.it/discipline-sportive/showdown/
+https://lacuna.tiptreesystems.com/work/dynamics-of-sensory-motor-response-indicators-in-athletes-with-visual/wrk_a2b264ba95cdcb2fef90ccf76927b329
+https://www.teiresias.muni.cz/en/Vzdelavani-sport-a-volny-cas/Sportovni-aktivity/Alternativni-kurzy-telesne-vychovy/Showdown
+https://ibsasport.org/sports/showdown/coaching-and-development/
+https://giovannicupidi.substack.com/p/showdown-lo-sport-inclusivo-che-allena
+https://www.ragusah24.it/2026/07/03/finistrella-in-nazionale-per-europei-showdown-2026/
+PROBLEMI: ["L'economia esplode se l'allenamento alza davvero il valore. Lo stipendio è 200 x e^((valore - 140) / 40). Cinque punti di precisione allenata danno circa +70 di valore, cioè uno stipendio 5,7 volte più alto. Un giocatore allenato al tetto arriva a 860-940 di valore, e lo stipendio a numeri senza senso. Le casse di D22 e D26 sono tarate su un mondo dove nessuno si allena: l'allenamento va messo nella simulazione lunga, con un equilibrio fra crescita, mantenimento e declino, oppure va rivista la curva dello stipendio.", "Il costo per punto non c'entra con il valore per punto. Con XP_COSTO_FISICO_MOLTIPL a 2 le fisiche costano il doppio ma rendono da 10 a 30 volte di più delle altre: precisione 13,9 punti di valore per punto, tripla sponda 0,46. Chi vuole valore e vittorie allena solo la precisione.", 'Il P8 è confermato dai numeri. Il primo punto di una caratteristica di gioco richiede 12 incontri; ne servono 268 (89 giorni veri, con un incontro per giorno simulato) per arrivare a 10 e 1344 (448 giorni) per arrivare a 20, su una sola delle 24 caratteristiche.', 'La scala a lettere non torna. Con lettera uguale alle decine e cifra uguale alle unità, da J0 ad A1 ci sono 90 livelli, non 100. Il piano lo segnala già; servono una scelta fra 90, 91 e 100 livelli e la regola delle soglie.', "Età e calendario corrono a ritmi diversi. L'anno d'età dura 108 giorni simulati, mentre il calendario dei mesi di D22 e dei futuri tornei della tappa 12 segue l'anno di 365 giorni: fra due edizioni annuali di un torneo un giocatore invecchia di circa 3,4 anni. È voluto dal piano, ma conta nel tarare la velocità dell'allenamento in base all'età.", "WebFetch ha salvato da solo sul disco il PDF di British Blind Sport (Showdown Resource, 6,1 MB, solo immagini, illeggibile) in C:\\Users\\Utente\\.claude\\projects\\E--git\\dc4e79db-fff5-47c7-a3b0-cdd305309903\\tool-results\\webfetch-1791492561255-uqrs4d.pdf, contro la consegna di non scaricare file. Non l'ho aperto né cancellato: decida chi coordina se rimuoverlo.", 'Le pagine ufficiali di Hattrick (wiki.hattrick.org, hattrick.org/Help) rispondono 403 a WebFetch. I numeri vengono dal codice di HO e da guide della comunità, quindi la formula di Schum è una ricostruzione, non il codice di Hattrick. Per Sokker, Trophy Manager e Tennis Manager le fonti sono poche e in parte di seconda mano.']

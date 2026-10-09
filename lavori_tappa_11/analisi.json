@@ -1,0 +1,641 @@
+{
+ "codice": {
+  "sezioni": [
+   {
+    "tema": "Come si allena oggi: chi guadagna i punti allenamento e dove si spendono",
+    "contenuto": "I punti allenamento (PA) sono il campo intero Giocatore.puntiesperienza, mostrato nella scheda da testi.py. Li dà soltanto MotorePartita.registra in partita.py, cioè solo le amichevoli dell'utente: dalla finestra con gioca_amichevole e amichevole_da_assistere, oppure dalla vecchia interfaccia testuale con gioca_partita. La gara a squadre (gioca_squadre) non si registra, e i tornei non esistono ancora (P6, tappa 12). I PA vanno a tutti e due i giocatori, quindi anche all'avversario libero o del computer: oggi è l'unico modo in cui un autonomo riceve PA.\nTabella in _xp_della_partita, costanti XP_*. Al meglio dei 3: 4 punti per chi vince 2-0, 3 per il 2-1, 2 per chi perde 1-2, 1 per lo 0-2. Al meglio dei 5: 7, 6 e 5 per il vincitore, 4, 3 e 2 per il perdente. XP_BONUS_TORNEO vale 3 per entrambi, ma oggi non scatta mai. XP_BONUS_UNDERDOG vale 1 quando il distacco di valore è almeno il 25 per cento (ICV_DIFF_PERC_UNDERDOG), e per come è scritto va sempre al più debole, sia che vinca sia che perda. Ogni giocatore gioca al massimo un'amichevole per giorno simulato (D27): lo controllano ultima_amichevole, ha_giocato_amichevole e problema_amichevole. Nel dialogo dell'amichevole si sceglie fra 3 e 5 set.\nNella finestra i PA non si possono spendere, quindi si accumulano: l'allenamento nella GUI arriverà con la tappa 11. Si spendono soltanto da Showdown.py --testo, comando AGT di cli.py, cioè allenamento_giocatori_tesserati, _allena_singolo_giocatore e _allena_caratteristica. Si sceglie la caratteristica col codice di MENU_ALLENAMENTO (PRC, RST, FOR, DFA eccetera), poi quanti PA spendere, da 0 a tutti quelli disponibili. Il programma propone il guadagno, si conferma con S e la voce finisce nel diario con annota_allenamento.\nIl costo di un punto è in allenamento.calcola_costo_xp_per_punto. Cresce in linea retta fra i gradini di XP_COSTO_SKILL_BREAKPOINTS: livello allenato 0 costa 25, livello 9 costa 100, 15 costa 200, 19 costa 500. Le tre fisiche, precisione, resistenza e forza, costano il doppio (XP_COSTO_FISICO_MOLTIPL 2). Agli ipovedenti le sole caratteristiche di gioco costano il 7 per cento in meno (XP_SCONTO_IPOVEDENTI_PERC). Il costo si legge sulla parte allenata, non sul totale. guadagno() divide tutta la spesa per il costo del livello di partenza, poi taglia ai tetti e rimborsa i PA in più.\nI tetti stanno in limiti(): la parte allenata arriva a 20 (MAX_ALLENATO_SKILL) e a 5 per le fisiche (MAX_ALLENATO_FISICO); il totale fra innata e allenata arriva a 40 e a 10.\nL'autoallenamento è esegui_auto_allenamento, chiamato da Mondo._un_giorno una volta per giorno simulato, dopo invecchiamento e conti del mese. Riguarda ogni giocatore libero o di una polisportiva del computer che non sia ritirato né infortunato e abbia almeno un PA. Nell'80 per cento dei casi (PROB_SEGUE_ARCHETIPO) segue l'archetipo con _segui_archetipo: sceglie la caratteristica con _scelta_da_archetipo, quasi sempre la meno allenata fra le sue priorità (oppure la più economica per gli anziani), e decide la spesa con _spesa_da_archetipo. Negli altri casi reagisce con _reagisci. Da anziano, cioè dai 50 anni, allena la fisica più bassa sotto 3 di totale, con fino a 350 PA. Se no, allena la caratteristica di gioco con la parte allenata più bassa, se è sotto 5, con fino a 250 PA. Se no, la più alta, con fino a 450 PA. Gli archetipi stanno in ARCHETIPI_ALLENAMENTO e sono nove: AttaccantePuro, DifensoreRoccioso, MuroFisico, tre SpecialistaBlocchi, SpecialistaBattutaBlocco, CecchinoPreciso e TuttofareBilanciato. Si assegnano alla nascita con _assegna_archetipo_iniziale, dalle medie delle caratteristiche innate, e uno su dieci a caso. Nella scheda l'archetipo si chiama Tendenza."
+   },
+   {
+    "tema": "Il modello delle caratteristiche in modelli.py",
+    "contenuto": "Ogni caratteristica allenabile ha due attributi, nome_base e nome_allenata: sono 24, elencate in ATTRIBUTI_ALLENABILI_MAP. Alla nascita (Giocatore.__init__) la parte innata è uniforme fra 0 e il 60 per cento del massimo: da 0 a 12 per quelle di gioco (MAX_SKILL_VALUE 20) e da 0 a 3 per le fisiche (MAX_PRECISIONE_RESISTENZA 5). La parte allenata parte da 0.\nNe segue che i tetti dei totali, 40 e 10, non si raggiungono mai: al massimo si arriva a 12 più 20, cioè 32, e a 3 più 5, cioè 8. Il motore però divide per 40 e per 10 (motore/campo.valore_relativo), quindi nessun giocatore supera l'80 per cento della scala in nessuna qualità. _rispetta_tetti fa rispettare i tetti al caricamento.\nIl declino d'età, _applica_declino_aggregato, dopo i 50 anni toglie fino all'1,8 per cento l'anno sia dalla parte innata sia da quella allenata.\nL'esperienza di carriera è un altro campo, Giocatore.esperienza: un decimale da 0 a 20, che cresce di 0,1 al mese (ESPERIENZA_PER_MESE) solo in una polisportiva, in Mondo._fedelta_ed_esperienza, il primo di ogni mese del calendario. Nei liberi resta ferma. Siccome il mese è un mese di calendario e l'anno d'età dura 108 giorni, si guadagnano circa 0,355 punti per anno simulato: i 20 punti del tetto chiederebbero 200 mesi, cioè circa 56 anni simulati, più di una carriera.\nL'esperienza resta fuori dal valore (D26), ma in partita conta. La lettura del gioco vale esperienza/(esperienza+6) (lettura_possibile, K_LETTURA 6): con 3,5 punti, dieci anni in un club, vale 0,37. I falli diminuiscono di 0,45 volte la lettura (K_ESP_FALLI) e le sanzioni di 0,4 volte (K_ESP_SANZIONI). Lo stipendio cresce del 3 per cento per punto (AUMENTO_STIPENDIO_PER_ESPERIENZA), cioè al massimo del 60 per cento.\nIl temperamento non si allena: si calma da solo di 0,25 all'anno dopo i 25 anni.\nLa resistenza allenata ha un ruolo doppio. Conta nella resistenza totale e, in motore/campo.allenamento(), anche come «quanto il giocatore si allena», cioè resistenza_allenata/5 con K_ALLENAMENTO_FATICA 0,3: è il segnaposto della costanza dell'allenamento promessa alla tappa 11."
+   },
+   {
+    "tema": "Il valore e il peso di ogni caratteristica dopo la tappa 9",
+    "contenuto": "valore.indice vale A più B per la somma pesata dei totali e dei tratti, con A uguale a -82,61 e B a 1,3878 (SCALA_VALORE_A e SCALA_VALORE_B). Lo divide in icv_base e icv_allenato con valore.parti. Chiusure e blocchi entrano per ruolo, di dritto e di rovescio: per il destrimano il rovescio è a sinistra.\nUn punto, innato o allenato che sia, vale in punti di valore:\nprecisione 13,93; forza 7,19; resistenza 6,54;\ndifesa 4,69; chiusura di rovescio 3,90; chiusura di dritto 3,08;\nblocco di rovescio 2,23; blocco di dritto 1,87;\nattacco 1,79; tenuta paletta 1,75; controllo palla 1,12;\nogni battuta 1,08; i colpi dello scambio fra 0,46 (tripla sponda) e 0,68 (diagonale); bomba 0,50.\nI tratti valgono: cambio di velocità 6,2, ambidestro 4,7, mancino 4,0, gioco rapido 1,7.\nQuanto valore si compra per PA, a livello allenato 0: precisione 0,279; difesa 0,188; chiusura di rovescio 0,156; forza 0,144; resistenza 0,131; chiusura di dritto 0,123; blocco di rovescio 0,089; colpi circa 0,025. La precisione rende per PA una volta e mezza la difesa e undici volte un colpo.\nAlla nascita, misurato su 40000 nati senza allenamento, il valore vale:\n1º percentile 61, 10º 94, 25º 114, mediana 136;\n75º 158, 90º 177, 99º 210, 99,9º 233;\nminimo 16, massimo 264.\nLimiti teorici: -82,6 con tutto a zero; 363 con l'innato al massimo della nascita e tre tratti; la parte allenata aggiunge fino a 722 punti, per un totale teorico di 1085."
+   },
+   {
+    "tema": "Economia: stipendio, mercato e sponsor legati al valore",
+    "contenuto": "economia.stipendio vale 200 euro per e elevato a (valore-140)/40, cioè cresce di un fattore e ogni 40 punti di valore, circa il 2,5 per cento per punto. Si moltiplica per 1,35 per l'ambidestro e per 1,10 per gioco rapido e per cambio di velocità, poi per 1 più 0,03 volte l'esperienza. Il minimo è di 50 euro e si arrotonda alla decina. valore_di_mercato vale 6 stipendi; l'ingaggio vale 2 stipendi per il fattore di reputazione.\nLo sponsor vale 35 euro per punto di gloria. Polisportiva.aggiorna_gloria somma: 60 di base; 0,4 per punto di valore medio dei tesserati; 1,5 per ogni anno di età media sotto i 35; fino a 15 per la rosa piena; più medaglie e coppe, che oggi nessuno assegna. Senza trofei la gloria resta circa fra 120 e 160: la polisportiva dell'utente nel mondo salvato, ricalcolata, ha 141.\nCon le regole di oggi (scenario 0 della simulazione, due semi, 10 anni) il valore ha mediana 136, decimo percentile 93 e novantesimo 178, stabile per dieci anni. Gli stipendi dei tesserati valgono 90 euro al decimo percentile (100 in un seme dopo il nono anno), 220 alla mediana, da 590 a 610 al novantesimo. La cassa mediana del computer resta fra 4900 e 5500 euro. È il «90 euro» dei più deboli scritto nel commento di costanti.py: D26 parlava di 105, e la banda della tappa 8 in strumenti/simulazione_lunga.py (BERSAGLI) chiede fra 120 e 150."
+   },
+   {
+    "tema": "Misura: quanti punti allenamento si guadagnano",
+    "contenuto": "Misurati col motore vero su 24000 incontri fra coppie a caso, per ogni formato e ogni popolazione (script m2_calibra.py). Al meglio dei 3 un giocatore prende in media 2,70 PA a partita in una popolazione mai allenata (2,84 se il 60 per cento è allenato): il vincitore 3,67, il perdente 1,74. Fra giocatori alla pari, distacco entro 5 punti di valore, sono 2,53 PA; il molto più forte, oltre 40 punti, ne prende 3,55; il molto più debole 2,41, grazie al bonus che gli spetta sempre. Al meglio dei 5 la media è 4,70 PA (4,84 con la popolazione allenata), il 74 per cento in più.\nLa probabilità di vittoria segue 1/(1+e^(-distacco/s)), con s circa 29,5 punti di valore al meglio dei 3 e 26 al meglio dei 5.\nIn un anno simulato, 108 giorni cioè 36 giorni reali, con un'amichevole al giorno: circa 290 PA al meglio dei 3 (da 260 per il debole a 380 per il forte) e circa 510 PA al meglio dei 5. In tempo reale sono 3 amichevoli al giorno per ogni giocatore.\nGli autonomi oggi ne guadagnano zero, salvo quando sono avversari delle amichevoli dell'utente.\nPartite future: con i tornei della tappa 12 il bonus di 3 porterebbe una partita di torneo a circa 5,7 PA al meglio dei 3 e 7,7 al meglio dei 5. Un giocatore con un incontro di torneo al giorno farebbe circa 620 PA l'anno al meglio dei 3."
+   },
+   {
+    "tema": "Misura: quanti PA servono per un punto, ai vari livelli",
+    "contenuto": "Costo di un punto in PA secondo il livello allenato di partenza.\nCaratteristiche di gioco, normale e ipovedente:\n0: 25 e 23,2; 3: 50 e 46,5; 5: 66,7 e 62;\n9: 100 e 93; 12: 150 e 139,5; 15: 200 e 186;\n16: 275; 17: 350; 18: 425; 19 e 20: 500 e 465.\nFisiche, senza sconto: livello 0: 50; 1: 66,7; 2: 83,3; 3: 100; 4: 116,7.\nPartite al meglio dei 3 per un punto, a 2,7 PA: 9 per un punto di gioco a livello 0, 25 a livello 5, 37 a livello 9, 74 a livello 15, 185 a livello 19; per un punto fisico 18 a livello 0 e 43 a livello 4. Al meglio dei 5 sono circa il 43 per cento in meno.\nPA cumulati spendendo poco alla volta, come chi allena dopo ogni partita: da 0 a 5 una caratteristica di gioco costa 229, a 10 costa 670, a 15 costa 1461, a 20 costa 3361; una fisica da 0 a 5 costa 458. Precisione a 5 sono circa 170 amichevoli al meglio dei 3, cioè 1,6 anni simulati o 57 giorni reali. Una caratteristica di gioco da 0 a 20 chiede circa 1245 amichevoli, 11,5 anni simulati.\nSpendendo tutto in un colpo, il costo resta quello del livello di partenza: da 0 a 20 bastano 500 PA invece di 3361, una fisica da 0 a 5 ne chiede 250 invece di 458. Con rate da 100 PA si spende già da 0 a 20 per 3185, con rate da 1000 per 500. Tutto il possibile, 24 caratteristiche al tetto, costa 71888 PA a rate piccole e 11250 in un colpo per caratteristica."
+   },
+   {
+    "tema": "Misura: quanto vale un punto in valore e in vittorie",
+    "contenuto": "Misura a coppie con gli stessi semi (m3_punto.py): 480 soggetti destrimani di valore fra 128 e 152, contro avversari della stessa fascia, 40 incontri a testa, per ogni modifica 19200 incontri. Si parte dal 50 per cento.\nAl meglio dei 3:\nprecisione +1: valore +13,9, vittorie 60,3% (+10,3 punti);\nresistenza +1: +6,5, 58,3% (+8,3);\nforza +1: +7,2, 55,5% (+5,5);\ndifesa +1: +4,7, 54,0% (+4,0);\nchiusura di rovescio +1: +3,9, 52,8%; chiusura di dritto +1: +3,1, 52,7%;\nblocco di rovescio +1: +2,2, 51,4%; blocco di dritto +1: +1,9, 51,5%;\ntenuta paletta +1: +1,75, 51,9%; attacco +1: +1,8, 51,1%; controllo palla +1: +1,1, 50,8%;\nbattuta +1: +1,1, 51,1%;\ndiagonale, lungolinea o bomba +1: da +0,5 a +0,7 di valore, nessun effetto misurabile;\ntutti gli 11 colpi +1: +6,6, 54,3%.\nCon i punti ai tetti: precisione +5: valore +69,7, vittorie 88,6% (prima del dimezzamento di D26 erano dal 53 al 96); resistenza +5: +32,7, 69,1%; forza +5: +35,9, 75,0%; difesa +10: +46,9, 76,6%; chiusure +10 su entrambi i lati: +69,8, 84,5%.\nAl meglio dei 5 le cifre sono simili, salvo la resistenza: +1 dà 63,6% (+13,1 punti) e +5 dà 84,7%; precisione +5 dà 90,6%.\nIl valore è tarato bene: circa 7,5 millesimi di rating per punto di valore in quasi tutte le caratteristiche. Fa eccezione la resistenza allenata, che conta due volte. Al meglio dei 3 il primo punto rende come 8,3 punti di valore invece di 6,5, mentre cinque punti rendono come 19 invece di 32,7. Al meglio dei 5 il prezzo è giusto: 36 contro 32,7."
+   },
+   {
+    "tema": "Misura: crescita dei giocatori autonomi in 5 e 10 anni",
+    "contenuto": "Simulazione del mondo intero, nato in una cartella temporanea come strumenti/simulazione_lunga.py, semi 2026 e 7 (m4_autonomi.py).\nScenario 0, le regole di oggi. In 5 e in 10 anni la parte allenata degli autonomi resta zero in tutti e due i semi: nessuno riceve PA, quindi l'autoallenamento non spende nulla. Il valore mediano resta fra 135,6 e 137,3.\nScenario 3, ipotetico: ogni autonomo gioca un'amichevole al meglio dei 3 al giorno, con i PA estratti dalla tabella del motore secondo il distacco di valore da un avversario a caso, circa 2,5 al giorno. Il valore mediano passa da 136 a 174 dopo 5 anni e a 200 dopo 10; il novantesimo percentile da 178 a 239 e a 291; il massimo arriva a 405-423. La parte allenata vale alla mediana 37-38 dopo 5 anni e 64-65 dopo 10. Chi c'è da dieci anni, cioè la fascia oltre i 50 anni, ne ha 134-136.\nScenario 5, al meglio dei 5: mediana 196-197 dopo 5 anni e 235-238 dopo 10, parte allenata mediana 61-62 e 100-103.\nL'autoallenamento spende male. Quasi tutti i PA vanno alla caratteristica di gioco meno allenata, a giro: dopo 10 anni nello scenario 3 ogni caratteristica di gioco ha circa 1,8 punti allenati, la precisione 0,86, la resistenza 0,65, la forza 0,06. Nessuno porta una fisica al tetto. Il valore medio guadagnato è 1,75 per punto allenato: un giocatore con dieci anni di PA, circa 2730, ottiene circa 136 punti di valore, mentre la spesa migliore ne darebbe circa 236, il 58 per cento.\nL'economia crolla. Nello scenario 3 i tesserati scendono dal 90 per cento al 20 dopo 5 anni e al 10 dopo 10. La cassa mediana del computer va a zero, il monte stipendi passa dall'89-95 per cento dello sponsor al 125-150, lo stipendio mediano sale da 220 a circa 2000 euro dopo 5 anni e a 4000 dopo 10. Nello scenario 5 è peggio: 9 per cento di tesserati, stipendio mediano fra 4700 e 5100, monte stipendi al 200-219 per cento dello sponsor."
+   },
+   {
+    "tema": "Misura: rendimento dell'investimento contro lo stipendio",
+    "contenuto": "Per un giocatore mediano, valore 140 e stipendio 200 euro, senza tratti né esperienza (m6_rendimento.py), spendendo nel modo migliore per il valore, cioè prima la precisione, poi difesa, chiusura di rovescio, forza, resistenza:\n290 PA, un anno di amichevoli al meglio dei 3 a rate: +51,8 di valore;\n500 PA: +78; 1000 PA: +129; 1500 PA: +166; 2900 PA: +243; 11700 PA, una carriera: +450.\nIn un colpo per caratteristica lo stesso monte rende molto di più: +77 con 290 PA, +203 con 1000, +428 con 2900.\nEffetti sull'economia:\nprecisione +1: stipendio da 200 a 283 euro al mese (+42 per cento), valore di mercato da 1200 a 1700;\ndifesa +1: 225 euro (+12 per cento);\nprecisione +5: 1141 euro (+471 per cento), mercato 6848;\nun anno di amichevoli: 730 euro; cinque anni: 11610; dieci anni: 87635.\nStipendio per valore: 175 dà 480 euro, 200 dà 896, 250 dà 3129, 300 dà 10920, 400 dà 133028.\nIl guadagno vero per il club è piccolo. Oggi le vittorie non portano soldi né gloria, perché premi, medaglie e coppe arrivano con la tappa 12. Lo sponsor cresce di 14 euro al mese per punto di valore medio della rosa, cioè 14/n euro per punto di un solo giocatore, mentre lo stipendio cresce di circa il 2,5 per cento del suo valore per punto. Con 15 tesserati, precisione +1 porta 13 euro di sponsor contro 83 di stipendio in più, e un anno di amichevoli 48 euro contro 530. Il pareggio c'è soltanto con rose piccolissime o stipendi sotto 560/n euro.\nAllenare oggi è quindi una perdita netta per la cassa. Il solo ritorno è il valore di mercato a 6 stipendi, ma un giocatore troppo caro il computer non se lo può permettere."
+   },
+   {
+    "tema": "Misura: la regola di abbandono dopo l'allenamento (P8)",
+    "contenuto": "In cli.allenamento_giocatori_tesserati, dopo ogni sessione in cui un tesserato ha speso PA, il gioco calcola prob_esc, cioè 100 meno probabilita_accettazione(gloria del club, gloria_richiesta del giocatore) letta dopo l'allenamento, e il giocatore se ne va con quella probabilità. probabilita_accettazione vale 3 per cento se il club offre il 30 per cento meno della richiesta, 97 se offre il 30 per cento in più, in linea retta in mezzo: l'uscita va quindi dal 3 al 97 per cento.\ngloria_richiesta vale valore per 0,9 per un fattore d'età, più 12, con i tratti, e per 0,9 per gli ipovedenti. Il fattore d'età vale 2,7 fino a 17 anni, scende in linea retta fino a 0,1 a 55 anni, ed è circa 1,8 a 30 anni. Ogni punto di valore alza quindi la richiesta di 1,6-2,4 punti, mentre la gloria del club sale di 0,4 per punto di valore medio: allenare peggiora sempre la fedeltà.\nI numeri (m5_abbandono.py), con un club a gloria 130 e un giocatore di valore 140: fino a 35 anni la richiesta va da 352 a 197 e l'uscita è del 97 per cento; a 40 anni 73,6 per cento (85,4 dopo precisione +1); a 45 anni 21,5 (36,9); da 50 anni in su 3 per cento.\nIn una popolazione di 6000 nati: con gloria 130 l'uscita mediana è 97 per cento, e il 72,7 per cento dei giocatori sta al tetto del 97; con gloria 150 la mediana resta 97; con 200 è 82,8; con 300, che senza trofei non si raggiunge, è 20,9.\nNel mondo salvato, in copia, Pat-Bologna ha gloria 141 dopo il ricalcolo. Gessica Morante, 35 anni, uscirebbe all'83,3 per cento, al 94 dopo precisione +1, al 97 dopo +3. Giovanni Moreschi, 10 anni, ed Enrica Battaglio, 13 anni, uscirebbero al 97 per cento già oggi.\nIn pratica un tesserato sotto i 40 anni si perde quasi sempre alla prima sessione di allenamento. La regola è un residuo dell'economia della gloria: dalla tappa 8 il tesseramento si decide con l'ingaggio in euro (Mondo.offerta), mentre la regola guarda ancora la gloria. Esiste solo nell'interfaccia testuale, non nella finestra né nell'autoallenamento. Inoltre toglie il giocatore da sé (appartenenza a asterisco e rimuovi_tesserato) senza passare da Mondo._lascia, quindi fedeltà, pazienza, arretrati e vendita non si azzerano."
+   },
+   {
+    "tema": "Cosa nel piano, nelle decisioni e nel codice rimanda alla tappa 11",
+    "contenuto": "Nel piano. P8: la regola di abbandono che punisce chi allena; il costo che parte da 25 contro 1-7 PA a partita; lo sconto del 7 per cento degli ipovedenti, venuto dal vecchio P9, da decidere perché in partita, per il regolamento IBSA, la mascherina rende tutti uguali, e infatti il motore ignora ipovedente. Gli ipovedenti sono il 65 per cento dei nati (PROBABILITA_IPOVEDENTE_CREAZIONE) e hanno anche il 10 per cento di gloria richiesta in meno (D19).\nIl testo della tappa 11: dialogo di allenamento accessibile, revisione dell'economia fra esperienza guadagnata e costo dei punti, revisione della regola di abbandono, autoallenamento degli autonomi.\nLa scala a lettere, idea di Gabriele del 2026-10-07: da J0, che vale 100 ed è il livello più basso, ad A1, che vale 1 ed è il massimo, con soglie fisse e le classifiche per i confronti, per il valore e per l'esperienza. Il conto non torna: dieci lettere da dieci passi lasciano scoperti gli ultimi livelli. Il valore poi non ha un tetto naturale: alla nascita va da 16 a 264, con l'allenamento in dieci anni il massimo arriva a 400-500, e il tetto teorico è 1085. L'esperienza invece è chiusa fra 0 e 20.\nRiga 56 del piano: «L'allenamento arriverà con la tappa 11» nei menu della finestra.\nNelle decisioni. D2: 8 ore reali per un giorno simulato. D20 e D22: stipendio secondo valore ed esperienza, esperienza di carriera solo nei club, punti esperienza rinominati punti allenamento. D25: la stanchezza dipende dalla resistenza e dall'età. D26: precisione dimezzata nel motore, perché cinque punti allenati portavano dal 53 al 96 per cento, e oggi portano dal 50 all'88,6; la stanchezza dipende anche «da quanto si allena»; il valore si misura al meglio dei 3; gli stipendi più bassi scendono, 105 euro secondo D26, 90 secondo costanti.py e secondo la misura. D27: una sola amichevole al giorno perché dà punti allenamento.\nNel codice. allenamento.py, riga 173: le strategie di spesa degli archetipi da rivedere alla tappa 11. motore/campo.py, righe 14 e 102, e motore/taratura.py, riga 182: la costanza dell'allenamento prenderà il posto di resistenza_allenata/5 in campo.allenamento(). Con la tappa 12 verranno il bonus torneo, che non scatta mai, e i PA per gli autonomi, oggi inerti (P6)."
+   }
+  ],
+  "problemi": [
+   "Le strategie di spesa degli archetipi non funzionano. In costanti si chiamano percentuale, quota_fissa e obiettivo_punti, mentre _spesa_da_archetipo riconosce perc, quota e obiettivo: tutte finiscono nel ramo di riserva, che spende il 10 per cento dei PA, e le quote fisse da 350 o 400 non si usano mai. Con pochi PA in tasca il 10 per cento arrotondato fa 0 o 1, così circa sette PA su dieci li spende _reagisci, che invece spende tutto.",
+   "Il prezzo a rata unica: guadagno() applica a tutta la spesa il costo del livello di partenza. Da 0 a 20 una caratteristica di gioco costa 500 PA in un colpo contro 3361 a rate, una fisica da 0 a 5 costa 250 contro 458. Vale per l'interfaccia testuale, dove si scrive la cifra che si vuole, e per _reagisci, che spende fino a 250, 350 o 450 PA alla volta.",
+   "La regola di abbandono di cli.py usa ancora la gloria, superata dall'ingaggio in euro della tappa 8. Per quasi tutti i tesserati sotto i 40 anni dà il 97 per cento di uscita, e la richiesta di gloria cresce di 1,6-2,4 per punto di valore contro lo 0,4 della gloria del club. In più scavalca Mondo._lascia: fedeltà, pazienza, arretrati e vendita non si azzerano.",
+   "Il bonus underdog va sempre al più debole quando il distacco è almeno del 25 per cento, anche quando perde: è un premio di consolazione, non un premio alla sorpresa.",
+   "Gli autonomi ricevono PA solo come avversari delle amichevoli dell'utente, quindi l'autoallenamento è quasi sempre fermo (P6). Il bonus torneo da 3 non scatta mai.",
+   "L'autoallenamento sparpaglia i PA a giro sulla caratteristica di gioco meno allenata. Fa il 58 per cento del valore di una spesa oculata, porta la forza a quasi nulla e nessuna fisica al tetto.",
+   "Lo stipendio esponenziale non regge l'allenamento. Un anno di amichevoli spese bene porta un giocatore mediano da 200 a 730 euro, cinque anni a 11610. Se gli autonomi ricevessero PA al ritmo di un'amichevole al giorno, in dieci anni i tesserati scenderebbero dal 90 al 10 per cento e le casse del computer a zero: senza una revisione, l'autoallenamento degli autonomi rompe l'economia di D22.",
+   "La precisione domina l'allenamento: 13,9 punti di valore per punto e 0,279 di valore per PA, una volta e mezza la difesa. Cinque punti, 250-458 PA, portano dal 50 all'88,6 per cento di vittorie contro un pari valore.",
+   "La resistenza allenata conta due volte, nel totale e in campo.allenamento(). Al meglio dei 3 il primo punto vale come 8,3 punti di valore, contro i 6,5 che gli dà il valore, e cinque punti come 19 contro 32,7.",
+   "Al meglio dei 5 un'amichevole dà il 74 per cento di PA in più che al meglio dei 3: chi allena ha tutto l'interesse a giocare sempre a 5 set, mentre D26 li vuole rari.",
+   "Lo sconto del 7 per cento sugli allenamenti di gioco tocca il 65 per cento dei nati, perché tanti sono ipovedenti, mentre il motore ignora del tutto il tratto.",
+   "I tetti dei totali, 40 e 10, non si raggiungono mai, perché al massimo si arriva a 32 e a 8, e il motore li usa come divisore: nessuno supera l'80 per cento in nessuna qualità.",
+   "L'esperienza di carriera cresce di circa 0,355 per anno simulato: il tetto di 20 chiede 56 anni simulati, più di una carriera.",
+   "Lo stipendio al decimo percentile è di 90 euro (100 in un seme, dopo il nono anno), sotto la banda di 120-150 della tappa 8, tuttora scritta in BERSAGLI di simulazione_lunga.py. D26 parla di 105, costanti.py di 90.",
+   "Nella finestra i PA si accumulano senza poterli spendere, e l'interfaccia testuale non dice da nessuna parte che conviene spendere tutto in un colpo.",
+   "La scala a lettere: dieci lettere da dieci passi fra J0 e A1 non tornano, e il valore va da -82,6 a 1085 in teoria, da 16 a 264 alla nascita, fino a 400-500 dopo dieci anni di allenamento: serve un tetto o una mappa non lineare."
+  ],
+  "note": "Non ho modificato nessun file del progetto né di GBUtils. Gli script stanno in C:\\\\Users\\\\Utente\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\E--git\\\\dc4e79db-fff5-47c7-a3b0-cdd305309903\\\\scratchpad\\\\tappa11, lanciati con python -B: comune.py (mette il progetto nel percorso e dirotta percorsi.cartella in una cartella temporanea), m1_mondo.py, m2_calibra.py, m3_punto.py (risultati in m3_bo3.txt e m3_bo5.txt), m4_autonomi.py (in m4_out.txt e m4_risultati.json, letti da m4_leggi.py), m5_abbandono.py, m6_rendimento.py e m7_scala.py. Il mondo salvato l'ho letto da una copia, mondo_copia.json.gz. È giovanissimo: 61 giocatori, 3 polisportive, nessuna partita giocata, nessun PA e nessuna esperienza. Per questo le misure mature vengono da popolazioni di prova (strumenti/popolazione_di_prova.genera, senza ipovedenti) e da mondi nati in memoria dentro la cartella temporanea. Il limite principale: in m4 i PA degli autonomi non vengono da partite vere ma da una tabella misurata col motore (32000 incontri per formato), estratta secondo il distacco di valore contro un avversario a caso, una partita al giorno per autonomo non infortunato. Le cifre di m6 sono analitiche e riguardano un destrimano mediano senza tratti. m3 usa soggetti destrimani di valore fra 128 e 152 contro avversari della stessa fascia, quindi misura la pendenza attorno al 50 per cento. Le simulazioni da dieci anni, sei in parallelo, hanno chiesto circa due minuti ciascuna."
+ },
+ "modelli": {
+  "sezioni": [
+   {
+    "tema": "Premessa e metodo",
+    "contenuto": "Ricerca fatta con WebSearch, WebFetch e con la lettura via gh del codice pubblico di Hattrick Organizer (HO), il programma della comunità che ricostruisce le formule di Hattrick. Le pagine ufficiali di Hattrick (wiki.hattrick.org e hattrick.org/Help) rispondono 403 a WebFetch: i loro contenuti li ho presi dai riassunti dei risultati di ricerca e da guide della comunità. Per Sokker, Trophy Manager e i gestionali di tennis le fonti in rete sono scarse. Le misure su MESS sono di tre script in C:\\Users\\Utente\\AppData\\Local\\Temp\\claude\\E--git\\dc4e79db-fff5-47c7-a3b0-cdd305309903\\scratchpad\\ricerca_allenamento: misura_scala.py (giocatori nati in memoria con strumenti/popolazione_di_prova.py), misura_mondo_copia.py (una copia del salvataggio, poi cancellata), schum.py (la formula di Hattrick). Tutti lanciati con python -B. Nessun file del progetto o di GBUtils è stato toccato."
+   },
+   {
+    "tema": "Hattrick: il ciclo dell'allenamento e chi si allena",
+    "contenuto": "L'aggiornamento dell'allenamento è uno solo alla settimana. Per tutta la squadra il manager sceglie un tipo di allenamento, un'intensità da 0 a 100 e una quota di resistenza (stamina share), cioè la percentuale dell'allenamento che va alla resistenza.\nSi allena solo chi gioca. Ogni giocatore riceve al massimo 90 minuti di allenamento a settimana nei ruoli allenabili; con meno minuti l'effetto è proporzionale (50 minuti valgono 50/90), oltre i 90 non c'è niente in più. Se nella settimana ha giocato in due ruoli, vale quello che rende di più. Campionato, coppa e amichevoli contano allo stesso modo; le partite per altre squadre, come la nazionale, danno solo forma. Per questo i manager giocano un'amichevole ogni settimana: serve a riempire tutti i posti di allenamento.\nIl ruolo decide quanto si prende: pieno; metà, come l'ala allenata in regia; osmosi per chi gioca in altri ruoli, cioè un sesto o un ottavo secondo il tipo. Ci sono undici tipi: portiere, difesa, regia, ala (cross), attacco, calci piazzati, tiro, passaggi corti, passaggi filtranti, difesa a zona e attacchi sulle ali. I piazzati allenano tutti i giocatori in campo, con il 25 per cento in più al battitore e al portiere.\nLa resistenza vale per tutta la rosa. Il vecchio manuale dà il 100 per cento a chi ha giocato 90 minuti e il 75 per cento, più una parte per ogni minuto, agli altri. Si consiglia una quota fra il 10 e il 15 per cento, perché oltre il 15 è troppo. Gli anziani ne hanno bisogno di più per mantenersi, e la resistenza rende meno quando l'intensità è alta.\nUna guida del 2024 riassume la pratica: intensità 100, resistenza 10 per cento, due assistenti e un medico. Si comprano diciassettenni, si allenano per almeno 35 settimane e si vendono fra splendido (11) e sovrannaturale (14). L'allenamento è anche un mestiere economico.\nPer MESS. L'equivalente dei 90 minuti è la partecipazione nel periodo: per esempio aver giocato almeno un incontro, o un numero di set. Il tetto di D27, un'amichevole al giorno, fa già da tetto settimanale, perché più partite non danno più allenamento. La preparazione atletica di tutta la rosa e i colpi solo per chi ha giocato ricalcano la quota di resistenza di Hattrick."
+   },
+   {
+    "tema": "Hattrick: la formula di Schum, con i numeri",
+    "contenuto": "Hattrick non pubblica la sua formula. La comunità usa quella del ricercatore Schum, scritta nel codice di HO (WeeklyTrainingType.java). La crescita settimanale, in livelli, è:\nT = f(livello) x K(allenatore) x K(assistenti) x K(intensità) x (1 - quota di resistenza) x K(tipo) x K(età) x K(minuti).\nf(livello) vale 16,289 x e^(-0,1396 x livello) sotto il 9, e 54,676 / livello - 1,438 dal 9 in su.\nK(allenatore) va da 0,7343 a 1,0375 per i livelli 4, 5, 6, 7 e 8 (debole, insufficiente, accettabile, buono, eccellente): 0,7343; 0,8324; 0,92; 1; 1,0375.\nK(assistenti) è 1 + 0,035 per ogni livello di assistente, sommati fino a 10, quindi al massimo 1,35. Con la riforma dello staff il guadagno per livello è passato da 3,2 a 3,5 per cento.\nK(intensità) è l'intensità divisa per 100.\nK(età) è 54 / (età + 37): 1 a 17 anni, 0,947 a 20, 0,871 a 25, 0,806 a 30, 0,75 a 35.\nK(tipo): portiere 5,10 per cento, difesa 2,88, regia 3,36, ala 4,80, passaggi 3,60, attacco 3,24, piazzati 14,70; tiro 1,5, passaggi corti 3,15, difesa a zona 1,38, attacchi sulle ali 3,12.\nK(minuti) somma i minuti pieni, quelli a metà e quelli di osmosi a un sesto, fino a 90.\nLe settimane per salire di un livello vengono da schum.py, in regia a 17 anni, con allenatore buono, 10 livelli di assistenti, intensità 100 e resistenza al 10 per cento: 2,3 da 3 a 4; 3,0 da 5 a 6; 4,0 da 7 a 8; 5,3 da 9 a 10; 6,9 da 11 a 12; 8,8 da 13 a 14; 11,1 da 15 a 16; 13,8 da 17 a 18. A 30 anni serve circa un quarto in più (da 7 a 8 ne servono 5,0).\nDa 7 a 8 per tipo: portiere 2,6, ala 2,8, passaggi 3,7, regia 4,0, attacco 4,1, difesa 4,7, piazzati 0,9.\nLe condizioni contano. Da 7 a 8 in regia: allenatore debole senza assistenti 7,3 settimane; intensità 80, 5,0; resistenza al 25 per cento, 4,8; 45 minuti a settimana, 8,0.\nLa regia da 5 a 14, partendo a 17 anni, richiede 51 settimane, cioè un anno vero. La wiki ufficiale, sempre per la regia, dà circa 7 settimane senza assistenti, 6 con un assistente di livello 5 e 5 con due.\nIl tempo per livello cresce di circa 4,6 volte fra il livello 5 e il 17. In MESS il costo di un punto cresce di 20 volte, da 25 a 500 punti allenamento."
+   },
+   {
+    "tema": "Hattrick: età e calo delle abilità",
+    "contenuto": "Anche il calo, nel modello di Schum (SkillDrops.java di HO), avviene durante l'aggiornamento dell'allenamento. Toglie una quota DropLevel = DropL + DropLA.\nDropL dipende solo dal livello: è zero sotto il 14 (sovrannaturale), poi cresce con un polinomio cubico. Mantenere i livelli altissimi costa anche ai giovani.\nDropLA dipende da livello ed età: è zero sotto i 31 anni, poi vale m x livello + n, con m che sale da 0,00031 a 31 anni a 0,0146 a 37, cioè quasi cinquanta volte.\nUna guida del 2015 conferma: il calo comincia verso i 30 anni e cresce con l'età e con il livello; dal titanico in su arriva anche prima.\nAltri modelli. In Dugout-Online, dai 27 anni ogni aggiornamento toglie una percentuale dei punti accumulati, e dai 32 toglie punti a quattro abilità tecniche e due fisiche scelte a caso, senza mai scendere sotto 15; velocità e forza hanno un tetto nascosto. In Hourra Football Manager, dai 17 anni le abilità non allenate possono perdere punti, e dai 30 le partite ufficiali non danno più punti.\nIn MESS oggi il declino comincia a 50 anni e arriva a 90, fino all'1,8 per cento l'anno, moltiplicato su base e allenato; non esiste un costo di mantenimento.\nApplicato alle età di MESS, il K(età) di Hattrick dà: 9 anni 1,17; 15 anni 1,04; 30 anni 0,81; 50 anni 0,62; 60 anni 0,56; 75 anni 0,48. È già una curva credibile per uno sport che si gioca fino a 60-75 anni."
+   },
+   {
+    "tema": "Hattrick: intensità, forma, infortuni, staff, fedeltà",
+    "contenuto": "Intensità. La guida ufficiale dice che con un'intensità più alta l'allenamento è più veloce e la forma migliora, ma crescono gli infortuni, che si compensano con lo staff medico. Le voci della comunità aggiungono che i cambi bruschi d'intensità fanno crollare la forma.\nForma. La scala va da 1 a 8, da disastrosa a eccellente. Dietro c'è una forma di fondo nascosta, ricalcolata in media ogni due settimane, verso cui si muove la forma attuale. Il form coach, che prima si chiamava fisioterapista, alza la forma di fondo di 0,2 livelli per ogni suo livello. Una quota di resistenza alta abbassa la forma attuale, non quella di fondo. In partita, nel modello di HO, la forma moltiplica l'abilità per 0,378 x radice di (forma - 1): eccellente vale 1, accettabile 0,85, scarsa 0,53.\nStaff. Gli assistenti allenatori sommano i loro livelli, fino a 10. Il medico, nel vecchio manuale il dottore, accelera il recupero. Il form coach e lo psicologo completano lo staff. I posti disponibili sono cambiati nel tempo: le pagine dicono 3, 4 o 5.\nAllenatore. Ha un livello, da debole a eccellente, e un orientamento. Si può prendere un giocatore con buon carisma ed esperienza e trasformarlo in allenatore: la guida del 2024 lo fa giocare 16 settimane per fargli raggiungere un'esperienza buona, poi lo converte.\nFedeltà, club madre ed esperienza. In HO la fedeltà aggiunge a ogni abilità la fedeltà diviso 19, cioè fino a un livello circa; chi è cresciuto nel vivaio prende +1,5. L'esperienza dà un bonus logaritmico, log10(esperienza) x 4/3.\nPer MESS. L'intensità può moltiplicare il fattore di carico degli infortuni di D26, oggi fra 0,7 e 1,5. L'allenatore potrebbe uscire dalle vecchie glorie, come in Hattrick si converte un giocatore. La fedeltà di D22 c'è già e potrebbe dare un piccolo bonus. La forma in MESS non esiste: sarebbe una caratteristica nuova."
+   },
+   {
+    "tema": "Hattrick: scale e nomi dei livelli, e la scala a lettere di Gabriele",
+    "contenuto": "Le abilità di Hattrick hanno 21 livelli, da 0 a 20, presi dalla traduzione italiana di HO, che è della comunità: quella ufficiale del gioco può cambiare qualche parola. Eccoli: inesistente, disastroso, tremendo, scarso, debole, insufficiente, accettabile, buono, eccellente, formidabile, straordinario, splendido, magnifico, fuoriclasse, sovrannaturale, titanico, extraterrestre, mitico, magico, utopico, divino. In inglese vanno da non-existent a divine.\nLa stessa scala vale per esperienza, carisma e fedeltà. La forma ha 8 livelli, lo spirito di squadra 11 (da guerra aperta ad al settimo cielo), la fiducia 10.\nI sottolivelli non si vedono mai: i giocatori li stimano dallo stipendio (lo fa l'estensione SkillValue) e dalle settimane passate, e HO li ricalcola. Anche Sokker ha una scala a nomi che arriva a superdivine, ma non sono riuscita a verificarla per intero.\nPer la scala di Gabriele. La lettera fa da macrolivello, come i nomi di Hattrick; la cifra è il sottolivello che Hattrick nasconde e che MESS mostrerebbe.\nIl conto. Se la lettera sono le decine e la cifra le unità, con J0 = 100 e I9 = 99 si arriva ad A0 = 10. Da J0 ad A1 i livelli sono 90 (da 100 a 11), da J0 ad A0 sono 91. Per averne 100 esatti la cifra deve scendere dentro ogni lettera, da J9 (il più basso, 100) ad A0 (il più alto, 1). In quel caso il più basso non è J0 e il più alto non è A1.\nIl valore, misurato con misura_scala.py:\nnati senza allenamento: media 135, primo percentile 64, mediana 135, novantanovesimo percentile 209, massimo 240;\npopolazione di prova (60 per cento allenati con 0-220 punti): mediana 193, novantanovesimo percentile 505;\ncon 400 punti allenati a testa: mediana 561;\ncon tutto l'allenabile al tetto: da 780 a 936, mediana 857.\nCon soglie lineari di 10 punti per gradino, dove il gradino è 100 meno il valore diviso 10:\nnati da I8 (28) a G6 (240), mediana 135 su H7, novantanovesimo percentile su H0;\n400 punti allenati: mediana su D4;\ntutto al tetto: fra A4 e A1.\nLe lettere da A a D resterebbero quasi irraggiungibili, come i livelli divini di Hattrick. In alternativa: soglie geometriche, coerenti con lo stipendio esponenziale, oppure soglie fissate una volta per tutte sui percentili di un mondo maturo.\nL'esperienza va da 0 a 20 (ESPERIENZA_MASSIMA): fa 0,2 per gradino con 100 livelli, 0,222 con 90."
+   },
+   {
+    "tema": "Hattrick: esperienza dalle partite",
+    "contenuto": "I valori sono storici, ricostruiti dai giocatori fra il 2003 e il 2005 e non ufficiali. Ogni partita vale: campionato 1, coppa 2, nazionale 3, amichevole internazionale 0,2, amichevole 0,1. Per salire di un livello d'esperienza servono fra 20 e 45 di questi punti, cioè circa un livello ogni stagione e mezza giocando il campionato.\nIl principio resta valido: l'amichevole allena come una partita vera, ma dà pochissima esperienza; la partita importante dà più esperienza.\nPer MESS. Le amichevoli danno punti allenamento (D27), mentre l'esperienza di carriera cresce col tempo passato nel club (D22). I tornei della tappa 12 potrebbero dare più esperienza delle amichevoli, come la coppa e la nazionale in Hattrick."
+   },
+   {
+    "tema": "Altri gestionali",
+    "contenuto": "Football Manager. La settimana è fatta di sedute. L'intensità di ogni giorno si confronta con quella di una partita, e solo il giorno della partita arriva al 100 per cento. Un carico alto fa crescere più in fretta, ma porta infortuni; nelle settimane con due partite si tolgono le sedute fisiche pesanti. C'è un focus di reparto, 60 per cento a un reparto e 20 agli altri due, più un allenamento individuale per ruolo e attributo. Dai 18 anni contano soprattutto le partite vere. Il potenziale è un tetto nascosto, e personalità, determinazione e professionalità decidono quanto ci si avvicina. Con il mentoring un veterano segue tre o quattro giovani e passa loro tratti di carattere. In MESS: tratto di professionalità, mentore fra i tesserati.\nHourra Football Manager. Ogni giocatore ha una curva di crescita nascosta, fra quattro tipi: Young, Continual, Ordinary, Late. Prende punti dalle partite ufficiali e dagli allenamenti, ma dai 30 anni le partite non ne danno più. La forma fisica da partita si recupera solo col riposo. In MESS: curva di maturazione come tratto, precoce o tardivo.\nDugout-Online. Ogni abilità accumula punti allenamento, e con 1200 punti sale; senza abbastanza talento ci riesce una volta su otto. Gli allenatori specialisti rendono il 100 per cento nella loro area, quelli generici il 15. Ogni allenatore regge 7 giocatori: oltre, l'efficienza crolla fino al 10 per cento. Il rating di ruolo cresce solo giocando, mai più di 2 punti sopra l'abilità tecnica migliore. In MESS: talento uguale al valore innato, rosa da 15 tesserati con un tetto di allievi per allenatore.\nTop Eleven. Tre tipi di seduta, stretching, cardio e partitella, consumano energia diversa e danno progressi diversi; il guadagno dipende da condizione, intensità, età e potenziale.\neFootball e PES. A ogni salita di livello arrivano punti di progressione, da assegnare a mano o in automatico. Le curve di crescita e declino per età esistono da PES 3. È il modello più vicino ai punti allenamento di oggi in MESS.\nSokker. Talento nascosto che accelera la crescita, giovani più veloci, declino dai 30 anni. Le fonti sono scarse.\nTrophy Manager. Niente di verificabile oltre al ritmo settimanale; gli script dei fan parlano di tassi fisici, tattici e tecnici e di picchi.\nTennis Manager 2024-26. Lo sport è uno contro uno come lo showdown. Programmi fisici, tecnici, mentali e tattici, sedute dedicate alla forma o alle abilità, pianificati per periodi della stagione; intensità legata agli infortuni e alle ricadute; un'agenda per ogni giocatore.\nTennis Elbow Manager 2. Fino a nove giocatori, con talenti: l'apprendista rapido impara e dimentica più in fretta, Forever Young rallenta il calo fisico, Prodigy cresce verso il potenziale più in fretta. Le partite di allenamento contro il computer consumano freschezza, che torna con yoga o allenamento mentale; secondo un utente, i giocatori del computer non migliorano se non giocano. In MESS: tratti rari legati all'allenamento, e la freschezza come stanchezza fra un giorno e l'altro."
+   },
+   {
+    "tema": "Lo showdown vero: cosa e come si allena",
+    "contenuto": "Tecnica, secondo Showdown Verband Deutschland (showdown-germany.de). Il colpo parte dal corpo intero, ginocchia, busto e avambraccio, e chiude col polso; precisione e potenza contano allo stesso modo.\nBattuta. Il battitore sceglie con calma la posizione, quindi la battuta conta molto: un buon giocatore deve averne almeno tre diverse, precise e dure.\nRovescio e dritto. Il rovescio è il colpo più usato perché copre la zona più ampia. Il dritto è più difficile, copre meno e spesso obbliga a spostarsi, ma eseguito col busto è più potente, e chi non lo usa diventa prevedibile.\nSponde. I colpi a due e tre sponde sono comuni fra i migliori, ma richiedono forza e quasi sempre il dritto. Il lungolinea intorno all'angolo è popolare, ma si para facilmente o, se troppo forte, scavalca la porta. Vince la varietà dei colpi e la loro combinazione.\nDifesa. Si muove la paletta con rapidità ma controllo, in semicerchio vicino alla linea dell'area di porta. Quando non si capisce da dove arriva la pallina, si torna in posizione base, con la paletta 5 centimetri davanti all'area e inclinata in avanti.\nControllo palla. Dopo la parata si ferma la pallina contro la sponda o la si incastra in un angolo, poi ci sono due secondi per attaccare.\nTattica. Più i due sono alla pari, più conta: preparare un attacco in più colpi e chiuderlo a sorpresa, provare e sfruttare i punti deboli, logorare con l'attacco continuo.\nCome si allena.\nCorso al Deutsches Tischtennis-Zentrum (Borussia Düsseldorf), prima dei campionati tedeschi: la mattina controllo palla e preparazione atletica; nella seconda sessione, più lunga, colpi, tattica e partite in condizioni di gara.\nCentro di Herne: nell'allenamento libero cambi di ritmo e tiri a tre sponde.\nNazionale FISPIC prima dei Mondiali 2025 di Silvi: raduno all'Aquila dal 22 al 25 maggio 2025 con sette atleti e il tecnico Marco Spinelli; due sessioni al giorno, 8:30-12 e 15:30-19, cioè sette ore. La pagina non dice i contenuti.\nStudio russo (Kielevyaynen e Lukina, 2025, università di Petrozavodsk): 12 atleti fra 25 e 50 anni seguiti per due anni. Si allenavano 2-2,5 ore a settimana con l'istruttore (riscaldamento con musica, partite, giocoleria a occhi chiusi, equilibrio) e tre volte a settimana da soli a casa. Sono migliorati il riflesso (righello che cade: da 30,1 a 23,0 centimetri), l'equilibrio, la riproduzione di distanze e tempi e il dosaggio della forza; la forza della mano invece è calata. Il campione è troppo piccolo per la significatività.\nUniversità Masaryk di Brno: una volta a settimana per 90 minuti. Prima impugnatura, colpo, arresto della pallina e battuta; poi attacco, difesa e tattica del doppio; la parte più grande è il gioco.\nIBSA dice di avere materiali per gli allenatori, ma la pagina pubblica è vuota. In rete è citato un manuale tedesco, il Lehrbuch Showdown di Moritz Klotz, che non ho potuto verificare.\nIn Italia (FISPIC). La mascherina rende tutti uguali in partita. La stagione ha giornate di Serie A1 e A2, una fase finale del Campionato italiano e una graduatoria triennale: utile per la tappa 12.\nNon ho trovato studi sugli infortuni nello showdown. Nel tennistavolo, sport vicino, le revisioni indicano tronco e arti inferiori, e uno studio piccolo collega il carico di allenamento agli infortuni. La protezione della mano col guanto serve contro i colpi forti."
+   },
+   {
+    "tema": "Lo showdown vero, tradotto nelle caratteristiche di MESS",
+    "contenuto": "Una proposta di gruppi di esercizi, ciascuno sulle caratteristiche allenabili che MESS ha già.\n1. Battute: battutasx e battutadx, con un po' di precisione. Ricalca la regola delle tre battute diverse.\n2. Colpi diretti: lungolinea e diagonale sx e dx, più la bomba.\n3. Sponde: singola, doppia e tripla sponda sx e dx; la tripla chiede forza, come nel reale.\n4. Parate: chiusura sx e dx, blocco sx e dx, difesa.\n5. Controllo e paletta: controllo palla, tenuta della paletta.\n6. Tattica e gara: attacco, più la lettura del gioco che oggi viene dall'esperienza. Corrisponde alle partite in condizioni di gara dei corsi tedeschi.\n7. Preparazione atletica: resistenza e forza, più la precisione come coordinazione, come nello studio di Petrozavodsk.\nIl lato, dritto o rovescio, si sceglie dentro il gruppo, o si allena il lato debole: per il mancino D26 specchia già i lati.\nL'ascolto della pallina non è una caratteristica di MESS. Può restare implicito nelle parate e nella chiusura, oppure diventare una caratteristica nuova: è una scelta di Gabriele.\nIl ritmo reale va da una o due sedute a settimana per gli amatori a sette ore al giorno nei raduni della nazionale. Si traduce bene in un'intensità per giocatore o per polisportiva."
+   },
+   {
+    "tema": "Misure su MESS",
+    "contenuto": "1. Quanto vale un punto allenato, sulla media di 300 nati:\nprecisione 13,9 punti di valore; forza 7,2; resistenza 6,5; difesa 4,7;\nchiusura sx 3,8; chiusura dx 3,2; blocco sx 2,2; blocco dx 1,9;\nattacco 1,8; tenuta della paletta 1,75; controllo palla 1,1; battute 1,1;\ndiagonali 0,68; singole sponde 0,67; doppie sponde 0,62; lungolinea 0,61;\nbomba 0,50; triple sponde 0,46.\nLe fisiche costano il doppio ma rendono da 10 a 30 volte di più: allenare la precisione è di gran lunga il modo più rapido per alzare valore e vittorie.\n2. I tempi con le regole di oggi (XP_COSTO_SKILL_BREAKPOINTS da 25 a 500). Per l'allenato di una caratteristica di gioco servono:\n1 punto, 29 punti allenamento; 5 punti, 229; 10 punti, 670; 15 punti, 1462; 20 punti, 3360.\nPer una fisica: 1 punto, 58; 5 punti, 458.\nCon una media di 2,5 punti allenamento per incontro al meglio dei 3, e un incontro per giorno simulato (il massimo di D27):\nda 0 a 1, 12 incontri, cioè 4 giorni veri;\nda 0 a 5, 92 incontri, 31 giorni veri;\nda 0 a 10, 268 incontri, 89 giorni veri;\nda 0 a 20, 1344 incontri, 448 giorni veri.\nE questo per una sola delle 24 caratteristiche. Hattrick porta una sola abilità dal livello 5 al 14 in un anno vero.\n3. Il tempo di MESS. L'anno d'età dura 108 giorni simulati, cioè 36 giorni veri; un anno vero fa invecchiare un giocatore di circa 10 anni. Una carriera dai 15 ai 58 anni dura circa 4,2 anni veri; in Hattrick dai 17 ai 35 anni ne servono circa 5,5. In Hattrick un giovane veloce sale di un livello ogni 4-5 settimane, circa 35 giorni veri, cioè circa un anno d'età di MESS.\n4. Il salvataggio vero, letto da una copia: 61 giocatori, nessuno con allenato, punti allenamento o esperienza; il valore non è salvato, si ricalcola. Cambiare le regole ora non toglie nulla a nessuno."
+   },
+   {
+    "tema": "Proposte per la tappa 11 (da discutere, nulla deciso)",
+    "contenuto": "A. Il modello, in tre varianti.\nA1. Punti allenamento da spendere a mano, come oggi, con costi rivisti.\nA2. Alla Hattrick: ogni giocatore ha un programma, cioè un gruppo di esercizi, e cresce da solo a ogni scadenza con una formula alla Schum: f(livello) x allenatore x intensità x (1 - quota fisica) x velocità del gruppo x K(età) x partecipazione.\nA3. Misto: le partite danno punti allenamento, che restano il carburante di D22 e D27, e il programma li spende da solo secondo il gruppo scelto.\nA2 e A3 tolgono a Gabriele il lavoro manuale di spendere i punti su 24 caratteristiche, e funzionano allo stesso modo per gli autonomi e per il computer.\nB. La scadenza: ogni giorno simulato (8 ore vere), ogni tre giorni simulati (una volta al giorno vero, come il giovedì di Hattrick) o ogni settimana simulata (circa 2,3 giorni veri).\nC. La velocità per gruppo. Come il K(tipo) di Hattrick, si tara sul peso nel valore: così un giorno d'allenamento rende più o meno lo stesso valore qualunque cosa si alleni, e la precisione non diventa l'unica scelta sensata.\nD. La partecipazione. Si allena pieno solo chi ha giocato nel periodo, gli altri poco; la preparazione atletica vale per tutti, come la resistenza in Hattrick.\nE. L'osmosi. Il motore sa quali colpi ha usato ciascuno: quei colpi crescono un poco da soli, per esempio un sesto, come l'osmosi di Hattrick e il principio che si impara giocando.\nF. L'età: K(età) = 54 / (età + 37), già adatto alle età di MESS.\nG. Il mantenimento. I livelli molto alti calano un poco se non si allenano (DropL di Schum), e dai 50 anni resta il declino di oggi. Serve a tenere stabile il mondo.\nH. L'intensità, per giocatore o per polisportiva, moltiplica la crescita e il fattore di carico degli infortuni di D26.\nI. L'allenatore: un livello per polisportiva, magari preso dalle vecchie glorie o dagli ex giocatori, con eventuali specialità, attacco, difesa o fisico, alla Dugout-Online, e un tetto di allievi.\nJ. I tratti: talento (l'innato accelera), apprendista rapido (impara e dimentica in fretta), maturazione precoce o tardiva. Da tenere rari.\nK. Il P8. La regola dell'abbandono dopo l'allenamento sparisce: il costo dell'allenare è già lo stipendio che sale (D22) con la sua pazienza. Hattrick non punisce mai chi allena. Lo sconto del 7 per cento agli ipovedenti, se resta, vale solo in allenamento, perché senza mascherina si impara anche guardando; la fonte di Brno nota che l'apprendimento motorio dipende dal grado del deficit visivo. Si può anche togliere.\nL. La scala a lettere per valore ed esperienza. Facoltativa anche per le singole caratteristiche, come fa Hattrick con tutte le abilità. La cifra mostra il sottolivello, e una percentuale verso il gradino successivo piacerebbe a Gabriele, che ama i numeri."
+   },
+   {
+    "tema": "Domande da porre a Gabriele, chiuse e con le opzioni",
+    "contenuto": "Meglio due o tre alla volta: con troppe domande insieme a volte arriva solo l'ultima risposta.\n1. Modello: A1 punti da spendere a mano come oggi; A2 programma alla Hattrick con crescita automatica; A3 misto, le partite danno punti e il programma li spende.\n2. Scadenza: ogni giorno simulato; una volta al giorno vero (tre giorni simulati); ogni settimana simulata.\n3. Cosa si sceglie: un gruppo di esercizi per giocatore; una caratteristica per giocatore come oggi; un tipo per tutta la polisportiva come Hattrick.\n4. Intensità: nessuna; una per polisportiva; una per giocatore. Legata agli infortuni: sì o no.\n5. Fisico: quota fissa alla Hattrick per tutti; gruppo separato da scegliere.\n6. Allenatore: nessuno; uno per polisportiva con un livello; allenatore più assistenti.\n7. Età: fattore di Hattrick 54/(età+37); curva più ripida; nessun effetto.\n8. Calo: solo l'invecchiamento dai 50 come oggi; anche il mantenimento dei livelli alti; anche il disallenamento generale.\n9. Chi si allena: solo chi ha giocato nel periodo; tutti, ma chi ha giocato di più; tutti uguale.\n10. Osmosi dei colpi giocati: sì o no.\n11. Velocità: uguale per tutte le caratteristiche; tarata sul peso nel valore.\n12. Abbandono dopo l'allenamento (P8): toglierlo; tenerlo attenuato.\n13. Sconto ipovedenti: toglierlo; tenerlo solo in allenamento; trasformarlo in tratto.\n14. Scala a lettere: 90 livelli da J0 ad A1; 91 da J0 ad A0; 100 da J9 ad A0. Soglie: lineari da 10 punti; geometriche; percentili fissati una volta.\n15. Scala anche per le singole caratteristiche: sì o no. Sottolivello mostrato con la percentuale: sì o no.\n16. Forma alla Hattrick: sì; no; rimandata.\n17. Autoallenamento di liberi e computer: stesso sistema con il programma scelto dall'archetipo; più lento; fermo per i liberi.\n18. Economia: tetti alla crescita; stipendio rivisto perché non sia un esponenziale senza limiti; ritaratura con la simulazione lunga dopo l'allenamento."
+   },
+   {
+    "tema": "Fonti",
+    "contenuto": "Hattrick e HO:\nhttps://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/java/core/training/WeeklyTrainingType.java\nhttps://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/java/core/training/SkillDrops.java\nhttps://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/java/core/constants/player/PlayerAbility.kt\nhttps://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/resources/language/Italiano.properties\nhttps://github.com/ho-dev/HattrickOrganizer/blob/master/src/main/java/core/rating/RatingPredictionModel.java\nhttps://hattrickknv.wordpress.com/training/\nhttps://hattrickguide.wordpress.com/\nhttps://wiki.hattrick.org/wiki/Newbie_Guide\nhttps://wiki.hattrick.org/wiki/Form_Coach\nhttps://wiki.hattrick.org/wiki/Assistant_coach\nhttps://wiki.hattrick.org/wiki/New_Season:_Staff_&_Economy_changes\nhttps://wiki.hattrick.org/wiki/Rules\nhttps://wiki.hattrick.org/wiki/Manual\nhttps://www.hattrick.org/en/Help/BeginnersGuide.aspx\nhttps://forums.operationsports.com/fofc/archive/index.php/t-28536.html\nAltri gestionali:\nhttps://www.dugout-online.com/helpmain/hlp_training/Training-guide\nhttps://www.hourra-manager.com/football-manager-wiki/en/the-players\nhttps://www.fmscout.com/a-back-to-basics-05-training-explained.html\nhttps://footballmanager.com/node/918\nhttps://top-eleven.fandom.com/wiki/Training\nhttps://www.konami.com/efootball/fr/page/overview\nhttps://kids.kiddle.co/Sokker\nhttps://store.epicgames.com/p/tennis-manager-2024-6f4c03\nhttps://www.magicgameworld.com/?p=126381\nhttps://steamcommunity.com/app/760630/discussions/0/2997674644686060605\nShowdown:\nhttps://www.showdown-germany.de/uber-showdown/uber-das-spiel/\nhttps://www.borussia-duesseldorf.com/verein/para-sport/news/showdown-lehrgang-im-dttz-1\nhttps://fispic.it/showdown-ultimo-raduno-della-nazionale-in-vista-dei-mondiali/\nhttps://fispic.it/discipline-sportive/showdown/\nhttps://lacuna.tiptreesystems.com/work/dynamics-of-sensory-motor-response-indicators-in-athletes-with-visual/wrk_a2b264ba95cdcb2fef90ccf76927b329\nhttps://www.teiresias.muni.cz/en/Vzdelavani-sport-a-volny-cas/Sportovni-aktivity/Alternativni-kurzy-telesne-vychovy/Showdown\nhttps://ibsasport.org/sports/showdown/coaching-and-development/\nhttps://giovannicupidi.substack.com/p/showdown-lo-sport-inclusivo-che-allena\nhttps://www.ragusah24.it/2026/07/03/finistrella-in-nazionale-per-europei-showdown-2026/"
+   }
+  ],
+  "problemi": [
+   "L'economia esplode se l'allenamento alza davvero il valore. Lo stipendio è 200 x e^((valore - 140) / 40). Cinque punti di precisione allenata danno circa +70 di valore, cioè uno stipendio 5,7 volte più alto. Un giocatore allenato al tetto arriva a 860-940 di valore, e lo stipendio a numeri senza senso. Le casse di D22 e D26 sono tarate su un mondo dove nessuno si allena: l'allenamento va messo nella simulazione lunga, con un equilibrio fra crescita, mantenimento e declino, oppure va rivista la curva dello stipendio.",
+   "Il costo per punto non c'entra con il valore per punto. Con XP_COSTO_FISICO_MOLTIPL a 2 le fisiche costano il doppio ma rendono da 10 a 30 volte di più delle altre: precisione 13,9 punti di valore per punto, tripla sponda 0,46. Chi vuole valore e vittorie allena solo la precisione.",
+   "Il P8 è confermato dai numeri. Il primo punto di una caratteristica di gioco richiede 12 incontri; ne servono 268 (89 giorni veri, con un incontro per giorno simulato) per arrivare a 10 e 1344 (448 giorni) per arrivare a 20, su una sola delle 24 caratteristiche.",
+   "La scala a lettere non torna. Con lettera uguale alle decine e cifra uguale alle unità, da J0 ad A1 ci sono 90 livelli, non 100. Il piano lo segnala già; servono una scelta fra 90, 91 e 100 livelli e la regola delle soglie.",
+   "Età e calendario corrono a ritmi diversi. L'anno d'età dura 108 giorni simulati, mentre il calendario dei mesi di D22 e dei futuri tornei della tappa 12 segue l'anno di 365 giorni: fra due edizioni annuali di un torneo un giocatore invecchia di circa 3,4 anni. È voluto dal piano, ma conta nel tarare la velocità dell'allenamento in base all'età.",
+   "WebFetch ha salvato da solo sul disco il PDF di British Blind Sport (Showdown Resource, 6,1 MB, solo immagini, illeggibile) in C:\\Users\\Utente\\.claude\\projects\\E--git\\dc4e79db-fff5-47c7-a3b0-cdd305309903\\tool-results\\webfetch-1791492561255-uqrs4d.pdf, contro la consegna di non scaricare file. Non l'ho aperto né cancellato: decida chi coordina se rimuoverlo.",
+   "Le pagine ufficiali di Hattrick (wiki.hattrick.org, hattrick.org/Help) rispondono 403 a WebFetch. I numeri vengono dal codice di HO e da guide della comunità, quindi la formula di Schum è una ricostruzione, non il codice di Hattrick. Per Sokker, Trophy Manager e Tennis Manager le fonti sono poche e in parte di seconda mano."
+  ],
+  "note": "Gabriele ha detto che le prove le farà più avanti e che vuole proseguire con la tappa 11, chiedendo di fargli tutte le domande che servono. Le domande chiuse sono nella sezione apposita: conviene porle due o tre alla volta. La decisione che regge tutte le altre è il modello (A1, A2 o A3), seguita dalla questione dell'economia, perché qualunque allenamento che alzi il valore oggi farebbe esplodere gli stipendi. Gli script di misura sono in C:\\\\Users\\\\Utente\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\E--git\\\\dc4e79db-fff5-47c7-a3b0-cdd305309903\\\\scratchpad\\\\ricerca_allenamento: misura_scala.py, misura_mondo_copia.py e schum.py, da lanciare con python -B. La copia del salvataggio è stata cancellata dallo script stesso. Nessun file del progetto Showdown o di GBUtils è stato modificato."
+ },
+ "domande": {
+  "sintesi_per_claudia": "Come funziona oggi. I punti allenamento (PA) li danno solo le amichevoli dell'utente, cioè MotorePartita.registra in partita.py: in media 2,7 a incontro al meglio dei 3 e 4,7 al meglio dei 5, e vanno anche all'avversario autonomo. Si spendono solo con Showdown.py --testo, comando AGT di cli.py. Nella finestra si accumulano e basta. Un punto costa da 25 a 500 PA secondo il livello allenato, le fisiche il doppio, e agli ipovedenti le caratteristiche di gioco costano il 7 per cento in meno. L'autoallenamento di liberi e computer è fermo, perché non ricevono mai PA. L'esperienza di carriera cresce solo col tempo passato in un club: circa 0,355 punti per anno simulato, quindi per il tetto di 20 ci vogliono 56 anni.\nCosa non va.\n1. P8: dopo un allenamento l'uscita arriva fino al 97 per cento. La regola guarda ancora la gloria e scavalca Mondo._lascia.\n2. guadagno() fa pagare tutta la spesa al costo del livello di partenza: da 0 a 20 costa 500 PA in un colpo e 3361 a rate.\n3. Le chiavi delle strategie degli archetipi non corrispondono: in costanti sono percentuale, quota_fissa e obiettivo_punti, il codice cerca perc, quota e obiettivo.\n4. La precisione domina: rende 0,279 di valore per PA, una volta e mezza la difesa.\n5. La resistenza allenata conta due volte, nel totale e in campo.allenamento().\n6. Al meglio dei 5 un incontro dà il 74 per cento di PA in più.\n7. Il bonus underdog è un premio di consolazione: va al più debole anche quando perde.\n8. Lo stipendio esponenziale crolla se gli autonomi si allenano: in dieci anni i tesserati scendono dal 90 al 10 per cento e le casse del computer vanno a zero.\n9. I tetti dei totali, 40 e 10, non si raggiungono mai: al massimo si arriva a 32 e a 8.\n10. Lo stipendio dei più deboli è di 90 euro, contro i 105 di D26 e la banda 120-150 della tappa 8.\nAttenzione: la scala della classe è già decisa nel piano, con Gabriele, l'8 ottobre. Va da A1 a K0, cento livelli, si chiama classe, conta l'esperienza per il 30 per cento e le caratteristiche per il 70, e nella scheda mostra gli aggettivi di Hattrick con i numeri. Le due analisi lo davano ancora per aperto: il conto dei livelli non va richiesto. Restano aperte solo le soglie, la base del 70 per cento e l'esperienza che cresce giocando, cioè le domande del gruppo 6.\nLe strade possibili. Consiglio il modello misto: le partite, più una piccola base giornaliera, danno PA, e un programma per giocatore li spende da solo. Lo stesso sistema vale per gli autonomi. Lo stipendio va frenato in alto e l'economia ritarata con strumenti/simulazione_lunga.py, aggiornando BERSAGLI.\nCose che decido da sola, senza chiedere:\n1. Correggo le chiavi degli archetipi.\n2. Il prezzo sale punto per punto.\n3. Se una regola d'uscita resta, passa da Mondo._lascia.\n4. A1 corrisponde al massimo davvero raggiungibile.\n5. Mostro la percentuale verso la classe successiva.\n6. Il dialogo d'allenamento accessibile nella finestra, e la voce del menu Giocatori che sostituisce la riga 56 del piano.\nSe Gabriele sceglie i punti spesi a mano, il gruppo 3 cambia: Programma diventa la scelta di una caratteristica, Scadenza decade, Velocità e Osmosi restano.\nLe domande vanno poste un gruppo alla volta, perché con più domande insieme a volte arriva solo l'ultima risposta.\nDa segnalare a Gabriele: durante la ricerca WebFetch ha salvato da sé un PDF di British Blind Sport, illeggibile, in C:\\Users\\Utente\\.claude\\projects\\E--git\\dc4e79db-fff5-47c7-a3b0-cdd305309903\\tool-results\\webfetch-1791492561255-uqrs4d.pdf. Va deciso se cancellarlo.\nNon ho modificato nessun file. Ho letto piano_di_sviluppo.txt, righe 21, 41-50, 56, 84 e 85.",
+  "gruppi": [
+   {
+    "titolo": "Le scelte di fondo",
+    "domande": [
+     {
+      "intestazione": "Modello",
+      "domanda": "Come si allena un giocatore? Oggi le partite danno punti allenamento e li spendi tu a mano, caratteristica per caratteristica, su 24 in tutto. Nella finestra per ora non si possono nemmeno spendere.",
+      "opzioni": [
+       {
+        "etichetta": "Misto: punti e programma (consigliata)",
+        "descrizione": "Le partite continuano a dare punti allenamento, come vuole D27, ma li spende da solo un programma che scegli tu per ogni giocatore, per esempio parate o sponde. Niente conti a mano su 24 caratteristiche, e lo stesso sistema vale per liberi e computer."
+       },
+       {
+        "etichetta": "Punti spesi a mano",
+        "descrizione": "Come oggi, con i costi rivisti: scegli tu caratteristica e quantità, nella finestra e nell'interfaccia testuale. Massimo controllo, ma molto lavoro con 15 tesserati."
+       },
+       {
+        "etichetta": "Programma alla Hattrick",
+        "descrizione": "I punti allenamento spariscono. A ogni scadenza chi ha giocato cresce da solo nel programma scelto, con una formula alla Schum che tiene conto di livello, età, intensità e partecipazione. L'amichevole conta come presenza, non come punti."
+       }
+      ]
+     },
+     {
+      "intestazione": "Progressi",
+      "domanda": "Da dove vengono i progressi? Oggi solo dalle amichevoli che organizzi tu: per far crescere al massimo 15 tesserati servirebbero 45 amichevoli per ogni giorno vero. Fino alla tappa 12 liberi e computer non giocano mai.",
+      "opzioni": [
+       {
+        "etichetta": "Sedute quotidiane più partite (consigliata)",
+        "descrizione": "Ogni giorno simulato in una polisportiva dà una piccola base, come le sedute in palestra, e ogni incontro giocato dà molto di più. Giocare conviene, ma chi non gioca non resta fermo."
+       },
+       {
+        "etichetta": "Solo dalle partite",
+        "descrizione": "Come oggi, cresce solo chi gioca: prima della tappa 12 vuol dire amichevoli organizzate a mano, poi anche i tornei."
+       },
+       {
+        "etichetta": "Solo dalle sedute",
+        "descrizione": "Cresce chi è in una polisportiva, giorno per giorno. Le partite danno esperienza ma non allenamento, quindi il limite di un'amichevole al giorno di D27 perde il suo motivo."
+       }
+      ]
+     },
+     {
+      "intestazione": "Chi decide",
+      "domanda": "Chi sceglie che cosa allenano i tuoi tesserati?",
+      "opzioni": [
+       {
+        "etichetta": "Tu, giocatore per giocatore (consigliata)",
+        "descrizione": "Ogni tesserato ha il suo programma, che scegli tu. Chi arriva nuovo parte da quello della sua Tendenza finché non lo cambi. Lo showdown è individuale, e ognuno ha i suoi punti deboli."
+       },
+       {
+        "etichetta": "Tu, uno per polisportiva",
+        "descrizione": "Come in Hattrick, un solo tipo di allenamento per tutta la rosa: è una scelta strategica e dà meno lavoro, ma tutti allenano la stessa cosa."
+       },
+       {
+        "etichetta": "Il giocatore da sé",
+        "descrizione": "Ognuno segue la sua Tendenza, come i liberi e il computer, e tu puoi cambiarla solo di rado. Poco lavoro e poco controllo."
+       }
+      ]
+     },
+     {
+      "intestazione": "Età",
+      "domanda": "Quanto conta l'età nell'allenamento? Oggi niente: un sessantenne impara come un ragazzo, e l'età conta solo nel declino dopo i 50 anni.",
+      "opzioni": [
+       {
+        "etichetta": "Curva dolce di Hattrick (consigliata)",
+        "descrizione": "Il fattore di Hattrick, 54 diviso l'età più 37: vale 1,17 a 9 anni, 1,04 a 15, 0,81 a 30, 0,62 a 50 e 0,48 a 75. È credibile per uno sport che si gioca fino a 60-75 anni."
+       },
+       {
+        "etichetta": "Curva ripida",
+        "descrizione": "I ragazzi imparano molto più in fretta, e dopo i 40 anni si migliora pochissimo: i giovani diventano il vero investimento."
+       },
+       {
+        "etichetta": "Nessun effetto",
+        "descrizione": "Come oggi, tutti imparano allo stesso ritmo."
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "titolo": "Quanto si cresce e chi paga",
+    "domande": [
+     {
+      "intestazione": "Ritmo",
+      "domanda": "Quanto deve far crescere l'allenamento? Il valore alla nascita ha mediana 136 e massimo 264. Una carriera, dai 15 ai 58 anni, dura circa 4 anni veri.",
+      "opzioni": [
+       {
+        "etichetta": "Un campione per carriera (consigliata)",
+        "descrizione": "Un giocatore medio allenato con costanza sale da 140 a circa 250 in una decina d'anni simulati, cioè un anno vero, e a fine carriera arriva verso 300; i più dotati superano 350. È lo spirito di Hattrick, dove l'allenamento porta da debole a sovrannaturale."
+       },
+       {
+        "etichetta": "Un ritocco",
+        "descrizione": "Al massimo 50-60 punti in una carriera: un 140 arriva a 200, e conta soprattutto il talento di nascita."
+       },
+       {
+        "etichetta": "L'allenamento domina",
+        "descrizione": "Oltre 300 punti in una carriera, fino a 400-500: chiunque giochi molto diventa fortissimo, e l'economia va rifatta da capo."
+       }
+      ]
+     },
+     {
+      "intestazione": "Stipendi",
+      "domanda": "L'allenamento rompe l'economia, perché lo stipendio sale del 2,5 per cento per ogni punto di valore, senza limiti. Un anno di amichevoli ben spese porta un giocatore da 200 a 730 euro al mese, cinque anni a 11610. Se anche liberi e computer si allenassero, in dieci anni i tesserati scenderebbero dal 90 al 10 per cento, e le casse del computer a zero. Come lo sistemiamo?",
+      "opzioni": [
+       {
+        "etichetta": "Stipendio frenato e ritaratura (consigliata)",
+        "descrizione": "Fino ai più forti di oggi, circa 260 di valore, lo stipendio resta com'è; oltre cresce molto più piano. Poi si ritara tutta l'economia sulla simulazione lunga, con l'allenamento acceso, perché il computer tesseri ancora nove giocatori su dieci, come vuole D23."
+       },
+       {
+        "etichetta": "Stipendio com'è, crescita frenata",
+        "descrizione": "La formula non si tocca, e l'allenamento resta piccolo, perché i valori stiano vicini a quelli di oggi."
+       },
+       {
+        "etichetta": "Più entrate per chi allena",
+        "descrizione": "Lo stipendio resta, ma crescono le entrate: uno sponsor più legato al valore della rosa e, con la tappa 12, i premi dei tornei. Oggi allenare è una perdita netta per la cassa."
+       }
+      ]
+     },
+     {
+      "intestazione": "Calo",
+      "domanda": "Oltre all'invecchiamento, i livelli si possono perdere? Oggi si cala solo dopo i 50 anni, fino all'1,8 per cento l'anno, e un livello raggiunto non si perde mai.",
+      "opzioni": [
+       {
+        "etichetta": "Mantenimento dei livelli alti (consigliata)",
+        "descrizione": "Come nel modello di Hattrick, i livelli molto alti calano un poco se non si continuano ad allenare, e dai 50 anni resta il declino di oggi. Tiene il mondo stabile e frena la corsa degli stipendi."
+       },
+       {
+        "etichetta": "Solo la vecchiaia",
+        "descrizione": "Come oggi: quello che si guadagna resta fino ai 50 anni."
+       },
+       {
+        "etichetta": "Disallenamento per tutti",
+        "descrizione": "Chiunque smetta di allenarsi o di giocare perde qualcosa, anche ai livelli bassi."
+       }
+      ]
+     },
+     {
+      "intestazione": "Abbandono",
+      "domanda": "La regola P8: dopo ogni allenamento un tesserato può andarsene. Sotto i 40 anni succede quasi sempre, fino al 97 per cento, perché la regola guarda ancora la gloria e non l'ingaggio in euro della tappa 8. Oggi esiste solo nell'interfaccia testuale.",
+      "opzioni": [
+       {
+        "etichetta": "Toglierla (consigliata)",
+        "descrizione": "Il prezzo dell'allenamento è già lo stipendio che sale, con la pazienza e gli arretrati di D22. Hattrick non punisce mai chi allena."
+       },
+       {
+        "etichetta": "Legata alla fedeltà",
+        "descrizione": "Un tesserato molto migliorato e con poca fedeltà può chiedere, di rado, di andare in un club più glorioso, con le regole d'uscita normali: vendita, arretrati, pazienza."
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "titolo": "Il programma d'allenamento",
+    "domande": [
+     {
+      "intestazione": "Programma",
+      "domanda": "Che cosa si sceglie nel programma di un giocatore? I gruppi ricalcano l'allenamento vero dello showdown: battute; colpi diretti, cioè lungolinea, diagonale e bomba; sponde; parate, cioè chiusure, blocchi e difesa; controllo palla e tenuta della paletta; attacco e gioco; preparazione atletica, cioè resistenza, forza e precisione.",
+      "opzioni": [
+       {
+        "etichetta": "Gruppo più quota atletica (consigliata)",
+        "descrizione": "Scegli uno dei sei gruppi tecnici, con il lato: dritto, rovescio o entrambi. Una quota fissa, per esempio il 15 per cento, va sempre alla preparazione atletica, come la quota di resistenza di Hattrick e come nei corsi tedeschi."
+       },
+       {
+        "etichetta": "Gruppo, atletica compresa",
+        "descrizione": "Sette gruppi, e l'atletica è uno di loro: o tecnica o fisico, mai insieme."
+       },
+       {
+        "etichetta": "Una caratteristica alla volta",
+        "descrizione": "Come oggi, una delle 24 caratteristiche: scelta più precisa, ma più lavoro."
+       }
+      ]
+     },
+     {
+      "intestazione": "Velocità",
+      "domanda": "A parità d'impegno, quanto cresce ogni caratteristica? Oggi un punto di precisione vale 13,9 di valore e uno di tripla sponda 0,46, ma le fisiche costano solo il doppio. Per valore guadagnato la precisione rende 11 volte un colpo, e allenare altro non conviene quasi mai.",
+      "opzioni": [
+       {
+        "etichetta": "Tarata sul valore (consigliata)",
+        "descrizione": "Ogni giorno d'allenamento compra più o meno lo stesso valore, qualunque cosa alleni: la precisione sale piano, le sponde in fretta. Si sceglie secondo lo stile e i punti deboli, non secondo il conto."
+       },
+       {
+        "etichetta": "Fisiche al doppio, come oggi",
+        "descrizione": "La precisione resta di gran lunga l'investimento migliore."
+       },
+       {
+        "etichetta": "Uguale per tutte",
+        "descrizione": "Ogni punto costa lo stesso, e la precisione domina ancora di più."
+       }
+      ]
+     },
+     {
+      "intestazione": "Osmosi",
+      "domanda": "Giocando si migliorano anche i colpi che si usano? Il motore sa quali colpi e quali parate ha giocato ciascuno in ogni incontro.",
+      "opzioni": [
+       {
+        "etichetta": "Sì, un poco (consigliata)",
+        "descrizione": "I colpi e le parate usati in partita crescono un poco da soli, circa un sesto dell'allenamento principale, come l'osmosi di Hattrick: chi gioca molto di sponda migliora le sponde."
+       },
+       {
+        "etichetta": "No",
+        "descrizione": "Cresce soltanto quello che allena il programma."
+       }
+      ]
+     },
+     {
+      "intestazione": "Scadenza",
+      "domanda": "Quando arrivano i progressi?",
+      "opzioni": [
+       {
+        "etichetta": "A ogni giorno simulato (consigliata)",
+        "descrizione": "Tre volte per giorno vero, a ogni avanzamento del mondo, a piccoli passi e insieme all'amichevole del giorno di D27."
+       },
+       {
+        "etichetta": "Una volta al giorno vero",
+        "descrizione": "Ogni tre giorni simulati, un appuntamento fisso come il giovedì dell'allenamento di Hattrick, con la notizia di chi è salito."
+       },
+       {
+        "etichetta": "Ogni settimana simulata",
+        "descrizione": "Ogni sette giorni simulati, cioè circa ogni due giorni veri e un terzo."
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "titolo": "Partite, fatica e infortuni",
+    "domande": [
+     {
+      "intestazione": "Set e punti",
+      "domanda": "Al meglio dei 5 un'amichevole dà il 74 per cento di punti allenamento in più che al meglio dei 3. Chi allena giocherebbe sempre a 5 set, mentre D26 li vuole rari, solo per tornei e finali.",
+      "opzioni": [
+       {
+        "etichetta": "Stessi punti per incontro (consigliata)",
+        "descrizione": "Un incontro vale lo stesso allenamento a 3 o a 5 set, al massimo con poco in più per i 5. Il formato si sceglie per il gioco, non per i punti."
+       },
+       {
+        "etichetta": "In proporzione ai set",
+        "descrizione": "Come oggi: più set, più punti."
+       }
+      ]
+     },
+     {
+      "intestazione": "Sorpresa",
+      "domanda": "Il premio al più debole: oggi, quando il distacco di valore è almeno del 25 per cento, il più debole prende un punto allenamento in più, anche se perde.",
+      "opzioni": [
+       {
+        "etichetta": "Solo al debole che vince (consigliata)",
+        "descrizione": "Diventa un premio alla sorpresa: battere uno molto più forte insegna di più."
+       },
+       {
+        "etichetta": "Sempre al debole, come oggi",
+        "descrizione": "Un premio di consolazione: giocare contro i forti conviene comunque."
+       },
+       {
+        "etichetta": "Toglierlo",
+        "descrizione": "Contano solo il risultato e i set."
+       }
+      ]
+     },
+     {
+      "intestazione": "Intensità",
+      "domanda": "Si può scegliere quanto duramente si allena un giocatore? Nella realtà si va da una seduta alla settimana degli amatori alle sette ore al giorno dei raduni della nazionale.",
+      "opzioni": [
+       {
+        "etichetta": "Per giocatore, con infortuni (consigliata)",
+        "descrizione": "Leggera, normale o intensa per ogni tesserato. Intensa fa crescere più in fretta, ma alza il rischio d'infortunio attraverso il fattore di carico di D26: serve a spingere un atleta prima di un torneo."
+       },
+       {
+        "etichetta": "Una per polisportiva",
+        "descrizione": "Come in Hattrick, un'intensità sola per tutta la rosa, sempre legata agli infortuni."
+       },
+       {
+        "etichetta": "Nessuna intensità",
+        "descrizione": "Tutti si allenano allo stesso modo."
+       }
+      ]
+     },
+     {
+      "intestazione": "Stanchezza",
+      "domanda": "D26 dice che in partita la stanchezza dipende anche da quanto il giocatore si allena. Per ora il motore usa al suo posto la resistenza allenata, che così conta due volte: il primo punto rende più di quanto dica il valore, e cinque punti molto meno.",
+      "opzioni": [
+       {
+        "etichetta": "Dalla costanza recente (consigliata)",
+        "descrizione": "Chi si è allenato o ha giocato con regolarità nelle ultime settimane si stanca meno, chi è rimasto fermo a lungo di più. La resistenza allenata conta una volta sola, e il valore torna giusto."
+       },
+       {
+        "etichetta": "Dalla resistenza allenata",
+        "descrizione": "Come oggi: chi allena la resistenza ne guadagna due volte."
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "titolo": "Liberi, computer e regole particolari",
+    "domande": [
+     {
+      "intestazione": "Autonomi",
+      "domanda": "Come si allenano i liberi e i tesserati del computer? Oggi quasi mai: ricevono punti solo quando giocano contro di te. Quando li spendono li sparpagliano, e ottengono il 58 per cento del valore che darebbe una spesa oculata.",
+      "opzioni": [
+       {
+        "etichetta": "Liberi a metà velocità (consigliata)",
+        "descrizione": "I tesserati del computer si allenano come i tuoi, con un programma scelto secondo la loro Tendenza da una polisportiva che ragiona. I liberi, senza club, si allenano da soli a metà velocità: tesserare un libero lo fa crescere."
+       },
+       {
+        "etichetta": "Tutti uguali",
+        "descrizione": "Liberi, computer e tuoi tesserati crescono allo stesso ritmo."
+       },
+       {
+        "etichetta": "Liberi fermi",
+        "descrizione": "Si allena solo chi ha una polisportiva, come succede oggi all'esperienza di carriera."
+       }
+      ]
+     },
+     {
+      "intestazione": "Ipovedenti",
+      "domanda": "Agli ipovedenti l'allenamento delle caratteristiche di gioco costa il 7 per cento in meno. In partita la mascherina rende tutti uguali, e il motore ignora il tratto. Gli ipovedenti sono il 65 per cento dei nati, e chiedono già il 10 per cento di gloria in meno, per D19.",
+      "opzioni": [
+       {
+        "etichetta": "Toglierlo (consigliata)",
+        "descrizione": "Tutti imparano allo stesso ritmo, come in partita sono tutti uguali."
+       },
+       {
+        "etichetta": "Tenerlo in allenamento",
+        "descrizione": "Chi vede un poco impara qualcosa in più guardando, fuori dalla partita: resta il vantaggio di oggi."
+       }
+      ]
+     },
+     {
+      "intestazione": "Precisione",
+      "domanda": "La precisione è la qualità più forte: contro un pari valore, cinque punti allenati portano dal 50 all'88,6 per cento di vittorie. D26 ne ha già dimezzato il peso, quando portavano dal 53 al 96.",
+      "opzioni": [
+       {
+        "etichetta": "Com'è, pagata il giusto (consigliata)",
+        "descrizione": "Nel motore resta com'è. Con la velocità tarata sul valore costa in proporzione, e cinque punti diventano un traguardo lungo."
+       },
+       {
+        "etichetta": "Ridurne ancora il peso",
+        "descrizione": "Un altro taglio nel motore, perché cinque punti valgano quanto la forza, circa il 75 per cento di vittorie."
+       },
+       {
+        "etichetta": "Tetto allenato più basso",
+        "descrizione": "Si possono allenare al massimo 3 punti di precisione invece di 5."
+       }
+      ]
+     },
+     {
+      "intestazione": "Paga minima",
+      "domanda": "Quanto deve guadagnare un tesserato fra i più deboli, al decimo percentile? Oggi prende 90 euro al mese; D26 parlava di circa 105, la tappa 8 voleva fra 120 e 150. È il bersaglio della ritaratura.",
+      "opzioni": [
+       {
+        "etichetta": "Circa 105, come D26 (consigliata)",
+        "descrizione": "Si conferma quello che avevi accettato dopo la taratura del motore."
+       },
+       {
+        "etichetta": "Fra 120 e 150",
+        "descrizione": "Si torna alla banda della tappa 8: i deboli costano un po' di più alle polisportive."
+       },
+       {
+        "etichetta": "90 va bene",
+        "descrizione": "Si tiene il risultato di oggi e si aggiorna la banda."
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "titolo": "Esperienza e classe",
+    "domande": [
+     {
+      "intestazione": "Esperienza",
+      "domanda": "Da dove viene l'esperienza di carriera? Oggi solo dal tempo passato in una polisportiva, 0,1 punti al mese. Nella classe pesa il 30 per cento, e in partita aiuta a leggere l'avversario e a sbagliare meno.",
+      "opzioni": [
+       {
+        "etichetta": "Tempo e partite (consigliata)",
+        "descrizione": "Un po' ogni mese in una polisportiva, come oggi, più un po' per ogni incontro giocato. I tornei della tappa 12 ne danno molta più delle amichevoli, come in Hattrick la coppa rispetto all'amichevole. Anche un libero che gioca guadagna esperienza."
+       },
+       {
+        "etichetta": "Solo dalle partite",
+        "descrizione": "Il tempo non conta: è esperto chi ha giocato tanto."
+       },
+       {
+        "etichetta": "Solo dal tempo, più veloce",
+        "descrizione": "Come oggi, ma più in fretta; le partite non contano."
+       }
+      ]
+     },
+     {
+      "intestazione": "Ritmo esp.",
+      "domanda": "Quanto in fretta si arriva al massimo dell'esperienza, cioè a 20 punti? Oggi servono 56 anni simulati, più di una carriera: dopo dieci anni in un club si è a 3,5. Ogni punto alza lo stipendio del 3 per cento.",
+      "opzioni": [
+       {
+        "etichetta": "A fine carriera (consigliata)",
+        "descrizione": "Un giocatore molto attivo arriva a 20 dopo 35-40 anni di gioco, e a metà carriera è a metà strada. Un veterano vale davvero di più."
+       },
+       {
+        "etichetta": "A metà carriera",
+        "descrizione": "Venti punti in circa vent'anni: a 35 anni i più attivi sono già al massimo."
+       },
+       {
+        "etichetta": "Lento come oggi",
+        "descrizione": "L'esperienza resta un vantaggio piccolo, e nella classe pesa poco."
+       }
+      ]
+     },
+     {
+      "intestazione": "Base classe",
+      "domanda": "Nella classe le caratteristiche pesano il 70 per cento. Come si contano?",
+      "opzioni": [
+       {
+        "etichetta": "Il valore pesato (consigliata)",
+        "descrizione": "Si usa il valore di oggi, che pesa ogni punto per quanto fa vincere: un punto di precisione conta 13,9, uno di tripla sponda 0,46. La classe dice davvero chi è più forte."
+       },
+       {
+        "etichetta": "Somma semplice dei punti",
+        "descrizione": "Ogni punto conta uguale, fisico o di gioco: la classe dice quanto un giocatore ha lavorato più che quanto vince."
+       }
+      ]
+     },
+     {
+      "intestazione": "Soglie",
+      "domanda": "Le soglie della classe vanno da K0, il minimo di tutto, ad A1, il massimo di tutto. Con classi tutte larghe uguali i nati starebbero fra J4 e H9, con la mediana su I7. I più forti, dopo dieci anni d'allenamento, arriverebbero attorno a H0. Dalla A alla F non ci sarebbe nessuno.",
+      "opzioni": [
+       {
+        "etichetta": "Curva fitta in basso (consigliata)",
+        "descrizione": "Soglie fissate una volta per sempre, ma più strette dove stanno i giocatori veri: i nati fra le classi I e F, i migliori dopo una carriera fra D e C. A e B restano per chi è vicino alla perfezione, come i livelli divini di Hattrick."
+       },
+       {
+        "etichetta": "Tutte larghe uguali",
+        "descrizione": "Semplici e oneste: i giocatori veri occupano poche lettere basse, e il resto della scala resta vuoto."
+       },
+       {
+        "etichetta": "Percentili di un mondo maturo",
+        "descrizione": "Si simula un mondo allenato per anni, si fissano le soglie sulle sue posizioni e poi non cambiano più. Le classi sono ben distribuite, ma dipendono dalla taratura di oggi."
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "titolo": "Novità facoltative",
+    "domande": [
+     {
+      "intestazione": "Allenatore",
+      "domanda": "Ci vuole un allenatore? In Hattrick allenatore e assistenti decidono quanto rende l'allenamento, e costano.",
+      "opzioni": [
+       {
+        "etichetta": "Non per ora (consigliata)",
+        "descrizione": "La tappa 11 resta concentrata sull'allenamento; l'allenatore può arrivare più avanti, magari con la tappa 12."
+       },
+       {
+        "etichetta": "Uno per polisportiva",
+        "descrizione": "Un allenatore con un livello e uno stipendio: più è bravo, più in fretta si cresce, e allenare comincia a costare euro."
+       },
+       {
+        "etichetta": "Ex giocatori come allenatori",
+        "descrizione": "Le vecchie glorie e i ritirati possono diventare allenatori, con un livello che viene dalla loro carriera e magari una specialità: attacco, difesa o fisico."
+       }
+      ]
+     },
+     {
+      "intestazione": "Tratti",
+      "domanda": "Nascono tratti rari legati all'allenamento, come nei gestionali di tennis?",
+      "opzioni": [
+       {
+        "etichetta": "Nessuno (consigliata)",
+        "descrizione": "Bastano età, programma e intensità; i tratti si possono aggiungere più avanti."
+       },
+       {
+        "etichetta": "Solo il talento",
+        "descrizione": "Un giocatore su dieci, o meno, impara più in fretta."
+       },
+       {
+        "etichetta": "Tre tratti rari",
+        "descrizione": "Talento, che impara in fretta; apprendista rapido, che impara e dimentica in fretta; maturazione precoce o tardiva, che sposta gli anni migliori."
+       }
+      ]
+     },
+     {
+      "intestazione": "Forma",
+      "domanda": "Arriva la forma alla Hattrick, cioè una condizione del momento che sale e scende e cambia il rendimento in partita?",
+      "opzioni": [
+       {
+        "etichetta": "Rimandata (consigliata)",
+        "descrizione": "È una caratteristica nuova che tocca il motore e il valore: meglio aggiungerla più avanti, quando il mondo giocherà da solo con la tappa 12."
+       },
+       {
+        "etichetta": "Sì, con la tappa 11",
+        "descrizione": "Forma da disastrosa a eccellente, legata all'intensità e al riposo."
+       },
+       {
+        "etichetta": "No",
+        "descrizione": "Non serve: in partita bastano la stanchezza e il temperamento."
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
