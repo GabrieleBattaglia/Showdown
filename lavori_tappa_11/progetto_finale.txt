@@ -1,0 +1,419 @@
+PROGETTO DELLA TAPPA 11, L'ALLENAMENTO, SECONDO LA DECISIONE D31: STESURA FINALE
+PREMESSE
+D31 è il disegno di Gabriele e non si discute. Dove D31 tace le scelte sono mie; quando sono scelte di gioco stanno anche fra le domande per Gabriele, e qui è già scritta la soluzione che consiglio: se lui sceglie un'altra opzione cambiano soltanto la regola o il numero indicati in quel punto. Tutti i numeri sono una prima stima, da fissare con gli strumenti del punto 12 e da approvare con Gabriele.
+Le misure vengono da script di sola lettura nella cartella C:\Users\Gabriele\AppData\Local\Temp\claude\E--git\27fed563-c373-4641-9680-74975b271914\scratchpad\t11arch, lanciati con python -B, che usano la classe Giocatore, i pesi del valore e il motore veri senza scrivere niente nel progetto: modello.py, il costo e la spesa di questo progetto; regime.py, la popolazione sintetica a regime e i casi tipici; deriva.py, il mondo giovane, nato da zero, all'anno 10 e la sua deriva; classi.py, le classi con le ancore del punto 7; indoli.py, le indoli alla nascita; precisione.py, le vittorie con la precisione al tetto, col motore vero.
+I riferimenti del tempo, da tenere a mente in tutto il progetto: un giorno simulato sono 8 ore vere; un anno d'età dura 108 giorni simulati, cioè 36 giorni veri; un mese dei contratti è un mese del calendario simulato, circa 30 giorni simulati, cioè 0,28 anni d'età e 10 giorni veri; 12 mesi sono 3,4 anni d'età e 4 mesi veri; la carriera di riferimento, dai 9 ai 50 anni, sono 4428 giorni simulati, circa 4 anni veri.
+Mappa dei file.
+Nuovi: tratti.py, contratti.py, esperienza.py, classe.py, strumenti/carriera_perfetta.py; le prove tests/test_tratti.py, tests/test_contratti.py, tests/test_esperienza.py, tests/test_classe.py, tests/test_indoli.py e tests/test_sala_allenamento.py.
+Riscritto: allenamento.py.
+Toccati: costanti.py, modelli.py, valore.py, mondo.py, partita.py, infortuni.py, economia.py, mercato.py, ricerca.py, testi.py, suoni.py, motore/campo.py, motore/taratura.py (solo il commento), gui/dialoghi.py, gui/finestra.py, archivio.py, cli.py, strumenti/simulazione_lunga.py, strumenti/popolazione_di_prova.py, strumenti/taratura_valore.py, suoni_di_mess.txt (rigenerato da strumenti/elenco_suoni.py) e le prove esistenti che ne dipendono.
+In GBUtils cambiano soltanto Acu_Collection.json e la versione V204, in un commit a parte. Non si toccano version.py, CHANGELOG.md, README.md, piano_di_sviluppo.txt e la cartella lavori_tappa_11.
+1. I PUNTI ALLENAMENTO: FONTI E MOMENTI
+Il campo Giocatore.puntiesperienza diventa punti_allenamento, un float: il formato 6 lo migra. Il vecchio nome si confondeva con il campo esperienza e con il modulo nuovo esperienza.py. Nei testi si chiama sempre punti allenamento, con un decimale quando ne ha.
+La seduta quotidiana. Il metodo nuovo Mondo._allenamento_del_giorno(data, rapporto), chiamato in _un_giorno dopo i conti del primo del mese al posto del vecchio blocco dell'autoallenamento, tocca ogni giorno simulato ogni giocatore vivo e non ritirato. Si allena chi puo_giocare: l'infortunato no, l'ambidestro col braccio fermo sì.
+- Il tesserato riceve PA_SEDUTA, 1,0, per il fattore della sua intensità: 0,6 leggera, 1,0 normale, 1,4 intensa.
+- Il libero riceve PA_SEDUTA per QUOTA_SEDUTA_LIBERI, cioè 0,5, la metà di D31, senza intensità.
+I punti arrivano a ogni giorno simulato, anche a programma chiuso, perché i giorni si elaborano uno per uno: è la scelta tecnica scritta in D31.
+Le amichevoli. I punti arrivano alla registrazione, in MotorePartita.registra. La tabella XP_* e _xp_della_partita spariscono, e al suo posto c'è una formula: punti della partita = PA_PARTITA_BASE 2,0 + PA_PER_SET_VINTO 0,5 per i set vinti + PA_VITTORIA 1,0 per chi vince. Al meglio dei 3 chi vince prende 4, chi perde 2,5 con un set e 2 senza; al meglio dei 5 chi vince 4,5, chi perde 3, 2,5 o 2. Fra due giocatori alla pari la media è 3,1 punti al meglio dei 3 e 3,5 al meglio dei 5: il 13 per cento in più, contro il 74 di oggi. Quasi gli stessi punti, come vuole D31.
+Il premio al più debole resta com'è nella sostanza: PA_BONUS_PIU_DEBOLE 1,0, al posto di XP_BONUS_UNDERDOG, sempre al più debole, anche quando perde. Cambia soltanto il metro del distacco. Oggi è il 25 per cento del valore, ICV_DIFF_PERC_UNDERDOG, ma il valore ha uno spostamento, la scala A e B, che questa tappa ritocca: con A più basso i valori deboli si avvicinano a zero e la percentuale perde senso. Il più debole diventa chi ha almeno DISTACCO_PIU_DEBOLE, 25 punti, di somma pesata in meno, cioè somma_pesata più bonus_tratti. Attorno alla mediana di oggi 25 punti di somma pesata sono 35 punti di valore, proprio il 25 per cento di 140: il premio scatta negli stessi incontri di oggi, e non cambierà più con la scala. Con quel distacco il più debole vince circa una volta su quattro. ICV_DIFF_PERC_UNDERDOG sparisce.
+Resta la regola di D27, un'amichevole al giorno per giocatore.
+Tornei e sfide, gli agganci della tappa 12. La firma diventa registra(risultato, info_torneo=None, sfida=None): con info_torneo si aggiunge PA_BONUS_TORNEO, con sfida PA_BONUS_SFIDA, valori provvisori 3 e 2; ultima_amichevole si segna soltanto per le amichevoli. Con le stesse chiamate arrivano l'esperienza (punto 6) e la costanza (punto 8). Fino alla tappa 12 nessuno passa sfida. Alla tappa 12, quando i tornei diventeranno la fonte più grande, tutte le fonti si abbassano insieme perché la carriera perfetta con tornei e sfide arrivi alla stessa somma congelata del punto 7.
+La frase della registrazione scrive i punti con la virgola: «Punti allenamento: 4 a Mario Rossi, 2,5 a Anna Bianchi».
+2. LA SPESA
+2.1 Il costo, tarato sul valore punto per punto. Per il giocatore g e la caratteristica c, un nome allenabile:
+- T è il tetto del totale, 10 per precisione, resistenza e forza e 40 per le altre; L è il totale di oggi, innata più allenata; x = L / T è il livello relativo, lo stesso che il motore usa in campo.valore_relativo.
+- p è valore.peso_per_punto(g, c), funzione nuova: il peso di PESI_VALORE nel ruolo che la caratteristica ha per quel giocatore. La chiusura sinistra è di rovescio per il destrimano e di dritto per il mancino, e per l'ambidestro vale la media dei due pesi; lo stesso per i blocchi. È in punti di somma pesata, quindi non dipende dalla scala A e B.
+- e è l'efficacia del punto 2.2.
+- s è lo sconto: 0,93 per gli ipovedenti sulle caratteristiche di gioco, 1 altrimenti; SCONTO_IPOVEDENTI 0,07 prende il posto di XP_SCONTO_IPOVEDENTI_PERC.
+Con C0 = COSTO_PER_PUNTO_PESATO e K = CRESCITA_DEL_COSTO:
+- il costo marginale è C0 per p per s, diviso e, per exp(K per L / T);
+- la spesa da L1 a L2 è l'integrale: a per T / K per (exp(K per L2 / T) meno exp(K per L1 / T)), con a = C0 per p per s / e;
+- il totale dopo una spesa P è L2 = T / K per ln(exp(K per L1 / T) + P per K / (a per T)); se supera il tetto si ferma lì, e si spendono soltanto i punti che servono per arrivarci.
+Il prezzo sale punto per punto per costruzione: 200 punti spesi in una volta rendono come due spese da 100. Ogni punto speso compra la stessa somma pesata in tutte le caratteristiche che stanno allo stesso livello relativo, perché un punto allenamento compra e / (C0 per s per exp(K per x)) di somma pesata, dove il peso p non c'è più: è il «ogni punto compra più o meno lo stesso valore» di D31, con la precisione che sale piano e le sponde in fretta. Niente osmosi: cresce soltanto ciò su cui si spende.
+K vale 2,5: dal livello zero al tetto il costo cresce di 12,2 volte, come le 12,6 volte di Hattrick dal livello 0 al 20. C0 è il ritmo, il solo numero di gioco che D31 lascia aperto, ed è la domanda 1 per Gabriele. Consiglio 50, il doppio della bozza, perché lo stipendio esponenziale regga i giocatori allenati dall'utente; tutti i conti di questo progetto usano 50.
+Esempi a 25 anni, efficacia 0,87, per un vedente, con C0 50: tripla sponda a 8 su 40, 31 punti allenamento per un punto; chiusura di rovescio a 12 su 40, 342; difesa a 10 su 40, 363; precisione a 2 su 10, 950. Un tesserato dell'utente che gioca un'amichevole ogni due giorni prende circa 2,55 punti al giorno: un gradino della scala di Hattrick, cioè due punti su 40, di chiusura di rovescio gli chiede circa 96 giorni veri, uno di tripla sponda 9 giorni veri, mezzo punto di precisione 66. Cinque punti di precisione, da 1,5 a 6,5, costano circa 8.400 punti allenamento: tre anni veri spendendo tutto lì. È il traguardo lungo di D31.
+Le funzioni di allenamento.py:
+- tetto(c) e limiti(c): il tetto dell'allenata e quello del totale (punto 2.3);
+- efficacia(g, c);
+- costo_fra(g, c, da, a);
+- totale_con(g, c, punti);
+- costo_del_prossimo_punto(g, c), l'integrale da L a min(L + 1, tetto);
+- anteprima(g, c, punti), che restituisce Spesa(caratteristica, da, a, punti) senza toccare niente;
+- spendi(g, c, punti, data=None): solleva ValueError se il giocatore non si può allenare, se ha meno punti di quelli chiesti o se c è al tetto; toglie dal portafoglio i punti davvero usati, chiama g.aggiorna_icv() e, con la data, annota la spesa nel diario (punto 10.2);
+- preferenze(chiave) e allena_secondo_programma(g, data=None, programma=None), al punto 3.3;
+- mantenimento_del_mese(g, giorni), al punto 2.4;
+- puo_allenarsi(g), che vale g.puo_giocare.
+Se ne vanno calcola_costo_xp_per_punto, costo_per, guadagno, fascia_eta, _allenabili, _piu_bassa, _fisica_bassa, _reagisci, _segui_archetipo, _spesa_da_archetipo, _scelta_da_archetipo ed esegui_auto_allenamento, con le costanti XP_COSTO_SKILL_BREAKPOINTS, XP_COSTO_FISICO_MOLTIPL, MAX_XP_PER_ALLENAMENTO, PROB_SEGUE_ARCHETIPO, ETA_GIOVANE_MAX_GIORNI ed ETA_ANZIANO_MIN_GIORNI.
+2.2 L'efficacia. e = curva_eta(anni) per fattore_maturazione(g) per l'efficacia del talento, se c'è, per quella dell'apprendista rapido, se c'è, per FATTORE_ALLENATORE. La curva d'età di Hattrick è 54 / (anni + 37), con CURVA_ETA_NUMERATORE 54 e CURVA_ETA_SPOSTAMENTO 37: 1,17 a 9 anni, 0,87 a 25, 0,81 a 30, 0,62 a 50, 0,48 a 75. FATTORE_ALLENATORE vale 1: è l'aggancio dell'allenatore di una tappa futura, che oggi non esiste. L'efficacia è quella del momento in cui si spende: chi aspetta un mese vero a spendere, cioè quasi un anno d'età, perde circa l'1,2 per cento.
+2.3 I tetti restano quelli di oggi. L'allenata arriva al massimo a MAX_ALLENATO_FISICO, 5, per precisione, resistenza e forza, e a MAX_ALLENATO_SKILL, 20, per le altre; il totale a MAX_TOTALE_PRECISIONE_RESISTENZA 10 e MAX_TOTALE_SKILL_GIOCO 40. Il punto 2.2 del piano li mette fra le cose buone da salvare, e D31 chiama traguardo lungo proprio i cinque punti di precisione allenata; il motore non è mai stato provato oltre l'80 per cento del tetto. Il costo usa comunque x sul tetto del totale, come il motore. Con il ritmo consigliato i tetti si toccano soltanto spendendo tutto su una caratteristica: la carriera perfetta, che spende in modo completo, a 50 anni ha le caratteristiche attorno al 35 per cento del tetto. _rispetta_tetti, _applica_parametri e strumenti/popolazione_di_prova.allena restano come sono, e così tests/test_strumenti_taratura.py. Se Gabriele vuole togliere i tetti dell'allenata è la domanda 6.
+2.4 Il calo dei livelli alti e il declino. allenamento.mantenimento_del_mese(g, giorni) si chiama al primo del mese su tutti i giocatori vivi, con i giorni del mese appena finito. Ogni caratteristica con x sopra SOGLIA_CALO_LIVELLI_ALTI, 0,7, cioè dal sovrannaturale in su come la DropL di Hattrick, perde dall'allenata CALO_MASSIMO_ANNUO per ((x meno 0,7) / 0,3) al cubo per T per giorni / 108, con CALO_MASSIMO_ANNUO 0,05: a 36 su 40 sono 0,59 punti per anno d'età, sotto 0,7 niente. Come in Hattrick si applica sempre, e chi continua ad allenarsi lo recupera. Con i tetti di oggi lo tocca soltanto chi è nato molto dotato in una caratteristica, e ferma lo specialista puro che spende tutto lì. Dai 50 anni resta il declino di oggi, _applica_declino_aggregato, che ora parte da tratti.eta_inizio_declino(g): 50 anni, 44 per la maturazione precoce, 56 per la tardiva.
+2.5 I tre tratti rari e l'ambizione, nel modulo nuovo tratti.py, che dipende soltanto da costanti.py e serve sia a modelli.py, per il declino, sia ad allenamento.py, per l'efficacia: così modelli non importa allenamento e non nasce un import circolare. tratti_innati(id) usa un generatore tutto suo, random.Random col seme MESS-tratti seguito dal numero del giocatore, come temperamento_innato: il caso del mondo non si tocca, e la migrazione dà ai giocatori di oggi gli stessi tratti che avrebbero avuto alla nascita.
+- Il talento: il 5 per cento dei nati, efficacia per 1,3.
+- L'apprendista rapido: il 4 per cento, efficacia per 1,5; dimentica in fretta: in mantenimento_del_mese ogni allenata si moltiplica per 0,98 al mese, circa il 7 per cento per anno d'età.
+- La maturazione: precoce col 4 per cento, tardiva col 4 per cento, che si escludono. fattore_maturazione = 1 + M per clamp((30 meno anni) / 10, meno 1, 1), con M 0,3 per la precoce e meno 0,25 per la tardiva: il precoce impara 1,3 volte da ragazzo e 0,7 da anziano e declina dai 44 anni; il tardivo impara 0,75 volte da ragazzo e 1,25 da anziano e declina dai 56.
+Le costanti stanno in una tabella sola, TRATTI_ALLENAMENTO, con probabilità ed effetto di ciascun tratto, più ETA_PERNO_MATURAZIONE 30, ANNI_RAMPA_MATURAZIONE 10 e SPOSTAMENTO_DECLINO, meno 6 per la precoce e 6 per la tardiva.
+In tratti.py nasce anche ambizione_innata(id), col suo generatore: una gaussiana attorno a 50, deviazione 18, da 0 a 100, con un decimale, come il temperamento. Serve alla durata dei contratti e al rinnovo (punto 4), e la scheda la dice a parole con FASCE_AMBIZIONE: modesto sotto 30, poco ambizioso fino a 45, ambizioso fino a 60, molto ambizioso fino a 75, ambiziosissimo oltre.
+2.6 L'intensità per tesserato. Il campo intensita vale leggera, normale o intensa, e la predefinita è normale. I tre effetti stanno in una tabella sola, INTENSITA, una riga per intensità:
+- punti della seduta: 0,6, 1,0, 1,4;
+- infortuni in partita: dopo una partita la probabilità di infortuni.probabilita si moltiplica per 0,85, 1,0 o 1,25, sopra il fattore di carico di D26, che resta fra 0,7 e 1,5;
+- infortuni in seduta: soltanto l'intensa ne ha, lo 0,3 per cento al giorno, per 1 + max(0, anni meno 30) / 45 per 2, e per FATTORE_INFORTUNIO_AMBIDESTRO per l'ambidestro.
+Il rischio in seduta lo tira una funzione nuova, infortuni.infortunio_in_seduta(mondo, g, data), con un generatore che nasce dalla data e dal numero del giocatore, come quelli delle partite nascono dal seme: il caso del mondo non si tocca. Sede e durata vengono da estrai_sede e durata. Siccome l'intensa la sceglie soltanto l'utente per i suoi tesserati, mentre liberi e computer stanno sempre a normale, ogni giorno si tirano pochi numeri e i diari del mondo non si gonfiano. La voce di diario: «Si infortuna in allenamento alla caviglia: resterà ferma fino al 3 marzo 2028». Con questi numeri l'intensa rende ai giovani circa il 5 per cento di punti in più, tolti i giorni d'infortunio, e non conviene agli anziani.
+Chi entra in una polisportiva, o ne esce, riparte da normale. Se l'intensità cambi anche la costanza è la domanda 7: qui scrivo la soluzione che consiglio, cioè no, come dice D31, che le dà due soli effetti.
+3. LE INDOLI, IL MODELLO DI SPESA E IL PROGRAMMA
+3.1 Le indoli. In costanti.py INDOLI prende il posto di ARCHETIPI_ALLENAMENTO: per ogni chiave il nome da leggere nella scheda, le caratteristiche principali e le secondarie, coi nomi senza suffisso.
+- aggressiva, che era AttaccantePuro: principali lungolinea, diagonali, bomba e attacco; secondarie le sponde e la forza.
+- difensiva, che era DifensoreRoccioso: principali chiusure, blocchi e difesa; secondarie controllo palla, tenuta paletta e resistenza.
+- atletica, che era MuroFisico: principali precisione, resistenza e forza; secondarie difesa e chiusure.
+- muro, che si legge da muro ed era SpecialistaBlocchiDifesa: principali blocchi e difesa; secondarie chiusure e tenuta paletta.
+- rimessa, che si legge di rimessa ed era SpecialistaBlocchiAttacco: principali blocchi e attacco; secondarie diagonali e controllo palla.
+- controllo, che si legge di controllo ed era SpecialistaBlocchiControllo: principali controllo palla e tenuta paletta; secondarie blocchi e difesa.
+- battuta, che si legge da battuta ed era SpecialistaBattutaBlocco: principali le due battute; secondarie blocchi e precisione.
+- tecnica, che era CecchinoPreciso: principali sponde e lungolinea; secondarie controllo palla e tenuta paletta.
+- completa, che era TuttofareBilanciato: nessuna preferenza.
+MAPPA_ARCHETIPI_INDOLI porta i nove vecchi nomi nelle chiavi nuove; Non Definito e i nomi sconosciuti vanno a completa. Il difetto delle chiavi delle strategie sparisce, perché le strategie di spesa non esistono più.
+3.2 La nascita. Giocatore._assegna_indole sostituisce _assegna_archetipo_iniziale e _determina_archetipo_da_base. Per ogni indole il punteggio è standardizzato: la media dell'innata relativa, base / T, sulle principali, meno la media su tutte le 24, diviso radice di (1 / n meno 1 / 24), dove n è il numero delle principali. È la deviazione attesa di quella differenza: senza questa divisione le indoli con due principali vincevano solo perché la media di due numeri varia molto più di quella di otto. Si sceglie l'indole col punteggio più alto se supera SOGLIA_INDOLE, 0,07, altrimenti completa. Misurato su 40.000 nati: di controllo 13,3 per cento, atletica 13,2, tecnica 13,2, da battuta 13,2, aggressiva 12,1, difensiva 9,7, completa 9,3, di rimessa 8,8, da muro 7,2; con la formula della bozza erano da battuta 20,2 e difensiva 4,7. Le tre indoli che si dividono blocchi e difesa restano un po' più rare, perché si contendono gli stessi nati. Resta il tiro del caso di oggi, un caso(PROB_INDOLE_CASUALE) del 10 per cento e poi random.choice fra le nove, così il flusso del caso alla nascita resta quasi sempre quello di prima.
+Campi nuovi: indole, che non cambia mai, e programma, che parte uguale all'indole.
+3.3 Il modello di spesa, uno per tutti. allenamento.preferenze(chiave) dà PREFERENZA_PRINCIPALE 2,0 alle principali, PREFERENZA_SECONDARIA 1,4 alle secondarie e 1,0 alle altre. Con K 2,5 la preferenza 2 tiene le principali 0,28 di livello relativo sopra le altre e la 1,4 le secondarie 0,13: lo specialista resta specialista ma rinforza anche il resto. La bozza diceva 3,0 e 1,7, cioè 0,44 di distacco: per quasi tutta la carriera si sarebbero allenate soltanto le principali.
+allena_secondo_programma(g, data=None, programma=None) spende tutto il portafoglio con un riempimento a livello in forma chiusa, senza pezzi e senza bisezioni.
+- Il punteggio di una caratteristica è la preferenza per exp(meno K per x) / s: quanta somma pesata rende il prossimo punto speso lì, pesata con la preferenza.
+- Per un livello d'acqua λ, ogni caratteristica che ha un punteggio più alto di λ sale fino al livello che lo pareggia, x(λ) = ln(preferenza / (s per λ)) / K; allora exp(K per x) vale preferenza / (s per λ), e il costo totale è la somma dei coefficienti C0 per p per s per T / (e per K), per (preferenza / (s per λ) meno exp(K per x di partenza)): in linea retta in 1 / λ finché l'insieme delle caratteristiche che salgono non cambia.
+- Si ordinano le caratteristiche per punteggio di partenza, si aggiungono all'insieme una alla volta finché il portafoglio basta, e l'ultimo tratto si risolve con una divisione. Una caratteristica che toccherebbe il suo tetto si ferma lì, esce dall'insieme, e il conto si rifà sulle altre.
+- Restituisce l'elenco delle Spesa e, con la data, scrive nel diario una voce sola (punto 10.2).
+Le caratteristiche alla pari salgono insieme, quindi non c'è più il blocco della bozza, dove dopo il primo pezzo le due migliori erano pari e il pezzo seguente non spostava niente. Una spesa costa qualche decina di microsecondi. Con completa la spesa porta tutto allo stesso livello relativo, salvo il piccolo vantaggio delle caratteristiche di gioco degli ipovedenti: è anche la spesa che rende più valore, e la usa la carriera perfetta. Nelle prove la spesa a mano e quella del programma usano gli stessi integrali.
+3.4 Chi usa il modello.
+- I liberi e i tesserati del computer, in _allenamento_del_giorno, quando il portafoglio arriva a SOGLIA_SPESA_AUTONOMI, 20 punti: la spesa si sparpaglia nei giorni. Il loro programma è sempre l'indole, e la spesa non va nel diario, perché quindicimila giocatori con una voce ogni venti giorni gonfierebbero il salvataggio. rapporto alla chiave autoallenati conta chi ha speso.
+- L'utente, con Spendi, Esegui allenamento completo e Allena tutti nella sala. I suoi tesserati non spendono da soli: lo decide lui con i pulsanti di D31, e aspettare costa pochissimo (punto 2.2).
+- Il programma dei tesserati dell'utente si sceglie nella sala, un'indole qualunque fra le nove. Chi arriva nuovo, cioè chi passa per Mondo._entra, riparte dalla sua indole; chi esce, cioè chi passa per Mondo._lascia, ci torna.
+3.5 La scheda e i testi. testi.tendenza diventa testi.indole(g), con i nomi come da muro o di rimessa; la Classifica di tendenza diventa Classifica d'indole, per esempio «Classifica d'indole (difensiva)». NOMI_ARCHETIPI esce da testi.py, perché i nomi stanno in INDOLI.
+4. I CONTRATTI
+4.1 I campi nuovi del giocatore:
+- contratto_stipendio, intero: 0 per chi non ha contratto;
+- contratto_scadenza, data o nulla, sempre un primo del mese;
+- rinnovo_stipendio, intero, 0 se non c'è un rinnovo concordato, e rinnovo_scadenza, data o nulla: il contratto rinnovato, che parte alla scadenza di quello in corso;
+- proposte_rinnovo, intero da 0 a 3, le proposte fatte nella finestra in corso;
+- ultima_trattativa, data o nulla.
+Il libero ha tutto a zero e a nulla; il tesserato ha stipendio e scadenza.
+4.2 contratti.py, il modulo nuovo, fatto di funzioni pure come economia.py.
+- durata_proposta(g): i mesi che il giocatore propone. È base(età) per fattore_ambizione(g), arrotondata al mese e tenuta fra MESI_CONTRATTO_MIN 4 e MESI_CONTRATTO_MAX 24. base interpola DURATA_PER_ETA: 9 anni 8 mesi, 25 anni 10, 35 anni 13, 45 anni 16, 55 anni 20, 65 anni 24. fattore_ambizione = 1 + 0,4 per (50 meno ambizione) / 50, da 1,4 per il più modesto a 0,6 per il più ambizioso. Il giovane propone contratti brevi, perché migliora in fretta e vuole ritrattare presto lo stipendio; l'anziano li vuole lunghi, per stare tranquillo; l'ambizioso li accorcia, il modesto li allunga. Età e ambizione così non si annullano più, perché l'ambizione non dipende dall'età né dal valore. Con ambizione media: 20 anni 9 mesi, cioè 2,5 anni d'età e 3 mesi veri; 30 anni 12; 40 anni 15; 50 anni 18. La scala e il verso sono la domanda 3.
+- inizio(data): oggi se è il primo del mese, altrimenti il primo del mese seguente.
+- scadenza_dopo(data, mesi): inizio più i mesi, sempre un primo del mese.
+- mesi_di_calendario(da, a) e mesi_al_termine(g, oggi), in mesi frazionari, cioè i giorni diviso 30,44.
+- in_finestra(g, oggi): vero se i mesi di calendario fino alla scadenza sono MESI_FINESTRA_RINNOVO, 3, o meno; chi scade il primo di marzo si rinnova dal primo di dicembre. inizio_finestra(g).
+- stipula(g, data, stipendio, mesi), che scrive stipendio e scadenza e azzera rinnovo, proposte e trattativa. Si chiama stipula e non firma, per non confonderla con la firma dei salvataggi di archivio.
+- La richiesta di rinnovo, spezzata in funzioni con un nome e una docstring ciascuna: fattore_gloria_rinnovo(g, poli) è economia.fattore_reputazione(g, poli), che va da 0,5 a 2, elevato a 0,25 + 0,5 per ambizione / 100: il modesto guarda poco la gloria del club, l'ambizioso molto, e con ambizione media il fattore va da 0,71 a 1,41; fattore_fedelta_rinnovo(g) = 1 meno 0,25 per fedeltà / 100, fino a un quarto in meno; fattore_durata_rinnovo(g, mesi) = 1 + RINCARO_DURATA_RINNOVO per i mesi di differenza dalla durata proposta, con 0,02, cioè il 2 per cento al mese; richiesta_rinnovo(g, poli, mesi) è economia.stipendio(g) per i tre fattori, arrotondata alla decina. Sono le tre cose di D31: la gloria della polisportiva, la fedeltà, l'offerta con stipendio e durata.
+- probabilita_rinnovo(g, poli, stipendio, mesi) è probabilita_accettazione(stipendio, richiesta), la stessa curva dell'ingaggio, dal 3 al 97 per cento fra il 30 per cento sotto e il 30 per cento sopra; una bandiera attiva accetta al 97, perché gioca anche senza stipendio, D22.
+- buonuscita(g, oggi), al punto 4.9.
+Le costanti stanno in costanti.py.
+4.3 La firma. Mondo._entra(poli, g) firma sempre, ed è il solo punto da cui si firma: stipendio economia.stipendio(g) di quel momento, scadenza scadenza_dopo(oggi, durata_proposta(g)), programma uguale all'indole, intensità normale. Ci passano tutti i modi di entrare in una polisportiva: l'ingaggio dell'utente, Mondo.offerta, attraverso _tessera; le mosse del computer, _esegui_logica_cpu_polisportive e _scambio; l'acquisto, _vendi, sia con acquista sia con offerta_d_acquisto sia con _compra_dal_mercato. Comprare vuol dire firmare un contratto nuovo col compratore, come nel calcio.
+Mondo._lascia azzera contratto, rinnovo, proposte e trattativa, e riporta programma e intensità. Mondo._uscita, cioè la morte e l'uscita prematura, che oggi non passa da _lascia, azzera anche lei i campi del contratto, così sul morto non resta niente. Il ritiro passa già da _lascia.
+4.4 Lo stipendio fisso. Ai conti del primo del mese ogni tesserato riceve il suo contratto_stipendio, non economia.stipendio(g): chi migliora allenandosi non costa di più finché il contratto dura. Una funzione nuova, economia.stipendio_pagato(g), vale contratto_stipendio se è maggiore di zero, altrimenti stipendio(g). La usano:
+- Mondo.monte_stipendi e i conti di _primo_del_mese;
+- gli arretrati, economia.pazienza_per_euro e quindi mesi_rimasti;
+- _scambio e _compra_dal_mercato, dove dal monte si toglie lo stipendio pagato del tesserato che si lascia andare;
+- _vende_il_piu_caro, la scheda della polisportiva, tesserati_attiva, riga_arretrati e riga_vendita.
+I nuovi arrivi usano stipendio(g), quello che chiederebbero firmando oggi: la vetrina dei liberi, _stipendio_massimo, i candidati del mercato.
+4.5 Il rinnovo dell'utente, a trattativa. Due metodi nuovi in Mondo.
+problema_rinnovo(poli, g, stipendio=None, mesi=None) restituisce il motivo, oppure None:
+- non è tesserato con te;
+- c'è già un rinnovo concordato, e dice fino a quando;
+- non è ancora nella finestra, e dice da quando si può;
+- ha già rifiutato tre proposte in questa finestra e non tratta più (la regola della domanda 2);
+- oggi gli hai già fatto una proposta: ultima_trattativa è la data di oggi;
+- lo stipendio è sotto STIPENDIO_MINIMO;
+- i mesi stanno fuori da 4 a 24.
+rinnova(poli, g, stipendio, mesi) restituisce (accettato, probabilita, richiesta).
+- Se accetta: rinnovo_stipendio diventa lo stipendio offerto e rinnovo_scadenza diventa scadenza_dopo(contratto_scadenza, mesi). Il contratto nuovo parte alla scadenza del vecchio, con lo stipendio nuovo da lì: rinnovare il primo o l'ultimo giorno della finestra costa lo stesso, all'utente come al computer. I due diari lo annotano.
+- Se rifiuta: l'esito dice quanto chiede, «per firmare vorrebbe circa 310 euro al mese per 12 mesi», arrotondato alla decina, e quante proposte restano. Dopo il terzo rifiuto il giocatore non tratta più, e i diari lo dicono: «Non vuole più trattare: il contratto con X finirà il 1 marzo 2028».
+- In tutti e due i casi ultima_trattativa diventa oggi e proposte_rinnovo sale di uno. Il rinnovo non costa mosse di mercato.
+Con tre proposte, offrendo il minimo il giocatore accetta nell'8,7 per cento dei casi, con tre quarti della richiesta nel 29, con la richiesta nell'87,5, con il 15 per cento in più nel 98,2. Senza limite, una proposta al giorno per i 90 giorni della finestra, anche il minimo passava nel 93,5 per cento dei casi, e la trattativa non contava niente.
+4.6 Le scadenze e il computer. Il metodo nuovo Mondo._contratti_del_mese(data, rapporto) si chiama in _primo_del_mese dopo gli stipendi, perché il mese appena finito si paga anche a chi scade quel giorno. Per ogni polisportiva e ogni tesserato:
+- se contratto_scadenza è oggi o prima e c'è un rinnovo concordato, il contratto rinnovato prende il posto del vecchio, con stipendio e scadenza nuovi e le proposte a zero;
+- se scade senza rinnovo, _scade(poli, g, data, rapporto): _lascia, e il diario scrive «Il contratto con X è scaduto: torna libero». Nessuno incassa niente. Conta rapporto alla chiave contratti_scaduti e, per l'utente, tuoi_scaduti;
+- per le polisportive del computer, se il tesserato è nella finestra senza rinnovo e può ancora trattare, _rinnovo_cpu(poli, g, data, rapporto);
+- per l'utente, nel mese in cui il tesserato entra nella finestra, cioè con i mesi di calendario esattamente 3, e di nuovo quando entra nell'ultimo mese, conta tuoi_in_scadenza, con la voce nei due diari: «Il contratto scade il 1 marzo 2028: da oggi si può rinnovare» e «Ultimo mese di contratto: se non rinnovi, il 1 marzo 2028 torna libero». Così un tesserato dimenticato non se ne va senza un secondo avviso.
+_rinnovo_cpu offre richiesta_rinnovo per RIALZO_RINNOVO_CPU, una costante nuova da 1,15, alla durata che il giocatore propone. RIALZO_CPU resta com'è per i suoi tre usi, l'offerta d'ingaggio, il tetto di prezzo di _compra_dal_mercato e _stipendio_massimo, e non è una leva della taratura. Se il monte stipendi con il nuovo stipendio al posto del vecchio supera lo sponsor più la cassa diviso PARTI_DI_CASSA_PER_STIPENDI, il computer non rinnova: mette il giocatore in vendita al valore di mercato, se non c'è già, e lo lascia scadere. Altrimenti tira caso(probabilità), il 73,5 per cento con quel rialzo. Se accetta conta rinnovi_cpu; se rifiuta riprova il primo del mese dopo, finché la finestra dura: tre tentativi come l'utente. È il computer che rinnova o lascia andare.
+Lo stesso giorno le polisportive del computer riportano il prezzo dei loro tesserati in vendita al valore di mercato del giorno, che con la scadenza scende.
+4.7 Il valore di mercato verso la scadenza.
+- economia.valore_di_mercato_pieno(g) è la formula di oggi, stipendio per MESI_DI_VALORE.
+- economia.valore_di_mercato(g, oggi=None) vale il pieno per fattore_scadenza(g, oggi).
+- fattore_scadenza è 1 per i liberi, per chi ha un rinnovo concordato e per chi ha almeno MESI_VALORE_PIENO, 3, mesi al termine; sotto scende in linea retta fino a VALORE_A_SCADENZA, 0,4, alla scadenza.
+La discesa comincia con la finestra, il giorno in cui il computer prova a rinnovare e ci riesce tre volte su quattro: il valore scende davvero soltanto per chi non ha rinnovato o non si può pagare. È lì che chi è vicino alla scadenza si compra per poco, come nel calcio, senza svendere i giocatori che il computer tiene, come succedeva con la discesa di dodici mesi della bozza. Lo usano, passando la data simulata: soglia_di_vendita, D23, e quindi l'offerta d'acquisto; _compra_dal_mercato, per il tetto di prezzo; _vende_il_piu_caro; mercato.candidati, che prende la data da mondo.datetime_corrente_simulazione; il dialogo Vendite; i testi.
+4.8 Gli stipendi non pagati. _se_ne_va non cambia: la pazienza finita libera il giocatore anche a contratto in corso, D22, e _lascia cancella il contratto.
+4.9 Lo svincolo a contratto in corso, la domanda 4. Consiglio una buonuscita: contratti.buonuscita(g, oggi) è lo stipendio pagato per i mesi al termine, diviso 2, arrotondata alla decina; esce dalla cassa come voce nuova dei conti del mese, buonuscite. Mondo.svincola la paga, e problema_svincolo dice se la cassa non basta. Vale anche per il computer: _scambio e _compra_dal_mercato contano la buonuscita del più debole nella cassa spendibile. Con la buonuscita e con il rincaro del 2 per cento al mese, offrire sempre la durata più lunga per bloccare lo stipendio e poi svincolare non conviene più. Se Gabriele sceglie lo svincolo gratuito, buonuscita vale zero e il resto non cambia.
+4.10 La regola d'abbandono di P8 sparisce. In cli.allenamento_giocatori_tesserati si tolgono il blocco prob_esc e la lista dei lasciati.
+5. L'ECONOMIA
+economia.stipendio(g) non cambia nella formula: è quello che il giocatore chiede, e nel contratto resta fisso.
+Lo sponsor diventa sponsor_mensile(poli, rosa) = SPONSOR_PER_GLORIA per la gloria + QUOTA_SPONSOR_SUL_VALORE per la somma di valore_di_mercato_pieno dei tesserati della rosa, vivi e non ritirati. La rosa la passa chi chiama, con mondo._rosa(poli): niente attributo in più da tenere aggiornato dopo _entra e _lascia, e una polisportiva appena fondata non solleva errori. I chiamanti sono _primo_del_mese, _stipendio_massimo, _compra_dal_mercato, testi.scheda_polisportiva, testi.bilancio e strumenti/simulazione_lunga.misure.
+Valori iniziali, la domanda 5: SPONSOR_PER_GLORIA da 35 a 18 e QUOTA_SPONSOR_SUL_VALORE 0,09 al mese, cioè il 54 per cento dello stipendio richiesto. Nel mondo di oggi, con gloria circa 140 e quindici tesserati da circa 1.740 euro di valore pieno, fanno 2.520 + 2.350, lo sponsor di oggi, circa 4.900. Una polisportiva appena fondata, gloria 60 e rosa vuota, prende 1.080 euro invece di 2.100 finché non tessera: senza tesserati non paga nemmeno stipendi, e il capitale iniziale di 20.000 euro non cambia.
+È il guadagno di chi allena di D31: durante il contratto lo stipendio è fisso e lo sponsor cresce col valore; il conto arriva al rinnovo. La macchina dei soldi, uno sponsor che supera di molto lo stipendio fisso, con il ritmo consigliato e contratti da 4 a 24 mesi non c'è: anche il più rapido a imparare, il ragazzo della carriera perfetta in un contratto di 24 mesi, cioè 6,8 anni d'età, vede salire il suo stipendio richiesto di 3,6 volte, e il suo sponsor arriva a 1,9 volte quello che prende soltanto nell'ultimo mese; con la durata che i ragazzi propongono, 8 o 9 mesi, il rapporto resta sotto 1, e così per i giocatori comuni. Lo scenario dell'utente del punto 12.4 lo verifica.
+_stipendio_massimo del computer resta prudente: non conta lo sponsor che il nuovo tesserato porterà. Gloria, ingaggio e premio d'ingaggio non cambiano.
+I bersagli della taratura, all'anno 10 della simulazione lunga, su quattro semi:
+- il computer tessera dall'88 al 92 per cento dei giocatori in attività;
+- la cassa mediana del computer sta fra 4.500 e 5.500 euro;
+- lo stipendio pagato al decimo percentile dei tesserati sta fra 95 e 115 euro, attorno ai 105 di D31;
+- di controllo, lo stipendio mediano fra 190 e 240.
+Le leve sono SCALA_VALORE_A e B e SPONSOR_PER_GLORIA; la quota sul valore la decide Gabriele. La classe e il costo dell'allenamento non dipendono da A e B.
+Perché l'anno 10 e non il mondo a regime. È l'anno su cui D26 ha tarato la scala, ed è il mondo che Gabriele vivrà nel prossimo anno vero, mentre la tappa 12, che cambia tutte le fonti dei punti, arriverà molto prima che il mondo vada a regime, fra cinque o sei anni veri. Tarare sul regime vorrebbe dire, alla migrazione, abbassare di un quarto gli stipendi di tutti i giocatori di oggi, che sono quasi tutti mai allenati. La deriva dopo l'anno 10 si misura e si controlla con la prova di 60 anni (punto 12.4). Prima stima con C0 50 e la scala tarata all'anno 10: il valore mediano dei giocatori in attività va da 135,5 all'anno 10 a 140,5 all'anno 20, 148 all'anno 40 e circa 150 a regime; lo stipendio mediano dei tesserati da 210 a 250, 330 e 350 euro. La parte dello sponsor legata al valore cresce con loro e ne copre più di metà.
+6. L'ESPERIENZA
+esperienza.py, il modulo nuovo. Le fonti vanno dalla più piccola alla più grande, regola di Gabriele.
+- L'età: ESPERIENZA_PER_ANNO_DI_VITA 0,05, cioè 0,05 / 108 al giorno, per ogni giocatore vivo e non ritirato, anche libero.
+- Le amichevoli: ESPERIENZA_PER_AMICHEVOLE 0,00125 a incontro, alla registrazione.
+- Lo stare in polisportiva: ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA 0,0028 al giorno per fattore_gruppo, che vale 1 + K_GRUPPO_ESPERIENZA per la media dell'esperienza della rosa / 20, con K_GRUPPO_ESPERIENZA 0,2: una rosa con 5 di media dà 1,05. È l'esperienza collettiva del gruppo.
+- I tornei e le sfide, agganci della tappa 12: ESPERIENZA_PER_PARTITA_TORNEO 0,01, ESPERIENZA_PER_SFIDA 0,006 ed ESPERIENZA_PER_PIAZZAMENTO, 0,3 al primo posto, 0,2 al secondo, 0,12 al terzo, 0,06 al quarto.
+Funzioni: del_giorno(g, in_polisportiva, fattore), chiamata in _allenamento_del_giorno; fattore_gruppo(rosa), calcolato una volta al giorno per polisportiva; da_partita(g, tipo), con tipo amichevole, torneo o sfida, chiamata da registra; da_piazzamento(g, posto).
+Il tetto resta ESPERIENZA_MASSIMA 20. ESPERIENZA_PER_MESE se ne va, e _fedelta_ed_esperienza diventa _fedelta; archivio tiene una sua costante storica a 0,1 per la migrazione dal formato 3 al 4.
+La carriera perfetta fa 2,05 con l'età, 4,98 con le amichevoli e 13,0 con la polisportiva: 20 a 50 anni. Lo strumento del punto 12.3 ritocca ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA finché non arriva a 20,0. Il mediano del computer, in polisportiva dai 20 anni, ha 5,5 a 35 anni e 11 a 50; il bravo dell'utente 15 a 50 anni.
+Chi nasce parte da esperienza zero, come oggi: entra nel mondo quando comincia a giocare, e il diario lo dice. È la domanda 8.
+7. LA CLASSE
+classe.py, il modulo nuovo.
+Il punteggio: punteggio(g) = PESO_VALORE_CLASSE 0,7 per somma_classe(g) / SOMMA_CARRIERA_PERFETTA + PESO_ESPERIENZA_CLASSE 0,3 per min(1, esperienza / 20). somma_classe(g) è valore.somma_pesata(g, pesi=PESI_CLASSE) + valore.bonus_tratti(g, PESI_TRATTI_CLASSE): è il valore pesato di D31, calcolato direttamente e non ricavato dall'indice, quindi non dipende dalla scala.
+Le soglie fissate una volta per sempre, come vuole D31. SOMMA_CARRIERA_PERFETTA, PESI_CLASSE e PESI_TRATTI_CLASSE, che sono la copia di PESI_VALORE e PESI_TRATTI alla fine della taratura del motore di questa tappa, e ANCORE_CLASSE sono costanti storiche: le scrive una volta lo strumento del punto 12.3, e poi non si toccano più senza Gabriele. Così una ritaratura futura dei pesi del valore o della scala non sposta la classe di nessuno. Alla tappa 12 non si spostano le soglie: si abbassano le fonti di punti e di esperienza, perché la carriera perfetta con tornei e sfide arrivi alla stessa somma e a 20 di esperienza.
+K0, il minimo di tutto, vale 0; la carriera perfetta a 50 anni vale 1, cioè A1, e chi la supera resta A1. SOGLIE_CLASSE sono 100 valori calcolati all'import per interpolazione lineare fra le ANCORE_CLASSE, coppie di livello e punteggio, con una regola sola:
+- (100, 0): K0;
+- (89, il nato del primo percentile) e (50, il nato del novantanovesimo): I9 e F0, cioè i nati fra le classi I e F di D31;
+- (40, il bravo a 30 anni): E0, il confine con la D, cioè i bravi a metà carriera fra E e D;
+- (1, 1,0): la carriera perfetta, A1; le classi C, B e A restano alle carriere eccellenti.
+Il bravo è il nato al settantacinquesimo percentile del valore, senza tratti rari, in polisportiva dai 15 anni, con un'amichevole ogni due giorni, spesa completa e intensità normale. Il punteggio dei nati si calcola con l'esperienza con cui nascono.
+Prima stima con C0 50: ancore 0,203, 0,402 e 0,543. Dalla I alla F un livello vale 0,0051 di punteggio, circa 2,7 punti di somma pesata; dalla E alla D 0,0141; dalla C alla A 0,0117. I casi, con il valore e lo stipendio della scala tarata all'anno 10:
+- i nati: il decimo percentile I2, la mediana H0, il novantesimo F9, il più forte su 4.000 E8;
+- il mediano del computer, in polisportiva dai 20 anni: a 35 anni E9, valore 153, 320 euro; a 50 anni E1, 169, 550 euro;
+- il libero mediano a 50 anni: G1, 147, 250 euro;
+- il mediano dell'utente, dai 20 anni con un'amichevole ogni due giorni: a 25 anni F6, 154, 300 euro; a 30 E8, 174, 530; a 35 E3, 191, 860; a 40 D9, 206, 1.320;
+- il bravo dell'utente: a 30 anni E0, 216, 1.620 euro; a 40 D1, 247, 3.880; a 50 C1, 272, 7.960;
+- la carriera perfetta: a 20 anni D7, a 30 C4, a 40 B2, a 50 A1, con valore 370 e 99.550 euro.
+In un mondo a regime le lettere sarebbero: C 0,6 per cento, D 11,6, E 42,1, F 23,5, G 14,3, H 6,5, I 1,2, J 0,1. I giocatori attivi salgono di circa un livello al mese vero.
+Le funzioni:
+- soglia(n): il punteggio minimo del livello n; soglia(100) vale 0 e soglia(1) vale 1;
+- livello(punteggio): il più piccolo n con punteggio maggiore o uguale a soglia(n); così 0 è K0 e 1 è A1, e niente resta fuori;
+- codice(n): con decine e unità da divmod(n, 10), la lettera ABCDEFGHIJK delle decine seguita dalle unità: 1 è A1, 10 è B0, 99 è J9, 100 è K0;
+- percentuale_verso_la_seguente(g): (punteggio meno soglia(n)) / (soglia(n meno 1) meno soglia(n)) per 100, troncata; per A1 non c'è;
+- classe(g), che restituisce Classe(codice, livello, percentuale).
+La classe non si salva: si ricava.
+8. LA STANCHEZZA DALLA COSTANZA RECENTE
+Il campo nuovo costanza è un float, la media mobile esponenziale dell'attività di ogni giorno, con una mezza vita di MEZZA_VITA_COSTANZA_GIORNI 21, tre settimane: DECADIMENTO_COSTANZA = 0,5 elevato a 1 / 21.
+In _allenamento_del_giorno: costanza = costanza per il decadimento + (1 meno il decadimento) per l'attività del giorno, che vale COSTANZA_SEDUTA 1,0 per il tesserato in seduta, a qualunque intensità (la soluzione consigliata della domanda 7), COSTANZA_LIBERI 0,5 per il libero e 0 per chi non si allena.
+In registra ogni partita aggiunge (1 meno il decadimento) per COSTANZA_PER_PARTITA 0,7.
+A regime: 1,0 il tesserato, 1,7 con un'amichevole al giorno, 0,5 il libero.
+motore/campo.allenamento(g) diventa costanza_relativa(g) = clamp(costanza / COSTANZA_PIENA, 0, 1), con COSTANZA_PIENA 2,0, al posto di resistenza_allenata / 5. La resistenza allenata conta una volta sola, nella resistenza totale di fattore_resistenza. K_ALLENAMENTO_FATICA resta 0,3, da verificare col banco (punto 12.2). I commenti di motore/campo.py e di motore/taratura.py si aggiornano, e InCampo fotografa la costanza all'inizio dell'incontro, come tutto il resto. La migrazione dà costanza 0: il motore, all'inizio, si comporta come oggi, dove il vecchio fattore valeva quasi sempre 0.
+9. LA SCHEDA
+testi.scheda_giocatore diventa così.
+- Prima riga, con la classe: «[Pat-Bologna] ID: 12 | Mario Rossi | Uomo, 23 anni | Valore: 142,3 | Classe: G4, al 37 per cento verso G3». Per A1 dice «Classe: A1, la più alta».
+- Terza riga: «Fisico: 178 cm e 72 kg | Indole: difensiva | Ambizione: ambizioso | Punti allenamento: 38,5 | Gloria richiesta: 240».
+- Riga nuova dell'allenamento: per i tesserati dell'utente «Allenamento: programma di rimessa, intensità normale, costanza recente regolare»; per gli altri solo la costanza. Quando il programma è l'indole dice «secondo la sua indole». La costanza a parole, con FASCE_COSTANZA su costanza_relativa: ferma, bassa, regolare, alta, altissima.
+- Riga dei tratti: tratti_speciali aggiunge talento, apprendista rapido, maturazione precoce o tardiva, sempre visibili; poi il carattere.
+- Riga dell'economia: «Stipendio: 220 euro al mese, fisso fino al 1 marzo 2028 | Valore di mercato: 900 euro, 1.300 a contratto lungo | Esperienza di carriera: Debole (4,2)». Il valore pieno compare solo quando quello del giorno è sceso.
+- Riga nuova del contratto, per i tesserati: «Contratto con X fino al 1 marzo 2028, si rinnova da dicembre 2027». Nella finestra: «Contratto in scadenza il 1 marzo 2028: oggi chiederebbe 310 euro al mese per 12 mesi; proposte rimaste: 3». Con un rinnovo concordato: «Rinnovato: dal 1 marzo 2028, 310 euro al mese fino al 1 marzo 2029». Per i tesserati del computer nella finestra dice soltanto che il contratto scade.
+- Le caratteristiche restano con l'aggettivo della scala di Hattrick, da Inesistente a Divino, e il numero, come oggi in valore_caratteristica.
+Altri testi:
+- riga_giocatore, le righe delle classifiche, scheda_polisportiva e tesserati_attiva aggiungono «classe G4»; tesserati_attiva dice anche la scadenza del contratto;
+- statistiche aggiunge le classi dei giocatori in attività, quanti per lettera con la percentuale, la mediana e la più alta con il nome, e quanti contratti scadono nel mese;
+- Giocatore.__str__, la scheda dell'interfaccia testuale, sostituisce XP con Punti allenamento e aggiunge classe, indole e contratto.
+10. LA FINESTRA
+10.1 Il menu Polisportive, dopo Paga gli arretrati, ha un gruppo nuovo, prima del separatore:
+- «Sala &allenamento...», Ctrl+Shift+L, comando FinestraPrincipale.sala_allenamento;
+- «Contratti e &rinnovi...», Ctrl+Shift+K, comando FinestraPrincipale.contratti.
+I tasti sono liberi, e nel menu le lettere A e R non si usano. La guida ai comandi li prende dalla tabella voci_menu, quindi da sola.
+10.2 La sala allenamento: gui/dialoghi.SalaAllenamento(_Dialogo), fatta come gli altri dialoghi, con il pannello scorrevole, completa((640, 600)) e adatta_finestra, e i controlli in quest'ordine.
+- In testa uno StaticText: «Pat-Bologna: 12 allenandi, 412,5 punti allenamento da spendere in tutto».
+- «A&llenandi», ListBox a selezione singola con testi.riga_allenando: «Mario Rossi, classe G4, 38,5 punti, programma di rimessa, intensità normale». Per l'infortunato si aggiunge «infortunato fino al 3 marzo, non si allena».
+- «&Caratteristiche», ListBox con le 24 righe di testi.riga_caratteristica_allenamento: «Chiusura sinistra: Buono (14,6), il prossimo punto costa 37 punti allenamento»; al tetto dice «al massimo».
+- «&Punti da spendere», SpinCtrl da 0 alla parte intera del portafoglio.
+- «A&nteprima», un TextCtrl in sola lettura, sul modello del dialogo Aspetto, nell'ordine del Tab subito dopo i punti, con testi.anteprima_allenamento: «Con 120 punti: chiusura sinistra da 14,6 a 15,3, valore da 142,3 a 145,1, classe G4». Si aggiorna a ogni ritocco. Uno StaticText che cambia NVDA non lo legge, e qui non c'è il tic della probabilità che lo compensa nel dialogo Cifra: con il TextCtrl l'anteprima si raggiunge con Tab, e in più la conferma di Spendi la legge da sola.
+- I pulsanti «&Spendi», «&Esegui allenamento completo» e «Allena &tutti».
+- «Pro&gramma», Choice con le nove indoli, applicato subito, con suono.
+- «&Intensità», Choice con leggera, normale e intensa, applicato subito, con suono.
+- I pulsanti «Sche&da», che apre Lettura con la scheda, e «C&hiudi».
+Le lettere L, C, P, N, S, E, T, G, I, D e H sono tutte diverse.
+Il comportamento.
+- Spendi chiede conferma con FinestraPrincipale._domanda, con il no già scelto, e la domanda è l'anteprima stessa: «Spendere 120 punti in chiusura sinistra? Da 14,6 a 15,3, valore da 142,3 a 145,1». Poi chiama allenamento.spendi con la data simulata.
+- Esegui allenamento completo chiama allena_secondo_programma sull'allenando scelto.
+- Allena tutti chiede conferma, con il no già scelto: «Spendere 412,5 punti di 12 allenandi, ciascuno secondo il suo programma?». Poi chiama allena_secondo_programma su tutti quelli che si possono allenare e hanno almeno un punto.
+- Ogni esito arriva in un MessageBox breve, con testi.esito_allenamento: una riga per allenando, «Mario Rossi: 38,5 punti spesi, valore da 142,3 a 145,1, classe G4», e «sale alla classe G3» quando sale, nel qual caso il diario annota anche la classe nuova. Con Allena tutti sono al massimo 15 righe; il dettaglio caratteristica per caratteristica va nel riepilogo che la vista principale mostra alla chiusura, dove si legge con calma. Poi elenchi e controlli si aggiornano, tenendo il posto, e il fuoco torna dov'era.
+- Gli avvisi passano da avvisa, ciascuno col suo suono: niente punti da spendere o cifra zero, caratteristica al massimo, allenando infortunato.
+- Il diario ha una voce sola per spesa, con la funzione nuova annota_spesa di modelli.py: «Si allena con 120 punti allenamento: chiusura sinistra da 14,6 a 15,3, difesa da 10,2 a 10,4; valore da 142,3 a 145,1». Una spesa completa elenca le caratteristiche salite di almeno un decimo e dice quante altre sono salite di meno. Le spese a mano consecutive sulla stessa caratteristica, nello stesso giorno, si fondono come oggi.
+- Il dialogo tiene negli esiti le righe di ogni spesa. Alla chiusura la finestra mostra testi.riepilogo_sala e salva con _concludi, con il suono lavoro_concluso, salvando soltanto se qualcosa è cambiato, compresi programma e intensità.
+- Senza tesserati la vista dice «X non ha tesserati da allenare», con l'evento rosa_vuota di oggi.
+10.3 Contratti e rinnovi: gui/dialoghi.Contratti(_Dialogo), con lo stesso impianto.
+- In testa uno StaticText con la cassa, lo sponsor e il monte stipendi.
+- «&Tesserati», ListBox con testi.riga_contratto: «Mario Rossi, 220 euro al mese fino al 1 marzo 2028, rinnovabile da dicembre», oppure «in scadenza: chiede 310 euro al mese per 12 mesi, proposte rimaste 3», oppure «rinnovato dal 1 marzo 2028», oppure «non tratta più: libero dal 1 marzo 2028».
+- «&Stipendio offerto, in euro al mese», SpinCtrl che parte dalla richiesta.
+- «&Durata, in mesi», SpinCtrl da 4 a 24 che parte dalla durata proposta.
+- «Es&ito previsto», TextCtrl in sola lettura: «Accetterebbe al 64 per cento. Per 12 mesi chiede 310 euro. Il contratto nuovo partirebbe il 1 marzo 2028.» A ogni ritocco di stipendio o durata, quando ci si ferma, suona_fra_poco fa sentire l'evento probabilita_rinnovo all'altezza di suoni.probabilita_in_semitoni, come il tic dell'ingaggio.
+- I pulsanti «Pro&poni il rinnovo», «S&cheda» e «C&hiudi».
+Le lettere T, S, D, I, P, C e H sono tutte diverse.
+Proponi controlla mondo.problema_rinnovo e, secondo il motivo, avvisa con il suo suono: fuori finestra, già proposto oggi, proposte finite, già rinnovato. Altrimenti chiede conferma con testi.domanda_rinnovo, chiama mondo.rinnova, fa suonare rinnovo_accettato, rinnovo_rifiutato oppure, al terzo rifiuto, rinnovo_chiuso, e mostra testi.esito_rinnovo in un MessageBox. Alla chiusura la vista mostra testi.riepilogo_contratti e salva.
+10.4 Lo svincolo, la proposta all'ingaggio e il mercato.
+- La conferma dello svincolo dice la buonuscita: «Svincolare Mario Rossi? Gli restano 10 mesi di contratto: la buonuscita è di 1.100 euro». Se la cassa non basta, avviso con il suono cassa_insufficiente, lo stesso evento degli arretrati.
+- La spiegazione del dialogo Cifra dell'ingaggio, in Mercato._ingaggio, comincia con testi.proposta_di_contratto(g, mondo): «Propone un contratto di 12 mesi, fino al 1 agosto 2027, a 220 euro al mese fissi.» Poi c'è la richiesta d'ingaggio. La conferma, testi.domanda_ingaggio, la ripete. Accettare l'offerta vuol dire accettare la proposta, annullare vuol dire rifiutarla: è l'accetta o no di D31.
+- domanda_acquisto e domanda_offerta_d_acquisto aggiungono «firmerà con Pat-Bologna per 12 mesi a 220 euro al mese».
+- riga_mercato dice per i tesserati «contratto fino ad agosto 2027», e il costo del tesserato del computer è il valore di mercato del giorno.
+- Il dialogo Vendite parte dal valore di mercato del giorno.
+10.5 Le notizie dell'avanzamento.
+CHIAVI_RAPPORTO aggiunge contratti_scaduti, rinnovi_cpu, tuoi_scaduti, tuoi_in_scadenza e tuoi_infortunati_in_seduta.
+suoni.evento_avanzamento le mette in quest'ordine: tuoi_partiti, tuoi_scaduti, tuoi_non_pagati, tuoi_venduti, tuoi_usciti, tuoi_infortunati_in_seduta, tuoi_ritirati, tuoi_in_scadenza, tue_bandiere, poi il primo del mese.
+I testi della barra, tutti entro i 40 caratteri:
+- «1 tesserato libero a fine contratto» o «3 tesserati liberi a fine contratto»;
+- «2 contratti in scadenza, rinnovali»;
+- «tuo tesserato infortunato in seduta» o «3 tuoi tesserati infortunati in seduta».
+testi._fatti_avanzamento aggiunge le frasi: «2 tuoi contratti stanno per scadere: si rinnovano con Ctrl+Maiusc+K» e «Le polisportive del computer hanno rinnovato 14 contratti e ne hanno lasciati scadere 3».
+10.6 I suoni nuovi, uno per evento, D24. Ogni evento ha la sua azione in AZIONI. Prima si cercano nella collezione i preset non usati, da firmare con «Usato da: mess.»; quelli che mancano si fanno nuovi, con il prefisso mess_ e una descrizione dettagliata. Niente onde quadre e niente doppioni, esiti diversi riconoscibili a orecchio, brevi e poco invasivi quelli frequenti. Si fanno con Acu_Maker senza mai suonarli sulle casse, e vanno in un commit a parte di GBUtils: Acu_Collection.json e la V204 nell'intestazione e in VERSION di GBUtils.py e in E:\git\mine\projects.json.
+Gruppo «Allenamento, la sala»:
+- dialogo_sala_allenamento, mess_sala_allenamento;
+- allenamento_fatto, mess_allenamento_fatto;
+- allenamento_completo, mess_allenamento_completo;
+- allenati_tutti, mess_allenati_tutti;
+- classe_salita, mess_classe_salita, in coda dopo l'esito quando qualcuno sale;
+- punti_insufficienti, mess_portafoglio_vuoto;
+- caratteristica_al_massimo, mess_al_massimo;
+- allenando_infortunato, mess_allenando_fermo;
+- programma_cambiato, mess_programma_cambiato;
+- intensita_cambiata, mess_intensita_cambiata.
+Gruppo «Contratti, i rinnovi»:
+- dialogo_contratti, mess_contratti_aperti;
+- probabilita_rinnovo, mess_probabilita_rinnovo, diverso da quello della probabilità d'ingaggio;
+- rinnovo_accettato, mess_rinnovo_firmato;
+- rinnovo_rifiutato, mess_rinnovo_rifiutato;
+- rinnovo_chiuso, mess_rinnovo_chiuso, il terzo rifiuto, che deve suonare più definitivo del rifiuto semplice;
+- rinnovo_fuori_finestra, mess_rinnovo_non_ancora;
+- rinnovo_gia_proposto_oggi, mess_rinnovo_domani;
+- rinnovo_senza_proposte, mess_rinnovo_niente_da_fare;
+- rinnovo_gia_concordato, mess_rinnovo_gia_fatto.
+Gruppo «Contratti e allenamento, le notizie»:
+- tuoi_contratti_in_scadenza, mess_contratti_in_scadenza, per i due avvisi, all'ingresso nella finestra e all'ultimo mese;
+- tuoi_contratti_scaduti, mess_contratto_scaduto, diverso da mess_contratto_strappato dello svincolo;
+- tuo_tesserato_infortunato_in_seduta, mess_infortunio_in_allenamento.
+Le conferme di Spendi, di Allena tutti, del rinnovo e dello svincolo usano l'evento domanda di oggi. suoni_di_mess.txt si rigenera con strumenti/elenco_suoni.py.
+10.7 La guida. testi.guida aggiunge tre paragrafi.
+- LEGENDA_CLASSE: la scala da K0, livello 100, ad A1, livello 1; la lettera al posto delle decine; il 70 per cento al valore pesato e il 30 all'esperienza; la percentuale verso la classe seguente; le soglie fisse.
+- LEGENDA_ALLENAMENTO: da dove vengono i punti; che ogni punto compra lo stesso valore a parità di livello, quindi la precisione sale piano e le sponde in fretta; il programma e l'intensità.
+- LEGENDA_CONTRATTI: la durata proposta dal giocatore, lo stipendio fisso, la finestra degli ultimi tre mesi, le tre proposte, il contratto nuovo che parte alla scadenza, la buonuscita, il valore che scende nella finestra; e le equivalenze: un mese sono 10 giorni veri.
+La riga 57 del piano la corregge ClaudIA alla chiusura.
+11. IL SALVATAGGIO E L'INTERFACCIA TESTUALE
+11.1 Il formato 6, archivio.FORMATO = 6. In CAMPI_GIOCATORE:
+- puntiesperienza lascia il posto a punti_allenamento, float;
+- archetipo_allenamento lascia il posto a indole, stringa;
+- si aggiungono programma (stringa), intensita (stringa), talento (vero o falso), apprendista_rapido (vero o falso), maturazione (testo o nulla), ambizione (float), costanza (float), contratto_stipendio (intero), contratto_scadenza (data o nulla), rinnovo_stipendio (intero), rinnovo_scadenza (data o nulla), proposte_rinnovo (intero) e ultima_trattativa (data o nulla).
+Giocatore.da_dizionario controlla: indole e programma stanno in INDOLI; intensita sta in INTENSITA; maturazione è nulla, precoce o tardiva; ambizione fra 0 e 100; costanza, stipendi e proposte non negativi, proposte al massimo 3.
+La coerenza fra contratto e appartenenza la controlla archivio.costruisci, dopo aver costruito giocatori e polisportive e prima di toccare il mondo, come per ogni altro dato: un tesserato ha contratto_stipendio maggiore di zero e una scadenza al primo del mese; un libero non ha né contratto né rinnovo; un rinnovo ha stipendio e scadenza insieme; un'intensità diversa da normale l'ha soltanto un tesserato dell'utente. Altrimenti ErroreSalvataggio, con il ripiego sulla copia di sempre. Il salvataggio non si ripara mai in silenzio: un difetto futuro, per esempio una via d'ingresso della tappa 12 che si dimentica di firmare, si vede subito. Polisportiva non cambia campi.
+11.2 La migrazione _dal_formato_5, registrata in MIGRAZIONI alla chiave 5, è l'unico posto in cui i contratti si danno d'ufficio. Per ogni giocatore:
+- punti_allenamento è il vecchio puntiesperienza, in float;
+- indole viene da MAPPA_ARCHETIPI_INDOLI su archetipo_allenamento, che si toglie; programma è uguale all'indole, intensita è normale;
+- talento, apprendista_rapido, maturazione e ambizione vengono da tratti.py, dal numero del giocatore;
+- costanza è 0;
+- i tesserati ricevono un contratto con lo stipendio che hanno, alla lettera di D31: lo stipendio si calcola su una vista leggera del dizionario, un types.SimpleNamespace, con valore.indice ed economia.stipendio, usando i pesi e la scala della versione 1.50.0, che archivio conserva come costanti storiche, PESI_VALORE_FORMATO_5, PESI_TRATTI_FORMATO_5, SCALA_A_FORMATO_5 e SCALA_B_FORMATO_5, accanto a ESPERIENZA_PER_MESE storica. Così la taratura di questa tappa, che sposta la scala, non cambia lo stipendio a nessuno fino al rinnovo. La scadenza è scadenza_dopo(data simulata, max(MESI_MINIMI_MIGRAZIONE 12, durata_proposta)), per non far scadere tutti nei primi mesi;
+- i liberi hanno 0 e nulla; rinnovo, proposte e trattativa sono vuoti.
+L'esperienza resta quella che hanno. La firma del salvataggio si verifica prima della migrazione, come oggi. archivio importa contratti, economia, valore e tratti, che nascono nello stesso commit della migrazione.
+11.3 L'interfaccia testuale, cli.py, cambia il minimo.
+- Il comando AGT lascia MENU_ALLENAMENTO e aggiunge la voce asterisco, allenamento completo secondo il programma. Per una caratteristica mostra il totale, il tetto e il costo del prossimo punto, chiede i punti con dgt, mostra l'anteprima, conferma con key e chiama allenamento.spendi.
+- Il blocco di P8 si toglie.
+- _tessera_giocatore stampa la proposta di contratto prima dell'ingaggio; lo svincolo dice la buonuscita.
+- visualizza_classifica_giocatori mostra l'indole al posto dell'archetipo.
+- Le intestazioni e i messaggi dicono punti allenamento.
+12. LA TARATURA E LE PROVE
+12.1 L'ordine, perché ogni passo dipende dal precedente: prima il motore e i pesi del valore, che entrano nel costo, nella somma della carriera perfetta e nella classe; poi il ritmo scelto da Gabriele, la carriera perfetta e la classe, che si congelano; per ultima l'economia, che dipende dal valore e dal ritmo.
+12.2 Il motore.
+- strumenti/popolazione_di_prova.py dà a tutti una costanza uniforme fra 0 e 2; i tetti dell'allenata restano, quindi la distribuzione su cui si fa la regressione non si sposta.
+- strumenti/taratura_valore.py aggiunge la costanza fra i regressori di controllo, accanto a temperamento, lettura ed età, e rimisura a coppie la resistenza, che ora conta una volta sola: il suo peso nel valore può scendere un poco.
+- strumenti/banco_partite.py ricontrolla le bande della stanchezza di D25 e D26: il giovane più resistente al quinto set intorno al 95 per cento, l'anziano poco resistente intorno al 65. Se escono dalle bande si tocca K_ALLENAMENTO_FATICA.
+- Alla fine PESI_VALORE e PESI_TRATTI, eventualmente ritoccati, si copiano in PESI_CLASSE e PESI_TRATTI_CLASSE.
+12.3 La carriera perfetta e i mondi sintetici: strumenti/carriera_perfetta.py, nuovo, che usa le funzioni vere di allenamento.py, tratti.py ed esperienza.py, non scrive nel progetto e alla fine stampa il blocco da copiare in costanti.py.
+- La carriera di riferimento: il nato al novantesimo percentile del valore, senza tratti rari, scelto da 4.000 nati col seme 11. Entra a 9 anni ed esce a 50, 4428 giorni simulati, sempre in polisportiva, a intensità normale e senza infortuni. Ogni giorno fa la seduta; nel 90 per cento dei giorni, presi con un contatore fisso, gioca un'amichevole al meglio dei 3 col motore vero in modalità essenziale, circa 1,2 millisecondi a incontro, contro un avversario estratto dal mondo sintetico all'anno 10, non dai nati mai allenati; i punti vengono dalla formula vera, con il premio al più debole. Ha l'esperienza di tutte le fonti, con un gruppo di esperienza media 5, e spende ogni giorno con completa. Lo strumento dichiara che la carriera di riferimento si allena a intensità normale: un tesserato all'intensa senza infortuni può superarla, e resta A1.
+- I mondi sintetici: il mondo giovane, nato da zero, all'anno 10, e quello a regime, con le età di D18, ciascun giocatore allenato dal suo ingresso con la seduta e la spesa del suo programma, il 90 per cento dei giorni da tesserato, con il declino dai 50 anni. Sono i modelli di regime.py e deriva.py, che girano in un minuto per 3.000 giocatori. Servono agli avversari, alla distribuzione delle lettere, alla tabella della deriva e alla prima stima di A e B.
+- Lo strumento stampa: SOMMA_CARRIERA_PERFETTA, il valore e l'esperienza a 20, 30, 40 e 50 anni; il valore di ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA che porta l'esperienza a 20,0 a 50 anni; le ANCORE_CLASSE del punto 7; la tabella dei casi del punto 7, con i punti attesi per amichevole secondo il distacco dall'avversario; le lettere nel mondo all'anno 10 e a regime.
+- Opzioni: --costo e --crescita, cioè C0 e K, per mostrare a Gabriele il ritmo dei casi tipici, e --tornei e --sfide, a zero, per la tappa 12.
+12.4 L'economia: strumenti/simulazione_lunga.py. L'allenamento è già acceso, perché sta in _un_giorno: sedute, spesa autonoma, esperienza, costanza, contratti e infortuni in seduta. Il mondo non gioca partite fino alla tappa 12. Cambia così:
+- misure usa stipendio_pagato, e aggiunge la parte allenata e il valore per fasce d'età, le classi per lettera, rinnovi e scadenze dell'anno, gli infortuni in seduta e i millisecondi del giorno.
+- BERSAGLI diventa quello del punto 5, all'anno 10: stipendio mediano da 190 a 240, decimo percentile da 95 a 115, novantesimo come informazione, cassa mediana da 4.500 a 5.500, tesserati dall'88 al 92 per cento.
+- Il modo --cerca-economia non fa bisezioni annidate. A e B si ricavano in forma chiusa: da una corsa di riferimento di dieci anni su quattro semi si prendono le somme pesate dei giocatori in attività e quelle dei tesserati con i loro moltiplicatori di stipendio, e si calcolano l'A che tiene la mediana del valore a 135,5 e il B che porta lo stipendio al decimo percentile a 105; si rifà la corsa con la scala nuova e si ricalcola, due o tre volte, finché non si sposta più. Poi la bisezione cerca soltanto SPONSOR_PER_GLORIA, con la quota sul valore scelta da Gabriele, perché la cassa mediana torni a 5.000: una corsa di quattro semi in parallelo per passo, circa tre minuti, otto passi. Se i tesserati restano sotto l'88 per cento la leva è ancora lo sponsor: il computer tessera di meno quando non può pagare, e alzare il suo rialzo peggiorerebbe le cose.
+- La prova lunga, --anni 60 su quattro semi in parallelo, circa 25 minuti l'uno: dice per decennio valore mediano, stipendi e casse, e controlla che il computer resti in grado di pagare, come vuole D31: tesserati almeno all'85 per cento e cassa mediana fra 2.000 e 15.000 euro per tutti i 60 anni.
+- Lo scenario dell'utente, --scenario-utente: all'anno 10 nasce una polisportiva dell'utente; tessera quindici giocatori al mercato, ognuno gioca un'amichevole ogni due giorni contro un compagno, ogni giorno Allena tutti, ogni rinnovo si propone alla richiesta se la cassa lo regge; dieci anni. Misura la cassa anno per anno, lo sponsor contro gli stipendi pagati, i rinnovi mancati per mancanza di soldi, i tesserati dell'utente rimasti liberi e se qualcuno li ha tesserati, e la quota dei primi 100 del mondo per valore che sono tesserati. Bersagli: lo sponsor dell'utente, in media sull'anno, non supera il 120 per cento degli stipendi che paga, e almeno l'80 per cento dei primi 100 è tesserato. Se non tornano, le leve sono il ritmo e la quota sul valore, da decidere con Gabriele.
+- Il costo del tempo: il lavoro nuovo di un giorno simulato, con 20.000 giocatori in vita, deve stare sotto i 60 millisecondi; lo aiutano la spesa in forma chiusa, la spesa autonoma ogni 20 punti, il fattore di gruppo una volta al giorno per polisportiva e il mantenimento una volta al mese.
+12.5 Le prove automatiche, con python -m pytest -q sul desktop nascosto, senza suoni grazie al registratore del conftest, e ruff check soltanto, mai ruff format.
+test_allenamento.py, riscritto:
+- integrale e inversa coerenti; 200 punti in una volta uguali a due volte 100;
+- stesso valore per punto a pari livello relativo, per precisione, tripla sponda e chiusura, col destrimano, il mancino e l'ambidestro;
+- la curva d'età nei suoi punti; lo sconto del 7 per cento solo sulle caratteristiche di gioco degli ipovedenti;
+- i tetti dell'allenata e del totale mai superati, con i punti in più restituiti;
+- il calo nullo sotto 0,7 e piccolo sopra; l'oblio dell'apprendista;
+- il riempimento a livello: il portafoglio si svuota; le caratteristiche alla pari salgono insieme; con completa e 24 caratteristiche alla pari salgono tutte dello stesso livello relativo; le preferenze tengono le principali avanti di ln(2) / K; un tetto raggiunto esce dall'insieme;
+- l'infortunato che non si allena e l'ambidestro col braccio fermo che sì.
+test_tratti.py: lo stesso numero dà sempre gli stessi tratti e la stessa ambizione; le frequenze su 20.000 numeri dentro bande larghe; maturazione nell'efficacia e nell'inizio del declino.
+test_indoli.py: ogni caratteristica delle indoli esiste; la nascita deterministica per numero; la mappa dei nove archetipi; completa quando non c'è una preferenza netta; su 20.000 nati ogni indole fra il 6 e il 16 per cento.
+test_esperienza.py: il libero cresce solo con l'età; il fattore di gruppo; l'amichevole che aggiunge; l'ordine delle fonti nella carriera perfetta; il tetto di 20.
+test_classe.py: codice da 1 a 100, cioè A1, A9, B0, J9, K0; soglie monotone e 100 in tutto; punteggio 0 è K0 e 1 è A1, e un punteggio appena sotto una soglia sta nel livello di sotto; la percentuale fra 0 e 99; cambiare PESI_VALORE non cambia la classe; mille nati fra la J e la E, con il 90 per cento fra la I e la F; il peso dell'esperienza al 30 per cento.
+test_contratti.py:
+- durata_proposta fra 4 e 24, più corta per i giovani e per gli ambiziosi;
+- la firma in ogni via d'ingresso: ingaggio, tesseramento e scambio del computer, acquisto, offerta d'acquisto, acquisto del computer;
+- lo stipendio fisso mentre stipendio(g) cresce; monte_stipendi sul contratto;
+- la finestra dei tre mesi; il rinnovo che parte dalla scadenza del vecchio; una proposta al giorno, al massimo tre, e il terzo rifiuto che chiude;
+- la probabilità che cresce con l'offerta, la fedeltà e la gloria, e la bandiera al 97 per cento;
+- la scadenza, che rende libero senza movimenti di cassa, e quella con il rinnovo, che cambia contratto;
+- il computer che rinnova se può e altrimenti mette in vendita e lascia scadere, e i prezzi in vendita che seguono il valore;
+- il valore di mercato che scende solo nella finestra, e la soglia di D23 che lo segue;
+- la buonuscita dello svincolo, per l'utente e per il computer;
+- gli arretrati che liberano a contratto in corso e cancellano il contratto; la morte che cancella il contratto.
+Prove da aggiornare:
+- test_partita_e_mondo: i punti a 3 e a 5 set, con i 5 set al massimo il 15 per cento sopra in media; il premio al più debole che perde, misurato sulla somma pesata; la costanza e l'esperienza dopo un'amichevole; gli agganci di torneo e sfida;
+- test_campo: costanza_relativa dalla costanza;
+- test_infortuni: il rischio in seduta solo all'intensa, deterministico per data e numero, e i fattori dell'intensità in partita;
+- test_economia: lo sponsor con la rosa, stipendio_pagato, il valore di mercato con la scadenza;
+- test_archivio: la migrazione dal 5 al 6 col mondo di prova, con i contratti dei tesserati allo stipendio della 1.50.0; il rifiuto di un formato 6 incoerente; il giro completo del formato 6; il rifiuto del formato 7; la prova della manomissione, che ora cerca punti_allenamento a 77.0;
+- test_determinismo: allena_secondo_programma al posto di esegui_auto_allenamento;
+- test_modelli: indole al posto dell'archetipo, punti_allenamento float, i campi nuovi;
+- test_polisportive: _entra, _lascia, svincolo e scambio con il contratto;
+- test_suoni: gli eventi nuovi, unici, con le loro azioni, e suoni_di_mess.txt aggiornato;
+- test_testi: scheda, classe, contratto e barra entro i 40 caratteri;
+- test_ricerca: i criteri nuovi;
+- test_strumenti_taratura: la costanza nella popolazione di prova.
+test_sala_allenamento.py, con i dialoghi veri sul desktop nascosto: la spesa a mano con la conferma, l'esecuzione completa, Allena tutti con la conferma; programma e intensità; gli avvisi coi loro suoni registrati; il rinnovo dentro e fuori finestra, accettato, rifiutato e chiuso; la buonuscita nello svincolo; il testo della proposta nel dialogo dell'ingaggio; le voci del menu nella guida.
+ricerca.py aggiunge i criteri: esperienza, numero; classe, numero del livello, con A1 a 1 e K0 a 100; punti allenamento, numero; indole, testo; ambizione, numero; mesi di contratto rimasti, numero; talento, apprendista rapido, maturazione precoce e maturazione tardiva, sì o no.
+12.6 La finestra vera. Uno script, prova_finestra_t11.py in una sottocartella mia dello scratchpad, sul modello della prova della tappa 9: una copia del repository in E:\git\tmp col mondo mess_mondo.json.gz di Gabriele, su un desktop nascosto, copiando pytest_configure di tests/conftest.py prima di creare wx.App, con il sorvegliante del primo piano che controlla GetForegroundWindow ogni 100 millisecondi, e i suoni soltanto registrati. Percorre: la migrazione al 6, con i contratti dei suoi tesserati allo stipendio di oggi; la sala con una spesa a mano, Esegui allenamento completo e Allena tutti; il cambio di programma e d'intensità; un ingaggio al mercato con la proposta letta; i contratti, con un rinnovo rifiutato fuori finestra e uno dentro finestra, portando avanti la data della copia; uno svincolo con la buonuscita; un primo del mese con una scadenza e la notizia nella barra. I salvataggi veri mess_mondo* di E:\git\mine\Showdown non si toccano, e la copia va nel Cestino a fine lavoro.
+ORDINE DEI LAVORI SUL RAMO allenamento
+Nel worktree C:\Users\Gabriele\AppData\Local\Temp\claude\E--git\27fed563-c373-4641-9680-74975b271914\scratchpad\showdown-allenamento. Ogni passo ha il suo commit, in italiano, chiuso da Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>, senza mai i file mess_mondo*, con ruff check e pytest verdi prima di ogni commit. Niente push. I passi sono fatti perché le prove restino verdi a ogni commit: nessuno toglie una costante o un campo che un modulo non ancora riscritto usa ancora.
+1. Il cuore, in un commit solo: costanti (indoli, tabelle di intensità e tratti, contratti, classe ed esperienza con valori provvisori), tratti.py, contratti.py, esperienza.py, classe.py, valore.peso_per_punto, allenamento.py riscritto, modelli.py (campi nuovi, indole, annota_spesa, declino spostato), archivio con il formato 6, la migrazione e il controllo di coerenza, Mondo._entra, _lascia, _uscita e _vendi che firmano e cancellano i contratti, cli.py adattato all'allenamento nuovo e senza P8, strumenti/popolazione_di_prova con la costanza, e le prove relative.
+2. Il mondo che si allena: _allenamento_del_giorno con seduta, esperienza, costanza e spesa autonoma, mantenimento_del_mese, infortuni in seduta, registra con la formula dei punti, il premio al più debole sulla somma pesata, esperienza, costanza e agganci, e motore/campo.costanza_relativa.
+3. Contratti ed economia nel mondo: stipendio_pagato, _contratti_del_mese, scadenze e rinnovi dell'utente e del computer, buonuscita, sponsor con la rosa, valore di mercato con la scadenza, mercato.candidati con la data.
+4. Testi, scheda, guida e ricerca.
+5. I suoni: prima il commit a parte in GBUtils con la V204, poi suoni.py, la sala, i contratti, lo svincolo, il mercato, il menu e suoni_di_mess.txt.
+6. Gli strumenti, e la taratura nell'ordine del punto 12.1, un commit per ciascuno dei tre passi, con le costanti trovate e i rapporti delle misure nel messaggio.
+7. La prova della finestra vera, senza commit dei mondi.
+ATTENZIONI
+- Il ritmo C0 è la decisione più pesante della tappa, perché lo stipendio resta esponenziale: decide quanto chiedono al rinnovo i giocatori che l'utente allena. Con C0 50 il bravo a 40 anni chiede circa 3.900 euro al mese, quattro volte il 99° percentile del mondo all'anno 10, e nessuna polisportiva del computer se lo può permettere: chi allena molto deve scegliere chi tenere e vendere prima i giocatori che salgono, come in Hattrick. Lo scenario dell'utente dice quanti restano liberi senza nessuno che li paghi.
+- Alla migrazione i contratti tengono lo stipendio di oggi. I rinnovi e i tesserati nuovi chiedono con la scala nuova, che per i giocatori mai allenati è più bassa: con C0 50 lo stipendio mediano dei nati non allenati scende da circa 220 a circa 170 euro, perché la scala si tara su un mondo già un po' allenato.
+- La scala tarata all'anno 10 poi deriva verso l'alto (punto 5). La tappa 12 ritara comunque tutta l'economia con i tornei, e arriverà prima che il mondo di Gabriele si muova di molto: un mese vero è meno di un anno d'età.
+- Le prove che confrontano mondi nati da un seme con valori scritti a mano possono cambiare, perché nascono i campi nuovi e cambiano i tiri dell'indole.
+- Le misure di questo progetto vengono da un modello semplificato: spesa continua, efficacia integrata, nessun infortunio, punti per amichevole fissi a 3,1 per il mediano e 3,5 per il bravo. Lo strumento del punto 12.3 le rifà con le funzioni vere.
+LE OBIEZIONI DEL CRITICO
+Accolte, con il punto del progetto che le risolve.
+- 1, il rinnovo per sfinimento: tre proposte per finestra (punto 4.5), domanda 2.
+- 2, lo stipendio esponenziale contro i valori stimati: il ritmo passa da 25 a 50 ed è la domanda 1, con i numeri; nascono lo scenario dell'utente e il bersaglio sui primi 100 (punto 12.4).
+- 3, la macchina dei soldi: misurata, con il ritmo consigliato e contratti fino a 24 mesi non c'è (punto 5); lo scenario dell'utente la controlla; la quota sul valore è la domanda 5.
+- 5, le bisezioni annidate: A e B in forma chiusa, una sola bisezione sullo sponsor (punto 12.4).
+- 6, il programma che si bloccava: riempimento a livello in forma chiusa, con le prove sui pareggi e su completa (punti 3.3 e 12.5).
+- 7, le ancore contraddittorie: una regola sola, l'ancora dei nati a 89, il bravo a 30 anni a 40, e i numeri ricalcolati (punto 7).
+- 8, le soglie per sempre: somma, pesi e ancore congelati come costanti storiche, e alla tappa 12 si abbassano le fonti (punto 7).
+- 9, l'ordine della taratura: motore, poi carriera e classe, poi economia (punto 12.1).
+- 11, i mesi di calendario: scritti con le equivalenze (premesse, punto 10.7, domanda 3).
+- 12, età e ambizione che si annullano: l'ambizione è un tratto innato, nella scheda (punti 2.5 e 4.2).
+- 13, la durata dominata: il contratto rinnovato parte alla scadenza, il rincaro sale al 2 per cento al mese, la buonuscita è la domanda 4.
+- 14, la svendita: il valore scende soltanto nella finestra, quando il computer ha già provato a rinnovare, e i prezzi in vendita del computer seguono il valore (punti 4.6 e 4.7).
+- 15, l'elenco incompleto: _scambio e _compra_dal_mercato con stipendio_pagato, _uscita che cancella il contratto, lo sponsor senza attributo da inizializzare (punti 4.3, 4.4 e 5); tests/test_strumenti_taratura.py non cambia perché i tetti restano.
+- 16, la riparazione a ogni caricamento: solo nella migrazione, e il formato 6 incoerente si rifiuta (punto 11).
+- 17, i commit che non reggevano: il cuore in un commit solo (ordine dei lavori).
+- 18, le indoli sbilanciate: punteggio standardizzato, misurato (punto 3.2).
+- 19, la sala: anteprima in un campo raggiungibile e nella conferma, MessageBox di una riga per allenando, una voce di diario per spesa (punto 10.2).
+- 20, i nomi: punti_allenamento, stipula, costanza_relativa, tabelle per intensità e per tratto, richiesta di rinnovo in funzioni con un nome (punti 1, 2.5, 2.6, 4.2 e 8).
+- 21, livello agli estremi: la soglia è il minimo del livello, con il maggiore o uguale (punto 7).
+- 22, il premio al più debole e la scala: distacco sulla somma pesata, uguale a oggi alla mediana (punto 1).
+- 23, l'intensità nella costanza: tolta, ed è la domanda 7.
+- 25, la carriera perfetta gonfiata: avversari dal mondo all'anno 10, punti attesi secondo il distacco, l'intensità normale dichiarata (punto 12.3).
+- 26, RIALZO_CPU: nasce RIALZO_RINNOVO_CPU, e la leva dei tesserati è lo sponsor (punti 4.6 e 12.4).
+- 27, l'import circolare: tratti.py (punto 2.5).
+- 28, gli infortuni in seduta: generatore per data e numero, e soltanto all'intensa, quindi pochi tiri e niente diari gonfiati (punto 2.6).
+- 29, la partenza più dura e gli avvisi: detta nella domanda 5, e il secondo avviso all'ultimo mese (punto 4.6).
+- 30, l'esperienza all'ingresso: domanda 8.
+- 10, i tetti dell'allenata: li tengo, come suggeriscono il piano e D31, con la misura delle vittorie, e la scelta resta a Gabriele nella domanda 6.
+Accolta in parte.
+- 4, la taratura su un mondo non a regime. Accolgo la prova di 60 anni, i bersagli di solvibilità per tutto quel tempo, la tabella della deriva per decennio e la dichiarazione esplicita di popolazione e anno: la scala si tara sui giocatori in attività all'anno 10 della simulazione lunga. Non taro sul regime: è l'anno su cui D26 ha tarato la scala; il mondo di Gabriele arriva a regime fra cinque o sei anni veri, mentre la tappa 12 ritarerà l'economia molto prima; e tarare sul regime abbasserebbe di un quarto, alla migrazione, gli stipendi di tutti i giocatori di oggi. La deriva misurata con C0 50 è moderata, e lo sponsor legato al valore la segue in parte.
+Respinta.
+- 24, l'efficacia al momento della spesa. Resta al momento della spesa: aspettare un mese vero a spendere costa circa l'1,2 per cento, perché la curva di Hattrick è dolce, e il talento o la maturazione che contano quando si spende sono il loro senso, non un difetto. Far spendere da soli i tesserati dell'utente andrebbe contro D31, che gli dà i pulsanti per farlo, e fissare l'efficacia al guadagno vorrebbe dire tenere un portafoglio diverso per ogni età.

@@ -1,18 +1,15 @@
-Ripresa della tappa 11 di MESS su un'altra macchina, preparata da ClaudIA il 9 ottobre 2026.
-Gabriele ha dovuto spegnere la macchina di casa mentre gli agenti della tappa 11 lavoravano: questa cartella porta con sé tutto quello che serve per ripartire senza rifare il progetto.
-Dove si era arrivati: il piano ha la decisione D31 completa (allenamento, contratti, esperienza, classe da A1 a K0, tratti rari), committata su main e pubblicata insieme a questo ramo.
-Il workflow mess-tappa11 aveva sei fasi: Progetto, Cuore, Finestra, Taratura, Revisione, Correzione. Della fase Progetto sono conclusi l'architetto e il critico; l'architetto finale stava scrivendo quando Gabriele ha dovuto spegnere, e va rifatto.
-Il codice non è ancora stato toccato: il ramo allenamento contiene solo questa cartella, sopra main.
+Ripresa della tappa 11 di MESS su un'altra macchina, preparata da ClaudIA il 9 ottobre 2026 e aggiornata lo stesso giorno sulla seconda macchina.
+Dove si era arrivati: il piano ha la decisione D31 completa (allenamento, contratti, esperienza, classe da A1 a K0, tratti rari), committata su main. La fase Progetto è conclusa: progetto_finale.txt è il progetto dell'architetto dopo le obiezioni del critico, domande_finali.json le sue otto domande, decisioni_gabriele.txt le risposte di Gabriele, vincolanti come D31 (tetti dell'allenata tolti, intensità che cambia anche la costanza, il resto come consigliato).
+Il workflow mess-tappa11-ripresa è ripartito dalla fase Decisioni: l'architetto integra le risposte nel progetto definitivo, poi Cuore, Finestra, Taratura, Revisione, Correzione, sul ramo allenamento in un worktree dello scratchpad.
 I file della cartella:
-progetto_bozza.txt e obiezioni_critico.json: la prima stesura dell'architetto e le obiezioni del critico.
-analisi.json, domande.txt, modelli.txt: l'analisi fatta prima delle domande a Gabriele, che gli agenti devono leggere e non rifare.
-flusso_tappa_11.js: lo script originale del workflow.
-flusso_tappa_11_ripresa.js: lo stesso script che riparte dall'architetto finale, con bozza e obiezioni prese dagli argomenti.
-memoria_showdown.md: la memoria del progetto com'era sulla macchina di casa, utile se quella della macchina nuova è più vecchia.
-Come ripartire:
-1. Fare git pull su main e git checkout del ramo allenamento solo per leggere la cartella, poi tornare su main: gli agenti lavorano in un worktree. Copiare lavori_tappa_11 anche in E:\git\mine\Showdown\lavori_tappa_11, fuori da git, perché lo script legge l'analisi da lì.
-2. Lanciare il Workflow con scriptPath sul file di ripresa e args uguale a un oggetto con scratch (la cartella scratchpad della sessione nuova), bozza (il testo di progetto_bozza.txt) e obiezioni (la lista di obiezioni_critico.json). Se l'architetto finale restituisce domande per Gabriele, il flusso prosegue: valutarle con lui alla fine, o fermarlo e chiedere subito se toccano il cuore.
-3. L'agente del Cuore aggancia il worktree al ramo allenamento che esiste già, e lavora lì. Prima di lanciare, togliere il main checkout dal ramo allenamento, o il worktree non si crea.
-4. A lavoro finito, prima di unire il ramo a main, togliere la cartella lavori_tappa_11 con un commit sul ramo, e la sua copia fuori da git: non deve finire in main.
-5. Poi come sempre: unione con --no-ff, ruff check e pytest su main, versione con le opzioni davanti, CHANGELOG, README, piano con [FATTA] e "Com'è andata", memoria, push di Showdown e di GBUtils (V204 se la finestra aggiunge suoni), collaudo NVDA scritto in collaudo.txt, poi copiato e confrontato.
-Restano in sospeso, fuori dalla tappa 11: il collaudo NVDA della partita dal vivo, in collaudo.txt della 1.50.0, che Gabriele farà più avanti. La copia di prova E:\git\tmp\mess-collaudo-economia esiste solo sulla macchina di casa: su un'altra macchina va rifatta da una copia del repo con il mondo di Gabriele, senza toccare i salvataggi veri.
+progetto_finale.txt, domande_finali.json, decisioni_gabriele.txt: il progetto finale, le domande e le risposte.
+progetto_bozza.txt e obiezioni_critico.json: la prima stesura dell'architetto e le obiezioni del critico, superate dal progetto finale.
+analisi.json, domande.txt, modelli.txt: l'analisi fatta prima delle domande che hanno portato a D31, che gli agenti devono leggere e non rifare.
+flusso_tappa_11.js e flusso_tappa_11_ripresa.js: gli script dei primi due avvii; il secondo cadeva alla fine e rimandava a strumenti dello scratchpad della macchina di casa. Lo script buono è flusso_tappa_11_terzo.js, quello del terzo avvio: prende args.scratch, args.fase e args.decisioni, e con fase uguale a progetto si ferma dopo l'architetto.
+memoria_showdown.md: la memoria del progetto com'era sulla macchina di casa.
+Come ripartire su un'altra macchina, se il lavoro si ferma di nuovo:
+1. git pull su main e git fetch, poi guardare il ramo allenamento: i commit degli agenti dicono fin dove è arrivato il Cuore. Copiare lavori_tappa_11 in E:\git\mine\Showdown\lavori_tappa_11, fuori da git, con lavori_tappa_11/ in .git/info/exclude, e lasciare il checkout principale su main, o il worktree non si crea.
+2. Rilanciare il workflow dalla fase che manca, passando agli agenti il progetto definitivo, o in sua mancanza progetto_finale.txt con decisioni_gabriele.txt; gli agenti lavorano nel worktree del ramo allenamento, e il modello del desktop nascosto è pytest_configure di tests/conftest.py.
+3. A lavoro finito, prima di unire il ramo a main, togliere la cartella lavori_tappa_11 con un commit sul ramo, e la sua copia fuori da git: non deve finire in main.
+4. Poi come sempre: unione con --no-ff, ruff check e pytest su main, versione con le opzioni davanti, CHANGELOG, README, piano con [FATTA] e "Com'è andata", D31 con le otto risposte, memoria, push di Showdown e di GBUtils (V204 se la finestra aggiunge suoni), collaudo NVDA scritto in collaudo.txt, poi copiato e confrontato.
+Restano in sospeso, fuori dalla tappa 11: il collaudo NVDA della partita dal vivo, in collaudo.txt della 1.50.0, che Gabriele farà più avanti. La copia di prova E:\git\tmp\mess-collaudo-economia esiste solo sulla macchina di casa.
