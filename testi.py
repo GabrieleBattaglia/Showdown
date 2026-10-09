@@ -142,6 +142,21 @@ def punti(valore):
     return intero(arrotondato) if arrotondato == int(arrotondato) else numero(arrotondato)
 
 
+def quanti_punti(valore, allenamento=False):
+    """Una quantità di punti con il nome accordato: 1 punto, 38,5 punti; con allenamento, 1 punto allenamento."""
+    testo = punti(valore)
+    return f"{testo} {'punto' if testo == '1' else 'punti'}{' allenamento' if allenamento else ''}"
+
+
+def da_a(prima, dopo):
+    """
+    Una salita a parole, da 14,6 a 15,3; con due decimali quando a uno non si vedrebbe, come da
+    4,61 a 4,64 dopo una spesa piccola, che altrimenti sembrerebbe non aver fatto niente.
+    """
+    decimali = 2 if numero(prima) == numero(dopo) and abs(dopo - prima) >= 0.005 else 1
+    return f"da {numero(prima, decimali)} a {numero(dopo, decimali)}"
+
+
 def codice_classe(g):
     """La classe in breve: G4."""
     return classe.classe(g).codice
@@ -172,11 +187,20 @@ def costanza(g):
     return FASCE_COSTANZA[-1][1]
 
 
+def nome_programma(chiave):
+    """
+    Il nome di un programma d'allenamento, cioè di un'indole, accordato a programma: aggressivo,
+    difensivo, completo; i nomi con la preposizione restano come sono, da muro, di rimessa.
+    """
+    nome = INDOLI[chiave]["nome"]
+    return nome[:-1] + "o" if " " not in nome and nome.endswith("a") else nome
+
+
 def programma(g):
-    """Il programma d'allenamento a parole: secondo la sua indole, oppure il nome dell'indole scelta."""
+    """Il programma d'allenamento a parole: secondo la sua indole, oppure il nome del programma scelto."""
     if g.programma == g.indole:
         return "secondo la sua indole"
-    return INDOLI[g.programma]["nome"]
+    return nome_programma(g.programma)
 
 
 def mese_e_anno(dt):
@@ -924,11 +948,11 @@ def spesa_nel_diario(voce):
     """
     salite = [s for s in voce["spesa"] if s[2] - s[1] >= 0.1 - 1e-9 or len(voce["spesa"]) == 1]
     altre = len(voce["spesa"]) - len(salite)
-    parti = [f"{nome_caratteristica(nome).lower()} da {numero(da)} a {numero(a)}" for nome, da, a in salite]
+    parti = [f"{nome_caratteristica(nome).lower()} {da_a(da, a)}" for nome, da, a in salite]
     if altre:
         parti.append(f"{conta(altre, 'altra caratteristica', 'altre caratteristiche')} di meno")
     da, a = voce["valore"]
-    return f"Si allena con {punti(voce['punti'])} punti allenamento: {unisci(parti)}; valore da {numero(da)} a {numero(a)}."
+    return f"Si allena con {quanti_punti(voce['punti'], True)}: {unisci(parti)}; valore {da_a(da, a)}."
 
 
 def _diario(titolo, diario):
@@ -1249,12 +1273,12 @@ def _nome_semplice(caratteristica):
 def intestazione_sala(p, allenandi):
     """In testa alla sala: Pat-Bologna: 12 allenandi, 412,5 punti allenamento da spendere in tutto."""
     totale = sum(g.punti_allenamento for g in allenandi)
-    return f"{p.nome}: {conta(len(allenandi), 'allenando', 'allenandi')}, {punti(totale)} punti allenamento da spendere in tutto."
+    return f"{p.nome}: {conta(len(allenandi), 'allenando', 'allenandi')}, {quanti_punti(totale, True)} da spendere in tutto."
 
 
 def riga_allenando(g, mondo):
     """Un allenando nell'elenco della sala: Mario Rossi, classe G4, 38,5 punti, programma di rimessa, intensità normale."""
-    riga = f"{nome_completo(g)}, classe {codice_classe(g)}, {punti(g.punti_allenamento)} punti, programma {INDOLI[g.programma]['nome']}, intensità {g.intensita}"
+    riga = f"{nome_completo(g)}, classe {codice_classe(g)}, {quanti_punti(g.punti_allenamento)}, programma {nome_programma(g.programma)}, intensità {g.intensita}"
     if not allenamento.puo_allenarsi(g) and g.infortunio_fine_datetime:
         riga += f", {accorda(g, 'infortunato')} fino al {g.infortunio_fine_datetime.day} {MESI[g.infortunio_fine_datetime.month - 1]}, non si allena"
     return riga
@@ -1266,7 +1290,7 @@ def riga_caratteristica_allenamento(g, caratteristica):
     riga = valore_caratteristica(g, c + "_base")
     if allenamento.totale(g, c) >= allenamento.tetto(c) - 1e-9:
         return f"{riga}, al massimo"
-    return f"{riga}, il prossimo punto costa {intero(round(allenamento.costo_del_prossimo_punto(g, c)))} punti allenamento"
+    return f"{riga}, il prossimo punto costa {quanti_punti(round(allenamento.costo_del_prossimo_punto(g, c)), True)}"
 
 
 def _classe_dopo(prima, dopo):
@@ -1277,10 +1301,10 @@ def anteprima_allenamento(g, caratteristica, quanti):
     """L'anteprima di una spesa a mano: Con 120 punti: chiusura sinistra da 14,6 a 15,3, valore da 142,3 a 145,1, classe G4."""
     spesa = allenamento.anteprima(g, caratteristica, quanti)
     if spesa.punti <= 0:
-        return f"Con {punti(quanti)} punti {_nome_semplice(caratteristica)} non sale: è al massimo." if quanti > 0 else "Scegli quanti punti spendere."
+        return f"Con {quanti_punti(quanti)} {_nome_semplice(caratteristica)} non sale: è al massimo." if quanti > 0 else "Scegli quanti punti spendere."
     dopo = _dopo_le_spese(g, [spesa])
-    testo = (f"Con {punti(spesa.punti)} punti: {_nome_semplice(caratteristica)} da {numero(spesa.da)} a {numero(spesa.a)}, "
-             f"valore da {numero(g.indice_collettivo_valore)} a {numero(dopo.indice_collettivo_valore)}, {_classe_dopo(codice_classe(g), codice_classe(dopo))}.")
+    testo = (f"Con {quanti_punti(spesa.punti)}: {_nome_semplice(caratteristica)} {da_a(spesa.da, spesa.a)}, "
+             f"valore {da_a(g.indice_collettivo_valore, dopo.indice_collettivo_valore)}, {_classe_dopo(codice_classe(g), codice_classe(dopo))}.")
     if spesa.punti < quanti - 1e-9:
         testo += f" Al tetto ne bastano {punti(spesa.punti)}: gli altri restano."
     return testo
@@ -1290,14 +1314,14 @@ def domanda_spesa(g, caratteristica, quanti):
     """La conferma della spesa a mano, che è l'anteprima stessa: Spendere 120 punti in chiusura sinistra? Da 14,6 a 15,3, valore da 142,3 a 145,1."""
     spesa = allenamento.anteprima(g, caratteristica, quanti)
     dopo = _dopo_le_spese(g, [spesa])
-    return (f"Spendere {punti(spesa.punti)} punti in {_nome_semplice(caratteristica)}? Da {numero(spesa.da)} a {numero(spesa.a)}, "
-            f"valore da {numero(g.indice_collettivo_valore)} a {numero(dopo.indice_collettivo_valore)}.")
+    return (f"Spendere {quanti_punti(spesa.punti)} in {_nome_semplice(caratteristica)}? {da_a(spesa.da, spesa.a).capitalize()}, "
+            f"valore {da_a(g.indice_collettivo_valore, dopo.indice_collettivo_valore)}.")
 
 
 def domanda_allena_tutti(allenandi):
     """La conferma di Allena tutti: Spendere 412,5 punti di 12 allenandi, ciascuno secondo il suo programma?"""
     totale = sum(g.punti_allenamento for g in allenandi)
-    return f"Spendere {punti(totale)} punti di {conta(len(allenandi), 'allenando', 'allenandi')}, ciascuno secondo il suo programma?"
+    return f"Spendere {quanti_punti(totale)} di {conta(len(allenandi), 'allenando', 'allenandi')}, ciascuno secondo il suo programma?"
 
 
 def esito_allenamento(g, spesi, valore_prima, classe_prima):
@@ -1305,7 +1329,8 @@ def esito_allenamento(g, spesi, valore_prima, classe_prima):
     L'esito di una spesa in una riga: Mario Rossi: 38,5 punti spesi, valore da 142,3 a 145,1,
     classe G4; e sale alla classe G3 quando sale.
     """
-    riga = f"{nome_completo(g)}: {punti(spesi)} punti spesi, valore da {numero(valore_prima)} a {numero(g.indice_collettivo_valore)}, "
+    speso = "speso" if punti(spesi) == "1" else "spesi"
+    riga = f"{nome_completo(g)}: {quanti_punti(spesi)} {speso}, valore {da_a(valore_prima, g.indice_collettivo_valore)}, "
     if sale_di_classe(g, classe_prima):
         return riga + f"sale alla classe {codice_classe(g)}"
     return riga + f"classe {codice_classe(g)}"
@@ -1329,7 +1354,7 @@ def voce_classe_salita(g):
 def _parti_spese(spese):
     """Le caratteristiche salite di almeno un decimo, a parole, e quante altre sono salite di meno."""
     salite = [s for s in spese if s.a - s.da >= 0.1 - 1e-9 or len(spese) == 1]
-    parti = [f"{_nome_semplice(s.caratteristica)} da {numero(s.da)} a {numero(s.a)}" for s in salite]
+    parti = [f"{_nome_semplice(s.caratteristica)} {da_a(s.da, s.a)}" for s in salite]
     altre = len(spese) - len(salite)
     if altre:
         parti.append(f"{conta(altre, 'altra caratteristica', 'altre caratteristiche')} di meno")

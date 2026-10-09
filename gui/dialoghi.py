@@ -1039,7 +1039,7 @@ class SalaAllenamento(_Dialogo):
         self.anteprima = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
         spendi, completo, tutti = self.pulsanti((wx.ID_ANY, "&Spendi"), (wx.ID_ANY, "&Esegui allenamento completo"), (wx.ID_ANY, "Allena &tutti"))
         self.etichetta("Pro&gramma")
-        self.programma = self.aggiungi(wx.Choice(self.pannello, choices=[INDOLI[k]["nome"].capitalize() for k in self.indoli]))
+        self.programma = self.aggiungi(wx.Choice(self.pannello, choices=[testi.nome_programma(k).capitalize() for k in self.indoli]))
         self.etichetta("&Intensità")
         self.intensita = self.aggiungi(wx.Choice(self.pannello, choices=[k.capitalize() for k in self.livelli]))
         scheda, _chiudi = self.pulsanti((wx.ID_ANY, "Sche&da"), (wx.ID_CANCEL, "C&hiudi"), predefinito=False)

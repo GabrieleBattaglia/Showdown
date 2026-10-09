@@ -117,7 +117,7 @@ def test_la_sala_si_apre_con_gli_allenandi(sala, mondo):
     assert sala.punti.GetMax() == 150 and sala.punti.GetValue() == 150
     assert sala.anteprima.GetValue().startswith("Con 150 punti: precisione da ")
     g = sala.allenandi[0]
-    assert sala.programma.GetStringSelection().casefold() == testi.indole(g).casefold()
+    assert sala.programma.GetStringSelection().casefold() == testi.nome_programma(g.programma).casefold()
     assert sala.intensita.GetStringSelection() == "Normale"
 
 
@@ -294,6 +294,23 @@ def test_senza_tesserati_la_sala_e_i_contratti_lo_dicono(finestra, mondo, suonat
     assert finestra.vista.GetValue() == "Club Della Sala non ha tesserati da allenare." and suonati[-1] == "rosa_vuota"
     finestra.contratti()
     assert finestra.vista.GetValue() == "Club Della Sala non ha tesserati con un contratto." and suonati[-1] == "rosa_vuota"
+
+
+def test_i_testi_della_sala_accordati(mondo):
+    # Dalla prova della finestra vera: 1 punto al singolare, il programma accordato a programma, e
+    # le salite piccole con due decimali, che a uno sembrerebbero non aver fatto niente.
+    assert testi.quanti_punti(1) == "1 punto" and testi.quanti_punti(1, True) == "1 punto allenamento"
+    assert testi.quanti_punti(38.5) == "38,5 punti" and testi.quanti_punti(0) == "0 punti" and testi.quanti_punti(1234) == "1.234 punti"
+    assert testi.da_a(14.6, 15.3) == "da 14,6 a 15,3" and testi.da_a(4.61, 4.64) == "da 4,61 a 4,64" and testi.da_a(4.6, 4.6) == "da 4,6 a 4,6"
+    nomi = {k: testi.nome_programma(k) for k in ("aggressiva", "difensiva", "atletica", "tecnica", "completa", "muro", "rimessa", "controllo", "battuta")}
+    assert nomi == {"aggressiva": "aggressivo", "difensiva": "difensivo", "atletica": "atletico", "tecnica": "tecnico", "completa": "completo",
+                    "muro": "da muro", "rimessa": "di rimessa", "controllo": "di controllo", "battuta": "da battuta"}
+    g = mondo.giocatori[3]
+    g.punti_allenamento = 1.0
+    g.programma = "aggressiva" if g.indole != "aggressiva" else "difensiva"
+    assert ", 1 punto, programma " in testi.riga_allenando(g, mondo)
+    assert testi.cambio_in_sala(g).endswith(f"programma {testi.nome_programma(g.programma)}, intensità normale.")
+    assert testi.esito_allenamento(g, 1, g.indice_collettivo_valore, testi.codice_classe(g)).startswith(f"{_nome(g)}: 1 punto speso, valore da ")
 
 
 # I contratti e i rinnovi.
