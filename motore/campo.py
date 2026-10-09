@@ -138,6 +138,12 @@ def temperamento_relativo(g):
     return max(-1.0, min(1.0, (attuale - 50.0) / 50.0))
 
 
+# I colpi dello scambio dello stesso tipo, i due lati insieme: per l'abitudine al colpo ripetuto un
+# lungolinea è un lungolinea, da sinistra o da destra. La bomba è un tipo da sola.
+STESSO_TIPO = {colpo: tuple(altro for altro in COLPI_DELLO_SCAMBIO if altro.removesuffix("sx").removesuffix("dx") == colpo.removesuffix("sx").removesuffix("dx"))
+               for colpo in COLPI_DELLO_SCAMBIO}
+
+
 class InCampo:
     """Un giocatore durante l'incontro: qualità, mano, stanchezza, paura degli errori, lettura e scelte del punto."""
 
@@ -339,16 +345,18 @@ class InCampo:
     def abitudine_al_colpo(self, attaccante, colpo):
         """
         Quanto il difensore si è abituato al colpo dello scambio che l'attaccante sta giocando, da 0
-        in su: la parte di pressione che il colpo perde. Conta la quota di quel colpo fra gli
-        attacchi dell'attaccante nell'incontro, ma soltanto dopo ATTACCHI_PER_ABITUDINE attacchi e
-        oltre QUOTA_ABITUDINE: chi varia i colpi non ne risente. Il difensore capisce di più se ha
-        esperienza, per la sua lettura del gioco, e un poco anche senza.
+        in su: la parte di pressione che il colpo perde. Conta la quota del tipo di quel colpo, i
+        due lati insieme, fra gli attacchi dell'attaccante nell'incontro, ma soltanto dopo
+        ATTACCHI_PER_ABITUDINE attacchi e oltre QUOTA_ABITUDINE: chi varia i colpi ne risente poco,
+        e chi allena lo stesso colpo dai due lati non sfugge all'abitudine. Il difensore capisce di
+        più se ha esperienza, per la sua lettura del gioco, e un poco anche senza.
         """
         t = self.tar
         stats = attaccante.stats
         if not t.ABITUDINE_COLPO or stats.attacchi < t.ATTACCHI_PER_ABITUDINE:
             return 0.0
-        eccesso = stats.colpi[colpo] / stats.attacchi - t.QUOTA_ABITUDINE
+        colpi = stats.colpi
+        eccesso = sum(colpi[c] for c in STESSO_TIPO[colpo]) / stats.attacchi - t.QUOTA_ABITUDINE
         if eccesso <= 0.0:
             return 0.0
         lettura = t.ABITUDINE_SENZA_LETTURA + (1.0 - t.ABITUDINE_SENZA_LETTURA) * self.L

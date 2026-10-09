@@ -398,10 +398,14 @@ AUMENTO_RISCHIO_SEDUTA = 2.0
 # l'effetto: il talento e l'apprendista rapido moltiplicano l'efficacia, e l'apprendista dimentica
 # in fretta, perché ogni mese la sua allenata si moltiplica per l'oblio; la maturazione precoce o
 # tardiva sposta gli anni migliori, con un fattore che va da 1 più a 1 meno l'effetto attorno ai 30
-# anni, e sposta l'inizio del declino.
+# anni, e sposta l'inizio del declino. L'oblio era 0,98 al mese, cioè il 7 per cento per anno d'età:
+# la revisione della tappa 11 ha visto che così l'apprendista era avanti al gemello senza il tratto
+# soltanto fino ai 30 anni, e a 50 ne aveva poco più della metà dell'allenata, quindi il tratto raro
+# era quasi sempre un difetto. Con 0,99 impara e dimentica ancora in fretta: è avanti da giovane, il
+# gemello lo raggiunge verso i 40 anni, e a 50 ne ha circa l'85 per cento. Da confermare con Gabriele.
 TRATTI_ALLENAMENTO = {
     "talento": {"probabilita": 5.0, "efficacia": 1.3},
-    "apprendista_rapido": {"probabilita": 4.0, "efficacia": 1.5, "oblio_mensile": 0.98},
+    "apprendista_rapido": {"probabilita": 4.0, "efficacia": 1.5, "oblio_mensile": 0.99},
     "precoce": {"probabilita": 4.0, "maturazione": 0.3},
     "tardiva": {"probabilita": 4.0, "maturazione": -0.25},
 }

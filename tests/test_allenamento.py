@@ -13,7 +13,7 @@ from aiuti_motore import giocatore
 
 import allenamento as al
 import valore
-from costanti import CRESCITA_DEL_COSTO, MAX_TOTALE_PRECISIONE_RESISTENZA, MAX_TOTALE_SKILL_GIOCO
+from costanti import CRESCITA_DEL_COSTO, MAX_TOTALE_PRECISIONE_RESISTENZA, MAX_TOTALE_SKILL_GIOCO, TRATTI_ALLENAMENTO
 
 OGGI = datetime.datetime(2026, 5, 4, 9, 0)
 
@@ -152,7 +152,7 @@ def test_l_apprendista_rapido_dimentica():
     g = _normale(apprendista_rapido=True)
     g.attacco_allenata = 10.0
     al.mantenimento_del_mese(g, 30)
-    assert g.attacco_allenata == pytest.approx(9.8)
+    assert g.attacco_allenata == pytest.approx(10.0 * TRATTI_ALLENAMENTO["apprendista_rapido"]["oblio_mensile"])
     assert al.efficacia(g) == pytest.approx(1.5 * al.efficacia(_normale()))
 
 

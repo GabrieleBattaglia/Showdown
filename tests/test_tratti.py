@@ -64,3 +64,38 @@ def test_la_maturazione_sposta_l_inizio_del_declino():
     assert normale.difesa_base == 20.0 and tardivo.difesa_base == 20.0
     assert precoce.difesa_base < 20.0
     assert tratti.giorni_inizio_declino(precoce) == int(44 * ANNO_SIMULAZIONE_GIORNI)
+
+
+def _allenata_negli_anni(apprendista, punti_al_giorno, tappe=(25, 50)):
+    """
+    Lo stesso giocatore di 20 anni, con o senza il tratto, si allena mese per mese con le funzioni
+    vere: i punti del mese spesi secondo la sua indole, il calo e l'oblio del primo del mese, il
+    declino. Restituisce la somma della parte allenata alle età delle tappe.
+    """
+    g = giocatore(31, valore=10.0, fisico=2.5, anni=20, talento=False, maturazione=None, apprendista_rapido=apprendista)
+    somme = {}
+    while len(somme) < len(tappe):
+        g.punti_allenamento += punti_al_giorno * 30
+        allenamento.allena_secondo_programma(g, programma=g.indole)
+        allenamento.mantenimento_del_mese(g, 30)
+        g.eta += 30
+        g._applica_declino_aggregato(30)
+        anni = g.eta / ANNO_SIMULAZIONE_GIORNI
+        for tappa in tappe:
+            if tappa not in somme and anni >= tappa:
+                somme[tappa] = sum(getattr(g, c + "_allenata") for c in allenamento.CARATTERISTICHE)
+    return somme
+
+
+@pytest.mark.parametrize("punti_al_giorno", [1.0, 2.55])
+def test_l_apprendista_rapido_impara_e_dimentica_in_fretta_ma_resta_un_tratto(punti_al_giorno):
+    """
+    D31: l'apprendista rapido impara e dimentica in fretta. Da giovane è avanti al gemello senza il
+    tratto; con gli anni l'oblio lo raggiunge, ma a 50 anni ha ancora almeno i tre quarti della sua
+    allenata, da tesserato del computer, un punto al giorno, e da tesserato dell'utente, 2,55.
+    Con l'oblio a 0,98 al mese ne aveva poco più della metà, e il tratto era quasi sempre un difetto.
+    """
+    gemello = _allenata_negli_anni(False, punti_al_giorno)
+    apprendista = _allenata_negli_anni(True, punti_al_giorno)
+    assert apprendista[25] > gemello[25]
+    assert apprendista[50] >= 0.75 * gemello[50]

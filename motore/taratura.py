@@ -256,7 +256,7 @@ class Taratura:
     # ABITUDINE_COLPO, per la lettura del gioco del difensore, che parte da ABITUDINE_SENZA_LETTURA
     # anche per chi non ha esperienza, per quanto la quota di quel colpo fra gli attacchi
     # dell'incontro supera QUOTA_ABITUDINE, contata dopo ATTACCHI_PER_ABITUDINE attacchi. Chi varia
-    # i colpi non ne risente. Il racconto della taratura sta in strumenti/taratura_allenamento.txt.
+    # i colpi ne risente poco. Il racconto della taratura sta in strumenti/taratura_allenamento.txt.
     # I valori di partenza del progetto erano 0,4, 0,5, 0,2 e 10: con quelli un colpo solo rendeva
     # ancora da 4 a 8 volte il suo peso, perché chi ha un colpo forte lo gioca più di otto volte su
     # dieci e la pressione calava di un quinto. La griglia del giro degli estremi, sulla tripla
@@ -267,9 +267,20 @@ class Taratura:
     # negativa, cioè allenare il colpo faceva perdere. Il colpo preferito di un giocatore normale
     # ha una quota attorno a 0,24 e ne risente appena: fra due nati della fascia i goal per punto
     # passano da 0,43 a 0,42.
+    # La revisione della tappa 11 ha trovato due cose. Chi allena lo stesso colpo dai due lati lo
+    # divide fra due nomi, ciascuno sotto la metà degli attacchi: l'abitudine contata colpo per
+    # colpo quasi non lo toccava, e la tripla sponda allenata dai due lati vinceva il 95 per cento
+    # al tetto contro la sua fascia. E il colpo preferito dei giocatori normali, nei primi attacchi
+    # dell'incontro, supera spesso la quota per caso: l'abitudine si accendeva in un terzo delle
+    # parate di ogni incontro, togliendo in media il 4 per cento della pressione. Ora conta il tipo
+    # di colpo, i due lati insieme, e la quota sale a 0,35: la tripla sponda dai due lati vince il
+    # 58 per cento al tetto, i colpi soli restano come prima, e fra due nati l'abitudine si accende
+    # in una parata su cinque, togliendo il 3 per cento della pressione. Più in alto non si può
+    # andare: con la quota lisciata dai primi attacchi o sopra 0,4 il gioco normale non la sente
+    # quasi più, ma lo specialista di un colpo torna a vincere dal 78 all'88 per cento al tetto.
     ABITUDINE_COLPO: float = 1.0
     ABITUDINE_SENZA_LETTURA: float = 0.9
-    QUOTA_ABITUDINE: float = 0.2
+    QUOTA_ABITUDINE: float = 0.35
     ATTACCHI_PER_ABITUDINE: int = 7
     # Gli imprevisti a palla ferma. P_SANZIONE era 0,0010, e le ammonizioni stavano al bordo
     # basso della banda.

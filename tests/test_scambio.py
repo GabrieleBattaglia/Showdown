@@ -3,16 +3,20 @@ Test della catena degli esiti, ramo per ramo, con un dado scritto: ogni voce del
 oppure una fascia con il suo residuo. Poi la prova di forza: ventimila punti veri senza mai
 ErroreMotore, e il doppio tocco soltanto in battuta. Dalla tappa 11 l'abitudine al colpo ripetuto:
 chi varia i colpi non ne risente, chi ne ripete uno oltre la quota sì, di più contro un difensore
-esperto, mai prima di un certo numero di attacchi, e mai sulla battuta né sulla ribattuta.
+esperto, mai prima di un certo numero di attacchi, e mai sulla battuta né sulla ribattuta; i due
+lati dello stesso colpo contano insieme, e fra giocatori normali l'abitudine resta piccola.
 """
 
 import dataclasses
 import random
+import statistics
 
 import pytest
-from aiuti_motore import DadoScritto, giocatore
+from aiuti_motore import NASCITA, DadoScritto, giocatore
 
 from costanti import ATTRIBUTI_BASE_CON_ALLENABILI, CARATTERISTICHE_FISICHE_BASE
+from modelli import Giocatore
+from motore import ESSENZIALE, SINGOLARE_3, simula_incontro
 from motore.campo import InCampo
 from motore.dado import Dado
 from motore.eventi import CAUSE
@@ -243,6 +247,50 @@ def test_l_abitudine_al_colpo_ripetuto():
     assert inesperto.abitudine_al_colpo(attaccante, "bomba") == 0.0
     _abituati(attaccante, {"triplaspondasx": 20, "bomba": 10})
     assert 0.0 < inesperto.abitudine_al_colpo(attaccante, "triplaspondasx") < da_inesperto
+
+
+def test_i_due_lati_dello_stesso_colpo_contano_insieme():
+    # La revisione della tappa 11: la tripla sponda allenata dai due lati sfuggiva all'abitudine contata colpo per colpo.
+    t = TARATURA
+    attaccante = InCampo(giocatore(1), "A", t)
+    difensore = InCampo(giocatore(2), "B", t)
+    _abituati(attaccante, {"triplaspondasx": 30})
+    da_un_lato = difensore.abitudine_al_colpo(attaccante, "triplaspondasx")
+    _abituati(attaccante, {"triplaspondasx": 15, "triplaspondadx": 15})
+    assert difensore.abitudine_al_colpo(attaccante, "triplaspondasx") == difensore.abitudine_al_colpo(attaccante, "triplaspondadx") == pytest.approx(da_un_lato)
+    assert difensore.abitudine_al_colpo(attaccante, "doppiaspondasx") == 0.0
+    # La bomba è un tipo da sola.
+    _abituati(attaccante, {"bomba": 15, "lungolineasx": 15})
+    assert difensore.abitudine_al_colpo(attaccante, "bomba") == difensore.abitudine_al_colpo(attaccante, "lungolineasx") > 0.0
+
+
+def test_fra_giocatori_normali_l_abitudine_resta_piccola(monkeypatch):
+    """
+    Fra nati veri, che nessuno ha allenato, l'abitudine si accende in poche parate e toglie poco:
+    nei primi attacchi dell'incontro il colpo preferito supera la quota per caso. La revisione della
+    tappa 11 l'aveva trovata accesa in un terzo delle parate, col 4 per cento della pressione in meno.
+    """
+    stato = random.getstate()
+    random.seed(77)
+    try:
+        nati = [Giocatore(i, NASCITA) for i in range(1, 61)]
+    finally:
+        random.setstate(stato)
+    abitudini = []
+    originale = InCampo.abitudine_al_colpo
+
+    def spia(self, attaccante, colpo):
+        abitudini.append(originale(self, attaccante, colpo))
+        return abitudini[-1]
+
+    monkeypatch.setattr(InCampo, "abitudine_al_colpo", spia)
+    rng = random.Random(78)
+    for _ in range(60):
+        a, b = rng.sample(nati, 2)
+        simula_incontro(a, b, SINGOLARE_3, seme=rng.getrandbits(63), dettaglio=ESSENZIALE)
+    assert len(abitudini) > 3000
+    assert sum(1 for x in abitudini if x > 0.0) / len(abitudini) < 0.27
+    assert statistics.fmean(abitudini) < 0.035
 
 
 def _parata_del_colpo(colpi_di_chi_attacca):
