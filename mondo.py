@@ -530,6 +530,8 @@ class Mondo:
         oggi = self.datetime_corrente_simulazione
         if g.id not in poli.tesserati:
             return f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}."
+        if not contratti.ha_contratto(g):
+            return f"{nome_completo(g)} non ha un contratto da rinnovare."
         if contratti.ha_rinnovo(g):
             return (f"{nome_completo(g)} ha già rinnovato: dal {data_breve(g.contratto_scadenza)} prenderà {scritta_in_euro(g.rinnovo_stipendio)} al mese, "
                     f"fino al {data_breve(g.rinnovo_scadenza)}.")

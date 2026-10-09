@@ -72,7 +72,7 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
     con_dialogo = {finestra.scheda_giocatore, finestra.diario_giocatore, finestra.cerca, finestra.cambia_aspetto, finestra.cambia_conservazione,
                    finestra.caffe, finestra.esci, finestra.vai_alla_vista, finestra.vai_alla_barra, finestra.nuova_polisportiva,
                    finestra.cambia_polisportiva, finestra.mercato, finestra.svincola, finestra.password_polisportiva, finestra.chiudi_polisportiva,
-                   finestra.cambia_effetti, finestra.cambia_velocita, finestra.amichevole}
+                   finestra.cambia_effetti, finestra.cambia_velocita, finestra.amichevole, finestra.sala_allenamento, finestra.contratti}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):

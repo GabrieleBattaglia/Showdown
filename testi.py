@@ -1305,11 +1305,10 @@ def esito_allenamento(g, spesi, valore_prima, classe_prima):
     L'esito di una spesa in una riga: Mario Rossi: 38,5 punti spesi, valore da 142,3 a 145,1,
     classe G4; e sale alla classe G3 quando sale.
     """
-    adesso_classe = codice_classe(g)
     riga = f"{nome_completo(g)}: {punti(spesi)} punti spesi, valore da {numero(valore_prima)} a {numero(g.indice_collettivo_valore)}, "
-    if adesso_classe != classe_prima and classe.classe(g).livello < _livello(classe_prima):
-        return riga + f"sale alla classe {adesso_classe}"
-    return riga + f"classe {adesso_classe}"
+    if sale_di_classe(g, classe_prima):
+        return riga + f"sale alla classe {codice_classe(g)}"
+    return riga + f"classe {codice_classe(g)}"
 
 
 def _livello(codice):
@@ -1317,21 +1316,84 @@ def _livello(codice):
     return classe.LETTERE.index(codice[0]) * 10 + int(codice[1:])
 
 
-def dettaglio_spese(g, spese):
-    """Le caratteristiche salite in una spesa, per il riepilogo della sala: chiusura sinistra da 14,6 a 15,3 e difesa da 10,2 a 10,4."""
+def sale_di_classe(g, classe_prima):
+    """Vero se il giocatore, che aveva la classe dal codice dato, ora sta in una classe più alta."""
+    return classe.classe(g).livello < _livello(classe_prima)
+
+
+def voce_classe_salita(g):
+    """La voce di diario della classe guadagnata in sala: Sale alla classe G3."""
+    return f"Sale alla classe {codice_classe(g)}."
+
+
+def _parti_spese(spese):
+    """Le caratteristiche salite di almeno un decimo, a parole, e quante altre sono salite di meno."""
     salite = [s for s in spese if s.a - s.da >= 0.1 - 1e-9 or len(spese) == 1]
     parti = [f"{_nome_semplice(s.caratteristica)} da {numero(s.da)} a {numero(s.a)}" for s in salite]
     altre = len(spese) - len(salite)
     if altre:
         parti.append(f"{conta(altre, 'altra caratteristica', 'altre caratteristiche')} di meno")
-    return f"{nome_completo(g)}: {unisci(parti)}."
+    return unisci(parti)
 
 
-def riepilogo_sala(p, esiti):
-    """Il riepilogo della sala alla chiusura: le righe di ogni spesa, oppure nessuna spesa."""
-    if not esiti:
+def dettaglio_spese(g, spese):
+    """Le caratteristiche salite in una spesa: Mario Rossi: chiusura sinistra da 14,6 a 15,3 e difesa da 10,2 a 10,4."""
+    return f"{nome_completo(g)}: {_parti_spese(spese)}."
+
+
+def voce_della_sala(esito, spese):
+    """
+    Una spesa nel riepilogo della sala, in una riga sola: l'esito, come esito_allenamento, e il
+    dettaglio delle caratteristiche salite, che nel messaggio breve della sala non c'è.
+    """
+    return f"{esito}; {_parti_spese(spese)}."
+
+
+def cambio_in_sala(g):
+    """Programma e intensità di un tesserato cambiati in sala, per il riepilogo: Mario Rossi: programma di rimessa, intensità intensa."""
+    return f"{nome_completo(g)}: programma {programma(g)}, intensità {g.intensita}."
+
+
+def allenando_fermo(g):
+    """L'avviso della sala per un allenando infortunato, che oggi non si allena."""
+    return f"{nome_completo(g)} è {infortunio(g)}: finché non guarisce non si allena."
+
+
+def senza_punti(g):
+    """L'avviso della sala quando l'allenando non ha punti per una spesa a mano."""
+    if g.punti_allenamento > 0:
+        return (f"{nome_completo(g)} ha soltanto {punti(g.punti_allenamento)} punti allenamento: a mano se ne spende almeno uno, "
+                "l'allenamento completo spende anche le frazioni.")
+    return f"{nome_completo(g)} non ha punti allenamento da spendere: arrivano dalla seduta di ogni giorno e dalle amichevoli."
+
+
+def caratteristica_al_massimo(g, caratteristica):
+    """L'avviso della sala per una caratteristica già al tetto del totale: Mario Rossi ha già chiusura sinistra al massimo, 40,0 su 40."""
+    c = allenamento.nome(caratteristica)
+    return f"{nome_completo(g)} ha già {_nome_semplice(c)} al massimo, {numero(allenamento.totale(g, c))} su {intero(allenamento.tetto(c))}."
+
+
+def tutto_al_massimo(g):
+    """L'avviso dell'allenamento completo quando non c'è più niente da far salire."""
+    return f"{nome_completo(g)} ha già tutte le caratteristiche al massimo."
+
+
+def nessuno_da_allenare(p):
+    """L'avviso di Allena tutti quando nessuno ha un punto da spendere o può allenarsi."""
+    return f"Nessun tesserato di {p.nome} oggi può allenarsi con almeno un punto allenamento da spendere."
+
+
+def riepilogo_sala(p, esiti, cambi=()):
+    """
+    Il riepilogo della sala alla chiusura: quante spese e quanti cambi di programma o d'intensità,
+    poi una riga per spesa, con il dettaglio delle caratteristiche, e una per tesserato cambiato.
+    """
+    if not esiti and not cambi:
         return f"Sala allenamento di {p.nome}: nessuna spesa."
-    return "\n".join([f"Sala allenamento di {p.nome}: {conta(len(esiti), 'spesa', 'spese')}.", *esiti])
+    parti = [conta(len(esiti), "spesa", "spese") if esiti else "nessuna spesa"]
+    if cambi:
+        parti.append(conta(len(cambi), "cambio di programma o d'intensità", "cambi di programma o d'intensità"))
+    return "\n".join([f"Sala allenamento di {p.nome}: {unisci(parti)}.", *esiti, *cambi])
 
 
 def testata_contratti(p, mondo):
@@ -1345,6 +1407,8 @@ def riga_contratto(g, p, mondo):
     rinnovabile da dicembre; oppure in scadenza, rinnovato, o che non tratta più.
     """
     oggi = mondo.datetime_corrente_simulazione
+    if not contratti.ha_contratto(g):
+        return f"{nome_completo(g)}, senza contratto"
     inizio = f"{nome_completo(g)}, {euro(g.contratto_stipendio)} al mese fino al {data_breve(g.contratto_scadenza)}"
     if contratti.ha_rinnovo(g):
         return f"{nome_completo(g)}, rinnovato dal {data_breve(g.contratto_scadenza)}: {euro(g.rinnovo_stipendio)} al mese fino al {data_breve(g.rinnovo_scadenza)}"

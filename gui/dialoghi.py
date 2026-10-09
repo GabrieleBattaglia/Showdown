@@ -23,6 +23,12 @@ anche quello del file della cronaca. La scelta dei due giocatori usa la scelta d
 sempre, con l'elenco ristretto a chi oggi può giocare. Con la decisione D29 i modi diventano
 Assisti e Vai alla fine, e arriva il dialogo della velocità di gioco; la finestra dal vivo sta in
 gui/dal_vivo.py.
+Dal 2026-10-09, con la tappa 11 e la decisione D31, ci sono la sala allenamento e i contratti. Nella
+sala si spendono i punti allenamento dei tesserati, a mano su una caratteristica o tutti secondo il
+programma, e si scelgono programma e intensità; nei contratti si propongono i rinnovi, con il tic
+della probabilità come al mercato. La spiegazione dell'ingaggio comincia con il contratto che il
+giocatore propone. Le domande sì o no dei dialoghi nascono tutte da _conferma, con il no già scelto.
+Le parti della tappa 11 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -31,6 +37,8 @@ import webbrowser
 import wx
 from GBwx import STILE_ADATTABILE, adatta_finestra, pannello_scorrevole
 
+import allenamento
+import contratti
 import economia
 import impostazioni as modulo_impostazioni
 import mercato
@@ -38,7 +46,16 @@ import partita_sonora
 import ricerca
 import suoni
 import testi
-from costanti import NOME_POLISPORTIVA_MAX, NOME_POLISPORTIVA_MIN, SET_AMMESSI
+from costanti import (
+    INDOLI,
+    INTENSITA,
+    MESI_CONTRATTO_MAX,
+    MESI_CONTRATTO_MIN,
+    NOME_POLISPORTIVA_MAX,
+    NOME_POLISPORTIVA_MIN,
+    SET_AMMESSI,
+    STIPENDIO_MINIMO,
+)
 from gui import aspetto
 from modelli import probabilita_accettazione
 from motore import cronaca
@@ -72,15 +89,19 @@ class _Dialogo(wx.Dialog):
         self.sizer.Add(controllo, proporzione, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         return controllo
 
-    def pulsanti(self, *voci):
-        """Una riga di pulsanti: coppie di identificativo e testo; il primo è quello predefinito."""
+    def pulsanti(self, *voci, predefinito=True):
+        """
+        Una riga di pulsanti: coppie di identificativo e testo; il primo è quello predefinito, salvo
+        con predefinito falso, per una seconda riga che non deve rubarlo alla prima.
+        """
         riga = wx.BoxSizer(wx.HORIZONTAL)
         creati = []
         for identificativo, testo in voci:
             pulsante = wx.Button(self.pannello, identificativo, testo)
             riga.Add(pulsante, 0, wx.ALL, 4)
             creati.append(pulsante)
-        creati[0].SetDefault()
+        if predefinito:
+            creati[0].SetDefault()
         self.sizer.Add(riga, 0, wx.ALIGN_RIGHT | wx.ALL, 4)
         return creati
 
@@ -100,6 +121,49 @@ class _Dialogo(wx.Dialog):
         suoni.suona(suono)
         wx.MessageBox(testo, self.GetTitle(), wx.OK | wx.ICON_WARNING, self)
         controllo.SetFocus()
+
+    def _conferma(self, domanda):
+        """
+        Una domanda sì o no con il suono della domanda e il no già scelto, come in tutta la finestra:
+        un Invio di troppo non deve confermare un'operazione che non si ritira (Gabriele, 1.39.6). Il
+        messaggio nasce dal dialogo, così alla risposta il fuoco torna lì. Al no suona l'annullamento.
+        """
+        suoni.suona("domanda")
+        if wx.MessageBox(domanda, self.GetTitle(), wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES:
+            return True
+        suoni.suona("annullato")
+        return False
+
+    @staticmethod
+    def _riscrivi(elenco, righe, posto):
+        """
+        Mette le righe nell'elenco cambiando soltanto quelle diverse, così lo screen reader non sente
+        un elenco nuovo, e tiene la scelta al posto dato, o alla prima riga.
+        """
+        if elenco.GetCount() != len(righe):
+            elenco.Set(righe)
+        else:
+            for i, riga in enumerate(righe):
+                if elenco.GetString(i) != riga:
+                    elenco.SetString(i, riga)
+        if righe:
+            elenco.SetSelection(min(max(posto, 0), len(righe) - 1))
+
+    def _scheda_del_giocatore(self, g, impostazioni=None):
+        """La scheda del giocatore scelto in un dialogo, da leggere e chiudere con Esc, con il suono della scheda dei dialoghi."""
+        dialogo = Lettura(self, f"Scheda di {testi.nome_completo(g)}", testi.scheda_giocatore(g, self.mondo), impostazioni)
+        try:
+            suoni.suona("mercato_scheda_giocatore")
+            dialogo.ShowModal()
+        finally:
+            dialogo.Destroy()
+
+    @staticmethod
+    def _torna(controllo):
+        """Rimette il fuoco sul controllo che l'aveva prima di un'operazione, se c'è ancora."""
+        if controllo is not None:
+            with contextlib.suppress(RuntimeError):
+                controllo.SetFocus()
 
     def suona_fra_poco(self, funzione):
         """
@@ -681,14 +745,6 @@ class Mercato(_Dialogo):
             return "cassa_insufficiente"
         return "nessuna_selezione"
 
-    def _conferma(self, domanda):
-        suoni.suona("domanda")
-        # Il No già scelto, come in tutta la finestra: un'offerta costa una mossa e non si ritira (Gabriele, 1.39.6).
-        if wx.MessageBox(domanda, "Mercato", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION, self) == wx.YES:
-            return True
-        suoni.suona("annullato")
-        return False
-
     def _cifra(self, titolo, spiegazione, etichetta, iniziale, suono, nota=None, probabilita=None):
         """La cifra scelta dall'utente, oppure None se ha annullato; suono è quello dell'apertura."""
         dialogo = Cifra(self, titolo, spiegazione, etichetta, iniziale, self.poli.cassa, nota, probabilita)
@@ -732,7 +788,11 @@ class Mercato(_Dialogo):
             self._avviso(problema, self._suono_del_problema())
             return None
         richiesta = c.costo
-        importo = self._cifra("Ingaggio", f"{testi.nome_completo(g)} chiede {testi.euro(richiesta)} d'ingaggio: più offri, più è probabile che accetti.",
+        # Dalla tappa 11 la spiegazione comincia con il contratto che il giocatore propone, D31:
+        # accettare l'offerta vuol dire accettare la proposta, annullare vuol dire rifiutarla.
+        spiegazione = (f"{testi.proposta_di_contratto(g, self.mondo)} Per firmare, {testi.nome_completo(g)} chiede {testi.euro(richiesta)} d'ingaggio: "
+                       "più offri, più è probabile che accetti.")
+        importo = self._cifra(f"Ingaggio di {testi.nome_completo(g)}", spiegazione,
                               "&Ingaggio da offrire, in euro", richiesta, "dialogo_cifra_ingaggio",
                               lambda cifra: f"Accetterebbe al {testi.numero(probabilita_accettazione(cifra, richiesta), 0)}%.",
                               lambda cifra: probabilita_accettazione(cifra, richiesta))
@@ -781,13 +841,7 @@ class Mercato(_Dialogo):
         c, _indice = self._scelto()
         if c is None:
             return
-        g = c.giocatore
-        dialogo = Lettura(self, f"Scheda di {testi.nome_completo(g)}", testi.scheda_giocatore(g, self.mondo), self.impostazioni)
-        try:
-            suoni.suona("mercato_scheda_giocatore")
-            dialogo.ShowModal()
-        finally:
-            dialogo.Destroy()
+        self._scheda_del_giocatore(c.giocatore, self.impostazioni)
 
 
 class PagaArretrati(_Dialogo):
@@ -945,6 +999,419 @@ class Vendite(_Dialogo):
         wx.MessageBox(testo, "Vendite", wx.OK | wx.ICON_INFORMATION, self)
         self.aggiorna(indice)
         self.elenco.SetFocus()
+
+
+class SalaAllenamento(_Dialogo):
+    """
+    La sala allenamento della decisione D31, tappa 11: gli allenandi della polisportiva, uno alla
+    volta, con le loro 24 caratteristiche e il costo del prossimo punto di ciascuna, e il portafoglio
+    dei punti allenamento. Si spende a mano su una caratteristica, con l'anteprima in un campo che si
+    raggiunge con Tab e che la conferma ripete; oppure si spende tutto secondo il programma, per
+    l'allenando scelto o per tutti insieme. Programma e intensità si scelgono qui e valgono subito.
+    Ogni esito arriva in un messaggio breve, una riga per allenando, con il suo suono, e quello della
+    classe guadagnata in coda; il dettaglio caratteristica per caratteristica resta in esiti, che la
+    finestra mostra alla chiusura insieme ai cambi di programma e d'intensità. Gli avvisi lasciano
+    aperta la sala, ciascuno col suo suono. Dopo ogni operazione elenchi e controlli si aggiornano
+    tenendo il posto, e il fuoco torna dov'era. L'ordine degli allenandi è quello del nome, fermo
+    finché la sala resta aperta, così la lettera iniziale li ritrova.
+    """
+
+    def __init__(self, genitore, mondo, poli, impostazioni=None):
+        super().__init__(genitore, f"Sala allenamento di {poli.nome}")
+        self.mondo = mondo
+        self.poli = poli
+        self.impostazioni = impostazioni
+        self.esiti = []
+        self.allenandi = sorted((mondo.giocatori[gid] for gid in poli.tesserati if gid in mondo.giocatori), key=lambda g: testi.nome_completo(g).casefold())
+        # Programma e intensità di ciascuno all'apertura: alla chiusura dicono che cosa è cambiato.
+        self.di_partenza = {g.id: (g.programma, g.intensita) for g in self.allenandi}
+        self.indoli = list(INDOLI)
+        self.livelli = list(INTENSITA)
+        self.info = wx.StaticText(self.pannello, label="")
+        self.sizer.Add(self.info, 0, wx.ALL, 8)
+        self.etichetta("A&llenandi")
+        self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        self.etichetta("&Caratteristiche")
+        self.caratteristiche = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        self.etichetta("&Punti da spendere")
+        self.punti = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=0, initial=0))
+        self.etichetta("A&nteprima")
+        self.anteprima = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
+        spendi, completo, tutti = self.pulsanti((wx.ID_ANY, "&Spendi"), (wx.ID_ANY, "&Esegui allenamento completo"), (wx.ID_ANY, "Allena &tutti"))
+        self.etichetta("Pro&gramma")
+        self.programma = self.aggiungi(wx.Choice(self.pannello, choices=[INDOLI[k]["nome"].capitalize() for k in self.indoli]))
+        self.etichetta("&Intensità")
+        self.intensita = self.aggiungi(wx.Choice(self.pannello, choices=[k.capitalize() for k in self.livelli]))
+        scheda, _chiudi = self.pulsanti((wx.ID_ANY, "Sche&da"), (wx.ID_CANCEL, "C&hiudi"), predefinito=False)
+        spendi.Bind(wx.EVT_BUTTON, self.spendi)
+        completo.Bind(wx.EVT_BUTTON, self.completo)
+        tutti.Bind(wx.EVT_BUTTON, self.tutti)
+        scheda.Bind(wx.EVT_BUTTON, self.scheda)
+        self.elenco.Bind(wx.EVT_LISTBOX, self.al_allenando)
+        self.caratteristiche.Bind(wx.EVT_LISTBOX, self.aggiorna_anteprima)
+        self.punti.Bind(wx.EVT_SPINCTRL, self.aggiorna_anteprima)
+        self.punti.Bind(wx.EVT_TEXT, self.aggiorna_anteprima)
+        self.programma.Bind(wx.EVT_CHOICE, self.al_programma)
+        self.intensita.Bind(wx.EVT_CHOICE, self.all_intensita)
+        self.aggiorna(0, nuovo=True)
+        self.completa((640, 600))
+        self.elenco.SetFocus()
+
+    # Lo stato dei controlli.
+
+    def _scelto(self):
+        indice = self.elenco.GetSelection()
+        if indice == wx.NOT_FOUND or indice >= len(self.allenandi):
+            return None
+        return self.allenandi[indice]
+
+    def _caratteristica(self):
+        indice = self.caratteristiche.GetSelection()
+        return None if indice == wx.NOT_FOUND else allenamento.CARATTERISTICHE[indice]
+
+    def aggiorna(self, posto=None, nuovo=False):
+        """
+        Riscrive la testata e l'elenco degli allenandi, tenendo il posto, e i controlli dell'allenando
+        scelto; con nuovo, l'allenando è appena stato scelto e i punti ripartono da tutto il suo portafoglio.
+        """
+        posto = self.elenco.GetSelection() if posto is None else posto
+        self.info.SetLabel(testi.intestazione_sala(self.poli, self.allenandi))
+        self._riscrivi(self.elenco, [testi.riga_allenando(g, self.mondo) for g in self.allenandi], posto)
+        self._controlli_dell_allenando(nuovo)
+        self.pannello.Layout()
+
+    def _controlli_dell_allenando(self, nuovo=False):
+        g = self._scelto()
+        if g is None:
+            return
+        posto = self.caratteristiche.GetSelection()
+        self._riscrivi(self.caratteristiche, [testi.riga_caratteristica_allenamento(g, c) for c in allenamento.CARATTERISTICHE], 0 if posto == wx.NOT_FOUND else posto)
+        massimo = int(g.punti_allenamento + 1e-9)
+        valore = massimo if nuovo else min(self.punti.GetValue(), massimo)
+        self.punti.SetRange(0, massimo)
+        self.punti.SetValue(valore)
+        self.programma.SetSelection(self.indoli.index(g.programma) if g.programma in self.indoli else 0)
+        self.intensita.SetSelection(self.livelli.index(g.intensita) if g.intensita in self.livelli else 0)
+        self.aggiorna_anteprima()
+
+    def al_allenando(self, event=None):
+        self._controlli_dell_allenando(nuovo=True)
+
+    def aggiorna_anteprima(self, event=None):
+        """L'anteprima della spesa a mano con i punti e la caratteristica del momento; per chi non si allena, il perché."""
+        g, c = self._scelto(), self._caratteristica()
+        if g is None or c is None:
+            testo = ""
+        elif not allenamento.puo_allenarsi(g):
+            testo = testi.allenando_fermo(g)
+        else:
+            testo = testi.anteprima_allenamento(g, c, self.punti.GetValue())
+        if self.anteprima.GetValue() != testo:
+            self.anteprima.ChangeValue(testo)
+
+    # Le spese.
+
+    def _data(self):
+        return self.mondo.datetime_corrente_simulazione
+
+    def _puo_allenarsi(self, g):
+        """Vero se l'allenando si allena oggi; altrimenti lo dice con il suo avviso."""
+        if allenamento.puo_allenarsi(g):
+            return True
+        self.avvisa(testi.allenando_fermo(g), self.elenco, "allenando_infortunato")
+        return False
+
+    def spendi(self, event=None):
+        """
+        La spesa a mano: i punti del campo sulla caratteristica scelta, dopo la conferma, che è
+        l'anteprima stessa. Gli avvisi, nell'ordine: allenando infortunato, caratteristica al
+        massimo, portafoglio sotto un punto, cifra zero.
+        """
+        fuoco = wx.Window.FindFocus()
+        g, c = self._scelto(), self._caratteristica()
+        if g is None or c is None:
+            suoni.suona("nessuna_selezione")
+            return
+        if not self._puo_allenarsi(g):
+            return
+        if allenamento.totale(g, c) >= allenamento.tetto(c) - 1e-9:
+            self.avvisa(testi.caratteristica_al_massimo(g, c), self.caratteristiche, "caratteristica_al_massimo")
+            return
+        quanti = self.punti.GetValue()
+        if g.punti_allenamento < 1:
+            self.avvisa(testi.senza_punti(g), self.elenco, "punti_insufficienti")
+            return
+        if quanti <= 0:
+            self.avvisa("Scegli quanti punti spendere: almeno uno.", self.punti, "punti_insufficienti")
+            return
+        if not self._conferma(testi.domanda_spesa(g, c, quanti)):
+            self._torna(fuoco)
+            return
+        valore_prima, classe_prima = g.indice_collettivo_valore, testi.codice_classe(g)
+        try:
+            spesa = allenamento.spendi(g, c, quanti, self._data())
+        except ValueError as errore:
+            self.avvisa(str(errore), self.punti)
+            return
+        self._racconta([(g, [spesa], spesa.punti, valore_prima, classe_prima)], "allenamento_fatto", fuoco)
+
+    def completo(self, event=None):
+        """L'allenamento completo dell'allenando scelto: tutto il portafoglio, frazioni comprese, secondo il suo programma."""
+        fuoco = wx.Window.FindFocus()
+        g = self._scelto()
+        if g is None:
+            suoni.suona("nessuna_selezione")
+            return
+        if not self._puo_allenarsi(g):
+            return
+        if g.punti_allenamento <= 0:
+            self.avvisa(testi.senza_punti(g), self.elenco, "punti_insufficienti")
+            return
+        spesa = self._secondo_il_programma(g)
+        if spesa is None:
+            self.avvisa(testi.tutto_al_massimo(g), self.elenco, "caratteristica_al_massimo")
+            return
+        self._racconta([spesa], "allenamento_completo", fuoco)
+
+    def tutti(self, event=None):
+        """Allena tutti: dopo la conferma, ciascuno di chi oggi si allena e ha almeno un punto spende tutto secondo il suo programma."""
+        fuoco = wx.Window.FindFocus()
+        candidati = [g for g in self.allenandi if allenamento.puo_allenarsi(g) and g.punti_allenamento >= 1]
+        if not candidati:
+            self.avvisa(testi.nessuno_da_allenare(self.poli), self.elenco, "punti_insufficienti")
+            return
+        if not self._conferma(testi.domanda_allena_tutti(candidati)):
+            self._torna(fuoco)
+            return
+        spese = [spesa for spesa in (self._secondo_il_programma(g) for g in candidati) if spesa is not None]
+        if not spese:
+            self.avvisa(testi.nessuno_da_allenare(self.poli), self.elenco, "caratteristica_al_massimo")
+            return
+        self._racconta(spese, "allenati_tutti", fuoco)
+
+    def _secondo_il_programma(self, g):
+        """Spende il portafoglio di g secondo il suo programma; la quintupla dell'esito, o None se niente è salito."""
+        valore_prima, classe_prima, prima = g.indice_collettivo_valore, testi.codice_classe(g), g.punti_allenamento
+        spese = allenamento.allena_secondo_programma(g, self._data())
+        if not spese:
+            return None
+        return g, spese, prima - g.punti_allenamento, valore_prima, classe_prima
+
+    def _racconta(self, fatte, suono, fuoco):
+        """
+        Dopo le spese: il valore collettivo della polisportiva si ricalcola, ogni spesa va in esiti
+        per il riepilogo, la classe guadagnata nel diario, e il messaggio breve dice una riga per
+        allenando, con il suono dell'operazione e quello della classe in coda. Poi la sala si
+        aggiorna e il fuoco torna dov'era.
+        """
+        self.poli.aggiorna_ict(self.mondo.giocatori, self.mondo._ids_morti_processati_sessione)
+        righe = []
+        salita = False
+        for g, spese, spesi, valore_prima, classe_prima in fatte:
+            riga = testi.esito_allenamento(g, spesi, valore_prima, classe_prima)
+            righe.append(riga + ".")
+            self.esiti.append(testi.voce_della_sala(riga, spese))
+            if testi.sale_di_classe(g, classe_prima):
+                salita = True
+                self.mondo.annota(g, testi.voce_classe_salita(g))
+        suoni.suona(suono)
+        if salita:
+            suoni.in_coda("classe_salita")
+        wx.MessageBox("\n".join(righe), self.GetTitle(), wx.OK | wx.ICON_INFORMATION, self)
+        self.aggiorna()
+        self._torna(fuoco)
+
+    # Programma e intensità, che valgono subito.
+
+    def al_programma(self, event=None):
+        g = self._scelto()
+        if g is None:
+            return
+        nuovo = self.indoli[self.programma.GetSelection()]
+        if nuovo == g.programma:
+            return
+        g.programma = nuovo
+        suoni.suona("programma_cambiato")
+        self.aggiorna()
+
+    def all_intensita(self, event=None):
+        g = self._scelto()
+        if g is None:
+            return
+        nuova = self.livelli[self.intensita.GetSelection()]
+        if nuova == g.intensita:
+            return
+        g.intensita = nuova
+        suoni.suona("intensita_cambiata")
+        self.aggiorna()
+
+    def cambi(self):
+        """Le righe dei tesserati a cui sono cambiati programma o intensità rispetto all'apertura."""
+        return [testi.cambio_in_sala(g) for g in self.allenandi if (g.programma, g.intensita) != self.di_partenza[g.id]]
+
+    def scheda(self, event=None):
+        g = self._scelto()
+        if g is None:
+            suoni.suona("nessuna_selezione")
+            return
+        self._scheda_del_giocatore(g, self.impostazioni)
+
+
+class Contratti(_Dialogo):
+    """
+    I contratti e i rinnovi della decisione D31, tappa 11: i tesserati della polisportiva, dal
+    contratto che scade prima, con lo stipendio fisso, la scadenza e lo stato del rinnovo. Per il
+    tesserato scelto lo stipendio offerto parte dalla sua richiesta e la durata da quella che
+    propone; l'esito previsto, in un campo che si raggiunge con Tab, dice la probabilità che accetti,
+    e a ogni ritocco, quando ci si ferma, un tic la fa sentire con la sua altezza, come al mercato.
+    Proponi il rinnovo chiede conferma; se la proposta non si può fare, l'avviso dice il perché con
+    il suo suono. In esiti restano i testi degli esiti, che la finestra mostra alla chiusura.
+    """
+
+    def __init__(self, genitore, mondo, poli, impostazioni=None):
+        super().__init__(genitore, f"Contratti di {poli.nome}")
+        self.mondo = mondo
+        self.poli = poli
+        self.impostazioni = impostazioni
+        self.esiti = []
+        # Dal contratto che scade prima; chi per qualche ragione non ha contratto, in fondo.
+        oggi = mondo.datetime_corrente_simulazione
+        self.rosa = sorted((mondo.giocatori[gid] for gid in poli.tesserati if gid in mondo.giocatori),
+                           key=lambda g: (g.contratto_scadenza is None, g.contratto_scadenza or oggi, testi.nome_completo(g).casefold()))
+        self.info = wx.StaticText(self.pannello, label="")
+        self.sizer.Add(self.info, 0, wx.ALL, 8)
+        self.etichetta("&Tesserati")
+        self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        self.etichetta("&Stipendio offerto, in euro al mese")
+        self.stipendio = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=10_000_000, initial=STIPENDIO_MINIMO))
+        self.etichetta("&Durata, in mesi")
+        self.durata = self.aggiungi(wx.SpinCtrl(self.pannello, min=MESI_CONTRATTO_MIN, max=MESI_CONTRATTO_MAX, initial=MESI_CONTRATTO_MIN))
+        self.etichetta("Es&ito previsto")
+        self.previsto = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
+        proponi, scheda, _chiudi = self.pulsanti((wx.ID_ANY, "Pro&poni il rinnovo"), (wx.ID_ANY, "S&cheda"), (wx.ID_CANCEL, "C&hiudi"))
+        proponi.Bind(wx.EVT_BUTTON, self.proponi)
+        scheda.Bind(wx.EVT_BUTTON, self.scheda)
+        self.elenco.Bind(wx.EVT_LISTBOX, self.al_tesserato)
+        for campo in (self.stipendio, self.durata):
+            campo.Bind(wx.EVT_SPINCTRL, self.al_ritocco)
+            campo.Bind(wx.EVT_TEXT, self.al_ritocco)
+        self.aggiorna(0)
+        self.al_tesserato()
+        self.completa((640, 520))
+        self.elenco.SetFocus()
+
+    def _scelto(self):
+        indice = self.elenco.GetSelection()
+        if indice == wx.NOT_FOUND or indice >= len(self.rosa):
+            return None
+        return self.rosa[indice]
+
+    def aggiorna(self, posto=None):
+        """La testata con cassa, sponsor e stipendi, e l'elenco dei tesserati, tenendo il posto; poi l'esito previsto."""
+        posto = self.elenco.GetSelection() if posto is None else posto
+        self.info.SetLabel(testi.testata_contratti(self.poli, self.mondo))
+        self._riscrivi(self.elenco, [testi.riga_contratto(g, self.poli, self.mondo) for g in self.rosa], posto)
+        self.aggiorna_previsto()
+        self.pannello.Layout()
+
+    def al_tesserato(self, event=None):
+        """Per il tesserato scelto la durata parte da quella che propone, lo stipendio dalla sua richiesta per quella durata."""
+        g = self._scelto()
+        if g is None:
+            return
+        mesi = contratti.durata_proposta(g)
+        self.durata.SetValue(mesi)
+        self.stipendio.SetValue(contratti.richiesta_rinnovo(g, self.poli, mesi))
+        self.aggiorna_previsto()
+
+    def _si_puo_proporre(self, g):
+        """Vero se oggi al tesserato si può proporre il rinnovo, stipendio e durata a parte."""
+        return self.mondo.problema_rinnovo(self.poli, g) is None
+
+    def aggiorna_previsto(self):
+        """L'esito previsto con stipendio e durata del momento; se oggi la proposta non si può fare, il perché."""
+        g = self._scelto()
+        if g is None:
+            testo = ""
+        else:
+            testo = self.mondo.problema_rinnovo(self.poli, g) or testi.esito_previsto_rinnovo(g, self.poli, self.stipendio.GetValue(), self.durata.GetValue())
+        if self.previsto.GetValue() != testo:
+            self.previsto.ChangeValue(testo)
+
+    def al_ritocco(self, event=None):
+        self.aggiorna_previsto()
+        g = self._scelto()
+        if g is not None and self._si_puo_proporre(g):
+            self.suona_fra_poco(self.tic_della_probabilita)
+
+    def tic_della_probabilita(self):
+        """Il tic della probabilità del rinnovo, all'altezza di stipendio e durata scritti nei campi."""
+        g = self._scelto()
+        if g is None:
+            return
+        percentuale = contratti.probabilita_rinnovo(g, self.poli, self.stipendio.GetValue(), self.durata.GetValue())
+        suoni.suona("probabilita_rinnovo", semitoni=suoni.probabilita_in_semitoni(percentuale))
+
+    def _suono_del_problema(self, g):
+        """
+        Il suono di una proposta che non si può fare, nell'ordine in cui il mondo controlla: già
+        rinnovato, fuori dalla finestra, proposte finite, già proposto oggi, e i campi da correggere.
+        """
+        oggi = self.mondo.datetime_corrente_simulazione
+        if g.id not in self.poli.tesserati or not contratti.ha_contratto(g):
+            return "nessuna_selezione"
+        if contratti.ha_rinnovo(g):
+            return "rinnovo_gia_concordato"
+        if not contratti.in_finestra(g, oggi):
+            return "rinnovo_fuori_finestra"
+        if not contratti.puo_trattare(g):
+            return "rinnovo_senza_proposte"
+        if g.ultima_trattativa is not None and g.ultima_trattativa.date() == oggi.date():
+            return "rinnovo_gia_proposto_oggi"
+        return "campo_da_correggere"
+
+    def proponi(self, event=None):
+        """La proposta di rinnovo al tesserato scelto, con stipendio e durata dei campi, dopo la conferma."""
+        fuoco = wx.Window.FindFocus()
+        g = self._scelto()
+        if g is None:
+            suoni.suona("nessuna_selezione")
+            return
+        stipendio, mesi = self.stipendio.GetValue(), self.durata.GetValue()
+        problema = self.mondo.problema_rinnovo(self.poli, g, stipendio, mesi)
+        if problema:
+            suono = self._suono_del_problema(g)
+            if suono != "campo_da_correggere":
+                campo = self.elenco
+            elif stipendio < STIPENDIO_MINIMO:
+                campo = self.stipendio
+            else:
+                campo = self.durata
+            self.avvisa(problema, campo, suono)
+            return
+        if not self._conferma(testi.domanda_rinnovo(g, self.poli, stipendio, mesi)):
+            self._torna(fuoco)
+            return
+        accettato, _probabilita, richiesta = self.mondo.rinnova(self.poli, g, stipendio, mesi)
+        if accettato:
+            suono = "rinnovo_accettato"
+        elif not contratti.puo_trattare(g):
+            suono = "rinnovo_chiuso"
+        else:
+            suono = "rinnovo_rifiutato"
+        testo = testi.esito_rinnovo(g, self.poli, accettato, richiesta, mesi)
+        self.esiti.append(testo)
+        suoni.suona(suono)
+        wx.MessageBox(testo, self.GetTitle(), wx.OK | wx.ICON_INFORMATION, self)
+        self.aggiorna()
+        self._torna(fuoco)
+
+    def scheda(self, event=None):
+        g = self._scelto()
+        if g is None:
+            suoni.suona("nessuna_selezione")
+            return
+        self._scheda_del_giocatore(g, self.impostazioni)
 
 
 class OpzioniAmichevole(_Dialogo):

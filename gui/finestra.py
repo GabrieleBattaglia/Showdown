@@ -32,6 +32,11 @@ vivo non lo sveli prima; e con la decisione D30 chi esce con Esc prima della fin
 affatto: la vista dice che l'incontro è registrato e dove leggerne il risultato. Nel menu Impostazioni c'è la velocità di
 gioco, e il dialogo degli effetti sonori ha anche il volume della partita. Le parti delle tappe 9 e
 10 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2026-10-09, con la tappa 11 e la decisione D31, il menu Polisportive ha la sala allenamento,
+dove si spendono i punti allenamento dei tesserati e se ne scelgono programma e intensità, e i
+contratti, dove si propongono i rinnovi; lo svincolo dice la buonuscita, e alla chiusura di ciascun
+dialogo la vista mostra che cosa è cambiato e il mondo si salva. Anche queste parti sono di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -55,6 +60,7 @@ from gui.dialoghi import (
     CambiaPolisportiva,
     ChiediPassword,
     Conservazione,
+    Contratti,
     EffettiSonori,
     Lettura,
     Mercato,
@@ -63,6 +69,7 @@ from gui.dialoghi import (
     PagaArretrati,
     PasswordPolisportiva,
     Ricerca,
+    SalaAllenamento,
     SceltaGiocatore,
     VelocitaDiGioco,
     Vendite,
@@ -179,6 +186,8 @@ class FinestraPrincipale(wx.Frame):
                 ("&Vendite dei tesserati...", None, self.vendite),
                 ("Sv&incola un tesserato...", "Ctrl+Shift+S", self.svincola),
                 ("Pa&ga gli arretrati...", "Ctrl+Shift+P", self.paga_arretrati),
+                ("Sala &allenamento...", "Ctrl+Shift+L", self.sala_allenamento),
+                ("Contratti e &rinnovi...", "Ctrl+Shift+K", self.contratti),
                 None,
                 ("&Scheda della polisportiva attiva", "Ctrl+M", self.scheda_polisportiva),
                 ("&Bilancio della polisportiva attiva", "Ctrl+B", self.bilancio),
@@ -590,6 +599,47 @@ class FinestraPrincipale(wx.Frame):
         finally:
             dialogo.Destroy()
         self._concludi("\n".join(fatte or ["Nessuna vendita cambiata."]), f"vendite: {testi.conta(len(fatte), 'modifica', 'modifiche')}", "lavoro_concluso", bool(fatte))
+
+    def _rosa_attiva(self, p):
+        return [self.mondo.giocatori[gid] for gid in p.tesserati if gid in self.mondo.giocatori]
+
+    def sala_allenamento(self):
+        """
+        La sala allenamento della tappa 11: spese a mano, allenamento completo, Allena tutti,
+        programma e intensità. Alla chiusura la vista mostra le spese con il dettaglio e i cambi, e il
+        mondo si salva soltanto se qualcosa è cambiato.
+        """
+        p = self._attiva()
+        if p is None:
+            return
+        if not self._rosa_attiva(p):
+            self.mostra(f"{p.nome} non ha tesserati da allenare.", "nessun tesserato", "rosa_vuota")
+            return
+        suoni.suona("dialogo_sala_allenamento")
+        dialogo = SalaAllenamento(self, self.mondo, p, self.impostazioni)
+        try:
+            self._modale(dialogo)
+            esiti, cambi = list(dialogo.esiti), dialogo.cambi()
+        finally:
+            dialogo.Destroy()
+        self._concludi(testi.riepilogo_sala(p, esiti, cambi), f"sala: {testi.conta(len(esiti), 'spesa', 'spese')}", "lavoro_concluso", bool(esiti or cambi))
+
+    def contratti(self):
+        """I contratti e i rinnovi della tappa 11: alla chiusura la vista mostra gli esiti delle proposte, e il mondo si salva se ce ne sono."""
+        p = self._attiva()
+        if p is None:
+            return
+        if not self._rosa_attiva(p):
+            self.mostra(f"{p.nome} non ha tesserati con un contratto.", "nessun tesserato", "rosa_vuota")
+            return
+        suoni.suona("dialogo_contratti")
+        dialogo = Contratti(self, self.mondo, p, self.impostazioni)
+        try:
+            self._modale(dialogo)
+            esiti = list(dialogo.esiti)
+        finally:
+            dialogo.Destroy()
+        self._concludi(testi.riepilogo_contratti(p, esiti), f"contratti: {testi.conta(len(esiti), 'proposta', 'proposte')}", "lavoro_concluso", bool(esiti))
 
     def svincola(self):
         p = self._attiva()

@@ -206,6 +206,14 @@ def test_l_ascolto_guidato_suona_ogni_evento_del_gruppo(suonati, monkeypatch, ca
     assert "\n\n" not in scritto
 
 
+def test_la_probabilita_del_rinnovo_si_ascolta_alle_tre_altezze(suonati, monkeypatch):
+    # Tappa 11: come quella dell'ingaggio, la probabilità del rinnovo si sente al 10, al 50 e al 90 per cento.
+    monkeypatch.setattr(ascolta_suoni.time, "sleep", lambda _secondi: None)
+    ascolta_suoni.suona_evento("probabilita_rinnovo")
+    assert suonati == ["probabilita_rinnovo"] * len(ascolta_suoni.PERCENTUALI_DI_PROVA)
+    assert [d["semitoni"] for d in suonati.dettagli] == [pytest.approx(suoni.probabilita_in_semitoni(p)) for p in ascolta_suoni.PERCENTUALI_DI_PROVA]
+
+
 def test_escape_chiude_il_gruppo_dell_ascolto(suonati, monkeypatch):
     eventi = suoni.GRUPPI[0][1]
     _tastiera(monkeypatch, ["\r", "\x1b"])
@@ -384,15 +392,18 @@ def test_l_avanzamento_senza_giorni_non_suona():
 
 
 def test_l_ordine_delle_notizie_dell_avanzamento():
-    tutto = _rapporto(ticks=3, giorni=3, tuoi_partiti=2, tuoi_non_pagati=3, tuoi_venduti=1, tuoi_usciti=1, tuoi_ritirati=1, tue_bandiere=1,
-                      mesi=1, morti=4, poli_chiuse=1, usciti=2, ritirati=5, poli_create=1)
+    tutto = _rapporto(ticks=3, giorni=3, tuoi_partiti=2, tuoi_scaduti=3, tuoi_non_pagati=3, tuoi_venduti=1, tuoi_usciti=1, tuoi_infortunati_in_seduta=1,
+                      tuoi_ritirati=1, tuoi_in_scadenza=2, tue_bandiere=1, mesi=1, morti=4, poli_chiuse=1, usciti=2, ritirati=5, poli_create=1)
     assert suoni.evento_avanzamento(tutto, salvato=False, ha_polisportive=True) == ("salvataggio_non_riuscito", "mondo avanzato di 3 giorni, non salvato")
     attesi = [
         ("tuoi_partiti", "tuoi_tesserati_partiti", "2 tesserati andati via, non pagati"),
+        ("tuoi_scaduti", "tuoi_contratti_scaduti", "3 tesserati liberi a fine contratto"),
         ("tuoi_non_pagati", "stipendi_non_pagati", "stipendi non pagati, vedi il bilancio"),
         ("tuoi_venduti", "tuo_tesserato_venduto", "1 tuo giocatore venduto"),
         ("tuoi_usciti", "tuo_tesserato_uscito_di_scena", "1 tuo tesserato uscito di scena"),
+        ("tuoi_infortunati_in_seduta", "tuo_tesserato_infortunato_in_seduta", "tuo tesserato infortunato in seduta"),
         ("tuoi_ritirati", "tuo_tesserato_ritirato", "1 tuo tesserato ritirato"),
+        ("tuoi_in_scadenza", "tuoi_contratti_in_scadenza", "2 contratti in scadenza, rinnovali"),
         ("tue_bandiere", "tuo_tesserato_bandiera", "1 tuo tesserato diventa bandiera"),
         ("mesi", "primo_del_mese", "primo del mese, stipendi pagati"),
     ]
@@ -410,13 +421,28 @@ def test_l_ordine_delle_notizie_dell_avanzamento():
     assert suoni.evento_avanzamento(tutto, True, True) == ("mondo_avanzato", "mondo avanzato di un giorno")
 
 
+def test_le_notizie_dei_contratti_e_della_seduta_al_singolare_e_al_plurale():
+    # Tappa 11: i testi della barra per una notizia sola e per tante, sempre entro i quaranta caratteri.
+    attesi = {
+        "tuoi_scaduti": ("1 tesserato libero a fine contratto", "3 tesserati liberi a fine contratto"),
+        "tuoi_in_scadenza": ("1 contratto in scadenza, rinnovalo", "3 contratti in scadenza, rinnovali"),
+        "tuoi_infortunati_in_seduta": ("tuo tesserato infortunato in seduta", "3 tuoi tesserati infortunati in seduta"),
+    }
+    for chiave, (uno, tre) in attesi.items():
+        assert suoni.evento_avanzamento(_rapporto(**{chiave: 1}), True, True)[1] == uno
+        assert suoni.evento_avanzamento(_rapporto(**{chiave: 3}), True, True)[1] == tre
+    # Il promemoria dei contratti viene prima del primo del mese, che lo stesso giorno non suona.
+    assert suoni.evento_avanzamento(_rapporto(mesi=1, tuoi_in_scadenza=1), True, True)[0] == "tuoi_contratti_in_scadenza"
+
+
 def test_il_primo_del_mese_suona_solo_a_chi_ha_una_polisportiva():
     assert suoni.evento_avanzamento(_rapporto(mesi=1), True, False) == ("mondo_avanzato", "mondo avanzato di un giorno")
     assert suoni.evento_avanzamento(_rapporto(mesi=1), True, True)[0] == "primo_del_mese"
 
 
 def test_ogni_suono_dell_avanzamento_e_un_evento_e_il_testo_sta_nella_barra():
-    chiavi = ("tuoi_partiti", "tuoi_non_pagati", "tuoi_venduti", "tuoi_usciti", "tuoi_ritirati", "tue_bandiere", "mesi", "morti", "poli_chiuse", "usciti", "ritirati", "poli_create")
+    chiavi = ("tuoi_partiti", "tuoi_scaduti", "tuoi_non_pagati", "tuoi_venduti", "tuoi_usciti", "tuoi_infortunati_in_seduta", "tuoi_ritirati",
+              "tuoi_in_scadenza", "tue_bandiere", "mesi", "morti", "poli_chiuse", "usciti", "ritirati", "poli_create")
     for chiave in chiavi:
         for giorni in (1, 12345):
             for salvato in (True, False):

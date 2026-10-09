@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 168 suoni, 145 della finestra e 23 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 190 suoni, 167 della finestra e 23 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 6 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -17,7 +17,7 @@ Finestra, applicazione, il fuoco, i dialoghi e gli elenchi, 9 suoni.
 F5, il fuoco va nella vista principale: spostamento_f5.
 F7, il fuoco va nella barra di stato: spostamento_f7.
 Un'operazione annullata, con Esc o con Annulla in un dialogo: meteora_annullamento.
-La chiusura del mercato, delle vendite o degli arretrati dopo averci lavorato: terminata.
+La chiusura del mercato, delle vendite, degli arretrati, della sala allenamento o dei contratti dopo averci lavorato: terminata.
 Un pulsante premuto senza niente di scelto su cui lavorare: mess_tasto_a_vuoto.
 Un valore da correggere in un campo, e il dialogo resta aperto: mess_campo_da_correggere.
 Un elenco che si restringe mentre si scrive, e resta vuoto: espelli.
@@ -108,7 +108,7 @@ Nel mercato si apre la ricerca per aggiungere un filtro: mess_filtro_dialogo.
 Nel mercato un filtro aggiunto: mess_filtro_aggiunto.
 Nel mercato un filtro tolto: mess_filtro_tolto.
 Nel mercato tutti i filtri tolti: mess_filtri_tutti_tolti.
-Nel mercato la scheda del giocatore scelto: carta_girata.
+Nel mercato, nella sala allenamento e nei contratti, la scheda del giocatore scelto: carta_girata.
 Finestra, economia, le offerte, 11 suoni.
 Si apre il dialogo della cifra d'ingaggio di un libero: mess_cifra_ingaggio.
 La probabilità che il libero accetti, mentre si scrive la cifra: più è alta, più è acuto: mess_probabilita.
@@ -162,6 +162,31 @@ Nella partita dal vivo Alt+L, il lato d'ascolto passa all'altro giocatore: mess_
 Nella partita dal vivo il tasto più, velocità di gioco più alta: meteora_velocita_su.
 Nella partita dal vivo il tasto meno, velocità di gioco più bassa: meteora_velocita_giu.
 Nella partita dal vivo più o meno con la velocità già al massimo o al minimo: meteora_velocita_al_limite.
+Finestra, allenamento, la sala, 10 suoni.
+Si apre la sala allenamento, con Ctrl+Shift+L: mess_sala_allenamento.
+Nella sala allenamento una spesa a mano, punti allenamento su una caratteristica: mess_allenamento_fatto.
+Nella sala allenamento l'allenamento completo di un tesserato secondo il suo programma: mess_allenamento_completo.
+Nella sala allenamento Allena tutti, ogni tesserato secondo il suo programma: mess_allenati_tutti.
+Nella sala allenamento un tesserato sale di classe, dopo l'esito: mess_classe_salita.
+Nella sala allenamento non ci sono punti da spendere, o la cifra è zero: mess_portafoglio_vuoto.
+Nella sala allenamento la caratteristica scelta è già al massimo: mess_al_massimo.
+Nella sala allenamento il tesserato scelto è infortunato e oggi non si allena: mess_allenando_fermo.
+Nella sala allenamento cambia il programma del tesserato: mess_programma_cambiato.
+Nella sala allenamento cambia l'intensità del tesserato: mess_intensita_cambiata.
+Finestra, contratti, i rinnovi, 9 suoni.
+Si apre il dialogo dei contratti e dei rinnovi, con Ctrl+Shift+K: mess_contratti_aperti.
+La probabilità che il tesserato accetti il rinnovo, mentre si scrivono stipendio e durata: più è alta, più è acuto: mess_probabilita_rinnovo.
+Il tesserato accetta il rinnovo del contratto: mess_rinnovo_firmato.
+Il tesserato rifiuta il rinnovo, e si può riprovare un altro giorno: mess_rinnovo_rifiutato.
+Il terzo rifiuto del rinnovo, e il tesserato non tratta più: mess_rinnovo_chiuso.
+Il rinnovo non si può ancora proporre, perché il contratto non è negli ultimi tre mesi: mess_rinnovo_non_ancora.
+Oggi al tesserato è già stata fatta una proposta di rinnovo: mess_rinnovo_domani.
+Il tesserato ha già rifiutato tre proposte e non ne accetta altre: mess_rinnovo_niente_da_fare.
+Il tesserato ha già rinnovato il contratto: mess_rinnovo_gia_fatto.
+Finestra, contratti e allenamento, le notizie, 3 suoni.
+Nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo: mess_contratti_in_scadenza.
+Nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero: mess_contratto_scaduto.
+Nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento: mess_infortunio_in_allenamento.
 Partita dal vivo, i suoni dell'incontro, 23 suoni.
 Il fischio singolo dell'arbitro, ai falli e alle riprese del gioco: mess_partita_fischio_singolo.
 La battuta, la paletta che colpisce la pallina al servizio: mess_partita_battuta.
