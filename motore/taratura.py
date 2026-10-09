@@ -178,8 +178,11 @@ class Taratura:
     PRESSIONE_PALLA_SET_ESPERIENZA: float = 0.6
     # La stanchezza. Dipende dall'età, dalla resistenza e da quanto il giocatore si allena, D26:
     # chi si allena si stanca più piano, fino a K_ALLENAMENTO_FATICA in più di ritmo sopportato.
-    # Per ora quanto si allena lo dice la parte allenata della resistenza; la costanza
-    # dell'allenamento arriverà con la tappa 11.
+    # Dalla tappa 11 quanto si allena lo dice la costanza recente di D31, sulla costanza piena:
+    # senza partite il ritmo si divide per 1,09 alla leggera, 1,15 alla normale e 1,195
+    # all'intensa, ed è così che l'intensa fa reggere meglio la fatica e la leggera la peggiora;
+    # con un'amichevole al giorno si arriva fino a 1,3. Prima lo diceva la parte allenata della
+    # resistenza, che ora conta una volta sola, nella resistenza totale.
     # FORMA_FATICA è nuova: con 1 la stanchezza cresceva più in fretta alle prime azioni e poi
     # rallentava; ora si accumula, piano nei primi set e di più verso la fine di un incontro lungo.
     # Così al meglio dei 3, su cui si misura il valore, la resistenza pesa poco, e al meglio dei 5
@@ -190,8 +193,9 @@ class Taratura:
     # valere più del doppio di un punto innato: resistenza 5 tutta allenata reggeva più di 6
     # innata. Con 0,3 la resistenza della scheda resta il fattore principale: fra due giocatori
     # possibili, con l'innata fino a 3 e l'allenata fino a 5, chi ha un punto in più di
-    # resistenza totale si stanca sempre più piano, comunque sia divisa. Perché il giovane più
-    # resistente che possa esistere, 3 innata e 5 allenata, reggesse lo stesso i cinque set, la
+    # resistenza totale si stanca sempre più piano, comunque sia divisa; dalla tappa 11, con la
+    # costanza al posto dell'allenata, a parità di costanza vale per ogni divisione. Perché il
+    # giovane più resistente di allora, 3 innata e 5 allenata, reggesse lo stesso i cinque set, la
     # resistenza conta di più per punto, RESISTENZA_PER_PUNTO da 0,08 a 0,12 e RESISTENZA_BASE da
     # 0,6 a 0,4, e la curva è più tardiva, FORMA_FATICA da 1,5 a 2,5; ANNI_FATICA è passato da 25
     # a 30, perché il sessantenne restasse nella sua banda. Il trentenne con resistenza 5 senza

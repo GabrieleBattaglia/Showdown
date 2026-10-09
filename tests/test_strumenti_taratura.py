@@ -111,13 +111,15 @@ def test_la_verifica_a_coppie_somma_i_gruppi_e_da_il_mancino_per_seme():
 
 
 def test_la_sonda_della_stanchezza_misura_giocatori_possibili():
-    # La resistenza innata nasce fra 0 e il 60 per cento del suo tetto, cioè 3, e non cresce;
-    # l'allenata arriva a 5. Un giovane con 5 di innata, o un trentenne con 5 senza allenarsi,
-    # nel mondo non esistono.
+    # La resistenza innata nasce fra 0 e il 60 per cento del suo vecchio massimo, cioè 3, e non
+    # cresce; dalla tappa 11 il totale arriva al tetto di 10, e la costanza va da 0 alla costanza
+    # piena. Un giovane con 5 di innata, o un trentenne con 5 senza allenarsi, nel mondo non esistono.
     innata_massima = costanti.MAX_PRECISIONE_RESISTENZA * 0.6
-    for descrizione, _anni, innata, allenata, _dove, _intervallo in bp.CASI_FATICA:
+    for descrizione, _anni, innata, allenata, costanza, _dove, _intervallo in bp.CASI_FATICA:
         assert 0.0 <= innata <= innata_massima, descrizione
-        assert 0.0 <= allenata <= costanti.MAX_ALLENATO_FISICO, descrizione
+        assert allenata >= 0.0 and innata + allenata <= costanti.MAX_TOTALE_PRECISIONE_RESISTENZA, descrizione
+        assert 0.0 <= costanza <= costanti.COSTANZA_PIENA, descrizione
+    assert any(innata + allenata == costanti.MAX_TOTALE_PRECISIONE_RESISTENZA for _d, _a, innata, allenata, *_resto in bp.CASI_FATICA)
 
 
 # Le impronte delle caratteristiche di due popolazioni di prova, prese con il codice della versione

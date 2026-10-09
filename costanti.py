@@ -136,25 +136,6 @@ SEDI_INFORTUNIO = (
     ("ginocchio", "al ginocchio", None, 20, 1.2),
     ("caviglia", "alla caviglia", None, 20, 0.8),
 )
-# Punti esperienza guadagnati in partita.
-XP_VITTORIA_2_0 = 4
-XP_VITTORIA_2_1 = 3
-XP_SCONFITTA_1_2 = 2
-XP_SCONFITTA_0_2 = 1
-XP_VITTORIA_3_0 = 7
-XP_VITTORIA_3_1 = 6
-XP_VITTORIA_3_2 = 5
-XP_SCONFITTA_2_3 = 4
-XP_SCONFITTA_1_3 = 3
-XP_SCONFITTA_0_3 = 2
-XP_BONUS_TORNEO = 3
-XP_BONUS_UNDERDOG = 1
-ICV_DIFF_PERC_UNDERDOG = 25.0
-# I vecchi tetti della parte allenata, 5 per le fisiche e 20 per le altre: dalla tappa 11, risposta 6
-# di Gabriele, non valgono più per il gioco, e restano soltanto per la stanchezza del motore, che li
-# usa finché la costanza recente non ne prende il posto.
-MAX_ALLENATO_FISICO = 5.0
-MAX_ALLENATO_SKILL = 20.0
 # Gloria richiesta dal giocatore.
 K_ICV_GLORIA_RICHIESTA = 0.9
 ETA_PICCO_RICHIESTA_GLORIA_ANNI = 17.0
@@ -228,10 +209,10 @@ MESI_DI_INGAGGIO = 2
 REPUTAZIONE_MINIMA = 0.5
 REPUTAZIONE_MASSIMA = 2.0
 MESI_DI_VALORE = 6
-# Fedeltà ed esperienza crescono ogni mese passato in una polisportiva; la fedeltà va da 0 a 100.
+# La fedeltà cresce ogni mese passato in una polisportiva, da 0 a 100. L'esperienza di carriera va
+# da 0 a 20, e dalla tappa 11 cresce da più fonti, più sotto.
 FEDELTA_PER_MESE = 2.0
 FEDELTA_MASSIMA = 100.0
-ESPERIENZA_PER_MESE = 0.1
 ESPERIENZA_MASSIMA = 20.0
 # Ogni 25 punti di fedeltà, un mese di pazienza in più oltre al primo.
 FEDELTA_PER_MESE_DI_PAZIENZA = 25.0

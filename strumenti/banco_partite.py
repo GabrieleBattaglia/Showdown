@@ -226,12 +226,13 @@ class Banco:
                         self.lettura[nome]["laterali"] += stats.attacchi_verso[debole] + stats.attacchi_verso[forte]
             anni = g.eta_anni
             resistenza = g._get_valore_totale("resistenza_base")
-            # I gruppi del punto 18.16, riletti dopo la revisione della decisione D26, non allenano
-            # la resistenza: chi si allena si stanca più piano, e lo misura la sonda della
-            # stanchezza. Il trentenne ha la resistenza innata più alta che si possa avere, fra 2,5
-            # e 3: l'innata nasce fra 0 e 3 e non cresce, e il vecchio gruppo, con la resistenza da
-            # 4 a 6 senza allenamento, restava sempre vuoto.
-            if risultato.formato.set_al_meglio == 5 and g.resistenza_allenata < 0.5:
+            # I gruppi del punto 18.16, riletti dopo la revisione della decisione D26, non si
+            # allenano: chi si allena si stanca più piano, e lo misura la sonda della stanchezza.
+            # Dalla tappa 11 chi non si allena lo dice la costanza recente sotto 0,2, che dà al
+            # ritmo un fattore sotto il 3 per cento, come prima l'allenata sotto 0,5. Il trentenne
+            # ha la resistenza innata più alta che si possa avere, fra 2,5 e 3: l'innata nasce fra 0
+            # e 3 e non cresce, e il vecchio gruppo, con la resistenza da 4 a 6, restava sempre vuoto.
+            if risultato.formato.set_al_meglio == 5 and g.costanza < 0.2:
                 if 25 <= anni <= 35 and g.resistenza_base >= 2.5:
                     self.fatica["trentenni con la resistenza innata più alta"].append(stats.eff_finale)
                 elif 55 <= anni <= 65 and resistenza <= 3:
@@ -426,19 +427,22 @@ def rapporto(banco, intestazione, pari_forti, set_al_meglio=3, sonde=()):
     return righe
 
 
-# I casi della sonda della stanchezza: descrizione, anni, resistenza innata e allenata, dove si
-# misura e bersaglio. Sono giocatori che nel mondo possono esistere: la resistenza innata nasce fra
-# 0 e 3 e non cresce, l'allenata arriva a 5. I primi due sono quelli del punto 18.16 del progetto,
-# misurati su tutti gli incontri al meglio di 5; il trentenne, che il progetto voleva con
-# resistenza 5, è riletto con la resistenza innata più alta, 3, senza allenamento, perché una
-# resistenza 5 senza allenamento non esiste, e dalla decisione D26 l'allenamento conta anche da
-# solo. Gli altri due vengono dalla decisione D26, e si misurano a fine quinto set: il giovane ha
-# la resistenza più alta che si possa avere, 3 innata e 5 allenata.
+# I casi della sonda della stanchezza: descrizione, anni, resistenza innata e allenata, costanza
+# recente, dove si misura e bersaglio. Sono giocatori che nel mondo possono esistere: la resistenza
+# innata nasce fra 0 e 3 e non cresce, e dalla tappa 11 il totale arriva fino a 10, il tetto; la
+# costanza va da 0 alla costanza piena, l'intensa con un'amichevole al giorno. I primi due sono
+# quelli del punto 18.16 del progetto, misurati su tutti gli incontri al meglio di 5; il trentenne,
+# che il progetto voleva con resistenza 5, è riletto con la resistenza innata più alta, 3, senza
+# allenamento. Gli altri vengono dalla decisione D26, e si misurano a fine quinto set: il giovane
+# con resistenza 8, 3 innata e 5 allenata, ha la costanza piena, che dà al ritmo lo stesso fattore
+# che prima gli dava l'allenata; il giovane con resistenza 10, la più alta senza i tetti
+# dell'allenata, nasce con la tappa 11.
 CASI_FATICA = (
-    ("un trentenne con resistenza 3, la più alta innata, che non si allena", 30, 3.0, 0.0, "tutti", (0.86, 0.93)),
-    ("un sessantenne con resistenza 2", 60, 2.0, 0.0, "tutti", (0.72, 0.82)),
-    ("un giovane di 24 anni con resistenza 8, la più alta possibile, 3 innata e 5 allenata", 24, 3.0, 5.0, "quinto", (0.94, 1.0)),
-    ("un anziano di 65 anni con resistenza 1,5, che non si allena", 65, 1.5, 0.0, "quinto", (0.6, 0.78)),
+    ("un trentenne con resistenza 3, la più alta innata, che non si allena", 30, 3.0, 0.0, 0.0, "tutti", (0.86, 0.93)),
+    ("un sessantenne con resistenza 2", 60, 2.0, 0.0, 0.0, "tutti", (0.72, 0.82)),
+    ("un giovane di 24 anni con resistenza 8, 3 innata e 5 allenata, e la costanza piena", 24, 3.0, 5.0, 2.0, "quinto", (0.94, 1.0)),
+    ("un giovane di 24 anni con resistenza 10, la più alta, e la costanza piena", 24, 3.0, 7.0, 2.0, "quinto", (0.95, 1.0)),
+    ("un anziano di 65 anni con resistenza 1,5, che non si allena", 65, 1.5, 0.0, 0.0, "quinto", (0.6, 0.78)),
 )
 
 
@@ -453,13 +457,14 @@ def sonda_fatica(giocatori, quante, rng, opzioni):
     l'incontro sia equilibrato e arrivi spesso al quinto set: conta l'efficienza a fine quinto set.
     """
     righe = []
-    for descrizione, anni, innata, allenata, dove, intervallo in CASI_FATICA:
+    for descrizione, anni, innata, allenata, costanza, dove, intervallo in CASI_FATICA:
         efficienze = []
         for _ in range(quante):
             g, avversario = rng.sample(giocatori, 2)
             g = copy.copy(g)
             g.eta = costanti.giorni_da_anni(anni)
             g.resistenza_base, g.resistenza_allenata = innata, allenata
+            g.costanza = costanza
             if dove == "quinto":
                 avversario = copy.copy(g)
                 avversario.id = g.id + 10_000_000

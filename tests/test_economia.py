@@ -122,7 +122,8 @@ def test_il_primo_del_mese_con_la_cassa_che_basta(mondo):
     assert set(poli.conti_del_mese.values()) == {0}
     for gid in poli.tesserati:
         g = mondo.giocatori[gid]
-        assert g.fedelta == 2. and g.esperienza == pytest.approx(.1) and g.arretrati == 0 and g.pazienza == 100
+        # Dalla tappa 11 l'esperienza non cresce più il primo del mese ma ogni giorno, in _allenamento_del_giorno.
+        assert g.fedelta == 2. and g.esperienza == 0.0 and g.arretrati == 0 and g.pazienza == 100
     assert rapporto["tuoi_non_pagati"] == 0
 
 

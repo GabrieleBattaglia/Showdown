@@ -22,28 +22,33 @@ ricevere il momento reale e il giorno simulato dell'incontro, per chi la salva p
 Con la decisione D29, tappa 10, l'amichevole da assistere dal vivo si gioca e si registra subito come
 le altre, e porta con sé un incontro gemello, con lo stesso seme, che la finestra dal vivo svolge un
 momento alla volta alla velocità di gioco scelta.
+Dalla tappa 11, il 2026-10-09, decisione D31, i punti allenamento di un incontro vengono da una
+formula, al posto della vecchia tabella: una base, mezzo punto per ogni set vinto e un punto a chi
+vince, così al meglio dei 5 se ne prendono appena il 13 per cento in più; il premio al più debole
+resta, anche quando perde, ma il distacco si misura sulla somma pesata, che non dipende dalla scala
+del valore. Con la registrazione arrivano anche l'esperienza dell'incontro e la costanza recente,
+e l'intensità dell'allenamento cambia il rischio d'infortunio. Tornei e sfide sono gli agganci
+della tappa 12, e il giorno dell'ultima amichevole si segna soltanto per le amichevoli.
 """
 
 import random
 
+import esperienza
 import infortuni
+import valore
 from costanti import (
-    ICV_DIFF_PERC_UNDERDOG,
+    COSTANZA_PER_PARTITA,
+    DECADIMENTO_COSTANZA,
+    DISTACCO_PIU_DEBOLE,
     MODALITA_OUTPUT_CONSOLE,
     MODALITA_OUTPUT_FILE,
     MODALITA_OUTPUT_RISULTATO,
-    XP_BONUS_TORNEO,
-    XP_BONUS_UNDERDOG,
-    XP_SCONFITTA_0_2,
-    XP_SCONFITTA_0_3,
-    XP_SCONFITTA_1_2,
-    XP_SCONFITTA_1_3,
-    XP_SCONFITTA_2_3,
-    XP_VITTORIA_2_0,
-    XP_VITTORIA_2_1,
-    XP_VITTORIA_3_0,
-    XP_VITTORIA_3_1,
-    XP_VITTORIA_3_2,
+    PA_BONUS_PIU_DEBOLE,
+    PA_BONUS_SFIDA,
+    PA_BONUS_TORNEO,
+    PA_PARTITA_BASE,
+    PA_PER_SET_VINTO,
+    PA_VITTORIA,
 )
 from motore import COMPLETO, ESSENZIALE, SQUADRE, TARATURA, Incontro, Squadra, formato_singolare
 from motore import cronaca as C
@@ -58,6 +63,11 @@ _APERTURA_E_CHIUSURA = (E.INIZIO_INCONTRO, E.FINE_INCONTRO)
 
 def _silenzio(*_args, **_kwargs):
     """Al posto di mostra e pausa quando chi usa il motore non le passa."""
+
+
+def _punti(valore_dei_punti):
+    """I punti allenamento con la virgola, senza decimali quando sono interi: 4, 2,5."""
+    return f"{valore_dei_punti:g}".replace(".", ",")
 
 
 class MotorePartita:
@@ -238,23 +248,33 @@ class MotorePartita:
     # La registrazione nel mondo.
 
     @staticmethod
-    def _xp_della_partita(set_al_meglio, set_vinti_vinc, set_vinti_perd):
-        """Punti allenamento a vincitore e perdente, secondo il formato e il punteggio in set."""
-        if set_vinti_vinc <= set_vinti_perd:
-            return 0, 0
-        if set_al_meglio <= 3:
-            tabella = {0: (XP_VITTORIA_2_0, XP_SCONFITTA_0_2), 1: (XP_VITTORIA_2_1, XP_SCONFITTA_1_2)}
-        else:
-            tabella = {0: (XP_VITTORIA_3_0, XP_SCONFITTA_0_3), 1: (XP_VITTORIA_3_1, XP_SCONFITTA_1_3), 2: (XP_VITTORIA_3_2, XP_SCONFITTA_2_3)}
-        return tabella.get(set_vinti_perd, (0, 0))
+    def punti_della_partita(set_vinti_vinc, set_vinti_perd):
+        """
+        I punti allenamento di un incontro a vincitore e perdente: la base, mezzo punto per set vinto,
+        un punto a chi vince. Al meglio dei 3 chi vince prende 4 e chi perde 2 o 2,5; al meglio dei 5
+        chi vince 4,5 e chi perde da 2 a 3.
+        """
+        return PA_PARTITA_BASE + PA_PER_SET_VINTO * set_vinti_vinc + PA_VITTORIA, PA_PARTITA_BASE + PA_PER_SET_VINTO * set_vinti_perd
 
-    def registra(self, risultato, info_torneo=None):
+    @staticmethod
+    def piu_debole(g1, g2):
+        """
+        Il più debole dei due, se ha almeno DISTACCO_PIU_DEBOLE punti di somma pesata in meno, tratti
+        compresi; altrimenti None. Attorno alla mediana il distacco vale il 25 per cento del valore.
+        """
+        forza1 = valore.somma_pesata(g1) + valore.bonus_tratti(g1)
+        forza2 = valore.somma_pesata(g2) + valore.bonus_tratti(g2)
+        if abs(forza1 - forza2) < DISTACCO_PIU_DEBOLE:
+            return None
+        return g1 if forza1 < forza2 else g2
+
+    def registra(self, risultato, info_torneo=None, sfida=None):
         """
         Porta il risultato di un singolare nel mondo: partite e set vinti e persi, goal fatti e
-        subiti, punti allenamento con i bonus del torneo e dell'underdog, i diari, e gli infortuni
-        con la loro sede. Senza torneo è un'amichevole, e i due giocatori ricordano il giorno
-        simulato in cui l'hanno giocata. Restituisce le frasi da mostrare. La gara a squadre non si
-        registra.
+        subiti, punti allenamento con i bonus del torneo, della sfida e del più debole, esperienza e
+        costanza recente, i diari, e gli infortuni con la loro sede. Senza torneo e senza sfida è
+        un'amichevole, e i due giocatori ricordano il giorno simulato in cui l'hanno giocata.
+        Restituisce le frasi da mostrare. La gara a squadre non si registra.
         """
         if risultato.formato.tipo != "singolare":
             return []
@@ -275,22 +295,24 @@ class MotorePartita:
         g_vinc.goalssubiti += stats_perd.goal
         g_perd.goalsfatti += stats_perd.goal
         g_perd.goalssubiti += stats_vinc.goal
-        xp_vinc, xp_perd = self._xp_della_partita(risultato.formato.set_al_meglio, set_vinc, set_perd)
-        if info_torneo:
-            xp_vinc += XP_BONUS_TORNEO
-            xp_perd += XP_BONUS_TORNEO
-        icv_vinc, icv_perd = g_vinc.indice_collettivo_valore, g_perd.indice_collettivo_valore
-        if abs(icv_vinc - icv_perd) / max(icv_vinc, icv_perd, 1.0) * 100.0 >= ICV_DIFF_PERC_UNDERDOG:
-            if icv_vinc < icv_perd:
-                xp_vinc += XP_BONUS_UNDERDOG
-            else:
-                xp_perd += XP_BONUS_UNDERDOG
-        g_vinc.punti_allenamento += xp_vinc
-        g_perd.punti_allenamento += xp_perd
-        if not info_torneo:
+        pa_vinc, pa_perd = self.punti_della_partita(set_vinc, set_perd)
+        bonus = (PA_BONUS_TORNEO if info_torneo else 0.0) + (PA_BONUS_SFIDA if sfida else 0.0)
+        pa_vinc += bonus
+        pa_perd += bonus
+        debole = self.piu_debole(g_vinc, g_perd)
+        if debole is g_vinc:
+            pa_vinc += PA_BONUS_PIU_DEBOLE
+        elif debole is g_perd:
+            pa_perd += PA_BONUS_PIU_DEBOLE
+        tipo = esperienza.TORNEO if info_torneo else esperienza.SFIDA if sfida else esperienza.AMICHEVOLE
+        for g, punti in ((g_vinc, pa_vinc), (g_perd, pa_perd)):
+            g.punti_allenamento += punti
+            esperienza.da_partita(g, tipo)
+            g.costanza += (1.0 - DECADIMENTO_COSTANZA) * COSTANZA_PER_PARTITA
+        if tipo == esperienza.AMICHEVOLE:
             g_vinc.ultima_amichevole = g_perd.ultima_amichevole = self.mondo.datetime_corrente_simulazione
-        self._annota_risultato(g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, info_torneo)
-        frasi = [f"Punti allenamento: {xp_vinc} a {g_vinc.nome} {g_vinc.cognome}, {xp_perd} a {g_perd.nome} {g_perd.cognome}."]
+        self._annota_risultato(g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo)
+        frasi = [f"Punti allenamento: {_punti(pa_vinc)} a {g_vinc.nome} {g_vinc.cognome}, {_punti(pa_perd)} a {g_perd.nome} {g_perd.cognome}."]
         caso_degli_infortuni = random.Random(f"infortuni-{risultato.seme}")
         for g in (g_vinc, g_perd):
             frase = infortuni.infortuna(self.mondo, g, risultato.statistiche[g.id].azioni, caso_degli_infortuni)
@@ -298,9 +320,9 @@ class MotorePartita:
                 frasi.append(frase)
         return frasi
 
-    def _annota_risultato(self, g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, info_torneo):
+    def _annota_risultato(self, g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo_incontro):
         """Il risultato nei diari dei due giocatori, ciascuno con i set dal suo punto di vista."""
-        tipo = "la partita del torneo" if info_torneo else "l'amichevole"
+        tipo = {esperienza.TORNEO: "la partita del torneo", esperienza.SFIDA: "la sfida"}.get(tipo_incontro, "l'amichevole")
         dal_vincitore = [(a, b) if vince_a else (b, a) for a, b in risultato.set]
         set_vincitore = ", ".join(f"{a} a {b}" for a, b in dal_vincitore)
         set_perdente = ", ".join(f"{b} a {a}" for a, b in dal_vincitore)

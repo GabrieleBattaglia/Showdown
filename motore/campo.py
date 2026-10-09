@@ -10,8 +10,10 @@ resistenza soltanto la stanchezza.
 La stanchezza è di ciascuno, cresce con le azioni giocate, più in fretta per chi è anziano o poco
 resistente, più piano per chi si allena, e nelle pause non passa: il vecchio difetto del problema
 P1, la resistenza del primo giocatore passata a chi batte, sparisce per costruzione. Quanto il
-giocatore si allena, per ora, lo dice la parte allenata della resistenza, decisione D26: la
-costanza dell'allenamento arriverà con la tappa 11, e prenderà il suo posto in allenamento().
+giocatore si allena lo dice, dalla tappa 11, la costanza recente della decisione D31, cioè quanto
+si è allenato o ha giocato nelle ultime settimane, fotografata all'inizio dell'incontro come tutto
+il resto; fino alla tappa 10 la diceva la parte allenata della resistenza, che ora conta una volta
+sola, nella resistenza totale.
 Il destrimano ha il rovescio a sinistra, il mancino a destra; l'ambidestro sano non ha rovescio e
 cambia mano quando la pallina arriva dal lato opposto alla mano che impugna, mentre con un braccio
 infortunato gioca con l'altro e ha il rovescio dal lato del braccio fermo.
@@ -27,7 +29,7 @@ la sua lettura del gioco gli permette.
 import math
 from collections import Counter
 
-from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA, MAX_ALLENATO_FISICO, SEDI_INFORTUNIO
+from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA, COSTANZA_PIENA, SEDI_INFORTUNIO
 
 ZONE = ("sx", "centro", "dx")
 _BRACCIO_DELLA_SEDE = {codice: braccio for codice, _frase, braccio, _peso, _durata in SEDI_INFORTUNIO}
@@ -96,26 +98,26 @@ def lettura_possibile(g, taratura):
     return esperienza / (esperienza + taratura.K_LETTURA)
 
 
-def allenamento(g):
+def costanza_relativa(g):
     """
-    Quanto il giocatore si allena, da 0 a 1, per la stanchezza: per ora la parte allenata della
-    resistenza sul suo tetto, decisione D26; con la tappa 11 verrà la costanza dell'allenamento.
+    Quanto il giocatore si allena, da 0 a 1, per la stanchezza: la costanza recente divisa per la
+    costanza piena, che è quella dell'intensa con un'amichevole al giorno, decisione D31.
     """
-    allenata = float(getattr(g, "resistenza_allenata", 0.0) or 0.0)
-    return max(0.0, min(1.0, allenata / MAX_ALLENATO_FISICO))
+    costanza = float(getattr(g, "costanza", 0.0) or 0.0)
+    return max(0.0, min(1.0, costanza / COSTANZA_PIENA))
 
 
 def ritmo_della_fatica(g, taratura):
     """
     Quanto in fretta il giocatore si stanca, uno per un trentenne con resistenza 5 che non si
     allena, un riferimento di calcolo: nel mondo l'innata arriva al massimo a 3. Cresce con l'età,
-    sopra i 30 anni e sotto i 16, e cala con la resistenza totale e, meno, con l'allenamento.
+    sopra i 30 anni e sotto i 16, e cala con la resistenza totale e, meno, con la costanza recente.
     """
     t = taratura
     anni = g.eta_anni
     fattore_eta = 1.0 + max(0.0, anni - t.ETA_INIZIO_FATICA) / t.ANNI_FATICA + max(0.0, t.ETA_FATICA_GIOVANI - anni) * t.FATICA_GIOVANI_PER_ANNO
     fattore_resistenza = t.RESISTENZA_BASE + t.RESISTENZA_PER_PUNTO * g._get_valore_totale("resistenza_base")
-    fattore_allenamento = 1.0 + t.K_ALLENAMENTO_FATICA * allenamento(g)
+    fattore_allenamento = 1.0 + t.K_ALLENAMENTO_FATICA * costanza_relativa(g)
     return fattore_eta / max(0.05, fattore_resistenza * fattore_allenamento)
 
 

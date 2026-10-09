@@ -10,14 +10,22 @@ partita, cioè con la radice delle azioni giocate; la durata cresce con l'età e
 resistenza, come prima, e con un fattore della sede.
 Il caso viene da un generatore che la facciata del motore fa nascere dal seme della partita, così
 gli infortuni non toccano il caso del mondo e una partita rigiocata dà gli stessi.
+Dalla tappa 11, il 2026-10-09, decisione D31, l'intensità dell'allenamento cambia il rischio: in
+partita la probabilità si moltiplica per il fattore della sua intensità, sopra quello del carico; e
+soltanto l'intensa porta un piccolo rischio anche in seduta, ogni giorno, che cresce dai 30 anni. Il
+caso della seduta viene da un generatore nato dalla data e dal numero del giocatore: il caso del
+mondo non si tocca, e siccome l'intensa la sceglie soltanto l'utente per i suoi tesserati, ogni
+giorno si tirano pochi numeri.
 """
 
 import datetime
 import math
+import random
 
 from costanti import (
     AGING_PEAK_AGE_GIORNI,
     ANNO_SIMULAZIONE_GIORNI,
+    AUMENTO_RISCHIO_SEDUTA,
     AZIONI_RIFERIMENTO_INFORTUNIO,
     CARICO_INFORTUNIO_MASSIMO,
     CARICO_INFORTUNIO_MINIMO,
@@ -27,6 +35,8 @@ from costanti import (
     INFORTUNIO_DURATA_MAX_GIORNI_ETA,
     INFORTUNIO_DURATA_MIN_GIORNI,
     INFORTUNIO_MALUS_MAX_RESISTENZA,
+    INTENSITA,
+    INTENSITA_PREDEFINITA,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
     PROB_INFORTUNIO_AUMENTO_MAX_PERC,
     PROB_INFORTUNIO_BASE_PER_PARTITA,
@@ -46,14 +56,24 @@ def fattore_carico(azioni):
     return max(CARICO_INFORTUNIO_MINIMO, min(CARICO_INFORTUNIO_MASSIMO, math.sqrt(max(0, azioni) / AZIONI_RIFERIMENTO_INFORTUNIO)))
 
 
+def _quota_eta(anni):
+    """Quanto l'età ha alzato il rischio, da 0 a 30 anni a 1 dai 75 in su."""
+    intervallo = max(1.0, ETA_MAX_PROB_INFORTUNIO_ANNI - ETA_INIZIO_AUMENTO_PROB_INFORTUNIO_ANNI)
+    return max(0.0, min(anni, ETA_MAX_PROB_INFORTUNIO_ANNI) - ETA_INIZIO_AUMENTO_PROB_INFORTUNIO_ANNI) / intervallo
+
+
+def intensita_di(g):
+    """La riga della tabella INTENSITA per il giocatore: la sua intensità, normale se non ne ha."""
+    return INTENSITA[getattr(g, "intensita", INTENSITA_PREDEFINITA)]
+
+
 def probabilita(g, azioni):
-    """La probabilità di infortunio dopo una partita, in percentuale: cresce dai 30 anni e col carico; l'ambidestro ne ha un po' meno."""
-    aumento = 0.0
-    anni = g.eta_anni
-    if anni > ETA_INIZIO_AUMENTO_PROB_INFORTUNIO_ANNI:
-        intervallo = max(1.0, ETA_MAX_PROB_INFORTUNIO_ANNI - ETA_INIZIO_AUMENTO_PROB_INFORTUNIO_ANNI)
-        aumento = (min(anni, ETA_MAX_PROB_INFORTUNIO_ANNI) - ETA_INIZIO_AUMENTO_PROB_INFORTUNIO_ANNI) / intervallo * PROB_INFORTUNIO_AUMENTO_MAX_PERC
-    risultato = (PROB_INFORTUNIO_BASE_PER_PARTITA + aumento) * fattore_carico(azioni)
+    """
+    La probabilità di infortunio dopo una partita, in percentuale: cresce dai 30 anni e col carico;
+    l'ambidestro ne ha un po' meno; dalla tappa 11 si moltiplica per il fattore dell'intensità.
+    """
+    aumento = _quota_eta(g.eta_anni) * PROB_INFORTUNIO_AUMENTO_MAX_PERC
+    risultato = (PROB_INFORTUNIO_BASE_PER_PARTITA + aumento) * fattore_carico(azioni) * intensita_di(g)["infortuni_partita"]
     if getattr(g, "ambidestro", False):
         risultato *= FATTORE_INFORTUNIO_AMBIDESTRO
     return max(0.0, min(risultato, 95.0))
@@ -120,10 +140,12 @@ def gioca_con_l_altro_braccio(g, sede):
     return bool(getattr(g, "ambidestro", False)) and braccio_della_sede(sede) is not None
 
 
-def testo_diario(g, sede, data_fine):
-    """La voce del diario: Si infortuna al polso destro: resterà fermo fino al 3 marzo 2026."""
+def testo_diario(g, sede, data_fine, in_allenamento=False):
+    """La voce del diario: Si infortuna al polso destro: resterà fermo fino al 3 marzo 2026; con in_allenamento, Si infortuna in allenamento."""
     dove = frase_sede(sede)
-    inizio = f"Si infortuna {dove}" if dove else "Si infortuna"
+    inizio = "Si infortuna in allenamento" if in_allenamento else "Si infortuna"
+    if dove:
+        inizio += f" {dove}"
     if gioca_con_l_altro_braccio(g, sede):
         altro = "sinistro" if braccio_della_sede(sede) == "dx" else "destro"
         return f"{inizio}: fino al {data_breve(data_fine)} giocherà con il braccio {altro}."
@@ -148,4 +170,40 @@ def infortuna(mondo, g, azioni, rng):
     g.infortunio_sede = sede
     testo = testo_diario(g, sede, fine)
     mondo.annota(g, testo)
+    return f"{g.nome} {g.cognome}: {testo[0].lower()}{testo[1:]}"
+
+
+def probabilita_in_seduta(g):
+    """
+    La probabilità, in percentuale, di infortunarsi nella seduta di un giorno: soltanto all'intensa,
+    lo 0,3 per cento, che cresce dai 30 anni fino al triplo a 75; l'ambidestro ne ha un po' meno.
+    """
+    base = intensita_di(g)["infortuni_seduta"]
+    if base <= 0.0:
+        return 0.0
+    risultato = base * (1.0 + AUMENTO_RISCHIO_SEDUTA * _quota_eta(g.eta_anni))
+    if getattr(g, "ambidestro", False):
+        risultato *= FATTORE_INFORTUNIO_AMBIDESTRO
+    return risultato
+
+
+def infortunio_in_seduta(mondo, g, data):
+    """
+    La seduta del giorno può infortunare chi si allena all'intensa: con un generatore nato dalla data
+    e dal numero del giocatore, con la sede e la durata degli infortuni di partita. Restituisce la
+    frase da mostrare, oppure None. Chi è già infortunato non si infortuna di nuovo.
+    """
+    probabilita_del_giorno = probabilita_in_seduta(g)
+    if g.infortunato or probabilita_del_giorno <= 0.0:
+        return None
+    rng = random.Random(f"seduta-{data.date().isoformat()}-{g.id}")
+    if not rng.random() * 100.0 < probabilita_del_giorno:
+        return None
+    sede = estrai_sede(g, rng)
+    fine = data + datetime.timedelta(days=durata(g, sede, rng))
+    g.infortunato = True
+    g.infortunio_fine_datetime = fine
+    g.infortunio_sede = sede
+    testo = testo_diario(g, sede, fine, in_allenamento=True)
+    mondo.annota(g, testo, data)
     return f"{g.nome} {g.cognome}: {testo[0].lower()}{testo[1:]}"

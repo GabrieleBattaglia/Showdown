@@ -30,6 +30,14 @@ Il mondo non stampa: consegna i suoi messaggi alla funzione notifica, che gli pa
 Dal 2026-10-07 il riepilogo di un avanzamento conta anche i primi del mese e, delle polisportive
 dell'utente, i tesserati ritirati, quelli usciti di scena e le bandiere nuove: la finestra ne fa
 sentire il suono, secondo la decisione D24.
+Dalla tappa 11, il 2026-10-09, il mondo si allena, decisione D31: ogni giorno simulato, anche a
+programma chiuso, ogni giocatore in attività che può giocare fa la sua seduta, che dà punti
+allenamento al tesserato secondo l'intensità e al libero la metà; l'esperienza cresce un poco con
+l'età e di più in polisportiva, col fattore del gruppo; la costanza recente segue l'attività del
+giorno; chi si allena all'intensa può infortunarsi in seduta. I liberi e i tesserati del computer
+spendono da soli, secondo la loro indole, quando il portafoglio arriva alla soglia; i tesserati
+dell'utente aspettano lui. Il primo del mese i livelli alti calano un poco, e l'apprendista rapido
+dimentica. Prima l'esperienza cresceva soltanto il primo del mese, un decimo per chi era in un club.
 """
 
 import datetime
@@ -37,14 +45,16 @@ import math
 import random
 
 import contratti
+import esperienza
+import infortuni
 import percorsi
-from allenamento import allena_secondo_programma
+from allenamento import allena_secondo_programma, mantenimento_del_mese
 from costanti import (
     ANNO_SIMULAZIONE_GIORNI,
     BILANCI_CONSERVATI,
+    COSTANZA_LIBERI,
     CREA_NUOVI_PER_TICK_RANGE,
-    ESPERIENZA_MASSIMA,
-    ESPERIENZA_PER_MESE,
+    DECADIMENTO_COSTANZA,
     ETA_MINIMA_CHIUSURA_CPU_ANNI,
     FATTORE_PROB_GLORIA,
     FATTORE_PROB_TESSERATI,
@@ -53,6 +63,7 @@ from costanti import (
     FEDELTA_PER_MESE,
     GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET,
     IMPORTANZA_MASSIMA,
+    INTENSITA,
     INTENSITA_PREDEFINITA,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_PROB_CHIUSURA_GIORNALIERA,
@@ -61,12 +72,14 @@ from costanti import (
     NOME_FILE_LOG_USCITE,
     NOME_POLISPORTIVA_MAX,
     NOME_POLISPORTIVA_MIN,
+    PA_SEDUTA,
     PARTI_DI_CASSA_PER_STIPENDI,
     PROB_CHIUSURA_BASE_GIORNALIERA,
     PROB_CREAZIONE_POLI_CPU_PER_TICK,
     PROB_SCAMBIO_CPU_GIORNALIERA,
     PROB_USCITA_PREMATURA_GIORNALIERA,
     PROBABILITA_IPOVEDENTE_CREAZIONE,
+    QUOTA_SEDUTA_LIBERI,
     REPUTAZIONE_MINIMA,
     RIALZO_CPU,
     SCARTI_MASSIMI_CPU,
@@ -94,7 +107,8 @@ DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
 # Le voci del riepilogo di un avanzamento, oltre all'ora in cui è avvenuto.
 CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
                    "tesserati_cpu", "svincolati_cpu", "poli_chiuse", "poli_create", "partiti", "vendite",
-                   "tuoi_non_pagati", "tuoi_partiti", "tuoi_venduti", "mesi", "tuoi_ritirati", "tuoi_usciti", "tue_bandiere")
+                   "tuoi_non_pagati", "tuoi_partiti", "tuoi_venduti", "mesi", "tuoi_ritirati", "tuoi_usciti", "tue_bandiere",
+                   "infortunati_in_seduta", "tuoi_infortunati_in_seduta")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
@@ -729,7 +743,7 @@ class Mondo:
         rapporto["mesi"] += 1
         for poli in list(self.polisportive.values()):
             rosa = self._rosa(poli)
-            self._fedelta_ed_esperienza(poli, rosa, data, rapporto)
+            self._fedelta(poli, rosa, data, rapporto)
             sponsor = sponsor_mensile(poli)
             poli.cassa += sponsor
             poli.conti_del_mese["sponsor"] += sponsor
@@ -758,17 +772,67 @@ class Mondo:
             del poli.bilanci[BILANCI_CONSERVATI:]
             poli.conti_del_mese = conti_vuoti()
 
-    def _fedelta_ed_esperienza(self, poli, rosa, data, rapporto=None):
-        """Un mese in più nel club: fedeltà ed esperienza crescono, e una bandiera si accende quando la fedeltà arriva alla soglia."""
+    def _fedelta(self, poli, rosa, data, rapporto=None):
+        """
+        Un mese in più nel club: la fedeltà cresce, e una bandiera si accende quando arriva alla
+        soglia. Dalla tappa 11 l'esperienza cresce ogni giorno, in _allenamento_del_giorno.
+        """
         for g in rosa:
             prima = g.fedelta
             g.fedelta = min(FEDELTA_MASSIMA, g.fedelta + FEDELTA_PER_MESE)
-            g.esperienza = min(ESPERIENZA_MASSIMA, g.esperienza + ESPERIENZA_PER_MESE)
             if g.bandiera and prima < FEDELTA_BANDIERA <= g.fedelta:
                 self.annota(g, f"Diventa una bandiera di {poli.nome}: giocherà per il club anche senza stipendio.", data)
                 self.annota(poli, f"{nome_completo(g)} diventa una bandiera del club.", data)
                 if rapporto is not None and not poli.is_cpu_controlled:
                     rapporto["tue_bandiere"] += 1
+
+    def _mantenimento_del_mese(self, data):
+        """Il primo del mese, per tutti i giocatori vivi: il calo dei livelli alti e l'oblio dell'apprendista, per i giorni del mese appena finito."""
+        giorni = (contratti.primo_del_mese(data) - contratti.aggiungi_mesi(data, -1)).days
+        morti = self._ids_morti_processati_sessione
+        for gid, g in self.giocatori.items():
+            if gid not in morti:
+                mantenimento_del_mese(g, giorni)
+
+    def _allenamento_del_giorno(self, data, rapporto):
+        """
+        L'allenamento di un giorno simulato, per ogni giocatore vivo e non ritirato, decisione D31.
+        Chi può giocare fa la seduta: il tesserato prende i punti della sua intensità, il libero la
+        metà; chi si allena all'intensa può infortunarsi. La costanza recente segue l'attività del
+        giorno: la costanza della seduta, quella dei liberi, zero per chi non si allena. L'esperienza
+        cresce con l'età e, in polisportiva, col fattore del gruppo, calcolato una volta al giorno per
+        polisportiva. I liberi e i tesserati del computer spendono da soli, secondo la loro indole,
+        quando il portafoglio arriva alla soglia; la spesa non va nel diario. Chi ha speso si conta
+        alla voce autoallenati del riepilogo.
+        """
+        morti = self._ids_morti_processati_sessione
+        gruppi = {}
+        for nome_club, poli in self.polisportive.items():
+            gruppi[nome_club] = (poli, esperienza.fattore_gruppo([g for g in self._rosa(poli) if not g.ritirato]))
+        resto = 1.0 - DECADIMENTO_COSTANZA
+        seduta_liberi = PA_SEDUTA * QUOTA_SEDUTA_LIBERI
+        for gid, g in self.giocatori.items():
+            if gid in morti or g.ritirato:
+                continue
+            club = gruppi.get(g.appartenenza)
+            attivita = 0.0
+            if g.puo_giocare:
+                if club is None:
+                    g.punti_allenamento += seduta_liberi
+                    attivita = COSTANZA_LIBERI
+                else:
+                    riga = INTENSITA[g.intensita]
+                    g.punti_allenamento += PA_SEDUTA * riga["punti"]
+                    attivita = riga["costanza"]
+                    if riga["infortuni_seduta"] > 0.0 and infortuni.infortunio_in_seduta(self, g, data):
+                        rapporto["infortunati_in_seduta"] += 1
+                        if not club[0].is_cpu_controlled:
+                            rapporto["tuoi_infortunati_in_seduta"] += 1
+                            self.annota(club[0], f"{nome_completo(g)} si infortuna in allenamento.", data)
+            g.costanza = g.costanza * DECADIMENTO_COSTANZA + resto * attivita
+            esperienza.del_giorno(g, club is not None, club[1] if club is not None else 1.0)
+            if g.punti_allenamento >= SOGLIA_SPESA_AUTONOMI and (club is None or club[0].is_cpu_controlled) and allena_secondo_programma(g, programma=g.indole):
+                rapporto["autoallenati"] += 1
 
     def _paga_i_meno_pazienti(self, poli, rosa):
         """Il computer, quando la cassa non basta, paga gli arretrati partendo da chi ha meno pazienza."""
@@ -960,21 +1024,19 @@ class Mondo:
     def _un_giorno(self, data, rapporto):
         """
         Tutto ciò che il mondo fa in un giorno simulato, nell'ordine: le mosse di mercato
-        ripartono, i giocatori invecchiano, il primo del mese si fanno i conti, gli autonomi si
-        allenano, le polisportive del computer tesserano, scambiano, comprano, chiudono e nascono,
-        poi nascono i giocatori nuovi e si ricalcolano valori e glorie.
+        ripartono, i giocatori invecchiano, il primo del mese si fanno i conti e calano i livelli
+        alti, tutti si allenano e i liberi e il computer spendono, le polisportive del computer
+        tesserano, scambiano, comprano, chiudono e nascono, poi nascono i giocatori nuovi e si
+        ricalcolano valori e glorie.
         """
         for p in self.polisportive.values():
             p.movimenti_oggi = 0
         self._fai_invecchiare(data, rapporto)
         if data.day == 1:
             self._primo_del_mese(data, rapporto)
+            self._mantenimento_del_mese(data)
+        self._allenamento_del_giorno(data, rapporto)
         vivi = [g for gid, g in self.giocatori.items() if gid not in self._ids_morti_processati_sessione]
-        for g in vivi:
-            if not g.ritirato and g.punti_allenamento >= SOGLIA_SPESA_AUTONOMI:
-                club = self.polisportive.get(g.appartenenza)
-                if (club is None or club.is_cpu_controlled) and allena_secondo_programma(g, programma=g.indole):
-                    rapporto["autoallenati"] += 1
         venduti_tuoi = sum(len(p.in_vendita) for p in self.polisportive.values() if not p.is_cpu_controlled)
         tesserati, svincolati, comprati = self._esegui_logica_cpu_polisportive(data)
         rapporto["tesserati_cpu"] += tesserati
