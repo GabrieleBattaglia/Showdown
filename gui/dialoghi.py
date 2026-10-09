@@ -892,7 +892,7 @@ class Vendite(_Dialogo):
         self.elenco.SetFocus()
 
     def aggiorna(self, posto=0):
-        self.elenco.Set([testi.riga_vendita(g, self.poli) for g in self.rosa])
+        self.elenco.Set([testi.riga_vendita(g, self.poli, self.mondo.datetime_corrente_simulazione) for g in self.rosa])
         if self.rosa:
             self.elenco.SetSelection(min(posto, len(self.rosa) - 1))
         self.al_giocatore()
@@ -903,7 +903,7 @@ class Vendite(_Dialogo):
         if indice == wx.NOT_FOUND:
             return
         g = self.rosa[indice]
-        self.prezzo.SetValue(self.poli.in_vendita.get(g.id, max(1, economia.valore_di_mercato(g))))
+        self.prezzo.SetValue(self.poli.in_vendita.get(g.id, max(1, economia.valore_di_mercato(g, self.mondo.datetime_corrente_simulazione))))
 
     def _scelto(self):
         indice = self.elenco.GetSelection()

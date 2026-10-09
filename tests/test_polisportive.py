@@ -14,6 +14,7 @@ import pytest
 from aiuti_formati import al_formato_5
 
 import archivio
+import economia
 import mondo as modulo_mondo
 from costanti import FILE_MONDO, LIMITE_MOVIMENTI_PER_TICK, MAX_TESSERATI_POLISPORTIVA
 from modelli import Giocatore, Polisportiva
@@ -128,11 +129,14 @@ def test_svincolo_e_chiusura(mondo, monkeypatch):
     monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
     for gid in (1, 2, 3):
         mondo.offerta(poli, mondo.giocatori[gid])
-    mondo.svincola(poli, mondo.giocatori[2])
+    cassa = poli.cassa
+    buonuscita = mondo.svincola(poli, mondo.giocatori[2])
+    # Dalla tappa 11 lo svincolo a contratto in corso costa una buonuscita.
+    assert buonuscita > 0 and poli.cassa == cassa - buonuscita and poli.conti_del_mese["buonuscite"] == buonuscita
     assert poli.tesserati == [1, 3] and mondo.giocatori[2].appartenenza == "*"
     assert poli.movimenti_oggi == 4
-    assert poli.diario[0]["testo"] == f"Svincolato {_nome(mondo.giocatori[2])}."
-    assert mondo.giocatori[2].diario[0]["testo"].endswith(" da Club di prova.")
+    assert poli.diario[0]["testo"] == f"Svincolato {_nome(mondo.giocatori[2])}, con una buonuscita di {economia.scritta_in_euro(buonuscita)}."
+    assert mondo.giocatori[2].diario[0]["testo"].endswith(f" da Club di prova, con una buonuscita di {economia.scritta_in_euro(buonuscita)}.")
     with pytest.raises(ValueError, match="non è"):
         mondo.svincola(poli, mondo.giocatori[2])
     assert mondo.chiudi_polisportiva(poli) == 2

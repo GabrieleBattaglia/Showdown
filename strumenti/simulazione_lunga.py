@@ -87,10 +87,10 @@ def misure(mondo):
     attivi = in_attivita(mondo)
     tesserati = [g for g in attivi if g.appartenenza != "*"]
     cpu = [p for p in mondo.polisportive.values() if p.is_cpu_controlled]
-    stipendi = [economia.stipendio(g) for g in tesserati]
+    stipendi = [economia.stipendio_pagato(g) for g in tesserati]
     casse = [p.cassa for p in cpu]
     monte = sum(mondo.monte_stipendi(p) for p in cpu)
-    sponsor = sum(economia.sponsor_mensile(p) for p in cpu)
+    sponsor = sum(mondo.sponsor(p) for p in cpu)
     return {
         "attivi": len(attivi), "tesserati": len(tesserati), "polisportive": len(cpu),
         "stipendi": (percentile(stipendi, 0.1), percentile(stipendi, 0.5), percentile(stipendi, 0.9)),

@@ -922,7 +922,14 @@ class InterfacciaTestuale:
                 print(f"\n\tID {gid} non tesserato qui.")
                 return
             g = self.giocatori[gid]
-            if key(f"Confermi lo svincolo di {g.nome} {g.cognome}(ID:{gid})? (s/N) ").lower() != 's':
+            problema = self.mondo.problema_svincolo(poli, g)
+            if problema:
+                print(f"\n\t{problema}")
+                return
+            buonuscita = contratti.buonuscita(g, self.data_sim)
+            if buonuscita:
+                print(f"\tGli restano {contratti.mesi_al_termine(g, self.data_sim):.1f} mesi di contratto: la buonuscita è di {buonuscita} euro.")
+            if key(f"\rConfermi lo svincolo di {g.nome} {g.cognome}(ID:{gid})? (s/N)\r").lower() != 's':
                 print("\nAnnullato.")
                 return
             try:

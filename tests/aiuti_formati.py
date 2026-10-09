@@ -19,9 +19,13 @@ def al_formato_5(contenuto):
     """
     Un documento del formato 6 com'era nel formato 5: i punti esperienza interi al posto dei punti
     allenamento, l'archetipo al posto dell'indole, senza i campi nuovi e senza le voci di diario
-    delle spese d'allenamento.
+    delle spese d'allenamento; i conti delle polisportive senza la voce delle buonuscite.
     """
     vecchio = copy.deepcopy(contenuto)
+    for p in vecchio["mondo"]["polisportive"].values():
+        del p["conti_del_mese"]["buonuscite"]
+        for bilancio in p["bilanci"]:
+            del bilancio["buonuscite"]
     for g in vecchio["mondo"]["giocatori"]:
         g["puntiesperienza"] = int(g.pop("punti_allenamento"))
         g["archetipo_allenamento"] = ARCHETIPO_DELL_INDOLE[g.pop("indole")]

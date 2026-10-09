@@ -38,6 +38,15 @@ giorno; chi si allena all'intensa può infortunarsi in seduta. I liberi e i tess
 spendono da soli, secondo la loro indole, quando il portafoglio arriva alla soglia; i tesserati
 dell'utente aspettano lui. Il primo del mese i livelli alti calano un poco, e l'apprendista rapido
 dimentica. Prima l'esperienza cresceva soltanto il primo del mese, un decimo per chi era in un club.
+Sempre dalla tappa 11 ci sono i contratti, al posto della regola d'abbandono del vecchio P8: ogni
+ingresso in una polisportiva firma un contratto, e lo stipendio che si paga è quello del contratto,
+fisso fino alla scadenza; lo sponsor cresce col valore della rosa. Il primo del mese, dopo gli
+stipendi, i contratti scaduti finiscono: con un rinnovo concordato parte quello nuovo, altrimenti
+il giocatore torna libero e nessuno incassa niente. Il computer prova a rinnovare chi è negli ultimi
+tre mesi, se se lo può permettere, una volta al mese e al massimo tre volte, e altrimenti lo mette in
+vendita e lo lascia scadere; l'utente rinnova a trattativa, una proposta al giorno e al massimo tre,
+e il mondo gli ricorda i contratti che entrano nella finestra e quelli all'ultimo mese. Lo svincolo
+a contratto in corso costa una buonuscita, metà degli stipendi che restano, anche al computer.
 """
 
 import datetime
@@ -67,8 +76,11 @@ from costanti import (
     INTENSITA_PREDEFINITA,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_PROB_CHIUSURA_GIORNALIERA,
+    MESI_CONTRATTO_MAX,
+    MESI_CONTRATTO_MIN,
     MESI_DI_INGAGGIO,
     MESI_DI_RISERVA_CPU,
+    MESI_FINESTRA_RINNOVO,
     NOME_FILE_LOG_USCITE,
     NOME_POLISPORTIVA_MAX,
     NOME_POLISPORTIVA_MIN,
@@ -82,10 +94,12 @@ from costanti import (
     QUOTA_SEDUTA_LIBERI,
     REPUTAZIONE_MINIMA,
     RIALZO_CPU,
+    RIALZO_RINNOVO_CPU,
     SCARTI_MASSIMI_CPU,
     SOGLIA_GLORIA_BASSA_CHIUSURA,
     SOGLIA_MINIMA_TESSERATI_CHIUSURA,
     SOGLIA_SPESA_AUTONOMI,
+    STIPENDIO_MINIMO,
 )
 from economia import (
     arrotonda,
@@ -96,6 +110,7 @@ from economia import (
     scritta_in_euro,
     sponsor_mensile,
     stipendio,
+    stipendio_pagato,
     valore_di_mercato,
 )
 from modelli import Giocatore, Polisportiva, conti_vuoti, normalizza_nome, probabilita_accettazione
@@ -108,7 +123,7 @@ DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
 CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
                    "tesserati_cpu", "svincolati_cpu", "poli_chiuse", "poli_create", "partiti", "vendite",
                    "tuoi_non_pagati", "tuoi_partiti", "tuoi_venduti", "mesi", "tuoi_ritirati", "tuoi_usciti", "tue_bandiere",
-                   "infortunati_in_seduta", "tuoi_infortunati_in_seduta")
+                   "infortunati_in_seduta", "tuoi_infortunati_in_seduta", "contratti_scaduti", "rinnovi_cpu", "tuoi_scaduti", "tuoi_in_scadenza")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
@@ -326,8 +341,12 @@ class Mondo:
     # Arretrati, vendite e acquisti.
 
     def monte_stipendi(self, poli):
-        """Quanto la polisportiva paga ogni mese di stipendi, a chi ha oggi."""
-        return sum(stipendio(self.giocatori[gid]) for gid in poli.tesserati if gid in self.giocatori and gid not in self._ids_morti_processati_sessione)
+        """Quanto la polisportiva paga ogni mese di stipendi, a chi ha oggi: dalla tappa 11 lo stipendio del contratto."""
+        return sum(stipendio_pagato(self.giocatori[gid]) for gid in poli.tesserati if gid in self.giocatori and gid not in self._ids_morti_processati_sessione)
+
+    def sponsor(self, poli):
+        """Lo sponsor del mese della polisportiva, con la sua rosa di oggi."""
+        return sponsor_mensile(poli, self._rosa(poli))
 
     def paga(self, poli, g, importo):
         """
@@ -410,7 +429,7 @@ class Mondo:
             posizione = 1.
         else:
             posizione = sum(1 for altro in rosa if altro.indice_collettivo_valore < g.indice_collettivo_valore) / (len(rosa) - 1)
-        return arrotonda(valore_di_mercato(g) * (1 + IMPORTANZA_MASSIMA * posizione), 100)
+        return arrotonda(valore_di_mercato(g, self.datetime_corrente_simulazione) * (1 + IMPORTANZA_MASSIMA * posizione), 100)
 
     def posizione_in_rosa(self, g):
         """Il posto del giocatore nella sua rosa, dal più forte, e quanti sono: 1 e 15 per il più forte di quindici."""
@@ -468,16 +487,102 @@ class Mondo:
         self.annota(venditore, f"Venduto {nome_completo(g)} a {compratore.nome} per {cifra}.", data)
         self.annota(compratore, f"Comprato {nome_completo(g)} da {venditore.nome} per {cifra}.", data)
 
-    def svincola(self, poli, g):
-        """L'utente svincola un suo tesserato, che torna libero: usa una mossa; ValueError se non si può."""
+    def problema_svincolo(self, poli, g):
+        """Perché la polisportiva non può svincolare il tesserato, oppure None: dalla tappa 11 anche la cassa che non basta per la buonuscita."""
         if g.id not in poli.tesserati:
-            raise ValueError(f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}.")
+            return f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}."
         if self.mosse_rimaste(poli) <= 0:
-            raise ValueError(self._senza_mosse(poli))
+            return self._senza_mosse(poli)
+        buonuscita = contratti.buonuscita(g, self.datetime_corrente_simulazione)
+        if buonuscita > poli.cassa:
+            return f"Svincolare {nome_completo(g)} costa una buonuscita di {scritta_in_euro(buonuscita)}, e la cassa di {poli.nome} ne ha {scritta_in_euro(poli.cassa)}."
+        return None
+
+    def _paga_buonuscita(self, poli, g, data=None):
+        """La buonuscita di uno svincolo a contratto in corso esce dalla cassa; restituisce quanto."""
+        buonuscita = contratti.buonuscita(g, data or self.datetime_corrente_simulazione)
+        poli.cassa -= buonuscita
+        poli.conti_del_mese["buonuscite"] += buonuscita
+        return buonuscita
+
+    def svincola(self, poli, g):
+        """
+        L'utente svincola un suo tesserato, che torna libero: usa una mossa, e dalla tappa 11 paga la
+        buonuscita, metà degli stipendi che restano del contratto. Restituisce la buonuscita;
+        ValueError se non si può.
+        """
+        problema = self.problema_svincolo(poli, g)
+        if problema:
+            raise ValueError(problema)
         self._usa_mossa(poli)
+        buonuscita = self._paga_buonuscita(poli, g)
         self._lascia(poli, g)
-        self.annota(g, f"{accorda(g.sesso, 'Svincolato')} da {poli.nome}.")
-        self.annota(poli, f"Svincolato {nome_completo(g)}.")
+        con = f", con una buonuscita di {scritta_in_euro(buonuscita)}" if buonuscita else ""
+        self.annota(g, f"{accorda(g.sesso, 'Svincolato')} da {poli.nome}{con}.")
+        self.annota(poli, f"Svincolato {nome_completo(g)}{con}.")
+        return buonuscita
+
+    # I rinnovi dell'utente, a trattativa.
+
+    def problema_rinnovo(self, poli, g, stipendio_offerto=None, mesi=None):
+        """Perché la polisportiva non può proporre oggi il rinnovo al tesserato, con quello stipendio e quella durata; None se può."""
+        oggi = self.datetime_corrente_simulazione
+        if g.id not in poli.tesserati:
+            return f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}."
+        if contratti.ha_rinnovo(g):
+            return (f"{nome_completo(g)} ha già rinnovato: dal {data_breve(g.contratto_scadenza)} prenderà {scritta_in_euro(g.rinnovo_stipendio)} al mese, "
+                    f"fino al {data_breve(g.rinnovo_scadenza)}.")
+        if not contratti.in_finestra(g, oggi):
+            return (f"Il contratto di {nome_completo(g)} scade il {data_breve(g.contratto_scadenza)}: il rinnovo si può proporre "
+                    f"dal {data_breve(contratti.inizio_finestra(g))}.")
+        if not contratti.puo_trattare(g):
+            return f"{nome_completo(g)} ha già rifiutato tre proposte e non tratta più: il contratto finirà il {data_breve(g.contratto_scadenza)}."
+        if g.ultima_trattativa is not None and g.ultima_trattativa.date() == oggi.date():
+            return f"Oggi hai già fatto una proposta a {nome_completo(g)}: se ne fa al massimo una al giorno."
+        if stipendio_offerto is not None and stipendio_offerto < STIPENDIO_MINIMO:
+            return f"Lo stipendio deve essere di almeno {scritta_in_euro(STIPENDIO_MINIMO)} al mese."
+        if mesi is not None and not MESI_CONTRATTO_MIN <= mesi <= MESI_CONTRATTO_MAX:
+            return f"La durata va da {MESI_CONTRATTO_MIN} a {MESI_CONTRATTO_MAX} mesi."
+        return None
+
+    def rinnova(self, poli, g, stipendio_offerto, mesi):
+        """
+        La proposta di rinnovo dell'utente: il giocatore accetta con la probabilità del rinnovo.
+        Se accetta, il contratto nuovo parte alla scadenza di quello in corso, con lo stipendio
+        offerto. Comunque vada, la proposta si conta, e oggi non se ne fanno altre. Non costa mosse
+        di mercato. Restituisce l'esito, la probabilità e la richiesta del giocatore per quei mesi;
+        ValueError se la proposta non si può fare.
+        """
+        stipendio_offerto, mesi = int(stipendio_offerto), int(mesi)
+        problema = self.problema_rinnovo(poli, g, stipendio_offerto, mesi)
+        if problema:
+            raise ValueError(problema)
+        oggi = self.datetime_corrente_simulazione
+        richiesta = contratti.richiesta_rinnovo(g, poli, mesi)
+        probabilita = contratti.probabilita_rinnovo(g, poli, stipendio_offerto, mesi)
+        g.proposte_rinnovo += 1
+        g.ultima_trattativa = oggi
+        accetta = caso(probabilita)
+        if accetta:
+            contratti.concorda_rinnovo(g, stipendio_offerto, mesi)
+            self._annota_rinnovo(poli, g)
+        else:
+            cifra = f"{scritta_in_euro(stipendio_offerto)} al mese per {mesi} mesi"
+            self.annota(g, f"Rifiuta il rinnovo con {poli.nome} a {cifra}.")
+            self.annota(poli, f"{nome_completo(g)} rifiuta il rinnovo a {cifra}.")
+            if not contratti.puo_trattare(g):
+                self._annota_chiusura(poli, g)
+        return accetta, probabilita, richiesta
+
+    def _annota_rinnovo(self, poli, g, data=None):
+        cifra = f"{scritta_in_euro(g.rinnovo_stipendio)} al mese, dal {data_breve(g.contratto_scadenza)} al {data_breve(g.rinnovo_scadenza)}"
+        self.annota(g, f"Rinnova il contratto con {poli.nome}: {cifra}.", data)
+        self.annota(poli, f"{nome_completo(g)} rinnova il contratto: {cifra}.", data)
+
+    def _annota_chiusura(self, poli, g, data=None):
+        testo = f"Non vuole più trattare: il contratto con {poli.nome} finirà il {data_breve(g.contratto_scadenza)}."
+        self.annota(g, testo, data)
+        self.annota(poli, f"{nome_completo(g)}. {testo}", data)
 
     def chiudi_polisportiva(self, poli):
         """Chiude per sempre una polisportiva: i tesserati tornano liberi. Restituisce quanti sono."""
@@ -654,7 +759,7 @@ class Mondo:
         Lo stipendio più alto che una polisportiva del computer può aggiungere: deve stare nello
         sponsor più una parte della cassa, e l'ingaggio più basso possibile deve stare nella cassa.
         """
-        nei_conti = sponsor_mensile(poli) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
+        nei_conti = sponsor_mensile(poli, self._rosa(poli)) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
         nella_cassa = spendibile / (MESI_DI_INGAGGIO * REPUTAZIONE_MINIMA * RIALZO_CPU)
         return min(nei_conti, nella_cassa)
 
@@ -667,8 +772,9 @@ class Mondo:
         if not rosa:
             return False
         debole = min(rosa, key=lambda g: g.indice_collettivo_valore)
-        spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU
-        posto = vetrina.primo(self._stipendio_massimo(poli, monte - stipendio(debole), spendibile), prossimo)
+        buonuscita = contratti.buonuscita(debole, data or self.datetime_corrente_simulazione)
+        spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU - buonuscita
+        posto = vetrina.primo(self._stipendio_massimo(poli, monte - stipendio_pagato(debole), spendibile), prossimo)
         if posto is None:
             return False
         nuovo = liberi[posto]
@@ -681,6 +787,7 @@ class Mondo:
         self._usa_mossa(poli)
         if not caso(probabilita_accettazione(offerta, richiesta)):
             return False
+        self._paga_buonuscita(poli, debole, data)
         self._lascia(poli, debole)
         self._paga_ingaggio(poli, offerta)
         self._entra(poli, nuovo, data)
@@ -703,9 +810,11 @@ class Mondo:
         if piena and not rosa:
             return False
         debole = min(rosa, key=lambda g: g.indice_collettivo_valore) if piena else None
-        monte = self.monte_stipendi(poli) - (stipendio(debole) if debole else 0)
-        spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU
-        massimo = sponsor_mensile(poli) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
+        oggi = data or self.datetime_corrente_simulazione
+        monte = self.monte_stipendi(poli) - (stipendio_pagato(debole) if debole else 0)
+        buonuscita = contratti.buonuscita(debole, oggi) if debole else 0
+        spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU - buonuscita
+        massimo = sponsor_mensile(poli, rosa) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
         scelta = None
         for venditore in self.polisportive.values():
             if venditore is poli:
@@ -713,7 +822,7 @@ class Mondo:
             for gid, prezzo in venditore.in_vendita.items():
                 g = self.giocatori.get(gid)
                 # Il ritirato non si compra: serve ai salvataggi in cui un morto era rimasto in vendita.
-                if g is None or g.ritirato or prezzo > spendibile or prezzo > valore_di_mercato(g) * RIALZO_CPU or stipendio(g) > massimo:
+                if g is None or g.ritirato or prezzo > spendibile or prezzo > valore_di_mercato(g, oggi) * RIALZO_CPU or stipendio(g) > massimo:
                     continue
                 if debole is not None and g.indice_collettivo_valore <= debole.indice_collettivo_valore:
                     continue
@@ -724,6 +833,7 @@ class Mondo:
         g, venditore, prezzo = scelta
         self._usa_mossa(poli)
         if debole is not None:
+            self._paga_buonuscita(poli, debole, oggi)
             self._lascia(poli, debole)
             self.annota(debole, f"{accorda(debole.sesso, 'Svincolato')} da {poli.nome}, che al suo posto ha comprato {nome_completo(g)}.", data)
         self._vendi(venditore, poli, g, prezzo, data)
@@ -744,10 +854,10 @@ class Mondo:
         for poli in list(self.polisportive.values()):
             rosa = self._rosa(poli)
             self._fedelta(poli, rosa, data, rapporto)
-            sponsor = sponsor_mensile(poli)
+            sponsor = sponsor_mensile(poli, rosa)
             poli.cassa += sponsor
             poli.conti_del_mese["sponsor"] += sponsor
-            dovuti = {g.id: stipendio(g) for g in rosa}
+            dovuti = {g.id: stipendio_pagato(g) for g in rosa}
             if sum(dovuti.values()) + sum(g.arretrati for g in rosa) <= poli.cassa:
                 for g in rosa:
                     if g.arretrati:
@@ -771,6 +881,87 @@ class Mondo:
             poli.bilanci.insert(0, {"data": data, "cassa": poli.cassa, **poli.conti_del_mese})
             del poli.bilanci[BILANCI_CONSERVATI:]
             poli.conti_del_mese = conti_vuoti()
+        self._contratti_del_mese(data, rapporto)
+
+    # I contratti del mese, dopo gli stipendi: il mese appena finito si paga anche a chi scade oggi.
+
+    def _contratti_del_mese(self, data, rapporto):
+        """
+        Il primo del mese, per ogni polisportiva e ogni tesserato: il contratto scaduto lascia il
+        posto al rinnovo concordato, oppure il giocatore torna libero; il computer prova a rinnovare
+        chi è nella finestra; all'utente il mondo ricorda chi entra nella finestra e chi entra
+        nell'ultimo mese, con una voce nei due diari. Poi il computer riporta il prezzo dei suoi
+        tesserati in vendita al valore di mercato del giorno, che con la scadenza scende.
+        """
+        for poli in list(self.polisportive.values()):
+            for g in self._rosa(poli):
+                if g.contratto_scadenza is None:
+                    continue
+                if g.contratto_scadenza.date() <= data.date():
+                    if contratti.ha_rinnovo(g):
+                        contratti.subentra_il_rinnovo(g)
+                        self.annota(g, f"Comincia il contratto rinnovato con {poli.nome}: {scritta_in_euro(g.contratto_stipendio)} al mese fino al {data_breve(g.contratto_scadenza)}.", data)
+                    else:
+                        self._scade(poli, g, data, rapporto)
+                    continue
+                if contratti.ha_rinnovo(g) or not contratti.puo_trattare(g):
+                    continue
+                if poli.is_cpu_controlled:
+                    if contratti.in_finestra(g, data):
+                        self._rinnovo_cpu(poli, g, data, rapporto)
+                    continue
+                mesi = contratti.mesi_interi(data, g.contratto_scadenza)
+                if mesi == MESI_FINESTRA_RINNOVO:
+                    testo = f"Il contratto scade il {data_breve(g.contratto_scadenza)}: da oggi si può rinnovare."
+                elif mesi == 1:
+                    testo = f"Ultimo mese di contratto: se non rinnovi, il {data_breve(g.contratto_scadenza)} torna {accorda(g.sesso, 'libero')}."
+                else:
+                    continue
+                rapporto["tuoi_in_scadenza"] += 1
+                self.annota(g, testo, data)
+                self.annota(poli, f"{nome_completo(g)}. {testo}", data)
+            if poli.is_cpu_controlled:
+                for gid in list(poli.in_vendita):
+                    g = self.giocatori.get(gid)
+                    if g is not None and gid in poli.tesserati:
+                        poli.in_vendita[gid] = max(1, valore_di_mercato(g, data))
+
+    def _scade(self, poli, g, data, rapporto):
+        """Il contratto è scaduto senza rinnovo: il giocatore torna libero, e nessuno incassa niente."""
+        self._lascia(poli, g)
+        self.annota(g, f"Il contratto con {poli.nome} è scaduto: torna {accorda(g.sesso, 'libero')}.", data)
+        self.annota(poli, f"Il contratto di {nome_completo(g)} è scaduto: torna {accorda(g.sesso, 'libero')}.", data)
+        rapporto["contratti_scaduti"] += 1
+        if not poli.is_cpu_controlled:
+            rapporto["tuoi_scaduti"] += 1
+
+    def _rinnovo_cpu(self, poli, g, data, rapporto):
+        """
+        Il computer prova a rinnovare un tesserato nella finestra, una volta al mese: offre la
+        richiesta per la durata che il giocatore propone, con il suo rialzo. Se il monte stipendi,
+        con lo stipendio nuovo al posto del vecchio, non sta nello sponsor più una parte della
+        cassa, non rinnova: mette il giocatore in vendita al valore di mercato e lo lascia scadere.
+        Restituisce vero se il giocatore ha accettato.
+        """
+        mesi = contratti.durata_proposta(g)
+        richiesta = contratti.richiesta_rinnovo(g, poli, mesi)
+        offerta = arrotonda(richiesta * RIALZO_RINNOVO_CPU)
+        monte = self.monte_stipendi(poli) - stipendio_pagato(g) + offerta
+        if monte > sponsor_mensile(poli, self._rosa(poli)) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI:
+            if g.id not in poli.in_vendita:
+                prezzo = max(1, valore_di_mercato(g, data))
+                poli.in_vendita[g.id] = prezzo
+                self.annota(poli, f"Mette in vendita {nome_completo(g)} a {scritta_in_euro(prezzo)}: il rinnovo costerebbe troppo.", data)
+                self.annota(g, f"{accorda(g.sesso, 'Messo')} in vendita da {poli.nome} a {scritta_in_euro(prezzo)}.", data)
+            return False
+        g.proposte_rinnovo += 1
+        g.ultima_trattativa = data
+        if not caso(contratti.probabilita_rinnovo(g, poli, offerta, mesi)):
+            return False
+        contratti.concorda_rinnovo(g, offerta, mesi)
+        self._annota_rinnovo(poli, g, data)
+        rapporto["rinnovi_cpu"] += 1
+        return True
 
     def _fedelta(self, poli, rosa, data, rapporto=None):
         """
@@ -856,8 +1047,8 @@ class Mondo:
         in_vendita = [g for g in self._rosa(poli) if g.id not in poli.in_vendita]
         if not in_vendita or not any(g.arretrati for g in self._rosa(poli)):
             return
-        caro = max(in_vendita, key=stipendio)
-        prezzo = valore_di_mercato(caro)
+        caro = max(in_vendita, key=stipendio_pagato)
+        prezzo = max(1, valore_di_mercato(caro, data))
         poli.in_vendita[caro.id] = prezzo
         self.annota(poli, f"Mette in vendita {nome_completo(caro)} a {scritta_in_euro(prezzo)}.", data)
         self.annota(caro, f"{accorda(caro.sesso, 'Messo')} in vendita da {poli.nome} a {scritta_in_euro(prezzo)}.", data)

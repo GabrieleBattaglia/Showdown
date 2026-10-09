@@ -361,10 +361,15 @@ def _dal_formato_5(documento):
     da zero. Le caratteristiche non si toccano. I tesserati ricevono un contratto con lo stipendio
     che hanno, calcolato come nella versione 1.50.0, e una scadenza di almeno un anno di calendario,
     o della durata che propongono se è più lunga, perché non scadano tutti nei primi mesi; i liberi
-    non hanno contratto, e nessuno ha rinnovi o proposte in corso.
+    non hanno contratto, e nessuno ha rinnovi o proposte in corso. I conti delle polisportive
+    ricevono la voce nuova delle buonuscite, a zero, anche nei bilanci dei mesi passati.
     """
     dati = documento["mondo"]
     oggi = datetime.datetime.fromisoformat(dati["data_simulata"])
+    for p in dati["polisportive"].values():
+        p["conti_del_mese"].setdefault("buonuscite", 0)
+        for bilancio in p["bilanci"]:
+            bilancio.setdefault("buonuscite", 0)
     for g in dati["giocatori"]:
         punti = g.pop("puntiesperienza", 0)
         g.setdefault("punti_allenamento", float(punti))

@@ -199,7 +199,11 @@ NOME_POLISPORTIVA_MIN = 5
 NOME_POLISPORTIVA_MAX = 50
 # L'economia, tappa 8, decisione D22. Cifre in euro; quelle di partenza si tarano con la simulazione lunga.
 CAPITALE_INIZIALE = 20_000
-SPONSOR_PER_GLORIA = 35
+# Lo sponsor, dalla tappa 11, metà e metà, risposta 5 di Gabriele: SPONSOR_PER_GLORIA euro al mese
+# per ogni punto di gloria, che la simulazione lunga ritocca, più il 9 per cento al mese del valore
+# di mercato pieno dei tesserati, che resta fisso. Fino alla tappa 10 erano 35 euro per la gloria.
+SPONSOR_PER_GLORIA = 18
+QUOTA_SPONSOR_SUL_VALORE = 0.09
 STIPENDIO_DI_RIFERIMENTO = 200
 VALORE_DI_RIFERIMENTO = 140
 SCALA_STIPENDIO = 40

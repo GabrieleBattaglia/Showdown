@@ -23,6 +23,7 @@ cronaca di ogni tranche, ancora aperta dal punteggio come vuole D17.
 
 import datetime
 
+import contratti
 import economia
 import infortuni
 import mercato
@@ -304,7 +305,7 @@ def attesa(g):
 
 def _economia_del_giocatore(g, mondo):
     """Le righe dell'economia nella scheda: stipendio, valore, esperienza e, per un tesserato, fedeltà e umore."""
-    righe = [f"Stipendio: {euro(economia.stipendio(g))} al mese | Valore di mercato: {euro(economia.valore_di_mercato(g))} | "
+    righe = [f"Stipendio: {euro(economia.stipendio_pagato(g))} al mese | Valore di mercato: {euro(economia.valore_di_mercato(g, mondo.datetime_corrente_simulazione))} | "
              f"Esperienza di carriera: {aggettivo(g.esperienza, ESPERIENZA_MASSIMA)} ({numero(g.esperienza)})"]
     club = mondo.polisportive.get(g.appartenenza)
     if club is not None:
@@ -444,7 +445,7 @@ def scheda_polisportiva(p, mondo):
     righe.append(mosse)
     righe.append("[CONTI]")
     arretrati = sum(mondo.giocatori[gid].arretrati for gid in p.tesserati if gid in mondo.giocatori)
-    conti = f"Cassa: {euro(p.cassa)} | Sponsor: {euro(economia.sponsor_mensile(p))} al mese | Stipendi: {euro(mondo.monte_stipendi(p))} al mese"
+    conti = f"Cassa: {euro(p.cassa)} | Sponsor: {euro(mondo.sponsor(p))} al mese | Stipendi: {euro(mondo.monte_stipendi(p))} al mese"
     if arretrati:
         conti += f" | Arretrati da pagare: {euro(arretrati)}"
     righe.append(conti)
@@ -462,7 +463,7 @@ def scheda_polisportiva(p, mondo):
         ipovedenti = sum(1 for g in presenti if g.ipovedente)
         righe.append(f"{conta(uomini, 'uomo', 'uomini')} e {conta(len(presenti) - uomini, 'donna', 'donne')}, età media {eta_media} anni, {conta(ipovedenti, 'ipovedente', 'ipovedenti')}.")
         for g in sorted(presenti, key=lambda x: x.indice_collettivo_valore, reverse=True):
-            riga = f"{nome_completo(g)} (ID {g.id}), {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio(g))}, {indole(g)}, {stato(g, mondo)}"
+            riga = f"{nome_completo(g)} (ID {g.id}), {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio_pagato(g))}, {indole(g)}, {stato(g, mondo)}"
             if g.arretrati:
                 riga += f", {attesa(g)}"
             if g.id in p.in_vendita:
@@ -479,13 +480,13 @@ def scheda_polisportiva(p, mondo):
 def _voci_di_un_mese(conti):
     """Le voci diverse da zero dei conti di un mese, a parole."""
     nomi = (("sponsor", "sponsor"), ("vendite", "vendite"), ("stipendi", "stipendi"), ("arretrati", "arretrati pagati"),
-            ("ingaggi", "ingaggi"), ("acquisti", "acquisti"))
+            ("ingaggi", "ingaggi"), ("acquisti", "acquisti"), ("buonuscite", "buonuscite"))
     return unisci([f"{nome} {euro(conti[voce])}" for voce, nome in nomi if conti[voce]]) or "nessun movimento"
 
 
 def bilancio(p, mondo):
     """Il bilancio di una polisportiva: cassa, entrate e uscite di ogni mese, arretrati, vendite e mesi passati."""
-    sponsor = economia.sponsor_mensile(p)
+    sponsor = mondo.sponsor(p)
     monte = mondo.monte_stipendi(p)
     saldo = sponsor - monte
     righe = [f"Bilancio di {p.nome}: in cassa {euro(p.cassa)}."]
@@ -625,17 +626,31 @@ def riepilogo_mercato(p, mondo, esiti):
 
 def riga_arretrati(g):
     """Un tesserato che aspetta arretrati, in una riga della finestra dei pagamenti."""
-    return f"{nome_completo(g)}, {umore(g)}, {attesa(g)}; prende {euro(economia.stipendio(g))} al mese"
+    return f"{nome_completo(g)}, {umore(g)}, {attesa(g)}; prende {euro(economia.stipendio_pagato(g))} al mese"
 
 
-def riga_vendita(g, p):
-    """Un tesserato nella finestra delle vendite: quanto vale, e se è già in vendita."""
-    riga = f"{nome_completo(g)}, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio(g))}, valore di mercato {euro(economia.valore_di_mercato(g))}"
+def riga_vendita(g, p, oggi=None):
+    """Un tesserato nella finestra delle vendite: quanto vale, il giorno dato, e se è già in vendita."""
+    riga = (f"{nome_completo(g)}, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio_pagato(g))}, "
+            f"valore di mercato {euro(economia.valore_di_mercato(g, oggi))}")
     return riga + (f", in vendita a {euro(p.in_vendita[g.id])}" if g.id in p.in_vendita else "")
 
 
-def svincolato(g, p, mondo):
-    return f"{nome_completo(g)} è {accorda(g, 'svincolato')} da {p.nome} e torna {accorda(g, 'libero')}. {info_mercato(p, mondo)}"
+def svincolato(g, p, mondo, buonuscita=0):
+    pagata = f", con una buonuscita di {euro(buonuscita)}," if buonuscita else ""
+    return f"{nome_completo(g)} è {accorda(g, 'svincolato')} da {p.nome}{pagata} e torna {accorda(g, 'libero')}. {info_mercato(p, mondo)}"
+
+
+def domanda_svincolo(g, p, mondo):
+    """La domanda dello svincolo, con la buonuscita: Svincolare Mario Rossi? Gli restano 10 mesi di contratto: la buonuscita è di 1.100 euro."""
+    oggi = mondo.datetime_corrente_simulazione
+    buonuscita = contratti.buonuscita(g, oggi)
+    mosse = f"userai una delle {mondo.mosse_rimaste(p)} mosse che ti restano oggi"
+    if not buonuscita:
+        return f"Svincolare {nome_completo(g)}? Tornerà {accorda(g, 'libero')}, e {mosse}."
+    mesi = round(contratti.mesi_al_termine(g, oggi))
+    restano = f"{'Le' if g.sesso == 'f' else 'Gli'} {'resta' if mesi == 1 else 'restano'} {conta(mesi, 'mese', 'mesi')} di contratto" if mesi >= 1 else "Il contratto finisce fra meno di un mese"
+    return f"Svincolare {nome_completo(g)}? {restano}: la buonuscita è di {euro(buonuscita)}. Tornerà {accorda(g, 'libero')}, e {mosse}."
 
 
 def domanda_chiusura(p):

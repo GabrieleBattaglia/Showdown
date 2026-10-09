@@ -612,11 +612,15 @@ class FinestraPrincipale(wx.Frame):
             g = dialogo.scelto
         finally:
             dialogo.Destroy()
-        domanda = f"Svincolare {testi.nome_completo(g)}? Tornerà {testi.accorda(g, 'libero')}, e userai una delle {self.mondo.mosse_rimaste(p)} mosse che ti restano oggi."
-        if self._domanda(domanda, "Svincolo") != wx.YES:
+        # Dalla tappa 11 lo svincolo a contratto in corso costa una buonuscita: se la cassa non basta, si dice prima.
+        problema = self.mondo.problema_svincolo(p, g)
+        if problema:
+            self.mostra(problema, "cassa insufficiente", "cassa_insufficiente")
             return
-        self.mondo.svincola(p, g)
-        self._concludi(testi.svincolato(g, p, self.mondo), f"svincolato {testi.nome_completo(g)}", "tesserato_svincolato")
+        if self._domanda(testi.domanda_svincolo(g, p, self.mondo), "Svincolo") != wx.YES:
+            return
+        buonuscita = self.mondo.svincola(p, g)
+        self._concludi(testi.svincolato(g, p, self.mondo, buonuscita), f"svincolato {testi.nome_completo(g)}", "tesserato_svincolato")
 
     def password_polisportiva(self):
         p = self._attiva()

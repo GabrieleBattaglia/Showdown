@@ -164,7 +164,8 @@ VENDITE = "vendite"
 BILANCI = "bilanci"
 CONTI = "conti"
 # Le voci dei conti di un mese: entrate e uscite della polisportiva, in euro.
-VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti")
+# Dalla tappa 11 anche le buonuscite degli svincoli a contratto in corso.
+VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti", "buonuscite")
 _CONTROLLI = {
     bool: lambda v: isinstance(v, bool),
     int: lambda v: isinstance(v, int) and not isinstance(v, bool),

@@ -27,6 +27,7 @@ from costanti import (
     MESI_DI_INGAGGIO,
     MESI_DI_VALORE,
     MESI_VALORE_PIENO,
+    QUOTA_SPONSOR_SUL_VALORE,
     REPUTAZIONE_MASSIMA,
     REPUTAZIONE_MINIMA,
     SCALA_STIPENDIO,
@@ -116,9 +117,15 @@ def valore_di_mercato(g, oggi=None):
     return pieno if fattore >= 1.0 else arrotonda(pieno * fattore, 100)
 
 
-def sponsor_mensile(poli):
-    """Quanto lo sponsor paga ogni mese alla polisportiva, in proporzione alla sua gloria."""
-    return arrotonda(poli.gloria * SPONSOR_PER_GLORIA)
+def sponsor_mensile(poli, rosa):
+    """
+    Quanto lo sponsor paga ogni mese alla polisportiva: dalla tappa 11 metà per la gloria e metà
+    per il valore della rosa, cioè una quota del valore di mercato pieno dei tesserati in attività.
+    La rosa la passa chi chiama, con i tesserati vivi: è il guadagno di chi allena di D31, perché
+    durante il contratto lo stipendio è fisso e lo sponsor cresce col valore.
+    """
+    valore_della_rosa = sum(valore_di_mercato_pieno(g) for g in rosa if not g.ritirato)
+    return arrotonda(poli.gloria * SPONSOR_PER_GLORIA + QUOTA_SPONSOR_SUL_VALORE * valore_della_rosa)
 
 
 def mesi_di_pazienza(g):
@@ -132,8 +139,8 @@ def bandiera_attiva(g):
 
 
 def pazienza_per_euro(g):
-    """Quanta pazienza rende o toglie un euro di stipendio: un mese intero vale un mese di pazienza."""
-    return 100 / mesi_di_pazienza(g) / max(1, stipendio(g))
+    """Quanta pazienza rende o toglie un euro di stipendio: un mese intero, quello del contratto, vale un mese di pazienza."""
+    return 100 / mesi_di_pazienza(g) / max(1, stipendio_pagato(g))
 
 
 def mesi_rimasti(g):
