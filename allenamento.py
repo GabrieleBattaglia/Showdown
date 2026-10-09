@@ -52,6 +52,10 @@ Spesa = namedtuple("Spesa", "caratteristica da a punti")
 # Le 24 caratteristiche allenabili, coi nomi senza suffisso, nell'ordine di costanti.py.
 CARATTERISTICHE = tuple(valore.nome_semplice(nome) for nome in ATTRIBUTI_ALLENABILI)
 _FISICHE = frozenset(("precisione", "resistenza", "forza"))
+# Le tabelle della spesa autonoma, che il mondo fa centinaia di volte al giorno: per ogni
+# caratteristica il nome della parte innata e di quella allenata, il tetto, e se è di gioco.
+_NOMI = {c: (c + "_base", c + "_allenata") for c in CARATTERISTICHE}
+_TETTI = {c: (MAX_TOTALE_PRECISIONE_RESISTENZA if c in _FISICHE else MAX_TOTALE_SKILL_GIOCO) for c in CARATTERISTICHE}
 _K = CRESCITA_DEL_COSTO
 _EXP_K = math.exp(CRESCITA_DEL_COSTO)
 # Sotto questa soglia due numeri si considerano uguali: un totale al tetto, un portafoglio vuoto.
@@ -158,9 +162,24 @@ def puo_allenarsi(g):
 def _applica(g, spese):
     """Porta le spese nelle parti allenate, entro il tetto del totale."""
     for spesa in spese:
-        c = spesa.caratteristica
-        base = getattr(g, c + "_base")
-        setattr(g, c + "_allenata", max(0.0, min(tetto(c) - base, spesa.a - base)))
+        nome_base, nome_allenata = _NOMI[spesa.caratteristica]
+        base = getattr(g, nome_base)
+        setattr(g, nome_allenata, max(0.0, min(_TETTI[spesa.caratteristica] - base, spesa.a - base)))
+
+
+def _pesi_per_punto(g):
+    """I pesi per punto di tutte le caratteristiche per quel giocatore, in una volta, come valore.peso_per_punto."""
+    pesi = valore.PESI_VALORE
+    tabella = {c: pesi[c] for c in CARATTERISTICHE if c[:-2] not in ("chiusura", "blocco")}
+    for ruolo in ("chiusura", "blocco"):
+        dritto, rovescio = pesi[ruolo + "_dritto"], pesi[ruolo + "_rovescio"]
+        if getattr(g, "ambidestro", False):
+            tabella[ruolo + "sx"] = tabella[ruolo + "dx"] = (dritto + rovescio) / 2.0
+        elif getattr(g, "mancino", False):
+            tabella[ruolo + "sx"], tabella[ruolo + "dx"] = dritto, rovescio
+        else:
+            tabella[ruolo + "sx"], tabella[ruolo + "dx"] = rovescio, dritto
+    return tabella
 
 
 def spendi(g, caratteristica, punti, data=None):
@@ -207,7 +226,8 @@ def preferenze(chiave):
 def _riempimento(g, preferite, portafoglio):
     """
     Il riempimento a livello in forma chiusa: dove porta il portafoglio, per ogni caratteristica.
-    Restituisce le coppie di caratteristica e totale d'arrivo, e i punti usati.
+    Restituisce, per ogni caratteristica che sale, il nome, il totale d'arrivo, quello di partenza e
+    i punti che costa, con gli stessi integrali della spesa a mano; e i punti usati in tutto.
     Per una caratteristica il costo da x0 a x è coeff per (exp(K x) meno exp(K x0)), e il punteggio
     del prossimo punto è la preferenza diviso lo sconto per exp(meno K x). A un livello d'acqua λ la
     caratteristica sta dove il punteggio vale λ, cioè exp(K x) vale preferenza su sconto diviso λ:
@@ -216,25 +236,29 @@ def _riempimento(g, preferite, portafoglio):
     e il tetto, quando λ scende a preferenza su sconto per exp(meno K). Si percorrono dal λ più alto,
     finché il costo non raggiunge il portafoglio; l'ultimo tratto si risolve con una divisione.
     """
-    e = efficacia(g)
+    ritmo = COSTO_PER_PUNTO_PESATO / (efficacia(g) * _K)
+    pesi = _pesi_per_punto(g)
+    sconto_di_gioco = 1.0 - SCONTO_IPOVEDENTI if getattr(g, "ipovedente", False) else 1.0
     voci = []
     for c in CARATTERISTICHE:
-        t = tetto(c)
-        attuale = totale(g, c)
+        nome_base, nome_allenata = _NOMI[c]
+        t = _TETTI[c]
+        attuale = getattr(g, nome_base) + getattr(g, nome_allenata)
         if attuale >= t - _QUASI_ZERO:
             continue
-        s = sconto(g, c)
-        coeff = COSTO_PER_PUNTO_PESATO * valore.peso_per_punto(g, c) * s * t / (e * _K)
-        voci.append((c, coeff, math.exp(_K * attuale / t), preferite[c] / s, t, attuale))
+        s = 1.0 if c in _FISICHE else sconto_di_gioco
+        voci.append((c, ritmo * pesi[c] * s * t, math.exp(_K * attuale / t), preferite[c] / s, t, attuale))
     eventi = []
     for i, (_c, _coeff, e0, ps, _t, _attuale) in enumerate(voci):
-        eventi.append((ps / e0, 0, i))
-        eventi.append((ps / _EXP_K, 1, i))
-    eventi.sort(key=lambda evento: (-evento[0], evento[1]))
+        # Il livello col segno cambiato, così l'ordine naturale delle terne va dal più alto, con l'ingresso prima del tetto.
+        eventi.append((-ps / e0, 0, i))
+        eventi.append((-ps / _EXP_K, 1, i))
+    eventi.sort()
     a_tot = b_tot = 0.0
     stato = [0] * len(voci)
     livello = None
-    for lam, tipo, i in eventi:
+    for meno_lam, tipo, i in eventi:
+        lam = -meno_lam
         if a_tot > 0.0 and a_tot / lam + b_tot >= portafoglio:
             livello = a_tot / (portafoglio - b_tot)
             break
@@ -248,11 +272,10 @@ def _riempimento(g, preferite, portafoglio):
             b_tot += coeff * _EXP_K
             stato[i] = 2
     arrivi = []
-    for (c, _coeff, _e0, ps, t, attuale), st in zip(voci, stato, strict=True):
-        if st == 2:
-            arrivi.append((c, t))
-        elif st == 1:
-            arrivi.append((c, max(attuale, min(t, t * math.log(ps / livello) / _K))))
+    for (c, coeff, e0, ps, t, attuale), st in zip(voci, stato, strict=True):
+        if st:
+            arrivo = t if st == 2 else max(attuale, min(t, t * math.log(ps / livello) / _K))
+            arrivi.append((c, arrivo, attuale, coeff * (math.exp(_K * arrivo / t) - e0)))
     usati = portafoglio if livello is not None else b_tot
     return arrivi, usati
 
@@ -268,11 +291,7 @@ def allena_secondo_programma(g, data=None, programma=None):
         return []
     programma = programma or getattr(g, "programma", None) or INDOLE_PREDEFINITA
     arrivi, usati = _riempimento(g, preferenze(programma), g.punti_allenamento)
-    spese = []
-    for c, arrivo in arrivi:
-        prima = totale(g, c)
-        if arrivo > prima + _QUASI_ZERO:
-            spese.append(Spesa(c, prima, arrivo, costo_fra(g, c, prima, arrivo)))
+    spese = [Spesa(c, prima, arrivo, costo) for c, arrivo, prima, costo in arrivi if arrivo > prima + _QUASI_ZERO]
     if not spese:
         return []
     valore_prima = g.indice_collettivo_valore
@@ -297,12 +316,12 @@ def mantenimento_del_mese(g, giorni):
     oblio = tratti.oblio_mensile(g)
     quota = giorni / ANNO_SIMULAZIONE_GIORNI
     for c in CARATTERISTICHE:
-        nome_allenata = c + "_allenata"
+        nome_base, nome_allenata = _NOMI[c]
         allenata = getattr(g, nome_allenata)
         if allenata <= 0.0:
             continue
-        t = tetto(c)
-        relativo = (getattr(g, c + "_base") + allenata) / t
+        t = _TETTI[c]
+        relativo = (getattr(g, nome_base) + allenata) / t
         nuova = allenata
         if relativo > SOGLIA_CALO_LIVELLI_ALTI:
             eccesso = (relativo - SOGLIA_CALO_LIVELLI_ALTI) / (1.0 - SOGLIA_CALO_LIVELLI_ALTI)

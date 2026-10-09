@@ -85,14 +85,54 @@ def tratti(g):
     return {nome: bool(getattr(g, nome, False)) for nome in TRATTI}
 
 
+# I nomi delle parti delle caratteristiche semplici, per la somma in una passata.
+_NOMI_SEMPLICI = tuple((nome, nome + "_base", nome + "_allenata") for nome in _SEMPLICI)
+
+
+def _somme(g, pesi):
+    """
+    Le somme pesate della parte innata e di quella allenata, in una passata sola: è il conto di
+    caratteristiche, con chiusure e blocchi per ruolo, fatto senza dizionari intermedi, perché dalla
+    tappa 11 il valore si ricalcola a ogni spesa d'allenamento, centinaia di volte al giorno.
+    """
+    innata = allenata = 0.0
+    for nome, nome_base, nome_allenata in _NOMI_SEMPLICI:
+        peso = pesi[nome]
+        innata += peso * getattr(g, nome_base, 0.0)
+        allenata += peso * getattr(g, nome_allenata, 0.0)
+    ambidestro, mancino = getattr(g, "ambidestro", False), getattr(g, "mancino", False)
+    for ruolo in ("chiusura", "blocco"):
+        dritto, rovescio = pesi[ruolo + "_dritto"], pesi[ruolo + "_rovescio"]
+        for parte in ("_base", "_allenata"):
+            sx, dx = getattr(g, ruolo + "sx" + parte, 0.0), getattr(g, ruolo + "dx" + parte, 0.0)
+            if ambidestro:
+                somma = (dritto + rovescio) * (sx + dx) / 2.0
+            elif mancino:
+                somma = rovescio * dx + dritto * sx
+            else:
+                somma = rovescio * sx + dritto * dx
+            if parte == "_base":
+                innata += somma
+            else:
+                allenata += somma
+    return innata, allenata
+
+
 def somma_pesata(g, parte="totale", pesi=None):
-    pesi = PESI_VALORE if pesi is None else pesi
-    return sum(pesi[nome] * valore for nome, valore in caratteristiche(g, parte).items())
+    """La somma pesata della parte innata, allenata o totale."""
+    if parte not in PARTI:
+        raise ValueError(f"Parte sconosciuta: {parte}.")
+    innata, allenata = _somme(g, PESI_VALORE if pesi is None else pesi)
+    if parte == "base":
+        return innata
+    if parte == "allenata":
+        return allenata
+    return innata + allenata
 
 
 def bonus_tratti(g, pesi_tratti=None):
     pesi_tratti = PESI_TRATTI if pesi_tratti is None else pesi_tratti
-    return sum(pesi_tratti[nome] for nome, presente in tratti(g).items() if presente)
+    return sum(pesi_tratti[nome] for nome in TRATTI if getattr(g, nome, False))
 
 
 def parti(g, pesi=None, pesi_tratti=None, a=None, b=None):
@@ -102,9 +142,8 @@ def parti(g, pesi=None, pesi_tratti=None, a=None, b=None):
     """
     a = SCALA_VALORE_A if a is None else a
     b = SCALA_VALORE_B if b is None else b
-    icv_base = a + b * (somma_pesata(g, "base", pesi) + bonus_tratti(g, pesi_tratti))
-    icv_allenato = b * somma_pesata(g, "allenata", pesi)
-    return icv_base, icv_allenato
+    innata, allenata = _somme(g, PESI_VALORE if pesi is None else pesi)
+    return a + b * (innata + bonus_tratti(g, pesi_tratti)), b * allenata
 
 
 def indice(g, pesi=None, pesi_tratti=None, a=None, b=None):

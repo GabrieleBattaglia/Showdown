@@ -271,7 +271,9 @@ MESI_MINIMI_MIGRAZIONE = 12
 # agganci della tappa 12, con un premio per i piazzamenti.
 ESPERIENZA_PER_ANNO_DI_VITA = 0.05
 ESPERIENZA_PER_AMICHEVOLE = 0.00125
-ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.0028
+# La prima taratura grezza, del 2026-10-09 con strumenti/carriera_perfetta.py: 0,00279 porta la
+# carriera perfetta, con le sue 3985 amichevoli, a 20 di esperienza a 50 anni.
+ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.00279
 K_GRUPPO_ESPERIENZA = 0.2
 ESPERIENZA_PER_PARTITA_TORNEO = 0.01
 ESPERIENZA_PER_SFIDA = 0.006
@@ -282,10 +284,12 @@ ESPERIENZA_PER_PIAZZAMENTO = {1: 0.3, 2: 0.2, 3: 0.12, 4: 0.06}
 # e le ancore sono costanti storiche, che scrive strumenti/carriera_perfetta.py e che poi non si
 # toccano più senza Gabriele. Le ancore sono coppie di livello e punteggio: K0 a zero; il nato del
 # primo percentile a I9 e quello del novantanovesimo a F0; il bravo a 30 anni a E0; la carriera
-# perfetta ad A1. In mezzo le soglie si interpolano in linea retta.
+# perfetta ad A1. In mezzo le soglie si interpolano in linea retta. La somma e le ancore sono della
+# prima taratura grezza, del 2026-10-09, con strumenti/carriera_perfetta.py e i pesi del valore della
+# tappa 9: si congelano per sempre dopo la taratura del motore della tappa 11, con Gabriele.
 PESO_VALORE_CLASSE = 0.7
 PESO_ESPERIENZA_CLASSE = 0.3
-SOMMA_CARRIERA_PERFETTA = 360.9
+SOMMA_CARRIERA_PERFETTA = 368.5
 PESI_CLASSE = {
     "lungolineasx": 0.44, "lungolineadx": 0.44, "diagonalesx": 0.49, "diagonaledx": 0.49, "singolaspondasx": 0.48, "singolaspondadx": 0.48,
     "doppiaspondasx": 0.45, "doppiaspondadx": 0.45, "triplaspondasx": 0.33, "triplaspondadx": 0.33, "bomba": 0.36, "battutasx": 0.78,
@@ -293,7 +297,7 @@ PESI_CLASSE = {
     "tenutapaletta": 1.26, "controllopalla": 0.81, "attacco": 1.29, "precisione": 10.04, "forza": 5.18, "resistenza": 4.71,
 }
 PESI_TRATTI_CLASSE = {"mancino": 2.9, "ambidestro": 3.4, "giocorapido": 1.2, "cambiovelocita": 4.5}
-ANCORE_CLASSE = ((100, 0.0), (89, 0.203), (50, 0.402), (40, 0.543), (1, 1.0))
+ANCORE_CLASSE = ((100, 0.0), (89, 0.202), (50, 0.401), (40, 0.546), (1, 1.0))
 NUM_GIOCATORI_INIZIALI = 50
 CREA_NUOVI_PER_TICK_RANGE = (1, 7)
 # Le caratteristiche allenabili, con la sigla del menu di allenamento.

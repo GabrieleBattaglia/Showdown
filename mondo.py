@@ -57,6 +57,7 @@ import contratti
 import esperienza
 import infortuni
 import percorsi
+import tratti
 from allenamento import allena_secondo_programma, mantenimento_del_mese
 from costanti import (
     ANNO_SIMULAZIONE_GIORNI,
@@ -1003,11 +1004,12 @@ class Mondo:
         resto = 1.0 - DECADIMENTO_COSTANZA
         seduta_liberi = PA_SEDUTA * QUOTA_SEDUTA_LIBERI
         for gid, g in self.giocatori.items():
-            if gid in morti or g.ritirato:
+            if g.ritirato or gid in morti:
                 continue
             club = gruppi.get(g.appartenenza)
             attivita = 0.0
-            if g.puo_giocare:
+            # Chi non è infortunato può giocare; per gli infortunati decide puo_giocare, per l'ambidestro col braccio fermo.
+            if not g.infortunato or g.puo_giocare:
                 if club is None:
                     g.punti_allenamento += seduta_liberi
                     attivita = COSTANZA_LIBERI
@@ -1240,8 +1242,12 @@ class Mondo:
         limite_poli = len(vivi) / GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET if vivi and GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET > 0 else 0.
         if len(self.polisportive) < limite_poli and caso(PROB_CREAZIONE_POLI_CPU_PER_TICK) and self.crea_polisportiva_cpu(data):
             rapporto["poli_create"] += 1
+        # Dalla tappa 11 il valore si ricalcola soltanto per chi è nel declino, che cambia ogni giorno:
+        # la spesa d'allenamento e il calo del mese lo ricalcolano da sé, e rifarlo per tutti i
+        # giocatori del mondo costava più di tutto il resto del giorno.
         for g in vivi:
-            g.aggiorna_icv()
+            if g.eta >= tratti.giorni_inizio_declino(g):
+                g.aggiorna_icv()
         nuovi = random.randint(*CREA_NUOVI_PER_TICK_RANGE)
         self.crea_giocatori_casuali(nuovi, data, annuncia=False)
         rapporto["nuovi"] += nuovi

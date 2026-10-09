@@ -69,23 +69,37 @@ def test_la_scala_conserva_mediana_e_monte_stipendi(monkeypatch):
     assert math.isfinite(a) and b > 0
 
 
-def _misure_finte(mediana_somme, mediana_tappa_8, a, b):
-    # Una simulazione finta: la cassa mediana scende con la dispersione del valore, cioè con B.
-    cassa = 5000.0 * math.exp(-4.0 * (b - 1.1))
-    return {"casse": (0.0, cassa, 0.0), "stipendi": (110.0, 210.0, 560.0), "monte_su_sponsor": 0.92, "tesserati": 90, "attivi": 100,
-            "mediana_valore": a + b * mediana_somme, "mediana_somme": mediana_somme, "mediana_tappa_8": mediana_tappa_8}
+def _campione(seme):
+    """Un campione finto: somme dei giocatori in attività attorno a 160, i tesserati senza tratti e senza esperienza."""
+    rng = random.Random(seme)
+    somme = [rng.gauss(160.0, 25.0) for _ in range(3000)]
+    return somme, [(s, 1.0) for s in somme[300:]]
 
 
-def test_la_scala_si_cerca_per_bisezione_sulla_cassa(monkeypatch):
-    # D26: la scala si tara sulla simulazione lunga. Con una cassa che scende con B, la bisezione
-    # ritrova il B che la porta al bersaglio, e A tiene la mediana del valore della tappa 8.
-    monkeypatch.setattr(sl, "con_scala", lambda _anni, semi, a, b, _processi: {s: _misure_finte(100.0, 138.0, a, b) for s in semi})
-    monkeypatch.setattr(sl.costanti, "SCALA_VALORE_A", -50.0)
-    monkeypatch.setattr(sl.costanti, "SCALA_VALORE_B", 1.0)
-    a, b, righe = sl.cerca_scala(10, (1, 2, 3), 5000.0, 1, passi=20, stampa=None)
-    assert b == pytest.approx(1.1, abs=1e-4)
-    assert a + b * 100.0 == pytest.approx(138.0)
-    assert righe[-1].startswith("La scala trovata, da copiare in costanti.py")
+def test_la_scala_in_forma_chiusa():
+    # Tappa 11, punto 12.4: A tiene la mediana del valore a 135,5, B porta lo stipendio al decimo percentile dei tesserati a 105.
+    campioni = [_campione(1), _campione(2)]
+    a, b = sl.scala_in_forma_chiusa(campioni)
+    somme = [s for attivi, _t in campioni for s in attivi]
+    assert a + b * statistics.median(somme) == pytest.approx(135.5)
+    stipendi = [sl._stipendio(a + b * s, m) for _a, tesserati in campioni for s, m in tesserati]
+    assert abs(sl.percentile(stipendi, 0.1) - 105.0) <= 10.0
+    assert b > 0
+
+
+def _misure_finte(a, b, sponsor):
+    # Una simulazione finta: la cassa mediana cresce con lo sponsor; il campione non dipende dalla scala.
+    somme, tesserati = _campione(3)
+    return {"casse": (0.0, 5000.0 * sponsor / 20.0, 0.0), "stipendi": (105.0, 210.0, 560.0), "monte_su_sponsor": 0.92, "tesserati": 90, "attivi": 100,
+            "mediana_valore": a + b * statistics.median(somme), "somme_attivi": somme, "tesserati_campione": tesserati}
+
+
+def test_l_economia_si_cerca_con_la_scala_e_poi_lo_sponsor(monkeypatch):
+    monkeypatch.setattr(sl, "con_scala", lambda _anni, semi, a, b, _processi, sponsor: {s: _misure_finte(a, b, sponsor) for s in semi})
+    a, b, sponsor, righe = sl.cerca_economia(10, (1, 2), 5000.0, 1, giri=3, passi=20, stampa=None, sponsor_iniziale=18.0)
+    assert sponsor == pytest.approx(20.0, abs=0.01)
+    assert (a, b) == pytest.approx(sl.scala_in_forma_chiusa([_campione(3), _campione(3)]))
+    assert righe[-1].startswith("L'economia trovata, da copiare in costanti.py")
     assert sl.PESI_TAPPA_8 is tv.PESI_TAPPA_8
 
 

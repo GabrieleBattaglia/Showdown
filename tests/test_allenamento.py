@@ -202,11 +202,12 @@ def test_un_tetto_raggiunto_esce_dall_insieme():
     preferite = dict.fromkeys(al.CARATTERISTICHE, 1.0) | {"attacco": 1000.0}
     al_tetto = al.costo_fra(g, "attacco", 39.8, 40.0)
     arrivi, usati = al._riempimento(g, preferite, al_tetto + 100.0)
-    arrivi = dict(arrivi)
-    assert arrivi["attacco"] == pytest.approx(40.0)
+    per_nome = {c: (arrivo, costo) for c, arrivo, _prima, costo in arrivi}
+    assert per_nome["attacco"][0] == pytest.approx(40.0)
     assert usati == pytest.approx(al_tetto + 100.0)
-    altre = sum(al.costo_fra(g, c, al.totale(g, c), a) for c, a in arrivi.items() if c != "attacco")
+    altre = sum(al.costo_fra(g, c, al.totale(g, c), arrivo) for c, (arrivo, _costo) in per_nome.items() if c != "attacco")
     assert altre == pytest.approx(100.0)
+    assert sum(costo for _arrivo, costo in per_nome.values()) == pytest.approx(usati)
 
 
 def test_tutto_al_tetto_si_spende_soltanto_quel_che_serve():
@@ -224,7 +225,9 @@ def test_la_spesa_a_mano_e_quella_del_programma_usano_gli_stessi_integrali():
     spesa = al.spendi(a, "attacco", 40.0)
     preferite = dict.fromkeys(al.CARATTERISTICHE, 1e-9) | {"attacco": 1.0}
     arrivi, usati = al._riempimento(b, preferite, 40.0)
-    assert dict(arrivi)["attacco"] == pytest.approx(spesa.a) and usati == pytest.approx(40.0)
+    per_nome = {c: (arrivo, costo) for c, arrivo, _prima, costo in arrivi}
+    assert per_nome["attacco"][0] == pytest.approx(spesa.a) and usati == pytest.approx(40.0)
+    assert per_nome["attacco"][1] == pytest.approx(spesa.punti, rel=1e-6)
 
 
 def test_l_infortunato_non_si_allena_e_l_ambidestro_col_braccio_fermo_si():

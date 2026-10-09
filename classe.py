@@ -43,7 +43,8 @@ def _soglie(ancore):
     for n in range(1, LIVELLI + 1):
         for (n1, p1), (n2, p2) in itertools.pairwise(ordinate):
             if n1 <= n <= n2:
-                soglie.append(p1 + (p2 - p1) * (n - n1) / (n2 - n1))
+                # Sulle ancore il punteggio è esattamente il loro, senza gli scarti della divisione.
+                soglie.append(p1 if n == n1 else p2 if n == n2 else p1 + (p2 - p1) * (n - n1) / (n2 - n1))
                 break
     return tuple(soglie)
 
@@ -87,7 +88,8 @@ def percentuale_verso_la_seguente(g, valore_del_punteggio=None):
     if n == 1:
         return None
     basso, alto = soglia(n), soglia(n - 1)
-    return max(0, min(99, math.floor((p - basso) / (alto - basso) * 100)))
+    # Un millesimo di milionesimo in più, perché la metà esatta del tratto non diventi 49 per uno scarto di calcolo.
+    return max(0, min(99, math.floor((p - basso) / (alto - basso) * 100 + 1e-9)))
 
 
 def classe(g):
