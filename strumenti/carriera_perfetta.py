@@ -21,7 +21,10 @@ Lo strumento stampa: la somma della carriera perfetta, il valore e l'esperienza 
 anni; l'esperienza del giorno in polisportiva che porta a 20 a 50 anni; le ancore della classe;
 i casi del punto 7 con la loro classe; i punti attesi per amichevole secondo il distacco; le lettere
 nei mondi sintetici; l'allenata più alta della carriera perfetta; la tabella degli specialisti; i
-giocatori dei mondi sintetici sopra lo 0,45, lo 0,7 e le bande della popolazione di prova.
+giocatori dei mondi sintetici sopra lo 0,45, lo 0,7 e le bande della popolazione di prova; e il
+valore che cento punti comprano su ogni caratteristica, per lo stesso giocatore alla stessa età,
+perché il costo è tarato sul valore e un punto deve comprare più o meno lo stesso valore qualunque
+cosa si alleni: la differenza viene soltanto dal livello relativo da cui si parte.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/carriera_perfetta.py
     python strumenti/carriera_perfetta.py --costo 50 --crescita 2,5 --rapporto carriera.txt
@@ -266,6 +269,23 @@ def specialista(g0, caratteristica, da, punti_amichevole):
     return risultati
 
 
+def valore_per_punto_speso(g0, anni, punti=100.0):
+    """
+    Quanta somma pesata e quanto valore comprano tanti punti spesi su una caratteristica sola, per
+    ognuna delle 24, partendo dallo stesso giocatore alla stessa età: elenco di quaterne con la
+    caratteristica, il livello relativo di partenza, la somma pesata e il valore comprati.
+    """
+    righe = []
+    for c in allenamento.CARATTERISTICHE:
+        g = pronto(g0, anni)
+        g.punti_allenamento = punti
+        relativo = allenamento.livello_relativo(g, c)
+        somma, indice = valore.somma_pesata(g), g.indice_collettivo_valore
+        allenamento.spendi(g, c, punti)
+        righe.append((c, relativo, valore.somma_pesata(g) - somma, g.indice_collettivo_valore - indice))
+    return righe
+
+
 def sopra_le_soglie(giocatori):
     """Quanti giocatori hanno una caratteristica sopra lo 0,45 e lo 0,7 del tetto, e l'allenata sopra le bande della popolazione di prova; il livello relativo più alto."""
     sopra_45 = sopra_70 = fuori = 0
@@ -367,6 +387,14 @@ def main():
         sopra_45, sopra_70, fuori, massimo = sopra_le_soglie(giocatori)
         scrivi(f"Mondo sintetico {nome}: lettere {lettere(giocatori)}. Sopra lo 0,45 del tetto {sopra_45}, sopra lo 0,7 {sopra_70}, oltre le bande della popolazione di prova {fuori}; "
                f"livello relativo più alto {numero(massimo, 2)}; valore mediano {numero(statistics.median(g.indice_collettivo_valore for g in giocatori))}.")
+    righe_punto = valore_per_punto_speso(mediano, 25.0)
+    comprate = [somma for _c, _x, somma, _v in righe_punto]
+    # Corretta per il livello di partenza, la somma comprata è la stessa dappertutto, salvo lo sconto degli ipovedenti: il costo marginale cresce come exp(K per il livello).
+    corrette = [somma * math.exp(allenamento._K * x) for _c, x, somma, _v in righe_punto]
+    scrivi(f"Cento punti spesi dal mediano a 25 anni su una caratteristica sola comprano da {numero(min(comprate), 2)} a {numero(max(comprate), 2)} punti di somma pesata, "
+           f"la mediana {numero(statistics.median(comprate), 2)}, e da {numero(min(v for *_r, v in righe_punto), 2)} a {numero(max(v for *_r, v in righe_punto), 2)} punti di valore; "
+           f"portati allo stesso livello relativo, da {numero(min(corrette), 3)} a {numero(max(corrette), 3)}. Caratteristica per caratteristica, il livello di partenza e la somma "
+           "comprata: " + "; ".join(f"{c} {numero(x, 2)} e {numero(somma, 2)}" for c, x, somma, _v in righe_punto) + ".")
     if not argomenti.veloce:
         for nome, g0, da, punti in (("mediano", mediano, 20.0, PUNTI_AMICHEVOLE_MEDIANO), ("bravo", bravo_nato, 15.0, PUNTI_AMICHEVOLE_BRAVO)):
             for c in SPECIALITA:

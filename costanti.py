@@ -273,8 +273,10 @@ MESI_MINIMI_MIGRAZIONE = 12
 # agganci della tappa 12, con un premio per i piazzamenti.
 ESPERIENZA_PER_ANNO_DI_VITA = 0.05
 ESPERIENZA_PER_AMICHEVOLE = 0.00125
-# La prima taratura grezza, del 2026-10-09 con strumenti/carriera_perfetta.py: 0,00279 porta la
-# carriera perfetta, con le sue 3985 amichevoli, a 20 di esperienza a 50 anni.
+# 0,00279 porta la carriera perfetta, con le sue 3985 amichevoli, a 20 di esperienza a 50 anni:
+# l'ha trovato strumenti/carriera_perfetta.py nella prima taratura grezza e confermato nella taratura
+# fine del 9 ottobre 2026, dopo quella del motore. Con l'età fa 2,05, con le amichevoli 4,98, con la
+# polisportiva il resto.
 ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.00279
 K_GRUPPO_ESPERIENZA = 0.2
 ESPERIENZA_PER_PARTITA_TORNEO = 0.01
@@ -287,12 +289,16 @@ ESPERIENZA_PER_PIAZZAMENTO = {1: 0.3, 2: 0.2, 3: 0.12, 4: 0.06}
 # toccano più senza Gabriele. Le ancore sono coppie di livello e punteggio: K0 a zero; il nato del
 # primo percentile a I9 e quello del novantanovesimo a F0; il bravo a 30 anni a E0; la carriera
 # perfetta ad A1. In mezzo le soglie si interpolano in linea retta. I pesi della classe sono quelli
-# del valore dopo la taratura del motore della tappa 11, del 9 ottobre 2026; la somma e le ancore
-# sono ancora della prima taratura grezza, con i pesi della tappa 9, e si rifanno con la carriera
-# perfetta sui pesi nuovi: poi si congelano per sempre, con Gabriele.
+# del valore dopo la taratura del motore della tappa 11, e la somma e le ancore vengono da
+# strumenti/carriera_perfetta.py sui pesi nuovi, nella taratura fine del 9 ottobre 2026: il nato
+# numero 1229 al novantesimo percentile senza tratti arriva a 365,0 di somma e a 20 di esperienza a
+# 50 anni; il nato del primo percentile vale 0,204, quello del novantanovesimo 0,403, il bravo a
+# 30 anni 0,549. Sono congelate: alla tappa 12 si abbassano le fonti, non le soglie, e da qui non si
+# toccano più senza Gabriele. La prima taratura grezza aveva 368,5 e 0,202, 0,401 e 0,546, con i
+# pesi della tappa 9.
 PESO_VALORE_CLASSE = 0.7
 PESO_ESPERIENZA_CLASSE = 0.3
-SOMMA_CARRIERA_PERFETTA = 368.5
+SOMMA_CARRIERA_PERFETTA = 365.0
 PESI_CLASSE = {
     "lungolineasx": 0.48, "lungolineadx": 0.48, "diagonalesx": 0.51, "diagonaledx": 0.51, "singolaspondasx": 0.49, "singolaspondadx": 0.49,
     "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.39, "triplaspondadx": 0.39, "bomba": 0.43, "battutasx": 0.72,
@@ -300,7 +306,7 @@ PESI_CLASSE = {
     "tenutapaletta": 1.22, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.36, "forza": 5.54, "resistenza": 3.71,
 }
 PESI_TRATTI_CLASSE = {"mancino": 2.4, "ambidestro": 3.4, "giocorapido": 1.0, "cambiovelocita": 4.6}
-ANCORE_CLASSE = ((100, 0.0), (89, 0.202), (50, 0.401), (40, 0.546), (1, 1.0))
+ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.403), (40, 0.549), (1, 1.0))
 NUM_GIOCATORI_INIZIALI = 50
 CREA_NUOVI_PER_TICK_RANGE = (1, 7)
 # Le caratteristiche allenabili, con la sigla del menu di allenamento.
