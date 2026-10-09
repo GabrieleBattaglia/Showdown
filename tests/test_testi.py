@@ -160,6 +160,12 @@ def test_testi_del_mercato_e_delle_polisportive(mondo):
     assert f", in vendita da {cpu.nome} a 1.200 euro" in testi.riga_mercato(in_vendita)
     domanda = testi.domanda_ingaggio(libero, 450, 50.0, p, mondo)
     assert f"Accetta al 50%. {testi.proposta_di_contratto(libero.giocatore, mondo)} Userai una delle 5 mosse che ti restano oggi." in domanda
+    # Tappa 11: il tesserato ha il suo contratto nella riga, e chi lo compra firma un contratto nuovo.
+    mondo._entra(cpu, mondo.giocatori[3])
+    scadenza = mondo.giocatori[3].contratto_scadenza
+    mese = f"{testi.MESI[scadenza.month - 1]} {scadenza.year}"
+    assert f", contratto fino {'ad' if mese[0] in 'aeiou' else 'a'} {mese}" in testi.riga_mercato(in_vendita)
+    assert f"Firmerà con Club Di Prova per {contratti.durata_proposta(mondo.giocatori[3])} mesi a " in testi.domanda_acquisto(in_vendita, p, mondo)
     p.movimenti_oggi = 4
     assert testi.domanda_acquisto(in_vendita, p, mondo).endswith("Userai l'ultima mossa che ti resta oggi.")
     assert testi.esito_ingaggio(g, p, False, 450, 12.0) == f"{g.nome} {g.cognome} ha rifiutato l'ingaggio di 450 euro: accettava al 12%."

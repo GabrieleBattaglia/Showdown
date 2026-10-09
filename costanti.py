@@ -202,7 +202,9 @@ CAPITALE_INIZIALE = 20_000
 # Lo sponsor, dalla tappa 11, metà e metà, risposta 5 di Gabriele: SPONSOR_PER_GLORIA euro al mese
 # per ogni punto di gloria, che la simulazione lunga ritocca, più il 9 per cento al mese del valore
 # di mercato pieno dei tesserati, che resta fisso. Fino alla tappa 10 erano 35 euro per la gloria.
-SPONSOR_PER_GLORIA = 18
+# Il punto di partenza era 18; la prima taratura grezza del 2026-10-09, simulazione_lunga.py
+# --cerca-economia su quattro semi, ha trovato 16,2, con la cassa mediana del computer a 5.000 euro.
+SPONSOR_PER_GLORIA = 16.2
 QUOTA_SPONSOR_SUL_VALORE = 0.09
 STIPENDIO_DI_RIFERIMENTO = 200
 VALORE_DI_RIFERIMENTO = 140
@@ -484,7 +486,12 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # bassi scendono a 90 euro. Le coppie
 # speculari di colpi hanno un peso solo; le fisiche, che vanno da 0 a 10, pesano per punto
 # quattro volte tanto, e la precisione, che entra in tutte le qualità, più di tutte, ma la metà
-# di prima.
+# di prima. Dalla tappa 11 la scala si tara col mondo che si allena, all'anno 10 della simulazione
+# lunga, con --cerca-economia: A tiene la mediana del valore dei giocatori in attività a 135,5, B
+# porta lo stipendio pagato al decimo percentile dei tesserati a 105 euro. La prima taratura
+# grezza, del 2026-10-09, ha dato A -49,68 e B 1,1302: stipendio mediano 210 euro, decimo
+# percentile 100, novantesimo 510, tesserati al 90 per cento, cassa mediana del computer a 5.000
+# euro. Fino alla tappa 10 erano A -82,61 e B 1,3878, che la migrazione conserva per i contratti.
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
 PESI_VALORE = {
@@ -494,8 +501,8 @@ PESI_VALORE = {
     "tenutapaletta": 1.26, "controllopalla": 0.81, "attacco": 1.29, "precisione": 10.04, "forza": 5.18, "resistenza": 4.71,
 }
 PESI_TRATTI = {"mancino": 2.9, "ambidestro": 3.4, "giocorapido": 1.2, "cambiovelocita": 4.5}
-SCALA_VALORE_A = -82.61
-SCALA_VALORE_B = 1.3878
+SCALA_VALORE_A = -49.68
+SCALA_VALORE_B = 1.1302
 SOGLIA_PESO_INERTE = 0.25
 
 

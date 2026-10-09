@@ -208,6 +208,16 @@ def test_polisportiva_da_e_verso_il_dizionario():
         Polisportiva.da_dizionario(dati)
 
 
+def test_la_scheda_dell_interfaccia_testuale(giocatori):
+    # Tappa 11: punti allenamento al posto di XP, con classe, indole e contratto.
+    g = giocatori[0]
+    g.punti_allenamento = 12.5
+    testo = str(g)
+    assert "Punti allenamento: 12.5" in testo and "XP" not in testo
+    assert "Classe: " in testo and f"Indole: {INDOLI[g.indole]['nome']}" in testo and "Contratto: nessuno" in testo
+    assert "PA:12" in g.sommario()
+
+
 def test_eta_della_polisportiva():
     p = Polisportiva("Club", None, NASCITA)
     assert p.eta_sim(NASCITA + datetime.timedelta(days=110)) == "1/0/2 sim"

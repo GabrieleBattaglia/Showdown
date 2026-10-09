@@ -690,7 +690,8 @@ def riga_mercato(c):
     else:
         costo = f"{accorda(g, 'tesserato')} con {c.polisportiva.nome}, valore di mercato {euro(c.costo)}"
     if c.tipo != mercato.LIBERO and contratti.ha_contratto(g):
-        costo += f", contratto fino a {mese_e_anno(contratti.aggiungi_mesi(g.contratto_scadenza, -1))}"
+        mese = mese_e_anno(g.contratto_scadenza)
+        costo += f", contratto fino {'ad' if mese[0] in 'aeiou' else 'a'} {mese}"
     tratti = "".join(", " + t for t in tratti_speciali(g))
     return f"{nome_completo(g)}, {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(c.stipendio)}, {costo}{tratti}, ID {g.id}"
 

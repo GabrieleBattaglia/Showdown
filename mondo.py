@@ -750,8 +750,9 @@ class Mondo:
                 if self._scambio(poli, liberi, vetrina, prossimo, monte, data):
                     tesserati += 1
                     svincolati += 1
+        vendibili = self._vendibili(data or self.datetime_corrente_simulazione)
         for poli in cpu:
-            if self._compra_dal_mercato(poli, data):
+            if self._compra_dal_mercato(poli, data, vendibili):
                 comprati += 1
         return tesserati, svincolati, comprati
 
@@ -798,7 +799,25 @@ class Mondo:
         self.annota(poli, f"Tesserato {nome_completo(nuovo)} al posto di {nome_completo(debole)}, che torna {accorda(debole.sesso, 'libero')}.", data)
         return True
 
-    def _compra_dal_mercato(self, poli, data):
+    def _vendibili(self, oggi):
+        """
+        I giocatori in vendita del giorno, una volta per tutte le polisportive del computer: chi è,
+        chi lo vende, il prezzo, il prezzo più alto che il computer paga, cioè il valore di mercato
+        del giorno col suo rialzo, e lo stipendio che chiederà firmando. Nell'ordine in cui le
+        polisportive e le loro vendite si scorrono, così la scelta resta quella di prima: dalla tappa
+        11 il valore di mercato dipende dalla scadenza, e rifarne il conto per ogni polisportiva
+        costava troppo.
+        """
+        righe = []
+        for venditore in self.polisportive.values():
+            for gid, prezzo in venditore.in_vendita.items():
+                g = self.giocatori.get(gid)
+                # Il ritirato non si compra: serve ai salvataggi in cui un morto era rimasto in vendita.
+                if g is not None and not g.ritirato:
+                    righe.append((g, venditore, prezzo, valore_di_mercato(g, oggi) * RIALZO_CPU, stipendio(g)))
+        return righe
+
+    def _compra_dal_mercato(self, poli, data, vendibili=None):
         """
         Una polisportiva del computer compra il più forte dei giocatori in vendita, se il prezzo non
         supera di molto il suo valore di mercato e se ci sta nei conti; a rosa piena solo se è più
@@ -817,18 +836,16 @@ class Mondo:
         spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU - buonuscita
         massimo = sponsor_mensile(poli, rosa) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
         scelta = None
-        for venditore in self.polisportive.values():
-            if venditore is poli:
+        for g, venditore, prezzo, prezzo_massimo, chiesto in (self._vendibili(oggi) if vendibili is None else vendibili):
+            # Chi è già stato comprato oggi non è più in vendita.
+            if venditore is poli or venditore.in_vendita.get(g.id) != prezzo:
                 continue
-            for gid, prezzo in venditore.in_vendita.items():
-                g = self.giocatori.get(gid)
-                # Il ritirato non si compra: serve ai salvataggi in cui un morto era rimasto in vendita.
-                if g is None or g.ritirato or prezzo > spendibile or prezzo > valore_di_mercato(g, oggi) * RIALZO_CPU or stipendio(g) > massimo:
-                    continue
-                if debole is not None and g.indice_collettivo_valore <= debole.indice_collettivo_valore:
-                    continue
-                if scelta is None or g.indice_collettivo_valore > scelta[0].indice_collettivo_valore:
-                    scelta = (g, venditore, prezzo)
+            if prezzo > spendibile or prezzo > prezzo_massimo or chiesto > massimo:
+                continue
+            if debole is not None and g.indice_collettivo_valore <= debole.indice_collettivo_valore:
+                continue
+            if scelta is None or g.indice_collettivo_valore > scelta[0].indice_collettivo_valore:
+                scelta = (g, venditore, prezzo)
         if scelta is None:
             return False
         g, venditore, prezzo = scelta

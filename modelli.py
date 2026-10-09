@@ -514,7 +514,7 @@ class Giocatore:
         self.pazienza = 100.0
         self.arretrati = 0
         self.bandiera = caso(PROBABILITA_BANDIERA_CREAZIONE)
-        self.annota(self.datetime_creazione_sim, f"Entra nel mondo dello showdown, a {int(self.eta_anni)} anni.")
+        self.annota(self.datetime_creazione_sim, f"Entra nel mondo dello showdown, a {int(self.eta_anni)} anni: comincia a giocare, e la sua esperienza parte da zero.")
 
     def annota(self, data, testo):
         """Una voce nuova nel diario del giocatore, con la data simulata."""

@@ -109,12 +109,12 @@ def test_l_ambidestro_fa_la_media_dei_lati(giocatori):
         valore.caratteristiche(g, "media")
 
 
-def test_un_mondo_appena_nato_resta_sulla_scala_di_prima():
-    # Dalla decisione D26 la scala la cerca la simulazione lunga, perché le casse delle
-    # polisportive del computer tornino sui 5000 euro, con la mediana del valore del mondo maturo
-    # a 135,5 e lo stipendio mediano vicino a 210 euro: su ottocento neonati la mediana è 134, e
-    # la media del fattore dello stipendio sta entro un decimo di quella del valore di prima. La
-    # tolleranza è di 7 punti sulla mediana e di un decimo sul fattore.
+def test_un_mondo_appena_nato_resta_sotto_la_scala_del_mondo_allenato():
+    # Dalla tappa 11 la scala si tara sul mondo che si allena, all'anno 10 della simulazione lunga:
+    # la mediana del valore dei giocatori in attività sta a 135,5, e lo stipendio pagato al decimo
+    # percentile a 105 euro. I neonati non si sono ancora allenati, e stanno più in basso: su
+    # ottocento la mediana è 127, e la media del fattore dello stipendio è tre quarti di quella del
+    # valore della tappa 8, come il progetto aveva previsto per i giocatori mai allenati.
     stato = random.getstate()
     random.seed(2026)
     try:
@@ -123,9 +123,9 @@ def test_un_mondo_appena_nato_resta_sulla_scala_di_prima():
         random.setstate(stato)
     nuovi = sorted(g.indice_collettivo_valore for g in neonati)
     vecchi = [valore.indice(g, PESI_TAPPA_8, TRATTI_TAPPA_8, 0.0, 1.0) for g in neonati]
-    assert 128 <= nuovi[len(nuovi) // 2] <= 142
+    assert 122 <= nuovi[len(nuovi) // 2] <= 132
 
     def fattore(indici):
         return sum(math.exp((i - VALORE_DI_RIFERIMENTO) / SCALA_STIPENDIO) for i in indici) / len(indici)
 
-    assert fattore(nuovi) == pytest.approx(fattore(vecchi), rel=0.1)
+    assert 0.65 * fattore(vecchi) <= fattore(nuovi) <= 0.9 * fattore(vecchi)
