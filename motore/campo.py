@@ -23,7 +23,8 @@ l'avversario è alla portata di chi ha esperienza, e si costruisce durante l'inc
 capirlo, si immagina un destrimano, ed è questo il primo vantaggio del mancino. Il secondo, D26,
 è la sorpresa in difesa: i suoi colpi arrivano da un'angolazione meno abituale per chi gioca quasi
 sempre contro i destri, e premono un po' di più, finché il difensore non ci si abitua, per quanto
-la sua lettura del gioco gli permette.
+la sua lettura del gioco gli permette. Dalla tappa 11 il difensore si abitua anche al colpo dello
+scambio che l'avversario ripete troppo, e chi gioca sempre lo stesso colpo preme di meno.
 """
 
 import math
@@ -334,6 +335,24 @@ class InCampo:
             return 1.0
         abitudine = self.L * (1.0 - math.exp(-self.parate_mancino / t.COLPI_PER_CAPIRE))
         return 1.0 + t.SORPRESA_MANCINO * (1.0 - abitudine)
+
+    def abitudine_al_colpo(self, attaccante, colpo):
+        """
+        Quanto il difensore si è abituato al colpo dello scambio che l'attaccante sta giocando, da 0
+        in su: la parte di pressione che il colpo perde. Conta la quota di quel colpo fra gli
+        attacchi dell'attaccante nell'incontro, ma soltanto dopo ATTACCHI_PER_ABITUDINE attacchi e
+        oltre QUOTA_ABITUDINE: chi varia i colpi non ne risente. Il difensore capisce di più se ha
+        esperienza, per la sua lettura del gioco, e un poco anche senza.
+        """
+        t = self.tar
+        stats = attaccante.stats
+        if not t.ABITUDINE_COLPO or stats.attacchi < t.ATTACCHI_PER_ABITUDINE:
+            return 0.0
+        eccesso = stats.colpi[colpo] / stats.attacchi - t.QUOTA_ABITUDINE
+        if eccesso <= 0.0:
+            return 0.0
+        lettura = t.ABITUDINE_SENZA_LETTURA + (1.0 - t.ABITUDINE_SENZA_LETTURA) * self.L
+        return t.ABITUDINE_COLPO * lettura * eccesso / (1.0 - t.QUOTA_ABITUDINE)
 
     def debolezza_vera(self, avversario):
         """Quanto ogni zona dell'avversario è più debole della sua media, senza la stanchezza."""

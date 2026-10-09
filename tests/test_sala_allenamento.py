@@ -155,7 +155,9 @@ def test_la_spesa_a_mano_con_la_conferma(sala, mondo, messaggi, suonati):
     assert messaggi[-1].startswith(f"{_nome(g)}: 120 punti spesi, valore da {testi.numero(valore_prima)} a ") and messaggi[-1].endswith(".")
     assert "\n" not in messaggi[-1]
     assert len(sala.esiti) == 1 and sala.esiti[0].startswith(f"{_nome(g)}: 120 punti spesi") and "; chiusura sinistra da " in sala.esiti[0]
-    assert "spesa" in g.diario[0] and g.diario[0]["punti"] == 120
+    # La voce della spesa, una sola; se l'allenando sale di classe, accanto c'è anche quella della classe nuova.
+    spese = [voce for voce in g.diario if "spesa" in voce]
+    assert len(spese) == 1 and spese[0]["punti"] == 120
     # La sala tiene il posto: lo stesso allenando, la stessa caratteristica, e i punti entro il portafoglio nuovo.
     assert sala.elenco.GetSelection() == 1 and sala.caratteristiche.GetSelection() == allenamento.CARATTERISTICHE.index("chiusurasx")
     assert sala.punti.GetMax() == 30 and sala.punti.GetValue() == 30

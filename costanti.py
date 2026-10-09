@@ -286,19 +286,20 @@ ESPERIENZA_PER_PIAZZAMENTO = {1: 0.3, 2: 0.2, 3: 0.12, 4: 0.06}
 # e le ancore sono costanti storiche, che scrive strumenti/carriera_perfetta.py e che poi non si
 # toccano più senza Gabriele. Le ancore sono coppie di livello e punteggio: K0 a zero; il nato del
 # primo percentile a I9 e quello del novantanovesimo a F0; il bravo a 30 anni a E0; la carriera
-# perfetta ad A1. In mezzo le soglie si interpolano in linea retta. La somma e le ancore sono della
-# prima taratura grezza, del 2026-10-09, con strumenti/carriera_perfetta.py e i pesi del valore della
-# tappa 9: si congelano per sempre dopo la taratura del motore della tappa 11, con Gabriele.
+# perfetta ad A1. In mezzo le soglie si interpolano in linea retta. I pesi della classe sono quelli
+# del valore dopo la taratura del motore della tappa 11, del 9 ottobre 2026; la somma e le ancore
+# sono ancora della prima taratura grezza, con i pesi della tappa 9, e si rifanno con la carriera
+# perfetta sui pesi nuovi: poi si congelano per sempre, con Gabriele.
 PESO_VALORE_CLASSE = 0.7
 PESO_ESPERIENZA_CLASSE = 0.3
 SOMMA_CARRIERA_PERFETTA = 368.5
 PESI_CLASSE = {
-    "lungolineasx": 0.44, "lungolineadx": 0.44, "diagonalesx": 0.49, "diagonaledx": 0.49, "singolaspondasx": 0.48, "singolaspondadx": 0.48,
-    "doppiaspondasx": 0.45, "doppiaspondadx": 0.45, "triplaspondasx": 0.33, "triplaspondadx": 0.33, "bomba": 0.36, "battutasx": 0.78,
-    "battutadx": 0.78, "chiusura_dritto": 2.22, "chiusura_rovescio": 2.81, "blocco_dritto": 1.35, "blocco_rovescio": 1.61, "difesa": 3.38,
-    "tenutapaletta": 1.26, "controllopalla": 0.81, "attacco": 1.29, "precisione": 10.04, "forza": 5.18, "resistenza": 4.71,
+    "lungolineasx": 0.48, "lungolineadx": 0.48, "diagonalesx": 0.51, "diagonaledx": 0.51, "singolaspondasx": 0.49, "singolaspondadx": 0.49,
+    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.39, "triplaspondadx": 0.39, "bomba": 0.43, "battutasx": 0.72,
+    "battutadx": 0.72, "chiusura_dritto": 2.24, "chiusura_rovescio": 2.74, "blocco_dritto": 1.30, "blocco_rovescio": 1.48, "difesa": 3.32,
+    "tenutapaletta": 1.22, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.36, "forza": 5.54, "resistenza": 3.71,
 }
-PESI_TRATTI_CLASSE = {"mancino": 2.9, "ambidestro": 3.4, "giocorapido": 1.2, "cambiovelocita": 4.5}
+PESI_TRATTI_CLASSE = {"mancino": 2.4, "ambidestro": 3.4, "giocorapido": 1.0, "cambiovelocita": 4.6}
 ANCORE_CLASSE = ((100, 0.0), (89, 0.202), (50, 0.401), (40, 0.546), (1, 1.0))
 NUM_GIOCATORI_INIZIALI = 50
 CREA_NUOVI_PER_TICK_RANGE = (1, 7)
@@ -474,8 +475,11 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # di partenza; ciascuna ha un peso, e i tratti hanno il loro. Fino alla tappa 8 i pesi erano tutti
 # a 1, con 33 punti per ambidestro, gioco rapido e cambio di velocità. Quelli qui sotto li ha
 # misurati sul motore nuovo strumenti/taratura_valore.py, sugli incontri al meglio dei 3, l'ultima
-# volta l'8 ottobre 2026 dopo la revisione della decisione D26, che ha dimezzato il peso della
-# precisione nelle qualità: sono in punti di caratteristica, con la media delle caratteristiche
+# volta il 9 ottobre 2026 con la tappa 11, dopo l'abitudine al colpo ripetuto e con la costanza
+# recente fra i controlli: la resistenza è scesa da 4,71 a 3,71, perché la parte allenata non conta
+# più due volte, i colpi dello scambio sono saliti un poco, il mancino è sceso da 2,9 a 2,4. L'8
+# ottobre, dopo la revisione della decisione D26, la taratura aveva dimezzato il peso della
+# precisione nelle qualità. Sono in punti di caratteristica, con la media delle caratteristiche
 # di gioco a 1, e sono la media di quattro semi, 9, 19, 29 e 39, perché con un seme solo il
 # mancino andava da 2,9 a 5,6 punti di valore. A e B riportano la somma sulla scala del valore, e
 # dalla decisione D26 si cercano con strumenti/simulazione_lunga.py --cerca-scala: B per
@@ -495,12 +499,12 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
 PESI_VALORE = {
-    "lungolineasx": 0.44, "lungolineadx": 0.44, "diagonalesx": 0.49, "diagonaledx": 0.49, "singolaspondasx": 0.48, "singolaspondadx": 0.48,
-    "doppiaspondasx": 0.45, "doppiaspondadx": 0.45, "triplaspondasx": 0.33, "triplaspondadx": 0.33, "bomba": 0.36, "battutasx": 0.78,
-    "battutadx": 0.78, "chiusura_dritto": 2.22, "chiusura_rovescio": 2.81, "blocco_dritto": 1.35, "blocco_rovescio": 1.61, "difesa": 3.38,
-    "tenutapaletta": 1.26, "controllopalla": 0.81, "attacco": 1.29, "precisione": 10.04, "forza": 5.18, "resistenza": 4.71,
+    "lungolineasx": 0.48, "lungolineadx": 0.48, "diagonalesx": 0.51, "diagonaledx": 0.51, "singolaspondasx": 0.49, "singolaspondadx": 0.49,
+    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.39, "triplaspondadx": 0.39, "bomba": 0.43, "battutasx": 0.72,
+    "battutadx": 0.72, "chiusura_dritto": 2.24, "chiusura_rovescio": 2.74, "blocco_dritto": 1.30, "blocco_rovescio": 1.48, "difesa": 3.32,
+    "tenutapaletta": 1.22, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.36, "forza": 5.54, "resistenza": 3.71,
 }
-PESI_TRATTI = {"mancino": 2.9, "ambidestro": 3.4, "giocorapido": 1.2, "cambiovelocita": 4.5}
+PESI_TRATTI = {"mancino": 2.4, "ambidestro": 3.4, "giocorapido": 1.0, "cambiovelocita": 4.6}
 SCALA_VALORE_A = -49.68
 SCALA_VALORE_B = 1.1302
 SOGLIA_PESO_INERTE = 0.25

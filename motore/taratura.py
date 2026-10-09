@@ -245,6 +245,32 @@ class Taratura:
     # la revisione di D26 aveva trovato 5,6 nel peso e 3,3 nelle partite, e la differenza veniva
     # dal seme unico della taratura, non dalla sorpresa.
     SORPRESA_MANCINO: float = 0.03
+    # L'abitudine al colpo ripetuto, tappa 11, risposta 6 di Gabriele. Senza i tetti propri della
+    # parte allenata un giocatore può portare un colpo solo vicino al tetto, e il giro degli estremi
+    # del motore, strumenti/banco_estremi.py, ha visto che un colpo dello scambio forte da solo
+    # rendeva molte volte quanto pesa nel valore: chi ha un solo colpo forte lo sceglie quasi
+    # sempre, perché la scelta del colpo è un softmax sulle qualità, lo sbaglia meno e segna di più.
+    # È la concentrazione, non il livello: tutti i colpi insieme restano lineari. Come la sorpresa
+    # del mancino, il difensore si abitua al colpo che l'avversario usa troppo: nella parata di un
+    # colpo dello scambio, non della battuta né della ribattuta, la pressione cala di
+    # ABITUDINE_COLPO, per la lettura del gioco del difensore, che parte da ABITUDINE_SENZA_LETTURA
+    # anche per chi non ha esperienza, per quanto la quota di quel colpo fra gli attacchi
+    # dell'incontro supera QUOTA_ABITUDINE, contata dopo ATTACCHI_PER_ABITUDINE attacchi. Chi varia
+    # i colpi non ne risente. Il racconto della taratura sta in strumenti/taratura_allenamento.txt.
+    # I valori di partenza del progetto erano 0,4, 0,5, 0,2 e 10: con quelli un colpo solo rendeva
+    # ancora da 4 a 8 volte il suo peso, perché chi ha un colpo forte lo gioca più di otto volte su
+    # dieci e la pressione calava di un quinto. La griglia del giro degli estremi, sulla tripla
+    # sponda sinistra, il lungolinea destro e la bomba contro nati senza esperienza, ha portato
+    # l'abitudine al massimo che la formula consente senza annullare la pressione, 1, con la lettura
+    # che aggiunge poco, da 0,9 per chi non ha esperienza, e la conta dal settimo attacco: dal
+    # decimo i colpi soli rendevano ancora due volte il loro peso, dal quinto la resa diventava
+    # negativa, cioè allenare il colpo faceva perdere. Il colpo preferito di un giocatore normale
+    # ha una quota attorno a 0,24 e ne risente appena: fra due nati della fascia i goal per punto
+    # passano da 0,43 a 0,42.
+    ABITUDINE_COLPO: float = 1.0
+    ABITUDINE_SENZA_LETTURA: float = 0.9
+    QUOTA_ABITUDINE: float = 0.2
+    ATTACCHI_PER_ABITUDINE: int = 7
     # Gli imprevisti a palla ferma. P_SANZIONE era 0,0010, e le ammonizioni stavano al bordo
     # basso della banda.
     P_SANZIONE: float = 0.0014

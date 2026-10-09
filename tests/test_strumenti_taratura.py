@@ -5,8 +5,8 @@ mediana e monte stipendi, le coppie speculari di colpi e battute che hanno un pe
 ricerca della scala vera per bisezione di strumenti/simulazione_lunga.py, con una simulazione
 finta. Dalla revisione di D26: la resistenza ha un prezzo solo, la verifica a coppie somma più
 gruppi con poche partite, e la sonda della stanchezza del banco misura soltanto giocatori che
-possono esistere. Dalla tappa 11 le parti pure del giro degli estremi del motore: la resa di un
-tratto e i verdetti dei bersagli.
+possono esistere. Dalla tappa 11: la costanza nella popolazione di prova e nella regressione, e le
+parti pure del giro degli estremi del motore, cioè la resa di un tratto e i verdetti dei bersagli.
 """
 
 import hashlib
@@ -103,6 +103,18 @@ def test_l_economia_si_cerca_con_la_scala_e_poi_lo_sponsor(monkeypatch):
     assert (a, b) == pytest.approx(sl.scala_in_forma_chiusa([_campione(3), _campione(3)]))
     assert righe[-1].startswith("L'economia trovata, da copiare in costanti.py")
     assert sl.PESI_TAPPA_8 is tv.PESI_TAPPA_8
+
+
+def test_la_costanza_e_un_controllo_e_si_verifica_a_coppie():
+    # Tappa 11, punto 12.2: la costanza recente entra fra i regressori di controllo, e la verifica a
+    # coppie la misura piena contro zero, al posto del punto di resistenza allenata.
+    assert "costanza" in tv.CONTROLLI and "costanza" in tv.COLONNE
+    fermo = giocatore(1, costanza=0.0)
+    costante = giocatore(1, costanza=costanti.COSTANZA_PIENA)
+    assert tv.regressori(costante)[tv.COLONNE.index("costanza")] == 1.0 and tv.regressori(fermo)[tv.COLONNE.index("costanza")] == 0.0
+    assert tv.modificato(fermo, "costanza").costanza == costanti.COSTANZA_PIENA and tv.modificato(costante, "costanza_zero").costanza == 0.0
+    assert [nome for nome, _m in tv.VERIFICHE].count("la costanza piena contro la costanza zero") == 1
+    assert not any("resistenza allenata" in nome for nome, _m in tv.VERIFICHE)
 
 
 def test_la_resistenza_ha_un_prezzo_solo_comunque_sia_divisa():

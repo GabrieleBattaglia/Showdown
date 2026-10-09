@@ -1,7 +1,9 @@
 """
 Test della catena degli esiti, ramo per ramo, con un dado scritto: ogni voce del copione è un tiro
 oppure una fascia con il suo residuo. Poi la prova di forza: ventimila punti veri senza mai
-ErroreMotore, e il doppio tocco soltanto in battuta.
+ErroreMotore, e il doppio tocco soltanto in battuta. Dalla tappa 11 l'abitudine al colpo ripetuto:
+chi varia i colpi non ne risente, chi ne ripete uno oltre la quota sì, di più contro un difensore
+esperto, mai prima di un certo numero di attacchi, e mai sulla battuta né sulla ribattuta.
 """
 
 import dataclasses
@@ -212,6 +214,67 @@ def test_rottura_al_colpo_indicato_oppure_assente():
     assert (esito.esito, esito.causa, esito.punti, esito.a_chi) == ("rottura", "pallina_rotta", 0, None)
     esito, *_resto = _gioca([*_inizio_regolare(), FERMATA, CONTROLLO_RIUSCITO, LUNGOLINEA_SX, (0, 0.5), 0.1, 0.5], rottura_al_colpo=2)
     assert esito.esito == "fallo"
+
+
+def _abituati(attaccante, colpi):
+    """Scrive nelle statistiche dell'attaccante gli attacchi dell'incontro fin qui, come dizionario di colpo e quante volte."""
+    attaccante.stats.colpi.clear()
+    attaccante.stats.colpi.update(colpi)
+    attaccante.stats.attacchi = sum(colpi.values())
+
+
+def test_l_abitudine_al_colpo_ripetuto():
+    # Tappa 11, punto 12.2: il difensore si abitua al colpo che l'avversario usa troppo, di più se ha esperienza.
+    t = TARATURA
+    attaccante = InCampo(giocatore(1), "A", t)
+    inesperto = InCampo(giocatore(2), "B", t)
+    esperto = InCampo(giocatore(3, esperienza=20.0), "B", t)
+    assert t.ABITUDINE_COLPO > 0 and t.QUOTA_ABITUDINE < 1
+    vario = {"lungolineasx": 3, "diagonalesx": 3, "singolaspondasx": 3, "doppiaspondadx": 3, "bomba": 3, "triplaspondadx": 3, "lungolineadx": 3}
+    _abituati(attaccante, vario)
+    assert max(vario.values()) / sum(vario.values()) <= t.QUOTA_ABITUDINE
+    assert inesperto.abitudine_al_colpo(attaccante, "lungolineasx") == 0.0
+    _abituati(attaccante, {"triplaspondasx": t.ATTACCHI_PER_ABITUDINE - 1})
+    assert inesperto.abitudine_al_colpo(attaccante, "triplaspondasx") == 0.0
+    _abituati(attaccante, {"triplaspondasx": 30})
+    da_inesperto, da_esperto = inesperto.abitudine_al_colpo(attaccante, "triplaspondasx"), esperto.abitudine_al_colpo(attaccante, "triplaspondasx")
+    assert da_inesperto == pytest.approx(t.ABITUDINE_COLPO * t.ABITUDINE_SENZA_LETTURA)
+    assert da_esperto > da_inesperto and da_esperto < t.ABITUDINE_COLPO
+    assert inesperto.abitudine_al_colpo(attaccante, "bomba") == 0.0
+    _abituati(attaccante, {"triplaspondasx": 20, "bomba": 10})
+    assert 0.0 < inesperto.abitudine_al_colpo(attaccante, "triplaspondasx") < da_inesperto
+
+
+def _parata_del_colpo(colpi_di_chi_attacca):
+    """Le fasce della parata di un lungolinea sinistro dello scambio, con gli attacchi già giocati da chi attacca."""
+    battitore, ricevitore = _coppia()
+    _abituati(ricevitore, colpi_di_chi_attacca)
+    passi = []
+    gioca_punto(battitore, ricevitore, DadoScritto([*_inizio_regolare(), FERMATA, CONTROLLO_RIUSCITO, LUNGOLINEA_SX, COLPO_RIUSCITO, (0, 0.5)]), TARATURA, passi)
+    return [p for p in passi if p.tipo == "parata"]
+
+
+def test_il_colpo_ripetuto_preme_meno_soltanto_nello_scambio():
+    # La battuta del punto non risente degli attacchi del battitore; il colpo dello scambio ripetuto sì.
+    fresca, nello_scambio = _parata_del_colpo({})
+    abituata, ripetuto = _parata_del_colpo({"lungolineasx": 30})
+    assert abituata.prob == pytest.approx(fresca.prob)
+    assert ripetuto.prob[0] < nello_scambio.prob[0] and sum(ripetuto.prob) == pytest.approx(1.0)
+
+
+def test_la_battuta_e_la_ribattuta_non_risentono_dell_abitudine():
+    battitore, ricevitore = _coppia()
+    _abituati(battitore, {"lungolineasx": 30})
+    _abituati(ricevitore, {"lungolineasx": 30})
+    passi = []
+    gioca_punto(battitore, ricevitore, DadoScritto([*_inizio_regolare(), (3, 0.5), NON_LENTA, 0.0, (0, 0.5)]), TARATURA, passi)
+    con = [p.prob for p in passi if p.tipo == "parata"]
+    battitore, ricevitore = _coppia()
+    passi = []
+    gioca_punto(battitore, ricevitore, DadoScritto([*_inizio_regolare(), (3, 0.5), NON_LENTA, 0.0, (0, 0.5)]), TARATURA, passi)
+    senza = [p.prob for p in passi if p.tipo == "parata"]
+    assert len(con) == len(senza) == 2
+    assert con == pytest.approx(senza)
 
 
 def _giocatore_a_caso(gid, rng):
