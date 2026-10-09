@@ -52,6 +52,7 @@ import classe  # noqa: E402
 import costanti  # noqa: E402
 import economia  # noqa: E402
 import esperienza  # noqa: E402
+import tratti  # noqa: E402
 import valore  # noqa: E402
 from modelli import Giocatore  # noqa: E402
 from motore import ESSENZIALE, formato_singolare, simula_incontro  # noqa: E402
@@ -70,6 +71,16 @@ PUNTI_AMICHEVOLE_BRAVO = 3.5
 # Le bande dell'allenata della popolazione di prova, i vecchi tetti.
 BANDE = {"fisica": 5.0, "gioco": 20.0}
 SPECIALITA = ("triplaspondasx", "lungolineasx", "battutasx", "chiusurasx", "difesa", "precisione", "resistenza")
+# I semi dei nati di riferimento della carriera perfetta, vedenti, e quelli degli ipovedenti, che
+# si misurano soltanto per dire quanto prima arrivano ad A1.
+SEMI_RIFERIMENTO = (11, 12, 13, 21, 99)
+SEMI_IPOVEDENTI = (11, 12, 13)
+# L'ancora del bravo: il livello e l'età a cui il bravo dell'utente ci arriva. Il progetto lo
+# metteva a E0 a 30 anni, e la classe E, dove sta quasi metà dei giocatori del mondo maturo, aveva
+# i livelli più larghi della scala, più di A, B e C; con D0 a 35 anni i livelli si allargano dal
+# basso verso l'alto, come vuole D31: più fitti fra I e F, poi fra E e D, poi fra C e A.
+ANCORA_DEL_BRAVO = (30, 35)
+ALTERNATIVE_DEL_BRAVO = ((40, 30), (30, 35), (30, 40))
 _FISICHE = ("precisione", "resistenza", "forza")
 
 
@@ -134,6 +145,14 @@ def allena_a_passi(g, da, a, punti_al_giorno, programma, in_polisportiva=True, a
         g.punti_allenamento += punti_al_giorno * giorni
         allenamento.allena_secondo_programma(g, programma=programma)
         allenamento.mantenimento_del_mese(g, giorni)
+        # Nel mondo l'oblio dell'apprendista rapido scatta il primo di ogni mese, e un anno d'età ne ha
+        # circa tre e mezzo: mantenimento_del_mese l'ha applicato una volta, qui si aggiungono gli
+        # altri mesi del passo. Prima della revisione della tappa 11 l'apprendista dei mondi sintetici
+        # dimenticava una volta all'anno invece che a ogni mese.
+        oblio = tratti.oblio_mensile(g) ** (giorni / costanti.GIORNI_PER_MESE - 1.0)
+        if oblio != 1.0:
+            for c in allenamento.CARATTERISTICHE:
+                setattr(g, c + "_allenata", getattr(g, c + "_allenata") * oblio)
         g.esperienza = min(costanti.ESPERIENZA_MASSIMA, g.esperienza + per_anno * tratto)
         g.eta = int((anni + tratto) * GIORNI_ANNO)
         if anni + tratto > 50.0:
@@ -184,18 +203,21 @@ def amichevole(g, avversario, rng, distacchi):
 
 
 def carriera(g0, avversari, seme, da=ETA_INGRESSO, a=ETA_USCITA, quota_amichevoli=QUOTA_AMICHEVOLI, programma="completa", tornei=0.0, sfide=0.0, motore=True,
-             punti_amichevole=3.1, tappe=TAPPE):
+             punti_amichevole=3.1, tappe=TAPPE, coda_da=None):
     """
     La carriera giorno per giorno: la seduta a intensità normale, la costanza, l'esperienza col
     fattore del gruppo, le amichevoli col contatore fisso, la spesa del giorno secondo il programma,
     il calo dei livelli alti a ogni mese di trenta giorni. Restituisce il giocatore alla fine, le
     tappe con somma, valore, esperienza, allenata più alta e livello relativo più alto, e i distacchi.
+    Con coda_da restituisce anche, come quarto elemento, la coda della carriera: dagli anni indicati
+    in poi una terna al giorno di età, somma della classe ed esperienza, che dice quando arriva ad A1.
     """
     rng = random.Random(f"carriera-{seme}")
     g = pronto(g0, da)
     contatore = 0.0
     distacchi = []
     registro = {}
+    coda = []
     allenata_massima = 0.0
     for giorno in range(int((a - da) * GIORNI_ANNO)):
         g.punti_allenamento += costanti.PA_SEDUTA
@@ -218,9 +240,13 @@ def carriera(g0, avversari, seme, da=ETA_INGRESSO, a=ETA_USCITA, quota_amichevol
         g.eta += 1
         allenata_massima = max(allenata_massima, *(getattr(g, c + "_allenata") for c in allenamento.CARATTERISTICHE))
         anni = round(g.eta / GIORNI_ANNO, 6)
+        if coda_da is not None and anni >= coda_da:
+            coda.append((anni, classe.somma_classe(g), g.esperienza))
         if anni in tappe:
             registro[int(anni)] = {"somma": classe.somma_classe(g), "valore": g.indice_collettivo_valore, "esperienza": g.esperienza,
                                    "allenata": allenata_massima, "relativo": max(allenamento.livello_relativo(g, c) for c in allenamento.CARATTERISTICHE)}
+    if coda_da is not None:
+        return g, registro, distacchi, coda
     return g, registro, distacchi
 
 
@@ -239,6 +265,15 @@ def esperienza_per_giorno(amichevoli):
     """L'esperienza del giorno in polisportiva che porta la carriera perfetta a 20 a 50 anni, con le altre fonti."""
     altre = costanti.ESPERIENZA_PER_ANNO_DI_VITA * (ETA_USCITA - ETA_INGRESSO) + costanti.ESPERIENZA_PER_AMICHEVOLE * amichevoli
     return (costanti.ESPERIENZA_MASSIMA - altre) / (GIORNI_CARRIERA * FATTORE_GRUPPO)
+
+
+def eta_di_a1(coda, somma_perfetta):
+    """In parole, l'età in cui la coda di una carriera arriva ad A1 con la somma data, o quanto le manca a 50 anni se non ci arriva."""
+    for anni, somma, esp in coda:
+        if punteggio(somma, esp, somma_perfetta) >= 1.0:
+            return f"A1 a {numero(anni, 2)} anni"
+    anni, somma, esp = coda[-1]
+    return f"a {numero(anni, 0)} anni al {numero(100 * punteggio(somma, esp, somma_perfetta), 2)} per cento di A1"
 
 
 def punteggio(somma, esp, somma_perfetta):
@@ -337,32 +372,69 @@ def main():
     scrivi(f"Mondo sintetico all'anno 10: {len(mondo_10)} giocatori, pronto in {numero(time.perf_counter() - inizio)} secondi.")
     nati_11 = nati(4000, 11)
     puliti = [g for g in nati_11 if senza_tratti(g)]
-    riferimento = al_percentile(puliti, 0.9)
-    perfetto, tappe, distacchi = carriera(riferimento, mondo_10, 11, tornei=argomenti.tornei, sfide=argomenti.sfide)
-    somma_perfetta = tappe[50]["somma"]
-    scrivi(f"Carriera perfetta, il nato numero {riferimento.id} al novantesimo percentile senza tratti, somma pesata da nato {numero(valore.somma_pesata(riferimento))}: "
+    # La carriera perfetta di riferimento, dalla revisione della tappa 11: non un nato solo, che cade
+    # dove lo porta il caso, ma i nati al novantesimo percentile, vedenti e senza tratti, di più semi.
+    # La somma congelata è la più bassa delle loro somme a 50 anni, arrotondata per difetto: così
+    # ognuna arriva ad A1 entro i 50 anni, come vuole il riferimento di Gabriele. Gli ipovedenti, con
+    # lo sconto sull'allenamento delle caratteristiche di gioco, ci arrivano prima, e qui si misura quanto.
+    carriere = []
+    for seme in SEMI_RIFERIMENTO:
+        g0 = al_percentile([g for g in nati(4000, seme) if senza_tratti(g) and not g.ipovedente], 0.9)
+        carriere.append((seme, g0, *carriera(g0, mondo_10, seme, tornei=argomenti.tornei, sfide=argomenti.sfide, coda_da=45.0)))
+    somma_perfetta = math.floor(min(c[3][50]["somma"] for c in carriere) * 10) / 10
+    seme, riferimento, perfetto, tappe, _d, _coda = min(carriere, key=lambda c: c[3][50]["somma"])
+    distacchi = [d for c in carriere for d in c[4]]
+    scrivi("Carriere perfette di riferimento, vedenti e senza tratti, al novantesimo percentile dei nati di cinque semi: " + "; ".join(
+        f"seme {s}, nato numero {g.id}, somma da nato {numero(valore.somma_pesata(g))}, a 50 anni {numero(t[50]['somma'], 2)}" for s, g, _p, t, _dd, _c in carriere)
+        + f". La somma congelata è la più bassa, arrotondata per difetto: {numero(somma_perfetta)}.")
+    scrivi(f"Carriera perfetta più lenta, il nato numero {riferimento.id} del seme {seme}: "
            + "; ".join(f"a {anni} anni somma {numero(t['somma'])}, valore {numero(t['valore'])}, esperienza {numero(t['esperienza'], 2)}, "
                        f"allenata più alta {numero(t['allenata'])}, livello relativo più alto {numero(t['relativo'], 2)}" for anni, t in sorted(tappe.items())) + ".")
+    scrivi("Quando arrivano ad A1 con la somma congelata: " + "; ".join(
+        f"seme {s}, {eta_di_a1(c, somma_perfetta)}" for s, _g, _p, _t, _dd, c in carriere) + ".")
+    ipovedenti = []
+    for seme_ipo in SEMI_IPOVEDENTI:
+        g0 = al_percentile([g for g in nati(4000, seme_ipo) if senza_tratti(g) and g.ipovedente], 0.9)
+        _p, t, _dd, c = carriera(g0, mondo_10, seme_ipo, tornei=argomenti.tornei, sfide=argomenti.sfide, coda_da=45.0)
+        ipovedenti.append(f"seme {seme_ipo}, nato numero {g0.id}, a 50 anni {numero(t[50]['somma'], 2)}, {eta_di_a1(c, somma_perfetta)}")
+    scrivi("Le stesse carriere perfette di nati ipovedenti, che allenano le caratteristiche di gioco col 7 per cento di sconto: " + "; ".join(ipovedenti) + ".")
     scrivi(f"La carriera perfetta non tocca le bande della popolazione di prova: allenata fisica più alta {numero(max(getattr(perfetto, c + '_allenata') for c in _FISICHE))} su 5, "
            f"di gioco {numero(max(getattr(perfetto, c + '_allenata') for c in allenamento.CARATTERISTICHE if c not in _FISICHE))} su 20.")
     fasce = ((-1e9, -50), (-50, -25), (-25, 0), (0, 25), (25, 50), (50, 1e9))
     scrivi("Punti attesi per amichevole secondo il distacco di somma pesata dall'avversario: " + "; ".join(
         f"da {numero(basso, 0)} a {numero(alto, 0)}: {numero(statistics.fmean(p for d, p in distacchi if basso <= d < alto), 2)} su {sum(1 for d, _p in distacchi if basso <= d < alto)}"
         for basso, alto in fasce if any(basso <= d < alto for d, _p in distacchi)) + f"; in media {numero(statistics.fmean(p for _d, p in distacchi), 2)}.")
-    # Le ancore della classe.
+    # Le ancore della classe, arrotondate per difetto come la somma, così chi fa da ancora sta nel
+    # livello che gli spetta e non in quello di sotto: con l'arrotondamento al più vicino la carriera
+    # di riferimento arrivava ad A2, e i nati del primo e del novantanovesimo percentile un livello più giù.
     somme_nati = sorted(valore.somma_pesata(g) + valore.bonus_tratti(g) for g in nati_11)
     p1 = punteggio(somme_nati[len(somme_nati) // 100], 0.0, somma_perfetta)
     p99 = punteggio(somme_nati[len(somme_nati) * 99 // 100], 0.0, somma_perfetta)
     bravo_nato = al_percentile(puliti, 0.75)
-    _bravo, tappe_bravo, _d = carriera(bravo_nato, mondo_10, 15, da=15.0, a=30.0, quota_amichevoli=0.5, tappe=(30,))
-    pb = punteggio(tappe_bravo[30]["somma"], tappe_bravo[30]["esperienza"], somma_perfetta)
-    ancore = ((100, 0.0), (89, round(p1, 3)), (50, round(p99, 3)), (40, round(pb, 3)), (1, 1.0))
+    _bravo, tappe_bravo, _d = carriera(bravo_nato, mondo_10, 15, da=15.0, a=40.0, quota_amichevoli=0.5, tappe=(30, 35, 40))
+    bravo = {anni: punteggio(t["somma"], t["esperienza"], somma_perfetta) for anni, t in tappe_bravo.items()}
+    in_basso = math.floor(p1 * 1000) / 1000, math.floor(p99 * 1000) / 1000
+
+    def ancore_con(livello_bravo, anni_bravo):
+        return ((100, 0.0), (89, in_basso[0]), (50, in_basso[1]), (livello_bravo, math.floor(bravo[anni_bravo] * 1000) / 1000), (1, 1.0))
+
+    def passi(ancore_provate):
+        (_n0, _s0), (n1, s1), (n2, s2), (n3, s3), (n4, s4) = ancore_provate
+        return (s2 - s1) / (n1 - n2), (s3 - s2) / (n2 - n3), (s4 - s3) / (n3 - n4)
+
+    ancore = ancore_con(*ANCORA_DEL_BRAVO)
     classe.SOMMA_CARRIERA_PERFETTA = somma_perfetta
     classe.SOGLIE_CLASSE = classe._soglie(ancore)
     classe._SOGLIE_CRESCENTI = tuple(-s for s in classe.SOGLIE_CLASSE)
-    scrivi(f"Ancore della classe: nato del primo percentile {numero(p1, 3)}, del novantanovesimo {numero(p99, 3)}, bravo a 30 anni {numero(pb, 3)}, "
-           f"con somma {numero(tappe_bravo[30]['somma'])} ed esperienza {numero(tappe_bravo[30]['esperienza'], 2)}. Un livello vale {numero((p99 - p1) / 39, 4)} dalla I alla F, "
-           f"{numero((pb - p99) / 10, 4)} dalla E alla D, {numero((1 - pb) / 39, 4)} dalla C alla A.")
+    scrivi(f"Ancore della classe, punteggi esatti: nato del primo percentile {numero(p1, 6)}, del novantanovesimo {numero(p99, 6)}; il bravo dell'utente "
+           + ", ".join(f"a {anni} anni {numero(p, 6)}, con somma {numero(tappe_bravo[anni]['somma'])} ed esperienza {numero(tappe_bravo[anni]['esperienza'], 2)}" for anni, p in sorted(bravo.items()))
+           + ". Le ancore si arrotondano per difetto al millesimo.")
+    for livello_bravo, anni_bravo in ALTERNATIVE_DEL_BRAVO:
+        primo, secondo, terzo = passi(ancore_con(livello_bravo, anni_bravo))
+        scelta = "la scelta" if (livello_bravo, anni_bravo) == ANCORA_DEL_BRAVO else "un'alternativa"
+        scrivi(f"Con il bravo a {anni_bravo} anni a {classe.codice(livello_bravo)}, {scelta}: un livello vale {numero(primo, 4)} di punteggio fra I9 e F0, "
+               f"{numero(secondo, 4)} fra F0 e {classe.codice(livello_bravo)}, {numero(terzo, 4)} fra {classe.codice(livello_bravo)} e A1"
+               + ("; i livelli si allargano dal basso verso l'alto." if primo < secondo < terzo else "; i livelli non si allargano dal basso verso l'alto."))
     # I casi del punto 7.
     nati_ordinati = sorted(nati_11, key=valore.somma_pesata)
     casi = [(f"nato al {nome}", g) for nome, g in (("decimo percentile", nati_ordinati[len(nati_ordinati) // 10]), ("cinquantesimo", nati_ordinati[len(nati_ordinati) // 2]),

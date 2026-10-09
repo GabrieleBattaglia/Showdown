@@ -51,6 +51,7 @@ import archivio  # noqa: E402
 import costanti  # noqa: E402
 import infortuni  # noqa: E402
 import percorsi  # noqa: E402
+import valore as modulo_valore  # noqa: E402
 from mondo import Mondo  # noqa: E402
 from motore import COMPLETO, ESSENZIALE, SQUADRE, TARATURA, Squadra, formato_singolare, simula_incontro  # noqa: E402
 from motore.campo import InCampo  # noqa: E402
@@ -61,6 +62,12 @@ from motore.taratura import carica_taratura  # noqa: E402
 from version import __version__  # noqa: E402
 
 # Le fasce di distacco fra i due indici di valore, per misurare quanto conta essere favoriti.
+# Dalla tappa 11 il distacco si misura con la scala del valore della versione 1.50.0, con cui
+# D26 ha fissato le bande, e non con quella del momento: la scala la ritocca l'economia, e con lei
+# il distacco in proporzione di ogni coppia, così le partite cambiavano fascia senza che il motore
+# c'entrasse. La revisione della tappa 11 l'ha visto col banco giocato due volte con lo stesso seme:
+# partite identiche, fasce diverse. La somma pesata resta quella dei pesi del momento.
+SCALA_DEL_DISTACCO = (-82.61, 1.3878)
 FASCE_DISTACCO = ((0.05, "meno del 5 per cento", (50, 58)), (0.15, "fra il 5 e il 15 per cento", (58, 70)),
                   (0.30, "fra il 15 e il 30 per cento", (70, 85)), (None, "oltre il 30 per cento", (85, 96)))
 # Le chiamate dei falli nell'ordine del rapporto, con il bersaglio in quota dei falli.
@@ -122,6 +129,11 @@ def carica_mondo_salvato():
     return list(mondo.giocatori.values())
 
 
+def indice_del_distacco(g):
+    """L'indice di valore del giocatore con la scala delle bande del favorito, ferma a quella della 1.50.0."""
+    return modulo_valore.indice(g, a=SCALA_DEL_DISTACCO[0], b=SCALA_DEL_DISTACCO[1])
+
+
 def distacco(icv_a, icv_b):
     """Di quanto l'indice di valore del favorito supera quello dell'altro, in proporzione."""
     alto, basso = max(icv_a, icv_b), min(icv_a, icv_b)
@@ -136,7 +148,7 @@ def coppie_pari_forti(giocatori, quante, rng):
     while len(coppie) < quante and tentativi < quante * 200:
         tentativi += 1
         a, b = rng.sample(forti, 2)
-        if distacco(a.indice_collettivo_valore, b.indice_collettivo_valore) < 0.03:
+        if distacco(indice_del_distacco(a), indice_del_distacco(b)) < 0.03:
             coppie.append((a, b))
     if len(coppie) < quante:
         sys.exit("Non ci sono abbastanza coppie di forti alla pari: servono più giocatori.")
@@ -178,7 +190,7 @@ class Banco:
         self.punti.extend(risultato.punti)
         self.set.extend(risultato.set)
         sa, sb = risultato.set_vinti
-        self.partite.append({"icv": (a.indice_collettivo_valore, b.indice_collettivo_valore), "vince_il_primo": risultato.vincitore == "A",
+        self.partite.append({"icv": (indice_del_distacco(a), indice_del_distacco(b)), "vince_il_primo": risultato.vincitore == "A",
                              "set": (max(sa, sb), min(sa, sb)), "punteggi": list(risultato.set)})
         for p in risultato.punti:
             if p.esito == "fallo" or p.causa == "goal_dopo_difesa_irregolare":

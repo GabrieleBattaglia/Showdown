@@ -289,26 +289,35 @@ ESPERIENZA_PER_PIAZZAMENTO = {1: 0.3, 2: 0.2, 3: 0.12, 4: 0.06}
 # Le soglie sono fissate una volta per sempre: la somma della carriera perfetta, i pesi della classe
 # e le ancore sono costanti storiche, che scrive strumenti/carriera_perfetta.py e che poi non si
 # toccano più senza Gabriele. Le ancore sono coppie di livello e punteggio: K0 a zero; il nato del
-# primo percentile a I9 e quello del novantanovesimo a F0; il bravo a 30 anni a E0; la carriera
-# perfetta ad A1. In mezzo le soglie si interpolano in linea retta. I pesi della classe sono quelli
-# del valore dopo la taratura del motore della tappa 11, e la somma e le ancore vengono da
-# strumenti/carriera_perfetta.py sui pesi nuovi, nella taratura fine del 9 ottobre 2026: il nato
-# numero 1229 al novantesimo percentile senza tratti arriva a 365,0 di somma e a 20 di esperienza a
-# 50 anni; il nato del primo percentile vale 0,204, quello del novantanovesimo 0,403, il bravo a
-# 30 anni 0,549. Sono congelate: alla tappa 12 si abbassano le fonti, non le soglie, e da qui non si
-# toccano più senza Gabriele. La prima taratura grezza aveva 368,5 e 0,202, 0,401 e 0,546, con i
-# pesi della tappa 9.
+# primo percentile a I9 e quello del novantanovesimo a F0; il bravo dell'utente a 35 anni a D0; la
+# carriera perfetta ad A1. In mezzo le soglie si interpolano in linea retta, e i livelli si
+# allargano dal basso verso l'alto, come vuole D31: un livello vale 0,0051 di punteggio fra I9 e
+# F0, dove stanno i nati, 0,0102 fra F0 e D0, dove stanno i bravi a metà carriera, 0,0135 fra D0
+# e A1, le carriere eccellenti. I pesi della classe sono quelli del valore dopo la taratura del
+# motore della tappa 11, e la somma e le ancore vengono da strumenti/carriera_perfetta.py.
+# La revisione della tappa 11, il 9 ottobre 2026, ha cambiato tre cose. La somma non viene più da
+# un nato solo, che arrivava ad A1 per caso: è la più bassa delle carriere perfette di cinque nati
+# vedenti al novantesimo percentile, di cinque semi, così ognuna arriva ad A1 entro i 50 anni; le
+# stesse carriere di nati ipovedenti, con lo sconto del 7 per cento sull'allenamento delle
+# caratteristiche di gioco, ci arrivano verso i 48 anni e mezzo. Somma e ancore si arrotondano per
+# difetto: arrotondate al più vicino erano finite tutte verso l'alto, e la carriera di riferimento
+# arrivava ad A2. E il bravo a 30 anni non fa più da ancora a E0: così la classe E, dove sta quasi
+# metà dei giocatori del mondo maturo, aveva i livelli più larghi di tutta la scala, più di A, B e C.
+# I punteggi esatti delle ancore: 0,204776, 0,404708 e 0,609318; le carriere perfette vedenti
+# arrivano da 363,5 a 366,6 di somma. Ancora del bravo e dotazione della carriera di riferimento
+# sono da confermare con Gabriele. La taratura fine aveva 365,0 col nato numero 1229 e le ancore
+# 0,204, 0,403 e, a E0, 0,549; la prima taratura grezza 368,5 e 0,202, 0,401 e 0,546.
 PESO_VALORE_CLASSE = 0.7
 PESO_ESPERIENZA_CLASSE = 0.3
-SOMMA_CARRIERA_PERFETTA = 365.0
+SOMMA_CARRIERA_PERFETTA = 363.5
 PESI_CLASSE = {
-    "lungolineasx": 0.48, "lungolineadx": 0.48, "diagonalesx": 0.51, "diagonaledx": 0.51, "singolaspondasx": 0.49, "singolaspondadx": 0.49,
-    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.39, "triplaspondadx": 0.39, "bomba": 0.43, "battutasx": 0.72,
-    "battutadx": 0.72, "chiusura_dritto": 2.24, "chiusura_rovescio": 2.74, "blocco_dritto": 1.30, "blocco_rovescio": 1.48, "difesa": 3.32,
-    "tenutapaletta": 1.22, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.36, "forza": 5.54, "resistenza": 3.71,
+    "lungolineasx": 0.46, "lungolineadx": 0.46, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.46, "singolaspondadx": 0.46,
+    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.41, "triplaspondadx": 0.41, "bomba": 0.50, "battutasx": 0.71,
+    "battutadx": 0.71, "chiusura_dritto": 2.20, "chiusura_rovescio": 2.73, "blocco_dritto": 1.29, "blocco_rovescio": 1.55, "difesa": 3.33,
+    "tenutapaletta": 1.25, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.25, "forza": 5.59, "resistenza": 3.63,
 }
-PESI_TRATTI_CLASSE = {"mancino": 2.4, "ambidestro": 3.4, "giocorapido": 1.0, "cambiovelocita": 4.6}
-ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.403), (40, 0.549), (1, 1.0))
+PESI_TRATTI_CLASSE = {"mancino": 2.7, "ambidestro": 3.9, "giocorapido": 0.9, "cambiovelocita": 4.5}
+ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.404), (30, 0.609), (1, 1.0))
 NUM_GIOCATORI_INIZIALI = 50
 CREA_NUOVI_PER_TICK_RANGE = (1, 7)
 # Le caratteristiche allenabili, con la sigla del menu di allenamento.
@@ -487,9 +496,10 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # di partenza; ciascuna ha un peso, e i tratti hanno il loro. Fino alla tappa 8 i pesi erano tutti
 # a 1, con 33 punti per ambidestro, gioco rapido e cambio di velocità. Quelli qui sotto li ha
 # misurati sul motore nuovo strumenti/taratura_valore.py, sugli incontri al meglio dei 3, l'ultima
-# volta il 9 ottobre 2026 con la tappa 11, dopo l'abitudine al colpo ripetuto e con la costanza
-# recente fra i controlli: la resistenza è scesa da 4,71 a 3,71, perché la parte allenata non conta
-# più due volte, i colpi dello scambio sono saliti un poco, il mancino è sceso da 2,9 a 2,4. L'8
+# volta il 9 ottobre 2026 con la revisione della tappa 11, dopo l'abitudine al colpo ripetuto contata
+# per tipo di colpo e con la costanza recente fra i controlli: rispetto alla tappa 9 la resistenza è
+# scesa da 4,71 a 3,63, perché la parte allenata non conta più due volte, la bomba è salita da 0,36
+# a 0,50 e la tripla sponda da 0,33 a 0,41, il mancino è sceso da 2,9 a 2,7. L'8
 # ottobre, dopo la revisione della decisione D26, la taratura aveva dimezzato il peso della
 # precisione nelle qualità. Sono in punti di caratteristica, con la media delle caratteristiche
 # di gioco a 1, e sono la media di quattro semi, 9, 19, 29 e 39, perché con un seme solo il
@@ -510,16 +520,22 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # da 510 a 520, tesserati al 90 o 91 per cento, cassa mediana del computer attorno ai 5.000 euro,
 # mediana del valore da 135,4 a 136,0. La prima taratura grezza aveva dato A -49,68 e B 1,1302, coi
 # pesi della tappa 9. Fino alla tappa 10 erano A -82,61 e B 1,3878, che la migrazione conserva per
-# i contratti.
+# i contratti. La revisione della tappa 11, coi pesi nuovi, ha rifatto la ricerca: già al primo giro
+# la scala e lo sponsor di qui stanno dentro tutti i bersagli, cassa mediana 4.992 euro in media sui
+# quattro semi, e i giri seguenti oscillano col rumore dei semi, A da -46,5 a -52,8, quindi restano.
+# Da confermare con Gabriele: la migrazione non tocca caratteristiche e stipendi, ma il valore
+# mostrato cambia per tutti con la scala e i pesi nuovi, nel suo mondo da 140,6 a 131,3 di
+# mediana; la risposta 6, «la migrazione non cambia i valori di nessuno», è stata letta come
+# «nessuna caratteristica cambia», e l'altra lettura chiederebbe di tenere qui la scala della 1.50.0.
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
 PESI_VALORE = {
-    "lungolineasx": 0.48, "lungolineadx": 0.48, "diagonalesx": 0.51, "diagonaledx": 0.51, "singolaspondasx": 0.49, "singolaspondadx": 0.49,
-    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.39, "triplaspondadx": 0.39, "bomba": 0.43, "battutasx": 0.72,
-    "battutadx": 0.72, "chiusura_dritto": 2.24, "chiusura_rovescio": 2.74, "blocco_dritto": 1.30, "blocco_rovescio": 1.48, "difesa": 3.32,
-    "tenutapaletta": 1.22, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.36, "forza": 5.54, "resistenza": 3.71,
+    "lungolineasx": 0.46, "lungolineadx": 0.46, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.46, "singolaspondadx": 0.46,
+    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.41, "triplaspondadx": 0.41, "bomba": 0.50, "battutasx": 0.71,
+    "battutadx": 0.71, "chiusura_dritto": 2.20, "chiusura_rovescio": 2.73, "blocco_dritto": 1.29, "blocco_rovescio": 1.55, "difesa": 3.33,
+    "tenutapaletta": 1.25, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.25, "forza": 5.59, "resistenza": 3.63,
 }
-PESI_TRATTI = {"mancino": 2.4, "ambidestro": 3.4, "giocorapido": 1.0, "cambiovelocita": 4.6}
+PESI_TRATTI = {"mancino": 2.7, "ambidestro": 3.9, "giocorapido": 0.9, "cambiovelocita": 4.5}
 SCALA_VALORE_A = -50.68
 SCALA_VALORE_B = 1.1414
 SOGLIA_PESO_INERTE = 0.25

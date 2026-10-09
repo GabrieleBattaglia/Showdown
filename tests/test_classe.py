@@ -29,6 +29,25 @@ def test_le_soglie_sono_cento_e_scendono():
         assert classe.soglia(livello) == pytest.approx(punteggio)
 
 
+# I punteggi esatti di chi fa da ancora, come li ha misurati strumenti/carriera_perfetta.py nella revisione
+# della tappa 11: il nato del primo e del novantanovesimo percentile, il bravo dell'utente a 35 anni.
+ANCORE_ESATTE = ((89, 0.204776), (50, 0.404708), (30, 0.609318))
+
+
+@pytest.mark.parametrize(("livello", "punteggio"), ANCORE_ESATTE)
+def test_chi_fa_da_ancora_sta_nel_suo_livello(livello, punteggio):
+    # Arrotondate al più vicino, le ancore finivano verso l'alto e chi faceva da ancora cadeva un livello più giù.
+    assert classe.livello(punteggio) == livello
+    # La carriera perfetta più lenta arriva alla somma congelata, quindi ad A1 a 50 anni con 20 di esperienza.
+    assert classe.livello(costanti.PESO_VALORE_CLASSE + costanti.PESO_ESPERIENZA_CLASSE) == 1
+
+
+def test_i_livelli_si_allargano_dal_basso_verso_l_alto():
+    # D31: le soglie più fitte dove stanno i giocatori veri, i nati fra I e F, poi i bravi fra E e D, poi le carriere eccellenti.
+    passi = [classe.soglia(n - 1) - classe.soglia(n) for n in (70, 40, 15)]
+    assert passi[0] < passi[1] < passi[2]
+
+
 def test_il_livello_di_un_punteggio():
     assert classe.livello(0.0) == 100 and classe.livello(1.0) == 1 and classe.livello(2.5) == 1
     for n in (2, 37, 64, 99):

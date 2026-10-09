@@ -7,7 +7,9 @@ finta. Dalla revisione di D26: la resistenza ha un prezzo solo, la verifica a co
 gruppi con poche partite, e la sonda della stanchezza del banco misura soltanto giocatori che
 possono esistere. Dalla tappa 11: la costanza nella popolazione di prova e nella regressione, le
 parti pure del giro degli estremi del motore, cioè la resa di un tratto e i verdetti dei bersagli, e
-il controllo di solvibilità della prova lunga.
+il controllo di solvibilità della prova lunga. Dalla revisione della tappa 11: le fasce del
+favorito del banco con la scala ferma della 1.50.0, e l'oblio dell'apprendista nei mondi sintetici
+della carriera perfetta, che scatta a ogni mese come nel mondo vero.
 """
 
 import hashlib
@@ -23,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 
 import banco_estremi as be
 import banco_partite as bp
+import carriera_perfetta as cp
 import popolazione_di_prova as pp
 import simulazione_lunga as sl
 import taratura_valore as tv
@@ -240,3 +243,41 @@ def test_la_popolazione_di_prova_resta_quella_della_1_50_salvo_la_costanza():
                 banda = pp.BANDA_ALLENATA_FISICA if nome in costanti.ALLENATE_FISICHE else pp.BANDA_ALLENATA_GIOCO
                 assert getattr(g, nome) <= banda
     assert (pp.BANDA_ALLENATA_FISICA, pp.BANDA_ALLENATA_GIOCO) == (5.0, 20.0)
+
+
+def test_le_fasce_del_favorito_non_seguono_la_scala_dell_economia(monkeypatch):
+    """
+    Il distacco del favorito del banco della tappa 9 si misura con la scala ferma della 1.50.0: se
+    l'economia ritocca la scala del valore, l'indice cambia ma il distacco no, e le partite restano
+    nella loro fascia. Così il prima e il dopo di una taratura si confrontano sulla stessa misura.
+    """
+    import valore
+    forte, debole = giocatore(1, valore=16.0), giocatore(2, valore=12.0)
+    distacco = bp.distacco(bp.indice_del_distacco(forte), bp.indice_del_distacco(debole))
+    assert bp.indice_del_distacco(forte) == pytest.approx(valore.indice(forte, a=-82.61, b=1.3878))
+    monkeypatch.setattr(valore, "SCALA_VALORE_A", -10.0)
+    monkeypatch.setattr(valore, "SCALA_VALORE_B", 0.9)
+    assert bp.distacco(bp.indice_del_distacco(forte), bp.indice_del_distacco(debole)) == pytest.approx(distacco)
+    assert bp.distacco(valore.indice(forte), valore.indice(debole)) != pytest.approx(distacco)
+
+
+def test_l_oblio_dei_mondi_sintetici_scatta_ogni_mese():
+    """Un passo d'un anno dei mondi sintetici fa dimenticare all'apprendista quanto i tre mesi e mezzo del mondo vero, non un mese solo."""
+    g = giocatore(31, valore=10.0, fisico=2.5, anni=30, talento=False, maturazione=None, apprendista_rapido=True)
+    g.attacco_allenata = 10.0
+    cp.allena_a_passi(g, 30.0, 31.0, 0.0, "completa")
+    mesi = costanti.ANNO_SIMULAZIONE_GIORNI / costanti.GIORNI_PER_MESE
+    oblio = costanti.TRATTI_ALLENAMENTO["apprendista_rapido"]["oblio_mensile"]
+    assert g.attacco_allenata == pytest.approx(10.0 * oblio ** mesi)
+    assert mesi > 3.5
+
+
+def test_la_resa_di_riferimento_vuole_tutti_i_sedici_gruppi():
+    """Con le sole battute e i colpi la media del primo tratto era un'altra, e le rese relative più alte di un terzo."""
+    assert be.gruppi_mancanti(be.scelte("tutte")) == []
+    assert "precisione" in be.gruppi_mancanti(be.scelte("colpi"))
+    rese = {nomi: [(0.01, 0.001)] for nomi in be.GRUPPI.values()}
+    assert be.resa_di_riferimento(rese) == pytest.approx(0.01)
+    del rese[be.GRUPPI["precisione"]]
+    with pytest.raises(ValueError, match="precisione"):
+        be.resa_di_riferimento(rese)

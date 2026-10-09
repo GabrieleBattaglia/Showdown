@@ -10,7 +10,9 @@ supera resta A1. Il valore pesato è calcolato direttamente con i pesi della cla
 congelata di quelli del valore: non dipende dalla scala A e B, e una nuova taratura del valore
 non sposta la classe di nessuno. Le soglie, fissate una volta per sempre, si interpolano in linea
 retta fra le ancore di costanti.py, più fitte dove stanno i giocatori veri: i nati fra le classi I
-e F, i bravi a metà carriera fra E e D, le classi più alte per le carriere eccellenti.
+e F, i bravi a metà carriera fra E e D, le classi più alte per le carriere eccellenti. Dalla
+revisione della tappa 11 i livelli si allargano dal basso verso l'alto in tre tratti: fra I9 e F0,
+fra F0 e D0, fra D0 e A1.
 La classe non si salva: si ricava.
 """
 

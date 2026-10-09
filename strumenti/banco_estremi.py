@@ -295,12 +295,23 @@ def rese_della_prova(base, livelli):
     return [resa_di_un_tratto(prima, dopo) for prima, dopo in itertools.pairwise(passi)]
 
 
+def gruppi_mancanti(prove_scelte):
+    """I gruppi della taratura del valore che le prove scelte non giocano: senza tutti e sedici la resa di riferimento non si calcola."""
+    giocati = {nomi for _nome, nomi in prove_scelte}
+    return [nome for nome, nomi in GRUPPI.items() if nomi not in giocati]
+
+
 def resa_di_riferimento(rese_per_prova):
-    """La media del primo tratto, dall'innata al 30 per cento, sui sedici gruppi della taratura del valore."""
-    prime = [rese_per_prova[nomi][0][0] for nomi in GRUPPI.values() if nomi in rese_per_prova and rese_per_prova[nomi][0] is not None]
-    if not prime:
-        raise ValueError("Per la resa di riferimento servono i sedici gruppi.")
-    return statistics.fmean(prime)
+    """
+    La media del primo tratto, dall'innata al 30 per cento, sui sedici gruppi della taratura del
+    valore. Con una parte soltanto dei gruppi la media sarebbe un'altra, e tutte le rese relative con
+    lei: la revisione della tappa 11 l'ha visto con le sole battute e i colpi, 6,98 millesimi invece di
+    9,07, e rese più alte di un terzo. Per questo vuole tutti e sedici i gruppi.
+    """
+    mancanti = [nome for nome, nomi in GRUPPI.items() if nomi not in rese_per_prova or rese_per_prova[nomi][0] is None]
+    if mancanti:
+        raise ValueError(f"Per la resa di riferimento servono i sedici gruppi; mancano {', '.join(mancanti)}.")
+    return statistics.fmean(rese_per_prova[nomi][0][0] for nomi in GRUPPI.values())
 
 
 def verdetto_dei_tratti(rese, riferimento, livelli=LIVELLI):
@@ -356,6 +367,9 @@ def esegui(argomenti, stampa=print):
     inizio = time.perf_counter()
     taratura = carica_taratura(argomenti.taratura) if argomenti.taratura else TARATURA
     scelte_prove = scelte(argomenti.prove)
+    if not argomenti.riferimento and gruppi_mancanti(scelte_prove):
+        raise SystemExit("Le prove scelte non giocano tutti i sedici gruppi della taratura del valore: la resa di riferimento si indica con "
+                         "--riferimento, quella di un giro intero, per esempio --riferimento 9,07.")
     livelli_scelti = tuple(sorted(argomenti.livelli)) if argomenti.livelli else LIVELLI
     alto = livelli_scelti[-1]
     soggetti, avversari, fascia = soggetti_e_avversari(argomenti.soggetti, argomenti.avversari, argomenti.seme, argomenti.esperienza)
