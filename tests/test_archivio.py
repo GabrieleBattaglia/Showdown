@@ -409,6 +409,13 @@ def test_l_ultima_amichevole_si_salva_e_si_rilegge(cartella_di_prova):
 
 # Il formato 6 della tappa 11: punti allenamento, indole, tratti rari, ambizione, costanza e contratti.
 
+# Gli stipendi dei tesserati del documento del formato 5 di test_un_salvataggio_del_formato_5_si_aggiorna,
+# calcolati una volta dal codice vero della versione 1.50.0, che ha letto lo stesso documento, il 9
+# ottobre 2026: la prova non si fida di archivio.stipendio_della_1_50, che è la funzione che controlla,
+# e si accorge se i pesi o la scala storici del formato 5 si guastano.
+STIPENDI_DELLA_1_50 = {3: 210, 5: 70, 6: 110}
+
+
 def test_un_salvataggio_del_formato_5_si_aggiorna(cartella_di_prova):
     mondo = _mondo_popolato()
     mondo.giocatori[2].punti_allenamento = 1234.0
@@ -419,6 +426,7 @@ def test_un_salvataggio_del_formato_5_si_aggiorna(cartella_di_prova):
     for g in vecchio["mondo"]["giocatori"]:
         g["archetipo_allenamento"] = "DifensoreRoccioso" if g["id"] == 2 else "Non Definito" if g["id"] == 4 else g["archetipo_allenamento"]
     attesi = {g["id"]: archivio.stipendio_della_1_50(g) for g in vecchio["mondo"]["giocatori"]}
+    assert {gid: attesi[gid] for gid in STIPENDI_DELLA_1_50} == STIPENDI_DELLA_1_50
     _comprimi(cartella_di_prova / FILE_MONDO, json.dumps({**vecchio, "firma": archivio.firma(vecchio)}))
     m = _ricarica()
     assert json.loads(_testo(cartella_di_prova / FILE_MONDO))["formato"] == 5
@@ -434,7 +442,7 @@ def test_un_salvataggio_del_formato_5_si_aggiorna(cartella_di_prova):
         if g.appartenenza == "*":
             assert (g.contratto_stipendio, g.contratto_scadenza) == (0, None)
         else:
-            assert g.contratto_stipendio == attesi[gid]
+            assert g.contratto_stipendio == attesi[gid] == STIPENDI_DELLA_1_50[gid]
             assert g.contratto_scadenza == contratti.scadenza_dopo(INIZIO, max(12, contratti.durata_proposta(g)))
         assert (g.rinnovo_stipendio, g.rinnovo_scadenza, g.proposte_rinnovo, g.ultima_trattativa) == (0, None, 0, None)
     assert m.giocatori[2].punti_allenamento == 1234.0 and m.giocatori[2].indole == "difensiva"

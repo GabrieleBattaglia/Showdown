@@ -236,6 +236,16 @@ def test_ricerca(app_wx, monkeypatch):
         filtro.condizione.SetSelection(1)
         filtro.conferma()
         assert filtro.risultato == (None, "sesso", "f", None, "sesso donna")
+        # La classe si scrive come nella scheda, e la descrizione del filtro la dice allo stesso modo.
+        filtro.criterio.SetSelection([chiave for chiave, *_resto in ricerca.CRITERI].index("classe"))
+        filtro.al_criterio()
+        assert filtro.valore.IsEnabled() and [filtro.condizione.GetString(i) for i in range(filtro.condizione.GetCount())] == ["migliore di", "peggiore di"]
+        filtro.valore.ChangeValue("Z9")
+        filtro.conferma()
+        assert avvisi[-1].startswith("La classe si scrive come nella scheda, per esempio G4")
+        filtro.valore.ChangeValue("e0")
+        filtro.conferma()
+        assert filtro.risultato == (None, "classe", "migliore", 40, "classe migliore di E0")
     finally:
         filtro.Destroy()
 

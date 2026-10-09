@@ -13,6 +13,7 @@ from aiuti_motore import giocatore
 import contratti
 import economia
 import mondo as modulo_mondo
+import testi
 from modelli import Polisportiva
 from mondo import Mondo
 
@@ -109,6 +110,29 @@ def test_la_buonuscita_e_meta_degli_stipendi_che_restano():
     giorni = (g.contratto_scadenza - datetime.datetime(2027, 12, 1, 9, 0)).total_seconds() / 86400
     assert contratti.buonuscita(g, datetime.datetime(2027, 12, 1, 9, 0)) == economia.arrotonda(220 * giorni / 30.44 / 2)
     assert contratti.buonuscita(g, datetime.datetime(2028, 10, 1)) == 0
+
+
+def test_la_buonuscita_conta_anche_il_rinnovo_concordato():
+    """
+    Il caso della revisione: 140 euro al mese fino al 1 maggio 2027 e un rinnovo di 24 mesi a 900
+    euro già concordato. Alla vigilia della partenza del rinnovo lo svincolo non è quasi gratis:
+    costa quanto il giorno dopo, a rinnovo partito, cioè metà dei 24 mesi a 900 euro.
+    """
+    g = giocatore(7, anni=30)
+    contratti.stipula(g, datetime.datetime(2026, 5, 1), 140, 12)
+    assert g.contratto_scadenza == datetime.datetime(2027, 5, 1)
+    contratti.concorda_rinnovo(g, 900, 24)
+    vigilia = datetime.datetime(2027, 4, 30, 9, 0)
+    mesi_rinnovo = contratti.mesi_di_calendario(g.contratto_scadenza, g.rinnovo_scadenza)
+    assert contratti.mesi_del_rinnovo(g, vigilia) == pytest.approx(mesi_rinnovo)
+    assert contratti.buonuscita(g, vigilia) == economia.arrotonda((140 * contratti.mesi_al_termine(g, vigilia) + 900 * mesi_rinnovo) / 2)
+    assert contratti.buonuscita(g, vigilia) == 10_810
+    # Il primo di maggio, prima che il mondo faccia subentrare il rinnovo, i mesi del rinnovo si contano da oggi.
+    partenza = datetime.datetime(2027, 5, 1)
+    prima_del_subentro = contratti.buonuscita(g, partenza)
+    contratti.subentra_il_rinnovo(g)
+    assert contratti.mesi_del_rinnovo(g, partenza) == 0.0
+    assert prima_del_subentro == contratti.buonuscita(g, partenza) == 10_810
 
 
 # Il contratto nel mondo: la firma in ogni via d'ingresso, la cancellazione all'uscita.
@@ -351,6 +375,21 @@ def test_la_buonuscita_dello_svincolo_per_l_utente(mondo):
         mondo.svincola(mia, g)
     mia.cassa = atteso
     assert mondo.svincola(mia, g) == atteso and mia.cassa == 0 and mia.conti_del_mese["buonuscite"] == atteso
+
+
+def test_lo_svincolo_alla_vigilia_del_rinnovo_paga_il_rinnovo(mondo):
+    """Lo svincolo alla vigilia della partenza di un rinnovo concordato paga anche metà del rinnovo, e la domanda lo dice."""
+    mia = _mia(mondo, 12)
+    g = mondo.giocatori[12]
+    vigilia = _al_giorno(mondo, g.contratto_scadenza - datetime.timedelta(hours=15))
+    contratti.concorda_rinnovo(g, 900, 24)
+    solo_contratto = economia.arrotonda(economia.stipendio_pagato(g) * contratti.mesi_al_termine(g, vigilia) / 2)
+    atteso = contratti.buonuscita(g, vigilia)
+    assert atteso >= solo_contratto + 10_000
+    domanda = testi.domanda_svincolo(g, mia, mondo)
+    assert "Il contratto finisce fra meno di un mese, ma restano i 24 mesi del rinnovo già concordato: la buonuscita è di " in domanda
+    mia.cassa = atteso
+    assert mondo.svincola(mia, g) == atteso and mia.cassa == 0 and not contratti.ha_rinnovo(g)
 
 
 def test_la_buonuscita_dello_scambio_del_computer(mondo, monkeypatch):

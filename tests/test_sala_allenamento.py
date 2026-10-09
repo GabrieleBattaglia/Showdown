@@ -117,7 +117,11 @@ def test_la_sala_si_apre_con_gli_allenandi(sala, mondo):
     assert sala.punti.GetMax() == 150 and sala.punti.GetValue() == 150
     assert sala.anteprima.GetValue().startswith("Con 150 punti: precisione da ")
     g = sala.allenandi[0]
-    assert sala.programma.GetStringSelection().casefold() == testi.nome_programma(g.programma).casefold()
+    assert sala.programma.GetStringSelection() == testi.voce_programma(g.programma, g)
+    # L'indole dell'allenando si legge nella sua voce della scelta e nella riga dell'elenco.
+    assert sala.programma.GetString(sala.indoli.index(g.indole)).endswith(", la sua indole")
+    assert sum(sala.programma.GetString(i).endswith(", la sua indole") for i in range(len(sala.indoli))) == 1
+    assert f"programma {testi.nome_programma(g.indole)}, la sua indole, intensità normale" in sala.elenco.GetString(0)
     assert sala.intensita.GetStringSelection() == "Normale"
 
 
@@ -217,6 +221,7 @@ def test_programma_e_intensita_valgono_subito(sala, suonati):
     sala.programma.SetSelection(sala.indoli.index(altra))
     sala.al_programma()
     assert g.programma == altra and suonati == ["programma_cambiato"]
+    assert f"programma {testi.nome_programma(altra)}, indole {testi.indole(g)}, " in sala.elenco.GetString(0)
     sala.intensita.SetSelection(sala.livelli.index("intensa"))
     sala.all_intensita()
     assert g.intensita == "intensa" and suonati == ["programma_cambiato", "intensita_cambiata"]
@@ -246,6 +251,7 @@ def test_gli_avvisi_della_sala_con_i_loro_suoni(sala, mondo, messaggi, suonati):
     # Il portafoglio sotto un punto.
     g.punti_allenamento = 0.4
     sala.aggiorna()
+    assert sala.punti.GetMax() == 0 and sala.anteprima.GetValue() == testi.senza_punti(g)
     sala.spendi()
     assert suonati[-1] == "punti_insufficienti" and messaggi[-1] == testi.senza_punti(g) and "0,4" in messaggi[-1]
     # L'allenando infortunato, per la spesa a mano e per quella completa.
@@ -278,7 +284,7 @@ def test_la_sala_nella_finestra(finestra, mondo, messaggi, monkeypatch, cartella
     assert righe[1].startswith(f"{_nome(sorted((mondo.giocatori[i] for i in poli.tesserati), key=lambda x: _nome(x).casefold())[0])}: 150,5 punti spesi")
     assert righe[2].endswith(", intensità leggera.")
     assert suonati[0] == "dialogo_sala_allenamento" and suonati[-1] == "lavoro_concluso"
-    assert finestra.ultimo_evento == "sala: 1 spesa"
+    assert finestra.ultimo_evento == "sala: 1 spesa e 1 cambio"
     assert (cartella_di_prova / FILE_MONDO).exists()
     # Senza niente di fatto la vista lo dice e il mondo non si salva.
     (cartella_di_prova / FILE_MONDO).unlink()
@@ -286,6 +292,22 @@ def test_la_sala_nella_finestra(finestra, mondo, messaggi, monkeypatch, cartella
     finestra.sala_allenamento()
     assert finestra.vista.GetValue() == "Sala allenamento di Club Della Sala: nessuna spesa."
     assert not (cartella_di_prova / FILE_MONDO).exists()
+
+
+def test_la_barra_della_sala_con_i_soli_cambi(finestra, mondo, messaggi, monkeypatch, cartella_di_prova):
+    """Con un solo cambio d'intensità il mondo si salva e la barra dice il cambio, non zero spese."""
+
+    def un_cambio(self):
+        _scegli(self, self.allenandi[0])
+        self.intensita.SetSelection(self.livelli.index("intensa"))
+        self.all_intensita()
+        return wx.ID_CANCEL
+
+    monkeypatch.setattr(dialoghi.SalaAllenamento, "ShowModal", un_cambio)
+    finestra.sala_allenamento()
+    assert finestra.vista.GetValue().splitlines()[0] == "Sala allenamento di Club Della Sala: nessuna spesa e 1 cambio di programma o d'intensità."
+    assert finestra.ultimo_evento == "sala: 1 cambio"
+    assert (cartella_di_prova / FILE_MONDO).exists()
 
 
 def test_senza_tesserati_la_sala_e_i_contratti_lo_dicono(finestra, mondo, suonati):
@@ -368,7 +390,7 @@ def test_il_rinnovo_accettato(contratti_aperti, mondo, messaggi, suonati, monkey
     assert messaggi[0] == testi.domanda_rinnovo(g, poli, stipendio, mesi)
     assert suonati == ["domanda", "rinnovo_accettato"]
     assert g.rinnovo_stipendio == stipendio and g.rinnovo_scadenza == contratti.scadenza_dopo(scadenza, mesi)
-    assert messaggi[-1].startswith(f"{_nome(g)} ha accettato: dal ") and d.esiti == [messaggi[-1]]
+    assert messaggi[-1].startswith(f"{_nome(g)} ha accettato: dal ") and d.esiti == [(messaggi[-1], "accettato")]
     assert ", rinnovato dal " in d.elenco.GetString(0)
     d.proponi()
     assert suonati[-1] == "rinnovo_gia_concordato" and messaggi[-1].startswith(f"{_nome(g)} ha già rinnovato")
@@ -398,7 +420,7 @@ def test_il_rinnovo_rifiutato_tre_volte_si_chiude(contratti_aperti, mondo, messa
     d.aggiorna()
     d.proponi()
     assert suonati[-1] == "rinnovo_senza_proposte" and "ha già rifiutato tre proposte" in messaggi[-1]
-    assert g.proposte_rinnovo == 3 and len(d.esiti) == 3
+    assert g.proposte_rinnovo == 3 and [esito for _testo, esito in d.esiti] == ["rifiutato", "rifiutato", "chiuso"]
 
 
 def test_lo_stipendio_sotto_il_minimo_si_corregge(contratti_aperti, mondo, messaggi, suonati):
@@ -451,9 +473,9 @@ def test_i_contratti_nella_finestra(finestra, mondo, messaggi, monkeypatch, cart
     monkeypatch.setattr(dialoghi.Contratti, "ShowModal", una_proposta)
     finestra.contratti()
     righe = finestra.vista.GetValue().splitlines()
-    assert righe[0] == "Contratti di Club Della Sala: 1 proposta." and righe[1].startswith(f"{_nome(primo)} ha accettato")
+    assert righe[0] == "Contratti di Club Della Sala: 1 proposta, 1 rinnovo concordato." and righe[1].startswith(f"{_nome(primo)} ha accettato")
     assert suonati[0] == "dialogo_contratti" and suonati[-1] == "lavoro_concluso"
-    assert finestra.ultimo_evento == "contratti: 1 proposta"
+    assert finestra.ultimo_evento == "contratti: 1 rinnovo su 1"
     assert (cartella_di_prova / FILE_MONDO).exists()
 
 

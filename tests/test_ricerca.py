@@ -104,6 +104,16 @@ def test_i_candidati_del_mercato(mondo):
 
 
 
+def test_la_classe_si_scrive_come_nella_scheda():
+    assert ricerca.leggi_classe("G4") == ricerca.leggi_classe(" g4 ") == ricerca.leggi_classe("64") == 64
+    assert ricerca.leggi_classe("A1") == 1 and ricerca.leggi_classe("K0") == 100 and ricerca.leggi_classe("B0") == 10
+    for sbagliata in ("A0", "K1", "0", "101", "Z3", "G", "G44", "", "4,5"):
+        with pytest.raises(ValueError):
+            ricerca.leggi_classe(sbagliata)
+    assert ricerca.codice_classe(64) == "G4" and ricerca.nome_criterio("classe") == "Classe"
+    assert ricerca.nome_condizione("classe", "migliore") == "migliore di" and ricerca.nome_condizione("classe", "peggiore") == "peggiore di"
+
+
 def test_i_criteri_della_tappa_11(mondo):
     mondo.datetime_corrente_simulazione = ORA
     mia = mondo.fonda_polisportiva("Club della ricerca")
@@ -114,8 +124,13 @@ def test_i_criteri_della_tappa_11(mondo):
     con_contratto = ricerca.cerca(mondo, "tutti", "mesi_contratto", "maggiore", 3)
     assert con_contratto == [1]
     assert ricerca.cerca(mondo, "tutti", "mesi_contratto", "minore", 0.5) == [gid for gid in mondo.giocatori if gid != 1]
-    forti = ricerca.cerca(mondo, "tutti", "classe", "minore", 60)
-    assert all(classe.classe(mondo.giocatori[gid]).livello < 60 for gid in forti)
+    # La classe si cerca migliore o peggiore di un codice: la scala scende, migliore vuol dire un livello più piccolo.
+    livelli = {gid: classe.classe(x).livello for gid, x in mondo.giocatori.items()}
+    soglia = sorted(livelli.values())[len(livelli) // 2]
+    migliori = ricerca.cerca(mondo, "tutti", "classe", "migliore", soglia)
+    assert migliori == sorted(gid for gid, n in livelli.items() if n < soglia) and migliori
+    assert ricerca.cerca(mondo, "tutti", "classe", "migliore", classe.codice(soglia)) == migliori
+    assert ricerca.cerca(mondo, "tutti", "classe", "peggiore", soglia) == sorted(gid for gid, n in livelli.items() if n > soglia)
     assert 1 in ricerca.cerca(mondo, "tutti", "indole", "contiene", INDOLI[g.indole]["nome"].upper())
     talenti = ricerca.cerca(mondo, "tutti", "talento", "si")
     assert talenti == [gid for gid, x in mondo.giocatori.items() if x.talento]

@@ -203,6 +203,22 @@ def programma(g):
     return nome_programma(g.programma)
 
 
+def programma_e_indole(g):
+    """
+    Il programma nella riga della sala, sempre con l'indole, perché chi la scorre sappia a quale
+    voce riportarlo: programma di rimessa, la sua indole; oppure programma aggressivo, indole di rimessa.
+    """
+    if g.programma == g.indole:
+        return f"programma {nome_programma(g.programma)}, la sua indole"
+    return f"programma {nome_programma(g.programma)}, indole {indole(g)}"
+
+
+def voce_programma(chiave, g):
+    """Una voce della scelta del programma nella sala: Aggressivo; per l'indole dell'allenando, Di rimessa, la sua indole."""
+    voce = nome_programma(chiave).capitalize()
+    return f"{voce}, la sua indole" if chiave == g.indole else voce
+
+
 def mese_e_anno(dt):
     """Un mese con l'anno: dicembre 2027."""
     return f"{MESI[dt.month - 1]} {dt.year}"
@@ -807,6 +823,24 @@ def svincolato(g, p, mondo, buonuscita=0):
     return f"{nome_completo(g)} è {accorda(g, 'svincolato')} da {p.nome}{pagata} e torna {accorda(g, 'libero')}. {info_mercato(p, mondo)}"
 
 
+def mesi_che_restano(g, oggi):
+    """
+    I mesi di contratto che restano a un tesserato, per lo svincolo: Gli restano 10 mesi di
+    contratto; con un rinnovo già concordato, Gli restano 2 mesi di contratto e 24 del rinnovo già
+    concordato. Stringa vuota se non resta niente.
+    """
+    mesi = round(contratti.mesi_al_termine(g, oggi))
+    rinnovo = round(contratti.mesi_del_rinnovo(g, oggi))
+    pronome = "Le" if g.sesso == "f" else "Gli"
+    if rinnovo >= 1:
+        if mesi >= 1:
+            return f"{pronome} restano {conta(mesi, 'mese', 'mesi')} di contratto e {rinnovo} del rinnovo già concordato"
+        return f"Il contratto finisce fra meno di un mese, ma restano i {rinnovo} mesi del rinnovo già concordato"
+    if mesi >= 1:
+        return f"{pronome} {'resta' if mesi == 1 else 'restano'} {conta(mesi, 'mese', 'mesi')} di contratto"
+    return "Il contratto finisce fra meno di un mese"
+
+
 def domanda_svincolo(g, p, mondo):
     """La domanda dello svincolo, con la buonuscita: Svincolare Mario Rossi? Gli restano 10 mesi di contratto: la buonuscita è di 1.100 euro."""
     oggi = mondo.datetime_corrente_simulazione
@@ -814,9 +848,7 @@ def domanda_svincolo(g, p, mondo):
     mosse = f"userai una delle {mondo.mosse_rimaste(p)} mosse che ti restano oggi"
     if not buonuscita:
         return f"Svincolare {nome_completo(g)}? Tornerà {accorda(g, 'libero')}, e {mosse}."
-    mesi = round(contratti.mesi_al_termine(g, oggi))
-    restano = f"{'Le' if g.sesso == 'f' else 'Gli'} {'resta' if mesi == 1 else 'restano'} {conta(mesi, 'mese', 'mesi')} di contratto" if mesi >= 1 else "Il contratto finisce fra meno di un mese"
-    return f"Svincolare {nome_completo(g)}? {restano}: la buonuscita è di {euro(buonuscita)}. Tornerà {accorda(g, 'libero')}, e {mosse}."
+    return f"Svincolare {nome_completo(g)}? {mesi_che_restano(g, oggi)}: la buonuscita è di {euro(buonuscita)}. Tornerà {accorda(g, 'libero')}, e {mosse}."
 
 
 def domanda_chiusura(p):
@@ -1277,8 +1309,8 @@ def intestazione_sala(p, allenandi):
 
 
 def riga_allenando(g, mondo):
-    """Un allenando nell'elenco della sala: Mario Rossi, classe G4, 38,5 punti, programma di rimessa, intensità normale."""
-    riga = f"{nome_completo(g)}, classe {codice_classe(g)}, {quanti_punti(g.punti_allenamento)}, programma {nome_programma(g.programma)}, intensità {g.intensita}"
+    """Un allenando nell'elenco della sala: Mario Rossi, classe G4, 38,5 punti, programma aggressivo, indole di rimessa, intensità normale."""
+    riga = f"{nome_completo(g)}, classe {codice_classe(g)}, {quanti_punti(g.punti_allenamento)}, {programma_e_indole(g)}, intensità {g.intensita}"
     if not allenamento.puo_allenarsi(g) and g.infortunio_fine_datetime:
         riga += f", {accorda(g, 'infortunato')} fino al {g.infortunio_fine_datetime.day} {MESI[g.infortunio_fine_datetime.month - 1]}, non si allena"
     return riga
@@ -1447,9 +1479,9 @@ def riga_contratto(g, p, mondo):
 
 
 def esito_previsto_rinnovo(g, p, stipendio, mesi):
-    """L'esito previsto di una proposta: Accetterebbe al 64 per cento. Per 12 mesi chiede 310 euro. Il contratto nuovo partirebbe il 1 marzo 2028."""
+    """L'esito previsto di una proposta: Accetterebbe al 64 per cento. Per 12 mesi chiede 310 euro al mese. Il contratto nuovo partirebbe il 1 marzo 2028."""
     probabilita = contratti.probabilita_rinnovo(g, p, stipendio, mesi)
-    return (f"Accetterebbe al {numero(probabilita, 0)} per cento. Per {mesi} mesi chiede {euro(contratti.richiesta_rinnovo(g, p, mesi))}. "
+    return (f"Accetterebbe al {numero(probabilita, 0)} per cento. Per {mesi} mesi chiede {euro(contratti.richiesta_rinnovo(g, p, mesi))} al mese. "
             f"Il contratto nuovo partirebbe il {data_breve(g.contratto_scadenza)}.")
 
 
@@ -1473,7 +1505,30 @@ def esito_rinnovo(g, p, accettato, richiesta, mesi):
 
 
 def riepilogo_contratti(p, esiti):
-    """Il riepilogo del dialogo dei contratti alla chiusura."""
+    """
+    Il riepilogo del dialogo dei contratti alla chiusura, dal dato che conta, come quello del
+    mercato: Contratti di Pat-Bologna: 3 proposte, 1 rinnovo concordato, 1 giocatore che non tratta
+    più. Poi una riga per proposta. esiti sono coppie di testo ed esito: accettato, rifiutato o chiuso.
+    """
     if not esiti:
         return f"Contratti di {p.nome}: nessuna proposta."
-    return "\n".join([f"Contratti di {p.nome}: {conta(len(esiti), 'proposta', 'proposte')}.", *esiti])
+    concordati = sum(1 for _testo, esito in esiti if esito == "accettato")
+    chiusi = sum(1 for _testo, esito in esiti if esito == "chiuso")
+    parti = [conta(len(esiti), "proposta", "proposte"), conta(concordati, "rinnovo concordato", "rinnovi concordati") if concordati else "nessun rinnovo concordato"]
+    if chiusi:
+        parti.append(conta(chiusi, "giocatore che non tratta più", "giocatori che non trattano più"))
+    return "\n".join([f"Contratti di {p.nome}: {', '.join(parti)}.", *(testo for testo, _esito in esiti)])
+
+
+def evento_contratti(esiti):
+    """Il fatto dei contratti nella barra di stato: contratti: 1 rinnovo su 3."""
+    concordati = sum(1 for _testo, esito in esiti if esito == "accettato")
+    return f"contratti: {concordati} {'rinnovo' if concordati == 1 else 'rinnovi'} su {len(esiti)}"
+
+
+def evento_sala(esiti, cambi):
+    """Il fatto della sala nella barra di stato, come la prima riga del riepilogo: sala: 2 spese e 1 cambio; sala: 1 cambio."""
+    parti = [conta(len(esiti), "spesa", "spese")] if esiti else []
+    if cambi:
+        parti.append(conta(len(cambi), "cambio", "cambi"))
+    return f"sala: {unisci(parti) if parti else 'nessuna spesa'}"

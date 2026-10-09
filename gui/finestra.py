@@ -622,7 +622,7 @@ class FinestraPrincipale(wx.Frame):
             esiti, cambi = list(dialogo.esiti), dialogo.cambi()
         finally:
             dialogo.Destroy()
-        self._concludi(testi.riepilogo_sala(p, esiti, cambi), f"sala: {testi.conta(len(esiti), 'spesa', 'spese')}", "lavoro_concluso", bool(esiti or cambi))
+        self._concludi(testi.riepilogo_sala(p, esiti, cambi), testi.evento_sala(esiti, cambi), "lavoro_concluso", bool(esiti or cambi))
 
     def contratti(self):
         """I contratti e i rinnovi della tappa 11: alla chiusura la vista mostra gli esiti delle proposte, e il mondo si salva se ce ne sono."""
@@ -639,7 +639,7 @@ class FinestraPrincipale(wx.Frame):
             esiti = list(dialogo.esiti)
         finally:
             dialogo.Destroy()
-        self._concludi(testi.riepilogo_contratti(p, esiti), f"contratti: {testi.conta(len(esiti), 'proposta', 'proposte')}", "lavoro_concluso", bool(esiti))
+        self._concludi(testi.riepilogo_contratti(p, esiti), testi.evento_contratti(esiti), "lavoro_concluso", bool(esiti))
 
     def svincola(self):
         p = self._attiva()

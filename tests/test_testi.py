@@ -276,7 +276,7 @@ def test_i_testi_dei_contratti(mondo):
     assert ", in scadenza: chiede " in testi.riga_contratto(g, p, mondo)
     mesi = contratti.durata_proposta(g)
     previsto = testi.esito_previsto_rinnovo(g, p, 300, mesi)
-    assert previsto.startswith("Accetterebbe al ") and f"Per {mesi} mesi chiede " in previsto and previsto.endswith(f"partirebbe il {testi.data_breve(g.contratto_scadenza)}.")
+    assert previsto.startswith("Accetterebbe al ") and f"Per {mesi} mesi chiede {testi.euro(contratti.richiesta_rinnovo(g, p, mesi))} al mese. " in previsto and previsto.endswith(f"partirebbe il {testi.data_breve(g.contratto_scadenza)}.")
     assert testi.domanda_rinnovo(g, p, 300, mesi).startswith(f"Proporre a {testi.nome_completo(g)} il rinnovo a 300 euro al mese per {mesi} mesi")
     g.proposte_rinnovo = 1
     rifiuto = testi.esito_rinnovo(g, p, False, 310, 12)
@@ -288,6 +288,13 @@ def test_i_testi_dei_contratti(mondo):
     contratti.concorda_rinnovo(g, 300, 12)
     assert testi.esito_rinnovo(g, p, True, 300, 12).startswith(f"{testi.nome_completo(g)} ha accettato: dal ")
     assert testi.riepilogo_contratti(p, []) == "Contratti di Club Di Prova: nessuna proposta."
+    # Il riepilogo e la barra cominciano dal dato che conta: quanti rinnovi concordati, e chi non tratta più.
+    esiti = [("primo", "rifiutato"), ("secondo", "accettato"), ("terzo", "chiuso")]
+    assert testi.riepilogo_contratti(p, esiti) == "Contratti di Club Di Prova: 3 proposte, 1 rinnovo concordato, 1 giocatore che non tratta più.\nprimo\nsecondo\nterzo"
+    assert testi.riepilogo_contratti(p, esiti[:1]).startswith("Contratti di Club Di Prova: 1 proposta, nessun rinnovo concordato.\n")
+    assert testi.evento_contratti(esiti) == "contratti: 1 rinnovo su 3" and testi.evento_contratti(esiti[:1]) == "contratti: 0 rinnovi su 1"
+    assert testi.evento_sala([], ["cambio"]) == "sala: 1 cambio" and testi.evento_sala(["a", "b"], ["c"]) == "sala: 2 spese e 1 cambio"
+    assert testi.evento_sala(["a"], []) == "sala: 1 spesa" and testi.evento_sala([], []) == "sala: nessuna spesa"
 
 
 def test_la_proposta_di_contratto_e_lo_svincolo(mondo):

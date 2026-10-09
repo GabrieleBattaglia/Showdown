@@ -200,8 +200,25 @@ def probabilita_rinnovo(g, poli, stipendio, mesi):
     return probabilita_accettazione(stipendio, richiesta_rinnovo(g, poli, mesi))
 
 
+def mesi_del_rinnovo(g, oggi):
+    """
+    I mesi del rinnovo concordato che restano, frazionari: dalla scadenza del contratto in corso, o
+    da oggi se il rinnovo è già partito e il mondo non l'ha ancora fatto subentrare, fino alla sua
+    scadenza. Zero senza un rinnovo concordato.
+    """
+    if not ha_contratto(g) or not ha_rinnovo(g):
+        return 0.0
+    return mesi_di_calendario(max(oggi, g.contratto_scadenza), g.rinnovo_scadenza)
+
+
 def buonuscita(g, oggi):
-    """La buonuscita di uno svincolo a contratto in corso: metà degli stipendi che restano, arrotondata alla decina."""
+    """
+    La buonuscita di uno svincolo a contratto in corso: metà degli stipendi che restano, arrotondata
+    alla decina. Restano quelli del contratto in corso e, se c'è, quelli del rinnovo già concordato,
+    al suo stipendio: altrimenti chi rinnova lungo per bloccare lo stipendio potrebbe svincolare quasi
+    gratis alla vigilia della partenza del rinnovo, la scappatoia che la risposta 4 di Gabriele chiude.
+    """
     if not ha_contratto(g):
         return 0
-    return economia.arrotonda(economia.stipendio_pagato(g) * mesi_al_termine(g, oggi) * QUOTA_BUONUSCITA)
+    restano = economia.stipendio_pagato(g) * mesi_al_termine(g, oggi) + g.rinnovo_stipendio * mesi_del_rinnovo(g, oggi)
+    return economia.arrotonda(restano * QUOTA_BUONUSCITA)

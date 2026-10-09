@@ -26,6 +26,7 @@ from GBUtils import dgt, key, menu
 
 import archivio
 import contratti
+import testi
 from allenamento import allena_secondo_programma, anteprima, costo_del_prossimo_punto, puo_allenarsi, spendi, tetto, totale
 from costanti import ANNO_SIMULAZIONE_GIORNI as anno
 from costanti import (
@@ -928,7 +929,7 @@ class InterfacciaTestuale:
                 return
             buonuscita = contratti.buonuscita(g, self.data_sim)
             if buonuscita:
-                print(f"\t{'Le' if g.sesso == 'f' else 'Gli'} restano {contratti.mesi_al_termine(g, self.data_sim):.1f} mesi di contratto: la buonuscita è di {buonuscita} euro.")
+                print(f"\t{testi.mesi_che_restano(g, self.data_sim)}: la buonuscita è di {buonuscita} euro.")
             if key(f"\rConfermi lo svincolo di {g.nome} {g.cognome}(ID:{gid})? (s/N)\r").lower() != 's':
                 print("\nAnnullato.")
                 return

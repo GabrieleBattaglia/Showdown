@@ -12,6 +12,7 @@ import re
 import pytest
 
 import cli
+import infortuni as modulo_infortuni
 import testi
 import valore
 from costanti import (
@@ -347,7 +348,7 @@ def _giorno(mondo):
     return rapporto
 
 
-def test_la_seduta_secondo_l_intensita_e_la_meta_ai_liberi(mondo):
+def test_la_seduta_secondo_l_intensita_e_la_meta_ai_liberi(mondo, monkeypatch):
     mia = mondo.fonda_polisportiva("Club della seduta")
     cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
     for gid in (1, 2, 3):
@@ -371,10 +372,14 @@ def test_la_seduta_secondo_l_intensita_e_la_meta_ai_liberi(mondo):
     libero = mondo.giocatori[5]
     assert libero.esperienza == pytest.approx(ESPERIENZA_PER_ANNO_DI_VITA / 108)
     assert mondo.giocatori[2].esperienza == pytest.approx(ESPERIENZA_PER_ANNO_DI_VITA / 108 + ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA)
-    # A regime la costanza della seduta vale la costanza della sua intensità.
+    # A regime la costanza della seduta vale la costanza della sua intensità, anche 1,3 per l'intensa,
+    # risposta 7 di Gabriele. Senza infortuni in seduta, che hanno le loro prove in test_infortuni:
+    # qui _giorno non fa guarire nessuno, e l'intenso infortunato smetterebbe di allenarsi.
+    monkeypatch.setattr(modulo_infortuni, "infortunio_in_seduta", lambda *_a, **_k: None)
     for _ in range(300):
         _giorno(mondo)
-    assert [round(mondo.giocatori[gid].costanza, 3) for gid in (1, 2, 3, 5)] == [0.6, 1.0, 1.3, 0.5] or mondo.giocatori[3].infortunato
+    assert not any(mondo.giocatori[gid].infortunato for gid in (1, 2, 3, 5))
+    assert [round(mondo.giocatori[gid].costanza, 3) for gid in (1, 2, 3, 5)] == [0.6, 1.0, 1.3, 0.5]
 
 
 def test_liberi_e_computer_spendono_da_soli_i_tuoi_no(mondo):

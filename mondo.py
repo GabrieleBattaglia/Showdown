@@ -998,12 +998,17 @@ class Mondo:
                     rapporto["tue_bandiere"] += 1
 
     def _mantenimento_del_mese(self, data):
-        """Il primo del mese, per tutti i giocatori vivi: il calo dei livelli alti e l'oblio dell'apprendista, per i giorni del mese appena finito."""
+        """
+        Il primo del mese, per tutti i giocatori vivi: il calo dei livelli alti e l'oblio
+        dell'apprendista, per i giorni del mese appena finito. Per i ritirati anche il valore, col
+        declino del mese, che il giro di ogni giorno non ricalcola più.
+        """
         giorni = (contratti.primo_del_mese(data) - contratti.aggiungi_mesi(data, -1)).days
         morti = self._ids_morti_processati_sessione
         for gid, g in self.giocatori.items():
             if gid not in morti:
-                mantenimento_del_mese(g, giorni)
+                if not mantenimento_del_mese(g, giorni) and g.ritirato:
+                    g.aggiorna_icv()
 
     def _allenamento_del_giorno(self, data, rapporto):
         """
@@ -1087,8 +1092,9 @@ class Mondo:
     # Uscite di scena.
 
     def _registra_uscita(self, g, motivo, data, club):
-        """Annota l'uscita di scena nel registro delle vecchie glorie, salvato col mondo, e nel file vecchie_glorie.log."""
+        """Annota l'uscita di scena nel registro delle vecchie glorie, salvato col mondo, e nel file vecchie_glorie.log, col valore di oggi."""
         g.aggiorna_aspetto()
+        g.aggiorna_icv()
         voce = {
             "id": g.id, "nome": g.nome, "cognome": g.cognome, "sesso": g.sesso,
             "motivo": "morte" if motivo == DECESSO else "uscita", "eta": g.eta, "data": data.isoformat(), "club": club,
@@ -1167,6 +1173,8 @@ class Mondo:
                 continue
             if not g.ritirato and g.eta >= g.etaritiro:
                 g.ritirato = True
+                # Da qui il valore non si ricalcola più ogni giorno: parte da quello di oggi.
+                g.aggiorna_icv()
                 self.giocatori_ritirati_sessione.append((gid, f"RITIRO: {nome_completo(g)}(ID:{gid}) a {formatta_eta_sim(g.eta)} sim."))
                 rapporto["tuoi_ritirati"] += tuo
                 if club is not None:
@@ -1263,9 +1271,11 @@ class Mondo:
             rapporto["poli_create"] += 1
         # Dalla tappa 11 il valore si ricalcola soltanto per chi è nel declino, che cambia ogni giorno:
         # la spesa d'allenamento e il calo del mese lo ricalcolano da sé, e rifarlo per tutti i
-        # giocatori del mondo costava più di tutto il resto del giorno.
+        # giocatori del mondo costava più di tutto il resto del giorno. I ritirati vivi, a regime
+        # quasi seimila, non giocano e non firmano: il loro valore serve alla scheda, alla ricerca e
+        # alle vecchie glorie, e si ricalcola al ritiro, il primo del mese e all'uscita di scena.
         for g in vivi:
-            if g.eta >= tratti.giorni_inizio_declino(g):
+            if not g.ritirato and g.eta >= tratti.giorni_inizio_declino(g):
                 g.aggiorna_icv()
         nuovi = random.randint(*CREA_NUOVI_PER_TICK_RANGE)
         self.crea_giocatori_casuali(nuovi, data, annuncia=False)

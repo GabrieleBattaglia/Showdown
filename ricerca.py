@@ -6,10 +6,12 @@ cercare, una caratteristica e una condizione. Rispetto al vecchio programma, "mi
 dire davvero minore, e non minore o uguale: problema P11 del piano.
 Dalla tappa 7 serve anche il mercato, che mette insieme più filtri: si aggiungono il sesso, la
 gloria richiesta e i tratti speciali, e cerca_con_filtri vuole che un giocatore li soddisfi tutti.
-Dalla tappa 11, il 2026-10-09, i criteri dell'allenamento e dei contratti: esperienza, classe, cioè
-il numero del livello, da 1 per A1 a 100 per K0, punti allenamento, indole, ambizione, mesi di
-contratto rimasti, che si contano dalla data simulata, e i tratti rari dell'allenamento. Per questo
-ogni criterio legge il giocatore insieme alla data simulata del giorno.
+Dalla tappa 11, il 2026-10-09, i criteri dell'allenamento e dei contratti: esperienza, classe, punti
+allenamento, indole, ambizione, mesi di contratto rimasti, che si contano dalla data simulata, e i
+tratti rari dell'allenamento. Per questo ogni criterio legge il giocatore insieme alla data
+simulata del giorno. La classe si scrive come si legge nella scheda, per esempio G4, oppure con il
+numero del livello, 64, e si cerca migliore o peggiore di quella: la scala scende, e migliore
+vuol dire un livello più piccolo.
 """
 
 import classe
@@ -38,8 +40,9 @@ NUMERO = "numero"
 TESTO = "testo"
 SI_NO = "si_no"
 SESSO = "sesso"
+CLASSE = "classe"
 CONDIZIONI = {NUMERO: (("maggiore", "maggiore di"), ("minore", "minore di")), TESTO: (("contiene", "contiene"),), SI_NO: (("si", "sì"), ("no", "no")),
-              SESSO: (("m", "uomo"), ("f", "donna"))}
+              SESSO: (("m", "uomo"), ("f", "donna")), CLASSE: (("migliore", "migliore di"), ("peggiore", "peggiore di"))}
 # I tipi di criterio per cui non serve scrivere un valore: basta la condizione.
 SENZA_VALORE = (SI_NO, SESSO)
 
@@ -52,7 +55,7 @@ def _nome_caratteristica(nome_base):
 # giocatore, con la data simulata del giorno, che serve soltanto ai mesi di contratto.
 CRITERI = (
     ("valore", "Valore", NUMERO, lambda g, _oggi: g.indice_collettivo_valore),
-    ("classe", "Classe, il numero del livello, da 1 per A1 a 100 per K0", NUMERO, lambda g, _oggi: classe.classe(g).livello),
+    ("classe", "Classe", CLASSE, lambda g, _oggi: classe.classe(g).livello),
     ("eta", "Età in anni", NUMERO, lambda g, _oggi: g.eta_anni),
     ("gloria_richiesta", "Gloria richiesta", NUMERO, lambda g, _oggi: g.gloria_richiesta),
     ("esperienza", "Esperienza di carriera", NUMERO, lambda g, _oggi: g.esperienza),
@@ -124,6 +127,28 @@ def leggi_numero(testo):
     return float(str(testo).strip().replace(",", "."))
 
 
+def leggi_classe(testo):
+    """
+    Il livello di una classe scritta come nella scheda, G4 o g4, oppure col numero del livello, 64:
+    da 1 per A1 a 100 per K0. ValueError se non è una classe.
+    """
+    scritto = str(testo).strip().upper()
+    if len(scritto) == 2 and scritto[0] in classe.LETTERE and scritto[1].isdigit():
+        livello = classe.LETTERE.index(scritto[0]) * 10 + int(scritto[1])
+    elif scritto.isdigit():
+        livello = int(scritto)
+    else:
+        raise ValueError(f"Non è una classe: {testo!r}")
+    if not 1 <= livello <= classe.LIVELLI:
+        raise ValueError(f"Non è una classe: {testo!r}")
+    return livello
+
+
+def codice_classe(livello):
+    """Il codice del livello di una classe, per la descrizione del filtro: 64 è G4."""
+    return classe.codice(int(livello))
+
+
 def _prova(criterio, condizione, valore, oggi=None):
     """La prova di un filtro, da fare su un giocatore il giorno dato: vera se il giocatore lo soddisfa."""
     _nome, tipo, leggi = _CRITERI[criterio]
@@ -133,6 +158,12 @@ def _prova(criterio, condizione, valore, oggi=None):
         if condizione == "maggiore":
             return lambda g: leggi(g, oggi) > valore
         return lambda g: leggi(g, oggi) < valore
+    if tipo == CLASSE:
+        # La scala scende: migliore vuol dire un livello più piccolo, cioè più vicino ad A1.
+        valore = leggi_classe(valore) if isinstance(valore, str) else valore
+        if condizione == "migliore":
+            return lambda g: leggi(g, oggi) < valore
+        return lambda g: leggi(g, oggi) > valore
     if tipo == TESTO:
         cercato = str(valore).casefold()
         return lambda g: cercato in leggi(g, oggi).casefold()
@@ -154,7 +185,8 @@ def cerca_con_filtri(mondo, ambito, filtri):
 def cerca(mondo, ambito, criterio, condizione, valore=None):
     """
     Gli identificativi dei giocatori dell'ambito che soddisfano la condizione, in ordine di numero.
-    Per le caratteristiche numeriche valore è un numero; per nome e cognome un testo, cercato
+    Per le caratteristiche numeriche valore è un numero, per la classe il numero del livello, che
+    leggi_classe ricava da un codice come G4; per nome e cognome un testo, cercato
     senza badare alle maiuscole; per il sesso e per il sì o no non serve.
     """
     return cerca_con_filtri(mondo, ambito, [(criterio, condizione, valore)])

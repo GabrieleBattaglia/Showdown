@@ -300,6 +300,12 @@ class Ricerca(_Dialogo):
             except ValueError:
                 self.avvisa("Il valore deve essere un numero, per esempio 150 o 12,5.", self.valore)
                 return
+        elif tipo == ricerca.CLASSE:
+            try:
+                valore = ricerca.leggi_classe(testo)
+            except ValueError:
+                self.avvisa("La classe si scrive come nella scheda, per esempio G4, da A1 a K0, oppure col numero del livello, da 1 a 100.", self.valore)
+                return
         elif tipo == ricerca.TESTO:
             if not testo:
                 self.avvisa("Scrivi il testo da cercare.", self.valore)
@@ -308,7 +314,7 @@ class Ricerca(_Dialogo):
         ambito = ricerca.AMBITI[self.ambito.GetSelection()][0] if self.ambito else None
         descrizione = f"{ricerca.nome_criterio(criterio).lower()} {ricerca.nome_condizione(criterio, condizione)}"
         if valore is not None:
-            descrizione += f" {testi.numero(valore) if tipo == ricerca.NUMERO else valore}"
+            descrizione += f" {ricerca.codice_classe(valore) if tipo == ricerca.CLASSE else testi.numero(valore) if tipo == ricerca.NUMERO else valore}"
         if ambito is not None:
             descrizione = f"{ricerca.nome_ambito(ambito)}, {descrizione}"
         self.risultato = (ambito, criterio, condizione, valore, descrizione)
@@ -1090,6 +1096,11 @@ class SalaAllenamento(_Dialogo):
         valore = massimo if nuovo else min(self.punti.GetValue(), massimo)
         self.punti.SetRange(0, massimo)
         self.punti.SetValue(valore)
+        # La voce dell'indole dell'allenando lo dice, così si sa dove riportarlo.
+        for indice, chiave in enumerate(self.indoli):
+            voce = testi.voce_programma(chiave, g)
+            if self.programma.GetString(indice) != voce:
+                self.programma.SetString(indice, voce)
         self.programma.SetSelection(self.indoli.index(g.programma) if g.programma in self.indoli else 0)
         self.intensita.SetSelection(self.livelli.index(g.intensita) if g.intensita in self.livelli else 0)
         self.aggiorna_anteprima()
@@ -1098,12 +1109,18 @@ class SalaAllenamento(_Dialogo):
         self._controlli_dell_allenando(nuovo=True)
 
     def aggiorna_anteprima(self, event=None):
-        """L'anteprima della spesa a mano con i punti e la caratteristica del momento; per chi non si allena, il perché."""
+        """
+        L'anteprima della spesa a mano con i punti e la caratteristica del momento; per chi non si
+        allena, il perché, e per chi non ha un punto intero da spendere a mano, quello che gli
+        dirà Spendi, invece di un campo fermo a zero senza spiegazione.
+        """
         g, c = self._scelto(), self._caratteristica()
         if g is None or c is None:
             testo = ""
         elif not allenamento.puo_allenarsi(g):
             testo = testi.allenando_fermo(g)
+        elif g.punti_allenamento < 1:
+            testo = testi.senza_punti(g)
         else:
             testo = testi.anteprima_allenamento(g, c, self.punti.GetValue())
         if self.anteprima.GetValue() != testo:
@@ -1265,7 +1282,8 @@ class Contratti(_Dialogo):
     propone; l'esito previsto, in un campo che si raggiunge con Tab, dice la probabilità che accetti,
     e a ogni ritocco, quando ci si ferma, un tic la fa sentire con la sua altezza, come al mercato.
     Proponi il rinnovo chiede conferma; se la proposta non si può fare, l'avviso dice il perché con
-    il suo suono. In esiti restano i testi degli esiti, che la finestra mostra alla chiusura.
+    il suo suono. In esiti restano le coppie di testo ed esito delle proposte, accettato, rifiutato o
+    chiuso, che la finestra riepiloga alla chiusura.
     """
 
     def __init__(self, genitore, mondo, poli, impostazioni=None):
@@ -1394,13 +1412,13 @@ class Contratti(_Dialogo):
             return
         accettato, _probabilita, richiesta = self.mondo.rinnova(self.poli, g, stipendio, mesi)
         if accettato:
-            suono = "rinnovo_accettato"
+            esito, suono = "accettato", "rinnovo_accettato"
         elif not contratti.puo_trattare(g):
-            suono = "rinnovo_chiuso"
+            esito, suono = "chiuso", "rinnovo_chiuso"
         else:
-            suono = "rinnovo_rifiutato"
+            esito, suono = "rifiutato", "rinnovo_rifiutato"
         testo = testi.esito_rinnovo(g, self.poli, accettato, richiesta, mesi)
-        self.esiti.append(testo)
+        self.esiti.append((testo, esito))
         suoni.suona(suono)
         wx.MessageBox(testo, self.GetTitle(), wx.OK | wx.ICON_INFORMATION, self)
         self.aggiorna()
