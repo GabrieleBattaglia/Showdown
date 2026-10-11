@@ -1,5 +1,60 @@
+Collaudo della tappa 11 di MESS con NVDA, versione 1.60.10: la sala allenamento, i contratti e la classe.
+Prima: nella cartella E:\git\tmp\mess-collaudo-t11 lancia python Showdown.py. È una copia del programma con il tuo mondo, e il tuo mondo vero non si tocca.
+Prima: la copia è pronta sul GPD; se fai il collaudo su un'altra macchina, chiedimi di rifarla lì.
+Prima: al primo avvio il mondo passa al formato nuovo, e i tuoi tesserati ricevono un contratto con lo stipendio che hanno.
+Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
+PROVA 1, l'avvio e la scheda.
+Passo 1: lancia il programma e aspetta la vista principale.
+Domanda 1: il mondo si apre senza errori, come sempre?
+Passo 2: con Ctrl+G apri la scheda di un tuo tesserato di Pat-Bologna.
+Domanda 2: nella prima riga si legge la classe, con la percentuale verso la classe seguente?
+Domanda 3: si leggono bene indole, ambizione, punti allenamento, e la riga dell'allenamento con programma, intensità e costanza?
+Domanda 4: la riga del contratto dice fino a quando dura e da quando si rinnova?
+Esito:
+PROVA 2, la sala allenamento.
+Passo 1: dal menu Polisportive scegli Sala allenamento, oppure premi Ctrl+Maiusc+L.
+Domanda 1: la sala si apre con il fuoco sugli allenandi, e ogni riga dice nome, classe, punti, programma con l'indole, e intensità?
+Passo 2: premi Alt+C e scorri le caratteristiche.
+Domanda 2: ogni riga dice l'aggettivo, il numero e il costo del prossimo punto?
+Passo 3: scegli una caratteristica, premi Alt+P, scrivi pochi punti e premi Tab per arrivare all'anteprima.
+Domanda 3: l'anteprima si legge, e cambia quando cambi i punti?
+Passo 4: premi Alt+S e rispondi Sì alla conferma.
+Domanda 4: la conferma ripete l'anteprima con il No già scelto, e dopo il Sì l'esito è chiaro e ha il suo suono?
+Passo 5: con Alt+G cambia il programma, poi con Alt+I l'intensità.
+Domanda 5: i due cambi valgono subito, ciascuno con il suo suono?
+Passo 6: premi Alt+E su un allenando, poi Alt+T e conferma.
+Domanda 6: gli esiti hanno una riga per allenando, con valore e classe prima e dopo, e il fuoco torna dov'era?
+Passo 7: chiudi con Esc.
+Domanda 7: la vista principale riepiloga le spese e i cambi, e la barra lo dice?
+Esito:
+PROVA 3, i contratti.
+Passo 1: dal menu Polisportive scegli Contratti e rinnovi, oppure premi Ctrl+Maiusc+K.
+Domanda 1: l'elenco parte dal contratto che scade prima, e ogni riga è chiara?
+Passo 2: con Alt+S e Alt+D cambia stipendio e durata, poi leggi l'esito previsto con Alt+I.
+Domanda 2: l'esito previsto dice la probabilità, la richiesta e da quando partirebbe il contratto nuovo, e quando ti fermi senti il tic della probabilità?
+Passo 3: premi Alt+P su un tesserato che non è ancora negli ultimi tre mesi di contratto.
+Domanda 3: l'avviso dice da quando si potrà rinnovare, con il suo suono?
+Passo 4: chiudi con Esc.
+Domanda 4: il riepilogo e la barra sono chiari?
+Esito:
+PROVA 4, ingaggio, svincolo e ricerca.
+Passo 1: con Ctrl+K apri il mercato e avvia l'ingaggio di un libero, senza confermarlo.
+Domanda 1: prima della richiesta d'ingaggio si legge la proposta di contratto, con la durata e lo stipendio fisso?
+Passo 2: con Ctrl+Maiusc+S avvia lo svincolo di un tesserato e rispondi No.
+Domanda 2: la conferma dice quanti mesi restano e la buonuscita?
+Passo 3: con Ctrl+F cerca i giocatori con il criterio Classe, migliore di G0.
+Domanda 3: il criterio si imposta bene, e i risultati sono quelli giusti?
+Passo 4: esci con Alt+F4.
+Domanda 4: tutto si è chiuso senza intoppi?
+Esito:
+PROVA 5, i 22 suoni nuovi.
+Prima: questa prova si fa quando vuoi, con le cuffie o con le casse.
+Passo 1: nella copia lancia python ascolta_suoni.py allenamento, poi python ascolta_suoni.py rinnovi.
+Domanda 1: i suoni della sala, dei contratti e delle notizie si distinguono fra loro e da quelli che conosci già?
+Domanda 2: c'è un suono che non ti piace o che stanca?
+Esito:
 Collaudo della partita dal vivo di MESS con NVDA, versione 1.50.0.
-Prima: nella cartella E:\git\tmp\mess-collaudo-economia lancia python Showdown.py. È una copia del programma, aggiornata, con il tuo mondo, e il tuo mondo vero non si tocca.
+Prima: usa la stessa copia del collaudo della tappa 11, E:\git\tmp\mess-collaudo-t11: la partita dal vivo è la stessa della 1.50.0.
 Prima: Pat-Bologna ha tre tesserati, e ognuno gioca un'amichevole al giorno: bastano per le tre amichevoli del collaudo.
 Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
 PROVA 1, le impostazioni.

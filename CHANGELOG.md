@@ -3,6 +3,58 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.60.10] - 2026-10-11
+
+### La sala allenamento
+
+Dal menu Polisportive, Sala allenamento, Ctrl+Maiusc+L, alleni i tuoi tesserati. L'elenco degli allenandi, Alt+L, sta in ordine di nome e dice per ognuno la classe, i punti allenamento da spendere, il programma e l'intensità. Alt+C apre le 24 caratteristiche, ciascuna con l'aggettivo della scala di Hattrick, il numero e il costo del prossimo punto. Puoi spendere a mano: scegli quanti punti in Alt+P, leggi l'anteprima in Alt+N, che si raggiunge anche con Tab, e conferma con Spendi, Alt+S. Oppure Esegui allenamento completo, Alt+E, spende tutti i punti dell'allenando secondo il suo programma, e Allena tutti, Alt+T, fa lo stesso per tutti. Il programma, Alt+G, si sceglie fra le nove indoli, e chi arriva nuovo parte dalla sua; l'intensità, Alt+I, è leggera, normale o intensa. Alla chiusura la vista principale riepiloga le spese e i cambi.
+
+Ogni punto allenamento compra più o meno lo stesso valore qualunque caratteristica tu alleni: la precisione sale piano, le sponde in fretta, e il prezzo sale punto per punto, sempre più vicino al massimo. I ragazzi imparano un po' più in fretta e gli anziani un po' più piano, con la curva di Hattrick, e gli ipovedenti hanno uno sconto del 7 per cento sulle caratteristiche di gioco. Cresce soltanto ciò su cui spendi. I livelli molto alti calano un poco se non si continuano ad allenare, e dai 50 anni resta il declino. Le caratteristiche possono arrivare fino al massimo, a un prezzo altissimo.
+
+### Da dove vengono i punti
+
+Ogni giorno simulato un tesserato riceve un punto di seduta, 0,6 all'intensità leggera e 1,4 all'intensa, e un libero mezzo punto. Un'amichevole dà da 2 a 4,5 punti secondo i set vinti e il risultato, quasi gli stessi al meglio dei 3 e dei 5, e il più debole ne riceve sempre uno in più, anche quando perde. Liberi e giocatori del computer spendono da soli, secondo la loro indole.
+
+### L'intensità e la costanza
+
+L'intensità cambia i punti della seduta e il rischio d'infortunio in partita, e soltanto all'intensa c'è un piccolo rischio d'infortunio in allenamento, che cresce dopo i 30 anni. In partita la stanchezza dipende dalla costanza recente, cioè da quanto il giocatore si è allenato o ha giocato nelle ultime settimane: l'intensa fa reggere meglio la fatica, la leggera un po' meno.
+
+### I contratti
+
+Ogni tesserato ha un contratto. All'ingaggio il giocatore propone la durata, da 4 a 24 mesi del calendario simulato: brevi i giovani, che migliorano e vogliono ritrattare presto, lunghi gli anziani; gli ambiziosi li accorciano, i modesti li allungano. Un mese simulato dura circa 10 giorni veri. Lo stipendio si fissa alla firma e resta quello fino alla scadenza: chi migliora allenandosi non costa di più finché il contratto dura, e il conto arriva al rinnovo.
+
+Dal menu Polisportive, Contratti e rinnovi, Ctrl+Maiusc+K, proponi i rinnovi negli ultimi tre mesi del contratto: lo stipendio in Alt+S e la durata in Alt+D, con l'esito previsto in Alt+I e un tic che fa sentire la probabilità. Il giocatore accetta secondo l'offerta, la sua fedeltà e la gloria della polisportiva. Una proposta al giorno, tre in tutto: al terzo rifiuto non tratta più, e a scadenza torna libero senza che nessuno incassi niente. Il contratto rinnovato parte alla scadenza del vecchio. La barra di stato avvisa quando un contratto entra negli ultimi tre mesi, all'ultimo mese e alla scadenza.
+
+Svincolare a contratto in corso costa una buonuscita, metà degli stipendi che restano, compreso un rinnovo già concordato. Il valore di mercato scende negli ultimi tre mesi, fino al 40 per cento alla scadenza. Anche il computer rinnova i suoi tesserati, oppure li mette in vendita e li lascia scadere. Gli stipendi non pagati liberano il giocatore anche a contratto in corso. La vecchia regola per cui un tesserato appena allenato poteva andarsene non c'è più.
+
+### La classe
+
+Ogni giocatore ha una classe, da K0, la più bassa, ad A1, la più alta: è il numero del livello scritto con una lettera al posto delle decine, così la A va da A1 ad A9, ogni lettera dalla B alla J ha dieci passi, e la K ha soltanto K0. Pesa per il 70 per cento le caratteristiche e per il 30 l'esperienza, e una carriera perfetta, dai 9 ai 50 anni, arriva ad A1. I nati stanno fra la I e la F, i bravi a metà carriera fra la E e la D. La scheda la mostra con la percentuale verso la classe seguente, e la ricerca ha il criterio Classe, con migliore di e peggiore di.
+
+### L'esperienza
+
+L'esperienza cresce da più fonti, dalla più piccola alla più grande: un poco con l'età, anche da liberi; le amichevoli; lo stare in una polisportiva, con un piccolo aiuto dall'esperienza del gruppo; e, con la tappa 12, i tornei.
+
+### Indoli e tratti
+
+Ogni giocatore nasce con un'indole, aggressiva, difensiva, atletica, da muro, di rimessa, di controllo, da battuta, tecnica o completa, che guida la sua spesa e si legge nella scheda. Nascono tre tratti rari: il talento, che impara più in fretta; l'apprendista rapido, che impara molto in fretta e dimentica un po'; la maturazione precoce o tardiva, che sposta gli anni migliori e l'inizio del declino. E ognuno ha la sua ambizione, da modesto ad ambiziosissimo.
+
+### L'economia
+
+Lo sponsor dipende per metà dalla gloria e per metà dal valore di mercato dei tesserati: chi allena guadagna di più finché i contratti durano. Tutta l'economia è ritarata con l'allenamento acceso, e il computer resta in grado di pagare.
+
+### Il motore di partita
+
+Chi ripete sempre lo stesso colpo diventa prevedibile: dopo i primi attacchi, quando un tipo di colpo, contando insieme i due lati, supera un terzo degli attacchi dell'incontro, il difensore ci si abitua e lo para meglio, un poco di più se è esperto. Anche la battuta allenata molto in alto rende sempre meno vicino al massimo: chi spingeva una battuta sola fino al tetto vinceva nove incontri su dieci contro la sua fascia, ora circa tre su quattro, e il gioco dei giocatori normali non cambia. La resistenza allenata conta una volta sola.
+
+### Il salvataggio
+
+Il mondo si salva nel formato 6. Al primo avvio quello vecchio si aggiorna da solo: ogni tesserato riceve un contratto con lo stipendio che ha, e il valore mostrato cambia per tutti con la taratura nuova, mentre caratteristiche e stipendi restano quelli.
+
+### Correzioni
+
+Il computer non tessera più i liberi infortunati finché non guariscono; tu invece li puoi tesserare subito. Lo svincolo nell'interfaccia testuale dice Le o Gli secondo il giocatore. Il valore dei ritirati non si ricalcola più ogni giorno, e il giorno simulato costa meno.
+
 ## [1.50.0] - 2026-10-08
 
 ### La partita dal vivo
