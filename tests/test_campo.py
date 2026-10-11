@@ -2,7 +2,8 @@
 Test del giocatore in campo: stanchezza di ciascuno, che cala con l'allenamento, mano e rovescio,
 paura degli errori, scelta del colpo e lettura dell'avversario, la precisione che pesa la metà e
 la sorpresa del mancino in difesa, decisione D26. Qui sta anche la regressione del problema P1: chi
-batte gioca con la sua stanchezza, non con quella dell'avversario.
+batte gioca con la sua stanchezza, non con quella dell'avversario. Dalla tappa 11 il freno alle
+battute alte, decisione 11 di Gabriele.
 """
 
 import dataclasses
@@ -16,6 +17,7 @@ from aiuti_motore import TARATURA_NEUTRA, giocatore
 from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA
 from motore.campo import InCampo, costanza_relativa, efficienza, ritmo_della_fatica
 from motore.dado import Dado
+from motore.incontro import ESSENZIALE, SINGOLARE_3, simula_incontro
 from motore.scambio import gioca_punto
 from motore.taratura import TARATURA
 
@@ -66,6 +68,65 @@ def test_chi_batte_gioca_con_la_sua_stanchezza():
                 pressioni[battitore.parte].append(battuta.valore)
     assert pressioni["A"] and pressioni["B"]
     assert max(pressioni["B"]) < min(pressioni["A"])
+
+
+def test_il_freno_alle_battute_alte():
+    # Decisione 11 di Gabriele: sotto SOGLIA_BATTUTA_ALTA la qualità che dà la pressione della
+    # battuta è identica a QB, così il gioco dei giocatori normali non cambia; sopra cresce
+    # sempre, ma ogni punto aggiunge meno del precedente, e in tutto non più dell'ampiezza.
+    soglia, ampiezza = TARATURA.SOGLIA_BATTUTA_ALTA, TARATURA.AMPIEZZA_BATTUTA_ALTA
+    livelli = range(4, 41, 2)
+    campi = [_campo(giocatore(1, battutasx_base=float(punti), battutadx_base=float(punti))) for punti in livelli]
+    for punti, c in zip(livelli, campi, strict=True):
+        for indice in range(len(COLPI_DI_BATTUTA)):
+            if punti / 40.0 <= soglia:
+                assert c.QBP[indice] == c.QB[indice]
+            else:
+                assert c.QBP[indice] < c.QB[indice]
+    sotto = [c.QBP[0] for punti, c in zip(livelli, campi, strict=True) if punti / 40.0 <= soglia]
+    sopra = [c.QBP[0] for punti, c in zip(livelli, campi, strict=True) if punti / 40.0 >= soglia]
+    passi_sotto = [dopo - prima for prima, dopo in itertools.pairwise(sotto)]
+    passi_sopra = [dopo - prima for prima, dopo in itertools.pairwise(sopra)]
+    assert all(math.isclose(passo, passi_sotto[0]) for passo in passi_sotto)
+    assert all(passo > 0.0 for passo in passi_sopra)
+    assert all(dopo < prima for prima, dopo in itertools.pairwise(passi_sopra))
+    assert passi_sopra[0] < passi_sotto[0]
+    assert sopra[-1] - sopra[0] < 100.0 * TARATURA.PESI_BATTUTA[0] * ampiezza
+    # E in campo la pressione della battuta regolare è quella frenata, mentre il fallo sente QB.
+    alto, ricevitore = campi[-1], _campo(giocatore(2), "B")
+    dado = Dado(random.Random(6))
+    regolari = 0
+    for _ in range(30):
+        alto.prepara_punto(ricevitore)
+        ricevitore.prepara_punto(alto)
+        passi = []
+        gioca_punto(alto, ricevitore, dado, TARATURA, passi)
+        battuta = passi[0]
+        if battuta.esito == "regolare":
+            indice = COLPI_DI_BATTUTA.index(battuta.colpo)
+            assert math.isclose(battuta.valore, TARATURA.PRESSIONE_BATTUTA * alto.QBP[indice] * alto.eff)
+            assert battuta.valore < TARATURA.PRESSIONE_BATTUTA * alto.QB[indice] * alto.eff
+            regolari += 1
+    assert regolari
+
+
+def test_sotto_la_soglia_il_freno_non_sposta_un_punto():
+    # Con le battute fino alla soglia gli incontri, col freno e senza, sono identici punto per
+    # punto; con una battuta al tetto il freno li cambia.
+    senza_freno = dataclasses.replace(TARATURA, SOGLIA_BATTUTA_ALTA=1.0)
+    alla_soglia = TARATURA.SOGLIA_BATTUTA_ALTA * 40.0
+    cambiati = 0
+    for seme in range(8):
+        a = giocatore(1, valore=14.0, battutadx_base=alla_soglia, battutasx_base=alla_soglia)
+        b = giocatore(2, valore=16.0)
+        frenato = simula_incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=TARATURA)
+        libero = simula_incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=senza_freno)
+        assert frenato.punti == libero.punti and frenato.set == libero.set
+        campione = giocatore(1, valore=14.0, battutadx_base=40.0)
+        frenato = simula_incontro(campione, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=TARATURA)
+        libero = simula_incontro(campione, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=senza_freno)
+        cambiati += frenato.punti != libero.punti or frenato.set != libero.set
+    assert cambiati
 
 
 def test_rovescio_del_destrimano_e_del_mancino():

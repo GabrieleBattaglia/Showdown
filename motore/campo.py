@@ -24,7 +24,10 @@ capirlo, si immagina un destrimano, ed è questo il primo vantaggio del mancino.
 è la sorpresa in difesa: i suoi colpi arrivano da un'angolazione meno abituale per chi gioca quasi
 sempre contro i destri, e premono un po' di più, finché il difensore non ci si abitua, per quanto
 la sua lettura del gioco gli permette. Dalla tappa 11 il difensore si abitua anche al colpo dello
-scambio che l'avversario ripete troppo, e chi gioca sempre lo stesso colpo preme di meno.
+scambio che l'avversario ripete troppo, e chi gioca sempre lo stesso colpo preme di meno. E,
+decisione 11 di Gabriele, la battuta oltre SOGLIA_BATTUTA_ALTA preme sempre meno di quanto dice il
+suo livello: accanto a QB, che serve alla scelta e alle irregolari, c'è QBP, la qualità frenata da
+battuta_frenata che dà la pressione.
 """
 
 import math
@@ -84,6 +87,23 @@ def valore_relativo(g, nome):
     """Una caratteristica totale divisa per il suo massimo: 10 per precisione, resistenza e forza, 40 per le altre."""
     massimo = 10.0 if nome in _FISICHE else 40.0
     return max(0.0, min(1.0, g._get_valore_totale(nome + "_base") / massimo))
+
+
+def battuta_frenata(livello, taratura):
+    """
+    Il livello di una battuta, in quota del tetto, come lo sente la sua pressione: uguale fino a
+    SOGLIA_BATTUTA_ALTA, poi sempre più piatto, con un'aggiunta che si avvicina ad
+    AMPIEZZA_BATTUTA_ALTA senza superarla. La curva parte dalla soglia con la stessa pendenza di
+    prima, così il freno non ha scalini, e cresce sempre, così allenare la battuta non fa mai perdere.
+    """
+    soglia = taratura.SOGLIA_BATTUTA_ALTA
+    oltre = livello - soglia
+    if oltre <= 0.0:
+        return livello
+    ampiezza = taratura.AMPIEZZA_BATTUTA_ALTA
+    if ampiezza <= 0.0:
+        return soglia
+    return soglia + ampiezza * (1.0 - math.exp(-oltre / ampiezza))
 
 
 def braccio_infortunato(g):
@@ -155,6 +175,7 @@ class InCampo:
         "L",
         "Q",
         "QB",
+        "QBP",
         "azioni",
         "cambia_mano",
         "cambiovelocita",
@@ -232,6 +253,10 @@ class InCampo:
         self.Q = tuple(q)
         pb = t.PESI_BATTUTA
         self.QB = tuple(100.0 * (pb[0] * c[nome] + pb[1] * c["precisione"] + pb[2] * c["forza"] + pb[3] * c["attacco"]) for nome in COLPI_DI_BATTUTA)
+        # La qualità che dà la pressione della battuta, col freno alle battute alte: sotto la soglia
+        # è identica a QB, che resta piena per la scelta della battuta e per le irregolari.
+        self.QBP = tuple(100.0 * (pb[0] * battuta_frenata(c[nome], t) + pb[1] * c["precisione"] + pb[2] * c["forza"] + pb[3] * c["attacco"])
+                         for nome in COLPI_DI_BATTUTA)
         pc, pbl = t.PESI_CHIUSURA, t.PESI_BLOCCO
         d = {
             "sx": 100.0 * (pc[0] * c["chiusurasx"] + pc[1] * c["difesa"] + pc[2] * c["precisione"]),

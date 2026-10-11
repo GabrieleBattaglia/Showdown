@@ -123,6 +123,17 @@ class Taratura:
     # con la decisione D26, perché fra pari forti, che battono bene, erano scese sotto il 4.
     P_BATTUTA_IRREGOLARE: float = 0.044
     PRESSIONE_BATTUTA: float = 0.80
+    # Il freno alle battute alte, decisione 11 di Gabriele, dopo il giro degli estremi della tappa
+    # 11: chi allenava una battuta sola la usava quasi sempre, e ogni punto speso lì rendeva da 1,4
+    # a 2,9 volte la resa di riferimento, fino a vincere al tetto il 91 per cento contro la propria
+    # fascia. Oltre SOGLIA_BATTUTA_ALTA, in quota del tetto della caratteristica, la battuta preme
+    # sempre meno di quanto dice il suo livello, e quello che aggiunge non supera mai
+    # AMPIEZZA_BATTUTA_ALTA, con una curva che si appiattisce come quelle della difesa e delle
+    # chiusure. La soglia è 0,45 perché in nessun mondo sintetico un giocatore la supera, quindi il
+    # gioco dei giocatori normali resta identico; il freno tocca la sola pressione, mentre la
+    # scelta della battuta e le battute irregolari sentono il livello pieno.
+    SOGLIA_BATTUTA_ALTA: float = 0.45
+    AMPIEZZA_BATTUTA_ALTA: float = 0.10
     QUOTA_BATTUTA_LATERALE: float = 0.55
     CAUSE_BATTUTA: tuple = (("battuta_senza_rimbalzo", 34), ("battuta_due_rimbalzi", 26), ("battuta_strisciata", 14), ("battuta_oltre_due_secondi", 7),
                             ("battuta_prima_del_fischio", 7), ("battuta_a_vuoto", 6), ("battuta_doppio_tocco", 6))
