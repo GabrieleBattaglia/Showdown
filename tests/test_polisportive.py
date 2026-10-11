@@ -2,7 +2,8 @@
 Test della tappa 7 sul motore: le polisportive dell'utente, con fondazione, offerte, svincoli e
 chiusura; le regole nuove del computer, decisione D19; ritirati e morti che liberano il posto,
 problema P4; un nome solo per ogni polisportiva, problema P16; la vetrina dei liberi, problema
-P18; la migrazione dei salvataggi al formato 3.
+P18; la migrazione dei salvataggi al formato 3. Dalla tappa 11 i liberi infortunati, che il
+computer aspetta guariti e l'utente può tesserare subito, decisione 21 di Gabriele.
 """
 
 import datetime
@@ -230,6 +231,53 @@ def test_nessuno_scambio_quando_non_tocca(mondo, monkeypatch):
     monkeypatch.setattr(modulo_mondo, "PROB_SCAMBIO_CPU_GIORNALIERA", 0)
     assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
     assert poli.movimenti_oggi == 0
+
+
+# I liberi infortunati, decisione 21 di Gabriele: il computer aspetta che guariscano, l'utente no.
+
+def _infortuna(g):
+    g.infortunato = True
+    g.infortunio_fine_datetime = INIZIO + datetime.timedelta(days=10)
+
+
+def _guarisci(g):
+    g.infortunato = False
+    g.infortunio_fine_datetime = None
+
+
+def test_il_computer_aspetta_che_il_libero_guarisca(mondo, monkeypatch):
+    _solo_i_primi_liberi(mondo, 1)
+    poli = _cpu_con_gloria(mondo)
+    libero = mondo.giocatori[1]
+    _infortuna(libero)
+    monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
+    # Da infortunato non lo prova nemmeno: nessuna mossa usata.
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
+    assert libero.appartenenza == "*" and poli.tesserati == [] and poli.movimenti_oggi == 0
+    _guarisci(libero)
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (1, 0, 0)
+    assert poli.tesserati == [1] and libero.appartenenza == poli.nome
+
+
+def test_a_rosa_piena_il_computer_non_scambia_per_un_infortunato(mondo, monkeypatch):
+    poli = _rosa_piena(mondo, 100, 100)
+    _infortuna(mondo.giocatori[40])
+    monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
+    # Il più forte dei liberi è infortunato: lo scambio prende il secondo.
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (1, 1, 0)
+    assert 39 in poli.tesserati and 40 not in poli.tesserati
+    assert mondo.giocatori[40].appartenenza == "*"
+
+
+def test_l_utente_tessera_subito_il_libero_infortunato(mondo, monkeypatch):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    libero = mondo.giocatori[1]
+    _infortuna(libero)
+    assert mondo.problema_offerta(poli, libero) is None
+    monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
+    assert mondo.offerta(poli, libero)[0]
+    assert libero.appartenenza == "Club di prova" and poli.tesserati == [1]
+    assert libero.infortunato
 
 
 # Il salvataggio.

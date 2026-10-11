@@ -47,6 +47,8 @@ tre mesi, se se lo può permettere, una volta al mese e al massimo tre volte, e 
 vendita e lo lascia scadere; l'utente rinnova a trattativa, una proposta al giorno e al massimo tre,
 e il mondo gli ricorda i contratti che entrano nella finestra e quelli all'ultimo mese. Lo svincolo
 a contratto in corso costa una buonuscita, metà degli stipendi che restano, anche al computer.
+E il computer non tessera i liberi infortunati finché non guariscono, decisione 21 di Gabriele;
+l'utente invece può tesserarli subito.
 """
 
 import datetime
@@ -718,8 +720,13 @@ class Mondo:
         lo prova una volta sola al giorno. A rosa piena ogni tanto prova un libero più forte del
         tesserato che vale meno, che se accetta gli prende il posto. Poi ognuna può comprare uno dei
         giocatori in vendita, se le conviene. Restituisce quanti ne hanno tesserati, svincolati e comprati.
+        Dalla tappa 11, decisione 21 di Gabriele, il computer lascia stare i liberi infortunati finché
+        non guariscono, mentre l'utente può tesserarli subito: quando il mondo sarà affollato, chi
+        cerca un libero ne trova ancora qualcuno. Il filtro sta qui, sull'elenco da cui pescano sia
+        le mosse a rosa incompleta sia lo scambio a rosa piena; gli acquisti dalle altre polisportive
+        non c'entrano, perché non prendono liberi.
         """
-        liberi = list(self.trova_giocatori_liberi_ordinati().values())
+        liberi = [g for g in self.trova_giocatori_liberi_ordinati().values() if not g.infortunato]
         stipendi = [stipendio(g) for g in liberi]
         vetrina = _Vetrina(stipendi)
         tesserati = svincolati = comprati = 0
