@@ -5,8 +5,10 @@ import random
 
 import pytest
 
+import classe
 import mercato
 import ricerca
+from costanti import INDOLI
 from modelli import Polisportiva
 from mondo import Mondo
 
@@ -65,7 +67,7 @@ def test_ambiti(mondo):
 def test_caratteristiche_di_gioco(mondo):
     trovati = ricerca.cerca(mondo, "attivi", "bomba_base", "maggiore", 5)
     assert all(mondo.giocatori[g]._get_valore_totale("bomba_base") > 5 for g in trovati)
-    assert len(ricerca.CRITERI) == 35
+    assert len(ricerca.CRITERI) == 45
     with pytest.raises(ValueError):
         ricerca.cerca(mondo, "tutti", "valore", "contiene", 3)
 
@@ -99,3 +101,41 @@ def test_i_candidati_del_mercato(mondo):
     valori = [c.giocatore.indice_collettivo_valore for c in mercato.candidati(mondo, poli)]
     assert valori == sorted(valori, reverse=True)
     assert all(c.costo <= 500 for c in mercato.candidati(mondo, poli, (), "liberi", 500))
+
+
+
+def test_la_classe_si_scrive_come_nella_scheda():
+    assert ricerca.leggi_classe("G4") == ricerca.leggi_classe(" g4 ") == ricerca.leggi_classe("64") == 64
+    assert ricerca.leggi_classe("A1") == 1 and ricerca.leggi_classe("K0") == 100 and ricerca.leggi_classe("B0") == 10
+    for sbagliata in ("A0", "K1", "0", "101", "Z3", "G", "G44", "", "4,5"):
+        with pytest.raises(ValueError):
+            ricerca.leggi_classe(sbagliata)
+    assert ricerca.codice_classe(64) == "G4" and ricerca.nome_criterio("classe") == "Classe"
+    assert ricerca.nome_condizione("classe", "migliore") == "migliore di" and ricerca.nome_condizione("classe", "peggiore") == "peggiore di"
+
+
+def test_i_criteri_della_tappa_11(mondo):
+    mondo.datetime_corrente_simulazione = ORA
+    mia = mondo.fonda_polisportiva("Club della ricerca")
+    mondo._entra(mia, mondo.giocatori[1])
+    g = mondo.giocatori[1]
+    g.punti_allenamento = 42.0
+    assert ricerca.cerca(mondo, "tutti", "punti_allenamento", "maggiore", 41) == [1]
+    con_contratto = ricerca.cerca(mondo, "tutti", "mesi_contratto", "maggiore", 3)
+    assert con_contratto == [1]
+    assert ricerca.cerca(mondo, "tutti", "mesi_contratto", "minore", 0.5) == [gid for gid in mondo.giocatori if gid != 1]
+    # La classe si cerca migliore o peggiore di un codice: la scala scende, migliore vuol dire un livello più piccolo.
+    livelli = {gid: classe.classe(x).livello for gid, x in mondo.giocatori.items()}
+    soglia = sorted(livelli.values())[len(livelli) // 2]
+    migliori = ricerca.cerca(mondo, "tutti", "classe", "migliore", soglia)
+    assert migliori == sorted(gid for gid, n in livelli.items() if n < soglia) and migliori
+    assert ricerca.cerca(mondo, "tutti", "classe", "migliore", classe.codice(soglia)) == migliori
+    assert ricerca.cerca(mondo, "tutti", "classe", "peggiore", soglia) == sorted(gid for gid, n in livelli.items() if n > soglia)
+    assert 1 in ricerca.cerca(mondo, "tutti", "indole", "contiene", INDOLI[g.indole]["nome"].upper())
+    talenti = ricerca.cerca(mondo, "tutti", "talento", "si")
+    assert talenti == [gid for gid, x in mondo.giocatori.items() if x.talento]
+    precoci = ricerca.cerca(mondo, "tutti", "precoce", "si")
+    assert precoci == [gid for gid, x in mondo.giocatori.items() if x.maturazione == "precoce"]
+    ambiziosi = ricerca.cerca(mondo, "tutti", "ambizione", "maggiore", 60)
+    assert ambiziosi == [gid for gid, x in mondo.giocatori.items() if x.ambizione > 60]
+    assert ricerca.cerca(mondo, "tutti", "esperienza", "maggiore", -1) == sorted(mondo.giocatori)

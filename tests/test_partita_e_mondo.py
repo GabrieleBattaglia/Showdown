@@ -7,12 +7,27 @@ simulato, nella facciata e nell'interfaccia testuale.
 
 import datetime
 import random
+import re
 
 import pytest
 
 import cli
+import infortuni as modulo_infortuni
+import mondo as modulo_mondo
 import testi
-from costanti import CARTELLA_CRONACHE, MODALITA_OUTPUT_CONSOLE, MODALITA_OUTPUT_FILE
+import valore
+from costanti import (
+    ANNO_SIMULAZIONE_GIORNI,
+    CARTELLA_CRONACHE,
+    COSTANZA_PER_PARTITA,
+    DECADIMENTO_COSTANZA,
+    ESPERIENZA_PER_AMICHEVOLE,
+    ESPERIENZA_PER_ANNO_DI_VITA,
+    ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA,
+    MODALITA_OUTPUT_CONSOLE,
+    MODALITA_OUTPUT_FILE,
+    SOGLIA_SPESA_AUTONOMI,
+)
 from mondo import Mondo
 from motore import Squadra
 from partita import MotorePartita
@@ -54,7 +69,7 @@ def test_partita_silenziosa_e_coerente(mondo, capsys):
         assert max(a, b) >= 11
     vincitore = mondo.giocatori[risultato["vincitore_id"]]
     assert vincitore.partitevinte == 1
-    assert vincitore.puntiesperienza > 0
+    assert vincitore.punti_allenamento > 0
 
 
 def test_partita_con_mostra_e_cronaca_su_file(mondo, cartella_di_prova):
@@ -245,3 +260,173 @@ def test_l_interfaccia_testuale_rifiuta_chi_ha_gia_giocato(mondo, monkeypatch, c
     assert "oggi" in capsys.readouterr().out
     monkeypatch.setattr(cli, "dgt", lambda *a, **k: 8)
     assert interfaccia._giocatore_per_partita("ID Giocatore 1? ") == 8
+
+
+
+# Tappa 11, decisione D31: i punti di un incontro, il premio al più debole, l'esperienza e la
+# costanza della registrazione, e l'allenamento quotidiano del mondo.
+
+def test_i_punti_a_tre_e_a_cinque_set():
+    assert MotorePartita.punti_della_partita(2, 0) == (4.0, 2.0)
+    assert MotorePartita.punti_della_partita(2, 1) == (4.0, 2.5)
+    assert MotorePartita.punti_della_partita(3, 0) == (4.5, 2.0)
+    assert MotorePartita.punti_della_partita(3, 2) == (4.5, 3.0)
+    # Fra due giocatori alla pari: al meglio dei 3 la metà degli incontri finisce 2 a 1, al meglio
+    # dei 5 tre ottavi 3 a 1 e tre ottavi 3 a 2. Al meglio dei 5 al massimo il 15 per cento in più.
+    tre = (sum(MotorePartita.punti_della_partita(2, 0)) + sum(MotorePartita.punti_della_partita(2, 1))) / 4
+    cinque = (2 * sum(MotorePartita.punti_della_partita(3, 0)) + 3 * sum(MotorePartita.punti_della_partita(3, 1)) + 3 * sum(MotorePartita.punti_della_partita(3, 2))) / 16
+    assert 1.0 < cinque / tre <= 1.15
+
+
+def _alla_pari(mondo, *ids):
+    for gid in ids:
+        g = mondo.giocatori[gid]
+        g.infortunato = False
+        g.infortunio_sede = None
+
+
+def test_il_premio_al_piu_debole_anche_quando_perde(mondo):
+    _alla_pari(mondo, 1, 2)
+    forte, debole = mondo.giocatori[1], mondo.giocatori[2]
+    for nome in ("difesa_allenata", "chiusurasx_allenata", "chiusuradx_allenata"):
+        setattr(forte, nome, 15.0)
+    forte.aggiorna_icv()
+    assert valore.somma_pesata(forte) - valore.somma_pesata(debole) >= 25.0
+    assert MotorePartita.piu_debole(forte, debole) is debole
+    assert MotorePartita.piu_debole(debole, debole) is None
+    motore = MotorePartita(mondo)
+    risultato = motore.gioca_partita(1, 2, 3, seme=5)
+    vinti = max(sum(1 for a, b in risultato["punteggio_set"] if a > b), sum(1 for a, b in risultato["punteggio_set"] if b > a))
+    persi = len(risultato["punteggio_set"]) - vinti
+    pa_vinc, pa_perd = MotorePartita.punti_della_partita(vinti, persi)
+    if risultato["vincitore_id"] == 1:
+        assert (forte.punti_allenamento, debole.punti_allenamento) == (pa_vinc, pa_perd + 1.0)
+    else:
+        assert (debole.punti_allenamento, forte.punti_allenamento) == (pa_vinc + 1.0, pa_perd)
+
+
+def test_l_amichevole_porta_esperienza_e_costanza(mondo):
+    _alla_pari(mondo, 3, 4)
+    g = mondo.giocatori[3]
+    g.costanza = 0.5
+    MotorePartita(mondo).gioca_partita(3, 4, 3)
+    assert g.esperienza == pytest.approx(ESPERIENZA_PER_AMICHEVOLE)
+    assert g.costanza == pytest.approx(0.5 + (1 - DECADIMENTO_COSTANZA) * COSTANZA_PER_PARTITA)
+    assert g.ultima_amichevole == mondo.datetime_corrente_simulazione
+
+
+def test_gli_agganci_di_torneo_e_sfida(mondo):
+    _alla_pari(mondo, 5, 6, 7, 8)
+    motore = MotorePartita(mondo)
+    torneo = motore.gioca_partita(5, 6, 3, info_torneo={"nome": "prova"}, seme=3)["risultato"]
+    g5 = mondo.giocatori[5]
+    assert g5.ultima_amichevole is None and g5.esperienza == pytest.approx(0.01)
+    assert g5.punti_allenamento >= 2.0 + 3.0
+    assert mondo.giocatori[5].diario[0]["testo"].startswith(("Vince la partita del torneo", "Perde la partita del torneo"))
+    del torneo
+    incontro = motore.gioca_partita(7, 8, 3, seme=4, registra=False)["risultato"]
+    frasi = motore.registra(incontro, sfida=True)
+    assert frasi[0].startswith("Punti allenamento: ")
+    g7 = mondo.giocatori[7]
+    assert g7.ultima_amichevole is None and g7.esperienza == pytest.approx(0.006)
+    assert g7.punti_allenamento >= 2.0 + 2.0 and g7.diario[0]["testo"].startswith(("Vince la sfida", "Perde la sfida"))
+
+
+def test_la_frase_dei_punti_con_la_virgola(mondo):
+    from partita import _punti
+    assert (_punti(4.0), _punti(2.5), _punti(5.0)) == ("4", "2,5", "5")
+    _alla_pari(mondo, 9, 10)
+    incontro = MotorePartita(mondo).gioca_partita(9, 10, 3, registra=False)["risultato"]
+    frase = MotorePartita(mondo).registra(incontro)[0]
+    assert re.fullmatch(r"Punti allenamento: \d+(,5)? a .+, \d+(,5)? a .+\.", frase)
+
+
+def _giorno(mondo):
+    """Il mondo va avanti di un giorno simulato, con il suo rapporto."""
+    data = mondo.datetime_corrente_simulazione + datetime.timedelta(days=1)
+    mondo.datetime_corrente_simulazione = data
+    rapporto = Mondo.rapporto_vuoto(data)
+    mondo._allenamento_del_giorno(data, rapporto)
+    return rapporto
+
+
+def test_la_seduta_secondo_l_intensita_e_la_meta_ai_liberi(mondo, monkeypatch):
+    mia = mondo.fonda_polisportiva("Club della seduta")
+    cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
+    for gid in (1, 2, 3):
+        mondo._tessera(mia, mondo.giocatori[gid])
+    mondo._tessera(cpu, mondo.giocatori[4])
+    for gid in range(1, 6):
+        g = mondo.giocatori[gid]
+        g.infortunato = False
+        g.infortunio_sede = None
+        g.punti_allenamento = g.costanza = g.esperienza = 0.0
+    mondo.giocatori[1].intensita = "leggera"
+    mondo.giocatori[3].intensita = "intensa"
+    fermo = mondo.giocatori[6]
+    fermo.infortunato, fermo.infortunio_sede, fermo.punti_allenamento, fermo.costanza = True, "ginocchio", 0.0, 1.0
+    fermo.infortunio_fine_datetime = INIZIO + datetime.timedelta(days=99)
+    _giorno(mondo)
+    resto = 1 - DECADIMENTO_COSTANZA
+    assert [mondo.giocatori[gid].punti_allenamento for gid in range(1, 6)] == pytest.approx([0.6, 1.0, 1.4, 1.0, 0.5])
+    assert [mondo.giocatori[gid].costanza for gid in range(1, 6)] == pytest.approx([0.6 * resto, resto, 1.3 * resto, resto, 0.5 * resto])
+    assert fermo.punti_allenamento == 0.0 and fermo.costanza == pytest.approx(DECADIMENTO_COSTANZA)
+    libero = mondo.giocatori[5]
+    assert libero.esperienza == pytest.approx(ESPERIENZA_PER_ANNO_DI_VITA / 108)
+    assert mondo.giocatori[2].esperienza == pytest.approx(ESPERIENZA_PER_ANNO_DI_VITA / 108 + ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA)
+    # A regime la costanza della seduta vale la costanza della sua intensità, anche 1,3 per l'intensa,
+    # risposta 7 di Gabriele. Senza infortuni in seduta, che hanno le loro prove in test_infortuni:
+    # qui _giorno non fa guarire nessuno, e l'intenso infortunato smetterebbe di allenarsi.
+    monkeypatch.setattr(modulo_infortuni, "infortunio_in_seduta", lambda *_a, **_k: None)
+    for _ in range(300):
+        _giorno(mondo)
+    assert not any(mondo.giocatori[gid].infortunato for gid in (1, 2, 3, 5))
+    assert [round(mondo.giocatori[gid].costanza, 3) for gid in (1, 2, 3, 5)] == [0.6, 1.0, 1.3, 0.5]
+
+
+def test_liberi_e_computer_spendono_da_soli_i_tuoi_no(mondo):
+    mia = mondo.fonda_polisportiva("Club della spesa")
+    cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
+    mondo._tessera(mia, mondo.giocatori[1])
+    mondo._tessera(cpu, mondo.giocatori[2])
+    for gid in (1, 2, 3):
+        g = mondo.giocatori[gid]
+        g.infortunato = False
+        g.infortunio_sede = None
+        g.punti_allenamento = SOGLIA_SPESA_AUTONOMI + 5.0
+    prima = {gid: mondo.giocatori[gid].indice_collettivo_valore for gid in (1, 2, 3)}
+    rapporto = _giorno(mondo)
+    assert rapporto["autoallenati"] == 2
+    assert mondo.giocatori[1].punti_allenamento > SOGLIA_SPESA_AUTONOMI
+    assert mondo.giocatori[2].punti_allenamento == 0.0 and mondo.giocatori[3].punti_allenamento == 0.0
+    assert mondo.giocatori[2].indice_collettivo_valore > prima[2] and mondo.giocatori[3].indice_collettivo_valore > prima[3]
+    assert not any("spesa" in voce for voce in mondo.giocatori[3].diario)
+
+
+def test_il_primo_del_mese_calano_i_livelli_alti(mondo):
+    g = mondo.giocatori[1]
+    g.difesa_allenata = 40.0 - g.difesa_base - 0.5
+    g.attacco_allenata = 1.0
+    mondo.datetime_corrente_simulazione = datetime.datetime(2026, 2, 28, 12, 0)
+    mondo._mantenimento_del_mese(datetime.datetime(2026, 3, 1, 12, 0))
+    assert g.difesa_allenata < 40.0 - g.difesa_base - 0.5
+    assert g.attacco_allenata == 1.0 or g.apprendista_rapido
+
+
+def test_il_valore_dei_ritirati_si_ricalcola_il_primo_del_mese(mondo, monkeypatch):
+    """
+    I ritirati vivi, a regime quasi seimila, non si ricalcolano ogni giorno: il loro valore serve
+    alla scheda, alla ricerca e alle vecchie glorie, e si ricalcola il primo del mese, al ritiro e
+    all'uscita di scena. Chi è nel declino e gioca ancora si ricalcola ogni giorno.
+    """
+    monkeypatch.setattr(modulo_mondo, "PROB_USCITA_PREMATURA_GIORNALIERA", 0)
+    ritirato, attivo = mondo.giocatori[5], mondo.giocatori[6]
+    for g, ritirato_o_no in ((ritirato, True), (attivo, False)):
+        g.ritirato, g.appartenenza = ritirato_o_no, "*"
+        g.eta, g.etamorte, g.etaritiro = int(70 * ANNO_SIMULAZIONE_GIORNI), int(100 * ANNO_SIMULAZIONE_GIORNI), int(90 * ANNO_SIMULAZIONE_GIORNI)
+        g.indice_collettivo_valore = -1.0
+    mondo._un_giorno(datetime.datetime(2026, 1, 15, 12, 0), Mondo.rapporto_vuoto(INIZIO))
+    assert ritirato.indice_collettivo_valore == -1.0
+    assert attivo.indice_collettivo_valore == pytest.approx(valore.indice(attivo))
+    mondo._un_giorno(datetime.datetime(2026, 2, 1, 12, 0), Mondo.rapporto_vuoto(INIZIO))
+    assert ritirato.indice_collettivo_valore == pytest.approx(valore.indice(ritirato))

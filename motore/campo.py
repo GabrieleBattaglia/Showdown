@@ -10,8 +10,10 @@ resistenza soltanto la stanchezza.
 La stanchezza è di ciascuno, cresce con le azioni giocate, più in fretta per chi è anziano o poco
 resistente, più piano per chi si allena, e nelle pause non passa: il vecchio difetto del problema
 P1, la resistenza del primo giocatore passata a chi batte, sparisce per costruzione. Quanto il
-giocatore si allena, per ora, lo dice la parte allenata della resistenza, decisione D26: la
-costanza dell'allenamento arriverà con la tappa 11, e prenderà il suo posto in allenamento().
+giocatore si allena lo dice, dalla tappa 11, la costanza recente della decisione D31, cioè quanto
+si è allenato o ha giocato nelle ultime settimane, fotografata all'inizio dell'incontro come tutto
+il resto; fino alla tappa 10 la diceva la parte allenata della resistenza, che ora conta una volta
+sola, nella resistenza totale.
 Il destrimano ha il rovescio a sinistra, il mancino a destra; l'ambidestro sano non ha rovescio e
 cambia mano quando la pallina arriva dal lato opposto alla mano che impugna, mentre con un braccio
 infortunato gioca con l'altro e ha il rovescio dal lato del braccio fermo.
@@ -21,13 +23,17 @@ l'avversario è alla portata di chi ha esperienza, e si costruisce durante l'inc
 capirlo, si immagina un destrimano, ed è questo il primo vantaggio del mancino. Il secondo, D26,
 è la sorpresa in difesa: i suoi colpi arrivano da un'angolazione meno abituale per chi gioca quasi
 sempre contro i destri, e premono un po' di più, finché il difensore non ci si abitua, per quanto
-la sua lettura del gioco gli permette.
+la sua lettura del gioco gli permette. Dalla tappa 11 il difensore si abitua anche al colpo dello
+scambio che l'avversario ripete troppo, e chi gioca sempre lo stesso colpo preme di meno. E,
+decisione 11 di Gabriele, la battuta oltre SOGLIA_BATTUTA_ALTA preme sempre meno di quanto dice il
+suo livello: accanto a QB, che serve alla scelta e alle irregolari, c'è QBP, la qualità frenata da
+battuta_frenata che dà la pressione.
 """
 
 import math
 from collections import Counter
 
-from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA, MAX_ALLENATO_FISICO, SEDI_INFORTUNIO
+from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA, COSTANZA_PIENA, SEDI_INFORTUNIO
 
 ZONE = ("sx", "centro", "dx")
 _BRACCIO_DELLA_SEDE = {codice: braccio for codice, _frase, braccio, _peso, _durata in SEDI_INFORTUNIO}
@@ -83,6 +89,23 @@ def valore_relativo(g, nome):
     return max(0.0, min(1.0, g._get_valore_totale(nome + "_base") / massimo))
 
 
+def battuta_frenata(livello, taratura):
+    """
+    Il livello di una battuta, in quota del tetto, come lo sente la sua pressione: uguale fino a
+    SOGLIA_BATTUTA_ALTA, poi sempre più piatto, con un'aggiunta che si avvicina ad
+    AMPIEZZA_BATTUTA_ALTA senza superarla. La curva parte dalla soglia con la stessa pendenza di
+    prima, così il freno non ha scalini, e cresce sempre, così allenare la battuta non fa mai perdere.
+    """
+    soglia = taratura.SOGLIA_BATTUTA_ALTA
+    oltre = livello - soglia
+    if oltre <= 0.0:
+        return livello
+    ampiezza = taratura.AMPIEZZA_BATTUTA_ALTA
+    if ampiezza <= 0.0:
+        return soglia
+    return soglia + ampiezza * (1.0 - math.exp(-oltre / ampiezza))
+
+
 def braccio_infortunato(g):
     """Il braccio fermo per infortunio, dx o sx, oppure None."""
     if not getattr(g, "infortunato", False):
@@ -96,26 +119,26 @@ def lettura_possibile(g, taratura):
     return esperienza / (esperienza + taratura.K_LETTURA)
 
 
-def allenamento(g):
+def costanza_relativa(g):
     """
-    Quanto il giocatore si allena, da 0 a 1, per la stanchezza: per ora la parte allenata della
-    resistenza sul suo tetto, decisione D26; con la tappa 11 verrà la costanza dell'allenamento.
+    Quanto il giocatore si allena, da 0 a 1, per la stanchezza: la costanza recente divisa per la
+    costanza piena, che è quella dell'intensa con un'amichevole al giorno, decisione D31.
     """
-    allenata = float(getattr(g, "resistenza_allenata", 0.0) or 0.0)
-    return max(0.0, min(1.0, allenata / MAX_ALLENATO_FISICO))
+    costanza = float(getattr(g, "costanza", 0.0) or 0.0)
+    return max(0.0, min(1.0, costanza / COSTANZA_PIENA))
 
 
 def ritmo_della_fatica(g, taratura):
     """
     Quanto in fretta il giocatore si stanca, uno per un trentenne con resistenza 5 che non si
     allena, un riferimento di calcolo: nel mondo l'innata arriva al massimo a 3. Cresce con l'età,
-    sopra i 30 anni e sotto i 16, e cala con la resistenza totale e, meno, con l'allenamento.
+    sopra i 30 anni e sotto i 16, e cala con la resistenza totale e, meno, con la costanza recente.
     """
     t = taratura
     anni = g.eta_anni
     fattore_eta = 1.0 + max(0.0, anni - t.ETA_INIZIO_FATICA) / t.ANNI_FATICA + max(0.0, t.ETA_FATICA_GIOVANI - anni) * t.FATICA_GIOVANI_PER_ANNO
     fattore_resistenza = t.RESISTENZA_BASE + t.RESISTENZA_PER_PUNTO * g._get_valore_totale("resistenza_base")
-    fattore_allenamento = 1.0 + t.K_ALLENAMENTO_FATICA * allenamento(g)
+    fattore_allenamento = 1.0 + t.K_ALLENAMENTO_FATICA * costanza_relativa(g)
     return fattore_eta / max(0.05, fattore_resistenza * fattore_allenamento)
 
 
@@ -135,6 +158,12 @@ def temperamento_relativo(g):
     return max(-1.0, min(1.0, (attuale - 50.0) / 50.0))
 
 
+# I colpi dello scambio dello stesso tipo, i due lati insieme: per l'abitudine al colpo ripetuto un
+# lungolinea è un lungolinea, da sinistra o da destra. La bomba è un tipo da sola.
+STESSO_TIPO = {colpo: tuple(altro for altro in COLPI_DELLO_SCAMBIO if altro.removesuffix("sx").removesuffix("dx") == colpo.removesuffix("sx").removesuffix("dx"))
+               for colpo in COLPI_DELLO_SCAMBIO}
+
+
 class InCampo:
     """Un giocatore durante l'incontro: qualità, mano, stanchezza, paura degli errori, lettura e scelte del punto."""
 
@@ -146,6 +175,7 @@ class InCampo:
         "L",
         "Q",
         "QB",
+        "QBP",
         "azioni",
         "cambia_mano",
         "cambiovelocita",
@@ -223,6 +253,10 @@ class InCampo:
         self.Q = tuple(q)
         pb = t.PESI_BATTUTA
         self.QB = tuple(100.0 * (pb[0] * c[nome] + pb[1] * c["precisione"] + pb[2] * c["forza"] + pb[3] * c["attacco"]) for nome in COLPI_DI_BATTUTA)
+        # La qualità che dà la pressione della battuta, col freno alle battute alte: sotto la soglia
+        # è identica a QB, che resta piena per la scelta della battuta e per le irregolari.
+        self.QBP = tuple(100.0 * (pb[0] * battuta_frenata(c[nome], t) + pb[1] * c["precisione"] + pb[2] * c["forza"] + pb[3] * c["attacco"])
+                         for nome in COLPI_DI_BATTUTA)
         pc, pbl = t.PESI_CHIUSURA, t.PESI_BLOCCO
         d = {
             "sx": 100.0 * (pc[0] * c["chiusurasx"] + pc[1] * c["difesa"] + pc[2] * c["precisione"]),
@@ -332,6 +366,26 @@ class InCampo:
             return 1.0
         abitudine = self.L * (1.0 - math.exp(-self.parate_mancino / t.COLPI_PER_CAPIRE))
         return 1.0 + t.SORPRESA_MANCINO * (1.0 - abitudine)
+
+    def abitudine_al_colpo(self, attaccante, colpo):
+        """
+        Quanto il difensore si è abituato al colpo dello scambio che l'attaccante sta giocando, da 0
+        in su: la parte di pressione che il colpo perde. Conta la quota del tipo di quel colpo, i
+        due lati insieme, fra gli attacchi dell'attaccante nell'incontro, ma soltanto dopo
+        ATTACCHI_PER_ABITUDINE attacchi e oltre QUOTA_ABITUDINE: chi varia i colpi ne risente poco,
+        e chi allena lo stesso colpo dai due lati non sfugge all'abitudine. Il difensore capisce di
+        più se ha esperienza, per la sua lettura del gioco, e un poco anche senza.
+        """
+        t = self.tar
+        stats = attaccante.stats
+        if not t.ABITUDINE_COLPO or stats.attacchi < t.ATTACCHI_PER_ABITUDINE:
+            return 0.0
+        colpi = stats.colpi
+        eccesso = sum(colpi[c] for c in STESSO_TIPO[colpo]) / stats.attacchi - t.QUOTA_ABITUDINE
+        if eccesso <= 0.0:
+            return 0.0
+        lettura = t.ABITUDINE_SENZA_LETTURA + (1.0 - t.ABITUDINE_SENZA_LETTURA) * self.L
+        return t.ABITUDINE_COLPO * lettura * eccesso / (1.0 - t.QUOTA_ABITUDINE)
 
     def debolezza_vera(self, avversario):
         """Quanto ogni zona dell'avversario è più debole della sua media, senza la stanchezza."""

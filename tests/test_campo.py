@@ -2,7 +2,8 @@
 Test del giocatore in campo: stanchezza di ciascuno, che cala con l'allenamento, mano e rovescio,
 paura degli errori, scelta del colpo e lettura dell'avversario, la precisione che pesa la metà e
 la sorpresa del mancino in difesa, decisione D26. Qui sta anche la regressione del problema P1: chi
-batte gioca con la sua stanchezza, non con quella dell'avversario.
+batte gioca con la sua stanchezza, non con quella dell'avversario. Dalla tappa 11 il freno alle
+battute alte, decisione 11 di Gabriele.
 """
 
 import dataclasses
@@ -10,11 +11,13 @@ import itertools
 import math
 import random
 
+import pytest
 from aiuti_motore import TARATURA_NEUTRA, giocatore
 
 from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA
-from motore.campo import InCampo, allenamento, efficienza, ritmo_della_fatica
+from motore.campo import InCampo, costanza_relativa, efficienza, ritmo_della_fatica
 from motore.dado import Dado
+from motore.incontro import ESSENZIALE, SINGOLARE_3, simula_incontro
 from motore.scambio import gioca_punto
 from motore.taratura import TARATURA
 
@@ -65,6 +68,65 @@ def test_chi_batte_gioca_con_la_sua_stanchezza():
                 pressioni[battitore.parte].append(battuta.valore)
     assert pressioni["A"] and pressioni["B"]
     assert max(pressioni["B"]) < min(pressioni["A"])
+
+
+def test_il_freno_alle_battute_alte():
+    # Decisione 11 di Gabriele: sotto SOGLIA_BATTUTA_ALTA la qualità che dà la pressione della
+    # battuta è identica a QB, così il gioco dei giocatori normali non cambia; sopra cresce
+    # sempre, ma ogni punto aggiunge meno del precedente, e in tutto non più dell'ampiezza.
+    soglia, ampiezza = TARATURA.SOGLIA_BATTUTA_ALTA, TARATURA.AMPIEZZA_BATTUTA_ALTA
+    livelli = range(4, 41, 2)
+    campi = [_campo(giocatore(1, battutasx_base=float(punti), battutadx_base=float(punti))) for punti in livelli]
+    for punti, c in zip(livelli, campi, strict=True):
+        for indice in range(len(COLPI_DI_BATTUTA)):
+            if punti / 40.0 <= soglia:
+                assert c.QBP[indice] == c.QB[indice]
+            else:
+                assert c.QBP[indice] < c.QB[indice]
+    sotto = [c.QBP[0] for punti, c in zip(livelli, campi, strict=True) if punti / 40.0 <= soglia]
+    sopra = [c.QBP[0] for punti, c in zip(livelli, campi, strict=True) if punti / 40.0 >= soglia]
+    passi_sotto = [dopo - prima for prima, dopo in itertools.pairwise(sotto)]
+    passi_sopra = [dopo - prima for prima, dopo in itertools.pairwise(sopra)]
+    assert all(math.isclose(passo, passi_sotto[0]) for passo in passi_sotto)
+    assert all(passo > 0.0 for passo in passi_sopra)
+    assert all(dopo < prima for prima, dopo in itertools.pairwise(passi_sopra))
+    assert passi_sopra[0] < passi_sotto[0]
+    assert sopra[-1] - sopra[0] < 100.0 * TARATURA.PESI_BATTUTA[0] * ampiezza
+    # E in campo la pressione della battuta regolare è quella frenata, mentre il fallo sente QB.
+    alto, ricevitore = campi[-1], _campo(giocatore(2), "B")
+    dado = Dado(random.Random(6))
+    regolari = 0
+    for _ in range(30):
+        alto.prepara_punto(ricevitore)
+        ricevitore.prepara_punto(alto)
+        passi = []
+        gioca_punto(alto, ricevitore, dado, TARATURA, passi)
+        battuta = passi[0]
+        if battuta.esito == "regolare":
+            indice = COLPI_DI_BATTUTA.index(battuta.colpo)
+            assert math.isclose(battuta.valore, TARATURA.PRESSIONE_BATTUTA * alto.QBP[indice] * alto.eff)
+            assert battuta.valore < TARATURA.PRESSIONE_BATTUTA * alto.QB[indice] * alto.eff
+            regolari += 1
+    assert regolari
+
+
+def test_sotto_la_soglia_il_freno_non_sposta_un_punto():
+    # Con le battute fino alla soglia gli incontri, col freno e senza, sono identici punto per
+    # punto; con una battuta al tetto il freno li cambia.
+    senza_freno = dataclasses.replace(TARATURA, SOGLIA_BATTUTA_ALTA=1.0)
+    alla_soglia = TARATURA.SOGLIA_BATTUTA_ALTA * 40.0
+    cambiati = 0
+    for seme in range(8):
+        a = giocatore(1, valore=14.0, battutadx_base=alla_soglia, battutasx_base=alla_soglia)
+        b = giocatore(2, valore=16.0)
+        frenato = simula_incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=TARATURA)
+        libero = simula_incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=senza_freno)
+        assert frenato.punti == libero.punti and frenato.set == libero.set
+        campione = giocatore(1, valore=14.0, battutadx_base=40.0)
+        frenato = simula_incontro(campione, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=TARATURA)
+        libero = simula_incontro(campione, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=senza_freno)
+        cambiati += frenato.punti != libero.punti or frenato.set != libero.set
+    assert cambiati
 
 
 def test_rovescio_del_destrimano_e_del_mancino():
@@ -183,33 +245,49 @@ def test_la_precisione_pesa_la_meta_in_tutte_le_qualita():
 
 
 def test_chi_si_allena_si_stanca_meno():
-    # D26: la stanchezza dipende dall'età, dalla resistenza e da quanto si allena, che per ora è
-    # la parte allenata della resistenza. A parità di resistenza totale, chi l'ha allenata regge
-    # di più; senza allenamento conta soltanto la resistenza totale.
-    innato = giocatore(1, anni=25, fisico=3.0, resistenza_base=8.0)
-    allenato = giocatore(2, anni=25, fisico=3.0, resistenza_base=4.0, resistenza_allenata=4.0)
-    assert allenamento(innato) == 0.0 and math.isclose(allenamento(allenato), 0.8)
-    assert ritmo_della_fatica(allenato, TARATURA) < ritmo_della_fatica(innato, TARATURA)
+    # D26 e D31: la stanchezza dipende dall'età, dalla resistenza e da quanto si allena, che dalla
+    # tappa 11 è la costanza recente sulla costanza piena. A parità di resistenza totale, chi si
+    # allena con costanza regge di più; la parte allenata della resistenza conta una volta sola.
+    fermo = giocatore(1, anni=25, fisico=3.0, resistenza_base=3.0, resistenza_allenata=5.0)
+    costante = giocatore(2, anni=25, fisico=3.0, resistenza_base=3.0, resistenza_allenata=5.0, costanza=1.6)
+    assert costanza_relativa(fermo) == 0.0 and math.isclose(costanza_relativa(costante), 0.8)
+    assert costanza_relativa(giocatore(4, costanza=3.5)) == 1.0
+    assert ritmo_della_fatica(costante, TARATURA) < ritmo_della_fatica(fermo, TARATURA)
     trentenne = giocatore(3, anni=30, fisico=3.0, resistenza_base=5.0)
     assert math.isclose(ritmo_della_fatica(trentenne, TARATURA), 1.0)
-    assert math.isclose(_campo(allenato).ritmo, ritmo_della_fatica(allenato, TARATURA))
+    assert math.isclose(_campo(costante).ritmo, ritmo_della_fatica(costante, TARATURA))
+    # L'incontro fotografa la costanza quando nasce.
+    in_campo = _campo(costante)
+    costante.costanza = 0.0
+    assert math.isclose(in_campo.ritmo, ritmo_della_fatica(giocatore(2, anni=25, fisico=3.0, resistenza_base=3.0, resistenza_allenata=5.0, costanza=1.6), TARATURA))
+
+
+def test_la_leggera_stanca_di_piu_e_l_intensa_di_meno():
+    # Risposta 7 di Gabriele: a regime la seduta porta la costanza a 0,6 alla leggera, 1 alla
+    # normale e 1,3 all'intensa, e il ritmo della fatica scende con lei, a parità del resto.
+    ritmi = [ritmo_della_fatica(giocatore(5, anni=30, resistenza_base=2.0, costanza=c), TARATURA) for c in (0.6, 1.0, 1.3)]
+    assert ritmi[0] > ritmi[1] > ritmi[2]
+    fermo = ritmo_della_fatica(giocatore(5, anni=30, resistenza_base=2.0), TARATURA)
+    assert fermo / ritmi[0] == pytest.approx(1.09) and fermo / ritmi[1] == pytest.approx(1.15) and fermo / ritmi[2] == pytest.approx(1.195)
 
 
 def test_la_resistenza_della_scheda_resta_il_fattore_principale():
-    # Revisione di D26: la parte allenata conta nella resistenza totale e, meno, come abitudine ad
-    # allenarsi. Fra giocatori che nel mondo possono esistere, con l'innata fino a 3 e l'allenata
-    # fino a 5, chi ha almeno un punto in più di resistenza totale si stanca sempre più piano,
-    # comunque sia divisa: con K_ALLENAMENTO_FATICA a 1 una resistenza 5 tutta allenata reggeva
-    # più di una resistenza 6 tutta innata.
-    passi = [x / 2 for x in range(11)]
-    possibili = [(innata, allenata) for innata in passi if innata <= 3.0 for allenata in passi]
-    ritmi = {}
-    for gid, (innata, allenata) in enumerate(possibili, start=1):
-        g = giocatore(gid, anni=27, resistenza_base=innata, resistenza_allenata=allenata)
-        ritmi[innata, allenata] = ritmo_della_fatica(g, TARATURA)
-    for (i1, a1), (i2, a2) in itertools.permutations(possibili, 2):
-        if i1 + a1 >= i2 + a2 + 1.0:
-            assert ritmi[i1, a1] < ritmi[i2, a2], ((i1, a1), (i2, a2))
+    # Revisione di D26, e tappa 11: la parte allenata conta soltanto nella resistenza totale, e
+    # quanto il giocatore si allena lo dice la costanza. Fra giocatori che nel mondo possono
+    # esistere, con l'innata fino a 3 e il totale fino a 10, a parità di costanza chi ha più
+    # resistenza totale si stanca più piano, e lo stesso totale dà lo stesso ritmo, comunque sia diviso.
+    passi = [x / 2 for x in range(21)]
+    possibili = [(innata, allenata) for innata in passi if innata <= 3.0 for allenata in passi if innata + allenata <= 10.0]
+    for costanza in (0.0, 1.0, 2.0):
+        ritmi = {}
+        for gid, (innata, allenata) in enumerate(possibili, start=1):
+            g = giocatore(gid, anni=27, resistenza_base=innata, resistenza_allenata=allenata, costanza=costanza)
+            ritmi[innata, allenata] = ritmo_della_fatica(g, TARATURA)
+        for (i1, a1), (i2, a2) in itertools.permutations(possibili, 2):
+            if i1 + a1 > i2 + a2:
+                assert ritmi[i1, a1] < ritmi[i2, a2], ((i1, a1), (i2, a2))
+            elif i1 + a1 == i2 + a2:
+                assert math.isclose(ritmi[i1, a1], ritmi[i2, a2])
 
 
 def test_cinque_set_lunghi_secondo_resistenza_eta_e_allenamento():
@@ -217,7 +295,7 @@ def test_cinque_set_lunghi_secondo_resistenza_eta_e_allenamento():
     # con la resistenza più alta che si possa avere, 3 innata e 5 allenata, arriva in fondo quasi
     # fresco, l'anziano poco resistente perde molto, mai sotto il minimo.
     azioni = 385
-    giovane = giocatore(1, anni=24, fisico=3.0, resistenza_base=3.0, resistenza_allenata=5.0)
+    giovane = giocatore(1, anni=24, fisico=3.0, resistenza_base=3.0, resistenza_allenata=5.0, costanza=2.0)
     anziano = giocatore(2, anni=65, fisico=3.0, resistenza_base=1.5)
     eff_giovane = efficienza(azioni, ritmo_della_fatica(giovane, TARATURA), TARATURA)
     eff_anziano = efficienza(azioni, ritmo_della_fatica(anziano, TARATURA), TARATURA)

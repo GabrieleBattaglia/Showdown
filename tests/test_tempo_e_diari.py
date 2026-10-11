@@ -88,7 +88,7 @@ def test_le_nascite_non_dipendono_da_quando_si_apre_il_gioco(mondo):
 def test_i_diari_cominciano_alla_nascita():
     random.seed(1)
     g = Giocatore(id_giocatore=1, datetime_creazione_sim=INIZIO)
-    assert g.diario == [{"data": INIZIO, "testo": f"Entra nel mondo dello showdown, a {int(g.eta_anni)} anni."}]
+    assert g.diario == [{"data": INIZIO, "testo": f"Entra nel mondo dello showdown, a {int(g.eta_anni)} anni: comincia a giocare, e la sua esperienza parte da zero."}]
     p = Polisportiva("Club Di Prova", None, INIZIO)
     assert p.diario == [{"data": INIZIO, "testo": "Fondata."}]
 
@@ -203,7 +203,7 @@ def test_i_testi_dei_diari_e_della_conservazione(mondo):
     g = mondo.giocatori[1]
     righe = testi.diario_giocatore(g).splitlines()
     assert righe == [f"Diario di {g.nome} {g.cognome}, ID 1: 1 voce, dalla più recente.",
-                     f"20 marzo 2026: Entra nel mondo dello showdown, a {int(g.eta_anni)} anni."]
+                     f"20 marzo 2026: Entra nel mondo dello showdown, a {int(g.eta_anni)} anni: comincia a giocare, e la sua esperienza parte da zero."]
     g.diario.clear()
     assert testi.diario_giocatore(g) == f"Diario di {g.nome} {g.cognome}, ID 1: nessuna voce."
     assert testi.conservazione(mondo) == "Le voci dei diari dei giocatori si conservano per sempre, quelle delle polisportive per sempre."

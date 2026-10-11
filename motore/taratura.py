@@ -123,6 +123,17 @@ class Taratura:
     # con la decisione D26, perché fra pari forti, che battono bene, erano scese sotto il 4.
     P_BATTUTA_IRREGOLARE: float = 0.044
     PRESSIONE_BATTUTA: float = 0.80
+    # Il freno alle battute alte, decisione 11 di Gabriele, dopo il giro degli estremi della tappa
+    # 11: chi allenava una battuta sola la usava quasi sempre, e ogni punto speso lì rendeva da 1,4
+    # a 2,9 volte la resa di riferimento, fino a vincere al tetto il 91 per cento contro la propria
+    # fascia. Oltre SOGLIA_BATTUTA_ALTA, in quota del tetto della caratteristica, la battuta preme
+    # sempre meno di quanto dice il suo livello, e quello che aggiunge non supera mai
+    # AMPIEZZA_BATTUTA_ALTA, con una curva che si appiattisce come quelle della difesa e delle
+    # chiusure. La soglia è 0,45 perché in nessun mondo sintetico un giocatore la supera, quindi il
+    # gioco dei giocatori normali resta identico; il freno tocca la sola pressione, mentre la
+    # scelta della battuta e le battute irregolari sentono il livello pieno.
+    SOGLIA_BATTUTA_ALTA: float = 0.45
+    AMPIEZZA_BATTUTA_ALTA: float = 0.10
     QUOTA_BATTUTA_LATERALE: float = 0.55
     CAUSE_BATTUTA: tuple = (("battuta_senza_rimbalzo", 34), ("battuta_due_rimbalzi", 26), ("battuta_strisciata", 14), ("battuta_oltre_due_secondi", 7),
                             ("battuta_prima_del_fischio", 7), ("battuta_a_vuoto", 6), ("battuta_doppio_tocco", 6))
@@ -178,8 +189,11 @@ class Taratura:
     PRESSIONE_PALLA_SET_ESPERIENZA: float = 0.6
     # La stanchezza. Dipende dall'età, dalla resistenza e da quanto il giocatore si allena, D26:
     # chi si allena si stanca più piano, fino a K_ALLENAMENTO_FATICA in più di ritmo sopportato.
-    # Per ora quanto si allena lo dice la parte allenata della resistenza; la costanza
-    # dell'allenamento arriverà con la tappa 11.
+    # Dalla tappa 11 quanto si allena lo dice la costanza recente di D31, sulla costanza piena:
+    # senza partite il ritmo si divide per 1,09 alla leggera, 1,15 alla normale e 1,195
+    # all'intensa, ed è così che l'intensa fa reggere meglio la fatica e la leggera la peggiora;
+    # con un'amichevole al giorno si arriva fino a 1,3. Prima lo diceva la parte allenata della
+    # resistenza, che ora conta una volta sola, nella resistenza totale.
     # FORMA_FATICA è nuova: con 1 la stanchezza cresceva più in fretta alle prime azioni e poi
     # rallentava; ora si accumula, piano nei primi set e di più verso la fine di un incontro lungo.
     # Così al meglio dei 3, su cui si misura il valore, la resistenza pesa poco, e al meglio dei 5
@@ -190,8 +204,9 @@ class Taratura:
     # valere più del doppio di un punto innato: resistenza 5 tutta allenata reggeva più di 6
     # innata. Con 0,3 la resistenza della scheda resta il fattore principale: fra due giocatori
     # possibili, con l'innata fino a 3 e l'allenata fino a 5, chi ha un punto in più di
-    # resistenza totale si stanca sempre più piano, comunque sia divisa. Perché il giovane più
-    # resistente che possa esistere, 3 innata e 5 allenata, reggesse lo stesso i cinque set, la
+    # resistenza totale si stanca sempre più piano, comunque sia divisa; dalla tappa 11, con la
+    # costanza al posto dell'allenata, a parità di costanza vale per ogni divisione. Perché il
+    # giovane più resistente di allora, 3 innata e 5 allenata, reggesse lo stesso i cinque set, la
     # resistenza conta di più per punto, RESISTENZA_PER_PUNTO da 0,08 a 0,12 e RESISTENZA_BASE da
     # 0,6 a 0,4, e la curva è più tardiva, FORMA_FATICA da 1,5 a 2,5; ANNI_FATICA è passato da 25
     # a 30, perché il sessantenne restasse nella sua banda. Il trentenne con resistenza 5 senza
@@ -241,6 +256,43 @@ class Taratura:
     # la revisione di D26 aveva trovato 5,6 nel peso e 3,3 nelle partite, e la differenza veniva
     # dal seme unico della taratura, non dalla sorpresa.
     SORPRESA_MANCINO: float = 0.03
+    # L'abitudine al colpo ripetuto, tappa 11, risposta 6 di Gabriele. Senza i tetti propri della
+    # parte allenata un giocatore può portare un colpo solo vicino al tetto, e il giro degli estremi
+    # del motore, strumenti/banco_estremi.py, ha visto che un colpo dello scambio forte da solo
+    # rendeva molte volte quanto pesa nel valore: chi ha un solo colpo forte lo sceglie quasi
+    # sempre, perché la scelta del colpo è un softmax sulle qualità, lo sbaglia meno e segna di più.
+    # È la concentrazione, non il livello: tutti i colpi insieme restano lineari. Come la sorpresa
+    # del mancino, il difensore si abitua al colpo che l'avversario usa troppo: nella parata di un
+    # colpo dello scambio, non della battuta né della ribattuta, la pressione cala di
+    # ABITUDINE_COLPO, per la lettura del gioco del difensore, che parte da ABITUDINE_SENZA_LETTURA
+    # anche per chi non ha esperienza, per quanto la quota di quel colpo fra gli attacchi
+    # dell'incontro supera QUOTA_ABITUDINE, contata dopo ATTACCHI_PER_ABITUDINE attacchi. Chi varia
+    # i colpi ne risente poco. Il racconto della taratura sta in strumenti/taratura_allenamento.txt.
+    # I valori di partenza del progetto erano 0,4, 0,5, 0,2 e 10: con quelli un colpo solo rendeva
+    # ancora da 4 a 8 volte il suo peso, perché chi ha un colpo forte lo gioca più di otto volte su
+    # dieci e la pressione calava di un quinto. La griglia del giro degli estremi, sulla tripla
+    # sponda sinistra, il lungolinea destro e la bomba contro nati senza esperienza, ha portato
+    # l'abitudine al massimo che la formula consente senza annullare la pressione, 1, con la lettura
+    # che aggiunge poco, da 0,9 per chi non ha esperienza, e la conta dal settimo attacco: dal
+    # decimo i colpi soli rendevano ancora due volte il loro peso, dal quinto la resa diventava
+    # negativa, cioè allenare il colpo faceva perdere. Il colpo preferito di un giocatore normale
+    # ha una quota attorno a 0,24 e ne risente appena: fra due nati della fascia i goal per punto
+    # passano da 0,43 a 0,42.
+    # La revisione della tappa 11 ha trovato due cose. Chi allena lo stesso colpo dai due lati lo
+    # divide fra due nomi, ciascuno sotto la metà degli attacchi: l'abitudine contata colpo per
+    # colpo quasi non lo toccava, e la tripla sponda allenata dai due lati vinceva il 95 per cento
+    # al tetto contro la sua fascia. E il colpo preferito dei giocatori normali, nei primi attacchi
+    # dell'incontro, supera spesso la quota per caso: l'abitudine si accendeva in un terzo delle
+    # parate di ogni incontro, togliendo in media il 4 per cento della pressione. Ora conta il tipo
+    # di colpo, i due lati insieme, e la quota sale a 0,35: la tripla sponda dai due lati vince il
+    # 58 per cento al tetto, i colpi soli restano come prima, e fra due nati l'abitudine si accende
+    # in una parata su cinque, togliendo il 3 per cento della pressione. Più in alto non si può
+    # andare: con la quota lisciata dai primi attacchi o sopra 0,4 il gioco normale non la sente
+    # quasi più, ma lo specialista di un colpo torna a vincere dal 78 all'88 per cento al tetto.
+    ABITUDINE_COLPO: float = 1.0
+    ABITUDINE_SENZA_LETTURA: float = 0.9
+    QUOTA_ABITUDINE: float = 0.35
+    ATTACCHI_PER_ABITUDINE: int = 7
     # Gli imprevisti a palla ferma. P_SANZIONE era 0,0010, e le ammonizioni stavano al bordo
     # basso della banda.
     P_SANZIONE: float = 0.0014

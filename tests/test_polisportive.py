@@ -2,7 +2,8 @@
 Test della tappa 7 sul motore: le polisportive dell'utente, con fondazione, offerte, svincoli e
 chiusura; le regole nuove del computer, decisione D19; ritirati e morti che liberano il posto,
 problema P4; un nome solo per ogni polisportiva, problema P16; la vetrina dei liberi, problema
-P18; la migrazione dei salvataggi al formato 3.
+P18; la migrazione dei salvataggi al formato 3. Dalla tappa 11 i liberi infortunati, che il
+computer aspetta guariti e l'utente può tesserare subito, decisione 21 di Gabriele.
 """
 
 import datetime
@@ -11,8 +12,10 @@ import random
 import re
 
 import pytest
+from aiuti_formati import al_formato_5
 
 import archivio
+import economia
 import mondo as modulo_mondo
 from costanti import FILE_MONDO, LIMITE_MOVIMENTI_PER_TICK, MAX_TESSERATI_POLISPORTIVA
 from modelli import Giocatore, Polisportiva
@@ -127,11 +130,14 @@ def test_svincolo_e_chiusura(mondo, monkeypatch):
     monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
     for gid in (1, 2, 3):
         mondo.offerta(poli, mondo.giocatori[gid])
-    mondo.svincola(poli, mondo.giocatori[2])
+    cassa = poli.cassa
+    buonuscita = mondo.svincola(poli, mondo.giocatori[2])
+    # Dalla tappa 11 lo svincolo a contratto in corso costa una buonuscita.
+    assert buonuscita > 0 and poli.cassa == cassa - buonuscita and poli.conti_del_mese["buonuscite"] == buonuscita
     assert poli.tesserati == [1, 3] and mondo.giocatori[2].appartenenza == "*"
     assert poli.movimenti_oggi == 4
-    assert poli.diario[0]["testo"] == f"Svincolato {_nome(mondo.giocatori[2])}."
-    assert mondo.giocatori[2].diario[0]["testo"].endswith(" da Club di prova.")
+    assert poli.diario[0]["testo"] == f"Svincolato {_nome(mondo.giocatori[2])}, con una buonuscita di {economia.scritta_in_euro(buonuscita)}."
+    assert mondo.giocatori[2].diario[0]["testo"].endswith(f" da Club di prova, con una buonuscita di {economia.scritta_in_euro(buonuscita)}.")
     with pytest.raises(ValueError, match="non è"):
         mondo.svincola(poli, mondo.giocatori[2])
     assert mondo.chiudi_polisportiva(poli) == 2
@@ -227,6 +233,53 @@ def test_nessuno_scambio_quando_non_tocca(mondo, monkeypatch):
     assert poli.movimenti_oggi == 0
 
 
+# I liberi infortunati, decisione 21 di Gabriele: il computer aspetta che guariscano, l'utente no.
+
+def _infortuna(g):
+    g.infortunato = True
+    g.infortunio_fine_datetime = INIZIO + datetime.timedelta(days=10)
+
+
+def _guarisci(g):
+    g.infortunato = False
+    g.infortunio_fine_datetime = None
+
+
+def test_il_computer_aspetta_che_il_libero_guarisca(mondo, monkeypatch):
+    _solo_i_primi_liberi(mondo, 1)
+    poli = _cpu_con_gloria(mondo)
+    libero = mondo.giocatori[1]
+    _infortuna(libero)
+    monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
+    # Da infortunato non lo prova nemmeno: nessuna mossa usata.
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
+    assert libero.appartenenza == "*" and poli.tesserati == [] and poli.movimenti_oggi == 0
+    _guarisci(libero)
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (1, 0, 0)
+    assert poli.tesserati == [1] and libero.appartenenza == poli.nome
+
+
+def test_a_rosa_piena_il_computer_non_scambia_per_un_infortunato(mondo, monkeypatch):
+    poli = _rosa_piena(mondo, 100, 100)
+    _infortuna(mondo.giocatori[40])
+    monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
+    # Il più forte dei liberi è infortunato: lo scambio prende il secondo.
+    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (1, 1, 0)
+    assert 39 in poli.tesserati and 40 not in poli.tesserati
+    assert mondo.giocatori[40].appartenenza == "*"
+
+
+def test_l_utente_tessera_subito_il_libero_infortunato(mondo, monkeypatch):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    libero = mondo.giocatori[1]
+    _infortuna(libero)
+    assert mondo.problema_offerta(poli, libero) is None
+    monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
+    assert mondo.offerta(poli, libero)[0]
+    assert libero.appartenenza == "Club di prova" and poli.tesserati == [1]
+    assert libero.infortunato
+
+
 # Il salvataggio.
 
 def test_un_salvataggio_del_formato_2_si_aggiorna(mondo, cartella_di_prova):
@@ -235,7 +288,7 @@ def test_un_salvataggio_del_formato_2_si_aggiorna(mondo, cartella_di_prova):
     for gid in (1, 2, 3):
         mondo._tessera(cpu, mondo.giocatori[gid])
     mondo._tessera(mia, mondo.giocatori[4])
-    contenuto = archivio.componi(mondo)
+    contenuto = al_formato_5(archivio.componi(mondo))
     # Com'era il formato 2: la polisportiva del computer registrata sotto il nome generato, con il nome ritoccato
     # dalle maiuscole nella scheda e nei tesserati; un ritirato e un assente ancora fra i tesserati.
     dati = contenuto["mondo"]

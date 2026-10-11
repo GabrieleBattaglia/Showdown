@@ -10,7 +10,8 @@ l'ascolto di PokerMachine, scelta di Gabriele del 7 ottobre 2026: così NVDA leg
 prima che parta il suono. Invio lo fa sentire, poi spazio lo ripete e Invio passa al successivo;
 Escape chiude il gruppo e porta al suo menu. I suoni si sentono al volume di progetto, 50, quello a
 cui sono stati pensati, qualunque sia il volume scelto nel gioco. La probabilità d'ingaggio si sente
-tre volte, al 10, al 50 e al 90 per cento, perché la sua altezza cambia con la percentuale.
+tre volte, al 10, al 50 e al 90 per cento, perché la sua altezza cambia con la percentuale; dalla
+tappa 11 così anche la probabilità del rinnovo.
 Ogni gruppo si chiude con il menu comune dei collaudi, quello di collaudo_comune di GBUtils: r
 riascolta il gruppo, c lascia un commento, Invio lo dà per superato, Escape lo chiude senza
 giudizio. Le impressioni vanno nel file ascolto_suoni.txt, nella cartella del programma, una riga
@@ -31,9 +32,11 @@ from testi import conta
 
 FILE_DEGLI_ESITI = "ascolto_suoni.txt"
 SILENZIO_INIZIALE = 3.0
-# La pausa fra le tre altezze della probabilità d'ingaggio.
+# La pausa fra le tre altezze della probabilità d'ingaggio e di quella del rinnovo.
 PAUSA_FRA_I_SUONI = 0.6
 PERCENTUALI_DI_PROVA = (10, 50, 90)
+# Gli eventi la cui altezza segue una percentuale: si sentono alle tre percentuali di prova.
+CON_ALTEZZA = ("probabilita_ingaggio", "probabilita_rinnovo")
 
 
 class Annotazioni(Esiti):
@@ -45,8 +48,8 @@ class Annotazioni(Esiti):
 
 
 def suona_evento(evento):
-    """Il suono di un evento al volume di progetto; la probabilità d'ingaggio alle sue tre altezze di prova."""
-    if evento != "probabilita_ingaggio":
+    """Il suono di un evento al volume di progetto; le probabilità d'ingaggio e del rinnovo alle loro tre altezze di prova."""
+    if evento not in CON_ALTEZZA:
         suoni.suona(evento, sync=True, volume=suoni.VOLUME_DI_PROGETTO)
         return
     for percentuale in PERCENTUALI_DI_PROVA:
@@ -62,7 +65,7 @@ def ascolta(eventi):
     """
     for numero, (evento, preset) in enumerate(eventi.items(), 1):
         print(f"{numero} di {len(eventi)}: {evento}, preset {preset}. {Acusticator.descrizione(preset) or 'Senza descrizione.'}")
-        if evento == "probabilita_ingaggio":
+        if evento in CON_ALTEZZA:
             print(f"Lo senti {conta(len(PERCENTUALI_DI_PROVA), 'volta', 'volte')}: al {', al '.join(map(str, PERCENTUALI_DI_PROVA))} per cento.")
         tasto = key("\rInvio per sentirlo, Escape chiude il gruppo.\r")
         print()

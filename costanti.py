@@ -136,26 +136,6 @@ SEDI_INFORTUNIO = (
     ("ginocchio", "al ginocchio", None, 20, 1.2),
     ("caviglia", "alla caviglia", None, 20, 0.8),
 )
-# Punti esperienza guadagnati in partita.
-XP_VITTORIA_2_0 = 4
-XP_VITTORIA_2_1 = 3
-XP_SCONFITTA_1_2 = 2
-XP_SCONFITTA_0_2 = 1
-XP_VITTORIA_3_0 = 7
-XP_VITTORIA_3_1 = 6
-XP_VITTORIA_3_2 = 5
-XP_SCONFITTA_2_3 = 4
-XP_SCONFITTA_1_3 = 3
-XP_SCONFITTA_0_3 = 2
-XP_BONUS_TORNEO = 3
-XP_BONUS_UNDERDOG = 1
-ICV_DIFF_PERC_UNDERDOG = 25.0
-# Costo dell'allenamento in punti esperienza.
-XP_COSTO_SKILL_BREAKPOINTS = {0: 25, 9: 100, 15: 200, 19: 500}  # Breakpoint per skill 0-20
-XP_COSTO_FISICO_MOLTIPL = 2.0  # Si applica a precisione, resistenza e forza
-XP_SCONTO_IPOVEDENTI_PERC = 7.0
-MAX_ALLENATO_FISICO = 5.0  # Per precisione, resistenza e forza
-MAX_ALLENATO_SKILL = 20.0  # Per le altre skill
 # Gloria richiesta dal giocatore.
 K_ICV_GLORIA_RICHIESTA = 0.9
 ETA_PICCO_RICHIESTA_GLORIA_ANNI = 17.0
@@ -208,7 +188,6 @@ MAX_PRECISIONE_RESISTENZA = 5.0  # Limite base per precisione, resistenza e forz
 MAX_TOTALE_PRECISIONE_RESISTENZA = 10.0  # Limite totale, base più allenato, per precisione, resistenza e forza
 MAX_TOTALE_SKILL_GIOCO = 40.0  # Limite totale per le altre skill
 # Limiti vari.
-MAX_XP_PER_ALLENAMENTO = 15000
 MAX_TESSERATI_POLISPORTIVA = 15
 PAGINAZIONE_LISTE = 25
 LIMITE_MOVIMENTI_PER_TICK = 5
@@ -220,7 +199,15 @@ NOME_POLISPORTIVA_MIN = 5
 NOME_POLISPORTIVA_MAX = 50
 # L'economia, tappa 8, decisione D22. Cifre in euro; quelle di partenza si tarano con la simulazione lunga.
 CAPITALE_INIZIALE = 20_000
-SPONSOR_PER_GLORIA = 35
+# Lo sponsor, dalla tappa 11, metà e metà, risposta 5 di Gabriele: SPONSOR_PER_GLORIA euro al mese
+# per ogni punto di gloria, che la simulazione lunga ritocca, più il 9 per cento al mese del valore
+# di mercato pieno dei tesserati, che resta fisso. Fino alla tappa 10 erano 35 euro per la gloria.
+# Il punto di partenza era 18; la prima taratura grezza del 2026-10-09, simulazione_lunga.py
+# --cerca-economia su quattro semi, aveva trovato 16,2, e la taratura fine dello stesso giorno, dopo
+# quella del motore e coi pesi nuovi, 16,1: la cassa mediana del computer all'anno 10 sta fra 4.870
+# e 5.110 euro sui quattro semi, in media 5.010.
+SPONSOR_PER_GLORIA = 16.1
+QUOTA_SPONSOR_SUL_VALORE = 0.09
 STIPENDIO_DI_RIFERIMENTO = 200
 VALORE_DI_RIFERIMENTO = 140
 SCALA_STIPENDIO = 40
@@ -230,10 +217,10 @@ MESI_DI_INGAGGIO = 2
 REPUTAZIONE_MINIMA = 0.5
 REPUTAZIONE_MASSIMA = 2.0
 MESI_DI_VALORE = 6
-# Fedeltà ed esperienza crescono ogni mese passato in una polisportiva; la fedeltà va da 0 a 100.
+# La fedeltà cresce ogni mese passato in una polisportiva, da 0 a 100. L'esperienza di carriera va
+# da 0 a 20, e dalla tappa 11 cresce da più fonti, più sotto.
 FEDELTA_PER_MESE = 2.0
 FEDELTA_MASSIMA = 100.0
-ESPERIENZA_PER_MESE = 0.1
 ESPERIENZA_MASSIMA = 20.0
 # Ogni 25 punti di fedeltà, un mese di pazienza in più oltre al primo.
 FEDELTA_PER_MESE_DI_PAZIENZA = 25.0
@@ -254,6 +241,83 @@ SCARTI_MASSIMI_CPU = 30
 IMPORTANZA_MASSIMA = 0.5
 # La data dell'ultimo movimento di una polisportiva che non ne ha mai fatti.
 DATA_NESSUN_MOVIMENTO = datetime.datetime(1900, 1, 1)  # noqa: DTZ001 - data segnaposto, fuori da ogni fuso
+# I contratti della tappa 11, D31 e risposte di Gabriele del 9 ottobre 2026. La durata la propone il
+# giocatore, da 4 a 24 mesi: la base cresce con l'età, i ragazzi li vogliono brevi e gli anziani
+# lunghi, e l'ambizione la accorcia o la allunga fino al 40 per cento, risposta 3. Un mese di
+# contratto è un mese del calendario simulato, circa 10 giorni veri.
+MESI_CONTRATTO_MIN = 4
+MESI_CONTRATTO_MAX = 24
+DURATA_PER_ETA = ((9.0, 8.0), (25.0, 10.0), (35.0, 13.0), (45.0, 16.0), (55.0, 20.0), (65.0, 24.0))
+K_AMBIZIONE_DURATA = 0.4
+GIORNI_PER_MESE = 30.44
+# Negli ultimi tre mesi si può rinnovare: tre proposte per finestra, una al giorno, risposta 2;
+# il computer ne fa una al mese, con la stessa regola delle tre.
+MESI_FINESTRA_RINNOVO = 3
+PROPOSTE_RINNOVO_MASSIME = 3
+# La richiesta di rinnovo: la gloria del club conta di più per l'ambizioso, la fedeltà fa chiedere
+# fino a un quarto in meno, ogni mese di differenza dalla durata proposta costa il 2 per cento.
+ESPONENTE_GLORIA_RINNOVO = 0.25
+ESPONENTE_GLORIA_PER_AMBIZIONE = 0.5
+SCONTO_FEDELTA_RINNOVO = 0.25
+RINCARO_DURATA_RINNOVO = 0.02
+# Il computer offre al rinnovo il 15 per cento in più della richiesta.
+RIALZO_RINNOVO_CPU = 1.15
+# Il valore di mercato scende in linea retta negli ultimi tre mesi, fino al 40 per cento alla scadenza.
+MESI_VALORE_PIENO = 3
+VALORE_A_SCADENZA = 0.4
+# Lo svincolo a contratto in corso costa una buonuscita: metà degli stipendi che restano, risposta 4.
+QUOTA_BUONUSCITA = 0.5
+# Alla migrazione dal formato 5 i contratti durano almeno un anno di calendario, perché non scadano tutti insieme.
+MESI_MINIMI_MIGRAZIONE = 12
+# L'esperienza della tappa 11: cresce dalla fonte più piccola alla più grande, regola di Gabriele
+# dell'8 ottobre 2026. Un poco con l'età, anche da liberi; le amichevoli; lo stare in polisportiva,
+# per il fattore del gruppo, che cresce con l'esperienza media della rosa; i tornei e le sfide,
+# agganci della tappa 12, con un premio per i piazzamenti.
+ESPERIENZA_PER_ANNO_DI_VITA = 0.05
+ESPERIENZA_PER_AMICHEVOLE = 0.00125
+# 0,00279 porta la carriera perfetta, con le sue 3985 amichevoli, a 20 di esperienza a 50 anni:
+# l'ha trovato strumenti/carriera_perfetta.py nella prima taratura grezza e confermato nella taratura
+# fine del 9 ottobre 2026, dopo quella del motore. Con l'età fa 2,05, con le amichevoli 4,98, con la
+# polisportiva il resto.
+ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.00279
+K_GRUPPO_ESPERIENZA = 0.2
+ESPERIENZA_PER_PARTITA_TORNEO = 0.01
+ESPERIENZA_PER_SFIDA = 0.006
+ESPERIENZA_PER_PIAZZAMENTO = {1: 0.3, 2: 0.2, 3: 0.12, 4: 0.06}
+# La classe, da K0 ad A1, D31: il 70 per cento al valore pesato e il 30 all'esperienza. Il valore
+# pesato si misura in rapporto alla somma della carriera perfetta dai 9 ai 50 anni, che vale A1.
+# Le soglie sono fissate una volta per sempre: la somma della carriera perfetta, i pesi della classe
+# e le ancore sono costanti storiche, che scrive strumenti/carriera_perfetta.py e che poi non si
+# toccano più senza Gabriele. Le ancore sono coppie di livello e punteggio: K0 a zero; il nato del
+# primo percentile a I9 e quello del novantanovesimo a F0; il bravo dell'utente a 35 anni a D0; la
+# carriera perfetta ad A1. In mezzo le soglie si interpolano in linea retta, e i livelli si
+# allargano dal basso verso l'alto, come vuole D31: un livello vale 0,0051 di punteggio fra I9 e
+# F0, dove stanno i nati, 0,0102 fra F0 e D0, dove stanno i bravi a metà carriera, 0,0135 fra D0
+# e A1, le carriere eccellenti. I pesi della classe sono quelli del valore dopo la taratura del
+# motore della tappa 11, e la somma e le ancore vengono da strumenti/carriera_perfetta.py.
+# La revisione della tappa 11, il 9 ottobre 2026, ha cambiato tre cose. La somma non viene più da
+# un nato solo, che arrivava ad A1 per caso: è la più bassa delle carriere perfette di cinque nati
+# vedenti al novantesimo percentile, di cinque semi, così ognuna arriva ad A1 entro i 50 anni; le
+# stesse carriere di nati ipovedenti, con lo sconto del 7 per cento sull'allenamento delle
+# caratteristiche di gioco, ci arrivano verso i 48 anni e mezzo. Somma e ancore si arrotondano per
+# difetto: arrotondate al più vicino erano finite tutte verso l'alto, e la carriera di riferimento
+# arrivava ad A2. E il bravo a 30 anni non fa più da ancora a E0: così la classe E, dove sta quasi
+# metà dei giocatori del mondo maturo, aveva i livelli più larghi di tutta la scala, più di A, B e C.
+# I punteggi esatti delle ancore: 0,204776, 0,404708 e 0,609318; le carriere perfette vedenti
+# arrivano da 363,5 a 366,6 di somma. Ancora del bravo e dotazione della carriera di riferimento
+# sono da confermare con Gabriele. La taratura fine aveva 365,0 col nato numero 1229 e le ancore
+# 0,204, 0,403 e, a E0, 0,549; la prima taratura grezza 368,5 e 0,202, 0,401 e 0,546.
+PESO_VALORE_CLASSE = 0.7
+PESO_ESPERIENZA_CLASSE = 0.3
+SOMMA_CARRIERA_PERFETTA = 363.5
+PESI_CLASSE = {
+    "lungolineasx": 0.46, "lungolineadx": 0.46, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.46, "singolaspondadx": 0.46,
+    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.41, "triplaspondadx": 0.41, "bomba": 0.50, "battutasx": 0.71,
+    "battutadx": 0.71, "chiusura_dritto": 2.20, "chiusura_rovescio": 2.73, "blocco_dritto": 1.29, "blocco_rovescio": 1.55, "difesa": 3.33,
+    "tenutapaletta": 1.25, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.25, "forza": 5.59, "resistenza": 3.63,
+}
+PESI_TRATTI_CLASSE = {"mancino": 2.7, "ambidestro": 3.9, "giocorapido": 0.9, "cambiovelocita": 4.5}
+ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.404), (30, 0.609), (1, 1.0))
 NUM_GIOCATORI_INIZIALI = 50
 CREA_NUOVI_PER_TICK_RANGE = (1, 7)
 # Le caratteristiche allenabili, con la sigla del menu di allenamento.
@@ -285,24 +349,123 @@ CARATTERISTICHE_ATTACCO_BASE = [
     "doppiaspondadx_base", "singolaspondadx_base", "diagonaledx_base", "lungolineadx_base", "battutadx_base"
 ]
 CARATTERISTICHE_CONTROLLO_BASE = ["difesa_base", "controllopalla_base", "tenutapaletta_base", "attacco_base"]
-# Autoallenamento dei giocatori liberi e delle polisportive del computer.
-ETA_GIOVANE_MAX_GIORNI = giorni_da_anni(20)
-ETA_ANZIANO_MIN_GIORNI = AGING_START_AGE_GIORNI
-PROB_SEGUE_ARCHETIPO = 80.0
-PROB_ARCHETIPO_CASUALE_CREAZIONE = 10.0
-ARCHETIPI_ALLENAMENTO = {
-    "AttaccantePuro": {"desc": "Massimizza danno offensivo.", "priorita": ["attacco_allenata", "bomba_allenata", "diagonaledx_allenata", "diagonalesx_allenata", "lungolineadx_allenata", "lungolineasx_allenata", "precisione_allenata"], "strategia_scelta": "piu_bassa_prioritaria", "strategia_spesa": {"tipo": "percentuale", "valore": 25, "max_xp": 750}, "influenza_eta": {"anziano": "piu_economica_prioritaria"}},
-    "DifensoreRoccioso": {"desc": "Focus su difesa e blocchi.", "priorita": ["difesa_allenata", "chiusuradx_allenata", "chiusurasx_allenata", "bloccodx_allenata", "bloccosx_allenata", "tenutapaletta_allenata", "resistenza_allenata"], "strategia_scelta": "piu_bassa_prioritaria", "strategia_spesa": {"tipo": "percentuale", "valore": 25, "max_xp": 750}, "influenza_eta": {"anziano": "piu_economica_prioritaria_o_resistenza"}},
-    "MuroFisico": {"desc": "Priorità a precisione e Resistenza.", "priorita": ["precisione_allenata", "resistenza_allenata", "forza_allenata"], "strategia_scelta": "piu_bassa_tra_due", "strategia_spesa": {"tipo": "percentuale", "valore": 40, "max_xp": 1500}, "influenza_eta": {"anziano": "piu_bassa_tra_due_assoluta"}},
-    "SpecialistaBlocchiDifesa": {"desc": "Eccelle nei blocchi e difesa generale.", "priorita": ["bloccodx_allenata", "bloccosx_allenata", "difesa_allenata", "chiusuradx_allenata", "chiusurasx_allenata", "tenutapaletta_allenata", "resistenza_allenata"], "strategia_scelta": "piu_bassa_prioritaria", "strategia_spesa": {"tipo": "quota_fissa", "valore": 400}, "influenza_eta": {"anziano": "piu_economica_prioritaria"}},
-    "SpecialistaBlocchiAttacco": {"desc": "Blocca e riparte con attacchi controllati.", "priorita": ["bloccodx_allenata", "bloccosx_allenata", "attacco_allenata", "controllopalla_allenata", "diagonaledx_allenata", "diagonalesx_allenata", "precisione_allenata"], "strategia_scelta": "piu_bassa_prioritaria", "strategia_spesa": {"tipo": "quota_fissa", "valore": 400}, "influenza_eta": {"anziano": "piu_economica_prioritaria"}},
-    "SpecialistaBlocchiControllo": {"desc": "Maestro blocchi e controllo palla.", "priorita": ["bloccodx_allenata", "bloccosx_allenata", "controllopalla_allenata", "tenutapaletta_allenata", "difesa_allenata", "resistenza_allenata"], "strategia_scelta": "a_rotazione", "strategia_spesa": {"tipo": "percentuale", "valore": 20, "max_xp": 500}, "influenza_eta": {}},
-    "SpecialistaBattutaBlocco": {"desc": "Servizio efficace e buon muro.", "priorita": ["battutadx_allenata", "battutasx_allenata", "bloccodx_allenata", "bloccosx_allenata", "precisione_allenata", "difesa_allenata"], "strategia_scelta": "piu_bassa_prioritaria", "strategia_spesa": {"tipo": "obiettivo_punti", "valore": 0.1, "max_xp": 600}, "influenza_eta": {"anziano": "piu_economica_prioritaria"}},
-    "CecchinoPreciso": {"desc": "Focus su colpi specifici e controllo.", "priorita": ["lungolineadx_allenata", "lungolineasx_allenata", "singolaspondadx_allenata", "singolaspondasx_allenata", "doppiaspondadx_allenata", "doppiaspondasx_allenata", "controllopalla_allenata", "tenutapaletta_allenata"], "strategia_scelta": "a_rotazione", "strategia_spesa": {"tipo": "quota_fissa", "valore": 350}, "influenza_eta": {}},
-    "TuttofareBilanciato": {"desc": "Sviluppo equilibrato.",
-                            "priorita_non_fisiche": [s for s in ATTRIBUTI_ALLENABILI if s not in ALLENATE_FISICHE],
-                            "priorita_fisiche": list(ALLENATE_FISICHE),
-                            "strategia_scelta": "piu_bassa_assoluta_non_fisica", "strategia_spesa": {"tipo": "percentuale", "valore": 15, "max_xp": 300}, "influenza_eta": {"anziano": "piu_bassa_assoluta_o_fisica_bassa"}}
+# L'allenamento della tappa 11, decisione D31. Tutti i numeri sono una prima stima, da fissare con
+# strumenti/carriera_perfetta.py e strumenti/simulazione_lunga.py e da approvare con Gabriele.
+# I punti allenamento della seduta quotidiana: il tesserato ne prende PA_SEDUTA per il fattore della
+# sua intensità, il libero la metà, senza intensità.
+PA_SEDUTA = 1.0
+QUOTA_SEDUTA_LIBERI = 0.5
+# I punti di un incontro: una base, mezzo punto per ogni set vinto e un punto a chi vince, così al
+# meglio dei 5 se ne prendono appena il 13 per cento in più che al meglio dei 3, come vuole D31. Il
+# premio al più debole va a chi ha almeno DISTACCO_PIU_DEBOLE punti di somma pesata in meno, anche
+# quando perde: attorno alla mediana sono il 25 per cento del valore, la soglia di prima. Tornei e
+# sfide sono gli agganci della tappa 12.
+PA_PARTITA_BASE = 2.0
+PA_PER_SET_VINTO = 0.5
+PA_VITTORIA = 1.0
+PA_BONUS_PIU_DEBOLE = 1.0
+DISTACCO_PIU_DEBOLE = 25.0
+PA_BONUS_TORNEO = 3.0
+PA_BONUS_SFIDA = 2.0
+# Il costo dei punti, tarato sul valore: il costo marginale di una caratteristica è
+# COSTO_PER_PUNTO_PESATO per il suo peso nel valore, per lo sconto, diviso l'efficacia, per
+# exp(CRESCITA_DEL_COSTO per il livello relativo). Dal livello zero al tetto il costo cresce di
+# 12,2 volte, come le 12,6 di Hattrick dal livello 0 al 20; il ritmo medio, 50, l'ha scelto
+# Gabriele con la risposta 1 del 9 ottobre 2026.
+COSTO_PER_PUNTO_PESATO = 50.0
+CRESCITA_DEL_COSTO = 2.5
+# Agli ipovedenti il 7 per cento di sconto sulle caratteristiche di gioco: chi vede un poco impara
+# qualcosa in più guardando, D31.
+SCONTO_IPOVEDENTI = 0.07
+# La curva d'età di Hattrick, 54 diviso gli anni più 37: 1,17 a 9 anni, 0,87 a 25, 0,62 a 50.
+CURVA_ETA_NUMERATORE = 54.0
+CURVA_ETA_SPOSTAMENTO = 37.0
+# L'aggancio dell'allenatore di una tappa futura: per ora non c'è, e vale 1.
+FATTORE_ALLENATORE = 1.0
+# Il calo dei livelli alti, come la DropL di Hattrick: sopra il 70 per cento del tetto l'allenata
+# perde, ogni anno d'età, fino a CALO_MASSIMO_ANNUO del tetto al tetto pieno, con una curva cubica.
+SOGLIA_CALO_LIVELLI_ALTI = 0.7
+CALO_MASSIMO_ANNUO = 0.05
+# I liberi e i tesserati del computer spendono da soli quando il portafoglio arriva qui.
+SOGLIA_SPESA_AUTONOMI = 20.0
+# Il modello di spesa: le preferenze delle caratteristiche principali e secondarie dell'indole.
+PREFERENZA_PRINCIPALE = 2.0
+PREFERENZA_SECONDARIA = 1.4
+# Le intensità dell'allenamento di un tesserato, una riga per intensità con i suoi quattro effetti:
+# i punti della seduta, la costanza della seduta, il fattore degli infortuni in partita e la
+# probabilità, in percentuale al giorno, di un infortunio in seduta. La costanza della seduta l'ha
+# decisa Gabriele con la risposta 7: l'intensa fa reggere meglio la fatica, la leggera la peggiora.
+INTENSITA = {
+    "leggera": {"punti": 0.6, "costanza": 0.6, "infortuni_partita": 0.85, "infortuni_seduta": 0.0},
+    "normale": {"punti": 1.0, "costanza": 1.0, "infortuni_partita": 1.0, "infortuni_seduta": 0.0},
+    "intensa": {"punti": 1.4, "costanza": 1.3, "infortuni_partita": 1.25, "infortuni_seduta": 0.3},
+}
+INTENSITA_PREDEFINITA = "normale"
+# Il rischio in seduta cresce dai 30 anni: fino al triplo a 75.
+AUMENTO_RISCHIO_SEDUTA = 2.0
+# I tre tratti rari dell'allenamento, D31, con la probabilità alla nascita in percentuale e
+# l'effetto: il talento e l'apprendista rapido moltiplicano l'efficacia, e l'apprendista dimentica
+# in fretta, perché ogni mese la sua allenata si moltiplica per l'oblio; la maturazione precoce o
+# tardiva sposta gli anni migliori, con un fattore che va da 1 più a 1 meno l'effetto attorno ai 30
+# anni, e sposta l'inizio del declino. L'oblio era 0,98 al mese, cioè il 7 per cento per anno d'età:
+# la revisione della tappa 11 ha visto che così l'apprendista era avanti al gemello senza il tratto
+# soltanto fino ai 30 anni, e a 50 ne aveva poco più della metà dell'allenata, quindi il tratto raro
+# era quasi sempre un difetto. Con 0,99 impara e dimentica ancora in fretta: è avanti da giovane, il
+# gemello lo raggiunge verso i 40 anni, e a 50 ne ha circa l'85 per cento. Da confermare con Gabriele.
+TRATTI_ALLENAMENTO = {
+    "talento": {"probabilita": 5.0, "efficacia": 1.3},
+    "apprendista_rapido": {"probabilita": 4.0, "efficacia": 1.5, "oblio_mensile": 0.99},
+    "precoce": {"probabilita": 4.0, "maturazione": 0.3},
+    "tardiva": {"probabilita": 4.0, "maturazione": -0.25},
+}
+ETA_PERNO_MATURAZIONE = 30.0
+ANNI_RAMPA_MATURAZIONE = 10.0
+SPOSTAMENTO_DECLINO = {"precoce": -6.0, "tardiva": 6.0}
+MATURAZIONI = tuple(SPOSTAMENTO_DECLINO)
+# L'ambizione, da 0 a 100: nasce dal numero del giocatore come il temperamento, decide la durata
+# dei contratti e conta nel rinnovo; la scheda la dice a parole con queste fasce.
+AMBIZIONE_MEDIA = 50.0
+AMBIZIONE_DEVIAZIONE = 18.0
+FASCE_AMBIZIONE = ((30.0, "modesto"), (45.0, "poco ambizioso"), (60.0, "ambizioso"), (75.0, "molto ambizioso"), (None, "ambiziosissimo"))
+# La costanza recente, D31: la media mobile esponenziale dell'attività di ogni giorno, con una
+# mezza vita di tre settimane. La seduta del tesserato vale la costanza della sua intensità, quella
+# del libero COSTANZA_LIBERI, ogni partita aggiunge COSTANZA_PER_PARTITA. Il motore la porta da 0 a 1
+# dividendola per COSTANZA_PIENA, che è l'intensa con un'amichevole al giorno; la scheda la dice a
+# parole con le fasce.
+MEZZA_VITA_COSTANZA_GIORNI = 21.0
+DECADIMENTO_COSTANZA = 0.5 ** (1.0 / MEZZA_VITA_COSTANZA_GIORNI)
+COSTANZA_LIBERI = 0.5
+COSTANZA_PER_PARTITA = 0.7
+COSTANZA_PIENA = 2.0
+FASCE_COSTANZA = ((0.1, "ferma"), (0.35, "bassa"), (0.6, "regolare"), (0.85, "alta"), (None, "altissima"))
+# Le indoli della nascita, D31: gli archetipi di prima rivisti e corretti, con il nome da leggere
+# nella scheda e le caratteristiche principali e secondarie, coi nomi senza suffisso. Il modello di
+# spesa, uno per tutti, dà alle principali e alle secondarie le loro preferenze; completa non ne ha.
+_SPONDE = ("singolaspondasx", "singolaspondadx", "doppiaspondasx", "doppiaspondadx", "triplaspondasx", "triplaspondadx")
+_CHIUSURE = ("chiusurasx", "chiusuradx")
+_BLOCCHI = ("bloccosx", "bloccodx")
+INDOLI = {
+    "aggressiva": {"nome": "aggressiva", "principali": ("lungolineasx", "lungolineadx", "diagonalesx", "diagonaledx", "bomba", "attacco"),
+                   "secondarie": (*_SPONDE, "forza")},
+    "difensiva": {"nome": "difensiva", "principali": (*_CHIUSURE, *_BLOCCHI, "difesa"), "secondarie": ("controllopalla", "tenutapaletta", "resistenza")},
+    "atletica": {"nome": "atletica", "principali": ("precisione", "resistenza", "forza"), "secondarie": ("difesa", *_CHIUSURE)},
+    "muro": {"nome": "da muro", "principali": (*_BLOCCHI, "difesa"), "secondarie": (*_CHIUSURE, "tenutapaletta")},
+    "rimessa": {"nome": "di rimessa", "principali": (*_BLOCCHI, "attacco"), "secondarie": ("diagonalesx", "diagonaledx", "controllopalla")},
+    "controllo": {"nome": "di controllo", "principali": ("controllopalla", "tenutapaletta"), "secondarie": (*_BLOCCHI, "difesa")},
+    "battuta": {"nome": "da battuta", "principali": ("battutasx", "battutadx"), "secondarie": (*_BLOCCHI, "precisione")},
+    "tecnica": {"nome": "tecnica", "principali": (*_SPONDE, "lungolineasx", "lungolineadx"), "secondarie": ("controllopalla", "tenutapaletta")},
+    "completa": {"nome": "completa", "principali": (), "secondarie": ()},
+}
+INDOLE_PREDEFINITA = "completa"
+# Alla nascita vince l'indole col punteggio standardizzato più alto, se supera la soglia, altrimenti
+# completa; una volta su dieci l'indole si tira a caso, come prima l'archetipo.
+SOGLIA_INDOLE = 0.07
+PROB_INDOLE_CASUALE = 10.0
+# I nove archetipi dei salvataggi fino al formato 5, nelle chiavi delle indoli.
+MAPPA_ARCHETIPI_INDOLI = {
+    "AttaccantePuro": "aggressiva", "DifensoreRoccioso": "difensiva", "MuroFisico": "atletica", "SpecialistaBlocchiDifesa": "muro",
+    "SpecialistaBlocchiAttacco": "rimessa", "SpecialistaBlocchiControllo": "controllo", "SpecialistaBattutaBlocco": "battuta",
+    "CecchinoPreciso": "tecnica", "TuttofareBilanciato": "completa",
 }
 # I nomi delle caratteristiche da mostrare.
 NOME_ATTR_TO_DISPLAY_MAP = {
@@ -333,8 +496,12 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # di partenza; ciascuna ha un peso, e i tratti hanno il loro. Fino alla tappa 8 i pesi erano tutti
 # a 1, con 33 punti per ambidestro, gioco rapido e cambio di velocità. Quelli qui sotto li ha
 # misurati sul motore nuovo strumenti/taratura_valore.py, sugli incontri al meglio dei 3, l'ultima
-# volta l'8 ottobre 2026 dopo la revisione della decisione D26, che ha dimezzato il peso della
-# precisione nelle qualità: sono in punti di caratteristica, con la media delle caratteristiche
+# volta il 9 ottobre 2026 con la revisione della tappa 11, dopo l'abitudine al colpo ripetuto contata
+# per tipo di colpo e con la costanza recente fra i controlli: rispetto alla tappa 9 la resistenza è
+# scesa da 4,71 a 3,63, perché la parte allenata non conta più due volte, la bomba è salita da 0,36
+# a 0,50 e la tripla sponda da 0,33 a 0,41, il mancino è sceso da 2,9 a 2,7. L'8
+# ottobre, dopo la revisione della decisione D26, la taratura aveva dimezzato il peso della
+# precisione nelle qualità. Sono in punti di caratteristica, con la media delle caratteristiche
 # di gioco a 1, e sono la media di quattro semi, 9, 19, 29 e 39, perché con un seme solo il
 # mancino andava da 2,9 a 5,6 punti di valore. A e B riportano la somma sulla scala del valore, e
 # dalla decisione D26 si cercano con strumenti/simulazione_lunga.py --cerca-scala: B per
@@ -345,18 +512,32 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # bassi scendono a 90 euro. Le coppie
 # speculari di colpi hanno un peso solo; le fisiche, che vanno da 0 a 10, pesano per punto
 # quattro volte tanto, e la precisione, che entra in tutte le qualità, più di tutte, ma la metà
-# di prima.
+# di prima. Dalla tappa 11 la scala si tara col mondo che si allena, all'anno 10 della simulazione
+# lunga, con --cerca-economia: A tiene la mediana del valore dei giocatori in attività a 135,5, B
+# porta lo stipendio pagato al decimo percentile dei tesserati a 105 euro. La taratura fine del
+# 9 ottobre 2026, dopo quella del motore e coi pesi nuovi, ha dato A -50,68 e B 1,1414: sui quattro
+# semi, all'anno 10, stipendio pagato mediano 210 o 220 euro, decimo percentile 100, novantesimo
+# da 510 a 520, tesserati al 90 o 91 per cento, cassa mediana del computer attorno ai 5.000 euro,
+# mediana del valore da 135,4 a 136,0. La prima taratura grezza aveva dato A -49,68 e B 1,1302, coi
+# pesi della tappa 9. Fino alla tappa 10 erano A -82,61 e B 1,3878, che la migrazione conserva per
+# i contratti. La revisione della tappa 11, coi pesi nuovi, ha rifatto la ricerca: già al primo giro
+# la scala e lo sponsor di qui stanno dentro tutti i bersagli, cassa mediana 4.992 euro in media sui
+# quattro semi, e i giri seguenti oscillano col rumore dei semi, A da -46,5 a -52,8, quindi restano.
+# Da confermare con Gabriele: la migrazione non tocca caratteristiche e stipendi, ma il valore
+# mostrato cambia per tutti con la scala e i pesi nuovi, nel suo mondo da 140,6 a 131,3 di
+# mediana; la risposta 6, «la migrazione non cambia i valori di nessuno», è stata letta come
+# «nessuna caratteristica cambia», e l'altra lettura chiederebbe di tenere qui la scala della 1.50.0.
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
 PESI_VALORE = {
-    "lungolineasx": 0.44, "lungolineadx": 0.44, "diagonalesx": 0.49, "diagonaledx": 0.49, "singolaspondasx": 0.48, "singolaspondadx": 0.48,
-    "doppiaspondasx": 0.45, "doppiaspondadx": 0.45, "triplaspondasx": 0.33, "triplaspondadx": 0.33, "bomba": 0.36, "battutasx": 0.78,
-    "battutadx": 0.78, "chiusura_dritto": 2.22, "chiusura_rovescio": 2.81, "blocco_dritto": 1.35, "blocco_rovescio": 1.61, "difesa": 3.38,
-    "tenutapaletta": 1.26, "controllopalla": 0.81, "attacco": 1.29, "precisione": 10.04, "forza": 5.18, "resistenza": 4.71,
+    "lungolineasx": 0.46, "lungolineadx": 0.46, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.46, "singolaspondadx": 0.46,
+    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.41, "triplaspondadx": 0.41, "bomba": 0.50, "battutasx": 0.71,
+    "battutadx": 0.71, "chiusura_dritto": 2.20, "chiusura_rovescio": 2.73, "blocco_dritto": 1.29, "blocco_rovescio": 1.55, "difesa": 3.33,
+    "tenutapaletta": 1.25, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.25, "forza": 5.59, "resistenza": 3.63,
 }
-PESI_TRATTI = {"mancino": 2.9, "ambidestro": 3.4, "giocorapido": 1.2, "cambiovelocita": 4.5}
-SCALA_VALORE_A = -82.61
-SCALA_VALORE_B = 1.3878
+PESI_TRATTI = {"mancino": 2.7, "ambidestro": 3.9, "giocorapido": 0.9, "cambiovelocita": 4.5}
+SCALA_VALORE_A = -50.68
+SCALA_VALORE_B = 1.1414
 SOGLIA_PESO_INERTE = 0.25
 
 

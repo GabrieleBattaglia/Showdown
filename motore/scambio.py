@@ -16,7 +16,13 @@ spostava peso anche su goal e falli, e allenarlo faceva perdere punti. Il tiro c
 sempre un punto, e sceglie soltanto una causa più clamorosa.
 I colpi e le battute del mancino premono un po' di più sul difensore, per la sorpresa di
 un'angolazione meno abituale, decisione D26: la sorpresa la calcola InCampo una volta per punto,
-e cala man mano che il difensore si abitua; la ribattuta, che torna piano, non sorprende.
+e cala man mano che il difensore si abitua; la ribattuta, che torna piano, non sorprende. Dalla
+tappa 11 il difensore si abitua anche al colpo dello scambio che l'attaccante ripete troppo
+nell'incontro, e quel colpo preme di meno: la battuta e la ribattuta non ne risentono. Conta
+soltanto statistiche che la catena aggiorna in tutte e due le modalità, quindi l'incontro
+essenziale e quello completo restano uguali. Sempre dalla tappa 11, decisione 11 di Gabriele, la
+pressione della battuta viene dalla qualità frenata QBP di InCampo: oltre lo 0,45 del tetto la
+battuta preme sempre meno di quanto dice il suo livello, mentre la battuta irregolare sente QB.
 Con l'elenco passi la catena annota ogni passo, per la regia che ne farà eventi e posizioni; senza,
 in modalità essenziale, non crea nulla. Le statistiche dei giocatori le aggiorna la catena stessa,
 così valgono uguali nelle due modalità.
@@ -106,7 +112,8 @@ def gioca_punto(battitore, ricevitore, dado, taratura, passi=None, rottura_al_co
         return _fallo(battitore, ricevitore, causa, critico, 0, "battuta", nome_battuta, None)
     colpo_battuta = colpi_tabella[nome_battuta]
     zona = colpo_battuta.zona if tiro() < t.QUOTA_BATTUTA_LATERALE else "centro"
-    pressione = t.PRESSIONE_BATTUTA * q
+    # La pressione sente il freno alle battute alte, il fallo qui sopra il livello pieno.
+    pressione = t.PRESSIONE_BATTUTA * (battitore.QBP[indice] * battitore.eff)
     if annota:
         annota(Passo("battuta", battitore, nome_battuta, zona, "regolare", None, False, pressione, (p_irr, 1.0 - p_irr)))
 
@@ -129,6 +136,9 @@ def gioca_punto(battitore, ricevitore, dado, taratura, passi=None, rottura_al_co
         if attaccante.mancino and origine != "ribattuta":
             premuta *= difensore.sorpresa
             difensore.parate_mancino += 1
+        # Il colpo dello scambio che l'attaccante ripete troppo preme meno, perché il difensore ci si abitua.
+        if origine == "scambio":
+            premuta *= 1.0 - difensore.abitudine_al_colpo(attaccante, colpo_corrente)
         # Se la pallina passa lo decide soprattutto la chiusura, ma anche il blocco: una pallina
         # toccata e non fermata può finire in porta lo stesso.
         r = log((premuta + q0) / (d + peso_blocco * (b - d) + q0))

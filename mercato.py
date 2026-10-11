@@ -45,7 +45,8 @@ _CHIAVI = {
 class Candidato:
     """
     Un giocatore al mercato. Il costo è l'ingaggio che chiede, per un libero; il prezzo, per chi
-    è in vendita; il valore di mercato, che fa da riferimento, per un tesserato del computer.
+    è in vendita; il valore di mercato del giorno, che fa da riferimento, per un tesserato del
+    computer. Lo stipendio è quello che chiede oggi: chi arriva, anche comprato, firma un contratto nuovo.
     """
     giocatore: object
     tipo: str
@@ -76,7 +77,7 @@ def candidati(mondo, poli, filtri=(), mostra="liberi_e_vendita", costo_massimo=0
                 if IN_VENDITA in tipi:
                     righe.append(Candidato(g, IN_VENDITA, club.in_vendita[gid], stipendio(g), club))
             elif club.is_cpu_controlled and DEL_COMPUTER in tipi:
-                righe.append(Candidato(g, DEL_COMPUTER, valore_di_mercato(g), stipendio(g), club))
+                righe.append(Candidato(g, DEL_COMPUTER, valore_di_mercato(g, mondo.datetime_corrente_simulazione), stipendio(g), club))
     if costo_massimo:
         righe = [c for c in righe if c.costo <= costo_massimo]
     righe.sort(key=_CHIAVI[ordine])

@@ -13,14 +13,14 @@ fissi, nati da un'altra popolazione, un incontro al meglio dei 3 set ciascuno, i
 i tratti sono ridistribuiti, uno su cinque per ciascuno: nati con le frequenze vere, i mancini
 sarebbero un centinaio e gli ambidestri una sessantina, e il loro peso uscirebbe dal rumore.
 Secondo, la regressione: i minimi quadrati del rating sulle caratteristiche del valore, prese per
-ruolo come in valore.py, e sui quattro tratti, con tre regressori di controllo, temperamento,
-lettura del gioco e fattore d'età della stanchezza, che si misurano ma non entrano nell'indice.
-La resistenza ha una colonna sola, col totale. La parte allenata, che nella stanchezza conta anche
-come abitudine ad allenarsi, decisione D26, rende un po' più di quella innata, ma la regressione
-non sa separarle: nelle popolazioni di prova chi allena la resistenza allena anche il resto, e una
-colonna in più per l'allenamento, provata dopo la revisione di D26, usciva negativa da un seme
-all'altro, mentre a coppie l'allenata rende di più. Quanto rende ciascuna lo dice la verifica a
-coppie del quinto passo; con K_ALLENAMENTO_FATICA a 0,3 le due stanno vicine al prezzo unico.
+ruolo come in valore.py, e sui quattro tratti, con quattro regressori di controllo, temperamento,
+lettura del gioco, fattore d'età della stanchezza e costanza recente, che si misurano ma non
+entrano nell'indice. La resistenza ha una colonna sola, col totale. Fino alla tappa 10 la parte
+allenata della resistenza contava anche come abitudine ad allenarsi, decisione D26, e rendeva un
+po' più di quella innata; dalla tappa 11, decisione D31, l'abitudine ad allenarsi la dice la
+costanza recente, che la popolazione di prova dà a tutti fra 0 e la costanza piena, e la parte
+allenata conta come l'innata, una volta sola, nella resistenza totale. La costanza è il quarto
+controllo, e quanto vale nelle partite lo dice la verifica a coppie del quinto passo.
 I colpi e le battute speculari, come il lungolinea sinistro e il destro, hanno un peso solo: la
 differenza fra i due lati nasce dalla popolazione, quasi tutta destrimana, ed è più piccola del
 rumore della misura, che da un seme all'altro la rovescia. Chiusure e blocchi invece restano
@@ -45,7 +45,8 @@ polisportive del computer in più semi.
 Quarto, il rapporto: i pesi in punti di valore, le caratteristiche quasi inerti, l'effetto di
 temperamento ed esperienza, la curva del favorito su una terza popolazione e il blocco da copiare.
 Quinto, la verifica a coppie: gli stessi giocatori con un punto in più di precisione o di
-resistenza, innata o allenata, oppure mancini, contro gli stessi avversari e con gli stessi semi.
+resistenza, con la costanza piena invece che zero, oppure mancini, contro gli stessi avversari e
+con gli stessi semi.
 Dice quanto valgono davvero nelle partite, e quanto il valore dà loro: la regressione ha un peso
 solo per caratteristica, e dove l'effetto non è una retta, come la resistenza nella stanchezza,
 o dove i giocatori sono pochi, come i mancini, può sbagliare. Anche la verifica si fa su tutti i
@@ -84,10 +85,10 @@ import percorsi  # noqa: E402
 import valore  # noqa: E402
 from mondo import Mondo  # noqa: E402
 from motore import ESSENZIALE, SINGOLARE_3, TARATURA, simula_incontro  # noqa: E402
-from motore.campo import lettura_possibile, temperamento_relativo  # noqa: E402
+from motore.campo import costanza_relativa, lettura_possibile, temperamento_relativo  # noqa: E402
 from motore.taratura import carica_taratura  # noqa: E402
 
-CONTROLLI = ("temperamento", "lettura", "fattore_eta")
+CONTROLLI = ("temperamento", "lettura", "fattore_eta", "costanza")
 # Le caratteristiche fisiche vanno da 0 a 10, le altre da 0 a 40.
 FISICHE = ("precisione", "forza", "resistenza")
 FASCE_DISTACCO = ((0.05, "meno del 5 per cento", (50, 58)), (0.15, "fra il 5 e il 15 per cento", (58, 70)),
@@ -135,7 +136,7 @@ def regressori(g):
     tratti = valore.tratti(g)
     riga = [sum(caratteristiche[nome] for nome in gruppo) for gruppo in GRUPPI]
     riga += [1.0 if tratti[nome] else 0.0 for nome in valore.TRATTI]
-    riga += [temperamento_relativo(g), lettura_possibile(g, TARATURA), fattore_eta(g)]
+    riga += [temperamento_relativo(g), lettura_possibile(g, TARATURA), fattore_eta(g), costanza_relativa(g)]
     riga.append(1.0)
     return riga
 
@@ -346,15 +347,21 @@ def curva_del_favorito(giocatori, indice_di, quante, seme, taratura=TARATURA):
 
 # La verifica a coppie del quinto passo: le modifiche da misurare, e quelle di riferimento, che
 # danno quanto rating vale un punto di valore. Una modifica è un elenco di attributi con l'aumento,
-# oppure il mancino: lo stesso giocatore con chiusure e blocchi specchiati e il tratto.
+# oppure il mancino: lo stesso giocatore con chiusure e blocchi specchiati e il tratto; oppure la
+# costanza piena, che si misura contro la costanza zero, l'ultima modifica giocata. Dalla tappa 11
+# un punto di resistenza allenata è uguale a uno innato per costruzione, e la sua verifica lascia il
+# posto a quella della costanza.
 VERIFICHE = (("un punto di precisione allenata", (("precisione_allenata", 1.0),)), ("un punto di resistenza innata", (("resistenza_base", 1.0),)),
-             ("un punto di resistenza allenata", (("resistenza_allenata", 1.0),)), ("il mancino, con chiusure e blocchi specchiati", "mancino"))
+             ("la costanza piena contro la costanza zero", "costanza"), ("il mancino, con chiusure e blocchi specchiati", "mancino"))
 RIFERIMENTI = ((("difesa_allenata", 8.0),), (("chiusurasx_allenata", 8.0), ("chiusuradx_allenata", 8.0)), (("forza_allenata", 3.0),), (("attacco_allenata", 8.0),))
 
 
 def modificato(g, modifica):
     """Una copia del giocatore con la modifica della verifica a coppie."""
     m = copy.copy(g)
+    if modifica in ("costanza", "costanza_zero"):
+        m.costanza = costanti.COSTANZA_PIENA if modifica == "costanza" else 0.0
+        return m
     if modifica == "mancino":
         for radice in ("chiusura", "blocco"):
             for parte in ("_base", "_allenata"):
@@ -370,7 +377,7 @@ def modificato(g, modifica):
 
 def _coppie_di_un_gruppo(soggetti, avversari, seme, taratura):
     """I punti fatti e subiti da una parte dei soggetti, come sono e con ogni modifica, contro gli stessi avversari e con gli stessi semi."""
-    modifiche = [(), *(m for _nome, m in VERIFICHE), *RIFERIMENTI]
+    modifiche = [(), *(m for _nome, m in VERIFICHE), *RIFERIMENTI, "costanza_zero"]
     conti = [[0, 0] for _m in modifiche]
     for g in soggetti:
         rng = random.Random(f"coppie-{seme}-{g.id}")
@@ -396,9 +403,10 @@ def verifica_a_coppie(gruppi, pesi, tratti, a, b, taratura=TARATURA, processi=1)
     incontri si sommano, e il mancino, che oscilla di più, si dà anche gruppo per gruppo, con
     l'errore della media. Il rating guadagnato si porta in punti di valore con quello delle
     modifiche di riferimento, difesa, chiusure, forza e attacco, che il valore pesa giuste. La
-    regressione dà un peso solo a ogni caratteristica: la resistenza allenata, che conta anche come
-    abitudine ad allenarsi, rende un po' più di quella innata, e il prezzo unico deve stare fra le
-    due; il mancino, portato da pochi giocatori, è il punto dove la regressione oscilla di più.
+    regressione dà un peso solo a ogni caratteristica, e dove l'effetto non è una retta, come la
+    resistenza nella stanchezza, può sbagliare; la costanza piena si misura contro la costanza zero,
+    e il valore non le dà niente, perché sta fuori dal valore; il mancino, portato da pochi
+    giocatori, è il punto dove la regressione oscilla di più.
     """
     lavori = [(indice, soggetti[i::processi], avversari, seme) for indice, (soggetti, avversari, seme) in enumerate(gruppi) for i in range(max(1, processi))]
     if processi <= 1:
@@ -419,6 +427,10 @@ def verifica_a_coppie(gruppi, pesi, tratti, a, b, taratura=TARATURA, processi=1)
     def rating_di(conti):
         return [math.log(fatti / subiti) - math.log(conti[0][0] / conti[0][1]) for fatti, subiti in conti]
 
+    def della_verifica(rating, i, modifica):
+        # La costanza piena si confronta con la costanza zero, l'ultima modifica giocata; le altre con il giocatore com'è.
+        return rating[1 + i] - rating[-1] if modifica == "costanza" else rating[1 + i]
+
     def punti_di_valore(modifica, soggetti):
         return statistics.fmean(valore.indice(modificato(g, modifica), pesi, tratti, a, b) - valore.indice(g, pesi, tratti, a, b) for g in soggetti)
 
@@ -431,7 +443,8 @@ def verifica_a_coppie(gruppi, pesi, tratti, a, b, taratura=TARATURA, processi=1)
     righe = [f"Quinto passo, la verifica a coppie: {len(tutti)} soggetti destrimani in {len(gruppi)} gruppi, uno per seme, ciascuno contro {avversari_per_gruppo} avversari, "
              f"con gli stessi semi; un punto di valore vale {numero(1000 * per_punto, 2)} millesimi di rating, misurati su difesa, chiusure, forza e attacco."]
     for i, (nome, modifica) in enumerate(VERIFICHE):
-        righe.append(f"Nelle partite {nome} vale {numero(rating[1 + i] / per_punto)} punti di valore; il valore gliene dà {numero(punti_di_valore(modifica, tutti))}.")
+        dal_valore = 0.0 if modifica == "costanza" else punti_di_valore(modifica, tutti)
+        righe.append(f"Nelle partite {nome} vale {numero(della_verifica(rating, i, modifica) / per_punto)} punti di valore; il valore gliene dà {numero(dal_valore)}.")
     indice_mancino = 1 + next(i for i, (_nome, modifica) in enumerate(VERIFICHE) if modifica == "mancino")
     if len(gruppi) > 1:
         mancini = []
@@ -585,7 +598,8 @@ def main():
         righe.append("Nessuna caratteristica è quasi inerte: tutte pesano almeno un quarto della media di quelle di gioco.")
     righe.append(f"Il temperamento, dal calmissimo di tau meno 0,8 all'impetuoso di tau 0,8, vale {numero(controlli['temperamento'] * 1.6 * b)} punti di valore, bersaglio entro 5.")
     righe.append(f"L'esperienza di carriera, da 0 a 12, vale {numero(controlli['lettura'] * lettura_possibile(_Esperto(12.0), TARATURA) * b)} punti di valore; "
-                 f"un punto di fattore d'età della stanchezza ne vale {numero(controlli['fattore_eta'] * b)}.")
+                 f"un punto di fattore d'età della stanchezza ne vale {numero(controlli['fattore_eta'] * b)}; la costanza recente, da zero alla costanza piena, "
+                 f"ne vale {numero(controlli['costanza'] * b)}, e resta fuori dal valore.")
     righe.append("La curva del favorito, col valore nuovo, su una terza popolazione:")
     terza = genera(800, primo + 3, quota_allenati=0.6, punti=(0, 220), esperienza=(0, 12), primo_id=700_001)
     indice_terza = {g.id: valore.indice(g, pesi, tratti, a, b) for g in terza}

@@ -72,7 +72,7 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
     con_dialogo = {finestra.scheda_giocatore, finestra.diario_giocatore, finestra.cerca, finestra.cambia_aspetto, finestra.cambia_conservazione,
                    finestra.caffe, finestra.esci, finestra.vai_alla_vista, finestra.vai_alla_barra, finestra.nuova_polisportiva,
                    finestra.cambia_polisportiva, finestra.mercato, finestra.svincola, finestra.password_polisportiva, finestra.chiudi_polisportiva,
-                   finestra.cambia_effetti, finestra.cambia_velocita, finestra.amichevole}
+                   finestra.cambia_effetti, finestra.cambia_velocita, finestra.amichevole, finestra.sala_allenamento, finestra.contratti}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -236,6 +236,16 @@ def test_ricerca(app_wx, monkeypatch):
         filtro.condizione.SetSelection(1)
         filtro.conferma()
         assert filtro.risultato == (None, "sesso", "f", None, "sesso donna")
+        # La classe si scrive come nella scheda, e la descrizione del filtro la dice allo stesso modo.
+        filtro.criterio.SetSelection([chiave for chiave, *_resto in ricerca.CRITERI].index("classe"))
+        filtro.al_criterio()
+        assert filtro.valore.IsEnabled() and [filtro.condizione.GetString(i) for i in range(filtro.condizione.GetCount())] == ["migliore di", "peggiore di"]
+        filtro.valore.ChangeValue("Z9")
+        filtro.conferma()
+        assert avvisi[-1].startswith("La classe si scrive come nella scheda, per esempio G4")
+        filtro.valore.ChangeValue("e0")
+        filtro.conferma()
+        assert filtro.risultato == (None, "classe", "migliore", 40, "classe migliore di E0")
     finally:
         filtro.Destroy()
 

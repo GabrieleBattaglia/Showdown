@@ -86,3 +86,41 @@ def test_l_infortunio_dopo_la_partita_e_la_guarigione(monkeypatch):
     monkeypatch.setattr("mondo.PROB_USCITA_PREMATURA_GIORNALIERA", 0)
     mondo._fai_invecchiare(g.infortunio_fine_datetime + datetime.timedelta(days=1), rapporto)
     assert not g.infortunato and g.infortunio_sede is None and rapporto["guariti"] == 1
+
+
+
+# Tappa 11: l'intensità dell'allenamento cambia il rischio in partita, e soltanto l'intensa ne porta uno in seduta.
+
+def test_i_fattori_dell_intensita_in_partita():
+    normale = infortuni.probabilita(giocatore(4, anni=40), 150)
+    assert infortuni.probabilita(giocatore(4, anni=40, intensita="leggera"), 150) == pytest.approx(0.85 * normale)
+    assert infortuni.probabilita(giocatore(4, anni=40, intensita="intensa"), 150) == pytest.approx(1.25 * normale)
+
+
+def test_il_rischio_in_seduta_soltanto_all_intensa():
+    assert infortuni.probabilita_in_seduta(giocatore(5, anni=25)) == 0.0
+    assert infortuni.probabilita_in_seduta(giocatore(5, anni=25, intensita="leggera")) == 0.0
+    assert infortuni.probabilita_in_seduta(giocatore(5, anni=25, intensita="intensa")) == pytest.approx(0.3)
+    assert infortuni.probabilita_in_seduta(giocatore(5, anni=75, intensita="intensa")) == pytest.approx(0.9)
+    assert infortuni.probabilita_in_seduta(giocatore(5, anni=25, intensita="intensa", ambidestro=True)) == pytest.approx(0.3 * FATTORE_INFORTUNIO_AMBIDESTRO)
+
+
+def test_l_infortunio_in_seduta_dipende_soltanto_dalla_data_e_dal_numero():
+    mondo = Mondo()
+    mondo.datetime_corrente_simulazione = OGGI
+    random.seed(1)
+    tiro = random.random()
+    esiti = []
+    for prova in range(2):
+        random.seed(1)
+        giorni = []
+        for numero in range(1, 401):
+            g = giocatore(numero, anni=40, intensita="intensa")
+            frase = infortuni.infortunio_in_seduta(mondo, g, OGGI + datetime.timedelta(days=numero % 7))
+            if frase:
+                giorni.append((numero, g.infortunio_sede, g.infortunio_fine_datetime))
+                assert g.infortunato and g.diario[0]["testo"].startswith("Si infortuna in allenamento ")
+                assert infortuni.infortunio_in_seduta(mondo, g, OGGI) is None
+        esiti.append(giorni)
+        assert random.random() == tiro, prova
+    assert esiti[0] == esiti[1] and 0 < len(esiti[0]) < 20

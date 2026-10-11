@@ -11,12 +11,13 @@ import math
 import random
 
 import pytest
+from aiuti_formati import al_formato_5
 
 import archivio
 import economia
 import mondo as modulo_mondo
 import testi
-from costanti import CAPITALE_INIZIALE, FILE_MONDO, SPONSOR_PER_GLORIA, STIPENDIO_DI_RIFERIMENTO, VALORE_DI_RIFERIMENTO
+from costanti import CAPITALE_INIZIALE, FILE_MONDO, QUOTA_SPONSOR_SUL_VALORE, SPONSOR_PER_GLORIA, STIPENDIO_DI_RIFERIMENTO, VALORE_DI_RIFERIMENTO
 from modelli import Giocatore
 from mondo import Mondo
 
@@ -86,7 +87,13 @@ def test_ingaggio_reputazione_e_sponsor(mondo):
     poli.gloria = 1
     assert economia.fattore_reputazione(g, poli) == 2.
     poli.gloria = 100
-    assert economia.sponsor_mensile(poli) == 100 * SPONSOR_PER_GLORIA
+    # Dalla tappa 11 lo sponsor è metà per la gloria e metà per il valore della rosa.
+    assert economia.sponsor_mensile(poli, []) == economia.arrotonda(100 * SPONSOR_PER_GLORIA)
+    rosa = [mondo.giocatori[gid] for gid in (1, 2, 3)]
+    atteso = economia.arrotonda(100 * SPONSOR_PER_GLORIA + QUOTA_SPONSOR_SUL_VALORE * sum(economia.valore_di_mercato_pieno(g) for g in rosa))
+    assert economia.sponsor_mensile(poli, rosa) == atteso
+    rosa[0].ritirato = True
+    assert economia.sponsor_mensile(poli, rosa) < atteso
 
 
 def test_l_offerta_e_un_ingaggio(mondo, monkeypatch):
@@ -112,16 +119,18 @@ def test_l_offerta_e_un_ingaggio(mondo, monkeypatch):
 
 def test_il_primo_del_mese_con_la_cassa_che_basta(mondo):
     poli = _club(mondo, 3)
-    sponsor = economia.sponsor_mensile(poli)
+    sponsor = mondo.sponsor(poli)
     rapporto = _rapporto()
     mondo._primo_del_mese(PRIMO, rapporto)
     monte = mondo.monte_stipendi(poli)
     assert poli.cassa == CAPITALE_INIZIALE + sponsor - monte
-    assert poli.bilanci == [{"data": PRIMO, "cassa": poli.cassa, "sponsor": sponsor, "vendite": 0, "stipendi": monte, "arretrati": 0, "ingaggi": 0, "acquisti": 0}]
+    assert poli.bilanci == [{"data": PRIMO, "cassa": poli.cassa, "sponsor": sponsor, "vendite": 0, "stipendi": monte, "arretrati": 0, "ingaggi": 0, "acquisti": 0,
+                             "buonuscite": 0}]
     assert set(poli.conti_del_mese.values()) == {0}
     for gid in poli.tesserati:
         g = mondo.giocatori[gid]
-        assert g.fedelta == 2. and g.esperienza == pytest.approx(.1) and g.arretrati == 0 and g.pazienza == 100
+        # Dalla tappa 11 l'esperienza non cresce più il primo del mese ma ogni giorno, in _allenamento_del_giorno.
+        assert g.fedelta == 2. and g.esperienza == 0.0 and g.arretrati == 0 and g.pazienza == 100
     assert rapporto["tuoi_non_pagati"] == 0
 
 
@@ -133,10 +142,11 @@ def test_senza_soldi_si_aspetta_e_poi_si_se_ne_va(mondo):
     poli.cassa = 0
     poli.gloria = 1
     rapporto = _rapporto()
+    sponsor = mondo.sponsor(poli)
     mondo._primo_del_mese(PRIMO, rapporto)
     rosa = [mondo.giocatori[gid] for gid in (1, 2, 3)]
-    assert poli.cassa == economia.sponsor_mensile(poli)
-    assert all(g.arretrati == economia.stipendio(g) for g in rosa)
+    assert poli.cassa == sponsor
+    assert all(g.arretrati == economia.stipendio_pagato(g) for g in rosa)
     assert rapporto["tuoi_non_pagati"] == 3
     assert 0 < rosa[0].pazienza < 100 and bandiera.pazienza == 100
     assert testi.umore(rosa[0]) == ("pronto ad andarsene" if rosa[0].sesso == "m" else "pronta ad andarsene")
@@ -169,18 +179,20 @@ def test_pagare_gli_arretrati_rende_pazienza(mondo):
         mondo.paga(poli, mondo.giocatori[5], 1)
 
 
-def test_il_computer_senza_soldi_paga_i_meno_pazienti_e_vende(mondo):
+def test_il_computer_senza_soldi_paga_i_meno_pazienti_e_vende(mondo, monkeypatch):
     poli = _cpu(mondo, (1, 2, 3))
     poli.cassa = 0
     poli.gloria = 1
+    # Uno sponsor piccolo, che basta soltanto per una parte di uno stipendio.
+    sponsor = 20
+    monkeypatch.setattr(modulo_mondo, "sponsor_mensile", lambda _poli, _rosa: sponsor)
     pazienti, impaziente = mondo.giocatori[1], mondo.giocatori[2]
     impaziente.pazienza = 95.
     mondo._primo_del_mese(PRIMO, _rapporto())
-    sponsor = economia.sponsor_mensile(poli)
-    assert impaziente.arretrati == economia.stipendio(impaziente) - sponsor
-    assert pazienti.arretrati == economia.stipendio(pazienti)
-    caro = max((mondo.giocatori[gid] for gid in (1, 2, 3)), key=economia.stipendio)
-    assert poli.in_vendita == {caro.id: economia.valore_di_mercato(caro)}
+    assert impaziente.arretrati == economia.stipendio_pagato(impaziente) - sponsor
+    assert pazienti.arretrati == economia.stipendio_pagato(pazienti)
+    caro = max((mondo.giocatori[gid] for gid in (1, 2, 3)), key=economia.stipendio_pagato)
+    assert poli.in_vendita == {caro.id: economia.valore_di_mercato(caro, PRIMO)}
 
 
 # Vendite, acquisti e offerte d'acquisto.
@@ -255,7 +267,7 @@ def test_un_salvataggio_del_formato_3_si_aggiorna(mondo, cartella_di_prova):
     poli = _club(mondo, 2)
     for gid in (1, 2):
         mondo.giocatori[gid].diario[0]["data"] = INIZIO - datetime.timedelta(days=90)
-    contenuto = archivio.componi(mondo)
+    contenuto = al_formato_5(archivio.componi(mondo))
     dati = contenuto["mondo"]
     for p in dati["polisportive"].values():
         for campo in ("cassa", "in_vendita", "bilanci", "conti_del_mese"):
@@ -273,14 +285,14 @@ def test_un_salvataggio_del_formato_3_si_aggiorna(mondo, cartella_di_prova):
     assert ricaricato.giocatori[5].fedelta == 0. and ricaricato.giocatori[5].pazienza == 100.
     assert all(g.bandiera == (g.id % 100 == 0) for g in ricaricato.giocatori.values())
     assert archivio.salva(ricaricato)
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 5
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 6
 
 
 def test_i_testi_dell_economia(mondo):
     poli = _club(mondo, 2)
     g = mondo.giocatori[1]
     scheda = testi.scheda_giocatore(g, mondo)
-    assert f"Stipendio: {_euro(economia.stipendio(g))} al mese | Valore di mercato: " in scheda
+    assert f"Stipendio: {_euro(economia.stipendio(g))} al mese, fisso fino al " in scheda and " | Valore di mercato: " in scheda
     assert "Fedeltà a Club di prova: 0 su 100 | Umore: sereno" in scheda
     assert "Punti allenamento: " in scheda
     g.arretrati = 300

@@ -28,6 +28,11 @@ degli effetti, perché faccia sentire il livello che la partita avrà.
 Con la fase dei timbri della tappa 10 ogni evento ha anche la sua azione detta a parole, in AZIONI:
 la legge l'elenco dei suoni per Acu_Maker, suoni_di_mess.txt, che strumenti/elenco_suoni.py scrive
 dalle mappe della finestra e della partita, richiesta di Gabriele della decisione D29.
+Con la tappa 11, il 2026-10-09, decisione D31, arrivano tre gruppi: la sala allenamento, i
+contratti con i rinnovi, e le notizie dell'avanzamento sui contratti e sugli infortuni in seduta.
+Sono ventidue suoni nuovi, tutti mess_, entrati nella collezione con la V204. La probabilità del
+rinnovo si sposta d'altezza come quella dell'ingaggio, ma con un timbro suo. Le parti della tappa
+11 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -246,6 +251,45 @@ GRUPPI = (
         "dal_vivo_piu_lenta": "meteora_velocita_giu",
         "dal_vivo_velocita_al_limite": "meteora_velocita_al_limite",
     }),
+    ("Allenamento, la sala", {
+        # Il passo del riscaldamento apre la sala; il peso che sale è la spesa a mano, la stessa
+        # salita con l'arpeggio è quella secondo il programma, e le scivolate a scala sono la squadra.
+        "dialogo_sala_allenamento": "mess_sala_allenamento",
+        "allenamento_fatto": "mess_allenamento_fatto",
+        "allenamento_completo": "mess_allenamento_completo",
+        "allenati_tutti": "mess_allenati_tutti",
+        # La campanella della classe guadagnata suona in coda all'esito.
+        "classe_salita": "mess_classe_salita",
+        # I tre avvisi che lasciano aperta la sala: il sacchetto vuoto, il soffitto, il passo zoppo.
+        "punti_insufficienti": "mess_portafoglio_vuoto",
+        "caratteristica_al_massimo": "mess_al_massimo",
+        "allenando_infortunato": "mess_allenando_fermo",
+        # Scattano a ogni freccia sulle due scelte: un tocco minimo e un battito di cuore.
+        "programma_cambiato": "mess_programma_cambiato",
+        "intensita_cambiata": "mess_intensita_cambiata",
+    }),
+    ("Contratti, i rinnovi", {
+        "dialogo_contratti": "mess_contratti_aperti",
+        # Il timbro della probabilità del rinnovo: l'altezza la sposta probabilita_in_semitoni, come
+        # per l'ingaggio, ma il suono è un altro, perché non si confondano.
+        "probabilita_rinnovo": "mess_probabilita_rinnovo",
+        # Il motivo che sale e si ripete, il suo specchio che scende, e lo stesso a dente di sega con
+        # la porta che si chiude al terzo rifiuto.
+        "rinnovo_accettato": "mess_rinnovo_firmato",
+        "rinnovo_rifiutato": "mess_rinnovo_rifiutato",
+        "rinnovo_chiuso": "mess_rinnovo_chiuso",
+        # Le quattro proposte che non si possono fare, ciascuna col suo perché.
+        "rinnovo_fuori_finestra": "mess_rinnovo_non_ancora",
+        "rinnovo_gia_proposto_oggi": "mess_rinnovo_domani",
+        "rinnovo_senza_proposte": "mess_rinnovo_niente_da_fare",
+        "rinnovo_gia_concordato": "mess_rinnovo_gia_fatto",
+    }),
+    ("Contratti e allenamento, le notizie", {
+        # Il promemoria suona due volte per contratto: all'ingresso nella finestra e all'ultimo mese.
+        "tuoi_contratti_in_scadenza": "mess_contratti_in_scadenza",
+        "tuoi_contratti_scaduti": "mess_contratto_scaduto",
+        "tuo_tesserato_infortunato_in_seduta": "mess_infortunio_in_allenamento",
+    }),
 )
 EVENTI = {evento: preset for _titolo, gruppo in GRUPPI for evento, preset in gruppo.items()}
 
@@ -267,7 +311,7 @@ AZIONI = {
     "fuoco_vista": "F5, il fuoco va nella vista principale",
     "fuoco_barra": "F7, il fuoco va nella barra di stato",
     "annullato": "un'operazione annullata, con Esc o con Annulla in un dialogo",
-    "lavoro_concluso": "la chiusura del mercato, delle vendite o degli arretrati dopo averci lavorato",
+    "lavoro_concluso": "la chiusura del mercato, delle vendite, degli arretrati, della sala allenamento o dei contratti dopo averci lavorato",
     "nessuna_selezione": "un pulsante premuto senza niente di scelto su cui lavorare",
     "campo_da_correggere": "un valore da correggere in un campo, e il dialogo resta aperto",
     "elenco_svuotato": "un elenco che si restringe mentre si scrive, e resta vuoto",
@@ -349,7 +393,7 @@ AZIONI = {
     "filtro_aggiunto": "nel mercato un filtro aggiunto",
     "filtro_tolto": "nel mercato un filtro tolto",
     "filtri_tutti_tolti": "nel mercato tutti i filtri tolti",
-    "mercato_scheda_giocatore": "nel mercato la scheda del giocatore scelto",
+    "mercato_scheda_giocatore": "nel mercato, nella sala allenamento e nei contratti, la scheda del giocatore scelto",
     "dialogo_cifra_ingaggio": "si apre il dialogo della cifra d'ingaggio di un libero",
     "probabilita_ingaggio": "la probabilità che il libero accetti, mentre si scrive la cifra: più è alta, più è acuto",
     "dialogo_cifra_offerta_d_acquisto": "si apre il dialogo della cifra da offrire per un tesserato di un'altra polisportiva",
@@ -398,6 +442,28 @@ AZIONI = {
     "dal_vivo_piu_veloce": "nella partita dal vivo il tasto più, velocità di gioco più alta",
     "dal_vivo_piu_lenta": "nella partita dal vivo il tasto meno, velocità di gioco più bassa",
     "dal_vivo_velocita_al_limite": "nella partita dal vivo più o meno con la velocità già al massimo o al minimo",
+    "dialogo_sala_allenamento": "si apre la sala allenamento, con Ctrl+Shift+L",
+    "allenamento_fatto": "nella sala allenamento una spesa a mano, punti allenamento su una caratteristica",
+    "allenamento_completo": "nella sala allenamento l'allenamento completo di un tesserato secondo il suo programma",
+    "allenati_tutti": "nella sala allenamento Allena tutti, ogni tesserato secondo il suo programma",
+    "classe_salita": "nella sala allenamento un tesserato sale di classe, dopo l'esito",
+    "punti_insufficienti": "nella sala allenamento non ci sono punti da spendere, o la cifra è zero",
+    "caratteristica_al_massimo": "nella sala allenamento la caratteristica scelta è già al massimo",
+    "allenando_infortunato": "nella sala allenamento il tesserato scelto è infortunato e oggi non si allena",
+    "programma_cambiato": "nella sala allenamento cambia il programma del tesserato",
+    "intensita_cambiata": "nella sala allenamento cambia l'intensità del tesserato",
+    "dialogo_contratti": "si apre il dialogo dei contratti e dei rinnovi, con Ctrl+Shift+K",
+    "probabilita_rinnovo": "la probabilità che il tesserato accetti il rinnovo, mentre si scrivono stipendio e durata: più è alta, più è acuto",
+    "rinnovo_accettato": "il tesserato accetta il rinnovo del contratto",
+    "rinnovo_rifiutato": "il tesserato rifiuta il rinnovo, e si può riprovare un altro giorno",
+    "rinnovo_chiuso": "il terzo rifiuto del rinnovo, e il tesserato non tratta più",
+    "rinnovo_fuori_finestra": "il rinnovo non si può ancora proporre, perché il contratto non è negli ultimi tre mesi",
+    "rinnovo_gia_proposto_oggi": "oggi al tesserato è già stata fatta una proposta di rinnovo",
+    "rinnovo_senza_proposte": "il tesserato ha già rifiutato tre proposte e non ne accetta altre",
+    "rinnovo_gia_concordato": "il tesserato ha già rinnovato il contratto",
+    "tuoi_contratti_in_scadenza": "nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo",
+    "tuoi_contratti_scaduti": "nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero",
+    "tuo_tesserato_infortunato_in_seduta": "nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento",
 }
 
 # Il volume a cui ogni preset suona com'è stato pensato.
@@ -527,8 +593,9 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False):
     Il suono di un avanzamento del mondo e il testo della quarta riga della barra di stato, scelti
     insieme perché non dicano cose diverse: al massimo un suono per avanzamento, quello della notizia
     più importante. Prima il salvataggio che non riesce, poi le notizie delle tue polisportive, nello
-    stesso ordine della barra: tesserati andati via, stipendi non pagati, giocatori venduti, tesserati
-    usciti di scena, ritirati o diventati bandiere; poi il primo del mese, se hai una polisportiva. Un
+    stesso ordine della barra: tesserati andati via, tornati liberi a fine contratto, stipendi non
+    pagati, giocatori venduti, tesserati usciti di scena, infortunati in seduta, ritirati, contratti
+    in scadenza o tesserati diventati bandiere; poi il primo del mese, se hai una polisportiva. Un
     avanzamento di più giorni ha il suo suono, che copre le notizie del mondo: dopo un'assenza ce ne
     sono quasi sempre, e le racconta il riepilogo. Per il giorno singolo le notizie del mondo, dalla
     più pesante, e infine il giorno qualunque. Restituisce la coppia (evento, testo), o (None, None)
@@ -544,10 +611,14 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False):
         return "salvataggio_non_riuscito", testo if len(testo) <= 40 else f"avanzato {di_giorni}, non salvato"
     tuoi = (
         ("tuoi_partiti", "tuoi_tesserati_partiti", lambda n: f"{conta(n, 'tesserato andato via', 'tesserati andati via')}, non pagati"),
+        ("tuoi_scaduti", "tuoi_contratti_scaduti", lambda n: conta(n, "tesserato libero a fine contratto", "tesserati liberi a fine contratto")),
         ("tuoi_non_pagati", "stipendi_non_pagati", lambda _n: "stipendi non pagati, vedi il bilancio"),
         ("tuoi_venduti", "tuo_tesserato_venduto", lambda n: conta(n, "tuo giocatore venduto", "tuoi giocatori venduti")),
         ("tuoi_usciti", "tuo_tesserato_uscito_di_scena", lambda n: conta(n, "tuo tesserato uscito di scena", "tuoi tesserati usciti di scena")),
+        ("tuoi_infortunati_in_seduta", "tuo_tesserato_infortunato_in_seduta",
+         lambda n: "tuo tesserato infortunato in seduta" if n == 1 else f"{n} tuoi tesserati infortunati in seduta"),
         ("tuoi_ritirati", "tuo_tesserato_ritirato", lambda n: conta(n, "tuo tesserato ritirato", "tuoi tesserati ritirati")),
+        ("tuoi_in_scadenza", "tuoi_contratti_in_scadenza", lambda n: "1 contratto in scadenza, rinnovalo" if n == 1 else f"{n} contratti in scadenza, rinnovali"),
         ("tue_bandiere", "tuo_tesserato_bandiera", lambda n: conta(n, "tuo tesserato diventa bandiera", "tuoi tesserati diventano bandiere")),
     )
     for chiave, evento, testo in tuoi:

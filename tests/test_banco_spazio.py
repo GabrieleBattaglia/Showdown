@@ -469,9 +469,12 @@ def test_la_larghezza_cambia_davvero_sui_buffer(banco):
         assert misura == pytest.approx(attese, abs=0.03), candidato.nome
         assert candidato.spazio.pan == "laterale"
         misure.append(misura)
-    # Le metà lontane si stringono a passi ben distinti, e la metà vicina resta quella di oggi.
+    # Le metà lontane si stringono a passi ben distinti, e la metà vicina resta quella di oggi. I passi
+    # si misurano sul pan di oggi della parata lontana, che dipende dal punto scelto: dalla tappa 11,
+    # con l'abitudine al colpo ripetuto, l'ascolto libero sceglie un altro goal nella porta lontana,
+    # con la parata più vicina al centro, e un decimo fisso non vale più.
     lontani = [misura[0] for misura in misure]
-    assert all(a - b > 0.1 for a, b in itertools.pairwise(lontani)), lontani
+    assert all(a - b > 0.15 * lontani[0] for a, b in itertools.pairwise(lontani)), lontani
     for misura in misure[1:]:
         assert misura[1:] == pytest.approx(misure[0][1:], abs=0.01)
     # Nessun candidato tocca la metà vicina: in ogni punto, i suoni fermi fino allo schermo, il fischio
