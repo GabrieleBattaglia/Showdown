@@ -62,6 +62,12 @@ NASCITA_DEL_MONDO = datetime.datetime(2026, 1, 1, 9, 0, tzinfo=datetime.UTC)
 CAMPI_DEL_MONDO_REALE = ("salvato", "versione", "ultimo_avanzamento")
 CAMPI_REALI_GIOCATORE = ("datacreazione_reale", "versione")
 CAMPI_REALI_POLISPORTIVA = ("datacreazione_reale", "datetime_ultimo_movimento", "versione_creazione")
+# L'esperienza delle gare di un tesserato del computer per anno d'età, dalla tappa 12, punto 6.4 del
+# progetto: con le fonti nuove l'esperienza del club scende, e senza le gare il mondo sintetico
+# avrebbe il 60 per cento d'esperienza in meno di quello vero. Una stima ai ritmi di regime: un
+# torneo ogni 61 giorni, cioè 1,8 tornei per anno d'età, ciascuno con circa 3,5 incontri, una fase e
+# mezza superata e un piazzamento medio, circa 0,08 d'esperienza a torneo, e qualche sfida.
+ESPERIENZA_GARE_PER_ANNO = 0.15
 
 
 def nati(quanti, seme, primo_id=1):
@@ -129,7 +135,8 @@ def mondo_sintetico(quanti, anni_mondo, seme, primo_id=100_000, candidati=None):
             continue
         g.eta = int(ingresso * GIORNI_ANNO)
         allena_a_passi(g, ingresso, eta, 0.9 * costanti.PA_SEDUTA + 0.1 * costanti.PA_SEDUTA * costanti.QUOTA_SEDUTA_LIBERI, g.indole, passo=1.0)
-        g.esperienza = min(costanti.ESPERIENZA_MASSIMA, da_quanto * (costanti.ESPERIENZA_PER_ANNO_DI_VITA + 0.9 * esperienza.ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * GIORNI_ANNO * FATTORE_GRUPPO))
+        per_anno = costanti.ESPERIENZA_PER_ANNO_DI_VITA + 0.9 * (esperienza.ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * GIORNI_ANNO * FATTORE_GRUPPO + ESPERIENZA_GARE_PER_ANNO)
+        g.esperienza = min(costanti.ESPERIENZA_MASSIMA, da_quanto * per_anno)
         giocatori.append(g)
     return giocatori
 

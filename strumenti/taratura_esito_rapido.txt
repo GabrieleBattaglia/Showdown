@@ -1,0 +1,37 @@
+Taratura dell'esito rapido sul motore vero: 2400 giocatori in tre popolazioni, 3000 incontri e 800 gare a squadre, pronti in 2,4 secondi.
+Regressioni fatte in 11,5 secondi, su 92273 scambi dei singolari e 26944 delle gare a squadre.
+Le caratteristiche col peso negativo nella regressione, portate a zero: triplaspondasx.
+Al meglio dei 3, 1588 incontri.
+Distacco meno del 5 per cento, 737 incontri: il favorito vince il 52,2 per cento col motore e il 48,4 con l'esito rapido, scarto -3,8.
+Distacco fra il 5 e il 15 per cento, 146 incontri: il favorito vince il 61,0 per cento col motore e il 60,3 con l'esito rapido, scarto -0,7.
+Distacco fra il 15 e il 30 per cento, 180 incontri: il favorito vince il 76,1 per cento col motore e il 72,2 con l'esito rapido, scarto -3,9.
+Distacco oltre il 30 per cento, 525 incontri: il favorito vince il 94,1 per cento col motore e il 91,6 con l'esito rapido, scarto -2,5.
+Motore: punti medi per set 17,42, set oltre i 12 punti 5,7 per cento; risultati 2 a 0 63,8, 2 a 1 36,2; infortuni che fermano 7, acciacchi 51, ritiri 4.
+Esito rapido: punti medi per set 17,45, set oltre i 12 punti 6,0 per cento; risultati 2 a 0 62,3, 2 a 1 37,7; infortuni che fermano 7, acciacchi 55, ritiri 3.
+Al meglio dei 5, 412 incontri.
+Distacco meno del 5 per cento, 188 incontri: il favorito vince il 50,5 per cento col motore e il 43,6 con l'esito rapido, scarto -6,9.
+Distacco fra il 5 e il 15 per cento, 36 incontri: il favorito vince il 52,8 per cento col motore e il 55,6 con l'esito rapido, scarto 2,8.
+Distacco fra il 15 e il 30 per cento, 32 incontri: il favorito vince il 71,9 per cento col motore e il 71,9 con l'esito rapido, scarto 0,0.
+Distacco oltre il 30 per cento, 156 incontri: il favorito vince il 89,1 per cento col motore e il 92,3 con l'esito rapido, scarto 3,2.
+Motore: punti medi per set 17,47, set oltre i 12 punti 5,4 per cento; risultati 3 a 0 44,6, 3 a 1 32,4, 3 a 2 22,9; infortuni che fermano 3, acciacchi 9, ritiri 2.
+Esito rapido: punti medi per set 17,45, set oltre i 12 punti 4,7 per cento; risultati 3 a 0 42,9, 3 a 1 31,2, 3 a 2 25,9; infortuni che fermano 3, acciacchi 14, ritiri 2.
+Gara a squadre, 500 gare: la squadra più forte vince il 78,0 per cento col motore e il 73,0 con l'esito rapido; punti del set 51,7 col motore e 52,8 con l'esito rapido.
+L'esito rapido costa 162,2 microsecondi a incontro al meglio dei 3, con la memoria della forza.
+Il blocco da copiare nei predefiniti di TaraturaRapida, in esito_rapido.py:
+_PESI = {'lungolineasx': 0.446, 'lungolineadx': 0.636, 'diagonalesx': 0.35, 'diagonaledx': 0.469, 'singolaspondasx': 0.2, 'singolaspondadx': 0.542, 'doppiaspondasx': 0.403, 'doppiaspondadx': 0.609, 'triplaspondasx': 0.0, 'triplaspondadx': 0.388, 'bomba': 0.139, 'battutasx': 0.476, 'battutadx': 0.627, 'chiusura_dritto': 2.296, 'chiusura_rovescio': 2.649, 'blocco_dritto': 1.227, 'blocco_rovescio': 1.209, 'difesa': 3.02, 'tenutapaletta': 1.455, 'controllopalla': 0.79, 'attacco': 1.143, 'precisione': 2.454, 'forza': 1.951, 'resistenza': 0.52}
+_PESI_TRATTI = {'mancino': 0.061, 'ambidestro': -0.067, 'giocorapido': 0.012, 'cambiovelocita': 0.014}
+PESO_LETTURA = 1.099
+PENDENZA = 0.2948
+K_FATICA = 1.904
+VANTAGGIO_BATTUTA = 0.0888
+GOAL_BASE = -0.2445
+GOAL_DISTACCO = 0.2399
+GOAL_LIVELLO = 0.0336
+PENALITA = 0.00033
+AZIONI_PER_SCAMBIO = 6.668
+ATTACCHI_PER_SCAMBIO = 1.7
+PENDENZA_SQUADRE = 0.3067
+K_FATICA_SQUADRE = 3.123
+VANTAGGIO_BATTUTA_SQUADRE = 0.0958
+GOAL_SQUADRE = 0.1577
+Taratura completata in 19,0 secondi.

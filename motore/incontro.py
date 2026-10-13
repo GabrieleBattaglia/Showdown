@@ -109,6 +109,33 @@ SQUADRE = Formato("gara a squadre", "squadre", 1, PUNTI_SET_SQUADRE, PUNTI_VANTA
                   "incontro", TIMEOUT_SQUADRE, RISCALDAMENTO_SQUADRE, AVVISI_RISCALDAMENTO_SQUADRE)
 
 
+def cumulata_infortunio(base, azioni, chiude):
+    """
+    La probabilità cumulata, in percentuale, che un giocatore si sia fatto male fino a una fine set,
+    tappa 12: a un quinto, QUOTA_INFORTUNI_CHE_FERMANO, della probabilità piena dell'incontro. Alla
+    fine del set che chiude l'incontro è un quinto della probabilità piena, con il carico di tutte le
+    azioni; prima, cresce in proporzione alle azioni giocate fino al riferimento, con il carico dove lo
+    supera: così il minimo del carico pesa sull'ultimo set, invece che sul primo. La usano il motore e
+    l'esito rapido.
+    """
+    if chiude or AZIONI_RIFERIMENTO_INFORTUNIO <= 0:
+        carico = fattore_carico(azioni)
+    else:
+        carico = min(fattore_carico(azioni), azioni / AZIONI_RIFERIMENTO_INFORTUNIO)
+    return QUOTA_INFORTUNI_CHE_FERMANO * min(PROBABILITA_MASSIMA, base * carico)
+
+
+def probabilita_acciacco(base, azioni):
+    """
+    La probabilità, in quota, che chi non si è fatto male nell'incontro ne esca con un acciacco: la
+    probabilità piena meno la parte degli infortuni che fermano, divisa per quello che resta, così la
+    probabilità che succeda qualcosa è quella di prima.
+    """
+    quota = QUOTA_INFORTUNI_CHE_FERMANO
+    piena = min(PROBABILITA_MASSIMA, base * fattore_carico(azioni)) / 100.0
+    return (piena - quota * piena) / (1.0 - quota * piena)
+
+
 def formato_singolare(set_al_meglio):
     """Il formato del singolare al meglio dei 3 o dei 5 set; ValueError per ogni altro numero."""
     if set_al_meglio not in SET_AMMESSI:
@@ -398,18 +425,7 @@ class Incontro:
     # Gli infortuni in gara, tappa 12.
 
     def _cumulata(self, base, azioni, chiude):
-        """
-        La probabilità cumulata, in percentuale, che il giocatore si sia fatto male fino a questa fine
-        set: a un quinto, QUOTA_INFORTUNI_CHE_FERMANO, della probabilità piena dell'incontro. Alla fine
-        del set che chiude l'incontro è un quinto della probabilità piena, con il carico di tutte le sue
-        azioni; prima, cresce in proporzione alle azioni giocate fino al riferimento, con il carico dove
-        lo supera: così il minimo del carico pesa sull'ultimo set, invece che sul primo.
-        """
-        if chiude or AZIONI_RIFERIMENTO_INFORTUNIO <= 0:
-            carico = fattore_carico(azioni)
-        else:
-            carico = min(fattore_carico(azioni), azioni / AZIONI_RIFERIMENTO_INFORTUNIO)
-        return QUOTA_INFORTUNI_CHE_FERMANO * min(PROBABILITA_MASSIMA, base * carico)
+        return cumulata_infortunio(base, azioni, chiude)
 
     def _estraibile(self, gid):
         """Vero se per il giocatore si estrae: ha una base, non si è già fatto male nell'incontro e non era già infortunato, come l'ambidestro col braccio fermo."""
@@ -474,14 +490,11 @@ class Incontro:
         if self.basi_infortunio is None:
             return
         rng = self.rng_infortuni
-        quota = QUOTA_INFORTUNI_CHE_FERMANO
         for gid in self._in_gara:
             if not self._estraibile(gid):
                 continue
             c = self.campo[gid]
-            piena = min(PROBABILITA_MASSIMA, self.basi_infortunio[gid] * fattore_carico(c.stats.azioni)) / 100.0
-            probabilita = (piena - quota * piena) / (1.0 - quota * piena)
-            if rng.random() < probabilita:
+            if rng.random() < probabilita_acciacco(self.basi_infortunio[gid], c.stats.azioni):
                 self.acciacchi.append((gid, estrai_sede(c.g, rng)))
 
     def _momento(self, genere, eventi, esito):

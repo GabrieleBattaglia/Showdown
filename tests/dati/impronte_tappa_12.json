@@ -1,5 +1,5 @@
 {
- "nota": "Rigenerate col secondo commit del passo 2 della tappa 12: i punti e l'esperienza delle fonti nuove, con le prime stime del punto 10 del progetto. Il mondo nato cambia perché l'esperienza del giorno in polisportiva scende da 0,00279 a 0,00108 e perché ultima_amichevole diventa ultimo_impegno; il mondo a regime anche perché il mondo sintetico dà l'esperienza con la stessa costante. L'impronta del motore resta uguale.",
+ "nota": "Rigenerate col terzo commit del passo 2 della tappa 12: l'esito rapido. Cambia soltanto il mondo a regime, perché il mondo sintetico dà ai tesserati anche l'esperienza stimata delle gare, tornei e sfide, punto 6.4 del progetto. Il motore e il mondo nato restano uguali.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
@@ -12,10 +12,10 @@
   "polisportive": 42
  },
  "mondo_a_regime": {
-  "sha256": "66f604b0780215b51a801657cb07b9b18c4ef263999aa1ab5ea7b0bd52bba7af",
-  "vivi": 1666,
-  "attivi": 1266,
-  "tesserati": 1098,
-  "polisportive": 77
+  "sha256": "50f75639067c0b1f4bf82a8249539b0218e210fa073414d832024512b69ecc1e",
+  "vivi": 1654,
+  "attivi": 1254,
+  "tesserati": 1090,
+  "polisportive": 76
  }
 }
