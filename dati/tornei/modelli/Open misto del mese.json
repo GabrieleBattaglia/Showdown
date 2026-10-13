@@ -1,0 +1,30 @@
+{
+ "id": "modello_5",
+ "nome": "Open misto del mese",
+ "note": "L'open misto, una volta al mese: uomini e donne insieme, scelta di Gabriele in D32.",
+ "attivo": true,
+ "tipo": "individuale",
+ "sesso": "aperto",
+ "formula": "gironi_32",
+ "ricorrenza": {
+  "tipo": "mensile",
+  "giorno": 8
+ },
+ "giorni_iscrizione": 14,
+ "minimo_iscritti": 4,
+ "set_al_meglio": 3,
+ "set_finali": 5,
+ "finali_da": 2,
+ "incontri_al_giorno": 4,
+ "importanza": 1.0,
+ "quota_iscrizione": 10,
+ "contributo_federazione": 1.0,
+ "montepremi_minimo": 0,
+ "posti_premiati": 8,
+ "pendenza_premi": 1.385,
+ "qualificazione": "nessuna",
+ "classe_minima": null,
+ "classe_massima": null,
+ "eta_minima": null,
+ "eta_massima": null
+}

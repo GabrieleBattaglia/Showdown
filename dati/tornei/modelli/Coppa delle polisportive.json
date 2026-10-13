@@ -1,0 +1,31 @@
+{
+ "id": "modello_10",
+ "nome": "Coppa delle polisportive",
+ "note": "La coppa a squadre delle 64 polisportive con più gloria che schierano una squadra valida: si gioca per le coppe, senza premi in euro. Risposta 14 di Gabriele.",
+ "attivo": true,
+ "tipo": "squadre",
+ "sesso": null,
+ "formula": "squadre_64",
+ "ricorrenza": {
+  "tipo": "annuale",
+  "mese": 6,
+  "giorno": 15
+ },
+ "giorni_iscrizione": 20,
+ "minimo_iscritti": 4,
+ "set_al_meglio": 3,
+ "set_finali": 3,
+ "finali_da": 0,
+ "incontri_al_giorno": 4,
+ "importanza": 3.0,
+ "quota_iscrizione": 0,
+ "contributo_federazione": 0.0,
+ "montepremi_minimo": 0,
+ "posti_premiati": 4,
+ "pendenza_premi": 1.0,
+ "qualificazione": "gloria",
+ "classe_minima": null,
+ "classe_massima": null,
+ "eta_minima": null,
+ "eta_massima": null
+}

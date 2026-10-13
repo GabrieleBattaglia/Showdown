@@ -545,6 +545,16 @@ PESI_TRATTI = {"mancino": 2.7, "ambidestro": 3.9, "giocorapido": 0.9, "cambiovel
 SCALA_VALORE_A = -50.68
 SCALA_VALORE_B = 1.1414
 SOGLIA_PESO_INERTE = 0.25
+# La tappa 12, il mondo che gioca, decisione D32 e progetto definitivo del 13 ottobre 2026. Le
+# costanti nascono man mano che nascono le parti del mondo che le usano, ciascuna col suo racconto.
+# Il minimo d'iscritti di un modello di torneo: sotto i quattro un torneo non ha senso, e i ricorrenti
+# del calendario predefinito si giocano già con quattro, punto 4.4 del progetto; sotto il minimo
+# l'edizione si annulla con i rimborsi, risposta 19 di Gabriele.
+MINIMO_ISCRITTI = 4
+# Il montepremi minimo che la federazione garantisce a ogni sede di un torneo, al massimo: così un
+# modello che si gioca ogni settimana non stampa denaro, punto 3.3 del progetto. Il mondiale ne ha
+# 3.000, risposta 10 di Gabriele.
+MONTEPREMI_MINIMO_MASSIMO = 5000
 
 
 def discrepanze_raggruppamenti():
