@@ -1,0 +1,36 @@
+Decisioni di Gabriele sulla tappa 12, il mondo che gioca, prese il 13 ottobre 2026 sul GPD sulle domande di analisi.txt.
+Gruppo 1, le fondamenta.
+1.1 Il motore: motore vero per ogni incontro con almeno un tesserato dell'utente, esito rapido tarato sul motore per tutti gli altri. La consigliata.
+1.2 Chi gioca i tornei: anche i liberi, con l'iscrizione gratuita; le loro medaglie non vanno a nessuna polisportiva. Non la consigliata.
+1.3 Il ritmo: regola di Gabriele, un torneo ogni due mesi simulati per atleta, più basso dell'opzione bassa (un torneo al mese). Circa 3 incontri al mese in media, circa 450-500 incontri al giorno nel mondo coi liberi.
+1.4 Un impegno al giorno: nel giorno di torneo niente amichevole né sfida, e il torneo gioca fino a 3 o 4 incontri al giorno. La consigliata.
+Gruppo 2, il calendario.
+2.1 La forma del calendario: la ricorrenza sta nel modello di torneo (ogni settimana, mese o anno simulato, giorno, giorni d'iscrizione prima); il mondo apre da solo le edizioni, il calendario predefinito si cambia con l'editor. La consigliata.
+2.2 Le categorie: tornei aperti a tutte le classi, con teste di serie e un tetto d'iscritti, separati per sesso come vuole D25 più gli aperti misti. Non la consigliata (che era per lettera di classe).
+2.3 I grandi appuntamenti: un campionato mondiale per sesso ogni anno solare simulato, a qualificazione, al meglio dei 5 nelle fasi finali, che vale di più in punti, esperienza, gloria e premi. La consigliata.
+2.4 La classifica mondiale: sì, per sempre, come un medagliere storico senza scadenza. Non la consigliata (che era sugli ultimi 12 mesi): da ricordare per teste di serie e qualificazioni.
+Gruppo 3, i punti e l'esperienza.
+3.1 Le quote dei punti allenamento della carriera perfetta: i tornei prima fonte, come D31; stima seduta 22 per cento, tornei 40, amichevoli 34, sfide 4; un incontro di torneo vale circa 18 punti, un'amichevole circa 2, la metà di oggi. La consigliata; i numeri esatti li fissa carriera_perfetta.py.
+3.2 L'esperienza per fonte: le sfide fra amichevoli e club; stima età 2, amichevoli 2,5, sfide 1,5, club 5, tornei 9, di cui una parte dai piazzamenti. La consigliata, con la regola della 3.3.
+3.3 I piazzamenti, regola di Gabriele: tutti i partecipanti guadagnano esperienza dal torneo (lettura di ClaudIA: dagli incontri giocati, già nel modello; da chiarire se Gabriele vuole anche una quota per la sola partecipazione); in più un poco di esperienza per ogni fase superata, e un premio di piazzamento a scalare per almeno i primi 12, non solo i primi quattro; pesato per l'importanza del torneo; nessun punto allenamento per il piazzamento.
+3.4 I tornei della carriera perfetta: simulati col motore vero, il 90 per cento dei tornei a cui può iscriversi, uno ogni due mesi, più i mondiali quando si qualifica. La consigliata.
+Gruppo 4, soldi, gloria e palmarès.
+4.1 I premi: misto, iscrizione di 10 euro per atleta (i liberi gratis) e contributo della federazione che raddoppia il montepremi; lo sponsor per gloria scende con la simulazione lunga perché la cassa mediana del computer resti attorno ai 5.000 euro. La consigliata.
+4.2 Le iscrizioni del computer: ogni tesserato sano, un torneo ogni due mesi, se la cassa resta sopra un mese di stipendi più le iscrizioni, saltando chi ha giocato troppo di recente secondo la costanza. La consigliata.
+4.3 Il palmarès nella gloria, regola di Gabriele: a finestra mobile di 5 anni simulati (lettura di ClaudIA: 5 anni del calendario del gioco, circa 20 mesi veri), con il palmarès storico sempre nella scheda.
+4.4 Le coppe: vengono dalle sfide e da un torneo a squadre annuale fra polisportive, con la gara a squadre del motore registrata nella carriera. La consigliata.
+Gruppo 5, le sfide fra polisportive.
+5.1 Il formato: la gara a squadre IBSA già nel motore, set unico a 31, squadre miste da 3 a 6. Non la consigliata (che era a singolari come la Davis).
+5.2 Quante sfide: due al mese simulato, accumulabili fino a quattro. La consigliata.
+5.3 L'accettazione: come il galà; il computer accetta se il rapporto di forza sta nella sua forbice, se non ha giocato una sfida negli ultimi giorni e se ha abbastanza atleti sani; l'utente risponde entro un giorno simulato, poi la sfida decade. La consigliata.
+5.4 La posta: gloria e una coppa, d'oro al vincitore e d'argento allo sconfitto, nella gloria con la finestra di 5 anni; nessun euro. La consigliata.
+Gruppo 6, le regole dei tornei.
+6.1 Le teste di serie: dalla classe di oggi, non dalla classifica storica; a serpentina nei gironi, compagni di club mai nello stesso girone quando si può; nel tabellone le teste di serie si incontrano il più tardi possibile. La consigliata.
+6.2 Gli infortuni: la regola resta com'è, e il computer non iscrive chi ha giocato troppo nelle ultime settimane. La consigliata.
+6.3 Il ritiro: soltanto per un infortunio nato durante l'incontro, estratto a fine set, e si perdono i set restanti; chi non si presenta perché infortunato perde a tavolino, 11 a 0 in ogni set; il tavolino non dà punti né esperienza, il ritiro dà i punti dei set giocati. La consigliata.
+6.4 Fedeltà dai successi: 4 punti per un oro vinto col club, 3 argento, 2 bronzo, 1 legno, 1 per ogni sfida vinta. La consigliata.
+Gruppo 7, l'utente, la finestra e la issue 1.
+7.1 L'iscrizione dei tesserati dell'utente: a mano, con un dialogo d'iscrizione dal calendario, e automatica, con la scelta per tesserato nella sala allenamento accanto all'intensità; l'automatica salta gli infortunati e avvisa se la cassa non basta. La consigliata.
+7.2 Le partite dei tesserati dell'utente nei tornei: col motore vero anche a programma chiuso, salvando risultato, seme e fotografia dei due giocatori; dal pannello del torneo si ascoltano in differita nella finestra dal vivo o si leggono come cronaca, per il torneo in corso e l'ultimo concluso. La consigliata.
+7.3 Gli editor dei tornei: cambiano il calendario del mondo per le edizioni future; MESS parte con un calendario predefinito tarato, e un comando lo ripristina. La consigliata.
+7.4 La issue 1: correzione (contare solo gli attivi e solo le polisportive del computer) e più nascite, da 2 a 9 al giorno invece che da 1 a 7: circa 20.600 attivi e 27.500 vivi a regime invece dei 15.000 di D18, con un giorno simulato più lento di un terzo. Idea di Gabriele, non la consigliata.
