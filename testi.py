@@ -34,8 +34,12 @@ import allenamento
 import classe
 import contratti
 import economia
+import formule
 import infortuni
 import mercato
+import modelli_torneo
+import palmares
+import tornei
 import version
 from archivio import NATO
 from costanti import (
@@ -915,6 +919,17 @@ def _fatti_avanzamento(rapporto):
         frasi.append(tuoi[0].upper() + tuoi[1:] + ".")
     if rapporto["tuoi_in_scadenza"]:
         frasi.append(f"{conta(rapporto['tuoi_in_scadenza'], 'tuo contratto sta', 'tuoi contratti stanno')} per scadere: si rinnovano con Ctrl+Maiusc+K.")
+    # Dalla tappa 12 i tornei e le sfide: le notizie dei tuoi, le sfide che aspettano e i numeri del mondo.
+    frasi.extend(rapporto.get("notizie") or [])
+    if rapporto.get("sfide_in_attesa"):
+        frasi.append(f"{conta(rapporto['sfide_in_attesa'], 'sfida aspetta', 'sfide aspettano')} la tua risposta entro domani.")
+    gare = unisci([
+        conta(rapporto["tornei_conclusi"], "torneo concluso", "tornei conclusi") if rapporto.get("tornei_conclusi") else "",
+        conta(rapporto["incontri_torneo"], "incontro di torneo", "incontri di torneo") if rapporto.get("incontri_torneo") else "",
+        conta(rapporto["sfide_giocate"], "sfida fra polisportive", "sfide fra polisportive") if rapporto.get("sfide_giocate") else "",
+    ])
+    if gare:
+        frasi.append(f"Nel mondo: {gare}.")
     if persone:
         frasi.append(persone[0].upper() + persone[1:] + ".")
     if mercato:
@@ -1015,6 +1030,123 @@ def voce_aggregata(voce):
     return testo + "."
 
 
+# I tornei, tappa 12, punto 12.12: i testi minimi dell'interfaccia testuale, che serviranno anche alla
+# finestra del passo 3. Gli incontri dei tuoi ancora da ascoltare non dicono il risultato, risposta 18;
+# le classifiche dicono comunque chi va avanti.
+
+NOMI_DEL_TABELLONE = {2: "finale", 4: "semifinali", 8: "quarti", 16: "ottavi", 32: "sedicesimi", 64: "trentaduesimi"}
+
+
+def edizione_in_calendario(ed, tuoi=0):
+    """
+    Un'edizione con le iscrizioni aperte: «Open maschile del martedì, dal 6 ottobre 2026, edizione 57:
+    25 iscritti, 2 tuoi; quota 10 euro.» Per la coppa le polisportive qualificate, e se c'è la tua.
+    """
+    testa = f"{ed.nome}, dal {data_breve(ed.data_inizio)}, edizione {ed.numero}"
+    if not ed.individuale:
+        testo = f"{testa}: {conta(len(ed.iscritti), 'polisportiva qualificata', 'polisportive qualificate')}"
+        return testo + (", la tua compresa." if tuoi else ".")
+    testo = f"{testa}: {conta(len(ed.iscritti), 'iscritto', 'iscritti')}"
+    if tuoi:
+        testo += f", {conta(tuoi, 'tuo', 'tuoi')}"
+    if ed.qualificazione != modelli_torneo.NESSUNA:
+        return testo + ", convocati per i punti dell'ultimo anno."
+    return testo + (f"; quota {euro(ed.quota)}." if ed.quota else "; iscrizione gratuita.")
+
+
+def fase_a_parole(torneo):
+    """La fase in corso di una sede: «girone unico», «4 gironi, turno 2», «tabellone, quarti»; «concluso» alla fine."""
+    if torneo.stato != tornei.IN_CORSO:
+        return "concluso"
+    fase = torneo.fasi[torneo.fase_corrente]
+    if fase.tipo == formule.GIRONI:
+        gironi = "girone unico" if len(fase.gironi) == 1 else f"{len(fase.gironi)} gironi"
+        return f"{gironi}, turno {min(fase.turno_corrente, fase.turni)}"
+    rimasti = fase.grandezza // 2 ** (min(fase.turno_corrente, fase.turni) - 1)
+    return f"tabellone, {NOMI_DEL_TABELLONE.get(rimasti, f'turno {fase.turno_corrente}')}"
+
+
+def torneo_in_elenco(torneo, tuoi=0):
+    """Una sede nell'elenco: «Open maschile del sabato, sede 3, dal 18 ottobre 2026: tabellone, quarti; 2 tuoi atleti.»"""
+    testo = f"{torneo.modello['nome']}, sede {torneo.sede}, dal {data_breve(datetime.date.fromisoformat(torneo.data_inizio))}: {fase_a_parole(torneo)}"
+    if tuoi:
+        testo += f"; {conta(tuoi, 'tuo atleta', 'tuoi atleti')}" if not torneo.squadre else "; con la tua polisportiva"
+    return testo + "."
+
+
+def _nome_corto(torneo, gid):
+    """Il nome di un iscritto negli incontri: il cognome del giocatore, il nome della polisportiva nella coppa."""
+    nome = torneo.info[gid]["nome"]
+    return nome if torneo.squadre else nome.partition(" ")[2] or nome
+
+
+def classifica_del_girone(torneo, fase, lettera):
+    """La classifica di un girone, una riga per iscritto: «1. Mario Rossi, PoliTeam04, 3 vinte, set 6 a 1, punti 77 a 40»."""
+    conti = tornei.statistiche_del_girone(fase, lettera)
+    righe = []
+    for posto, gid in enumerate(tornei.classifica_girone(torneo, fase, lettera), start=1):
+        vinte, set_vinti, set_persi, fatti, subiti = conti[gid]
+        info = torneo.info[gid]
+        club = f", {info['club']['nome']}" if info.get("club") and not torneo.squadre else ""
+        righe.append(f"{posto}. {info['nome']}{club}, {conta(vinte, 'vinta', 'vinte')}, set {set_vinti} a {set_persi}, punti {fatti} a {subiti}")
+    return righe
+
+
+def incontro_in_elenco(torneo, incontro, mostra=False):
+    """
+    Un incontro di una sede: «Turno 2, 18 ottobre 2026: Rossi contro Bianchi, 2 a 1: 11 a 8, 9 a 11, 11
+    a 6», oppure da giocare, a tavolino, per ritiro. Un incontro dei tuoi ancora da ascoltare, cioè
+    con la differita e non ancora svelato, dice soltanto «tuo, giocato, da ascoltare», risposta 18, a
+    meno di mostrarlo lo stesso.
+    """
+    testa = f"Turno {incontro.turno}" if incontro.gruppo == tornei.TABELLONE else f"Girone {incontro.gruppo}, turno {incontro.turno}"
+    if incontro.data:
+        testa += f", {data_breve(datetime.date.fromisoformat(incontro.data))}"
+    a = _nome_corto(torneo, incontro.a)
+    if incontro.b is None:
+        return f"{testa}: {a} riposa."
+    b = _nome_corto(torneo, incontro.b)
+    if not incontro.giocato:
+        return f"{testa}: {a} contro {b}, da giocare."
+    if incontro.differita and not incontro.svelato and not mostra:
+        return f"{testa}: {a} contro {b}, tuo, giocato, da ascoltare."
+    if incontro.esito == tornei.TAVOLINO_DOPPIO:
+        return f"{testa}: {a} contro {b}, nessuno dei due si presenta."
+    vincitore = a if incontro.vince == "A" else b
+    if incontro.esito == tornei.TAVOLINO:
+        return f"{testa}: {a} contro {b}, vince {vincitore} a tavolino."
+    set_a, set_b, _punti_a, _punti_b = incontro.set_e_punti()
+    parziali = ", ".join(f"{x} a {y}" for x, y in incontro.set)
+    ritiro = ", per ritiro" if incontro.esito == tornei.RITIRO else ""
+    return f"{testa}: {a} contro {b}, {set_a} a {set_b}{ritiro}: {parziali}."
+
+
+def voce_dell_albo(albo, voce):
+    """
+    Una voce dell'albo d'oro: «Open maschile del sabato, edizione 57, sede 3, 18 ottobre 2026, 25
+    iscritti: oro Mario Rossi, PoliTeam04; argento ...»; per la coppa i club; l'edizione non disputata.
+    """
+    modello, tipo, _sesso, _importanza, data, numero, sede, iscritti, podio, _premi = voce
+    testa = f"{albo.modelli.get(modello, modello)}, edizione {numero}"
+    if sede:
+        testa += f", sede {sede}"
+    testa += f", {data_breve(datetime.date.fromisoformat(data))}"
+    squadre = tipo == "squadre"
+    partecipanti = conta(iscritti, "polisportiva", "polisportive") if squadre else conta(iscritti, "iscritto", "iscritti")
+    if not podio:
+        return f"{testa}: edizione non disputata, con {partecipanti}."
+    parti = []
+    for medaglia, posto in zip(palmares.MEDAGLIE, podio, strict=False):
+        if squadre:
+            chi = albo.club[posto][0] if posto is not None else "una polisportiva"
+        else:
+            gid, club = posto
+            nome, cognome = albo.giocatori[str(gid)]
+            chi = f"{nome} {cognome}" + (f", {albo.club[club][0]}" if club is not None else "")
+        parti.append(f"{medaglia} {chi}")
+    return f"{testa}, {partecipanti}: " + "; ".join(parti) + "."
+
+
 def spesa_nel_diario(voce):
     """
     La voce di una spesa d'allenamento: Si allena con 120 punti allenamento: chiusura sinistra da
@@ -1104,8 +1236,12 @@ def salvataggio_illeggibile(errore):
 
 
 def somma_rapporti(primo, secondo):
-    """Due riepiloghi di avanzamento sommati, con l'ora del secondo: il totale di una sessione."""
-    return {chiave: primo[chiave] + secondo[chiave] for chiave in primo if chiave != "ora"} | {"ora": secondo["ora"]}
+    """
+    Due riepiloghi di avanzamento sommati, con l'ora del secondo: il totale di una sessione. Dalla
+    tappa 12 le notizie si accodano, e le sfide in attesa sono quelle della fine del secondo.
+    """
+    ultimi = ("ora", "sfide_in_attesa")
+    return {chiave: primo[chiave] + secondo[chiave] for chiave in primo if chiave not in ultimi} | {chiave: secondo[chiave] for chiave in ultimi}
 
 
 def chiusura(durata_sessione, comandi, messaggi, rapporto_sessione=None):

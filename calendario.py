@@ -314,6 +314,17 @@ class Calendario:
                 return True
         return False
 
+    def da_svelare(self):
+        """Gli incontri dei tuoi ancora da ascoltare, nelle sedi in corso e in quelle concluse di recente, risposta 18 di Gabriele."""
+        return [i for torneo in (*self.tornei, *self.conclusi) for i in torneo.incontri() if i.giocato and i.differita and not i.svelato]
+
+    def svela_tutti(self):
+        """Mostra tutti i risultati, la regola che Gabriele ha aggiunto alla risposta 18: svela in un colpo solo gli incontri dei tuoi da ascoltare, e dice quanti."""
+        incontri = self.da_svelare()
+        for incontro in incontri:
+            incontro.svelato = True
+        return len(incontri)
+
     def conta_saltata(self, gid, id_edizione):
         """Vero la prima volta che l'iscrizione automatica di un tuo tesserato salta un'edizione per la cassa: si conta una volta sola."""
         if [gid, id_edizione] in self.saltate:

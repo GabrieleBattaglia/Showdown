@@ -1419,7 +1419,14 @@ class Mondo:
         self.notifica("\n--- Riepilogo Avanzamento Tick ---")
         for numero, testo in ((rapporto["ritirati"], "* Ritirati (età)"), (rapporto["usciti"], "* Usciti Prematuramente"), (rapporto["morti"], "* Deceduti (età)"),
                               (rapporto["nuovi"], "* Nuovi giocatori"), (rapporto["poli_chiuse"], "* Poli CPU chiuse"), (rapporto["poli_create"], "* Poli CPU create"),
-                              (rapporto["tesserati_cpu"], "* CPU Tesserati"), (rapporto["svincolati_cpu"], "* CPU Svincolati")):
+                              (rapporto["tesserati_cpu"], "* CPU Tesserati"), (rapporto["svincolati_cpu"], "* CPU Svincolati"),
+                              (rapporto["tornei_conclusi"], "* Tornei conclusi"), (rapporto["incontri_torneo"], "* Incontri di torneo"),
+                              (rapporto["sfide_giocate"], "* Sfide giocate")):
             if numero > 0:
                 self.notifica(f"{testo}: {numero}")
+        # Dalla tappa 12 le notizie dei tuoi, una per riga, e le sfide che aspettano la tua risposta.
+        for notizia in rapporto["notizie"]:
+            self.notifica(notizia)
+        if rapporto["sfide_in_attesa"]:
+            self.notifica(f"Sfide che aspettano la tua risposta: {rapporto['sfide_in_attesa']}.")
         self.notifica("-" * 30)

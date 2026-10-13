@@ -40,8 +40,21 @@ mondo per valore che sono tesserati. I bersagli: lo sponsor dell'utente, in medi
 supera il 120 per cento degli stipendi che paga, e almeno l'80 per cento dei primi 100 è tesserato.
 Non tocca mai il mondo salvato: la cartella del programma è spostata in quella temporanea, che
 alla fine si cancella; scala e sponsor provati vivono soltanto nei processi della simulazione.
+Dalla tappa 12, il 2026-10-14, punto 13.4 del progetto, il mondo gioca: tornei, sfide e la Coppa
+delle polisportive. La simulazione semplice misura il calendario per anno di calendario, cioè ogni
+365 giorni simulati, e alla fine per la parte d'anno che resta: tornei, sedi e iscritti per sede,
+incontri al giorno in media e nel giorno peggiore, medaglie e premi, ritiri, tavolini, infortuni e
+acciacchi per incontro, sfide al mese per polisportiva, edizioni annullate, tornei per atleta
+tesserato sano, chi aspetta per il carico, liberi, la quota del palmarès nella gloria delle
+polisportive del computer, il rapporto fra la gloria richiesta dei liberi e la gloria del computer, i
+punti allenamento al giorno che i tesserati del computer prendono dalle gare per fascia d'età, e i
+millisecondi del giorno, in media e nel peggiore, divisi fra mondo, tornei e sfide. --giorni fissa i
+giorni simulati al posto degli anni; --salva-popolazione scrive alla fine i giocatori in attività in
+un file JSON compresso, per la verifica dell'esito rapido del punto 13.5. I bersagli nuovi e la
+ricerca dell'economia con i tornei sono del passo 4 della tappa.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/simulazione_lunga.py
+    python strumenti/simulazione_lunga.py --giorni 1095 --seme 2026 --rapporto calendario.txt
     python strumenti/simulazione_lunga.py --anni 10 --seme 2026 --rapporto economia.txt
     python strumenti/simulazione_lunga.py --scala -58,25 1,2532 --semi 2026 7 13 21
     python strumenti/simulazione_lunga.py --cerca-economia --semi 2026 7 13 21 --cassa 5000
@@ -50,7 +63,10 @@ Uso, dalla cartella del progetto o da qualunque altra:
 """
 
 import argparse
+import contextlib
 import datetime
+import gzip
+import json
 import math
 import os
 import random
@@ -68,11 +84,15 @@ if str(RADICE) not in sys.path:
 
 import allenamento  # noqa: E402
 import archivio  # noqa: E402
+import calendario  # noqa: E402
 import classe  # noqa: E402
 import contratti  # noqa: E402
 import costanti  # noqa: E402
 import economia  # noqa: E402
+import iscrizioni  # noqa: E402
+import palmares  # noqa: E402
 import percorsi  # noqa: E402
+import sfide  # noqa: E402
 import valore  # noqa: E402
 from mondo import DURATA_TICK, Mondo  # noqa: E402
 from motore import ESSENZIALE, SINGOLARE_3, simula_incontro  # noqa: E402
@@ -193,14 +213,172 @@ def riga_dell_anno(anno, m, millisecondi):
             f"Nell'anno: {anno_trascorso}. Un giorno simulato chiede {numero(millisecondi)} millisecondi.")
 
 
-def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True, ogni_giorno=None, annuali=None):
+# Le misure del calendario della tappa 12, punto 13.4: per anno di calendario, cioè ogni 365 giorni simulati.
+GIORNI_PER_ANNO_DI_CALENDARIO = 365
+VOCI_DEL_CALENDARIO = ("tornei_conclusi", "incontri_torneo", "incontri_ritiro", "incontri_tavolino", "infortuni_in_gara", "acciacchi_in_gara",
+                       "sfide_giocate", "edizioni_annullate")
+
+
+class MisuraDelCalendario:
+    """
+    Le misure dei tornei e delle sfide nella simulazione, per anno di calendario. Mentre la
+    simulazione gira mette i suoi orologi attorno al giorno del calendario e a quello delle sfide, per
+    dividere i millisecondi del giorno, e guarda i punti allenamento dei tesserati del computer prima
+    dei tornei e dopo le sfide, per i punti che prendono dalle gare; alla fine li toglie.
+    """
+
+    def __init__(self):
+        self.righe = []
+        self.numero_anno = 0
+        self._ms_tornei = self._ms_sfide = 0.0
+        self._prima = {}
+        self._mondo = None
+        self._originali = None
+        self._apri_anno(None)
+
+    def _apri_anno(self, mondo):
+        self.voci = dict.fromkeys(VOCI_DEL_CALENDARIO, 0)
+        self.incontri_al_giorno = []
+        self.millisecondi = []
+        self.ms_tornei = []
+        self.ms_sfide = []
+        self.punti_per_fascia = {fascia: [0.0, 0] for fascia in FASCE_ETA}
+        self.voci_albo_prima = len(mondo.calendario.albo.voci) if mondo is not None else 0
+        self.tornei_prima = {gid: g.tornei_giocati for gid, g in mondo.giocatori.items()} if mondo is not None else {}
+
+    # Gli orologi attorno al calendario e alle sfide.
+
+    def __enter__(self):
+        giorno_del_calendario, giorno_delle_sfide = calendario.Calendario.giorno, sfide.giorno
+        self._originali = (giorno_del_calendario, giorno_delle_sfide)
+        misura = self
+
+        def calendario_misurato(cal, mondo, data, rapporto):
+            misura._mondo = mondo
+            misura._prima = misura._punti_dei_tesserati(mondo)
+            inizio = time.perf_counter()
+            try:
+                return giorno_del_calendario(cal, mondo, data, rapporto)
+            finally:
+                misura._ms_tornei = (time.perf_counter() - inizio) * 1000
+
+        def sfide_misurate(mondo, data, rapporto):
+            inizio = time.perf_counter()
+            try:
+                return giorno_delle_sfide(mondo, data, rapporto)
+            finally:
+                misura._ms_sfide = (time.perf_counter() - inizio) * 1000
+                misura._conta_i_punti(mondo)
+
+        calendario.Calendario.giorno = calendario_misurato
+        sfide.giorno = sfide_misurate
+        return self
+
+    def __exit__(self, *_eccezione):
+        calendario.Calendario.giorno, sfide.giorno = self._originali
+        return False
+
+    @staticmethod
+    def _punti_dei_tesserati(mondo):
+        """I punti allenamento dei tesserati del computer in attività, per identificativo."""
+        cpu = {nome for nome, p in mondo.polisportive.items() if p.is_cpu_controlled}
+        return {gid: g.punti_allenamento for gid, g in mondo.giocatori.items() if g.appartenenza in cpu and not g.ritirato}
+
+    def _conta_i_punti(self, mondo):
+        """I punti che i tesserati del computer hanno preso oggi dai tornei e dalle sfide, sommati per fascia d'età."""
+        for gid, prima in self._prima.items():
+            g = mondo.giocatori.get(gid)
+            if g is None:
+                continue
+            for fascia in FASCE_ETA:
+                if fascia[0] <= g.eta_anni < fascia[1]:
+                    conti = self.punti_per_fascia[fascia]
+                    conti[0] += max(0.0, g.punti_allenamento - prima)
+                    conti[1] += 1
+                    break
+        self._prima = {}
+
+    # Il giorno e l'anno.
+
+    def giorno(self, mondo, numero, rapporto, millisecondi):
+        """Le misure di un giorno simulato; ogni 365 giorni chiude l'anno di calendario e ne restituisce la riga, altrimenti None."""
+        for voce in VOCI_DEL_CALENDARIO:
+            self.voci[voce] += rapporto[voce]
+        self.incontri_al_giorno.append(rapporto["incontri_torneo"])
+        self.millisecondi.append(millisecondi)
+        self.ms_tornei.append(self._ms_tornei)
+        self.ms_sfide.append(self._ms_sfide)
+        if not self.tornei_prima:
+            # Il primo anno comincia col mondo appena nato: nessuno ha ancora giocato un torneo.
+            self.tornei_prima = {gid: g.tornei_giocati for gid, g in mondo.giocatori.items()}
+        if numero % GIORNI_PER_ANNO_DI_CALENDARIO == 0:
+            return self.chiudi_anno(mondo)
+        return None
+
+    def chiudi_anno(self, mondo):
+        """La riga dell'anno di calendario appena finito, o della parte d'anno che resta alla fine; poi un anno nuovo."""
+        if not self.millisecondi:
+            return None
+        self.numero_anno += 1
+        giorni = len(self.millisecondi)
+        v = self.voci
+        incontri = max(1, v["incontri_torneo"])
+        attivi = in_attivita(mondo)
+        tesserati_sani = [g for g in attivi if g.appartenenza != "*" and not g.infortunato and g.id in self.tornei_prima]
+        tornei_a_testa = statistics.fmean(g.tornei_giocati - self.tornei_prima[g.id] for g in tesserati_sani) if tesserati_sani else 0.0
+        cpu = [p for p in mondo.polisportive.values() if p.is_cpu_controlled]
+        liberi = [g for g in attivi if g.appartenenza == "*"]
+        in_attesa = sum(1 for g in attivi if (g.appartenenza == "*" or g.appartenenza in {p.nome for p in cpu}) and iscrizioni.troppo_carico(g, g.appartenenza == "*"))
+        oggi = mondo.datetime_corrente_simulazione
+        quote = []
+        for p in cpu:
+            medaglie, coppe = palmares.somma_finestra(p, oggi)
+            parte = math.sqrt(max(0.0, medaglie)) * costanti.K_GLORIA_MEDAGLIE + math.sqrt(max(0.0, coppe)) * costanti.K_GLORIA_COPPE
+            quote.append(100 * parte / max(1, p.gloria))
+        glorie = [p.gloria for p in cpu]
+        richiesta = statistics.median(g.gloria_richiesta for g in liberi) / max(1, statistics.median(glorie)) if liberi and glorie else 0.0
+        voci_albo = [voce for voce in mondo.calendario.albo.voci[self.voci_albo_prima:] if voce[6]]
+        iscritti_per_sede = statistics.fmean(voce[7] for voce in voci_albo) if voci_albo else 0.0
+        premi = sum(sum(voce[9]) for voce in voci_albo)
+        medaglie_date = sum(len(voce[8]) for voce in voci_albo)
+        punti = "; ".join(f"dai {da} ai {a} anni {numero(somma / max(1, quanti), 3)}" for (da, a), (somma, quanti) in self.punti_per_fascia.items())
+        peggiore = max(range(giorni), key=lambda i: self.millisecondi[i])
+        riga = (f"Anno di calendario {self.numero_anno}, {giorni} giorni: {v['tornei_conclusi']} sedi concluse, con {numero(iscritti_per_sede, 1)} iscritti per sede, "
+                f"{v['edizioni_annullate']} edizioni annullate, {medaglie_date} medaglie e coppe dei tornei e {numero(premi)} euro di premi; "
+                f"{v['incontri_torneo']} incontri di torneo, {numero(v['incontri_torneo'] / giorni, 1)} al giorno in media e {max(self.incontri_al_giorno)} nel giorno più pieno; "
+                f"ritiri {numero(100 * v['incontri_ritiro'] / incontri, 2)} per cento degli incontri, tavolini {numero(100 * v['incontri_tavolino'] / incontri, 2)}, "
+                f"uno non regolare ogni {numero(incontri / max(1, v['incontri_ritiro'] + v['incontri_tavolino']), 1)}; "
+                f"infortuni in gara {v['infortuni_in_gara']}, acciacchi {v['acciacchi_in_gara']}, {numero(100 * v['acciacchi_in_gara'] / incontri, 2)} ogni cento incontri; "
+                f"{v['sfide_giocate']} sfide, {numero(2 * v['sfide_giocate'] / max(1, len(cpu)) / (giorni / 30.4), 2)} al mese per polisportiva del computer. "
+                f"Tornei a testa dei tesserati sani {numero(tornei_a_testa, 2)}; aspettano per il carico {numero(100 * in_attesa / max(1, len(attivi)), 1)} per cento degli attivi; "
+                f"liberi {numero(100 * len(liberi) / max(1, len(attivi)), 1)} per cento. Palmarès nella gloria del computer: mediana {numero(percentile(quote, 0.5), 1)} "
+                f"per cento, primo decimo {numero(percentile(quote, 0.9), 1)}; gloria richiesta mediana dei liberi su gloria mediana del computer {numero(richiesta, 3)}. "
+                f"Punti allenamento al giorno dalle gare dei tesserati del computer: {punti}. Il giorno chiede {numero(statistics.fmean(self.millisecondi))} millisecondi "
+                f"in media, di cui {numero(statistics.fmean(self.ms_tornei))} per i tornei e {numero(statistics.fmean(self.ms_sfide))} per le sfide; il peggiore "
+                f"{numero(self.millisecondi[peggiore])}, di cui {numero(self.ms_tornei[peggiore])} per i tornei e {numero(self.ms_sfide[peggiore])} per le sfide.")
+        self.righe.append(riga)
+        self._apri_anno(mondo)
+        return riga
+
+
+def salva_popolazione(mondo, percorso):
+    """I giocatori in attività del mondo, come li salva l'archivio, in un file JSON compresso: per la verifica dell'esito rapido, punto 13.5."""
+    giocatori = [g.a_dizionario() for g in in_attivita(mondo)]
+    with gzip.open(percorso, "wt", encoding="utf-8") as f:
+        json.dump({"data_simulata": mondo.datetime_corrente_simulazione.isoformat(), "giocatori": giocatori}, f, ensure_ascii=False)
+    return len(giocatori)
+
+
+def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True, ogni_giorno=None, annuali=None, giorni=None, misura_calendario=None):
     """
     Fa nascere un mondo in una cartella temporanea e lo fa avanzare di tanti anni simulati.
     Restituisce il mondo e le righe del racconto; la cartella si cancella alla fine. Il caso del
     mondo si rimette com'era, così chi chiama non si accorge della simulazione. Con ogni_giorno,
     una funzione, la chiama dopo ogni giorno simulato col mondo, il numero del giorno e il
     riepilogo dell'avanzamento: è lì che agisce l'utente dello scenario. Con annuali, un elenco,
-    vi aggiunge le misure di ogni anno, con l'anno e i millisecondi del giorno.
+    vi aggiunge le misure di ogni anno, con l'anno e i millisecondi del giorno. Dalla tappa 12, con
+    giorni si simulano quei giorni al posto degli anni, e con misura_calendario, una
+    MisuraDelCalendario, il racconto ha anche le righe del calendario per anno di calendario.
     """
     cartella = tempfile.mkdtemp(prefix="mess_simulazione_lunga_")
     cartella_vera = percorsi.cartella
@@ -210,33 +388,43 @@ def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True, ogni_giorno=
     archivio.adesso = lambda: NASCITA_DEL_MONDO.replace(tzinfo=None)
     archivio.adesso_utc = lambda: NASCITA_DEL_MONDO
     righe = []
+
+    def racconta(riga):
+        if riga:
+            righe.append(riga)
+            if stampa:
+                stampa(riga)
+
     try:
         random.seed(seme)
         mondo = Mondo()
         archivio.carica(mondo)
-        giorni = anni * GIORNI_PER_ANNO
+        giorni = giorni or anni * GIORNI_PER_ANNO
         ultimo = time.perf_counter()
         dell_anno = dict.fromkeys(VOCI_DELL_ANNO, 0)
-        for giorno in range(1, giorni + 1):
-            rapporto = mondo.processa_tempo_trascorso(mondo.datetime_ultimo_run_reale + DURATA_TICK)
-            for voce in VOCI_DELL_ANNO:
-                dell_anno[voce] += rapporto[voce]
-            if ogni_giorno is not None:
-                ogni_giorno(mondo, giorno, rapporto)
-            if giorno % GIORNI_PER_ANNO == 0:
-                adesso = time.perf_counter()
-                millisecondi = (adesso - ultimo) * 1000 / GIORNI_PER_ANNO
-                if misura_ogni_anno or giorno == giorni or annuali is not None:
-                    m = misure(mondo, dell_anno)
-                    if annuali is not None:
-                        annuali.append({**m, "numero_anno": giorno // GIORNI_PER_ANNO, "millisecondi": millisecondi})
-                    if misura_ogni_anno or giorno == giorni:
-                        riga = riga_dell_anno(giorno // GIORNI_PER_ANNO, m, millisecondi)
-                        righe.append(riga)
-                        if stampa:
-                            stampa(riga)
-                dell_anno = dict.fromkeys(VOCI_DELL_ANNO, 0)
-                ultimo = time.perf_counter()
+        with misura_calendario if misura_calendario is not None else contextlib.nullcontext():
+            for giorno in range(1, giorni + 1):
+                inizio = time.perf_counter()
+                rapporto = mondo.processa_tempo_trascorso(mondo.datetime_ultimo_run_reale + DURATA_TICK)
+                if misura_calendario is not None:
+                    racconta(misura_calendario.giorno(mondo, giorno, rapporto, (time.perf_counter() - inizio) * 1000))
+                for voce in VOCI_DELL_ANNO:
+                    dell_anno[voce] += rapporto[voce]
+                if ogni_giorno is not None:
+                    ogni_giorno(mondo, giorno, rapporto)
+                if giorno % GIORNI_PER_ANNO == 0:
+                    adesso = time.perf_counter()
+                    millisecondi = (adesso - ultimo) * 1000 / GIORNI_PER_ANNO
+                    if misura_ogni_anno or giorno == giorni or annuali is not None:
+                        m = misure(mondo, dell_anno)
+                        if annuali is not None:
+                            annuali.append({**m, "numero_anno": giorno // GIORNI_PER_ANNO, "millisecondi": millisecondi})
+                        if misura_ogni_anno or giorno == giorni:
+                            racconta(riga_dell_anno(giorno // GIORNI_PER_ANNO, m, millisecondi))
+                    dell_anno = dict.fromkeys(VOCI_DELL_ANNO, 0)
+                    ultimo = time.perf_counter()
+        if misura_calendario is not None and giorni % GIORNI_PER_ANNO_DI_CALENDARIO:
+            racconta(misura_calendario.chiudi_anno(mondo))
     finally:
         percorsi.cartella = cartella_vera
         archivio.adesso, archivio.adesso_utc = orologi_veri
@@ -607,6 +795,8 @@ def main():
     parser.add_argument("--processi", type=int, default=min(8, os.cpu_count() or 1), help="quanti semi simulare insieme, fino a 8 se il computer li ha")
     parser.add_argument("--prova-lunga", action="store_true", help="i semi per 60 anni, o quelli indicati, con il controllo di solvibilità anno per anno")
     parser.add_argument("--scenario-utente", action="store_true", help="dall'anno 10 una polisportiva dell'utente che allena e rinnova, per dieci anni")
+    parser.add_argument("--giorni", type=int, default=None, help="nella simulazione semplice, quanti giorni simulare al posto degli anni, per esempio 1095 per tre anni di calendario")
+    parser.add_argument("--salva-popolazione", type=Path, default=None, help="nella simulazione semplice, scrive alla fine i giocatori in attività in questo file JSON compresso")
     argomenti = parser.parse_args()
     inizio = time.perf_counter()
     semi = argomenti.semi or [2026, 7, 13, 21]
@@ -629,10 +819,14 @@ def main():
         righe = [riga_della_scala(a, b, con_scala(argomenti.anni, semi, a, b, argomenti.processi, argomenti.sponsor), argomenti.sponsor)]
         print(righe[0])
     else:
-        mondo, righe = simula(argomenti.anni, argomenti.seme)
-        righe = [f"Simulazione lunga del mondo, {argomenti.anni} anni col seme {argomenti.seme}, in {numero(time.perf_counter() - inizio)} secondi.", *righe, *confronto(mondo)]
+        mondo, righe = simula(argomenti.anni, argomenti.seme, giorni=argomenti.giorni, misura_calendario=MisuraDelCalendario())
+        durata = f"{argomenti.giorni} giorni" if argomenti.giorni else f"{argomenti.anni} anni"
+        righe = [f"Simulazione lunga del mondo, {durata} col seme {argomenti.seme}, in {numero(time.perf_counter() - inizio)} secondi.", *righe, *confronto(mondo)]
         for riga in righe[-len(BERSAGLI) - 2:]:
             print(riga)
+        if argomenti.salva_popolazione:
+            quanti = salva_popolazione(mondo, argomenti.salva_popolazione)
+            print(f"Popolazione di {quanti} giocatori in attività salvata in {argomenti.salva_popolazione}.")
     if argomenti.rapporto:
         argomenti.rapporto.write_text("\n".join(righe) + "\n", encoding="utf-8")
         print(f"Racconto salvato in {argomenti.rapporto}.")

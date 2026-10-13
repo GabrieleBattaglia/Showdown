@@ -747,6 +747,11 @@ def classifica_girone(torneo, fase, lettera):
     return ordine
 
 
+def statistiche_del_girone(fase, lettera):
+    """Per ogni iscritto del girone: vittorie, set vinti e persi, punti fatti e subiti, per la classifica da leggere."""
+    return _statistiche([i for i in fase.incontri if i.gruppo == lettera], fase.gironi[lettera])
+
+
 def _quoziente(fatti, subiti):
     """Un quoziente: con zero al denominatore vale infinito, e zero se anche il numeratore è zero."""
     if subiti == 0:
