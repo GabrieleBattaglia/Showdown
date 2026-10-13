@@ -32,6 +32,9 @@ rari dell'allenamento e l'ambizione, nati dal suo numero; la costanza recente; i
 rinnovo concordato e le proposte della finestra. La parte allenata non ha più tetti suoi: c'è
 soltanto quello del totale. Il declino comincia secondo la maturazione, e il diario ha una voce sola
 per ogni spesa d'allenamento. Il salvataggio passa al formato 6.
+Dalla tappa 12, il 2026-10-13, decisione D32, il formato 7: il giocatore ha un acciacco, con la data
+in cui finisce, il calo del primo giorno, i giorni e la sede; la data dell'ultima amichevole diventa
+ultimo_impegno, perché la regola di un impegno al giorno vale per amichevoli, tornei e sfide.
 """
 
 import contextlib
@@ -185,7 +188,7 @@ CAMPI_GIOCATORE = (
     ("goalsfatti", int), ("goalssubiti", int), ("indole", str),
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int), ("diario", DIARIO),
     ("esperienza", float), ("fedelta", float), ("pazienza", float), ("arretrati", int), ("bandiera", bool),
-    ("temperamento", float), ("infortunio_sede", TESTO_O_NULLA), ("ultima_amichevole", DATA_O_NULLA),
+    ("temperamento", float), ("infortunio_sede", TESTO_O_NULLA), ("ultimo_impegno", DATA_O_NULLA),
     # Dalla tappa 11, formato 6: programma e intensità dell'allenamento, tratti rari, ambizione,
     # costanza recente, contratto e rinnovo.
     ("programma", str), ("intensita", str), ("talento", bool), ("apprendista_rapido", bool), ("maturazione", TESTO_O_NULLA),
@@ -450,8 +453,8 @@ class Giocatore:
         # Il temperamento nasce dal numero del giocatore, senza toccare il caso del mondo.
         self.temperamento = temperamento_innato(id_giocatore)
         self.infortunio_sede = None
-        # La data simulata dell'ultima amichevole: chi nasce non ne ha ancora giocate.
-        self.ultima_amichevole = None
+        # La data simulata dell'ultimo incontro, l'impegno del giorno della tappa 12: chi nasce non ne ha ancora giocati.
+        self.ultimo_impegno = None
         # Dalla tappa 12 l'acciacco: chi nasce non ne ha.
         for campo, vuoto in CAMPI_ACCIACCO_VUOTO.items():
             setattr(self, campo, vuoto)
@@ -705,16 +708,19 @@ class Giocatore:
             return True
         return bool(self.ambidestro) and self.infortunio_sede in _SEDI_DI_BRACCIO
 
-    def ha_giocato_amichevole(self, oggi):
-        """Vero se il giocatore ha già giocato un'amichevole nel giorno simulato di oggi, che è una data con l'ora."""
-        return self.ultima_amichevole is not None and self.ultima_amichevole.date() == oggi.date()
+    def ha_un_impegno(self, oggi):
+        """
+        Vero se il giocatore ha già giocato un incontro nel giorno simulato di oggi, che è una data con
+        l'ora: un'amichevole, il torneo o una sfida. Dalla tappa 12 è la regola di un impegno al giorno, D32.
+        """
+        return self.ultimo_impegno is not None and self.ultimo_impegno.date() == oggi.date()
 
     def puo_giocare_amichevole(self, oggi):
         """
         Vero se il giocatore può giocare un'amichevole oggi: deve poter scendere in campo, e non
-        averne già giocata una nel giorno simulato, perché ognuno ne gioca al massimo una al giorno.
+        avere già un impegno nel giorno simulato, perché ognuno ne gioca al massimo uno al giorno.
         """
-        return self.puo_giocare and not self.ha_giocato_amichevole(oggi)
+        return self.puo_giocare and not self.ha_un_impegno(oggi)
 
     def _riga_caratteristica(self, nome_b):
         tot = self._get_valore_totale(nome_b)

@@ -17,8 +17,8 @@ un tasto chiama la funzione pausa. Le passa chi lo usa; se non le passa, lavora 
 Dal 2026-10-08, regola di Gabriele, ogni giocatore gioca al massimo un'amichevole per giorno
 simulato, perché ogni amichevole dà punti allenamento: la facciata la controlla prima di giocare,
 per la finestra e per l'interfaccia testuale, e alla registrazione segna il giorno nei due giocatori.
-Le partite del torneo, e quelle giocate senza registrarle, non contano. La cronaca su file può
-ricevere il momento reale e il giorno simulato dell'incontro, per chi la salva più tardi.
+La cronaca su file può ricevere il momento reale e il giorno simulato dell'incontro, per chi la
+salva più tardi.
 Con la decisione D29, tappa 10, l'amichevole da assistere dal vivo si gioca e si registra subito come
 le altre, e porta con sé un incontro gemello, con lo stesso seme, che la finestra dal vivo svolge un
 momento alla volta alla velocità di gioco scelta.
@@ -27,8 +27,7 @@ formula, al posto della vecchia tabella: una base, mezzo punto per ogni set vint
 vince, così al meglio dei 5 se ne prendono appena il 13 per cento in più; il premio al più debole
 resta, anche quando perde, ma il distacco si misura sulla somma pesata, che non dipende dalla scala
 del valore. Con la registrazione arrivano anche l'esperienza dell'incontro e la costanza recente,
-e l'intensità dell'allenamento cambia il rischio d'infortunio. Tornei e sfide sono gli agganci
-della tappa 12, e il giorno dell'ultima amichevole si segna soltanto per le amichevoli.
+e l'intensità dell'allenamento cambia il rischio d'infortunio.
 Dalla tappa 12, il 2026-10-13, decisione D32, risposte 6, 7 e 8 di Gabriele e la sua regola sugli
 infortuni: gli infortuni non si estraggono più qui a fine partita, ma nel motore, a fine set, e
 soltanto un quinto ferma il giocatore; il resto sono acciacchi. La facciata dà al motore la base
@@ -37,6 +36,16 @@ che così ripete il ritiro e gli acciacchi; poi porta nel mondo quello che il mo
 la durata e il calo da un generatore nato dal seme. Chi si ritira tiene i punti allenamento dei set
 giocati; chi vince o perde a tavolino non prende né punti né esperienza, e la partita non entra
 nella sua carriera, risposta 8.
+Sempre dalla tappa 12, punti 6.5, 6.6 e 10.2 del progetto: i punti di un incontro sono quelli della
+formula per il fattore della sua fonte, amichevole, torneo o sfida, e per l'importanza del torneo, e
+l'esperienza anche; i vecchi agganci del torneo e della sfida spariscono. La regola di una al giorno
+diventa quella di un impegno al giorno, D32: ogni incontro registrato segna il giorno in chi era
+presente, amichevole, torneo o sfida, e nel giorno di torneo non si gioca un'amichevole. La
+registrazione leggera, senza diario, serve agli incontri del mondo, migliaia al giorno; quelli dei
+tuoi tesserati hanno le voci di sempre. E le fotografie: prima di un incontro di torneo o di sfida
+dei tuoi tesserati si fotografano i giocatori, così il gemello in differita, giocato anche giorni dopo,
+dà gli stessi punti dell'incontro registrato, perché la modalità essenziale e la completa coincidono a
+parità di seme.
 """
 
 import random
@@ -45,6 +54,7 @@ import esperienza
 import infortuni
 import valore
 from costanti import (
+    ATTRIBUTI_INVECCHIABILI,
     COSTANZA_PER_PARTITA,
     DECADIMENTO_COSTANZA,
     DISTACCO_PIU_DEBOLE,
@@ -52,12 +62,14 @@ from costanti import (
     MODALITA_OUTPUT_FILE,
     MODALITA_OUTPUT_RISULTATO,
     PA_BONUS_PIU_DEBOLE,
-    PA_BONUS_SFIDA,
-    PA_BONUS_TORNEO,
+    PA_FATTORE_AMICHEVOLE,
+    PA_FATTORE_SFIDA,
+    PA_FATTORE_TORNEO,
     PA_PARTITA_BASE,
     PA_PER_SET_VINTO,
     PA_VITTORIA,
 )
+from modelli import Giocatore
 from motore import COMPLETO, ESSENZIALE, RITIRO, SQUADRE, TARATURA, TAVOLINO, Incontro, Squadra, formato_singolare
 from motore import cronaca as C
 from motore import eventi as E
@@ -67,6 +79,12 @@ PROMPT_PUNTO = "\rUn tasto per il punto successivo.\r"
 INTERROTTA = "Partita interrotta dall'utente."
 # Gli eventi di apertura e chiusura che la facciata scrive da sé, prima e dopo la cronaca.
 _APERTURA_E_CHIUSURA = (E.INIZIO_INCONTRO, E.FINE_INCONTRO)
+# Il fattore dei punti allenamento per ogni fonte, D32 e punto 10.2 del progetto.
+PA_FATTORE = {esperienza.AMICHEVOLE: PA_FATTORE_AMICHEVOLE, esperienza.TORNEO: PA_FATTORE_TORNEO, esperienza.SFIDA: PA_FATTORE_SFIDA}
+# I campi della fotografia di un giocatore, punto 6.5: quelli che servono al motore e alla cronaca.
+CAMPI_FOTOGRAFIA = ("id", "nome", "cognome", "sesso", "eta", "temperamento", "esperienza", "costanza", "intensita", "mancino", "ambidestro",
+                    "giocorapido", "cambiovelocita", "infortunato", "infortunio_sede", "acciacco_sede", *ATTRIBUTI_INVECCHIABILI)
+FORMATO_SQUADRE = "squadre"
 
 
 def _silenzio(*_args, **_kwargs):
@@ -74,8 +92,82 @@ def _silenzio(*_args, **_kwargs):
 
 
 def _punti(valore_dei_punti):
-    """I punti allenamento con la virgola, senza decimali quando sono interi: 4, 2,5."""
-    return f"{valore_dei_punti:g}".replace(".", ",")
+    """I punti allenamento con la virgola, senza decimali quando sono interi e con due al più: 4, 2,5, 1,92."""
+    return f"{round(valore_dei_punti, 2):g}".replace(".", ",")
+
+
+# Le fotografie e i gemelli in differita, punto 6.5 del progetto della tappa 12.
+
+def fotografa(g):
+    """
+    La fotografia di un giocatore prima di un incontro da riascoltare: soltanto quello che serve al
+    motore e alla cronaca, circa 1,2 KB, così il gemello in differita gioca con lui com'era quel giorno.
+    """
+    return {campo: getattr(g, campo, None) for campo in CAMPI_FOTOGRAFIA}
+
+
+def da_fotografia(dati):
+    """Un Giocatore ricostruito da una fotografia, senza tirare il caso: ha soltanto gli attributi che servono al motore e alla cronaca."""
+    g = Giocatore.__new__(Giocatore)
+    for campo in CAMPI_FOTOGRAFIA:
+        setattr(g, campo, dati.get(campo))
+    g.ritirato = False
+    return g
+
+
+def differita_singolare(ga, gb, basi, cali, azioni_iniziali, set_al_meglio):
+    """I dati per riascoltare un singolare: le fotografie, le basi d'infortunio, i cali, le azioni iniziali e il formato, in liste di A e di B."""
+    cali = cali or {}
+    iniziali = azioni_iniziali or {}
+    return {"fotografie": [fotografa(ga), fotografa(gb)], "basi": [basi.get(ga.id), basi.get(gb.id)], "cali": [cali.get(ga.id, 0.0), cali.get(gb.id, 0.0)],
+            "azioni_iniziali": [iniziali.get(ga.id, 0), iniziali.get(gb.id, 0)], "formato": set_al_meglio}
+
+
+def differita_squadre(squadra_a, squadra_b, basi, cali):
+    """
+    I dati per riascoltare una gara a squadre: le fotografie dei giocatori di ciascuna, titolari e
+    riserve nell'ordine della formazione, i nomi, le basi e i cali, in liste parallele, e il formato.
+    """
+    cali = cali or {}
+    fotografie = [[fotografa(g) for g in squadra.giocatori] for squadra in (squadra_a, squadra_b)]
+    return {"fotografie": fotografie, "nomi": [squadra_a.nome, squadra_b.nome], "basi": [[basi.get(g.id) for g in s.giocatori] for s in (squadra_a, squadra_b)],
+            "cali": [[cali.get(g.id, 0.0) for g in s.giocatori] for s in (squadra_a, squadra_b)], "formato": FORMATO_SQUADRE}
+
+
+def gemello_da_differita(differita, seme, velocita=1.0):
+    """
+    L'incontro gemello di un incontro giocato e registrato, da svolgere in modalità completa nella
+    finestra dal vivo o da leggere come cronaca: con le fotografie, lo stesso seme, le stesse basi
+    d'infortunio, gli stessi cali e le stesse azioni iniziali dà gli stessi punti, lo stesso ritiro e
+    gli stessi acciacchi.
+    """
+    if differita["formato"] == FORMATO_SQUADRE:
+        squadre, basi, cali = [], {}, {}
+        for nome, fotografie, basi_squadra, cali_squadra in zip(differita["nomi"], differita["fotografie"], differita["basi"], differita["cali"], strict=True):
+            giocatori = tuple(da_fotografia(f) for f in fotografie)
+            squadre.append(Squadra(nome, giocatori))
+            for g, base, calo in zip(giocatori, basi_squadra, cali_squadra, strict=True):
+                if base is not None:
+                    basi[g.id] = base
+                if calo:
+                    cali[g.id] = calo
+        return Incontro(squadre[0], squadre[1], SQUADRE, seme=seme, dettaglio=COMPLETO, basi_infortunio=basi or None, cali=cali or None, velocita=velocita)
+    fa, fb = (da_fotografia(f) for f in differita["fotografie"])
+    basi = {g.id: base for g, base in zip((fa, fb), differita["basi"], strict=True) if base is not None}
+    cali = {g.id: calo for g, calo in zip((fa, fb), differita["cali"], strict=True) if calo}
+    iniziali = {g.id: n for g, n in zip((fa, fb), differita["azioni_iniziali"], strict=True) if n}
+    return Incontro(fa, fb, formato_singolare(differita["formato"]), seme=seme, dettaglio=COMPLETO, basi_infortunio=basi or None, cali=cali or None,
+                    azioni_iniziali=iniziali or None, velocita=velocita)
+
+
+def gemello_in_differita(incontro, velocita=1.0):
+    """Il gemello di un incontro di torneo dei tuoi tesserati, che porta la sua differita e il suo seme; ValueError se non ha la differita."""
+    if not getattr(incontro, "differita", None):
+        raise ValueError("Questo incontro non si può riascoltare: non è di un tuo tesserato, o l'edizione è già stata sostituita.")
+    return gemello_da_differita(incontro.differita, incontro.seme, velocita)
+
+
+gemello_squadre_in_differita = gemello_in_differita
 
 
 class MotorePartita:
@@ -107,16 +199,23 @@ class MotorePartita:
         return None
 
     def problema_amichevole(self, id_g1, id_g2):
-        """None se i due possono giocare un'amichevole oggi, altrimenti il motivo: quelli dell'incontro, e l'amichevole già giocata nel giorno simulato."""
+        """
+        None se i due possono giocare un'amichevole oggi, altrimenti il motivo: quelli dell'incontro, e
+        dalla tappa 12 l'impegno del giorno, D32: chi oggi ha già giocato un'amichevole, il torneo o una
+        sfida non gioca un'altra amichevole.
+        """
         errore = self.problema_incontro(id_g1, id_g2)
         if errore:
             return errore
         oggi = self.mondo.datetime_corrente_simulazione
-        gia = [g for g in (self.giocatori[id_g1], self.giocatori[id_g2]) if g.ha_giocato_amichevole(oggi)]
+        gia = [g for g in (self.giocatori[id_g1], self.giocatori[id_g2]) if g.ha_un_impegno(oggi)]
         if not gia:
             return None
+        if len(gia) == 1:
+            g = gia[0]
+            return f"Oggi {g.nome} {g.cognome} ha già giocato {self.mondo.descrivi_impegno(g)}: ognuno gioca al massimo un incontro per giorno simulato."
         chi = " e ".join(f"{g.nome} {g.cognome}" for g in gia)
-        return f"Oggi {chi} {'ha' if len(gia) == 1 else 'hanno'} già giocato un'amichevole: se ne gioca al massimo una per giorno simulato."
+        return f"Oggi {chi} hanno già giocato: ognuno gioca al massimo un incontro per giorno simulato."
 
     def disponibili(self, giocatori):
         """Fra i giocatori dati, quelli che possono giocare un'amichevole oggi, in ordine di numero."""
@@ -153,7 +252,8 @@ class MotorePartita:
         Simula una partita fra due giocatori e ne restituisce il risultato, nel dizionario di
         sempre più seme, risultato ed eventi. Con modalità risultato si gioca in modalità
         essenziale; con console e file in modalità completa, con la cronaca. Senza torneo, ed
-        è l'amichevole dell'interfaccia testuale, vale la regola di una al giorno, se si registra.
+        è l'amichevole dell'interfaccia testuale, vale la regola di un impegno al giorno, se si
+        registra; con il torneo l'incontro si registra come partita di torneo.
         """
         risposta = {
             'id_originale_g1': id_g1, 'id_originale_g2': id_g2, 'num_set_target': num_set_target,
@@ -196,7 +296,7 @@ class MotorePartita:
         risultato = incontro.risultato
         self._riempi_risposta(risposta, risultato, nomi, completo)
         if registra:
-            for riga in self.registra(risultato, info_torneo):
+            for riga in self.registra(risultato, esperienza.TORNEO if info_torneo else esperienza.AMICHEVOLE):
                 self.mostra(riga)
         if modalita_output == MODALITA_OUTPUT_FILE:
             try:
@@ -235,7 +335,7 @@ class MotorePartita:
         """
         Un'amichevole in modalità completa, registrata subito: restituisce il RisultatoIncontro,
         con le frasi della registrazione nel campo registrazione. ValueError se non si può giocare,
-        anche perché uno dei due ha già giocato un'amichevole oggi.
+        anche perché uno dei due oggi ha già un impegno.
         """
         risultato, _gemello = self._amichevole(id_g1, id_g2, set_al_meglio, seme, False)
         return risultato
@@ -267,7 +367,7 @@ class MotorePartita:
         return risultato, gemello
 
     def gioca_squadre(self, squadra_a, squadra_b, seme=None, dettaglio=ESSENZIALE):
-        """Una gara a squadre. Nella tappa 9 non si registra nella carriera: arriva con la tappa 12."""
+        """Una gara a squadre giocata senza registrarla, come negli strumenti; la registrazione nella carriera è registra_squadre."""
         return Incontro(squadra_a, squadra_b, SQUADRE, seme=seme, dettaglio=dettaglio, taratura=self.taratura).gioca()
 
     # La registrazione nel mondo.
@@ -275,9 +375,10 @@ class MotorePartita:
     @staticmethod
     def punti_della_partita(set_vinti_vinc, set_vinti_perd):
         """
-        I punti allenamento di un incontro a vincitore e perdente: la base, mezzo punto per set vinto,
-        un punto a chi vince. Al meglio dei 3 chi vince prende 4 e chi perde 2 o 2,5; al meglio dei 5
-        chi vince 4,5 e chi perde da 2 a 3.
+        I punti allenamento della formula di un incontro a vincitore e perdente: la base, mezzo punto
+        per set vinto, un punto a chi vince. Al meglio dei 3 chi vince prende 4 e chi perde 2 o 2,5; al
+        meglio dei 5 chi vince 4,5 e chi perde da 2 a 3. Dalla tappa 12 si moltiplicano per il fattore
+        della fonte e per l'importanza, in registra.
         """
         return PA_PARTITA_BASE + PA_PER_SET_VINTO * set_vinti_vinc + PA_VITTORIA, PA_PARTITA_BASE + PA_PER_SET_VINTO * set_vinti_perd
 
@@ -293,18 +394,38 @@ class MotorePartita:
             return None
         return g1 if forza1 < forza2 else g2
 
-    def registra(self, risultato, info_torneo=None, sfida=None):
+    @staticmethod
+    def punti_di_registrazione(set_vinc, set_perd, debole, g_vinc, g_perd, tipo=esperienza.AMICHEVOLE, importanza=1.0):
         """
-        Porta il risultato di un singolare nel mondo: partite e set vinti e persi, goal fatti e
-        subiti, punti allenamento con i bonus del torneo, della sfida e del più debole, esperienza e
-        costanza recente, i diari, e gli infortuni con la loro sede. Senza torneo e senza sfida è
-        un'amichevole, e i due giocatori ricordano il giorno simulato in cui l'hanno giocata.
-        Restituisce le frasi da mostrare. La gara a squadre non si registra.
+        I punti allenamento che la registrazione dà a vincitore e perdente, D32 e punto 10.2: la formula
+        con il premio al più debole, per il fattore della fonte e per l'importanza.
+        """
+        pa_vinc, pa_perd = MotorePartita.punti_della_partita(set_vinc, set_perd)
+        if debole is g_vinc:
+            pa_vinc += PA_BONUS_PIU_DEBOLE
+        elif debole is g_perd:
+            pa_perd += PA_BONUS_PIU_DEBOLE
+        fattore = PA_FATTORE[tipo] * importanza
+        return pa_vinc * fattore, pa_perd * fattore
+
+    def segna_impegno(self, *giocatori):
+        """L'impegno del giorno, D32: chi ha giocato oggi un incontro non ne gioca un altro, né amichevole né sfida."""
+        oggi = self.mondo.datetime_corrente_simulazione
+        for g in giocatori:
+            g.ultimo_impegno = oggi
+
+    def registra(self, risultato, tipo=esperienza.AMICHEVOLE, importanza=1.0, diario=True):
+        """
+        Porta il risultato di un singolare nel mondo: partite e set vinti e persi, goal fatti e subiti,
+        punti allenamento con il premio al più debole, per il fattore della fonte e per l'importanza,
+        esperienza e costanza recente, l'impegno del giorno, gli infortuni e gli acciacchi con la loro
+        sede, e con diario le voci nei diari. tipo è amichevole, torneo o sfida, come in esperienza.py.
+        Restituisce le frasi da mostrare. La gara a squadre si registra con registra_squadre.
         """
         if risultato.formato.tipo != "singolare":
             return []
         if risultato.esito == TAVOLINO:
-            return self._registra_tavolino(risultato, info_torneo, sfida)
+            return self._registra_tavolino(risultato, tipo, diario)
         id_a, id_b = risultato.parti
         vince_a = risultato.vincitore == "A"
         id_vinc, id_perd = (id_a, id_b) if vince_a else (id_b, id_a)
@@ -325,25 +446,16 @@ class MotorePartita:
         g_vinc.goalssubiti += stats_perd.goal
         g_perd.goalsfatti += stats_perd.goal
         g_perd.goalssubiti += stats_vinc.goal
-        pa_vinc, pa_perd = self.punti_della_partita(set_vinc, set_perd)
-        bonus = (PA_BONUS_TORNEO if info_torneo else 0.0) + (PA_BONUS_SFIDA if sfida else 0.0)
-        pa_vinc += bonus
-        pa_perd += bonus
-        debole = self.piu_debole(g_vinc, g_perd)
-        if debole is g_vinc:
-            pa_vinc += PA_BONUS_PIU_DEBOLE
-        elif debole is g_perd:
-            pa_perd += PA_BONUS_PIU_DEBOLE
-        tipo = esperienza.TORNEO if info_torneo else esperienza.SFIDA if sfida else esperienza.AMICHEVOLE
+        pa_vinc, pa_perd = self.punti_di_registrazione(set_vinc, set_perd, self.piu_debole(g_vinc, g_perd), g_vinc, g_perd, tipo, importanza)
         for g, punti in ((g_vinc, pa_vinc), (g_perd, pa_perd)):
             g.punti_allenamento += punti
-            esperienza.da_partita(g, tipo)
+            esperienza.da_partita(g, tipo, importanza)
             g.costanza += (1.0 - DECADIMENTO_COSTANZA) * COSTANZA_PER_PARTITA
-        if tipo == esperienza.AMICHEVOLE:
-            g_vinc.ultima_amichevole = g_perd.ultima_amichevole = self.mondo.datetime_corrente_simulazione
-        self._annota_risultato(g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo)
+        self.segna_impegno(g_vinc, g_perd)
+        if diario:
+            self._annota_risultato(g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo)
         frasi = [f"Punti allenamento: {_punti(pa_vinc)} a {g_vinc.nome} {g_vinc.cognome}, {_punti(pa_perd)} a {g_perd.nome} {g_perd.cognome}."]
-        frasi.extend(self.registra_infortuni(risultato))
+        frasi.extend(self.registra_infortuni(risultato, diario))
         return frasi
 
     def registra_infortuni(self, risultato, diario=True):
@@ -392,22 +504,24 @@ class MotorePartita:
             self.mondo.annota(g_vinc, f"Vince {tipo} contro {nome_perd}, che si ritira {dopo}: {set_vincitore}.")
         self.mondo.annota(g_perd, f"Perde {tipo} contro {nome_vinc}: si ritira {dopo}, {set_perdente}.")
 
-    def _registra_tavolino(self, risultato, info_torneo=None, sfida=None):
+    def _registra_tavolino(self, risultato, tipo=esperienza.AMICHEVOLE, diario=True):
         """
         La sconfitta a tavolino, D32 e risposta 8 di Gabriele: niente punti allenamento, niente
         esperienza, niente costanza, e la partita non entra nella carriera di nessuno dei due; soltanto
-        una voce nel diario dei tuoi tesserati. Restituisce le frasi da mostrare.
+        una voce nel diario dei tuoi tesserati, e l'impegno del giorno per chi si è presentato.
+        Restituisce le frasi da mostrare.
         """
         id_a, id_b = risultato.parti
         vince_a = risultato.vincitore == "A"
         g_vinc, g_perd = (self.giocatori[id_a], self.giocatori[id_b]) if vince_a else (self.giocatori[id_b], self.giocatori[id_a])
-        tipo = self._nome_del_tipo(esperienza.TORNEO if info_torneo else esperienza.SFIDA if sfida else esperienza.AMICHEVOLE)
+        self.segna_impegno(g_vinc)
+        nome = self._nome_del_tipo(tipo)
         assente = accorda(g_perd.sesso, "presentato")
         perche = f"è {accorda(g_perd.sesso, 'infortunato')}" if g_perd.infortunato and not g_perd.puo_giocare else f"non si è {assente}"
-        if self._tuo(g_vinc):
-            self.mondo.annota(g_vinc, f"Vince a tavolino {tipo} contro {g_perd.nome} {g_perd.cognome}, che non si è {assente}.")
-        if self._tuo(g_perd):
-            self.mondo.annota(g_perd, f"Perde a tavolino {tipo} contro {g_vinc.nome} {g_vinc.cognome}: {perche}.")
+        if diario and self._tuo(g_vinc):
+            self.mondo.annota(g_vinc, f"Vince a tavolino {nome} contro {g_perd.nome} {g_perd.cognome}, che non si è {assente}.")
+        if diario and self._tuo(g_perd):
+            self.mondo.annota(g_perd, f"Perde a tavolino {nome} contro {g_vinc.nome} {g_vinc.cognome}: {perche}.")
         return [f"{g_perd.nome} {g_perd.cognome} non si presenta: {g_vinc.nome} {g_vinc.cognome} vince a tavolino."]
 
     # La cronaca su file.

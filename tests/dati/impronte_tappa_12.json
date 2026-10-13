@@ -1,21 +1,21 @@
 {
- "nota": "Rigenerate col primo commit del passo 2 della tappa 12: gli infortuni in gara, cioè il ritiro, il tavolino, gli infortuni che fermano a un quinto e gli acciacchi, e il formato 7. I mondi cambiano perché ogni giocatore salva i quattro campi dell'acciacco; nei mondi delle impronte non si giocano ancora partite. L'impronta del motore resta uguale: senza basi d'infortunio, cali e azioni iniziali il motore fa quello che faceva.",
+ "nota": "Rigenerate col secondo commit del passo 2 della tappa 12: i punti e l'esperienza delle fonti nuove, con le prime stime del punto 10 del progetto. Il mondo nato cambia perché l'esperienza del giorno in polisportiva scende da 0,00279 a 0,00108 e perché ultima_amichevole diventa ultimo_impegno; il mondo a regime anche perché il mondo sintetico dà l'esperienza con la stessa costante. L'impronta del motore resta uguale.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "e1370fff8a276f2a3a12c3694b33cb6a9f764d31ed0a26b498ba4976d9eca7e3",
-  "vivi": 702,
-  "attivi": 702,
-  "tesserati": 616,
-  "polisportive": 43
+  "sha256": "a3f36df5e4d0f56734d2bd6c036c4fbaa5e1fe1bd070492355f72e5ba133ebaa",
+  "vivi": 687,
+  "attivi": 687,
+  "tesserati": 600,
+  "polisportive": 42
  },
  "mondo_a_regime": {
-  "sha256": "9b9e72a14bf41846290a86a7712753cd7ccecd81ef8a16eb2c715aea03774bab",
-  "vivi": 1662,
-  "attivi": 1262,
-  "tesserati": 1097,
+  "sha256": "66f604b0780215b51a801657cb07b9b18c4ef263999aa1ab5ea7b0bd52bba7af",
+  "vivi": 1666,
+  "attivi": 1266,
+  "tesserati": 1098,
   "polisportive": 77
  }
 }

@@ -274,16 +274,27 @@ MESI_MINIMI_MIGRAZIONE = 12
 # per il fattore del gruppo, che cresce con l'esperienza media della rosa; i tornei e le sfide,
 # agganci della tappa 12, con un premio per i piazzamenti.
 ESPERIENZA_PER_ANNO_DI_VITA = 0.05
-ESPERIENZA_PER_AMICHEVOLE = 0.00125
-# 0,00279 porta la carriera perfetta, con le sue 3985 amichevoli, a 20 di esperienza a 50 anni:
-# l'ha trovato strumenti/carriera_perfetta.py nella prima taratura grezza e confermato nella taratura
-# fine del 9 ottobre 2026, dopo quella del motore. Con l'età fa 2,05, con le amichevoli 4,98, con la
-# polisportiva il resto.
-ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.00279
+# Dalla tappa 12, D32 e punto 10.3 del progetto, le fonti si abbassano perché i tornei e le sfide
+# entrano nella carriera perfetta, che resta a 20 di esperienza a 50 anni. Dalla fonte più piccola
+# alla più grande, regola di Gabriele: l'età 2,05, le amichevoli 2,5, le sfide 1,5, il club 5, i
+# tornei 9, fatti di incontri, fasi superate e piazzamenti. Prime stime, che fissa
+# strumenti/carriera_perfetta.py riscritto, al punto 13.3. Fino alla tappa 11 le amichevoli valevano
+# 0,00125 e il giorno in polisportiva 0,00279: con l'età 2,05, le amichevoli 4,98, il club il resto.
+ESPERIENZA_PER_AMICHEVOLE = 0.0007
+ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.00108
 K_GRUPPO_ESPERIENZA = 0.2
-ESPERIENZA_PER_PARTITA_TORNEO = 0.01
-ESPERIENZA_PER_SFIDA = 0.006
-ESPERIENZA_PER_PIAZZAMENTO = {1: 0.3, 2: 0.2, 3: 0.12, 4: 0.06}
+ESPERIENZA_PER_SFIDA = 0.005
+# Le riserve di una sfida prendono metà dell'esperienza dei titolari, risposta 15 di Gabriele: stare
+# in squadra insegna qualcosa, ma senza punti allenamento né partite nella carriera.
+ESPERIENZA_RISERVA_QUOTA = 0.5
+# I tornei, per l'importanza: ogni incontro giocato, ogni fase superata, cioè un girone passato o un
+# turno di tabellone vinto o saltato col riposo, e il piazzamento a scalare per i primi 12, regola di
+# Gabriele; nessuna quota per la sola partecipazione, risposta 9. Il vecchio premio dei soli primi
+# quattro, da 0,3 a 0,06, sparisce.
+ESPERIENZA_PER_PARTITA_TORNEO = 0.011
+ESPERIENZA_PER_FASE_SUPERATA = 0.012
+ESPERIENZA_PIAZZAMENTO_BASE = 0.06
+SCALA_PIAZZAMENTI = (1.0, 0.8, 0.65, 0.55, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0.15, 0.10)
 # La classe, da K0 ad A1, D31: il 70 per cento al valore pesato e il 30 all'esperienza. Il valore
 # pesato si misura in rapporto alla somma della carriera perfetta dai 9 ai 50 anni, che vale A1.
 # Le soglie sono fissate una volta per sempre: la somma della carriera perfetta, i pesi della classe
@@ -371,8 +382,16 @@ PA_PER_SET_VINTO = 0.5
 PA_VITTORIA = 1.0
 PA_BONUS_PIU_DEBOLE = 1.0
 DISTACCO_PIU_DEBOLE = 25.0
-PA_BONUS_TORNEO = 3.0
-PA_BONUS_SFIDA = 2.0
+# Dalla tappa 12, D32 e punto 10.2 del progetto, i punti di un incontro sono quelli della formula di
+# sopra, premio al più debole compreso, per un fattore della fonte e per l'importanza del torneo: i
+# vecchi agganci, tre punti in più per il torneo e due per la sfida, spariscono. Prime stime, dal
+# conto della carriera perfetta di 4.428 giorni con circa 3.580 amichevoli, 410 incontri di torneo e
+# 330 sfide, perché la seduta faccia il 22 per cento dei punti, i tornei il 40, le amichevoli il 34 e
+# le sfide il 4, D32: un'amichevole vale circa 1,9 punti, la metà di prima, e un incontro di torneo
+# circa 19, nove amichevoli. Li fissa strumenti/carriera_perfetta.py riscritto, al punto 13.3.
+PA_FATTORE_AMICHEVOLE = 0.48
+PA_FATTORE_TORNEO = 4.9
+PA_FATTORE_SFIDA = 0.75
 # Il costo dei punti, tarato sul valore: il costo marginale di una caratteristica è
 # COSTO_PER_PUNTO_PESATO per il suo peso nel valore, per lo sconto, diviso l'efficacia, per
 # exp(CRESCITA_DEL_COSTO per il livello relativo). Dal livello zero al tetto il costo cresce di

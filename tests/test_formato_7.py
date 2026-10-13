@@ -14,7 +14,7 @@ import json
 import random
 
 import pytest
-from aiuti_formati import CAMPI_DEL_FORMATO_7, al_formato_5
+from aiuti_formati import CAMPI_DEL_FORMATO_7, RINOMINATI_DEL_FORMATO_7, al_formato_5, al_formato_6
 
 import archivio
 from costanti import FILE_MONDO
@@ -78,9 +78,10 @@ def test_la_catena_dal_formato_4_al_7():
     assert len(per_id_7) == 61 and sum(1 for g in per_id_7.values() if g["appartenenza"] != "*") == 9
     for gid, g6 in per_id_6.items():
         g7 = per_id_7[gid]
-        # Tutto quello che c'era nel formato 6 resta identico, contratti compresi; il 7 aggiunge soltanto.
-        assert {campo: g7[campo] for campo in g6} == g6
-        assert set(g7) - set(g6) == set(CAMPI_DEL_FORMATO_7)
+        # Tutto quello che c'era nel formato 6 resta identico, contratti compresi; il 7 aggiunge soltanto, e rinomina l'ultima amichevole.
+        rinominati = {RINOMINATI_DEL_FORMATO_7.get(campo, campo): valore for campo, valore in g6.items()}
+        assert {campo: g7[campo] for campo in rinominati} == rinominati
+        assert set(g7) - set(rinominati) == set(CAMPI_DEL_FORMATO_7)
         assert (g7["acciacco_fino"], g7["acciacco_calo"], g7["acciacco_giorni"], g7["acciacco_sede"]) == (None, 0.0, 0, None)
     for nome, p6 in sesto["mondo"]["polisportive"].items():
         p7 = settimo["mondo"]["polisportive"][nome]
@@ -90,6 +91,19 @@ def test_la_catena_dal_formato_4_al_7():
     archivio.costruisci(settimo, nuovo)
     assert len(nuovo.giocatori) == 61 and len(nuovo.polisportive["Brybox Showdown"].tesserati) == 3
     assert all(nuovo.giocatori[gid].contratto_stipendio > 0 for gid in nuovo.polisportive["Brybox Showdown"].tesserati)
+
+
+def test_l_ultima_amichevole_diventa_l_ultimo_impegno():
+    mondo = _mondo_come_quello_di_gabriele()
+    mondo.giocatori[12].ultimo_impegno = INIZIO
+    sesto = al_formato_6(archivio.componi(mondo))
+    assert next(g for g in sesto["mondo"]["giocatori"] if g["id"] == 12)["ultima_amichevole"] == INIZIO.isoformat()
+    settimo = _migra(sesto, 7)
+    per_id = {g["id"]: g for g in settimo["mondo"]["giocatori"]}
+    assert per_id[12]["ultimo_impegno"] == INIZIO.isoformat() and all("ultima_amichevole" not in g for g in per_id.values())
+    nuovo = Mondo()
+    archivio.costruisci(settimo, nuovo)
+    assert nuovo.giocatori[12].ha_un_impegno(INIZIO) and not nuovo.giocatori[13].ha_un_impegno(INIZIO)
 
 
 def test_andata_e_ritorno_del_formato_7(cartella_di_prova):

@@ -641,6 +641,13 @@ class Mondo:
         self.prossimo_id = nuovo + 1
         return nuovo
 
+    def descrivi_impegno(self, g):
+        """
+        Che cosa ha già giocato oggi il giocatore, a parole, per la regola di un impegno al giorno della
+        tappa 12, D32: il torneo, una sfida, oppure un'amichevole.
+        """
+        return "un'amichevole"
+
     def annota(self, soggetto, testo, data=None):
         """Una voce nel diario di un giocatore o di una polisportiva, con la data simulata, di oggi se non è data."""
         soggetto.annota(data or self.datetime_corrente_simulazione, testo)

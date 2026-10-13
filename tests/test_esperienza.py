@@ -3,6 +3,7 @@ Test dell'esperienza della tappa 11: il libero cresce soltanto con l'età, il fa
 amichevoli che aggiungono, l'ordine delle fonti nella carriera perfetta e il tetto di 20.
 """
 
+import itertools
 import types
 
 import pytest
@@ -13,7 +14,13 @@ from costanti import (
     ESPERIENZA_MASSIMA,
     ESPERIENZA_PER_AMICHEVOLE,
     ESPERIENZA_PER_ANNO_DI_VITA,
+    ESPERIENZA_PER_FASE_SUPERATA,
     ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA,
+    ESPERIENZA_PER_PARTITA_TORNEO,
+    ESPERIENZA_PER_SFIDA,
+    ESPERIENZA_PIAZZAMENTO_BASE,
+    ESPERIENZA_RISERVA_QUOTA,
+    SCALA_PIAZZAMENTI,
 )
 
 
@@ -41,25 +48,40 @@ def test_il_fattore_del_gruppo():
 
 
 def test_le_partite_e_i_piazzamenti_aggiungono():
+    # Dalla tappa 12 ogni fonte per l'importanza, calcolata dalle costanti e mai scritta a mano.
     g = _g()
     esperienza.da_partita(g)
     assert g.esperienza == pytest.approx(ESPERIENZA_PER_AMICHEVOLE)
-    esperienza.da_partita(g, esperienza.TORNEO)
+    esperienza.da_partita(g, esperienza.TORNEO, 4.0)
     esperienza.da_partita(g, esperienza.SFIDA)
-    esperienza.da_piazzamento(g, 1)
-    esperienza.da_piazzamento(g, 9)
-    assert g.esperienza == pytest.approx(ESPERIENZA_PER_AMICHEVOLE + 0.01 + 0.006 + 0.3)
+    esperienza.da_piazzamento(g, 1, 1.5)
+    esperienza.da_piazzamento(g, 13)
+    esperienza.da_fasi(g, 3, 2.0)
+    esperienza.da_riserva(g)
+    atteso = (ESPERIENZA_PER_AMICHEVOLE + 4.0 * ESPERIENZA_PER_PARTITA_TORNEO + ESPERIENZA_PER_SFIDA + 1.5 * ESPERIENZA_PIAZZAMENTO_BASE
+              + 2.0 * 3 * ESPERIENZA_PER_FASE_SUPERATA + ESPERIENZA_RISERVA_QUOTA * ESPERIENZA_PER_SFIDA)
+    assert g.esperienza == pytest.approx(atteso)
+
+
+def test_i_piazzamenti_a_scalare_per_i_primi_dodici():
+    premi = [esperienza.premio_piazzamento(posto) for posto in range(1, 15)]
+    assert premi[:12] == pytest.approx([ESPERIENZA_PIAZZAMENTO_BASE * s for s in SCALA_PIAZZAMENTI])
+    assert all(a > b for a, b in itertools.pairwise(premi[:12])) and premi[12:] == [0.0, 0.0]
+    assert esperienza.premio_piazzamento(0) == 0.0
 
 
 def test_l_ordine_delle_fonti_nella_carriera_perfetta():
-    # Dai 9 ai 50 anni, sempre in polisportiva, un'amichevole nel 90 per cento dei giorni: l'età
-    # dà meno delle amichevoli, che danno meno della polisportiva, e in tutto si arriva a 20.
+    # Dalla tappa 12, D32: con le prime stime dei conteggi della carriera perfetta, 3.580 amichevoli,
+    # 330 sfide e 410 incontri di torneo, le fonti vanno dalla più piccola alla più grande: età,
+    # amichevoli, sfide, club e tornei, e la somma è circa 20. La taratura fine la fa carriera_perfetta.py.
     giorni = 41 * ANNO_SIMULAZIONE_GIORNI
     eta = ESPERIENZA_PER_ANNO_DI_VITA * 41
-    amichevoli = ESPERIENZA_PER_AMICHEVOLE * giorni * 0.9
-    polisportiva = ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * giorni * 1.05
-    assert eta < amichevoli < polisportiva
-    assert eta + amichevoli + polisportiva == pytest.approx(ESPERIENZA_MASSIMA, rel=0.1)
+    amichevoli = ESPERIENZA_PER_AMICHEVOLE * 3580
+    sfide = ESPERIENZA_PER_SFIDA * 330
+    club = ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * giorni * 1.05
+    assert sfide < eta < amichevoli < club
+    tornei = ESPERIENZA_MASSIMA - (eta + amichevoli + sfide + club)
+    assert club < tornei < 11.0
 
 
 def test_il_tetto_di_venti():

@@ -1282,7 +1282,7 @@ def nessuno_per_l_amichevole(mondo, ora, poli=None, primo=None):
         chi = f"Oggi nessun altro giocatore può giocare un'amichevole contro {nome_completo(primo)}"
     prossimo = mondo.prossimo_avanzamento()
     quando = f"Il prossimo giorno simulato arriva fra {durata(prossimo - ora)}." if prossimo > ora else "Il prossimo giorno simulato arriva entro un minuto."
-    return f"{chi}: ognuno ne gioca al massimo una per giorno simulato, e chi è infortunato o ritirato non gioca. {quando}"
+    return f"{chi}: ognuno gioca al massimo un incontro per giorno simulato, amichevole, torneo o sfida, e chi è infortunato o ritirato non gioca. {quando}"
 
 
 def cronaca_salvata(percorso, livello, nomi):

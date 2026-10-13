@@ -641,8 +641,8 @@ class InterfacciaTestuale:
         if not g.puo_giocare:
             print(f"\tATTENZIONE: {g.nome} è {accorda(g.sesso, 'infortunato')}!")
             return None
-        if g.ha_giocato_amichevole(self.data_sim):
-            print(f"\tATTENZIONE: oggi {g.nome} ha già giocato un'amichevole, e se ne gioca al massimo una per giorno simulato.")
+        if g.ha_un_impegno(self.data_sim):
+            print(f"\tATTENZIONE: oggi {g.nome} ha già giocato {self.mondo.descrivi_impegno(g)}, e ognuno gioca al massimo un incontro per giorno simulato.")
             return None
         return gid
 

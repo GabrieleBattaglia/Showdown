@@ -323,7 +323,7 @@ def test_un_salvataggio_del_formato_4_si_aggiorna(cartella_di_prova):
     mondo = _mondo_popolato()
     mondo.giocatori[4].infortunato = True
     mondo.giocatori[4].infortunio_fine_datetime = INIZIO + datetime.timedelta(days=5)
-    mondo.giocatori[6].ultima_amichevole = INIZIO
+    mondo.giocatori[6].ultimo_impegno = INIZIO
     contenuto = _al_formato_4(archivio.componi(mondo))
     archivio.MIGRAZIONI[4](contenuto)
     assert contenuto["formato"] == 5
@@ -363,7 +363,7 @@ def test_il_temperamento_non_dipende_dal_caso_del_mondo():
 
 
 @pytest.mark.parametrize(("campo", "valore"), [("temperamento", 101.0), ("temperamento", -1), ("infortunio_sede", "naso"), ("infortunio_sede", 3),
-                                              ("ultima_amichevole", "ieri"), ("ultima_amichevole", 3)])
+                                              ("ultimo_impegno", "ieri"), ("ultimo_impegno", 3)])
 def test_temperamento_e_sede_non_validi_rifiutati(campo, valore):
     dati = _mondo_popolato().giocatori[1].a_dizionario()
     dati[campo] = valore
@@ -382,29 +382,29 @@ def test_un_formato_5_senza_l_ultima_amichevole_si_legge(cartella_di_prova):
     messaggi = []
     m = _ricarica(messaggi)
     assert messaggi[0].startswith("Mondo caricato:") and not m.salvataggio_bloccato
-    assert m.giocatori and all(g.ultima_amichevole is None for g in m.giocatori.values())
+    assert m.giocatori and all(g.ultimo_impegno is None for g in m.giocatori.values())
     # Anche la copia di sicurezza, da sola, si legge.
     os.remove(cartella_di_prova / FILE_MONDO)
     messaggi.clear()
     m = _ricarica(messaggi)
     assert f"il file {FILE_MONDO} non c'è" in messaggi[0] and not m.salvataggio_bloccato
-    assert all(g.ultima_amichevole is None for g in m.giocatori.values())
+    assert all(g.ultimo_impegno is None for g in m.giocatori.values())
     assert not (cartella_di_prova / archivio.CARTELLA_QUARANTENA).exists()
     # Al primo salvataggio il campo si scrive davvero nel file.
     assert archivio.salva(m)
     scritti = json.loads(_testo(cartella_di_prova / FILE_MONDO))["mondo"]["giocatori"]
-    assert all("ultima_amichevole" in g and g["ultima_amichevole"] is None for g in scritti)
+    assert all("ultimo_impegno" in g and g["ultimo_impegno"] is None for g in scritti)
 
 
-def test_l_ultima_amichevole_si_salva_e_si_rilegge(cartella_di_prova):
+def test_l_ultimo_impegno_si_salva_e_si_rilegge(cartella_di_prova):
     mondo = _mondo_popolato()
-    mondo.giocatori[2].ultima_amichevole = INIZIO
+    mondo.giocatori[2].ultimo_impegno = INIZIO
     assert archivio.salva(mondo)
     ricaricato = _ricarica()
-    assert ricaricato.giocatori[2].ultima_amichevole == INIZIO
-    assert ricaricato.giocatori[2].ha_giocato_amichevole(INIZIO + datetime.timedelta(hours=3))
-    assert not ricaricato.giocatori[2].ha_giocato_amichevole(INIZIO + datetime.timedelta(days=1))
-    assert ricaricato.giocatori[3].ultima_amichevole is None
+    assert ricaricato.giocatori[2].ultimo_impegno == INIZIO
+    assert ricaricato.giocatori[2].ha_un_impegno(INIZIO + datetime.timedelta(hours=3))
+    assert not ricaricato.giocatori[2].ha_un_impegno(INIZIO + datetime.timedelta(days=1))
+    assert ricaricato.giocatori[3].ultimo_impegno is None
 
 
 # Il formato 6 della tappa 11: punti allenamento, indole, tratti rari, ambizione, costanza e contratti.

@@ -217,12 +217,13 @@ def leggi(percorso):
         raise ErroreSalvataggio(f"il numero di formato non è valido: {formato!r}")
     if formato > FORMATO:
         raise ErroreSalvataggio(f"il file viene da una versione più recente del gioco, con il formato {formato}, mentre questa legge fino al {FORMATO}")
+    if formato == 5:
+        _completa_formato_5(documento)
     while documento["formato"] < FORMATO:
         try:
             MIGRAZIONI[documento["formato"]](documento)
         except (KeyError, TypeError, ValueError, AttributeError) as e:
             raise ErroreSalvataggio(f"il salvataggio del formato {documento['formato']} non si è potuto aggiornare: {e}") from e
-    _completa_formato_5(documento)
     return documento
 
 
@@ -399,11 +400,14 @@ def _dal_formato_5(documento):
 def _dal_formato_6(documento):
     """
     Dal formato 6 al 7, con la tappa 12, decisione D32. Ogni giocatore riceve l'acciacco vuoto: nessuno
-    ne ha, perché prima gli acciacchi non c'erano.
+    ne ha, perché prima gli acciacchi non c'erano. La data dell'ultima amichevole diventa l'ultimo
+    impegno, col suo valore: la regola di un impegno al giorno è una sola, e una sola deve essere la fonte.
     """
     for g in documento["mondo"]["giocatori"]:
         for campo, vuoto in CAMPI_ACCIACCO_VUOTO.items():
             g.setdefault(campo, vuoto)
+        if "ultimo_impegno" not in g:
+            g["ultimo_impegno"] = g.pop("ultima_amichevole", None)
     documento["formato"] = 7
 
 

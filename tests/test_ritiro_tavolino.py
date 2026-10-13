@@ -20,8 +20,9 @@ from pathlib import Path
 import pytest
 from aiuti_motore import giocatore
 
+import esperienza
 import infortuni
-from costanti import QUOTA_INFORTUNI_CHE_FERMANO, giorni_da_anni
+from costanti import PA_FATTORE_AMICHEVOLE, QUOTA_INFORTUNI_CHE_FERMANO, giorni_da_anni
 from modelli import Polisportiva
 from mondo import Mondo
 from motore import COMPLETO, ESSENZIALE, SINGOLARE_3, SINGOLARE_5, SQUADRE, Incontro, Squadra, a_tavolino, simula_incontro
@@ -206,7 +207,7 @@ def test_il_tavolino_non_da_punti_ne_esperienza():
     mondo, mia = _mondo_con(a, b)
     mondo._entra(mia, a)
     mondo._entra(mia, b)
-    frasi = MotorePartita(mondo).registra(a_tavolino(a, b, SINGOLARE_3, "B"), info_torneo={"nome": "Prova"})
+    frasi = MotorePartita(mondo).registra(a_tavolino(a, b, SINGOLARE_3, "B"), esperienza.TORNEO)
     for g in (a, b):
         assert (g.punti_allenamento, g.esperienza, g.costanza, g.partitevinte, g.partiteperse, g.setsvinti) == (0.0, 0.0, 0.0, 0, 0, 0)
     assert a.diario[0]["testo"].startswith("Vince a tavolino la partita del torneo contro ")
@@ -221,8 +222,8 @@ def test_il_ritiro_da_i_punti_dei_soli_set_giocati(monkeypatch):
     set_vinti_b = 1 if r.set[0][1] > r.set[0][0] else 0
     frasi = MotorePartita(mondo).registra(r)
     assert b.partitevinte == 1 and a.partiteperse == 1 and a.setsvinti + b.setsvinti == 1
-    assert b.punti_allenamento == pytest.approx(2.0 + 0.5 * set_vinti_b + 1.0)
-    assert a.punti_allenamento == pytest.approx(2.0 + 0.5 * (1 - set_vinti_b))
+    assert b.punti_allenamento == pytest.approx((2.0 + 0.5 * set_vinti_b + 1.0) * PA_FATTORE_AMICHEVOLE)
+    assert a.punti_allenamento == pytest.approx((2.0 + 0.5 * (1 - set_vinti_b)) * PA_FATTORE_AMICHEVOLE)
     assert a.infortunato and a.infortunio_sede == "spalla_dx" and a.diario[0]["testo"].startswith("Si infortuna alla spalla destra")
     assert any("si ritira" in v.get("testo", "") for v in a.diario)
     assert any(f.startswith(f"{a.nome} {a.cognome}: si infortuna") for f in frasi)

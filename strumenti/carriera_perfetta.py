@@ -157,13 +157,17 @@ def carriera(g0, avversari, seme, da=ETA_INGRESSO, a=ETA_USCITA, quota_amichevol
         contatore += quota_amichevoli
         if contatore >= 1.0 - 1e-9:
             contatore -= 1.0
-            g.punti_allenamento += amichevole(g, rng.choice(avversari), rng, distacchi) if motore else punti_amichevole
+            # Dalla tappa 12 i punti di un'amichevole sono quelli della formula per il fattore delle amichevoli.
+            punti = amichevole(g, rng.choice(avversari), rng, distacchi) if motore else punti_amichevole
+            g.punti_allenamento += punti * costanti.PA_FATTORE_AMICHEVOLE
             esperienza.da_partita(g, esperienza.AMICHEVOLE)
             g.costanza += (1 - costanti.DECADIMENTO_COSTANZA) * costanti.COSTANZA_PER_PARTITA
-        for quanti, tipo, bonus in ((tornei, esperienza.TORNEO, costanti.PA_BONUS_TORNEO), (sfide, esperienza.SFIDA, costanti.PA_BONUS_SFIDA)):
+        # Un segnaposto, finché il passo 4 della tappa 12 non riscrive lo strumento perché giochi il
+        # calendario vero: tanti incontri di torneo e di sfida al mese, con la formula media per i fattori.
+        for quanti, tipo, fattore in ((tornei, esperienza.TORNEO, costanti.PA_FATTORE_TORNEO), (sfide, esperienza.SFIDA, costanti.PA_FATTORE_SFIDA)):
             if quanti and giorno % 30 == 0:
                 for _ in range(int(quanti)):
-                    g.punti_allenamento += 3.1 + bonus
+                    g.punti_allenamento += 3.1 * fattore
                     esperienza.da_partita(g, tipo)
         allenamento.allena_secondo_programma(g, programma=programma)
         if giorno % 30 == 29:
