@@ -3,6 +3,10 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.60.11] - 2026-10-13
+
+Il freno alle battute alte comincia prima: chi allena una battuta sola fino al massimo ora vince circa sei incontri su dieci contro i giocatori della sua forza, come chi allena un colpo solo, invece di tre su quattro. Il freno tocca anche qualche giocatore normale, quasi sempre per meno di mezzo punto su 40.
+
 ## [1.60.10] - 2026-10-11
 
 ### La sala allenamento
