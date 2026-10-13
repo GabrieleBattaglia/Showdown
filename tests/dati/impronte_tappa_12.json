@@ -1,0 +1,21 @@
+{
+ "nota": "Impronte prese sul codice della 1.60.11, prima di ogni accelerazione della tappa 12.",
+ "motore": {
+  "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
+  "incontri": 420
+ },
+ "mondo_nato": {
+  "sha256": "da92ad1e765be86d85fde9eb83d2c23bde8a2783cfe5dd929947bf760b9891f6",
+  "vivi": 551,
+  "attivi": 551,
+  "tesserati": 496,
+  "polisportive": 34
+ },
+ "mondo_a_regime": {
+  "sha256": "752be5d5ef34e97f9a06fd2fac3450d1256b8b91aa4e0aa3d420e2f70d666e4b",
+  "vivi": 1643,
+  "attivi": 1243,
+  "tesserati": 1112,
+  "polisportive": 79
+ }
+}

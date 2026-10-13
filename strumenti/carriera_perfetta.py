@@ -16,7 +16,9 @@ I mondi sintetici: il mondo giovane, nato da zero, a un certo anno, e quello a r
 della decisione D18; ogni giocatore si allena dal suo ingresso con la seduta e la spesa della sua
 indole, il 90 per cento dei giorni da tesserato, con il declino dai 50 anni e il calo dei livelli
 alti, a passi di un anno. Servono agli avversari, alle lettere della classe e ai conti della
-risposta 6 di Gabriele, i tetti propri dell'allenata tolti.
+risposta 6 di Gabriele, i tetti propri dell'allenata tolti. Dalla tappa 12, il 2026-10-13, i nati,
+l'allenamento a passi e i mondi sintetici stanno in strumenti/mondi_sintetici.py, comuni a tutti
+gli strumenti e alle impronte delle prove, e questo strumento li importa da lì.
 Lo strumento stampa: la somma della carriera perfetta, il valore e l'esperienza a 20, 30, 40 e 50
 anni; l'esperienza del giorno in polisportiva che porta a 20 a 50 anni; le ancore della classe;
 i casi del punto 7 con la loro classe; i punti attesi per amichevole secondo il distacco; le lettere
@@ -35,7 +37,6 @@ mese di torneo e di sfida, con i loro punti e la loro esperienza.
 
 import argparse
 import copy
-import datetime
 import math
 import random
 import statistics
@@ -44,26 +45,24 @@ import time
 from pathlib import Path
 
 RADICE = Path(__file__).resolve().parent.parent
-if str(RADICE) not in sys.path:
-    sys.path.insert(0, str(RADICE))
+for cartella in (RADICE, RADICE / "strumenti"):
+    if str(cartella) not in sys.path:
+        sys.path.insert(0, str(cartella))
+
+from mondi_sintetici import FATTORE_GRUPPO, GIORNI_ANNO, allena_a_passi, mondo_sintetico, nati  # noqa: E402
 
 import allenamento  # noqa: E402
 import classe  # noqa: E402
 import costanti  # noqa: E402
 import economia  # noqa: E402
 import esperienza  # noqa: E402
-import tratti  # noqa: E402
 import valore  # noqa: E402
-from modelli import Giocatore  # noqa: E402
 from motore import ESSENZIALE, formato_singolare, simula_incontro  # noqa: E402
 from partita import MotorePartita  # noqa: E402
 
-NASCITA = datetime.datetime(2026, 1, 1)  # noqa: DTZ001 - data segnaposto, come quelle del motore
-GIORNI_ANNO = costanti.ANNO_SIMULAZIONE_GIORNI
 ETA_INGRESSO, ETA_USCITA = 9.0, 50.0
 GIORNI_CARRIERA = int((ETA_USCITA - ETA_INGRESSO) * GIORNI_ANNO)
 QUOTA_AMICHEVOLI = 0.9
-FATTORE_GRUPPO = 1.0 + costanti.K_GRUPPO_ESPERIENZA * 5.0 / costanti.ESPERIENZA_MASSIMA
 TAPPE = (20, 30, 40, 50)
 # I punti attesi per amichevole dei casi dell'utente, misurati dalla carriera: il mediano 3,1 e il bravo 3,5.
 PUNTI_AMICHEVOLE_MEDIANO = 3.1
@@ -95,16 +94,6 @@ def imposta_ritmo(costo, crescita):
     allenamento._EXP_K = math.exp(crescita)
 
 
-def nati(quanti, seme, primo_id=1):
-    """I nati del generatore vero, col caso del mondo seminato e poi rimesso com'era; ipovedenti come nel mondo."""
-    stato = random.getstate()
-    random.seed(seme)
-    try:
-        return [Giocatore(primo_id + i, NASCITA, ipovedente=random.uniform(0, 100) < costanti.PROBABILITA_IPOVEDENTE_CREAZIONE) for i in range(quanti)]
-    finally:
-        random.setstate(stato)
-
-
 def senza_tratti(g):
     """Vero per chi non ha tratti speciali né tratti rari dell'allenamento."""
     return not (g.mancino or g.ambidestro or g.giocorapido or g.cambiovelocita or g.talento or g.apprendista_rapido or g.maturazione)
@@ -128,64 +117,6 @@ def pronto(g, anni):
     copia.diario = []
     copia.aggiorna_icv()
     return copia
-
-
-def allena_a_passi(g, da, a, punti_al_giorno, programma, in_polisportiva=True, amichevoli_al_giorno=0.0, passo=1.0):
-    """
-    L'allenamento sintetico, a passi di un anno: i punti del passo, spesi secondo il programma
-    all'età di metà passo, il calo dei livelli alti, il declino dai 50 anni; l'esperienza dalle sue fonti.
-    """
-    anni = da
-    per_anno = costanti.ESPERIENZA_PER_ANNO_DI_VITA + (esperienza.ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * GIORNI_ANNO * FATTORE_GRUPPO if in_polisportiva else 0.0)
-    per_anno += amichevoli_al_giorno * GIORNI_ANNO * costanti.ESPERIENZA_PER_AMICHEVOLE
-    while anni < a - 1e-9:
-        tratto = min(passo, a - anni)
-        giorni = tratto * GIORNI_ANNO
-        g.eta = int((anni + tratto / 2) * GIORNI_ANNO)
-        g.punti_allenamento += punti_al_giorno * giorni
-        allenamento.allena_secondo_programma(g, programma=programma)
-        allenamento.mantenimento_del_mese(g, giorni)
-        # Nel mondo l'oblio dell'apprendista rapido scatta il primo di ogni mese, e un anno d'età ne ha
-        # circa tre e mezzo: mantenimento_del_mese l'ha applicato una volta, qui si aggiungono gli
-        # altri mesi del passo. Prima della revisione della tappa 11 l'apprendista dei mondi sintetici
-        # dimenticava una volta all'anno invece che a ogni mese.
-        oblio = tratti.oblio_mensile(g) ** (giorni / costanti.GIORNI_PER_MESE - 1.0)
-        if oblio != 1.0:
-            for c in allenamento.CARATTERISTICHE:
-                setattr(g, c + "_allenata", getattr(g, c + "_allenata") * oblio)
-        g.esperienza = min(costanti.ESPERIENZA_MASSIMA, g.esperienza + per_anno * tratto)
-        g.eta = int((anni + tratto) * GIORNI_ANNO)
-        if anni + tratto > 50.0:
-            g._applica_declino_aggregato(int(giorni))
-        anni += tratto
-    g.aggiorna_icv()
-    return g
-
-
-def mondo_sintetico(quanti, anni_mondo, seme, primo_id=100_000):
-    """
-    I giocatori in attività di un mondo nato anni_mondo anni fa, o a regime con None: ingresso fra 9
-    e 45 anni, ritiro fra 58 e 75, morte fra 70 e 103, l'uscita prematura; ciascuno si allena dal
-    suo ingresso secondo la sua indole, il 90 per cento dei giorni da tesserato.
-    """
-    rng = random.Random(f"sintetico-{seme}-{anni_mondo}")
-    candidati = nati(quanti * 2, seme, primo_id)
-    uscita_annua = costanti.PROB_USCITA_PREMATURA_GIORNALIERA / 100.0 * GIORNI_ANNO
-    giocatori = []
-    for g in candidati:
-        if len(giocatori) >= quanti:
-            break
-        ingresso = rng.uniform(costanti.ETA_MIN_CREAZIONE_ANNI, costanti.ETA_MAX_CREAZIONE_ANNI)
-        da_quanto = rng.uniform(0, anni_mondo if anni_mondo is not None else 95.0)
-        ritiro, morte = rng.uniform(costanti.ETA_MIN_RITIRO_ANNI, costanti.ETA_MAX_RITIRO_ANNI), rng.uniform(costanti.ETA_MIN_MORTE_ANNI, costanti.ETA_MAX_MORTE_ANNI)
-        eta = ingresso + da_quanto
-        if eta >= ritiro or eta >= morte or rng.random() > math.exp(-uscita_annua * da_quanto):
-            continue
-        g.eta = int(ingresso * GIORNI_ANNO)
-        allena_a_passi(g, ingresso, eta, 0.9 * costanti.PA_SEDUTA + 0.1 * costanti.PA_SEDUTA * costanti.QUOTA_SEDUTA_LIBERI, g.indole, passo=1.0)
-        g.esperienza = min(costanti.ESPERIENZA_MASSIMA, da_quanto * (costanti.ESPERIENZA_PER_ANNO_DI_VITA + 0.9 * esperienza.ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * GIORNI_ANNO * FATTORE_GRUPPO))
-        giocatori.append(g)
-    return giocatori
 
 
 def amichevole(g, avversario, rng, distacchi):
