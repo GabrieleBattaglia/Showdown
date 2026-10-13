@@ -13,7 +13,10 @@ from costanti import MAPPA_ARCHETIPI_INDOLI
 CAMPI_DEL_FORMATO_6 = ("programma", "intensita", "talento", "apprendista_rapido", "maturazione", "ambizione", "costanza", "contratto_stipendio",
                        "contratto_scadenza", "rinnovo_stipendio", "rinnovo_scadenza", "proposte_rinnovo", "ultima_trattativa")
 # I campi del giocatore che nascono con il formato 7, della tappa 12, oltre a quello rinominato.
-CAMPI_DEL_FORMATO_7 = ("acciacco_fino", "acciacco_calo", "acciacco_giorni", "acciacco_sede", "tornei_giocati", "punti_mondiali", "punti_recenti", "titoli")
+CAMPI_DEL_FORMATO_7 = ("acciacco_fino", "acciacco_calo", "acciacco_giorni", "acciacco_sede", "tornei_giocati", "punti_mondiali", "punti_recenti", "titoli",
+                       "prossimo_torneo", "iscrizione_automatica")
+# Le strutture del mondo che nascono con il formato 7.
+CAMPI_MONDO_DEL_FORMATO_7 = ("calendario",)
 # I campi rinominati dal formato 7: dal nome di prima al nome nuovo.
 RINOMINATI_DEL_FORMATO_7 = {"ultima_amichevole": "ultimo_impegno"}
 # I campi della polisportiva e le voci dei conti che nascono con il formato 7.
@@ -25,6 +28,8 @@ ARCHETIPO_DELL_INDOLE = {indole: archetipo for archetipo, indole in MAPPA_ARCHET
 def al_formato_6(contenuto):
     """Un documento del formato 7 com'era nel formato 6: senza i campi della tappa 12, con i nomi di prima."""
     vecchio = copy.deepcopy(contenuto)
+    for campo in CAMPI_MONDO_DEL_FORMATO_7:
+        del vecchio["mondo"][campo]
     for g in vecchio["mondo"]["giocatori"]:
         for campo in CAMPI_DEL_FORMATO_7:
             del g[campo]

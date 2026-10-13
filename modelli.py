@@ -80,6 +80,7 @@ from costanti import (
     FATTORE_GLORIA_RICHIESTA_CAMBIO_VEL,
     FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO,
     FATTORE_GLORIA_RICHIESTA_IPOVEDENTE,
+    GIORNI_RITMO_INIZIALE,
     GLORIA_BASE,
     GLORIA_RICHIESTA_FISSA,
     GLORIA_RICHIESTA_MINIMA_ASSOLUTA,
@@ -217,7 +218,18 @@ CAMPI_GIOCATORE = (
     ("acciacco_fino", DATA_O_NULLA), ("acciacco_calo", float), ("acciacco_giorni", int), ("acciacco_sede", TESTO_O_NULLA),
     # I tornei giocati, i punti della classifica mondiale, per sempre e dell'ultimo anno, e i titoli.
     ("tornei_giocati", int), ("punti_mondiali", float), ("punti_recenti", PUNTI_DATATI), ("titoli", TITOLI),
+    # La data da cui l'iscrizione automatica può far cominciare il torneo seguente, e se è accesa per i tesserati dell'utente.
+    ("prossimo_torneo", DATA_O_NULLA), ("iscrizione_automatica", bool),
 )
+
+
+def ritmo_iniziale(id_giocatore, data):
+    """
+    La prima data del ritmo dei tornei di un giocatore, tappa 12: la data indicata più un numero di
+    giorni da 0 a GIORNI_RITMO_INIZIALE tirato da un generatore nato dal suo numero, così il mondo non
+    si iscrive tutto lo stesso giorno e il caso del mondo non si tocca. Serve alla nascita e alla migrazione.
+    """
+    return data + datetime.timedelta(days=random.Random(f"MESS-ritmo-{id_giocatore}").randint(0, GIORNI_RITMO_INIZIALE))
 # I campi dell'acciacco, con il loro valore per chi non ne ha.
 CAMPI_ACCIACCO_VUOTO = {"acciacco_fino": None, "acciacco_calo": 0.0, "acciacco_giorni": 0, "acciacco_sede": None}
 # I campi del palmarès di un giocatore della tappa 12, con il valore di chi non ha ancora giocato tornei; le liste nuove a ogni uso.
@@ -554,9 +566,12 @@ class Giocatore:
         self.infortunio_sede = None
         # La data simulata dell'ultimo incontro, l'impegno del giorno della tappa 12: chi nasce non ne ha ancora giocati.
         self.ultimo_impegno = None
-        # Dalla tappa 12 l'acciacco e il palmarès: chi nasce non ne ha.
+        # Dalla tappa 12 l'acciacco e il palmarès: chi nasce non ne ha. Il ritmo dei tornei parte da
+        # una data sparsa sui due mesi che seguono, e l'iscrizione automatica è accesa, risposta 17.
         for campo, vuoto in (*CAMPI_ACCIACCO_VUOTO.items(), *palmares_vuoto().items()):
             setattr(self, campo, vuoto)
+        self.prossimo_torneo = ritmo_iniziale(id_giocatore, datetime_creazione_sim) if isinstance(datetime_creazione_sim, datetime.datetime) else None
+        self.iscrizione_automatica = True
         self.nome = "*"
         self.cognome = "*"
         self.appartenenza = "*"

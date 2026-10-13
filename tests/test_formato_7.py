@@ -14,11 +14,12 @@ import json
 import random
 
 import pytest
+from aiuti_calendario import apri, iscrivi_tutti
 from aiuti_formati import CAMPI_DEL_FORMATO_7, RINOMINATI_DEL_FORMATO_7, al_formato_5, al_formato_6
 
 import archivio
 from costanti import FILE_MONDO
-from modelli import Polisportiva
+from modelli import CAMPI_AGGREGATA_GIOCATORE, Polisportiva, annota_aggregata
 from mondo import Mondo
 
 INIZIO = datetime.datetime(2026, 9, 28, 9, 0)
@@ -106,6 +107,16 @@ def test_l_ultima_amichevole_diventa_l_ultimo_impegno():
     assert nuovo.giocatori[12].ha_un_impegno(INIZIO) and not nuovo.giocatori[13].ha_un_impegno(INIZIO)
 
 
+def test_la_data_del_ritmo_sparsa_alla_migrazione():
+    mondo = _mondo_come_quello_di_gabriele()
+    settimo = _migra(_al_formato_4(archivio.componi(mondo)), 7)
+    distanze = {(datetime.datetime.fromisoformat(g["prossimo_torneo"]) - INIZIO).days for g in settimo["mondo"]["giocatori"]}
+    assert min(distanze) >= 0 and max(distanze) <= 60 and len(distanze) > 20
+    assert all(g["iscrizione_automatica"] is True for g in settimo["mondo"]["giocatori"])
+    assert settimo["mondo"]["calendario"]["edizioni"] == [] and settimo["mondo"]["calendario"]["albo"]["voci"] == []
+    assert all(set(p["conti_del_mese"]) >= {"iscrizioni", "premi", "rimborsi"} and p["palmares_recente"] == {} for p in settimo["mondo"]["polisportive"].values())
+
+
 def test_andata_e_ritorno_del_formato_7(cartella_di_prova):
     mondo = _mondo_come_quello_di_gabriele()
     g = mondo.giocatori[7]
@@ -113,12 +124,34 @@ def test_andata_e_ritorno_del_formato_7(cartella_di_prova):
     g.acciacco_calo = 0.02
     g.acciacco_giorni = 5
     g.acciacco_sede = "caviglia"
+    # Un torneo a metà, con le iscrizioni aperte di un'altra edizione, la voce aggregata e il palmarès.
+    edizioni = apri(mondo, INIZIO, "Open maschile del martedì")
+    uomini = [gid for gid, x in sorted(mondo.giocatori.items()) if x.sesso == "m"][:12]
+    iscrivi_tutti(edizioni[0], mondo, uomini)
+    martedi = INIZIO + datetime.timedelta(days=1)
+    mondo.datetime_corrente_simulazione = martedi
+    mondo.calendario.sorteggi(mondo, martedi, Mondo.rapporto_vuoto(martedi))
+    mondo.calendario.gioca(mondo, martedi, Mondo.rapporto_vuoto(martedi))
+    assert mondo.calendario.tornei and mondo.calendario.edizioni
+    annota_aggregata(mondo.giocatori[3].diario, martedi, CAMPI_AGGREGATA_GIOCATORE, tornei=1, incontri=3, vinti=2)
+    mondo.polisportive["Brybox Showdown"].palmares_recente = {"2026-09": [30.0, 2.0]}
     assert archivio.salva(mondo)
     ricaricato = Mondo()
     assert archivio.carica(ricaricato) == archivio.CARICATO
     for gid, originale in mondo.giocatori.items():
         assert vars(ricaricato.giocatori[gid]) == vars(originale)
+    assert ricaricato.calendario.a_dizionario() == mondo.calendario.a_dizionario()
+    assert ricaricato.polisportive["Brybox Showdown"].palmares_recente == {"2026-09": [30.0, 2.0]}
     assert archivio.leggi(cartella_di_prova / FILE_MONDO)["formato"] == 7
+
+
+def test_un_calendario_incoerente_si_rifiuta():
+    mondo = _mondo_come_quello_di_gabriele()
+    apri(mondo, INIZIO, "Open maschile del martedì")
+    contenuto = archivio.componi(mondo)
+    contenuto["mondo"]["calendario"]["edizioni"][1]["id"] = contenuto["mondo"]["calendario"]["edizioni"][0]["id"]
+    with pytest.raises(archivio.ErroreSalvataggio, match="identificativo ripetuto"):
+        archivio.costruisci(contenuto, Mondo())
 
 
 def test_un_formato_8_si_rifiuta(cartella_di_prova):

@@ -414,18 +414,21 @@ class MotorePartita:
         for g in giocatori:
             g.ultimo_impegno = oggi
 
-    def registra(self, risultato, tipo=esperienza.AMICHEVOLE, importanza=1.0, diario=True):
+    def registra(self, risultato, tipo=esperienza.AMICHEVOLE, importanza=1.0, diario=True, solo_tuoi=False):
         """
         Porta il risultato di un singolare nel mondo: partite e set vinti e persi, goal fatti e subiti,
         punti allenamento con il premio al più debole, per il fattore della fonte e per l'importanza,
         esperienza e costanza recente, l'impegno del giorno, gli infortuni e gli acciacchi con la loro
-        sede, e con diario le voci nei diari. tipo è amichevole, torneo o sfida, come in esperienza.py.
-        Restituisce le frasi da mostrare. La gara a squadre si registra con registra_squadre.
+        sede, e con diario le voci nei diari; con solo_tuoi, soltanto nei diari dei tuoi tesserati,
+        perché gli altri hanno la voce aggregata dell'anno, punto 5.11. tipo è amichevole, torneo o
+        sfida, come in esperienza.py. Restituisce le frasi da mostrare. La gara a squadre si registra
+        con registra_squadre.
         """
         if risultato.formato.tipo != "singolare":
             return []
         if risultato.esito == TAVOLINO:
             return self._registra_tavolino(risultato, tipo, diario)
+        annota = self._chi_annota(diario, solo_tuoi)
         id_a, id_b = risultato.parti
         vince_a = risultato.vincitore == "A"
         id_vinc, id_perd = (id_a, id_b) if vince_a else (id_b, id_a)
@@ -452,28 +455,37 @@ class MotorePartita:
             esperienza.da_partita(g, tipo, importanza)
             g.costanza += (1.0 - DECADIMENTO_COSTANZA) * COSTANZA_PER_PARTITA
         self.segna_impegno(g_vinc, g_perd)
-        if diario:
-            self._annota_risultato(g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo)
+        self._annota_risultato(g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo, annota)
         frasi = [f"Punti allenamento: {_punti(pa_vinc)} a {g_vinc.nome} {g_vinc.cognome}, {_punti(pa_perd)} a {g_perd.nome} {g_perd.cognome}."]
-        frasi.extend(self.registra_infortuni(risultato, diario))
+        frasi.extend(self.registra_infortuni(risultato, diario, solo_tuoi))
         return frasi
 
-    def registra_infortuni(self, risultato, diario=True):
+    def _chi_annota(self, diario, solo_tuoi):
+        """Chi riceve le voci del diario di un incontro: tutti, nessuno, o soltanto i tuoi tesserati."""
+        if not diario:
+            return lambda _g: False
+        if solo_tuoi:
+            return self._tuo
+        return lambda _g: True
+
+    def registra_infortuni(self, risultato, diario=True, solo_tuoi=False):
         """
         Porta nel mondo gli infortuni e gli acciacchi che il motore ha estratto, tappa 12: la durata e
         il calo da un generatore nato dal seme dell'incontro, così l'incontro rigiocato dà gli stessi.
-        Gli infortuni vanno nel diario di tutti, gli acciacchi soltanto in quello dei tuoi tesserati;
-        senza diario, nella registrazione leggera, in nessuno. Restituisce le frasi da mostrare.
+        Gli infortuni vanno nel diario di chi riceve le voci, gli acciacchi soltanto in quello dei tuoi
+        tesserati; senza diario, nella registrazione leggera, in nessuno. Restituisce le frasi da mostrare.
         """
+        annota = self._chi_annota(diario, solo_tuoi)
         frasi = []
         caso = random.Random(f"durata-{risultato.seme}")
         for gid, _set_n, sede in risultato.infortuni:
-            frase = infortuni.colpisci(self.mondo, self.giocatori[gid], sede, caso, annota=diario)
+            g = self.giocatori[gid]
+            frase = infortuni.colpisci(self.mondo, g, sede, caso, annota=annota(g))
             if frase:
                 frasi.append(frase)
         for gid, sede in risultato.acciacchi:
             g = self.giocatori[gid]
-            frase = infortuni.acciacca(self.mondo, g, sede, caso, annota=diario and self._tuo(g))
+            frase = infortuni.acciacca(self.mondo, g, sede, caso, annota=annota(g) and self._tuo(g))
             if frase:
                 frasi.append(frase)
         return frasi
@@ -482,11 +494,17 @@ class MotorePartita:
     def _nome_del_tipo(tipo_incontro):
         return {esperienza.TORNEO: "la partita del torneo", esperienza.SFIDA: "la sfida"}.get(tipo_incontro, "l'amichevole")
 
-    def _annota_risultato(self, g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo_incontro):
+    def _annota_risultato(self, g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo_incontro, annota=None):
         """
         Il risultato nei diari dei due giocatori, ciascuno con i set dal suo punto di vista. Col ritiro,
-        dalla tappa 12, i set giocati davvero e chi si è ritirato.
+        dalla tappa 12, i set giocati davvero e chi si è ritirato. annota dice chi riceve la voce.
         """
+        annota = annota or (lambda _g: True)
+
+        def scrivi(g, testo):
+            if annota(g):
+                self.mondo.annota(g, testo)
+
         tipo = self._nome_del_tipo(tipo_incontro)
         giocati = risultato.set[:risultato.set_giocati]
         dal_vincitore = [(a, b) if vince_a else (b, a) for a, b in giocati]
@@ -494,15 +512,15 @@ class MotorePartita:
         set_perdente = ", ".join(f"{b} a {a}" for a, b in dal_vincitore)
         nome_perd, nome_vinc = f"{g_perd.nome} {g_perd.cognome}", f"{g_vinc.nome} {g_vinc.cognome}"
         if risultato.esito != RITIRO:
-            self.mondo.annota(g_vinc, f"Vince {tipo} contro {nome_perd}, {set_vinc} set a {set_perd}: {set_vincitore}.")
-            self.mondo.annota(g_perd, f"Perde {tipo} contro {nome_vinc}, {set_perd} set a {set_vinc}: {set_perdente}.")
+            scrivi(g_vinc, f"Vince {tipo} contro {nome_perd}, {set_vinc} set a {set_perd}: {set_vincitore}.")
+            scrivi(g_perd, f"Perde {tipo} contro {nome_vinc}, {set_perd} set a {set_vinc}: {set_perdente}.")
             return
         dopo = f"dopo {len(giocati)} set"
         if g_vinc.id in risultato.ritirato:
-            self.mondo.annota(g_vinc, f"Vince {tipo} contro {nome_perd}: si ritirano tutti e due {dopo}, e vince chi ha vinto più set: {set_vincitore}.")
+            scrivi(g_vinc, f"Vince {tipo} contro {nome_perd}: si ritirano tutti e due {dopo}, e vince chi ha vinto più set: {set_vincitore}.")
         else:
-            self.mondo.annota(g_vinc, f"Vince {tipo} contro {nome_perd}, che si ritira {dopo}: {set_vincitore}.")
-        self.mondo.annota(g_perd, f"Perde {tipo} contro {nome_vinc}: si ritira {dopo}, {set_perdente}.")
+            scrivi(g_vinc, f"Vince {tipo} contro {nome_perd}, che si ritira {dopo}: {set_vincitore}.")
+        scrivi(g_perd, f"Perde {tipo} contro {nome_vinc}: si ritira {dopo}, {set_perdente}.")
 
     def _registra_tavolino(self, risultato, tipo=esperienza.AMICHEVOLE, diario=True):
         """

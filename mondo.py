@@ -58,6 +58,7 @@ import datetime
 import math
 import random
 
+import calendario
 import contratti
 import esperienza
 import infortuni
@@ -130,7 +131,15 @@ DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
 CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
                    "tesserati_cpu", "svincolati_cpu", "poli_chiuse", "poli_create", "partiti", "vendite",
                    "tuoi_non_pagati", "tuoi_partiti", "tuoi_venduti", "mesi", "tuoi_ritirati", "tuoi_usciti", "tue_bandiere",
-                   "infortunati_in_seduta", "tuoi_infortunati_in_seduta", "contratti_scaduti", "rinnovi_cpu", "tuoi_scaduti", "tuoi_in_scadenza")
+                   "infortunati_in_seduta", "tuoi_infortunati_in_seduta", "contratti_scaduti", "rinnovi_cpu", "tuoi_scaduti", "tuoi_in_scadenza",
+                   # Dalla tappa 12, punto 12.8 del progetto: i tornei, le sfide e gli infortuni in gara, del mondo e dei tuoi.
+                   "tornei_conclusi", "incontri_torneo", "incontri_ritiro", "incontri_tavolino", "infortuni_in_gara", "acciacchi_in_gara",
+                   "sfide_giocate", "edizioni_annullate", "tue_edizioni_annullate", "tue_iscrizioni", "tue_iscrizioni_saltate",
+                   "tue_medaglie_oro", "tue_medaglie_argento", "tue_medaglie_bronzo", "tue_medaglie_legno", "tuoi_titoli_mondiali",
+                   "tue_coppe_oro", "tue_coppe_argento", "tue_coppe_bronzo", "tue_coppe_legno", "tuoi_premi", "tuoi_infortuni_in_gara",
+                   "tuoi_acciacchi", "tuoi_tavolini", "tuoi_qualificati", "tue_qualificazioni_coppa", "tuoi_tornei_conclusi",
+                   "sfide_ricevute", "sfide_in_attesa", "sfide_decadute", "tue_sfide_vinte", "tue_sfide_perse", "tue_sfide_a_tavolino",
+                   "calendario_con_problemi")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
@@ -212,6 +221,8 @@ class Mondo:
         # La memoria dei conti delle mosse del computer, che vive soltanto mentre il computer muove:
         # None fuori da lì, punto 1.3 del progetto della tappa 12.
         self._conti_del_giorno = None
+        # Dalla tappa 12 il calendario dei tornei, salvato col mondo nel formato 7.
+        self.calendario = calendario.Calendario()
 
     # Probabilità, ricerche, diari.
 
@@ -324,6 +335,8 @@ class Mondo:
         contratti.stipula(g, data or self.datetime_corrente_simulazione, stipendio(g), contratti.durata_proposta(g))
         g.programma = g.indole
         g.intensita = INTENSITA_PREDEFINITA
+        # Dalla tappa 12 l'iscrizione automatica ai tornei è accesa per chi si tessera, risposta 17 di Gabriele.
+        g.iscrizione_automatica = True
 
     def _tessera(self, poli, g, data=None, ingaggio=None):
         self._entra(poli, g, data)
@@ -647,7 +660,7 @@ class Mondo:
         Che cosa ha già giocato oggi il giocatore, a parole, per la regola di un impegno al giorno della
         tappa 12, D32: il torneo, una sfida, oppure un'amichevole.
         """
-        return "un'amichevole"
+        return calendario.descrivi(self.calendario, g, self.datetime_corrente_simulazione) or "un'amichevole"
 
     def annota(self, soggetto, testo, data=None):
         """Una voce nel diario di un giocatore o di una polisportiva, con la data simulata, di oggi se non è data."""
@@ -1272,8 +1285,11 @@ class Mondo:
 
     @staticmethod
     def rapporto_vuoto(ora):
-        """Il riepilogo di un avanzamento in cui non è successo niente."""
-        return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora}
+        """
+        Il riepilogo di un avanzamento in cui non è successo niente. Dalla tappa 12 ha anche le notizie,
+        le frasi dei risultati dei tuoi, una lista nuova a ogni riepilogo.
+        """
+        return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora, "notizie": []}
 
     def prossimo_avanzamento(self):
         """L'istante, in UTC, in cui maturerà il prossimo giorno simulato."""
@@ -1337,6 +1353,12 @@ class Mondo:
             self._primo_del_mese(data, rapporto)
             self._mantenimento_del_mese(data)
         self._allenamento_del_giorno(data, rapporto)
+        # Dalla tappa 12 il calendario dei tornei, dopo l'allenamento e prima delle mosse del computer:
+        # chi ha vinto qualcosa ricalcola subito la gloria, così il mercato la vede.
+        for nome in self.calendario.giorno(self, data, rapporto):
+            poli = self.polisportive.get(nome)
+            if poli is not None:
+                poli.aggiorna_gloria(self.giocatori, self._ids_morti_processati_sessione, data)
         vivi = [g for gid, g in self.giocatori.items() if gid not in self._ids_morti_processati_sessione]
         venduti_tuoi = sum(len(p.in_vendita) for p in self.polisportive.values() if not p.is_cpu_controlled)
         tesserati, svincolati, comprati = self._esegui_logica_cpu_polisportive(data)

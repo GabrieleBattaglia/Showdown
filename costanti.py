@@ -640,6 +640,26 @@ MASSIMO_VOCI_RICERCA_AGGREGATA = 20
 # 1 per il legno, e 1 per ogni sfida vinta.
 FEDELTA_PER_MEDAGLIA = {"oro": 4, "argento": 3, "bronzo": 2, "legno": 1}
 FEDELTA_PER_SFIDA_VINTA = 1
+# Il ritmo dei tornei, regola di Gabriele in D32 e risposta 2: un torneo ogni due mesi simulati per
+# atleta, per il computer, per i liberi e per l'iscrizione automatica dei tuoi; a mano no. Dopo il
+# sorteggio di ogni edizione che gioca, l'iscrizione automatica aspetta 61 giorni, più o meno uno
+# scarto di 3, tirato dal numero dell'atleta e dell'edizione: senza, chi gioca la stessa edizione
+# resterebbe in fila con gli altri per sempre, e il carico si ammasserebbe in pochi giorni. Si cerca
+# l'edizione da una settimana prima, e alla nascita la prima data si sparge su due mesi.
+GIORNI_FRA_TORNEI = 61
+SCARTO_FRA_TORNEI = 3
+GIORNI_ANTICIPO_ISCRIZIONE = 7
+GIORNI_RITMO_INIZIALE = 60
+# Il computer e i liberi non iscrivono chi ha giocato troppo di recente, D32 e risposta 3: l'eccesso
+# di carico è la costanza recente meno quella della sua seduta, e la soglia scende con l'età, da 0,15
+# fino ai 45 anni a 0,05 dai 65. Così sotto i 50 anni non aspetta nessuno, i titolari delle sfide
+# cominciano ad aspettare verso i 57 anni, e dai 60 giocano circa un torneo ogni tre mesi.
+SOGLIA_ECCESSO_CARICO_GIOVANI = 0.15
+ETA_SOGLIA_CARICO_GIOVANI = 45
+SOGLIA_ECCESSO_CARICO_ANZIANI = 0.05
+ETA_SOGLIA_CARICO_ANZIANI = 65
+# Le sedi concluse restano intere nel pannello per due settimane simulate; l'albo tiene il podio per sempre.
+CONSERVAZIONE_TORNEI_CONCLUSI_GIORNI = 14
 
 
 def discrepanze_raggruppamenti():

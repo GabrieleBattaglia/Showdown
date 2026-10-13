@@ -67,6 +67,7 @@ import economia
 import percorsi
 import tratti
 import valore
+from calendario import Calendario
 from costanti import (
     CAPITALE_INIZIALE,
     ESPERIENZA_MASSIMA,
@@ -84,7 +85,19 @@ from costanti import (
     SEDE_NON_PRECISATA,
     VERSIONE,
 )
-from modelli import CAMPI_ACCIACCO_VUOTO, DATA, VOCI_CONTI, Giocatore, Polisportiva, a_json, da_json, normalizza_nome, palmares_vuoto, temperamento_innato
+from modelli import (
+    CAMPI_ACCIACCO_VUOTO,
+    DATA,
+    VOCI_CONTI,
+    Giocatore,
+    Polisportiva,
+    a_json,
+    da_json,
+    normalizza_nome,
+    palmares_vuoto,
+    ritmo_iniziale,
+    temperamento_innato,
+)
 from mondo import CONSERVAZIONE_PREDEFINITA
 from utilita import adesso, adesso_utc
 
@@ -155,6 +168,7 @@ def componi(mondo):
             "polisportive": {chiave: p.a_dizionario() for chiave, p in mondo.polisportive.items()},
             "giocatori": [g.a_dizionario() for gid, g in sorted(mondo.giocatori.items()) if gid not in morti],
             "vecchie_glorie": list(mondo.vecchie_glorie),
+            "calendario": mondo.calendario.a_dizionario(),
         },
     }
 
@@ -406,11 +420,16 @@ def _dal_formato_6(documento):
     impegno, col suo valore: la regola di un impegno al giorno è una sola, e una sola deve essere la fonte.
     """
     dati = documento["mondo"]
+    oggi = datetime.datetime.fromisoformat(dati["data_simulata"])
     for g in dati["giocatori"]:
         for campo, vuoto in (*CAMPI_ACCIACCO_VUOTO.items(), *palmares_vuoto().items()):
             g.setdefault(campo, vuoto)
         if "ultimo_impegno" not in g:
             g["ultimo_impegno"] = g.pop("ultima_amichevole", None)
+        # Il ritmo dei tornei parte sparso sui due mesi che vengono, e l'iscrizione automatica è accesa, risposta 17.
+        g.setdefault("prossimo_torneo", ritmo_iniziale(g["id"], oggi).isoformat())
+        g.setdefault("iscrizione_automatica", True)
+    dati.setdefault("calendario", Calendario().a_dizionario())
     # Le voci nuove dei conti, a zero, nel mese in corso e in ogni bilancio; il palmarès recente vuoto.
     for p in dati["polisportive"].values():
         for voce in VOCI_NUOVE_DEL_FORMATO_7:
@@ -473,6 +492,7 @@ def costruisci(documento, mondo):
             raise ValueError(f"Mondo: la polisportiva attiva {attiva!r} non esiste")
         for g in giocatori.values():
             controlla_contratto(g, polisportive)
+        calendario_del_mondo = Calendario.da_dizionario(dati["calendario"])
     except KeyError as e:
         raise ErroreSalvataggio(f"manca il dato {e}") from e
     except (TypeError, ValueError, AttributeError) as e:
@@ -485,6 +505,7 @@ def costruisci(documento, mondo):
     mondo.prossimo_id = max(prossimo_id, max(giocatori, default=0) + 1)
     mondo.conservazione_diari = conservazione
     mondo.vecchie_glorie = vecchie_glorie
+    mondo.calendario = calendario_del_mondo
 
 
 def controlla_contratto(g, polisportive):
