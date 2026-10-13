@@ -1,0 +1,6 @@
+Banco dei tornei col seme 1: 5000 tornei a caso, 497747 incontri giocati, in 24,9 secondi.
+Iscritti per torneo da 4 a 128, mediana 18; giorni di gioco da 1 a 56, in media 6,8.
+Gli esiti degli incontri: regolare 477753, ritiro 7434, tavolino 9967, tavolino doppio 2593, riposo 97967.
+Nessuna violazione: ogni incontro giocato una volta, nessuno due volte nello stesso turno, il vincitore mai sconfitto nel tabellone, la classifica finale una permutazione degli iscritti, i giorni nella durata prevista, i premi entro il montepremi.
+Le prime due teste di serie arrivano in finale in 449 tornei su 1209 con la finale di un tabellone, il 37,1 per cento; la prima testa vince il 49,3 per cento dei tornei.
+Compagni di club nello stesso girone: 18428 coppie in 49655 gironi, contro 36496 con la serpentina senza la separazione, sugli stessi iscritti.
