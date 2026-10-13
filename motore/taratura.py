@@ -129,10 +129,16 @@ class Taratura:
     # fascia. Oltre SOGLIA_BATTUTA_ALTA, in quota del tetto della caratteristica, la battuta preme
     # sempre meno di quanto dice il suo livello, e quello che aggiunge non supera mai
     # AMPIEZZA_BATTUTA_ALTA, con una curva che si appiattisce come quelle della difesa e delle
-    # chiusure. La soglia è 0,45 perché in nessun mondo sintetico un giocatore la supera, quindi il
-    # gioco dei giocatori normali resta identico; il freno tocca la sola pressione, mentre la
-    # scelta della battuta e le battute irregolari sentono il livello pieno.
-    SOGLIA_BATTUTA_ALTA: float = 0.45
+    # chiusure. La soglia era 0,45, che nessun giocatore dei mondi sintetici supera, e la battuta
+    # sola al tetto vinceva ancora dal 72 al 75 per cento. Con la decisione 28 di Gabriele è scesa a
+    # 0,28, la più alta che porta la battuta sola al tetto nel bersaglio dei colpi soli, fra il 56 e
+    # il 64 per cento: col giro degli estremi del 13 ottobre 2026 vince il 63,7 a sinistra e il
+    # 61,4 a destra, mentre con 0,29 la sinistra vince il 64,7. Ora il freno tocca anche i
+    # giocatori normali, dal 15 al 17 per cento di quelli dei mondi sintetici, ma di poco: appena
+    # sopra la soglia la curva ha quasi la pendenza di prima, e in media toglie loro meno di mezzo
+    # punto su 40. Il freno tocca la sola pressione, mentre la scelta della battuta e le battute
+    # irregolari sentono il livello pieno.
+    SOGLIA_BATTUTA_ALTA: float = 0.28
     AMPIEZZA_BATTUTA_ALTA: float = 0.10
     QUOTA_BATTUTA_LATERALE: float = 0.55
     CAUSE_BATTUTA: tuple = (("battuta_senza_rimbalzo", 34), ("battuta_due_rimbalzi", 26), ("battuta_strisciata", 14), ("battuta_oltre_due_secondi", 7),

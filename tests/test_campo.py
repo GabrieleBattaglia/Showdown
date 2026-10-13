@@ -3,7 +3,7 @@ Test del giocatore in campo: stanchezza di ciascuno, che cala con l'allenamento,
 paura degli errori, scelta del colpo e lettura dell'avversario, la precisione che pesa la metà e
 la sorpresa del mancino in difesa, decisione D26. Qui sta anche la regressione del problema P1: chi
 batte gioca con la sua stanchezza, non con quella dell'avversario. Dalla tappa 11 il freno alle
-battute alte, decisione 11 di Gabriele.
+battute alte, decisione 11 di Gabriele, con la soglia abbassata a 0,28 dalla decisione 28.
 """
 
 import dataclasses
@@ -15,7 +15,7 @@ import pytest
 from aiuti_motore import TARATURA_NEUTRA, giocatore
 
 from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA
-from motore.campo import InCampo, costanza_relativa, efficienza, ritmo_della_fatica
+from motore.campo import InCampo, battuta_frenata, costanza_relativa, efficienza, ritmo_della_fatica
 from motore.dado import Dado
 from motore.incontro import ESSENZIALE, SINGOLARE_3, simula_incontro
 from motore.scambio import gioca_punto
@@ -50,7 +50,9 @@ def test_stanchezza_piu_rapida_per_gli_anziani_e_i_poco_resistenti():
 def test_chi_batte_gioca_con_la_sua_stanchezza():
     # Regressione del problema P1: il vecchio motore passava a chi batte la resistenza del primo
     # giocatore. Qui due giocatori uguali, uno fresco e uno stanco: la battuta di ciascuno ha la
-    # pressione della sua qualità per la sua efficienza, e quella dello stanco è più bassa.
+    # pressione della sua qualità per la sua efficienza, e quella dello stanco è più bassa. La
+    # qualità è QBP, quella col freno alle battute alte, che con la soglia a 0,28 tocca anche le
+    # battute a 12 di questi due giocatori.
     fresco, stanco = _campo(giocatore(1), "A"), _campo(giocatore(2), "B")
     stanco.azioni = 3000
     dado = Dado(random.Random(4))
@@ -64,7 +66,7 @@ def test_chi_batte_gioca_con_la_sua_stanchezza():
             battuta = passi[0]
             if battuta.esito == "regolare":
                 indice = COLPI_DI_BATTUTA.index(battuta.colpo)
-                assert math.isclose(battuta.valore, TARATURA.PRESSIONE_BATTUTA * battitore.QB[indice] * battitore.eff)
+                assert math.isclose(battuta.valore, TARATURA.PRESSIONE_BATTUTA * battitore.QBP[indice] * battitore.eff)
                 pressioni[battitore.parte].append(battuta.valore)
     assert pressioni["A"] and pressioni["B"]
     assert max(pressioni["B"]) < min(pressioni["A"])
@@ -72,8 +74,8 @@ def test_chi_batte_gioca_con_la_sua_stanchezza():
 
 def test_il_freno_alle_battute_alte():
     # Decisione 11 di Gabriele: sotto SOGLIA_BATTUTA_ALTA la qualità che dà la pressione della
-    # battuta è identica a QB, così il gioco dei giocatori normali non cambia; sopra cresce
-    # sempre, ma ogni punto aggiunge meno del precedente, e in tutto non più dell'ampiezza.
+    # battuta è identica a QB, così il gioco di chi sta sotto non cambia; sopra cresce sempre,
+    # ma ogni punto aggiunge meno del precedente, e in tutto non più dell'ampiezza.
     soglia, ampiezza = TARATURA.SOGLIA_BATTUTA_ALTA, TARATURA.AMPIEZZA_BATTUTA_ALTA
     livelli = range(4, 41, 2)
     campi = [_campo(giocatore(1, battutasx_base=float(punti), battutadx_base=float(punti))) for punti in livelli]
@@ -110,15 +112,33 @@ def test_il_freno_alle_battute_alte():
     assert regolari
 
 
+def test_la_soglia_della_decisione_28():
+    # Decisione 28 di Gabriele: la battuta allenata da sola deve vincere al tetto, contro la
+    # propria fascia, fra il 56 e il 64 per cento, come i colpi soli. Il giro degli estremi del 13
+    # ottobre 2026 lo dà con la soglia a 0,28 e l'ampiezza a 0,10, 63,7 per cento a sinistra e 61,4
+    # a destra; con 0,29 la sinistra vinceva il 64,7. Al tetto la battuta preme come una battuta
+    # senza freno sotto il 38 per cento del tetto.
+    soglia, ampiezza = TARATURA.SOGLIA_BATTUTA_ALTA, TARATURA.AMPIEZZA_BATTUTA_ALTA
+    assert soglia == pytest.approx(0.28) and ampiezza == pytest.approx(0.10)
+    al_tetto = battuta_frenata(1.0, TARATURA)
+    assert soglia + 0.99 * ampiezza < al_tetto < 0.38
+    # Il freno tocca anche i giocatori normali, ma appena sopra la soglia, dove stanno quasi tutti
+    # quelli che la passano, la curva ha quasi la pendenza di prima: due centesimi oltre, il freno
+    # toglie meno di un decimo di punto su 40; al livello più alto dei mondi sintetici, 0,43, meno
+    # di tre punti.
+    assert 40.0 * (soglia + 0.02 - battuta_frenata(soglia + 0.02, TARATURA)) < 0.1
+    assert 40.0 * (0.43 - battuta_frenata(0.43, TARATURA)) < 3.0
+
+
 def test_sotto_la_soglia_il_freno_non_sposta_un_punto():
-    # Con le battute fino alla soglia gli incontri, col freno e senza, sono identici punto per
-    # punto; con una battuta al tetto il freno li cambia.
+    # Con le battute dei due fino alla soglia gli incontri, col freno e senza, sono identici punto
+    # per punto; con una battuta al tetto il freno li cambia.
     senza_freno = dataclasses.replace(TARATURA, SOGLIA_BATTUTA_ALTA=1.0)
     alla_soglia = TARATURA.SOGLIA_BATTUTA_ALTA * 40.0
     cambiati = 0
     for seme in range(8):
         a = giocatore(1, valore=14.0, battutadx_base=alla_soglia, battutasx_base=alla_soglia)
-        b = giocatore(2, valore=16.0)
+        b = giocatore(2, valore=16.0, battutadx_base=alla_soglia, battutasx_base=alla_soglia)
         frenato = simula_incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=TARATURA)
         libero = simula_incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE, taratura=senza_freno)
         assert frenato.punti == libero.punti and frenato.set == libero.set
