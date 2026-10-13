@@ -21,7 +21,7 @@ tappa 11 il difensore si abitua anche al colpo dello scambio che l'attaccante ri
 nell'incontro, e quel colpo preme di meno: la battuta e la ribattuta non ne risentono. Conta
 soltanto statistiche che la catena aggiorna in tutte e due le modalità, quindi l'incontro
 essenziale e quello completo restano uguali. Sempre dalla tappa 11, decisione 11 di Gabriele, la
-pressione della battuta viene dalla qualità frenata QBP di InCampo: oltre lo 0,45 del tetto la
+pressione della battuta viene dalla qualità frenata QBP di InCampo: oltre SOGLIA_BATTUTA_ALTA la
 battuta preme sempre meno di quanto dice il suo livello, mentre la battuta irregolare sente QB.
 Con l'elenco passi la catena annota ogni passo, per la regia che ne farà eventi e posizioni; senza,
 in modalità essenziale, non crea nulla. Le statistiche dei giocatori le aggiorna la catena stessa,
