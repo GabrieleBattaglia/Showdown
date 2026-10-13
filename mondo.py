@@ -205,6 +205,9 @@ class Mondo:
         # Chi è uscito di scena, dal più recente: il registro delle vecchie glorie, salvato col mondo.
         self.vecchie_glorie = []
         self.conservazione_diari = dict(CONSERVAZIONE_PREDEFINITA)
+        # La memoria dei conti delle mosse del computer, che vive soltanto mentre il computer muove:
+        # None fuori da lì, punto 1.3 del progetto della tappa 12.
+        self._conti_del_giorno = None
 
     # Probabilità, ricerche, diari.
 
@@ -350,6 +353,26 @@ class Mondo:
     def sponsor(self, poli):
         """Lo sponsor del mese della polisportiva, con la sua rosa di oggi."""
         return sponsor_mensile(poli, self._rosa(poli))
+
+    def _conti_memorizzati(self, poli):
+        """
+        Lo sponsor del mese e il monte stipendi della polisportiva, durante le mosse del computer:
+        si calcolano una volta e si ricalcolano soltanto quando cambia la rosa, con una memoria
+        indicizzata dal nome, dai tesserati nel loro ordine e dalla gloria. Mentre il computer muove
+        nient'altro li cambia: la gloria si ricalcola a fine giorno, e uno stipendio cambia soltanto
+        con un contratto nuovo, cioè con un tesserato che entra. Prima ogni candidato provato
+        ricalcolava lo sponsor di tutta la rosa: a regime le mosse del computer erano il 18 per cento
+        del giorno, e questi conti più della metà. I numeri sono gli stessi, nello stesso ordine di
+        somma, punto 1.3 del progetto della tappa 12. Fuori dalle mosse del computer si calcolano ogni volta.
+        """
+        memoria = self._conti_del_giorno
+        if memoria is None:
+            return self.sponsor(poli), self.monte_stipendi(poli)
+        chiave = (poli.nome, tuple(poli.tesserati), poli.gloria)
+        conti = memoria.get(chiave)
+        if conti is None:
+            conti = memoria[chiave] = (self.sponsor(poli), self.monte_stipendi(poli))
+        return conti
 
     def paga(self, poli, g, importo):
         """
@@ -650,12 +673,22 @@ class Mondo:
             self.notifica(f" -> Creati {quanti} nuovi giocatori.")
 
     def crea_polisportiva_cpu(self, dt_creaz):
-        """Fonda una polisportiva del computer con un nome nuovo; ne restituisce il nome, o None."""
+        """
+        Fonda una polisportiva del computer con un nome nuovo; ne restituisce il nome, o None. Il
+        numero è il primo che nessun nome usa all'inizio, seguito da uno spazio, maiuscole a parte.
+        Dalla tappa 12 le prime parole dei nomi si raccolgono una volta sola: prima ogni numero
+        provato scorreva tutti i nomi, e con le 1.240 polisportive del mondo a regime una fondazione
+        costava più di mezzo secondo. Il numero scelto è lo stesso di prima.
+        """
         suff = 1
         base = "PoliTeam"
+        usati = set()
+        for n in self.polisportive:
+            testa, spazio, _resto = n.casefold().partition(" ")
+            if spazio:
+                usati.add(testa)
         while True:
-            prefisso = f"{base}{suff:02d} ".casefold()
-            if not any(n.casefold().startswith(prefisso) for n in self.polisportive):
+            if f"{base}{suff:02d}".casefold() not in usati:
                 break
             suff += 1
             if suff > 9999:
@@ -725,14 +758,24 @@ class Mondo:
         cerca un libero ne trova ancora qualcuno. Il filtro sta qui, sull'elenco da cui pescano sia
         le mosse a rosa incompleta sia lo scambio a rosa piena; gli acquisti dalle altre polisportive
         non c'entrano, perché non prendono liberi.
+        Dalla tappa 12, mentre il computer muove, sponsor e monte stipendi di ogni polisportiva vivono
+        in una memoria che si svuota alla fine: vedi _conti_memorizzati.
         """
+        self._conti_del_giorno = {}
+        try:
+            return self._mosse_del_computer(data)
+        finally:
+            self._conti_del_giorno = None
+
+    def _mosse_del_computer(self, data):
+        """Il corpo di _esegui_logica_cpu_polisportive, con la memoria dei conti già pronta."""
         liberi = [g for g in self.trova_giocatori_liberi_ordinati().values() if not g.infortunato]
         stipendi = [stipendio(g) for g in liberi]
         vetrina = _Vetrina(stipendi)
         tesserati = svincolati = comprati = 0
         cpu = sorted((p for p in self.polisportive.values() if p.is_cpu_controlled), key=lambda p: p.gloria, reverse=True)
         for poli in cpu:
-            monte = self.monte_stipendi(poli)
+            monte = self._conti_memorizzati(poli)[1]
             # Il posto da cui riprende la ricerca: i liberi prima di lui sono già stati provati o sono troppo cari.
             prossimo = 0
             scartati = 0
@@ -770,7 +813,7 @@ class Mondo:
         Lo stipendio più alto che una polisportiva del computer può aggiungere: deve stare nello
         sponsor più una parte della cassa, e l'ingaggio più basso possibile deve stare nella cassa.
         """
-        nei_conti = sponsor_mensile(poli, self._rosa(poli)) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
+        nei_conti = self._conti_memorizzati(poli)[0] + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
         nella_cassa = spendibile / (MESI_DI_INGAGGIO * REPUTAZIONE_MINIMA * RIALZO_CPU)
         return min(nei_conti, nella_cassa)
 
@@ -840,10 +883,11 @@ class Mondo:
             return False
         debole = min(rosa, key=lambda g: g.indice_collettivo_valore) if piena else None
         oggi = data or self.datetime_corrente_simulazione
-        monte = self.monte_stipendi(poli) - (stipendio_pagato(debole) if debole else 0)
+        sponsor, monte_della_rosa = self._conti_memorizzati(poli)
+        monte = monte_della_rosa - (stipendio_pagato(debole) if debole else 0)
         buonuscita = contratti.buonuscita(debole, oggi) if debole else 0
         spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU - buonuscita
-        massimo = sponsor_mensile(poli, rosa) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
+        massimo = sponsor + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
         scelta = None
         for g, venditore, prezzo, prezzo_massimo, chiesto in (self._vendibili(oggi) if vendibili is None else vendibili):
             # Chi è già stato comprato oggi non è più in vendita.

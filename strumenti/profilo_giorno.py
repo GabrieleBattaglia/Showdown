@@ -20,7 +20,8 @@ Con --salvataggio il salvataggio dello stesso mondo, diari compresi: comporre il
 firmarlo, scriverlo in JSON e comprimerlo, con le grandezze; poi lo stesso con un albo d'oro di
 sessant'anni costruito apposta, della forma decisa al punto 5.10 del progetto, voci corte e nomi
 nelle tabelle, perché l'albo conserva tutto per sempre, risposta 13 di Gabriele.
-Con --rapporto il racconto va anche in strumenti/profilo_tappa_12.txt, o nel file indicato.
+Con --rapporto il racconto va anche in strumenti/profilo_tappa_12.txt, o nel file indicato; con --nota
+si aggiungono righe proprie dopo l'intestazione, per esempio le misure prese prima di un cambiamento.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/profilo_giorno.py --incontri
     python strumenti/profilo_giorno.py --giorno --attivi 20600 --giorni 20
@@ -65,7 +66,7 @@ FUNZIONI_DEL_MOTORE = (("gioca_punto", "scambio.py"), ("prepara_punto", "campo.p
 FUNZIONI_DEL_GIORNO = (("_fai_invecchiare", "mondo.py"), ("_applica_declino_aggregato", "modelli.py"), ("_allenamento_del_giorno", "mondo.py"),
                        ("_esegui_logica_cpu_polisportive", "mondo.py"), ("_compra_dal_mercato", "mondo.py"), ("_stipendio_massimo", "mondo.py"),
                        ("aggiorna_icv", "modelli.py"), ("aggiorna_stato_polisportive", "mondo.py"), ("_primo_del_mese", "mondo.py"),
-                       ("crea_giocatori_casuali", "mondo.py"))
+                       ("crea_giocatori_casuali", "mondo.py"), ("crea_polisportiva_cpu", "mondo.py"))
 # L'albo d'oro di prova: le sedi concluse in un anno di calendario a regime, i giocatori e i club
 # diversi che salgono sul podio in sessant'anni, stime del punto 1.4 del progetto.
 SEDI_ALL_ANNO = 4300
@@ -117,8 +118,8 @@ def frase_delle_quote(quote):
 def misura_incontri(quanti, scrivi):
     """Il motore in modalità essenziale sulle due popolazioni, poi il profilo sulla seconda."""
     rng = random.Random("profilo-incontri")
-    popolazioni = (("la popolazione di prova del banco, 400 giocatori col seme 7", [g for g in pp.genera(400, 7) if g.puo_giocare]),
-                   ("la popolazione del mondo sintetico a regime, 800 giocatori col seme 7", ms.mondo_sintetico(800, None, 7, primo_id=200_000)))
+    popolazioni = (("sulla popolazione di prova del banco, 400 giocatori col seme 7", [g for g in pp.genera(400, 7) if g.puo_giocare]),
+                   ("sulla popolazione del mondo sintetico a regime, 800 giocatori col seme 7", ms.mondo_sintetico(800, None, 7, primo_id=200_000)))
     for nome, giocatori in popolazioni:
         parti = []
         for set_al_meglio in (3, 5):
@@ -143,7 +144,7 @@ def misura_incontri(quanti, scrivi):
             tempi.append(time.perf_counter() - inizio)
         if tempi:
             parti.append(f"la gara a squadre {numero(1000 * statistics.median(tempi), 2)} millisecondi di mediana")
-        scrivi(f"Il motore su {nome}, {quanti} incontri per formato: " + "; ".join(parti) + ".")
+        scrivi(f"Il motore {nome}, {quanti} incontri per formato: " + "; ".join(parti) + ".")
     giocatori = popolazioni[1][1]
     formato = formato_singolare(3)
     coppie = [(*rng.sample(giocatori, 2), rng.getrandbits(63)) for _ in range(quanti)]
@@ -274,6 +275,7 @@ def main():
     parser.add_argument("--quanti", type=int, default=400, help="gli incontri per formato di --incontri, 400 se non indicato")
     parser.add_argument("--seme", type=int, default=31, help="il seme del mondo a regime, 31 se non indicato")
     parser.add_argument("--rapporto", nargs="?", type=Path, const=RAPPORTO_PREDEFINITO, default=None, help="salva il racconto, in strumenti/profilo_tappa_12.txt se non si dà un file")
+    parser.add_argument("--nota", action="append", default=[], help="una riga da mettere nel racconto dopo l'intestazione, per esempio le misure di prima; si può ripetere")
     argomenti = parser.parse_args()
     if not (argomenti.incontri or argomenti.giorno or argomenti.salvataggio):
         parser.error("serve almeno una misura: --incontri, --giorno o --salvataggio")
@@ -286,6 +288,8 @@ def main():
     corrente = alimentazione()
     scrivi(f"Profilo di MESS {__version__}, {time.strftime('%Y-%m-%d %H:%M')}, sulla macchina {platform.node()}" + (f" {corrente}" if corrente else "")
            + f", Python {platform.python_version()}. I tempi assoluti cambiano da una macchina all'altra e con l'alimentazione; i rapporti fra misure prese insieme reggono.")
+    for nota in argomenti.nota:
+        scrivi(nota)
     cartella = tempfile.mkdtemp(prefix="mess_profilo_")
     vera = percorsi.cartella
     percorsi.cartella = lambda: cartella

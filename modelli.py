@@ -826,6 +826,10 @@ class Giocatore:
         """
         Il declino dovuto all'età per i giorni trascorsi: dai 50 anni, e dalla tappa 11 dai 44 per la
         maturazione precoce e dai 56 per la tardiva, con la stessa curva spostata.
+        Dalla tappa 12, punto 1.3 del progetto, le 48 caratteristiche si leggono e si scrivono
+        direttamente nel dizionario del giocatore, e il minimo a zero è un confronto: a regime il
+        declino era il 43 per cento del giorno simulato, e così costa la metà. I numeri sono gli
+        stessi fino all'ultimo bit, e lo provano le impronte di tests/test_identita_motore.py.
         """
         inizio = tratti.giorni_inizio_declino(self)
         if giorni_passati <= 0 or self.eta < inizio or ANNO_SIMULAZIONE_GIORNI <= 0:
@@ -837,8 +841,10 @@ class Giocatore:
         manten_ann = max(0.0, 1.0 - reduc_ann)
         manten_giorn = pow(manten_ann, 1.0 / ANNO_SIMULAZIONE_GIORNI)
         manten_tot = pow(manten_giorn, giorni_passati)
+        caratteristiche = self.__dict__
         for attr in ATTRIBUTI_INVECCHIABILI:
-            setattr(self, attr, max(0.0, getattr(self, attr, 0.0) * manten_tot))
+            invecchiata = caratteristiche[attr] * manten_tot
+            caratteristiche[attr] = invecchiata if invecchiata > 0.0 else 0.0
 
 
 def normalizza_nome(nome):

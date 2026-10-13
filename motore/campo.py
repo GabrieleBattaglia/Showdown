@@ -186,6 +186,7 @@ class InCampo:
         "g",
         "giocorapido",
         "id",
+        "lettura_scelta",
         "ln_mf",
         "mancino",
         "mano",
@@ -193,6 +194,7 @@ class InCampo:
         "osservati",
         "parate_mancino",
         "parte",
+        "paura_fissa",
         "pesi_cause_battuta",
         "pi",
         "prob_colpi",
@@ -203,6 +205,8 @@ class InCampo:
         "tar",
         "tau",
         "temperatura",
+        "termini_battute",
+        "termini_colpi",
     )
 
     def __init__(self, g, parte, taratura):
@@ -230,6 +234,16 @@ class InCampo:
         self.cum_battute = ()
         self.prob_colpi = ()
         self.stats = StatisticheGiocatore()
+        # Dalla tappa 12, punto 1.3 del progetto: i fattori di prepara_punto che non cambiano durante
+        # l'incontro, perché dipendono soltanto dal temperamento e dalla lettura del gioco, si
+        # calcolano qui una volta sola, e prepara_punto li combina nello stesso ordine di prima. La
+        # paura degli errori di partenza, il fattore della lettura nella scelta, e per ogni colpo la
+        # zona e i termini di potenza e di rischio: i numeri restano gli stessi fino all'ultimo bit.
+        self.paura_fissa = math.exp(t.K_TEMP_FALLI * self.tau) * (1.0 - t.K_ESP_FALLI * self.L)
+        self.lettura_scelta = 1.0 + t.K_LETTURA_SCELTA * (1.0 - self.L)
+        termine_potenza = t.PESO_POTENZA * self.tau
+        self.termini_colpi = tuple((t.COLPI[nome].zona, termine_potenza * t.COLPI[nome].potenza, t.PESO_RISCHIO * t.COLPI[nome].fallo_base) for nome in COLPI_DELLO_SCAMBIO)
+        self.termini_battute = tuple((t.COLPI[nome].zona, termine_potenza * t.COLPI[nome].potenza) for nome in COLPI_DI_BATTUTA)
         # Le cause della battuta irregolare piegate dal temperamento e dal gioco rapido, una volta
         # per incontro: il temperamento non cambia durante una partita.
         pesi = []
@@ -336,22 +350,16 @@ class InCampo:
             self.pi = t.PRESSIONE_PALLA_SET * (1.0 + t.PRESSIONE_PALLA_SET_TEMPERAMENTO * self.tau) * (1.0 - t.PRESSIONE_PALLA_SET_ESPERIENZA * self.L)
         else:
             self.pi = 0.0
-        self.mf = math.exp(t.K_TEMP_FALLI * self.tau) * (1.0 - t.K_ESP_FALLI * self.L) * (1.0 + t.K_FATICA_FALLI * (1.0 - eff)) * math.exp(self.pi)
+        self.mf = self.paura_fissa * (1.0 + t.K_FATICA_FALLI * (1.0 - eff)) * math.exp(self.pi)
         self.ln_mf = math.log(self.mf)
-        self.temperatura = temperatura = t.T0 * (1.0 + t.K_FATICA_SCELTA * s_rel) * (1.0 + t.K_LETTURA_SCELTA * (1.0 - self.L))
+        self.temperatura = temperatura = t.T0 * (1.0 + t.K_FATICA_SCELTA * s_rel) * self.lettura_scelta
         percepita = self.debolezza_percepita(avversario)
         q0 = t.Q0
-        colpi = t.COLPI
-        termine_potenza = t.PESO_POTENZA * self.tau
-        utilita = []
-        for indice, nome in enumerate(COLPI_DELLO_SCAMBIO):
-            colpo = colpi[nome]
-            utilita.append(math.log(self.Q[indice] * eff + q0) + t.PESO_DEBOLEZZA * percepita[colpo.zona] + termine_potenza * colpo.potenza - t.PESO_RISCHIO * colpo.fallo_base)
+        peso_debolezza = t.PESO_DEBOLEZZA
+        log = math.log
+        utilita = [log(q * eff + q0) + peso_debolezza * percepita[zona] + potenza - rischio for q, (zona, potenza, rischio) in zip(self.Q, self.termini_colpi, strict=True)]
         self.prob_colpi, self.cum_colpi = _softmax_cumulata(utilita, temperatura)
-        utilita_b = []
-        for indice, nome in enumerate(COLPI_DI_BATTUTA):
-            colpo = colpi[nome]
-            utilita_b.append(math.log(self.QB[indice] * eff + q0) + t.PESO_DEBOLEZZA * percepita[colpo.zona] + termine_potenza * colpo.potenza)
+        utilita_b = [log(q * eff + q0) + peso_debolezza * percepita[zona] + potenza for q, (zona, potenza) in zip(self.QB, self.termini_battute, strict=True)]
         _probabilita, self.cum_battute = _softmax_cumulata(utilita_b, temperatura)
 
     def sorpresa_contro(self, attaccante):
@@ -403,8 +411,8 @@ class InCampo:
         t = self.tar
         vera = self.debolezza_vera(avversario)
         k = self.conoscenza()
-        priore = {"sx": t.PRIORE_ROVESCIO, "centro": t.PRIORE_ALTRE_ZONE, "dx": t.PRIORE_ALTRE_ZONE}
-        return {zona: k * vera[zona] + (1.0 - k) * priore[zona] for zona in ZONE}
+        resto = 1.0 - k
+        return {"sx": k * vera["sx"] + resto * t.PRIORE_ROVESCIO, "centro": k * vera["centro"] + resto * t.PRIORE_ALTRE_ZONE, "dx": k * vera["dx"] + resto * t.PRIORE_ALTRE_ZONE}
 
 
 def _softmax_cumulata(utilita, temperatura):

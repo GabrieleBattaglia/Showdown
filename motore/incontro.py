@@ -245,6 +245,8 @@ class Incontro:
         self.eventi = [] if self.completo else None
         self.momenti_giocati = [] if self.completo else None
         self.statistiche_incontro = StatisticheIncontro()
+        # Le fasce degli imprevisti, una volta per coppia al tavolo: vedi _fasce_imprevisti.
+        self._fasce_per_coppia = {}
         self.info_sorteggio = None
         self.finito = False
         self.risultato = None
@@ -480,10 +482,18 @@ class Incontro:
     # Gli imprevisti e le sanzioni.
 
     def _fasce_imprevisti(self, battitore, ricevitore):
-        """Le fasce del tiro degli imprevisti: sanzione, mascherina e telefono di A e di B, rotture, niente."""
+        """
+        Le fasce del tiro degli imprevisti: sanzione, mascherina e telefono di A e di B, rotture,
+        niente. Dipendono soltanto dal temperamento e dalla lettura dei due al tavolo, che non
+        cambiano durante l'incontro: dalla tappa 12, punto 1.3 del progetto, si calcolano una volta
+        per coppia al tavolo e si riusano, con gli stessi numeri fino all'ultimo bit.
+        """
+        a, b = (battitore, ricevitore) if battitore.parte == "A" else (ricevitore, battitore)
+        chiave = (a.id, b.id)
+        fasce = self._fasce_per_coppia.get(chiave)
+        if fasce is not None:
+            return fasce
         t = self.taratura
-        per_parte = {battitore.parte: battitore, ricevitore.parte: ricevitore}
-        a, b = per_parte["A"], per_parte["B"]
 
         def sanzione(g):
             return t.P_SANZIONE * math.exp(t.K_TEMP_SANZIONI * g.tau) * max(0.0, 1.0 - t.K_ESP_SANZIONI * g.L)
@@ -493,6 +503,7 @@ class Incontro:
 
         fasce = [sanzione(a), sanzione(b), mascherina(a), mascherina(b), t.P_TELEFONO, t.P_TELEFONO, t.P_ROTTURA_PALETTA, t.P_ROTTURA_PALLINA]
         fasce.append(max(0.0, 1.0 - sum(fasce)))
+        self._fasce_per_coppia[chiave] = fasce = tuple(fasce)
         return fasce
 
     def _sanzione(self, banda):
