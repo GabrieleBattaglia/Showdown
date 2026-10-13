@@ -49,6 +49,9 @@ e il mondo gli ricorda i contratti che entrano nella finestra e quelli all'ultim
 a contratto in corso costa una buonuscita, metà degli stipendi che restano, anche al computer.
 E il computer non tessera i liberi infortunati finché non guariscono, decisione 21 di Gabriele;
 l'utente invece può tesserarli subito.
+Dalla tappa 12, il 2026-10-13, con la issue 1 e D32: il computer fonda polisportive contando soltanto
+i giocatori in attività e soltanto le sue polisportive, e i giocatori nuovi sono da due a nove al
+giorno, idea di Gabriele, così al mercato restano sempre dei liberi da cercare e tesserare.
 """
 
 import datetime
@@ -1317,8 +1320,7 @@ class Mondo:
         for nome_p in list(self.polisportive.keys()):
             if nome_p in self.polisportive and self.polisportive[nome_p].is_cpu_controlled and self._controlla_chiusura_poli_cpu(self.polisportive[nome_p], data):
                 rapporto["poli_chiuse"] += 1
-        limite_poli = len(vivi) / GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET if vivi and GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET > 0 else 0.
-        if len(self.polisportive) < limite_poli and caso(PROB_CREAZIONE_POLI_CPU_PER_TICK) and self.crea_polisportiva_cpu(data):
+        if self._serve_una_polisportiva_cpu(vivi) and caso(PROB_CREAZIONE_POLI_CPU_PER_TICK) and self.crea_polisportiva_cpu(data):
             rapporto["poli_create"] += 1
         # Dalla tappa 11 il valore si ricalcola soltanto per chi è nel declino, che cambia ogni giorno:
         # la spesa d'allenamento e il calo del mese lo ricalcolano da sé, e rifarlo per tutti i
@@ -1332,6 +1334,22 @@ class Mondo:
         self.crea_giocatori_casuali(nuovi, data, annuncia=False)
         rapporto["nuovi"] += nuovi
         self.aggiorna_stato_polisportive(annuncia=False)
+
+    def _serve_una_polisportiva_cpu(self, vivi):
+        """
+        Vero se il computer può fondare una polisportiva nuova: le sue polisportive sono meno di una
+        ogni GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET giocatori in attività. Dalla tappa 12, issue 1, si
+        contano soltanto i giocatori in attività, non i ritirati, e soltanto le polisportive del
+        computer, non quelle dell'utente: prima il limite contava tutti i vivi e tutte le polisportive,
+        e dall'anno 40 simulato il computer aveva più posti che giocatori in attività, così il mercato
+        dei liberi restava vuoto. A regime, con circa 20.600 attivi, il limite è di 1.248 polisportive,
+        18.727 posti, il 91 per cento degli attivi.
+        """
+        if GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET <= 0:
+            return False
+        attivi = sum(1 for g in vivi if not g.ritirato)
+        poli_cpu = sum(1 for p in self.polisportive.values() if p.is_cpu_controlled)
+        return poli_cpu < attivi / GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET
 
     def _notifica_rapporto(self, rapporto):
         """Il riepilogo dell'avanzamento nella forma dell'interfaccia testuale."""

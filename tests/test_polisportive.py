@@ -3,7 +3,8 @@ Test della tappa 7 sul motore: le polisportive dell'utente, con fondazione, offe
 chiusura; le regole nuove del computer, decisione D19; ritirati e morti che liberano il posto,
 problema P4; un nome solo per ogni polisportiva, problema P16; la vetrina dei liberi, problema
 P18; la migrazione dei salvataggi al formato 3. Dalla tappa 11 i liberi infortunati, che il
-computer aspetta guariti e l'utente può tesserare subito, decisione 21 di Gabriele.
+computer aspetta guariti e l'utente può tesserare subito, decisione 21 di Gabriele. Dalla tappa 12
+la issue 1: le polisportive del computer contate sui soli attivi, e le nascite da due a nove al giorno.
 """
 
 import datetime
@@ -342,3 +343,44 @@ def test_chi_esce_di_scena_esce_anche_dalla_vendita_e_il_computer_non_compra_i_m
     altra.cassa = 10**9
     mondo._compra_dal_mercato(altra, INIZIO)
     assert morto.id not in altra.tesserati
+
+
+# La issue 1, dalla tappa 12: le polisportive del computer si contano sui soli attivi e sulle sole polisportive del computer.
+
+def _vivi(mondo):
+    return list(mondo.giocatori.values())
+
+
+def test_il_computer_conta_soltanto_i_giocatori_in_attivita(mondo):
+    for g in list(mondo.giocatori.values())[10:]:
+        g.ritirato = True
+    # Dieci attivi diviso 16,5 fa 0,6: una polisportiva del computer sì, la seconda no. Con i ritirati
+    # contati, come prima della issue 1, il limite sarebbe stato 40 diviso 16,5, cioè tre.
+    assert mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+    mondo.crea_polisportiva_cpu(INIZIO)
+    assert not mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+
+
+def test_le_polisportive_dell_utente_non_entrano_nel_conto(mondo):
+    for g in list(mondo.giocatori.values())[17:]:
+        g.ritirato = True
+    for nome in ("Club Uno", "Club Due", "Club Tre"):
+        mondo.fonda_polisportiva(nome)
+    # Diciassette attivi: una polisportiva del computer ci sta, anche con tre dell'utente.
+    assert mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+    mondo.crea_polisportiva_cpu(INIZIO)
+    assert mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+    mondo.crea_polisportiva_cpu(INIZIO)
+    assert not mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+
+
+def test_ogni_giorno_nascono_da_due_a_nove_giocatori(mondo):
+    nuovi = []
+    for giorno in range(1, 41):
+        data = INIZIO + datetime.timedelta(days=giorno)
+        mondo.datetime_corrente_simulazione = data
+        rapporto = mondo.rapporto_vuoto(data)
+        mondo._un_giorno(data, rapporto)
+        nuovi.append(rapporto["nuovi"])
+    assert min(nuovi) >= 2 and max(nuovi) <= 9
+    assert len(set(nuovi)) >= 5

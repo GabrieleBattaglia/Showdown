@@ -319,7 +319,13 @@ PESI_CLASSE = {
 PESI_TRATTI_CLASSE = {"mancino": 2.7, "ambidestro": 3.9, "giocorapido": 0.9, "cambiovelocita": 4.5}
 ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.404), (30, 0.609), (1, 1.0))
 NUM_GIOCATORI_INIZIALI = 50
-CREA_NUOVI_PER_TICK_RANGE = (1, 7)
+# Quanti giocatori nuovi entrano nel mondo ogni giorno simulato, estremi compresi. Fino alla tappa 11
+# da 1 a 7, la grandezza scelta con D18, circa 15.000 attivi e 20.000 vivi a regime. Dalla tappa 12,
+# idea di Gabriele in D32 con la issue 1, da 2 a 9, cinque e mezzo in media: il mondo a regime arriva
+# a circa 20.600 attivi e 27.500 vivi, un terzo in più, e il giorno simulato era più lento di un
+# terzo prima delle accelerazioni del punto 1.3 del progetto della tappa; in cambio al mercato restano
+# sempre dei liberi, perché il computer fonda polisportive soltanto per nove attivi su dieci.
+CREA_NUOVI_PER_TICK_RANGE = (2, 9)
 # Le caratteristiche allenabili, con la sigla del menu di allenamento.
 ATTRIBUTI_ALLENABILI_MAP = {
     "prc": "precisione_allenata", "rst": "resistenza_allenata", "for": "forza_allenata",
