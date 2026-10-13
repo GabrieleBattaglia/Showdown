@@ -44,6 +44,7 @@ import random
 
 import classe
 import descrizioni
+import palmares
 import tratti
 import valore
 from costanti import (
@@ -74,19 +75,27 @@ from costanti import (
     ETA_MIN_RITIRO_GIORNI,
     ETA_MINIMO_RICHIESTA_GLORIA_ANNI,
     ETA_PICCO_RICHIESTA_GLORIA_ANNI,
+    ETA_RIFERIMENTO_GLORIA,
     FATTORE_GLORIA_RICHIESTA_AMBIDESTRO,
     FATTORE_GLORIA_RICHIESTA_CAMBIO_VEL,
     FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO,
     FATTORE_GLORIA_RICHIESTA_IPOVEDENTE,
+    GLORIA_BASE,
     GLORIA_RICHIESTA_FISSA,
     GLORIA_RICHIESTA_MINIMA_ASSOLUTA,
     INDOLE_PREDEFINITA,
     INDOLI,
     INTENSITA,
     INTENSITA_PREDEFINITA,
+    K_GLORIA_COPPE,
+    K_GLORIA_ETA,
+    K_GLORIA_ICV,
+    K_GLORIA_MEDAGLIE,
+    K_GLORIA_TESSERATI,
     K_ICV_GLORIA_RICHIESTA,
     LIMITE_MOVIMENTI_PER_TICK,
     MAPPA_FLAG_SOMMARIO,
+    MASSIMO_VOCI_RICERCA_AGGREGATA,
     MATURAZIONI,
     MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM,
     MAX_FATTORE_ETA_GLORIA,
@@ -169,7 +178,16 @@ BILANCI = "bilanci"
 CONTI = "conti"
 # Le voci dei conti di un mese: entrate e uscite della polisportiva, in euro.
 # Dalla tappa 11 anche le buonuscite degli svincoli a contratto in corso.
-VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti", "buonuscite")
+# Dalla tappa 12, D32 e punto 9.1 del progetto, le iscrizioni ai tornei, che escono all'iscrizione, i
+# premi, che entrano alla chiusura, e i rimborsi delle iscrizioni, che entrano nel mese in cui arrivano:
+# così nessuna voce va mai sotto zero, anche quando l'iscrizione era del mese prima.
+VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti", "buonuscite", "iscrizioni", "premi", "rimborsi")
+# Dalla tappa 12, formato 7: i punti della classifica dell'ultimo anno, coppie di giorno ordinale e
+# punti; i titoli, i podi dei tornei più importanti; il palmarès recente di una polisportiva, dal mese
+# AAAA-MM alla coppia di punti delle medaglie e delle coppe.
+PUNTI_DATATI = "punti_datati"
+TITOLI = "titoli"
+PALMARES = "palmares"
 _CONTROLLI = {
     bool: lambda v: isinstance(v, bool),
     int: lambda v: isinstance(v, int) and not isinstance(v, bool),
@@ -197,9 +215,18 @@ CAMPI_GIOCATORE = (
     *((nome, float) for nome in ATTRIBUTI_INVECCHIABILI),
     # Dalla tappa 12, formato 7: l'acciacco, cioè la data in cui finisce, il calo del primo giorno, quanti giorni dura e la sede.
     ("acciacco_fino", DATA_O_NULLA), ("acciacco_calo", float), ("acciacco_giorni", int), ("acciacco_sede", TESTO_O_NULLA),
+    # I tornei giocati, i punti della classifica mondiale, per sempre e dell'ultimo anno, e i titoli.
+    ("tornei_giocati", int), ("punti_mondiali", float), ("punti_recenti", PUNTI_DATATI), ("titoli", TITOLI),
 )
 # I campi dell'acciacco, con il loro valore per chi non ne ha.
 CAMPI_ACCIACCO_VUOTO = {"acciacco_fino": None, "acciacco_calo": 0.0, "acciacco_giorni": 0, "acciacco_sede": None}
+# I campi del palmarès di un giocatore della tappa 12, con il valore di chi non ha ancora giocato tornei; le liste nuove a ogni uso.
+CAMPI_PALMARES_VUOTO = {"tornei_giocati": 0, "punti_mondiali": 0.0, "punti_recenti": list, "titoli": list}
+
+
+def palmares_vuoto():
+    """I campi del palmarès di un giocatore che non ha ancora giocato tornei, con liste nuove."""
+    return {campo: vuoto() if vuoto is list else vuoto for campo, vuoto in CAMPI_PALMARES_VUOTO.items()}
 # I campi del contratto, con il loro valore per chi non ne ha.
 CAMPI_CONTRATTO_VUOTO = {"contratto_stipendio": 0, "contratto_scadenza": None, "rinnovo_stipendio": 0, "rinnovo_scadenza": None,
                          "proposte_rinnovo": 0, "ultima_trattativa": None}
@@ -213,6 +240,8 @@ CAMPI_POLISPORTIVA = (
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int),
     ("coppe_oro", int), ("coppe_argento", int), ("coppe_bronzo", int), ("coppe_legno", int), ("diario", DIARIO),
     ("cassa", int), ("in_vendita", VENDITE), ("bilanci", BILANCI), ("conti_del_mese", CONTI),
+    # Dalla tappa 12, formato 7: il palmarès recente, per la gloria a finestra di 5 anni.
+    ("palmares_recente", PALMARES),
 )
 
 
@@ -267,6 +296,36 @@ def _numero(valore):
     return isinstance(valore, (int, float)) and not isinstance(valore, bool)
 
 
+# La voce aggregata dell'anno, tappa 12, punto 5.11 del progetto: i giocatori che non sono dell'utente,
+# e le polisportive del computer, hanno una voce sola per anno di calendario con i loro tornei e le
+# loro sfide, invece di una voce per incontro, che a regime ne darebbe migliaia al giorno.
+CAMPI_AGGREGATA_GIOCATORE = ("tornei", "incontri", "vinti", "ori", "argenti", "bronzi", "legni", "sfide", "sfide_vinte")
+CAMPI_AGGREGATA_POLISPORTIVA = ("iscrizioni", "tornei", "ori", "argenti", "bronzi", "legni", "premi", "sfide", "sfide_vinte", "coppe_oro", "coppe_argento")
+_CHIAVI_AGGREGATE = (frozenset(("data", "da", "anno", *CAMPI_AGGREGATA_GIOCATORE)), frozenset(("data", "da", "anno", *CAMPI_AGGREGATA_POLISPORTIVA)))
+
+
+def annota_aggregata(diario, data, campi, **incrementi):
+    """
+    Aggiunge gli incrementi alla voce aggregata dell'anno della data: la cerca fra le prime
+    MASSIMO_VOCI_RICERCA_AGGREGATA voci del diario, la aggiorna e la riporta in cima con la data di
+    oggi; se non c'è, ne apre una nuova, dal giorno di oggi. campi sono i campi della voce, quelli del
+    giocatore o quelli della polisportiva. Restituisce la voce.
+    """
+    anno = data.year
+    for posto, voce in enumerate(diario[:MASSIMO_VOCI_RICERCA_AGGREGATA]):
+        if voce.get("anno") == anno and "da" in voce and all(campo in voce for campo in campi):
+            if posto:
+                diario.insert(0, diario.pop(posto))
+            break
+    else:
+        voce = {"data": data, "da": data, "anno": anno, **dict.fromkeys(campi, 0)}
+        diario.insert(0, voce)
+    for campo, quanto in incrementi.items():
+        voce[campo] += quanto
+    voce["data"] = data
+    return voce
+
+
 def _spesa_da_json(voce):
     """Vero se la voce di una spesa d'allenamento letta dal salvataggio è ben fatta."""
     spese = voce.get("spesa")
@@ -295,20 +354,44 @@ def _voce_da_json(voce, chi):
     if set(voce) == {"data", "spesa", "punti", "valore"} and _spesa_da_json(voce):
         return {"data": data, "spesa": [[s[0], float(s[1]), float(s[2])] for s in voce["spesa"]], "punti": float(voce["punti"]),
                 "valore": [float(v) for v in voce["valore"]]}
+    if frozenset(voce) in _CHIAVI_AGGREGATE and isinstance(voce["da"], str) and all(_intero(v) and v >= 0 for k, v in voce.items() if k not in ("data", "da")):
+        try:
+            da = datetime.datetime.fromisoformat(voce["da"])
+        except ValueError:
+            raise errore from None
+        return {**voce, "data": data, "da": da}
     raise errore
 
 
 def _voce_a_json(voce):
     """Una voce di diario per il salvataggio: la data in testo, e gli elenchi copiati, perché il documento non li condivida col diario."""
     copia = {**voce, "data": voce["data"].isoformat()}
+    if "da" in voce and "anno" in voce:
+        copia["da"] = voce["da"].isoformat()
     if "spesa" in voce:
         copia["spesa"] = [list(s) for s in voce["spesa"]]
         copia["valore"] = list(voce["valore"])
     return copia
 
 
+def _titolo_valido(voce):
+    return (isinstance(voce, dict) and set(voce) == {"data", "torneo", "posto", "mondiale"} and isinstance(voce["data"], str)
+            and isinstance(voce["torneo"], str) and _intero(voce["posto"]) and voce["posto"] >= 1 and isinstance(voce["mondiale"], bool))
+
+
+def _mese_valido(chiave):
+    anno, _trattino, mese = chiave.partition("-")
+    return len(chiave) == 7 and anno.isdigit() and mese.isdigit() and 1 <= int(mese) <= 12
+
+
 def a_json(valore, tipo):
     """Un valore di un modello nella forma che il salvataggio JSON sa scrivere."""
+    if tipo == PUNTI_DATATI:
+        return [[int(giorno), float(punti)] for giorno, punti in valore]
+    if tipo == TITOLI:
+        return [dict(voce) for voce in valore]
+    if tipo == PALMARES:
+        return {chiave: [float(m), float(c)] for chiave, (m, c) in sorted(valore.items())}
     if tipo == VENDITE:
         return {str(gid): int(prezzo) for gid, prezzo in sorted(valore.items())}
     if tipo == BILANCI:
@@ -329,6 +412,19 @@ def a_json(valore, tipo):
 def da_json(valore, tipo, chi, campo):
     """Un valore letto dal salvataggio, controllato e riportato al tipo del modello; ValueError se non va."""
     errore = ValueError(f"{chi}: il campo {campo} non è valido: {valore!r}")
+    if tipo == PUNTI_DATATI:
+        if not isinstance(valore, list) or not all(isinstance(v, list) and len(v) == 2 and _intero(v[0]) and _numero(v[1]) and v[1] >= 0 for v in valore):
+            raise errore
+        return [[v[0], float(v[1])] for v in valore]
+    if tipo == TITOLI:
+        if not isinstance(valore, list) or not all(_titolo_valido(v) for v in valore):
+            raise errore
+        return [dict(v) for v in valore]
+    if tipo == PALMARES:
+        if not isinstance(valore, dict) or not all(isinstance(k, str) and _mese_valido(k) and isinstance(v, list) and len(v) == 2
+                                                   and all(_numero(x) and x >= 0 for x in v) for k, v in valore.items()):
+            raise errore
+        return {k: [float(v[0]), float(v[1])] for k, v in valore.items()}
     if tipo == VENDITE:
         if not isinstance(valore, dict) or not all(chiave.isdigit() and _intero(prezzo) and prezzo >= 0 for chiave, prezzo in valore.items()):
             raise errore
@@ -443,6 +539,9 @@ def _controlla_campi_della_tappa_12(g, chi):
         sbagliati.append("acciacco_sede")
     if g.acciacco_fino is None and (g.acciacco_calo or g.acciacco_giorni or g.acciacco_sede is not None):
         sbagliati.append("acciacco_fino")
+    for campo in ("tornei_giocati", "punti_mondiali"):
+        if getattr(g, campo) < 0:
+            sbagliati.append(campo)
     if sbagliati:
         raise ValueError(f"{chi}: il campo {sbagliati[0]} non è valido: {getattr(g, sbagliati[0])!r}")
 
@@ -455,8 +554,8 @@ class Giocatore:
         self.infortunio_sede = None
         # La data simulata dell'ultimo incontro, l'impegno del giorno della tappa 12: chi nasce non ne ha ancora giocati.
         self.ultimo_impegno = None
-        # Dalla tappa 12 l'acciacco: chi nasce non ne ha.
-        for campo, vuoto in CAMPI_ACCIACCO_VUOTO.items():
+        # Dalla tappa 12 l'acciacco e il palmarès: chi nasce non ne ha.
+        for campo, vuoto in (*CAMPI_ACCIACCO_VUOTO.items(), *palmares_vuoto().items()):
             setattr(self, campo, vuoto)
         self.nome = "*"
         self.cognome = "*"
@@ -911,6 +1010,8 @@ class Polisportiva:
         self.in_vendita = {}
         self.bilanci = []
         self.conti_del_mese = conti_vuoti()
+        # Dalla tappa 12 il palmarès recente, dal mese ai punti delle medaglie e delle coppe.
+        self.palmares_recente = {}
         self.annota(datetime_creazione_sim, "Fondata.")
 
     def annota(self, data, testo):
@@ -995,16 +1096,21 @@ class Polisportiva:
             self.tesserati.remove(gid)
             self.indicecollettivotesserati = max(0., self.indicecollettivotesserati - icv)
 
-    def aggiorna_gloria(self, giocatori, ids_morti):
-        """Ricalcola la gloria da coppe, medaglie, valore, età e numero dei tesserati attivi."""
-        base = 60.
-        c_o, c_a, c_b, c_l = 100, 50, 20, 5
-        m_o, m_a, m_b, m_l = 30, 15, 5, 1
-        k_c, k_m, k_icv, eta_ref, k_eta, k_num = 12., 8., 0.4, 35., 1.5, 15.
-        p_c = self.coppe_oro * c_o + self.coppe_argento * c_a + self.coppe_bronzo * c_b + self.coppe_legno * c_l
-        v_c = math.sqrt(max(0., p_c)) * k_c
-        p_m = self.ori * m_o + self.argenti * m_a + self.bronzi * m_b + self.legni * m_l
-        v_m = math.sqrt(max(0., p_m)) * k_m
+    def aggiorna_gloria(self, giocatori, ids_morti, oggi=None):
+        """
+        Ricalcola la gloria da coppe, medaglie, valore, età e numero dei tesserati attivi. Dalla tappa
+        12, D32 e risposta 11 di Gabriele, le medaglie e le coppe sono quelle del palmarès recente, già
+        pesate per l'importanza, degli ultimi 5 anni del calendario fino a oggi; senza la data, tutte
+        quelle del palmarès recente. Le costanti stanno in costanti.py.
+        """
+        if oggi is None:
+            p_m = sum(m for m, _c in self.palmares_recente.values())
+            p_c = sum(c for _m, c in self.palmares_recente.values())
+        else:
+            p_m, p_c = palmares.somma_finestra(self, oggi)
+        v_c = math.sqrt(max(0., p_c)) * K_GLORIA_COPPE
+        v_m = math.sqrt(max(0., p_m)) * K_GLORIA_MEDAGLIE
+        base, k_icv, eta_ref, k_eta, k_num = GLORIA_BASE, K_GLORIA_ICV, ETA_RIFERIMENTO_GLORIA, K_GLORIA_ETA, K_GLORIA_TESSERATI
         v_icv = 0.
         v_eta = 0.
         v_num = 0.

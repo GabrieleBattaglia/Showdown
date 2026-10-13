@@ -125,7 +125,7 @@ def test_il_primo_del_mese_con_la_cassa_che_basta(mondo):
     monte = mondo.monte_stipendi(poli)
     assert poli.cassa == CAPITALE_INIZIALE + sponsor - monte
     assert poli.bilanci == [{"data": PRIMO, "cassa": poli.cassa, "sponsor": sponsor, "vendite": 0, "stipendi": monte, "arretrati": 0, "ingaggi": 0, "acquisti": 0,
-                             "buonuscite": 0}]
+                             "buonuscite": 0, "iscrizioni": 0, "premi": 0, "rimborsi": 0}]
     assert set(poli.conti_del_mese.values()) == {0}
     for gid in poli.tesserati:
         g = mondo.giocatori[gid]

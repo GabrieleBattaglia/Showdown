@@ -13,9 +13,12 @@ from costanti import MAPPA_ARCHETIPI_INDOLI
 CAMPI_DEL_FORMATO_6 = ("programma", "intensita", "talento", "apprendista_rapido", "maturazione", "ambizione", "costanza", "contratto_stipendio",
                        "contratto_scadenza", "rinnovo_stipendio", "rinnovo_scadenza", "proposte_rinnovo", "ultima_trattativa")
 # I campi del giocatore che nascono con il formato 7, della tappa 12, oltre a quello rinominato.
-CAMPI_DEL_FORMATO_7 = ("acciacco_fino", "acciacco_calo", "acciacco_giorni", "acciacco_sede")
+CAMPI_DEL_FORMATO_7 = ("acciacco_fino", "acciacco_calo", "acciacco_giorni", "acciacco_sede", "tornei_giocati", "punti_mondiali", "punti_recenti", "titoli")
 # I campi rinominati dal formato 7: dal nome di prima al nome nuovo.
 RINOMINATI_DEL_FORMATO_7 = {"ultima_amichevole": "ultimo_impegno"}
+# I campi della polisportiva e le voci dei conti che nascono con il formato 7.
+CAMPI_POLISPORTIVA_DEL_FORMATO_7 = ("palmares_recente",)
+VOCI_DEL_FORMATO_7 = ("iscrizioni", "premi", "rimborsi")
 ARCHETIPO_DELL_INDOLE = {indole: archetipo for archetipo, indole in MAPPA_ARCHETIPI_INDOLI.items()}
 
 
@@ -27,6 +30,13 @@ def al_formato_6(contenuto):
             del g[campo]
         for prima, dopo in RINOMINATI_DEL_FORMATO_7.items():
             g[prima] = g.pop(dopo)
+    for p in vecchio["mondo"]["polisportive"].values():
+        for campo in CAMPI_POLISPORTIVA_DEL_FORMATO_7:
+            del p[campo]
+        for voce in VOCI_DEL_FORMATO_7:
+            del p["conti_del_mese"][voce]
+            for bilancio in p["bilanci"]:
+                del bilancio[voce]
     vecchio["formato"] = 6
     return vecchio
 

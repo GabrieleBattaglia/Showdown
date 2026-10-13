@@ -84,7 +84,7 @@ from costanti import (
     SEDE_NON_PRECISATA,
     VERSIONE,
 )
-from modelli import CAMPI_ACCIACCO_VUOTO, DATA, VOCI_CONTI, Giocatore, Polisportiva, a_json, da_json, normalizza_nome, temperamento_innato
+from modelli import CAMPI_ACCIACCO_VUOTO, DATA, VOCI_CONTI, Giocatore, Polisportiva, a_json, da_json, normalizza_nome, palmares_vuoto, temperamento_innato
 from mondo import CONSERVAZIONE_PREDEFINITA
 from utilita import adesso, adesso_utc
 
@@ -111,6 +111,8 @@ PESI_VALORE_FORMATO_5 = {
 PESI_TRATTI_FORMATO_5 = {"mancino": 2.9, "ambidestro": 3.4, "giocorapido": 1.2, "cambiovelocita": 4.5}
 SCALA_A_FORMATO_5 = -82.61
 SCALA_B_FORMATO_5 = 1.3878
+# Le voci dei conti che nascono col formato 7: le iscrizioni ai tornei, i premi e i rimborsi.
+VOCI_NUOVE_DEL_FORMATO_7 = ("iscrizioni", "premi", "rimborsi")
 
 
 class ErroreSalvataggio(Exception):
@@ -403,11 +405,19 @@ def _dal_formato_6(documento):
     ne ha, perché prima gli acciacchi non c'erano. La data dell'ultima amichevole diventa l'ultimo
     impegno, col suo valore: la regola di un impegno al giorno è una sola, e una sola deve essere la fonte.
     """
-    for g in documento["mondo"]["giocatori"]:
-        for campo, vuoto in CAMPI_ACCIACCO_VUOTO.items():
+    dati = documento["mondo"]
+    for g in dati["giocatori"]:
+        for campo, vuoto in (*CAMPI_ACCIACCO_VUOTO.items(), *palmares_vuoto().items()):
             g.setdefault(campo, vuoto)
         if "ultimo_impegno" not in g:
             g["ultimo_impegno"] = g.pop("ultima_amichevole", None)
+    # Le voci nuove dei conti, a zero, nel mese in corso e in ogni bilancio; il palmarès recente vuoto.
+    for p in dati["polisportive"].values():
+        for voce in VOCI_NUOVE_DEL_FORMATO_7:
+            p["conti_del_mese"].setdefault(voce, 0)
+            for bilancio in p["bilanci"]:
+                bilancio.setdefault(voce, 0)
+        p.setdefault("palmares_recente", {})
     documento["formato"] = 7
 
 

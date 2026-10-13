@@ -645,7 +645,8 @@ def scheda_polisportiva(p, mondo):
 def _voci_di_un_mese(conti):
     """Le voci diverse da zero dei conti di un mese, a parole."""
     nomi = (("sponsor", "sponsor"), ("vendite", "vendite"), ("stipendi", "stipendi"), ("arretrati", "arretrati pagati"),
-            ("ingaggi", "ingaggi"), ("acquisti", "acquisti"), ("buonuscite", "buonuscite"))
+            ("ingaggi", "ingaggi"), ("acquisti", "acquisti"), ("buonuscite", "buonuscite"), ("iscrizioni", "iscrizioni ai tornei"),
+            ("premi", "premi dei tornei"), ("rimborsi", "rimborsi delle iscrizioni"))
     return unisci([f"{nome} {euro(conti[voce])}" for voce, nome in nomi if conti[voce]]) or "nessun movimento"
 
 
@@ -967,9 +968,50 @@ def voce_diario(voce):
         fatto = f"Allenamento di {nome_caratteristica(voce['allenamento']).lower()}, da {numero(voce['da'])} a {numero(voce['a'])}."
     elif "spesa" in voce:
         fatto = spesa_nel_diario(voce)
+    elif "anno" in voce:
+        return voce_aggregata(voce)
     else:
         fatto = voce["testo"]
     return f"{data_breve(voce['data'])}: {fatto}"
+
+
+def _medaglie_a_parole(voce, prefisso=""):
+    """Le medaglie di una voce aggregata, a parole: un oro e due bronzi; vuota se non ce ne sono."""
+    nomi = (("ori", "un oro", "ori"), ("argenti", "un argento", "argenti"), ("bronzi", "un bronzo", "bronzi"), ("legni", "un legno", "legni"))
+    return unisci([singolare if voce[prefisso + campo] == 1 else f"{voce[prefisso + campo]} {plurale}" for campo, singolare, plurale in nomi if voce[prefisso + campo]])
+
+
+def voce_aggregata(voce):
+    """
+    La voce aggregata dell'anno, tappa 12, punto 5.11: Nel 2031, dal 3 marzo al 9 ottobre, ha giocato
+    6 tornei, 25 incontri, 14 vinti, con un oro e due bronzi, e 9 sfide, 5 vinte. Per le polisportive
+    del computer le iscrizioni, i tornei, le medaglie, i premi e le sfide.
+    """
+    periodo = f"Nel {voce['anno']}, dal {data_breve(voce['da'])} al {data_breve(voce['data'])}"
+    if "incontri" in voce:
+        parti = []
+        if voce["tornei"]:
+            parti.append(f"{conta(voce['tornei'], 'torneo', 'tornei')}, {conta(voce['incontri'], 'incontro', 'incontri')}, "
+                         f"{conta(voce['vinti'], 'vinto', 'vinti')}")
+        medaglie = _medaglie_a_parole(voce)
+        testo = f"{periodo}, ha giocato " + (unisci(parti) if parti else "nessun torneo")
+        if medaglie:
+            testo += f", con {medaglie}"
+        if voce["sfide"]:
+            testo += f", e {conta(voce['sfide'], 'sfida', 'sfide')}, {conta(voce['sfide_vinte'], 'vinta', 'vinte')}"
+        return testo + "."
+    testo = f"{periodo}, {conta(voce['iscrizioni'], 'iscrizione', 'iscrizioni')} ai tornei, {conta(voce['tornei'], 'torneo concluso', 'tornei conclusi')}"
+    medaglie = _medaglie_a_parole(voce)
+    if medaglie:
+        testo += f", medaglie: {medaglie}"
+    if voce["premi"]:
+        testo += f", premi per {euro(voce['premi'])}"
+    if voce["sfide"]:
+        testo += f", {conta(voce['sfide'], 'sfida', 'sfide')}, {conta(voce['sfide_vinte'], 'vinta', 'vinte')}"
+    coppe = unisci([f"{conta(voce[campo], 'coppa', 'coppe')} {colore}" for campo, colore in (("coppe_oro", "d'oro"), ("coppe_argento", "d'argento")) if voce[campo]])
+    if coppe:
+        testo += f", {coppe}"
+    return testo + "."
 
 
 def spesa_nel_diario(voce):

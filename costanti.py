@@ -136,13 +136,17 @@ SEDI_INFORTUNIO = (
     ("ginocchio", "al ginocchio", None, 20, 1.2),
     ("caviglia", "alla caviglia", None, 20, 0.8),
 )
-# Gloria richiesta dal giocatore.
-K_ICV_GLORIA_RICHIESTA = 0.9
+# Gloria richiesta dal giocatore. Dalla tappa 12, punto 9.4 del progetto e risposta 11 di Gabriele, la
+# gloria mediana del computer raddoppia col palmarès, e la gloria che i giocatori chiedono raddoppia
+# con lei, perché per la polisportiva mediana il rapporto fra gloria chiesta e offerta resti quello
+# della tappa 11: erano 0,9 e 12. Prime stime, che fissa la simulazione lunga al punto 13.4. La
+# polisportiva nuova dell'utente, con metà della gloria mediana, paga ingaggi più cari.
+K_ICV_GLORIA_RICHIESTA = 1.8
 ETA_PICCO_RICHIESTA_GLORIA_ANNI = 17.0
 ETA_MINIMO_RICHIESTA_GLORIA_ANNI = 55.0
 MAX_FATTORE_ETA_GLORIA = 2.7
 MIN_FATTORE_ETA_GLORIA = 0.1
-GLORIA_RICHIESTA_FISSA = 12
+GLORIA_RICHIESTA_FISSA = 24
 GLORIA_RICHIESTA_MINIMA_ASSOLUTA = 8
 MAX_GLORIA_RICHIESTA = 1500
 FATTORE_GLORIA_RICHIESTA_AMBIDESTRO = 1.35
@@ -206,7 +210,12 @@ CAPITALE_INIZIALE = 20_000
 # --cerca-economia su quattro semi, aveva trovato 16,2, e la taratura fine dello stesso giorno, dopo
 # quella del motore e coi pesi nuovi, 16,1: la cassa mediana del computer all'anno 10 sta fra 4.870
 # e 5.110 euro sui quattro semi, in media 5.010.
-SPONSOR_PER_GLORIA = 16.1
+# Dalla tappa 12, D32 e risposta 11 di Gabriele, il palmarès degli ultimi 5 anni fa metà della gloria,
+# che per la polisportiva mediana del computer raddoppia: lo sponsor per gloria scende a 8, cioè 16,1
+# per 135 diviso 270, così la mediana incassa lo sponsor di prima, e la polisportiva nuova
+# dell'utente, senza palmarès, ne incassa circa un quarto in meno: partire è più difficile, come ha
+# scelto Gabriele. Prima stima, che fissa strumenti/simulazione_lunga.py --cerca-economia.
+SPONSOR_PER_GLORIA = 8.0
 QUOTA_SPONSOR_SUL_VALORE = 0.09
 STIPENDIO_DI_RIFERIMENTO = 200
 VALORE_DI_RIFERIMENTO = 140
@@ -595,6 +604,42 @@ ACCIACCO_CALO_MASSIMO = 0.028
 # La fatica della giornata di torneo, risposta 5 di Gabriele: ogni incontro dopo il primo del giorno
 # parte con un quarto delle azioni già giocate quel giorno da ciascuno, nel motore e nell'esito rapido.
 FATICA_RESIDUA_GIORNATA = 0.25
+# La gloria col palmarès degli ultimi 5 anni del calendario, D32 e risposta 11 di Gabriele, punto 9.2
+# del progetto. Le costanti della formula, che fino alla tappa 11 erano numeri dentro
+# aggiorna_gloria, stanno qui, perché la taratura le possa toccare: la base, il valore medio, l'età e
+# i tesserati restano quelli di prima. Le medaglie dei tesserati e le coppe valgono quello che
+# valevano, pesate per l'importanza del torneo, ma contano soltanto quelle dei 60 mesi fino a oggi.
+GLORIA_BASE = 60
+K_GLORIA_ICV = 0.4
+ETA_RIFERIMENTO_GLORIA = 35
+K_GLORIA_ETA = 1.5
+K_GLORIA_TESSERATI = 15
+PUNTI_MEDAGLIE_GLORIA = {"oro": 30, "argento": 15, "bronzo": 5, "legno": 1}
+PUNTI_COPPE_GLORIA = {"oro": 100, "argento": 50, "bronzo": 20, "legno": 5}
+MESI_PALMARES_GLORIA = 60
+# I coefficienti della radice dei punti: erano 8 per le medaglie e 12 per le coppe, e con i volumi del
+# calendario il palmarès avrebbe fatto l'83 per cento della gloria. Gabriele lo vuole a metà, risposta
+# 11: il 50 per cento della gloria della polisportiva mediana del computer dopo vent'anni, il 65 per
+# il primo decimo. Prime stime, che fissa strumenti/simulazione_lunga.py --cerca-economia al punto 13.4.
+K_GLORIA_MEDAGLIE = 3.0
+K_GLORIA_COPPE = 3.0
+# Una coppa d'oro di una sfida vale 2 punti, una della Coppa delle polisportive 300: cinque anni di
+# sfide valgono quanto una Coppa vinta.
+IMPORTANZA_COPPA_SFIDA = 0.02
+# I punti della classifica mondiale per sempre, D32 e punto 5.9: per posto, fino al posto indicato,
+# per l'importanza del torneo; None vale per tutti gli altri. Quelli dell'ultimo anno servono alla
+# qualificazione al mondiale.
+PUNTI_CLASSIFICA = ((1, 100), (2, 70), (3, 50), (4, 40), (8, 25), (16, 12), (32, 5), (None, 1))
+GIORNI_PUNTI_RECENTI = 365
+# I podi dei tornei con l'importanza almeno così, mondiali e coppa, sono titoli: hanno una voce a sé
+# nei diari e nella scheda.
+IMPORTANZA_TITOLO = 3
+# La voce aggregata dell'anno nei diari, punto 5.11: si cerca fra le prime venti voci.
+MASSIMO_VOCI_RICERCA_AGGREGATA = 20
+# La fedeltà dai successi, D32: 4 punti per un oro vinto col club, 3 per l'argento, 2 per il bronzo,
+# 1 per il legno, e 1 per ogni sfida vinta.
+FEDELTA_PER_MEDAGLIA = {"oro": 4, "argento": 3, "bronzo": 2, "legno": 1}
+FEDELTA_PER_SFIDA_VINTA = 1
 
 
 def discrepanze_raggruppamenti():

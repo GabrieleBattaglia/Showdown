@@ -61,6 +61,7 @@ import random
 import contratti
 import esperienza
 import infortuni
+import palmares
 import percorsi
 import tratti
 from allenamento import allena_secondo_programma, mantenimento_del_mese
@@ -962,6 +963,8 @@ class Mondo:
             poli.bilanci.insert(0, {"data": data, "cassa": poli.cassa, **poli.conti_del_mese})
             del poli.bilanci[BILANCI_CONSERVATI:]
             poli.conti_del_mese = conti_vuoti()
+            # Dalla tappa 12 i mesi usciti dalla finestra della gloria lasciano il palmarès recente.
+            palmares.sfoltisci(poli, data)
         self._contratti_del_mese(data, rapporto)
 
     # I contratti del mese, dopo gli stipendi: il mese appena finito si paga anche a chi scade oggi.
@@ -1050,13 +1053,21 @@ class Mondo:
         soglia. Dalla tappa 11 l'esperienza cresce ogni giorno, in _allenamento_del_giorno.
         """
         for g in rosa:
-            prima = g.fedelta
-            g.fedelta = min(FEDELTA_MASSIMA, g.fedelta + FEDELTA_PER_MESE)
-            if g.bandiera and prima < FEDELTA_BANDIERA <= g.fedelta:
-                self.annota(g, f"Diventa una bandiera di {poli.nome}: giocherà per il club anche senza stipendio.", data)
-                self.annota(poli, f"{nome_completo(g)} diventa una bandiera del club.", data)
-                if rapporto is not None and not poli.is_cpu_controlled:
-                    rapporto["tue_bandiere"] += 1
+            self._aggiungi_fedelta(g, poli, FEDELTA_PER_MESE, data, rapporto)
+
+    def _aggiungi_fedelta(self, g, poli, punti, data, rapporto=None):
+        """
+        La fedeltà del giocatore verso il suo club cresce dei punti dati, fino al massimo; una bandiera
+        si accende quando arriva alla soglia. Serve al primo del mese e, dalla tappa 12, alle medaglie
+        vinte col club e alle sfide vinte, D32.
+        """
+        prima = g.fedelta
+        g.fedelta = min(FEDELTA_MASSIMA, g.fedelta + punti)
+        if g.bandiera and prima < FEDELTA_BANDIERA <= g.fedelta:
+            self.annota(g, f"Diventa una bandiera di {poli.nome}: giocherà per il club anche senza stipendio.", data)
+            self.annota(poli, f"{nome_completo(g)} diventa una bandiera del club.", data)
+            if rapporto is not None and not poli.is_cpu_controlled:
+                rapporto["tue_bandiere"] += 1
 
     def _mantenimento_del_mese(self, data):
         """
@@ -1144,9 +1155,10 @@ class Mondo:
         """Ricalcola indice dei tesserati e gloria di tutte le polisportive."""
         if annuncia:
             self.notifica("Aggiornamento stato polisportive...")
+        oggi = self.datetime_corrente_simulazione
         for p in self.polisportive.values():
             p.aggiorna_ict(self.giocatori, self._ids_morti_processati_sessione)
-            p.aggiorna_gloria(self.giocatori, self._ids_morti_processati_sessione)
+            p.aggiorna_gloria(self.giocatori, self._ids_morti_processati_sessione, oggi)
         if annuncia and self.polisportive:
             self.notifica(f"-> Stato ricalcolato per {len(self.polisportive)} polisportive.")
 
@@ -1163,6 +1175,11 @@ class Mondo:
             "goal_fatti": g.goalsfatti, "goal_subiti": g.goalssubiti, "valore": round(g.indice_collettivo_valore, 2),
             "scoperto": g.datetime_creazione_sim.isoformat(), "versione": getattr(g, "versione", "N/D"),
         }
+        # Dalla tappa 12 le vecchie glorie conservano i punti della classifica mondiale per sempre e le
+        # medaglie, perché la classifica mondiale è un medagliere storico, D32.
+        if g.punti_mondiali or g.ori or g.argenti or g.bronzi or g.legni:
+            voce.update(punti_mondiali=round(g.punti_mondiali, 2), ori=g.ori, argenti=g.argenti, bronzi=g.bronzi, legni=g.legni,
+                        titoli_mondiali=sum(1 for t in g.titoli if t.get("mondiale") and t.get("posto") == 1))
         self.vecchie_glorie.insert(0, voce)
         come = f"{'muore' if voce['motivo'] == 'morte' else 'lascia il mondo dello showdown'} a {int(g.eta_anni)} anni"
         dove = f"da {accorda(g.sesso, 'tesserato')} con {club}" if club != "*" else f"da {accorda(g.sesso, 'libero')}"
