@@ -30,6 +30,8 @@ from utilita import accorda
 
 MEDAGLIE = palmares.MEDAGLIE
 CAMPI_DELLE_MEDAGLIE = {"oro": "ori", "argento": "argenti", "bronzo": "bronzi", "legno": "legni"}
+CAMPI_DELLE_COPPE = {"oro": "coppe_oro", "argento": "coppe_argento", "bronzo": "coppe_bronzo", "legno": "coppe_legno"}
+COPPE_A_PAROLE = {"oro": "d'oro", "argento": "d'argento", "bronzo": "di bronzo", "legno": "di legno"}
 ORDINALI = ("primo", "secondo", "terzo", "quarto", "quinto", "sesto", "settimo", "ottavo", "nono", "decimo", "undicesimo", "dodicesimo")
 
 
@@ -58,8 +60,11 @@ def incontri_di(torneo, gid):
 def chiudi(mondo, calendario, torneo, data, rapporto):
     """
     La chiusura di una sede di torneo individuale: tutto quello che la sede ha deciso entra nel mondo.
-    Restituisce le polisportive che hanno vinto qualcosa, perché ricalcolino subito la gloria.
+    Restituisce le polisportive che hanno vinto qualcosa, perché ricalcolino subito la gloria. La
+    coppa a squadre la chiude chiudi_squadre.
     """
+    if torneo.squadre:
+        return chiudi_squadre(mondo, calendario, torneo, data, rapporto)
     modello = torneo.modello
     importanza = modello["importanza"]
     nome = modello["nome"]
@@ -121,6 +126,60 @@ def chiudi(mondo, calendario, torneo, data, rapporto):
     if tuoi:
         rapporto["tuoi_tornei_conclusi"] += 1
         calendario.conserva_differite(torneo, {g.id for g in tuoi})
+    calendario.albo.registra(mondo, torneo, calendario.numero_di(torneo))
+    return toccate
+
+
+def chiudi_squadre(mondo, calendario, torneo, data, rapporto):
+    """
+    La chiusura della Coppa delle polisportive, punto 8.8: le coppe ai primi quattro, oro, argento,
+    bronzo e legno, con l'importanza del modello, nei contatori per sempre e nel palmarès recente della
+    gloria, a chi esiste ancora; nessun premio in euro. Le tue polisportive hanno la voce col
+    riassunto, e i giocatori della loro rosa ancora tesserati una voce loro; quelle del computer la
+    voce aggregata dell'anno, e i podi una voce a sé. Restituisce le polisportive che hanno vinto una coppa.
+    """
+    modello = torneo.modello
+    importanza = modello["importanza"]
+    nome = modello["nome"]
+    classifica = torneo.classifica_finale
+    toccate = set()
+    tue = set()
+    rapporto["tornei_conclusi"] += 1
+    for posto, cid in enumerate(classifica, start=1):
+        info = torneo.info[cid]
+        poli = iscrizioni.polisportiva_del_club(mondo, info.get("club"))
+        if poli is None:
+            continue
+        coppa = MEDAGLIE[posto - 1] if posto <= len(MEDAGLIE) else None
+        if coppa:
+            campo = CAMPI_DELLE_COPPE[coppa]
+            setattr(poli, campo, getattr(poli, campo) + 1)
+            palmares.aggiungi(poli, data, punti_coppe=palmares.punti_coppa(coppa, importanza))
+            toccate.add(poli.nome)
+        giocati, vinti = incontri_di(torneo, cid)
+        if poli.is_cpu_controlled:
+            incrementi = {"tornei": 1}
+            if coppa:
+                incrementi[CAMPI_DELLE_COPPE[coppa]] = 1
+            annota_aggregata(poli.diario, data, CAMPI_AGGREGATA_POLISPORTIVA, **incrementi)
+            if coppa and importanza >= IMPORTANZA_TITOLO:
+                mondo.annota(poli, f"Coppa {COPPE_A_PAROLE[coppa]} a {nome}.", data)
+            continue
+        tue.add(cid)
+        testo = f"Chiude {nome}, sede {torneo.sede}, {posto_a_parole(posto, 'f')} su {len(classifica)}: {vinti} incontri vinti su {giocati}"
+        if coppa:
+            testo += f", coppa {COPPE_A_PAROLE[coppa]}"
+            rapporto[f"tue_coppe_{coppa}"] += 1
+            rapporto["notizie"].append(f"{poli.nome} vince la coppa {COPPE_A_PAROLE[coppa]} a {nome}.")
+        mondo.annota(poli, testo + ".", data)
+        for gid in info.get("rosa", ()):
+            g = mondo.giocatori.get(gid)
+            if g is not None and g.appartenenza == poli.nome:
+                mondo.annota(g, f"Chiude {nome} con {poli.nome}, {posto_a_parole(posto, 'f')} su {len(classifica)}"
+                             + (f": coppa {COPPE_A_PAROLE[coppa]}." if coppa else "."), data)
+    if tue:
+        rapporto["tuoi_tornei_conclusi"] += 1
+        calendario.conserva_differite(torneo, tue)
     calendario.albo.registra(mondo, torneo, calendario.numero_di(torneo))
     return toccate
 

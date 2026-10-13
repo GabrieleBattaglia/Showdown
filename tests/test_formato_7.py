@@ -18,9 +18,13 @@ from aiuti_calendario import apri, iscrivi_tutti
 from aiuti_formati import CAMPI_DEL_FORMATO_7, RINOMINATI_DEL_FORMATO_7, al_formato_5, al_formato_6
 
 import archivio
+import iscrizioni
+import sfide
 from costanti import FILE_MONDO
 from modelli import CAMPI_AGGREGATA_GIOCATORE, Polisportiva, annota_aggregata
 from mondo import Mondo
+from motore import Squadra
+from partita import differita_squadre
 
 INIZIO = datetime.datetime(2026, 9, 28, 9, 0)
 INIZIO_UTC = datetime.datetime(2026, 9, 28, 7, 0, tzinfo=datetime.UTC)
@@ -115,6 +119,11 @@ def test_la_data_del_ritmo_sparsa_alla_migrazione():
     assert all(g["iscrizione_automatica"] is True for g in settimo["mondo"]["giocatori"])
     assert settimo["mondo"]["calendario"]["edizioni"] == [] and settimo["mondo"]["calendario"]["albo"]["voci"] == []
     assert all(set(p["conti_del_mese"]) >= {"iscrizioni", "premi", "rimborsi"} and p["palmares_recente"] == {} for p in settimo["mondo"]["polisportive"].values())
+    # Le sfide: il registro vuoto, due da lanciare per ogni polisportiva, nessuna giocata.
+    assert settimo["mondo"]["sfide"] == {"attive": [], "storico": [], "prossimo_id": 1, "giocate_oggi": {"data": None, "ids": []}}
+    assert all((p["sfide_da_lanciare"], p["ultima_sfida"], p["sfide_vinte"], p["sfide_perse"]) == (2, None, 0, 0)
+               for p in settimo["mondo"]["polisportive"].values())
+    assert all((g["gare_squadre_vinte"], g["gare_squadre_perse"]) == (0, 0) for g in settimo["mondo"]["giocatori"])
 
 
 def test_andata_e_ritorno_del_formato_7(cartella_di_prova):
@@ -134,14 +143,30 @@ def test_andata_e_ritorno_del_formato_7(cartella_di_prova):
     mondo.calendario.gioca(mondo, martedi, Mondo.rapporto_vuoto(martedi))
     assert mondo.calendario.tornei and mondo.calendario.edizioni
     annota_aggregata(mondo.giocatori[3].diario, martedi, CAMPI_AGGREGATA_GIOCATORE, tornei=1, incontri=3, vinti=2)
-    mondo.polisportive["Brybox Showdown"].palmares_recente = {"2026-09": [30.0, 2.0]}
+    mia = mondo.polisportive["Brybox Showdown"]
+    mia.palmares_recente = {"2026-09": [30.0, 2.0]}
+    # Una sfida proposta dal computer e, nello storico, una giocata con la differita e i cali.
+    cpu = next(p for p in mondo.polisportive.values() if p.is_cpu_controlled)
+    proposta = sfide.Sfida(mondo.sfide.nuovo_id(), iscrizioni.club_della(cpu), iscrizioni.club_della(mia), martedi.date(),
+                           martedi.date() + datetime.timedelta(days=1), convocati={"sfidante": cpu.tesserati[:3]})
+    mondo.sfide.attive.append(proposta)
+    squadre = [Squadra(p.nome, tuple(mondo.giocatori[gid] for gid in p.tesserati[:3])) for p in (cpu, mia)]
+    giocata = sfide.Sfida(mondo.sfide.nuovo_id(), iscrizioni.club_della(mia), iscrizioni.club_della(cpu), INIZIO.date(), INIZIO.date(), sfide.GIOCATA,
+                          INIZIO.date(), {"sfidante": mia.tesserati[:3], "sfidata": cpu.tesserati[:3]},
+                          risultato={"esito": "regolare", "vince": "sfidante", "punti": [31, 27], "titolari": [mia.tesserati[:3], cpu.tesserati[:3]], "motore": "vero"},
+                          differita=differita_squadre(squadre[1], squadre[0], dict.fromkeys(mia.tesserati[:3], 1.5), {mia.tesserati[0]: 0.02}))
+    mondo.sfide.archivia(giocata)
+    mia.sfide_vinte, mia.ultima_sfida, mia.sfide_da_lanciare = 1, INIZIO, 3
     assert archivio.salva(mondo)
     ricaricato = Mondo()
     assert archivio.carica(ricaricato) == archivio.CARICATO
     for gid, originale in mondo.giocatori.items():
         assert vars(ricaricato.giocatori[gid]) == vars(originale)
     assert ricaricato.calendario.a_dizionario() == mondo.calendario.a_dizionario()
-    assert ricaricato.polisportive["Brybox Showdown"].palmares_recente == {"2026-09": [30.0, 2.0]}
+    assert ricaricato.sfide.a_dizionario() == mondo.sfide.a_dizionario()
+    assert ricaricato.sfide.storico[0].differita["cali"][0][0] == 0.02 and ricaricato.sfide.attive[0].stato == sfide.PROPOSTA
+    rilette = ricaricato.polisportive["Brybox Showdown"]
+    assert rilette.palmares_recente == {"2026-09": [30.0, 2.0]} and (rilette.sfide_vinte, rilette.ultima_sfida, rilette.sfide_da_lanciare) == (1, INIZIO, 3)
     assert archivio.leggi(cartella_di_prova / FILE_MONDO)["formato"] == 7
 
 
@@ -151,6 +176,21 @@ def test_un_calendario_incoerente_si_rifiuta():
     contenuto = archivio.componi(mondo)
     contenuto["mondo"]["calendario"]["edizioni"][1]["id"] = contenuto["mondo"]["calendario"]["edizioni"][0]["id"]
     with pytest.raises(archivio.ErroreSalvataggio, match="identificativo ripetuto"):
+        archivio.costruisci(contenuto, Mondo())
+
+
+def test_un_registro_delle_sfide_incoerente_si_rifiuta():
+    mondo = _mondo_come_quello_di_gabriele()
+    mia = mondo.polisportive["Brybox Showdown"]
+    cpu = next(p for p in mondo.polisportive.values() if p.is_cpu_controlled)
+    mondo.sfide.attive.append(sfide.Sfida(mondo.sfide.nuovo_id(), iscrizioni.club_della(cpu), iscrizioni.club_della(mia), INIZIO.date(), INIZIO.date()))
+    contenuto = archivio.componi(mondo)
+    contenuto["mondo"]["sfide"]["prossimo_id"] = 1
+    with pytest.raises(archivio.ErroreSalvataggio, match="identificativo ripetuto"):
+        archivio.costruisci(contenuto, Mondo())
+    contenuto = archivio.componi(mondo)
+    contenuto["mondo"]["polisportive"]["Brybox Showdown"]["sfide_da_lanciare"] = 5
+    with pytest.raises(archivio.ErroreSalvataggio, match="sfide_da_lanciare"):
         archivio.costruisci(contenuto, Mondo())
 
 

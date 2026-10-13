@@ -1,21 +1,21 @@
 {
- "nota": "Rigenerate col quinto commit del passo 2 della tappa 12: il calendario dei tornei gira nel mondo, con le iscrizioni automatiche, i sorteggi, gli incontri rapidi e le premiazioni; nuovi campi prossimo_torneo e iscrizione_automatica e la struttura calendario. Motore invariato.",
+ "nota": "Rigenerate col sesto commit del passo 2 della tappa 12: le sfide fra polisportive e la Coppa delle polisportive girano nel mondo, col caso del mondo per i lanci del computer; nuovi campi delle sfide nelle polisportive e delle gare a squadre nei giocatori, e il registro delle sfide. Motore invariato.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "dd8f2f865a69837a066c9bd749a0cc49b3cce940e28c09c030fb4d9fb74f1e6e",
-  "vivi": 706,
-  "attivi": 706,
-  "tesserati": 624,
+  "sha256": "5a6aba65448eb29ba05b122d1670cb4bf98f2bff74ee44a62e10172cfcd59903",
+  "vivi": 717,
+  "attivi": 717,
+  "tesserati": 640,
   "polisportive": 43
  },
  "mondo_a_regime": {
-  "sha256": "bcb86a6d6f31bfd23a6d9cf324ed6ac04aaf576033d2dbb94fbbe447b9a37f8e",
+  "sha256": "7d00b972cd388f1fd3080877b1243a79f340f842e54da30110a31c723a42a2e9",
   "vivi": 1666,
   "attivi": 1266,
-  "tesserati": 1100,
+  "tesserati": 1089,
   "polisportive": 77
  }
 }

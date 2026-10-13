@@ -66,12 +66,17 @@ def nome_completo(g):
 
 # Il club e la sua chiave.
 
+def club_della(poli):
+    """Una polisportiva come la conservano un'iscrizione e una sfida: il nome e il giorno di fondazione."""
+    return {"nome": poli.nome, "fondazione": poli.datetime_creazione_sim.date().isoformat()}
+
+
 def club_di(mondo, g):
     """Il club del giocatore, come lo conserva un'iscrizione: il nome e il giorno di fondazione; None per i liberi."""
     poli = mondo.polisportive.get(g.appartenenza)
     if poli is None:
         return None
-    return {"nome": poli.nome, "fondazione": poli.datetime_creazione_sim.date().isoformat()}
+    return club_della(poli)
 
 
 def polisportiva_del_club(mondo, club):

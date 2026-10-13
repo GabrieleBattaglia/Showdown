@@ -14,13 +14,13 @@ CAMPI_DEL_FORMATO_6 = ("programma", "intensita", "talento", "apprendista_rapido"
                        "contratto_scadenza", "rinnovo_stipendio", "rinnovo_scadenza", "proposte_rinnovo", "ultima_trattativa")
 # I campi del giocatore che nascono con il formato 7, della tappa 12, oltre a quello rinominato.
 CAMPI_DEL_FORMATO_7 = ("acciacco_fino", "acciacco_calo", "acciacco_giorni", "acciacco_sede", "tornei_giocati", "punti_mondiali", "punti_recenti", "titoli",
-                       "prossimo_torneo", "iscrizione_automatica")
+                       "prossimo_torneo", "iscrizione_automatica", "gare_squadre_vinte", "gare_squadre_perse")
 # Le strutture del mondo che nascono con il formato 7.
-CAMPI_MONDO_DEL_FORMATO_7 = ("calendario",)
+CAMPI_MONDO_DEL_FORMATO_7 = ("calendario", "sfide")
 # I campi rinominati dal formato 7: dal nome di prima al nome nuovo.
 RINOMINATI_DEL_FORMATO_7 = {"ultima_amichevole": "ultimo_impegno"}
 # I campi della polisportiva e le voci dei conti che nascono con il formato 7.
-CAMPI_POLISPORTIVA_DEL_FORMATO_7 = ("palmares_recente",)
+CAMPI_POLISPORTIVA_DEL_FORMATO_7 = ("palmares_recente", "sfide_da_lanciare", "ultima_sfida", "sfide_vinte", "sfide_perse")
 VOCI_DEL_FORMATO_7 = ("iscrizioni", "premi", "rimborsi")
 ARCHETIPO_DELL_INDOLE = {indole: archetipo for archetipo, indole in MAPPA_ARCHETIPI_INDOLI.items()}
 

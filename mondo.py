@@ -64,6 +64,7 @@ import esperienza
 import infortuni
 import palmares
 import percorsi
+import sfide
 import tratti
 from allenamento import allena_secondo_programma, mantenimento_del_mese
 from costanti import (
@@ -104,6 +105,8 @@ from costanti import (
     RIALZO_CPU,
     RIALZO_RINNOVO_CPU,
     SCARTI_MASSIMI_CPU,
+    SFIDE_ACCUMULABILI,
+    SFIDE_AL_MESE,
     SOGLIA_GLORIA_BASSA_CHIUSURA,
     SOGLIA_MINIMA_TESSERATI_CHIUSURA,
     SOGLIA_SPESA_AUTONOMI,
@@ -221,8 +224,9 @@ class Mondo:
         # La memoria dei conti delle mosse del computer, che vive soltanto mentre il computer muove:
         # None fuori da lì, punto 1.3 del progetto della tappa 12.
         self._conti_del_giorno = None
-        # Dalla tappa 12 il calendario dei tornei, salvato col mondo nel formato 7.
+        # Dalla tappa 12 il calendario dei tornei e le sfide fra polisportive, salvati col mondo nel formato 7.
         self.calendario = calendario.Calendario()
+        self.sfide = sfide.RegistroSfide()
 
     # Probabilità, ricerche, diari.
 
@@ -660,7 +664,8 @@ class Mondo:
         Che cosa ha già giocato oggi il giocatore, a parole, per la regola di un impegno al giorno della
         tappa 12, D32: il torneo, una sfida, oppure un'amichevole.
         """
-        return calendario.descrivi(self.calendario, g, self.datetime_corrente_simulazione) or "un'amichevole"
+        oggi = self.datetime_corrente_simulazione
+        return calendario.descrivi(self.calendario, g, oggi) or sfide.descrivi(self, g, oggi) or "un'amichevole"
 
     def annota(self, soggetto, testo, data=None):
         """Una voce nel diario di un giocatore o di una polisportiva, con la data simulata, di oggi se non è data."""
@@ -976,8 +981,10 @@ class Mondo:
             poli.bilanci.insert(0, {"data": data, "cassa": poli.cassa, **poli.conti_del_mese})
             del poli.bilanci[BILANCI_CONSERVATI:]
             poli.conti_del_mese = conti_vuoti()
-            # Dalla tappa 12 i mesi usciti dalla finestra della gloria lasciano il palmarès recente.
+            # Dalla tappa 12 i mesi usciti dalla finestra della gloria lasciano il palmarès recente, e
+            # arrivano due sfide da lanciare, fino a quattro.
             palmares.sfoltisci(poli, data)
+            poli.sfide_da_lanciare = min(SFIDE_ACCUMULABILI, poli.sfide_da_lanciare + SFIDE_AL_MESE)
         self._contratti_del_mese(data, rapporto)
 
     # I contratti del mese, dopo gli stipendi: il mese appena finito si paga anche a chi scade oggi.
@@ -1353,9 +1360,11 @@ class Mondo:
             self._primo_del_mese(data, rapporto)
             self._mantenimento_del_mese(data)
         self._allenamento_del_giorno(data, rapporto)
-        # Dalla tappa 12 il calendario dei tornei, dopo l'allenamento e prima delle mosse del computer:
-        # chi ha vinto qualcosa ricalcola subito la gloria, così il mercato la vede.
-        for nome in self.calendario.giorno(self, data, rapporto):
+        # Dalla tappa 12 il calendario dei tornei e poi le sfide, dopo l'allenamento e prima delle mosse
+        # del computer: chi ha vinto qualcosa ricalcola subito la gloria, così il mercato la vede.
+        toccate = self.calendario.giorno(self, data, rapporto)
+        toccate |= sfide.giorno(self, data, rapporto)
+        for nome in sorted(toccate):
             poli = self.polisportive.get(nome)
             if poli is not None:
                 poli.aggiorna_gloria(self.giocatori, self._ids_morti_processati_sessione, data)

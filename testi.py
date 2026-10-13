@@ -1008,7 +1008,8 @@ def voce_aggregata(voce):
         testo += f", premi per {euro(voce['premi'])}"
     if voce["sfide"]:
         testo += f", {conta(voce['sfide'], 'sfida', 'sfide')}, {conta(voce['sfide_vinte'], 'vinta', 'vinte')}"
-    coppe = unisci([f"{conta(voce[campo], 'coppa', 'coppe')} {colore}" for campo, colore in (("coppe_oro", "d'oro"), ("coppe_argento", "d'argento")) if voce[campo]])
+    coppe = unisci([f"{conta(voce[campo], 'coppa', 'coppe')} {colore}" for campo, colore in (("coppe_oro", "d'oro"), ("coppe_argento", "d'argento"),
+                                                                                              ("coppe_bronzo", "di bronzo"), ("coppe_legno", "di legno")) if voce[campo]])
     if coppe:
         testo += f", {coppe}"
     return testo + "."

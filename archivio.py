@@ -87,6 +87,7 @@ from costanti import (
 )
 from modelli import (
     CAMPI_ACCIACCO_VUOTO,
+    CAMPI_SFIDE_VUOTO,
     DATA,
     VOCI_CONTI,
     Giocatore,
@@ -99,6 +100,7 @@ from modelli import (
     temperamento_innato,
 )
 from mondo import CONSERVAZIONE_PREDEFINITA
+from sfide import RegistroSfide
 from utilita import adesso, adesso_utc
 
 APPLICAZIONE = "MESS"
@@ -169,6 +171,7 @@ def componi(mondo):
             "giocatori": [g.a_dizionario() for gid, g in sorted(mondo.giocatori.items()) if gid not in morti],
             "vecchie_glorie": list(mondo.vecchie_glorie),
             "calendario": mondo.calendario.a_dizionario(),
+            "sfide": mondo.sfide.a_dizionario(),
         },
     }
 
@@ -418,6 +421,8 @@ def _dal_formato_6(documento):
     Dal formato 6 al 7, con la tappa 12, decisione D32. Ogni giocatore riceve l'acciacco vuoto: nessuno
     ne ha, perché prima gli acciacchi non c'erano. La data dell'ultima amichevole diventa l'ultimo
     impegno, col suo valore: la regola di un impegno al giorno è una sola, e una sola deve essere la fonte.
+    Poi il palmarès vuoto, la data del ritmo sparsa e l'iscrizione automatica accesa, il calendario e
+    le sfide vuoti, le voci nuove dei conti a zero, e a ogni polisportiva due sfide da lanciare.
     """
     dati = documento["mondo"]
     oggi = datetime.datetime.fromisoformat(dati["data_simulata"])
@@ -430,13 +435,17 @@ def _dal_formato_6(documento):
         g.setdefault("prossimo_torneo", ritmo_iniziale(g["id"], oggi).isoformat())
         g.setdefault("iscrizione_automatica", True)
     dati.setdefault("calendario", Calendario().a_dizionario())
-    # Le voci nuove dei conti, a zero, nel mese in corso e in ogni bilancio; il palmarès recente vuoto.
+    dati.setdefault("sfide", RegistroSfide().a_dizionario())
+    # Le voci nuove dei conti, a zero, nel mese in corso e in ogni bilancio; il palmarès recente vuoto;
+    # due sfide da lanciare, come il primo del mese, e nessuna giocata.
     for p in dati["polisportive"].values():
         for voce in VOCI_NUOVE_DEL_FORMATO_7:
             p["conti_del_mese"].setdefault(voce, 0)
             for bilancio in p["bilanci"]:
                 bilancio.setdefault(voce, 0)
         p.setdefault("palmares_recente", {})
+        for campo, vuoto in CAMPI_SFIDE_VUOTO.items():
+            p.setdefault(campo, vuoto)
     documento["formato"] = 7
 
 
@@ -493,6 +502,7 @@ def costruisci(documento, mondo):
         for g in giocatori.values():
             controlla_contratto(g, polisportive)
         calendario_del_mondo = Calendario.da_dizionario(dati["calendario"])
+        sfide_del_mondo = RegistroSfide.da_dizionario(dati["sfide"])
     except KeyError as e:
         raise ErroreSalvataggio(f"manca il dato {e}") from e
     except (TypeError, ValueError, AttributeError) as e:
@@ -506,6 +516,7 @@ def costruisci(documento, mondo):
     mondo.conservazione_diari = conservazione
     mondo.vecchie_glorie = vecchie_glorie
     mondo.calendario = calendario_del_mondo
+    mondo.sfide = sfide_del_mondo
 
 
 def controlla_contratto(g, polisportive):

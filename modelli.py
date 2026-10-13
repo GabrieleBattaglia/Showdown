@@ -113,6 +113,8 @@ from costanti import (
     PROPOSTE_RINNOVO_MASSIME,
     SEDE_NON_PRECISATA,
     SEDI_INFORTUNIO,
+    SFIDE_ACCUMULABILI,
+    SFIDE_AL_MESE,
     SOGLIA_INDOLE,
     TEMPERAMENTO_DEVIAZIONE,
     TEMPERAMENTO_MEDIA,
@@ -220,6 +222,8 @@ CAMPI_GIOCATORE = (
     ("tornei_giocati", int), ("punti_mondiali", float), ("punti_recenti", PUNTI_DATATI), ("titoli", TITOLI),
     # La data da cui l'iscrizione automatica può far cominciare il torneo seguente, e se è accesa per i tesserati dell'utente.
     ("prossimo_torneo", DATA_O_NULLA), ("iscrizione_automatica", bool),
+    # Le gare a squadre vinte e perse da titolare, nelle sfide e nella coppa.
+    ("gare_squadre_vinte", int), ("gare_squadre_perse", int),
 )
 
 
@@ -233,7 +237,7 @@ def ritmo_iniziale(id_giocatore, data):
 # I campi dell'acciacco, con il loro valore per chi non ne ha.
 CAMPI_ACCIACCO_VUOTO = {"acciacco_fino": None, "acciacco_calo": 0.0, "acciacco_giorni": 0, "acciacco_sede": None}
 # I campi del palmarès di un giocatore della tappa 12, con il valore di chi non ha ancora giocato tornei; le liste nuove a ogni uso.
-CAMPI_PALMARES_VUOTO = {"tornei_giocati": 0, "punti_mondiali": 0.0, "punti_recenti": list, "titoli": list}
+CAMPI_PALMARES_VUOTO = {"tornei_giocati": 0, "punti_mondiali": 0.0, "punti_recenti": list, "titoli": list, "gare_squadre_vinte": 0, "gare_squadre_perse": 0}
 
 
 def palmares_vuoto():
@@ -254,7 +258,11 @@ CAMPI_POLISPORTIVA = (
     ("cassa", int), ("in_vendita", VENDITE), ("bilanci", BILANCI), ("conti_del_mese", CONTI),
     # Dalla tappa 12, formato 7: il palmarès recente, per la gloria a finestra di 5 anni.
     ("palmares_recente", PALMARES),
+    # Le sfide: quante se ne possono lanciare, il giorno dell'ultima giocata, le vinte e le perse.
+    ("sfide_da_lanciare", int), ("ultima_sfida", DATA_O_NULLA), ("sfide_vinte", int), ("sfide_perse", int),
 )
+# I campi delle sfide di una polisportiva, con il valore di chi nasce: due sfide da lanciare, come il primo del mese.
+CAMPI_SFIDE_VUOTO = {"sfide_da_lanciare": SFIDE_AL_MESE, "ultima_sfida": None, "sfide_vinte": 0, "sfide_perse": 0}
 
 
 def conti_vuoti():
@@ -312,7 +320,8 @@ def _numero(valore):
 # e le polisportive del computer, hanno una voce sola per anno di calendario con i loro tornei e le
 # loro sfide, invece di una voce per incontro, che a regime ne darebbe migliaia al giorno.
 CAMPI_AGGREGATA_GIOCATORE = ("tornei", "incontri", "vinti", "ori", "argenti", "bronzi", "legni", "sfide", "sfide_vinte")
-CAMPI_AGGREGATA_POLISPORTIVA = ("iscrizioni", "tornei", "ori", "argenti", "bronzi", "legni", "premi", "sfide", "sfide_vinte", "coppe_oro", "coppe_argento")
+CAMPI_AGGREGATA_POLISPORTIVA = ("iscrizioni", "tornei", "ori", "argenti", "bronzi", "legni", "premi", "sfide", "sfide_vinte", "coppe_oro", "coppe_argento",
+                                "coppe_bronzo", "coppe_legno")
 _CHIAVI_AGGREGATE = (frozenset(("data", "da", "anno", *CAMPI_AGGREGATA_GIOCATORE)), frozenset(("data", "da", "anno", *CAMPI_AGGREGATA_POLISPORTIVA)))
 
 
@@ -551,7 +560,7 @@ def _controlla_campi_della_tappa_12(g, chi):
         sbagliati.append("acciacco_sede")
     if g.acciacco_fino is None and (g.acciacco_calo or g.acciacco_giorni or g.acciacco_sede is not None):
         sbagliati.append("acciacco_fino")
-    for campo in ("tornei_giocati", "punti_mondiali"):
+    for campo in ("tornei_giocati", "punti_mondiali", "gare_squadre_vinte", "gare_squadre_perse"):
         if getattr(g, campo) < 0:
             sbagliati.append(campo)
     if sbagliati:
@@ -1025,8 +1034,10 @@ class Polisportiva:
         self.in_vendita = {}
         self.bilanci = []
         self.conti_del_mese = conti_vuoti()
-        # Dalla tappa 12 il palmarès recente, dal mese ai punti delle medaglie e delle coppe.
+        # Dalla tappa 12 il palmarès recente, dal mese ai punti delle medaglie e delle coppe, e le sfide.
         self.palmares_recente = {}
+        for campo, vuoto in CAMPI_SFIDE_VUOTO.items():
+            setattr(self, campo, vuoto)
         self.annota(datetime_creazione_sim, "Fondata.")
 
     def annota(self, data, testo):
@@ -1061,6 +1072,11 @@ class Polisportiva:
         p = cls.__new__(cls)
         chi = f"Polisportiva {dati.get('nome', '?') if isinstance(dati, dict) else '?'}"
         _campi_da_dizionario(p, dati, CAMPI_POLISPORTIVA, chi)
+        # Dalla tappa 12 le sfide: da lanciare fra zero e quattro, vinte e perse non negative.
+        for campo, buono in (("sfide_da_lanciare", 0 <= p.sfide_da_lanciare <= SFIDE_ACCUMULABILI), ("sfide_vinte", p.sfide_vinte >= 0),
+                             ("sfide_perse", p.sfide_perse >= 0)):
+            if not buono:
+                raise ValueError(f"{chi}: il campo {campo} non è valido: {getattr(p, campo)!r}")
         p.indicecollettivotesserati = 0.0
         return p
 

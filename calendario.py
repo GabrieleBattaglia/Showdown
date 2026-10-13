@@ -22,6 +22,12 @@ e perde a tavolino; l'acciaccato gioca col suo calo; ogni incontro dopo il primo
 quarto delle azioni già giocate, risposta 5. Le sedi concluse restano due settimane intere, per il
 pannello; gli incontri dei tuoi dell'ultima edizione conclusa di ogni modello restano nelle differite,
 e l'albo d'oro tiene tutto per sempre.
+Dal commit delle sfide, la Coppa delle polisportive, punto 8.8: all'apertura si qualificano per
+gloria le polisportive che convocano una squadra valida, ciascuna con la sua rosa, che in quei giorni
+resta impegnata; al sorteggio chi ha chiuso lascia il posto alla prima esclusa; ogni incontro schiera
+i tre migliori sani della rosa, e chi non ha più una squadra valida perde a tavolino, 31 a 0. Gli
+impegni del calendario comprendono le rose della coppa e le sfide accettate, così l'iscrizione
+automatica non manda nessuno a un torneo nei giorni in cui ha già da giocare.
 """
 
 import copy
@@ -37,10 +43,11 @@ import infortuni
 import iscrizioni
 import modelli_torneo
 import premiazioni
+import sfide
 import tornei
-from costanti import CONSERVAZIONE_TORNEI_CONCLUSI_GIORNI, FATICA_RESIDUA_GIORNATA
-from motore import ESSENZIALE, Incontro, a_tavolino, formato_singolare
-from partita import MotorePartita, differita_singolare
+from costanti import CONSERVAZIONE_TORNEI_CONCLUSI_GIORNI, FATICA_RESIDUA_GIORNATA, GIOCATORI_AL_TAVOLO
+from motore import ESSENZIALE, SQUADRE, TAVOLINO, Incontro, Squadra, a_tavolino, formato_singolare
+from partita import MotorePartita, differita_singolare, differita_squadre
 from premiazioni import Albo
 from utilita import data_breve
 
@@ -131,11 +138,21 @@ class Edizione:
     def ids(self):
         return [iscritto["id"] for iscritto in self.iscritti]
 
+    def giocatori(self):
+        """I giocatori impegnati dall'edizione: gli iscritti, oppure, nella coppa, le rose delle polisportive."""
+        if self.individuale:
+            return self.ids()
+        return [gid for iscritto in self.iscritti for gid in iscritto.get("rosa", ())]
+
     def iscritto(self, gid):
         return next((iscritto for iscritto in self.iscritti if iscritto["id"] == gid), None)
 
-    def aggiungi(self, gid, club, pagato, origine):
-        self.iscritti.append({"id": gid, "club": copy.deepcopy(club), "pagato": int(pagato), "origine": origine})
+    def aggiungi(self, gid, club, pagato, origine, rosa=None):
+        """Un iscritto, col club, la quota e l'origine; nella coppa l'iscritto è la polisportiva, con la sua rosa."""
+        iscritto = {"id": gid, "club": copy.deepcopy(club), "pagato": int(pagato), "origine": origine}
+        if rosa is not None:
+            iscritto["rosa"] = list(rosa)
+        self.iscritti.append(iscritto)
 
     def togli(self, gid):
         iscritto = self.iscritto(gid)
@@ -160,7 +177,9 @@ class Edizione:
         _controlla(problema is None, f"Edizione {dati['id']}: la formula congelata non va: {problema}")
         _controlla(isinstance(dati["iscritti"], list), f"Edizione {dati['id']}: gli iscritti non sono un elenco.")
         for iscritto in dati["iscritti"]:
-            _controlla(isinstance(iscritto, dict) and set(iscritto) == {"id", "club", "pagato", "origine"} and iscritto["origine"] in iscrizioni.ORIGINI
+            rosa = iscritto.get("rosa", []) if isinstance(iscritto, dict) else None
+            _controlla(isinstance(iscritto, dict) and set(iscritto) - {"rosa"} == {"id", "club", "pagato", "origine"} and iscritto["origine"] in iscrizioni.ORIGINI
+                       and isinstance(rosa, list) and all(_intero(gid) for gid in rosa)
                        and _intero(iscritto["pagato"]) and iscritto["pagato"] >= 0 and (_intero(iscritto["id"]) or isinstance(iscritto["id"], str))
                        and (iscritto["club"] is None or (isinstance(iscritto["club"], dict) and set(iscritto["club"]) == {"nome", "fondazione"})),
                        f"Edizione {dati['id']}: un iscritto non è valido: {iscritto!r}")
@@ -228,32 +247,72 @@ class Calendario:
         inizio = _data(torneo.data_inizio)
         return inizio, inizio + datetime.timedelta(days=max(1, self.durata_del_torneo(torneo)) - 1)
 
-    def impegni(self, mondo):
-        """Gli impegni di ogni giocatore nei giorni che vengono, come intervalli di date: le edizioni a cui è iscritto e le sedi in corso che gioca."""
+    @staticmethod
+    def giocatori_del_torneo(torneo):
+        """I giocatori impegnati da una sede: gli iscritti, oppure, nella coppa, le rose delle polisportive."""
+        if not torneo.squadre:
+            return list(torneo.iscritti)
+        return [gid for info in torneo.info.values() for gid in info.get("rosa", ())]
+
+    def impegni(self, mondo, esclusa=None):
+        """
+        Gli impegni di ogni giocatore nei giorni che vengono, come intervalli di date: le edizioni a cui è
+        iscritto o in cui è nella rosa della coppa, tranne quella esclusa, le sedi in corso che gioca e,
+        dal commit delle sfide, le sfide accettate.
+        """
         impegni = {}
         for ed in self.edizioni:
-            for gid in ed.ids():
+            if ed is esclusa:
+                continue
+            for gid in ed.giocatori():
                 impegni.setdefault(gid, []).append((ed.data_inizio, ed.data_fine))
         for torneo in self.tornei:
             intervallo = self._intervallo_del_torneo(torneo)
-            for gid in torneo.iscritti:
+            for gid in self.giocatori_del_torneo(torneo):
                 impegni.setdefault(gid, []).append(intervallo)
+        for gid, intervalli in mondo.sfide.impegni().items():
+            impegni.setdefault(gid, []).extend(intervalli)
         return impegni
+
+    def impegnati_il(self, giorno):
+        """Chi ha un torneo nel giorno dato: le edizioni che giocano quel giorno e le sedi in corso, con le rose della coppa."""
+        impegnati = set()
+        for ed in self.edizioni:
+            if ed.data_inizio <= giorno <= ed.data_fine:
+                impegnati.update(ed.giocatori())
+        for torneo in self.tornei:
+            inizio, fine = self._intervallo_del_torneo(torneo)
+            if inizio <= giorno <= fine:
+                impegnati.update(self.giocatori_del_torneo(torneo))
+        return impegnati
 
     def impegni_descritti(self, mondo, gid):
         """Gli impegni di un giocatore con la loro descrizione a parole, per i rifiuti dell'iscrizione a mano."""
-        risultato = [(ed.data_inizio, ed.data_fine, f"l'iscrizione a {ed.nome}, dal {data_breve(ed.data_inizio)}") for ed in self.edizioni if gid in ed.ids()]
+        risultato = []
+        for ed in self.edizioni:
+            if gid in ed.giocatori():
+                cosa = "l'iscrizione" if ed.individuale else "la rosa della sua polisportiva"
+                risultato.append((ed.data_inizio, ed.data_fine, f"{cosa} a {ed.nome}, dal {data_breve(ed.data_inizio)}"))
         for torneo in self.tornei:
-            if gid in torneo.iscritti:
+            if gid in self.giocatori_del_torneo(torneo):
                 inizio, fine = self._intervallo_del_torneo(torneo)
                 risultato.append((inizio, fine, f"{torneo.modello['nome']}, in corso dal {data_breve(inizio)}"))
+        for s in mondo.sfide.attive:
+            if s.stato == sfide.ACCETTATA and any(gid in ids for ids in s.convocati.values()):
+                risultato.append((s.data_gioco, s.data_gioco, f"una sfida fra {s.sfidante['nome']} e {s.sfidata['nome']}, il {data_breve(s.data_gioco)}"))
         return risultato
 
     def ha_giocato_oggi(self, gid, oggi):
-        """Vero se il giocatore ha giocato oggi un incontro di torneo, per dire che impegno ha avuto."""
+        """Vero se il giocatore ha giocato oggi un incontro di torneo, per dire che impegno ha avuto; nella coppa, con la sua polisportiva."""
         testo = _giorno(oggi).isoformat()
-        return any(gid in torneo.info and any(i.data == testo and i.esito != tornei.RIPOSO for i in torneo.incontri_di(gid))
-                   for torneo in (*self.tornei, *self.conclusi))
+        for torneo in (*self.tornei, *self.conclusi):
+            if torneo.squadre:
+                chi = next((cid for cid, info in torneo.info.items() if gid in info.get("rosa", ())), None)
+            else:
+                chi = gid if gid in torneo.info else None
+            if chi is not None and any(i.data == testo and i.esito not in (tornei.RIPOSO, tornei.TAVOLINO_DOPPIO) for i in torneo.incontri_di(chi)):
+                return True
+        return False
 
     def conta_saltata(self, gid, id_edizione):
         """Vero la prima volta che l'iscrizione automatica di un tuo tesserato salta un'edizione per la cassa: si conta una volta sola."""
@@ -305,9 +364,6 @@ class Calendario:
         for modello in modelli:
             if not modello.attivo or modelli_torneo.problema(modello, formule_valide) is not None:
                 continue
-            if modello.tipo != modelli_torneo.INDIVIDUALE:
-                # La coppa a squadre arriva con le sfide, nel commit seguente della tappa.
-                continue
             formula = modelli_torneo.formula_del_modello(modello, formule_valide)
             while True:
                 ultima = self.ultime_aperture.get(modello.id)
@@ -323,6 +379,8 @@ class Calendario:
                 self.edizioni.append(ed)
                 if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
                     iscrizioni.convoca_mondiale(mondo, self, ed, rapporto)
+                elif ed.qualificazione == modelli_torneo.GLORIA:
+                    sfide.qualifica_coppa(mondo, self, ed, rapporto)
 
     def sorteggi(self, mondo, data, rapporto):
         """Le edizioni che cominciano oggi chiudono le iscrizioni: sotto il minimo si annullano, le altre si dividono in sedi."""
@@ -332,6 +390,8 @@ class Calendario:
             self.saltate = [voce for voce in self.saltate if voce[1] != ed.id]
             if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
                 iscrizioni.sostituisci_gli_infortunati(mondo, ed)
+            elif ed.qualificazione == modelli_torneo.GLORIA:
+                sfide.rimpiazza_le_chiuse(mondo, self, ed, rapporto)
             if len(ed.iscritti) < ed.minimo:
                 self._annulla(mondo, ed, rapporto)
                 continue
@@ -343,6 +403,12 @@ class Calendario:
         tuoi = []
         for iscritto in ed.iscritti:
             iscrizioni.rimborsa(mondo, iscritto)
+            if not ed.individuale:
+                poli = iscrizioni.polisportiva_del_club(mondo, iscritto["club"])
+                if sfide.tua(poli):
+                    tuoi.append(poli)
+                    mondo.annota(poli, f"{ed.nome} del {data_breve(ed.data_inizio)} è annullata: le qualificate erano meno di {ed.minimo}.")
+                continue
             g = mondo.giocatori.get(iscritto["id"])
             if g is not None and iscrizioni.tuo(mondo, g):
                 tuoi.append(g)
@@ -350,13 +416,27 @@ class Calendario:
         if tuoi:
             rapporto["tue_edizioni_annullate"] += 1
             rapporto["notizie"].append(f"{ed.nome} del {data_breve(ed.data_inizio)} è annullato per pochi iscritti.")
-        if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
+        if ed.qualificazione != modelli_torneo.NESSUNA:
             self.albo.non_disputato(ed, ed.numero)
 
+    def _forza_del_club(self, mondo, iscritto):
+        """La forza di una polisportiva al sorteggio della coppa: la media del punteggio di classe dei tre titolari che schiererebbe oggi."""
+        poli = iscrizioni.polisportiva_del_club(mondo, iscritto["club"])
+        squadra = sfide.schiera_coppa(mondo, poli, iscritto["rosa"]) if poli is not None else None
+        if squadra is None:
+            return 0.0
+        return sum(classe.punteggio(g) for g in squadra[:GIOCATORI_AL_TAVOLO]) / GIOCATORI_AL_TAVOLO
+
     def _dividi_in_sedi(self, mondo, ed, data):
-        """Il sorteggio: gli iscritti dalla classe di oggi, a serpentina nelle sedi, ciascuna un torneo col suo seme; la data del ritmo si aggiorna."""
+        """
+        Il sorteggio: gli iscritti dalla classe di oggi, a serpentina nelle sedi, ciascuna un torneo col
+        suo seme; la data del ritmo si aggiorna. Nella coppa gli iscritti sono le polisportive, con la loro rosa.
+        """
         forze = {}
         for iscritto in ed.iscritti:
+            if not ed.individuale:
+                forze[iscritto["id"]] = self._forza_del_club(mondo, iscritto)
+                continue
             g = mondo.giocatori.get(iscritto["id"])
             forze[iscritto["id"]] = classe.punteggio(g) if g is not None else 0.0
         ordinati = sorted(forze, key=lambda gid: (-forze[gid], gid))
@@ -364,6 +444,9 @@ class Calendario:
         for numero_sede, ids in enumerate(tornei.dividi_in_sedi(ordinati, ed.tetto, ed.minimo), start=1):
             info = {}
             for gid in ids:
+                if not ed.individuale:
+                    info[gid] = {"nome": gid, "sesso": None, "club": per_id[gid]["club"], "forza": forze[gid], "pagato": 0, "rosa": list(per_id[gid]["rosa"])}
+                    continue
                 g = mondo.giocatori.get(gid)
                 nome = f"{g.nome} {g.cognome}" if g is not None else f"Giocatore {gid}"
                 info[gid] = {"nome": nome, "sesso": g.sesso if g is not None else None, "club": per_id[gid]["club"], "forza": forze[gid],
@@ -374,7 +457,7 @@ class Calendario:
             self.tornei.append(torneo)
             self.numeri_dei_tornei[id_torneo] = ed.numero
         for iscritto in ed.iscritti:
-            g = mondo.giocatori.get(iscritto["id"])
+            g = mondo.giocatori.get(iscritto["id"]) if ed.individuale else None
             if g is not None and iscritto["origine"] != iscrizioni.QUALIFICATO:
                 iscrizioni.aggiorna_ritmo(g, data, ed.id)
 
@@ -402,8 +485,11 @@ class Calendario:
         """
         Un incontro di una sede individuale: il tavolino per chi non si presenta, il motore vero se gioca
         un tuo tesserato, con le fotografie per la differita, l'esito rapido per tutti gli altri; con le
-        basi d'infortunio, i cali degli acciacchi di oggi e le azioni iniziali della giornata.
+        basi d'infortunio, i cali degli acciacchi di oggi e le azioni iniziali della giornata. Gli incontri
+        della coppa li gioca _gioca_squadre.
         """
+        if torneo.squadre:
+            return self._gioca_squadre(mondo, motore, torneo, incontro, rapporto)
         importanza = torneo.modello["importanza"]
         ga, gb = self._presente(mondo, incontro.a), self._presente(mondo, incontro.b)
         if ga is None and gb is None:
@@ -459,6 +545,60 @@ class Calendario:
         else:
             motore.segna_impegno(presente)
         return {"esito": tornei.TAVOLINO, "vince": vince, "set": [[punti, 0] if vince == "A" else [0, punti] for _ in range(necessari)], "set_giocati": 0}
+
+    def _gioca_squadre(self, mondo, motore, torneo, incontro, rapporto):
+        """
+        Un incontro della coppa, punto 8.8: ogni polisportiva schiera i tre migliori sani della sua rosa,
+        e chi non ha più una squadra valida, o ha chiuso, perde a tavolino, 31 a 0. Il motore vero se
+        gioca una tua polisportiva, con le fotografie per la differita; l'esito rapido fra quelle del
+        computer. Punti allenamento ed esperienza dei titolari come una sfida, per l'importanza; chi della
+        rosa resta fuori conta da riserva, risposta 15. La fatica della giornata qui non c'è: l'esito
+        rapido della gara a squadre non la conosce.
+        """
+        importanza = torneo.modello["importanza"]
+        gara = f"l'incontro di {torneo.modello['nome']}"
+        club, squadre = {}, {}
+        for lato, cid in (("A", incontro.a), ("B", incontro.b)):
+            info = torneo.info[cid]
+            club[lato] = iscrizioni.polisportiva_del_club(mondo, info["club"])
+            squadre[lato] = sfide.schiera_coppa(mondo, club[lato], info["rosa"]) if club[lato] is not None else None
+        if squadre["A"] is None and squadre["B"] is None:
+            rapporto["incontri_tavolino"] += 1
+            return {"esito": tornei.TAVOLINO_DOPPIO, "vince": None, "set": [], "set_giocati": 0}
+        punti = SQUADRE.punti_set
+        if squadre["A"] is None or squadre["B"] is None:
+            rapporto["incontri_tavolino"] += 1
+            assente = "A" if squadre["A"] is None else "B"
+            vince = "B" if assente == "A" else "A"
+            parti = []
+            for lato, cid in (("A", incontro.a), ("B", incontro.b)):
+                if squadre[lato] is not None:
+                    parti.append(Squadra(cid, tuple(squadre[lato])))
+                    continue
+                poli = club[lato]
+                presenti = tuple(g for gid in torneo.info[cid]["rosa"] if (g := mondo.giocatori.get(gid)) is not None and poli is not None
+                                 and g.appartenenza == poli.nome)
+                parti.append(Squadra(cid, presenti))
+            motore.registra_squadre(a_tavolino(parti[0], parti[1], SQUADRE, assente, incontro.seme), esperienza.SFIDA, importanza, gara=gara)
+            if sfide.tua(club[assente]):
+                rapporto["tuoi_tavolini"] += 1
+            return {"esito": TAVOLINO, "vince": vince, "set": [[punti, 0] if vince == "A" else [0, punti]], "set_giocati": 0}
+        rapporto["incontri_torneo"] += 1
+        sq_a, sq_b = Squadra(incontro.a, tuple(squadre["A"])), Squadra(incontro.b, tuple(squadre["B"]))
+        giocatori = (*sq_a.giocatori, *sq_b.giocatori)
+        basi = {g.id: infortuni.probabilita_base(g) for g in giocatori}
+        cali = {g.id: calo for g in giocatori if (calo := infortuni.calo_acciacco(g, mondo.datetime_corrente_simulazione))} or None
+        tue = any(sfide.tua(p) for p in club.values())
+        differita = None
+        if tue:
+            differita = differita_squadre(sq_a, sq_b, basi, cali)
+            risultato = Incontro(sq_a, sq_b, SQUADRE, seme=incontro.seme, dettaglio=ESSENZIALE, basi_infortunio=basi, cali=cali).gioca()
+        else:
+            risultato = esito_rapido.gioca_squadre(sq_a, sq_b, incontro.seme, basi_infortunio=basi, cali=cali, memoria=self._memoria_forza)
+        motore.registra_squadre(risultato, esperienza.SFIDA, importanza, diario=True, solo_tuoi=True, gara=gara, aggrega="incontri")
+        self._conta(mondo, risultato, [g for g in giocatori if iscrizioni.tuo(mondo, g)], rapporto)
+        return {"esito": risultato.esito, "vince": risultato.vincitore, "set": [list(s) for s in risultato.set], "set_giocati": risultato.set_giocati,
+                "motore": "vero" if tue else "rapido", "differita": differita}
 
     def sfoltisci(self, data):
         """Le sedi concluse da più di due settimane lasciano il pannello: l'albo tiene il podio, le differite gli incontri dei tuoi."""

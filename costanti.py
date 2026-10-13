@@ -660,6 +660,24 @@ SOGLIA_ECCESSO_CARICO_ANZIANI = 0.05
 ETA_SOGLIA_CARICO_ANZIANI = 65
 # Le sedi concluse restano intere nel pannello per due settimane simulate; l'albo tiene il podio per sempre.
 CONSERVAZIONE_TORNEI_CONCLUSI_GIORNI = 14
+# Le sfide fra polisportive, D32 e punto 8 del progetto. Il primo del mese ogni polisportiva riceve
+# due sfide da lanciare, fino a quattro; una sfida giocata ne consuma una, una rifiutata o decaduta no.
+SFIDE_AL_MESE = 2
+SFIDE_ACCUMULABILI = 4
+# Chi ha giocato una sfida riposa cinque giorni prima di accettarne un'altra, o di lanciarla.
+RIPOSO_SFIDA_GIORNI = 5
+# Il computer lancia una delle sue sfide col 7 per cento al giorno, circa due al mese, e prova fino a
+# tre bersagli a caso.
+PROB_LANCIO_SFIDA_CPU = 7
+TENTATIVI_SFIDA_CPU = 3
+# Il carattere di ogni polisportiva del computer, che nasce dal suo nome e non si salva: la forbice del
+# rapporto fra la forza della squadra avversaria e la propria dentro cui accetta o lancia una sfida.
+FORBICI_SFIDA = {"prudente": (0.85, 1.15), "equilibrata": (0.75, 1.30), "ardita": (0.60, 1.60)}
+# I convocati di una sfida, titolari e riserve, al massimo; il giorno per rispondere a una sfida che
+# arriva; le sfide dei tuoi che si possono riascoltare.
+CONVOCATI_SFIDA = 6
+GIORNI_RISPOSTA_SFIDA = 1
+DIFFERITE_SFIDE_TUE = 10
 
 
 def discrepanze_raggruppamenti():

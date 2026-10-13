@@ -45,7 +45,8 @@ registrazione leggera, senza diario, serve agli incontri del mondo, migliaia al 
 tuoi tesserati hanno le voci di sempre. E le fotografie: prima di un incontro di torneo o di sfida
 dei tuoi tesserati si fotografano i giocatori, così il gemello in differita, giocato anche giorni dopo,
 dà gli stessi punti dell'incontro registrato, perché la modalità essenziale e la completa coincidono a
-parità di seme.
+parità di seme. La gara a squadre delle sfide e della coppa entra nella carriera con registra_squadre,
+punto 8.7: i titolari prendono la gara, i punti e l'esperienza, le riserve metà dell'esperienza.
 """
 
 import random
@@ -58,6 +59,7 @@ from costanti import (
     COSTANZA_PER_PARTITA,
     DECADIMENTO_COSTANZA,
     DISTACCO_PIU_DEBOLE,
+    GIOCATORI_AL_TAVOLO,
     MODALITA_OUTPUT_CONSOLE,
     MODALITA_OUTPUT_FILE,
     MODALITA_OUTPUT_RISULTATO,
@@ -69,7 +71,7 @@ from costanti import (
     PA_PER_SET_VINTO,
     PA_VITTORIA,
 )
-from modelli import Giocatore
+from modelli import CAMPI_AGGREGATA_GIOCATORE, Giocatore, annota_aggregata
 from motore import COMPLETO, ESSENZIALE, RITIRO, SQUADRE, TARATURA, TAVOLINO, Incontro, Squadra, formato_singolare
 from motore import cronaca as C
 from motore import eventi as E
@@ -489,6 +491,93 @@ class MotorePartita:
             if frase:
                 frasi.append(frase)
         return frasi
+
+    # La gara a squadre nella carriera, punto 8.7 del progetto della tappa 12.
+
+    def registra_squadre(self, risultato, tipo=esperienza.SFIDA, importanza=1.0, diario=True, solo_tuoi=False, gara=None, aggrega=None):
+        """
+        Porta una gara a squadre nel mondo, D25 e D32. Ai tre titolari di ciascuna squadra la gara vinta
+        o persa, i punti allenamento della formula, la base più mezzo punto per il set vinto più il punto
+        della vittoria, per il fattore della fonte e per l'importanza, senza il premio al più debole;
+        l'esperienza, la costanza, l'impegno del giorno, e gli infortuni e gli acciacchi con le loro
+        azioni. Alle riserve, risposta 15, metà dell'esperienza della sfida e l'impegno del giorno, e
+        niente altro: né punti, né gare, né costanza. gara è il nome della gara nei diari, come «la
+        sfida»; aggrega dice quali campi della voce aggregata dell'anno salgono per chi non riceve la
+        voce, «sfide» o «incontri», oppure None. Il tavolino non dà niente a nessuno: soltanto l'impegno
+        a chi c'era e una voce ai tuoi. Restituisce le frasi da mostrare.
+        """
+        if risultato.formato.tipo != "squadre":
+            return []
+        gara = gara or self._nome_del_tipo(tipo)
+        if risultato.esito == TAVOLINO:
+            return self._registra_tavolino_squadre(risultato, gara, diario)
+        annota = self._chi_annota(diario, solo_tuoi)
+        oggi = self.mondo.datetime_corrente_simulazione
+        punti_a, punti_b = risultato.set[0]
+        frasi = []
+        pa = {}
+        for lato, ids in zip("AB", risultato.parti, strict=True):
+            vinto = risultato.vincitore == lato
+            mio, suo = (punti_a, punti_b) if lato == "A" else (punti_b, punti_a)
+            altra = risultato.nomi_squadre[1 if lato == "A" else 0]
+            pa_vinc, pa_perd = self.punti_della_partita(1, 0)
+            punti = (pa_vinc if vinto else pa_perd) * PA_FATTORE[tipo] * importanza
+            pa[lato] = punti
+            titolari, riserve = ids[:GIOCATORI_AL_TAVOLO], ids[GIOCATORI_AL_TAVOLO:]
+            compagni = {gid: f"{self.giocatori[gid].nome} {self.giocatori[gid].cognome}" for gid in titolari}
+            for gid in titolari:
+                g = self.giocatori[gid]
+                if vinto:
+                    g.gare_squadre_vinte += 1
+                else:
+                    g.gare_squadre_perse += 1
+                g.punti_allenamento += punti
+                esperienza.da_partita(g, tipo, importanza)
+                g.costanza += (1.0 - DECADIMENTO_COSTANZA) * COSTANZA_PER_PARTITA
+                altri = " e ".join(nome for altro, nome in compagni.items() if altro != gid)
+                testo = f"{'Vince' if vinto else 'Perde'} {gara} contro {altra}, {mio} a {suo}, al tavolo con {altri}."
+                self._voce_di_squadra(g, testo, annota, aggrega, vinto, oggi)
+            for gid in riserve:
+                g = self.giocatori[gid]
+                esperienza.da_riserva(g, importanza)
+                testo = f"Riserva per {gara} contro {altra}: la squadra {'vince' if vinto else 'perde'} {mio} a {suo}."
+                if annota(g) and self._tuo(g):
+                    self.mondo.annota(g, testo)
+            self.segna_impegno(*(self.giocatori[gid] for gid in ids))
+        nome_a, nome_b = risultato.nomi_squadre
+        frasi.append(f"Punti allenamento a ogni titolare: {_punti(pa['A'])} a {nome_a}, {_punti(pa['B'])} a {nome_b}.")
+        frasi.extend(self.registra_infortuni(risultato, diario, solo_tuoi))
+        return frasi
+
+    def _voce_di_squadra(self, g, testo, annota, aggrega, vinto, oggi):
+        """La voce di un titolare: la sua se la riceve, altrimenti, se si aggrega, la voce aggregata dell'anno."""
+        if annota(g):
+            self.mondo.annota(g, testo)
+        elif aggrega == "sfide":
+            annota_aggregata(g.diario, oggi, CAMPI_AGGREGATA_GIOCATORE, sfide=1, sfide_vinte=int(vinto))
+        elif aggrega == "incontri":
+            annota_aggregata(g.diario, oggi, CAMPI_AGGREGATA_GIOCATORE, incontri=1, vinti=int(vinto))
+
+    def _registra_tavolino_squadre(self, risultato, gara, diario):
+        """
+        La gara a squadre vinta a tavolino, 31 a 0: chi non ha schierato una squadra valida perde, e
+        nessuno prende punti, esperienza o costanza; la squadra presente segna l'impegno del giorno, e i
+        tuoi hanno una voce. Restituisce le frasi da mostrare.
+        """
+        vince = risultato.vincitore
+        presenti, assenti = (risultato.parti[0], risultato.parti[1]) if vince == "A" else (risultato.parti[1], risultato.parti[0])
+        nome_vinc, nome_perd = risultato.nomi_squadre if vince == "A" else tuple(reversed(risultato.nomi_squadre))
+        giocatori_presenti = [self.giocatori[gid] for gid in presenti if gid in self.giocatori]
+        self.segna_impegno(*giocatori_presenti)
+        if diario:
+            for g in giocatori_presenti:
+                if self._tuo(g):
+                    self.mondo.annota(g, f"Vince a tavolino {gara} contro {nome_perd}, che non ha schierato una squadra valida.")
+            for gid in assenti:
+                g = self.giocatori.get(gid)
+                if g is not None and self._tuo(g):
+                    self.mondo.annota(g, f"Perde a tavolino {gara} contro {nome_vinc}: la squadra non aveva tre giocatori validi.")
+        return [f"{nome_perd} non schiera una squadra valida: {nome_vinc} vince a tavolino."]
 
     @staticmethod
     def _nome_del_tipo(tipo_incontro):
