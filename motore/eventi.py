@@ -78,12 +78,17 @@ PENALITA = "PENALITA"
 # Le squadre: il cambio al tavolo della rotazione. Le sostituzioni durante l'incontro non ci sono,
 # decisione D26.
 CAMBIO_AL_TAVOLO = "CAMBIO_AL_TAVOLO"
+# Gli infortuni in gara della tappa 12, decisione D32 e regola di Gabriele: a fine set chi si è fatto
+# male e non può continuare si ritira, e l'arbitro lo chiama prima della fine dell'incontro;
+# l'ambidestro che si fa male a un braccio continua con l'altro.
+RITIRO = "RITIRO"
+CAMBIO_BRACCIO = "CAMBIO_BRACCIO"
 
 TIPI = (INIZIO_INCONTRO, SORTEGGIO, FORMAZIONI, RISCALDAMENTO_INIZIO, RISCALDAMENTO_COLPO, AVVISO_TEMPO, RISCALDAMENTO_FINE, INIZIO_SET, RECUPERO, CONSEGNA,
         ANNUNCIO, DOMANDA_PRONTO, FISCHIO, CHIAMATA, CAMBIO_BATTITORE, FINE_SET, FINE_INCONTRO,
         BATTUTA, VOLO, PARATA, CAMBIO_MANO, CONTROLLO, COLPO, GOAL, FALLO, PALLA_MORTA, ROTTURA, SOSTITUZIONE_ATTREZZO, RIPETIZIONE, PUNTO,
         TIMEOUT_INIZIO, TIMEOUT_FINE, CAMBIO_CAMPO_INIZIO, CAMBIO_CAMPO_FINE, AMMONIZIONE, PENALITA,
-        CAMBIO_AL_TAVOLO)
+        CAMBIO_AL_TAVOLO, RITIRO, CAMBIO_BRACCIO)
 
 # Le fasi dell'incontro: la live salta il riscaldamento con un tasto.
 PRELIMINARI = "preliminari"

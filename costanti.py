@@ -555,6 +555,27 @@ MINIMO_ISCRITTI = 4
 # modello che si gioca ogni settimana non stampa denaro, punto 3.3 del progetto. Il mondiale ne ha
 # 3.000, risposta 10 di Gabriele.
 MONTEPREMI_MINIMO_MASSIMO = 5000
+# Gli infortuni in gara, D32, risposte 6 e 7 di Gabriele e la sua regola sugli infortuni, punto 7 del
+# progetto. Gli infortuni d'incontro di prima erano troppo frequenti rispetto alla realtà: quelli che
+# fermano il giocatore scendono a un quinto, estratti a fine set, e il ritiro in campo diventa raro;
+# il resto diventa acciacchi, cioè a fine incontro il giocatore risente di un colpo, gioca lo stesso,
+# ma per qualche giorno rende un poco meno. La probabilità che succeda qualcosa resta quella di prima.
+# Misurato sulla popolazione a regime, al meglio dei 3 un incontro su 89 finisce per ritiro, e in un
+# torneo da 32 un incontro su 42 non è regolare, fra ritiri e tavolini: vicino all'uno su 100 e
+# all'uno su 45 di Gabriele. Il rischio della seduta all'intensa, D31, resta com'è.
+QUOTA_INFORTUNI_CHE_FERMANO = 0.2
+# L'acciacco: «qualche giorno» sono da 3 a 7 giorni, «un poco meno» un calo dell'efficienza estratto
+# fra il minimo e il massimo, pieno il primo giorno, che scende in linea retta fino a zero. Prime
+# stime, scelte dell'architetto: con la media a 0,02 l'acciaccato al primo giorno vince contro un
+# pari circa il 45 per cento degli incontri al meglio dei 3; le fissa strumenti/banco_partite.py
+# --acciacco, punto 13.1 del progetto, e il collaudo di Gabriele dirà se il calo si sente.
+ACCIACCO_GIORNI_MINIMO = 3
+ACCIACCO_GIORNI_MASSIMO = 7
+ACCIACCO_CALO_MINIMO = 0.012
+ACCIACCO_CALO_MASSIMO = 0.028
+# La fatica della giornata di torneo, risposta 5 di Gabriele: ogni incontro dopo il primo del giorno
+# parte con un quarto delle azioni già giocate quel giorno da ciascuno, nel motore e nell'esito rapido.
+FATICA_RESIDUA_GIORNATA = 0.25
 
 
 def discrepanze_raggruppamenti():

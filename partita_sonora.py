@@ -210,6 +210,12 @@ LANCI = frozenset((E.BATTUTA, E.COLPO, E.PARATA))
 # Le parate che non mettono la paletta sulla pallina: quella che non arriva, quella che prende il
 # corpo, che suona con la tappa del volo, e quella a cui cade la paletta, che suona col fallo.
 CAUSE_SENZA_PARATA = frozenset(("body_touch", "body_touch_pieno", "paletta_caduta"))
+# Gli eventi della tappa 12 ancora muti. Il ritiro avrà un suono suo, il preset mess_partita_ritiro,
+# e una fermata sua, col terzo passo della tappa: fino ad allora si legge soltanto nella cronaca. Il
+# cambio di braccio dell'ambidestro resta muto per scelta, perché non ferma il gioco, e si legge nel
+# campo dell'azione.
+MUTI_PER_ORA = frozenset((E.RITIRO,))
+MUTI = frozenset((E.CAMBIO_BRACCIO,))
 
 
 # Lo spazio.

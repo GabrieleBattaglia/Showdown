@@ -1,18 +1,18 @@
 {
- "nota": "Rigenerate col terzo commit del passo 1 della tappa 12: la issue 1, polisportive del computer contate sui soli attivi e sulle sole polisportive del computer, e le nascite da 2 a 9 al giorno. L'impronta del motore resta uguale.",
+ "nota": "Rigenerate col primo commit del passo 2 della tappa 12: gli infortuni in gara, cioè il ritiro, il tavolino, gli infortuni che fermano a un quinto e gli acciacchi, e il formato 7. I mondi cambiano perché ogni giocatore salva i quattro campi dell'acciacco; nei mondi delle impronte non si giocano ancora partite. L'impronta del motore resta uguale: senza basi d'infortunio, cali e azioni iniziali il motore fa quello che faceva.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "ae8bfc72d31e48285842fc70972ed2bdcc05d52e98efaea13840f4f73a08235d",
+  "sha256": "e1370fff8a276f2a3a12c3694b33cb6a9f764d31ed0a26b498ba4976d9eca7e3",
   "vivi": 702,
   "attivi": 702,
   "tesserati": 616,
   "polisportive": 43
  },
  "mondo_a_regime": {
-  "sha256": "91abfb5ed262a0a8ee7ddab62602ced1d7da82f94a0542644785780103243dde",
+  "sha256": "9b9e72a14bf41846290a86a7712753cd7ccecd81ef8a16eb2c715aea03774bab",
   "vivi": 1662,
   "attivi": 1262,
   "tesserati": 1097,

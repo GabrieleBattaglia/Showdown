@@ -340,7 +340,7 @@ def test_un_salvataggio_del_formato_4_si_aggiorna(cartella_di_prova):
     assert not ricaricato.giocatori[4].puo_giocare and ricaricato.giocatori[4].infortunio_sede == "non_precisata"
     assert archivio.salva(ricaricato)
     riletto = _ricarica()
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 6
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 7
     for gid, g in riletto.giocatori.items():
         assert vars(g) == vars(ricaricato.giocatori[gid])
 
@@ -449,7 +449,7 @@ def test_un_salvataggio_del_formato_5_si_aggiorna(cartella_di_prova):
     assert m.giocatori[4].indole == "completa"
     assert {gid for gid, g in m.giocatori.items() if g.contratto_stipendio} == {3, 5, 6}
     assert archivio.salva(m)
-    assert archivio.leggi(cartella_di_prova / FILE_MONDO)["formato"] == 6
+    assert archivio.leggi(cartella_di_prova / FILE_MONDO)["formato"] == 7
 
 
 @pytest.mark.parametrize("guasto", ["tesserato_senza_contratto", "libero_con_contratto", "rinnovo_a_meta", "scadenza_non_al_primo", "intensa_da_libero"])

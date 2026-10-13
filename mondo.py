@@ -1210,6 +1210,9 @@ class Mondo:
                 g.infortunio_sede = None
                 rapporto["guariti"] += 1
                 self.annota(g, "Guarisce dall'infortunio.", data)
+            # Dalla tappa 12 l'acciacco finito se ne va, senza una voce: il calo era già arrivato a zero.
+            if g.acciacco_fino is not None and data.date() >= g.acciacco_fino.date():
+                infortuni.guarisci_acciacco(g)
             eta_pre = g.eta
             g.eta += 1
             g._applica_declino_aggregato(1)

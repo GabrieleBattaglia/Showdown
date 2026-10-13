@@ -45,6 +45,10 @@ valore non cambia lo stipendio a nessuno fino al rinnovo. Le caratteristiche non
 i tetti propri dell'allenata ogni valore di oggi resta valido così com'è. Alla lettura si controlla
 la coerenza fra contratti e appartenenza, e un salvataggio incoerente si rifiuta, con il ripiego
 sulla copia di sempre: il salvataggio non si ripara mai in silenzio.
+Il formato 7, della tappa 12, del 2026-10-13, decisione D32, il mondo che gioca. Nasce col primo campo
+salvato della tappa, l'acciacco del giocatore, e ogni passo seguente della tappa allarga la stessa
+migrazione, finché la tappa non esce: un formato solo. La migrazione aggiunge soltanto, e rinomina
+un campo: non tocca caratteristiche, valori, contratti, stipendi, casse, fedeltà né esperienza.
 """
 
 import contextlib
@@ -80,12 +84,12 @@ from costanti import (
     SEDE_NON_PRECISATA,
     VERSIONE,
 )
-from modelli import DATA, VOCI_CONTI, Giocatore, Polisportiva, a_json, da_json, normalizza_nome, temperamento_innato
+from modelli import CAMPI_ACCIACCO_VUOTO, DATA, VOCI_CONTI, Giocatore, Polisportiva, a_json, da_json, normalizza_nome, temperamento_innato
 from mondo import CONSERVAZIONE_PREDEFINITA
 from utilita import adesso, adesso_utc
 
 APPLICAZIONE = "MESS"
-FORMATO = 6
+FORMATO = 7
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Da dove viene il mondo appena caricato.
@@ -392,7 +396,18 @@ def _dal_formato_5(documento):
     documento["formato"] = 6
 
 
-MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5}
+def _dal_formato_6(documento):
+    """
+    Dal formato 6 al 7, con la tappa 12, decisione D32. Ogni giocatore riceve l'acciacco vuoto: nessuno
+    ne ha, perché prima gli acciacchi non c'erano.
+    """
+    for g in documento["mondo"]["giocatori"]:
+        for campo, vuoto in CAMPI_ACCIACCO_VUOTO.items():
+            g.setdefault(campo, vuoto)
+    documento["formato"] = 7
+
+
+MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5, 6: _dal_formato_6}
 
 
 def _conservazione_da_json(valore):

@@ -28,12 +28,29 @@ scambio che l'avversario ripete troppo, e chi gioca sempre lo stesso colpo preme
 decisione 11 di Gabriele, la battuta oltre SOGLIA_BATTUTA_ALTA preme sempre meno di quanto dice il
 suo livello: accanto a QB, che serve alla scelta e alle irregolari, c'è QBP, la qualità frenata da
 battuta_frenata che dà la pressione.
+Dalla tappa 12, decisione D32 e regola di Gabriele sugli infortuni, il giocatore in campo può avere
+un acciacco: l'efficienza della stanchezza si moltiplica in ogni punto per uno meno il calo del
+giorno, quindi l'acciaccato colpisce, para e sceglie un poco peggio, come un giocatore un poco
+stanco. Può partire con le azioni già giocate quel giorno in un torneo, per la fatica della
+giornata, risposta 5 di Gabriele: contano soltanto per la stanchezza, non per le statistiche né per
+il carico d'infortunio. E l'ambidestro che si fa male a un braccio durante l'incontro passa
+all'altro, col rovescio dal lato del braccio fermo, come chi arriva già infortunato. Qui sta anche
+il fattore del carico d'infortunio, che il motore usa a fine set e infortuni.py importa da qui.
+Senza calo e senza azioni iniziali il giocatore in campo è quello di prima, fino all'ultimo bit.
 """
 
 import math
 from collections import Counter
 
-from costanti import COLPI_DELLO_SCAMBIO, COLPI_DI_BATTUTA, COSTANZA_PIENA, SEDI_INFORTUNIO
+from costanti import (
+    AZIONI_RIFERIMENTO_INFORTUNIO,
+    CARICO_INFORTUNIO_MASSIMO,
+    CARICO_INFORTUNIO_MINIMO,
+    COLPI_DELLO_SCAMBIO,
+    COLPI_DI_BATTUTA,
+    COSTANZA_PIENA,
+    SEDI_INFORTUNIO,
+)
 
 ZONE = ("sx", "centro", "dx")
 _BRACCIO_DELLA_SEDE = {codice: braccio for codice, _frase, braccio, _peso, _durata in SEDI_INFORTUNIO}
@@ -113,6 +130,55 @@ def braccio_infortunato(g):
     return _BRACCIO_DELLA_SEDE.get(getattr(g, "infortunio_sede", None))
 
 
+def braccio_della_sede(sede):
+    """Il braccio di una sede d'infortunio, dx o sx, oppure None per schiena, gambe e sede non precisata."""
+    return _BRACCIO_DELLA_SEDE.get(sede)
+
+
+_SEDI = {codice: peso for codice, _frase, _braccio, peso, _durata in SEDI_INFORTUNIO}
+
+
+def pesi_sedi(g):
+    """I pesi delle sedi d'infortunio per la mano del giocatore: per il mancino le braccia si scambiano, per l'ambidestro se ne fa la media."""
+    pesi = dict(_SEDI)
+    if getattr(g, "mancino", False) or getattr(g, "ambidestro", False):
+        scambiati = dict(pesi)
+        for codice in pesi:
+            if codice.endswith("_dx"):
+                gemella = codice[:-3] + "_sx"
+                scambiati[codice], scambiati[gemella] = pesi[gemella], pesi[codice]
+        if getattr(g, "ambidestro", False):
+            scambiati = {codice: (pesi[codice] + scambiati[codice]) / 2.0 for codice in pesi}
+        pesi = scambiati
+    return tuple((codice, pesi[codice]) for codice, *_resto in SEDI_INFORTUNIO)
+
+
+def estrai_sede(g, rng):
+    """
+    La sede di un infortunio o di un acciacco, estratta coi pesi della mano del giocatore. Era in
+    infortuni.py, che la importa da qui: dalla tappa 12 la usa il motore a fine set.
+    """
+    pesi = pesi_sedi(g)
+    soglia = rng.random() * sum(peso for _codice, peso in pesi)
+    cumulata = 0.0
+    for codice, peso in pesi:
+        cumulata += peso
+        if soglia < cumulata:
+            return codice
+    return pesi[-1][0]
+
+
+def fattore_carico(azioni):
+    """
+    Il carico d'infortunio di un incontro: la radice delle azioni giocate sul riferimento, fra il
+    minimo e il massimo. Era in infortuni.py; dalla tappa 12 sta qui, perché il motore estrae gli
+    infortuni a fine set, e infortuni.py lo importa.
+    """
+    if AZIONI_RIFERIMENTO_INFORTUNIO <= 0:
+        return 1.0
+    return max(CARICO_INFORTUNIO_MINIMO, min(CARICO_INFORTUNIO_MASSIMO, math.sqrt(max(0, azioni) / AZIONI_RIFERIMENTO_INFORTUNIO)))
+
+
 def lettura_possibile(g, taratura):
     """La lettura del gioco possibile per l'esperienza di carriera, da 0 verso 1."""
     esperienza = max(0.0, float(getattr(g, "esperienza", 0.0) or 0.0))
@@ -177,6 +243,7 @@ class InCampo:
         "QB",
         "QBP",
         "azioni",
+        "calo",
         "cambia_mano",
         "cambiovelocita",
         "cum_battute",
@@ -209,7 +276,7 @@ class InCampo:
         "termini_colpi",
     )
 
-    def __init__(self, g, parte, taratura):
+    def __init__(self, g, parte, taratura, calo=0.0, azioni_iniziali=0):
         self.g = g
         self.id = g.id
         self.parte = parte
@@ -221,7 +288,11 @@ class InCampo:
         self.mancino = bool(getattr(g, "mancino", False))
         self.ritmo = ritmo_della_fatica(g, t)
         self._calcola_qualita(g, t)
-        self.azioni = 0
+        # Dalla tappa 12: il calo dell'acciacco di oggi, zero per chi non ne ha, e le azioni con cui
+        # il giocatore comincia, per la fatica della giornata di torneo. Le statistiche, e con loro
+        # il carico d'infortunio, partono comunque da zero.
+        self.calo = calo
+        self.azioni = azioni_iniziali
         self.osservati = 0
         self.parate_mancino = 0
         self.sorpresa = 1.0
@@ -308,10 +379,33 @@ class InCampo:
             b[self.rovescio] *= 1.0 - t.MALUS_ROVESCIO
         self.D = d
         self.B = b
-        # Le qualità di parata con il rovescio ma senza la stanchezza, quelle che l'avversario può
-        # capire: la chiusura, con la parte del blocco che decide anch'essa se la pallina passa.
-        peso = t.PESO_BLOCCO_PARATA
+        self._parate_leggibili()
+
+    def _parate_leggibili(self):
+        """
+        Le qualità di parata con il rovescio ma senza la stanchezza, quelle che l'avversario può
+        capire: la chiusura, con la parte del blocco che decide anch'essa se la pallina passa.
+        """
+        peso = self.tar.PESO_BLOCCO_PARATA
+        d, b = self.D, self.B
         self.Dp = {zona: d[zona] + peso * (b[zona] - d[zona]) for zona in ZONE}
+
+    def passa_all_altro_braccio(self, braccio):
+        """
+        L'ambidestro sano che si fa male al braccio indicato, dx o sx, durante l'incontro, D25 e
+        tappa 12: dal set seguente gioca con l'altro braccio, col rovescio dal lato del braccio fermo,
+        che perde MALUS_ROVESCIO di chiusura e blocco, senza più cambiare mano. È lo stesso giocatore
+        che InCampo fa nascere per chi arriva all'incontro già infortunato a un braccio.
+        """
+        if self.rovescio is not None:
+            return
+        malus = 1.0 - self.tar.MALUS_ROVESCIO
+        self.rovescio = braccio
+        self.cambia_mano = False
+        self.mano = "sinistra" if braccio == "dx" else "destra"
+        self.D[braccio] *= malus
+        self.B[braccio] *= malus
+        self._parate_leggibili()
 
     def conta_azione(self):
         self.azioni += 1
@@ -343,7 +437,11 @@ class InCampo:
         battute contro l'avversario di adesso. Dentro il punto la stanchezza resta ferma.
         """
         t = self.tar
-        self.eff = eff = efficienza(self.azioni, self.ritmo, t)
+        eff = efficienza(self.azioni, self.ritmo, t)
+        if self.calo:
+            # L'acciacco della tappa 12: rende un poco meno, come un poco più stanco.
+            eff *= 1.0 - self.calo
+        self.eff = eff
         self.sorpresa = self.sorpresa_contro(avversario)
         s_rel = (1.0 - eff) / t.FATICA_MAX if t.FATICA_MAX > 0 else 0.0
         if pressione_set and t.PRESSIONE_PALLA_SET:

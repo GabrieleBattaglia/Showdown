@@ -192,7 +192,11 @@ CAMPI_GIOCATORE = (
     ("ambizione", float), ("costanza", float), ("contratto_stipendio", int), ("contratto_scadenza", DATA_O_NULLA),
     ("rinnovo_stipendio", int), ("rinnovo_scadenza", DATA_O_NULLA), ("proposte_rinnovo", int), ("ultima_trattativa", DATA_O_NULLA),
     *((nome, float) for nome in ATTRIBUTI_INVECCHIABILI),
+    # Dalla tappa 12, formato 7: l'acciacco, cioè la data in cui finisce, il calo del primo giorno, quanti giorni dura e la sede.
+    ("acciacco_fino", DATA_O_NULLA), ("acciacco_calo", float), ("acciacco_giorni", int), ("acciacco_sede", TESTO_O_NULLA),
 )
+# I campi dell'acciacco, con il loro valore per chi non ne ha.
+CAMPI_ACCIACCO_VUOTO = {"acciacco_fino": None, "acciacco_calo": 0.0, "acciacco_giorni": 0, "acciacco_sede": None}
 # I campi del contratto, con il loro valore per chi non ne ha.
 CAMPI_CONTRATTO_VUOTO = {"contratto_stipendio": 0, "contratto_scadenza": None, "rinnovo_stipendio": 0, "rinnovo_scadenza": None,
                          "proposte_rinnovo": 0, "ultima_trattativa": None}
@@ -425,6 +429,21 @@ def _controlla_campi_della_tappa_11(g, chi):
         raise ValueError(f"{chi}: il campo {sbagliati[0]} non è valido: {getattr(g, sbagliati[0])!r}")
 
 
+def _controlla_campi_della_tappa_12(g, chi):
+    """I controlli dei campi del formato 7: l'acciacco ha calo fra 0 e 1, giorni non negativi e una sede valida, e senza data è vuoto; ValueError se uno non va."""
+    sbagliati = []
+    if not 0.0 <= g.acciacco_calo <= 1.0:
+        sbagliati.append("acciacco_calo")
+    if g.acciacco_giorni < 0:
+        sbagliati.append("acciacco_giorni")
+    if g.acciacco_sede is not None and g.acciacco_sede not in SEDI_AMMESSE:
+        sbagliati.append("acciacco_sede")
+    if g.acciacco_fino is None and (g.acciacco_calo or g.acciacco_giorni or g.acciacco_sede is not None):
+        sbagliati.append("acciacco_fino")
+    if sbagliati:
+        raise ValueError(f"{chi}: il campo {sbagliati[0]} non è valido: {getattr(g, sbagliati[0])!r}")
+
+
 class Giocatore:
     def __init__(self, id_giocatore, datetime_creazione_sim, **kwargs):
         self.id = id_giocatore
@@ -433,6 +452,9 @@ class Giocatore:
         self.infortunio_sede = None
         # La data simulata dell'ultima amichevole: chi nasce non ne ha ancora giocate.
         self.ultima_amichevole = None
+        # Dalla tappa 12 l'acciacco: chi nasce non ne ha.
+        for campo, vuoto in CAMPI_ACCIACCO_VUOTO.items():
+            setattr(self, campo, vuoto)
         self.nome = "*"
         self.cognome = "*"
         self.appartenenza = "*"
@@ -618,6 +640,7 @@ class Giocatore:
         if g.infortunio_sede is not None and g.infortunio_sede not in SEDI_AMMESSE:
             raise ValueError(f"{chi}: il campo infortunio_sede non è valido: {g.infortunio_sede!r}")
         _controlla_campi_della_tappa_11(g, chi)
+        _controlla_campi_della_tappa_12(g, chi)
         tratti = dati.get("tratti")
         if tratti is not None:
             if not isinstance(tratti, dict):

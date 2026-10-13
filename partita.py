@@ -29,6 +29,14 @@ resta, anche quando perde, ma il distacco si misura sulla somma pesata, che non 
 del valore. Con la registrazione arrivano anche l'esperienza dell'incontro e la costanza recente,
 e l'intensità dell'allenamento cambia il rischio d'infortunio. Tornei e sfide sono gli agganci
 della tappa 12, e il giorno dell'ultima amichevole si segna soltanto per le amichevoli.
+Dalla tappa 12, il 2026-10-13, decisione D32, risposte 6, 7 e 8 di Gabriele e la sua regola sugli
+infortuni: gli infortuni non si estraggono più qui a fine partita, ma nel motore, a fine set, e
+soltanto un quinto ferma il giocatore; il resto sono acciacchi. La facciata dà al motore la base
+d'infortunio e il calo dell'acciacco di oggi di ciascuno, e anche al gemello della partita dal vivo,
+che così ripete il ritiro e gli acciacchi; poi porta nel mondo quello che il motore ha estratto, con
+la durata e il calo da un generatore nato dal seme. Chi si ritira tiene i punti allenamento dei set
+giocati; chi vince o perde a tavolino non prende né punti né esperienza, e la partita non entra
+nella sua carriera, risposta 8.
 """
 
 import random
@@ -50,10 +58,10 @@ from costanti import (
     PA_PER_SET_VINTO,
     PA_VITTORIA,
 )
-from motore import COMPLETO, ESSENZIALE, SQUADRE, TARATURA, Incontro, Squadra, formato_singolare
+from motore import COMPLETO, ESSENZIALE, RITIRO, SQUADRE, TARATURA, TAVOLINO, Incontro, Squadra, formato_singolare
 from motore import cronaca as C
 from motore import eventi as E
-from utilita import adesso
+from utilita import accorda, adesso
 
 PROMPT_PUNTO = "\rUn tasto per il punto successivo.\r"
 INTERROTTA = "Partita interrotta dall'utente."
@@ -115,6 +123,21 @@ class MotorePartita:
         oggi = self.mondo.datetime_corrente_simulazione
         return sorted((g for g in giocatori if g.puo_giocare_amichevole(oggi)), key=lambda g: g.id)
 
+    def basi_e_cali(self, *giocatori):
+        """
+        Quello che il motore deve sapere degli infortuni di chi gioca, tappa 12: la base d'infortunio di
+        ciascuno, senza il carico, e il calo dell'acciacco di oggi di chi ne ha uno, oppure None.
+        """
+        oggi = self.mondo.datetime_corrente_simulazione
+        basi = {g.id: infortuni.probabilita_base(g) for g in giocatori}
+        cali = {g.id: calo for g in giocatori if (calo := infortuni.calo_acciacco(g, oggi))}
+        return basi, cali or None
+
+    def _tuo(self, g):
+        """Vero se il giocatore è un tesserato di una polisportiva dell'utente."""
+        club = self.mondo.polisportive.get(g.appartenenza)
+        return club is not None and not club.is_cpu_controlled
+
     def nomi(self, risultato):
         """I nomi della cronaca per un incontro fra giocatori del mondo: un singolare, o una gara a squadre col nome delle squadre."""
         a, b = risultato.parti
@@ -154,7 +177,8 @@ class MotorePartita:
         nomi = C.nomi_dei_giocatori([g1, g2])
         self.mostra(f"Inizio dell'incontro: {nomi['A'].testo} contro {nomi['B'].testo}, al meglio dei {num_set_target} set.")
         completo = modalita_output in (MODALITA_OUTPUT_CONSOLE, MODALITA_OUTPUT_FILE)
-        incontro = Incontro(g1, g2, formato, seme=seme, dettaglio=COMPLETO if completo else ESSENZIALE, taratura=self.taratura)
+        basi, cali = self.basi_e_cali(g1, g2)
+        incontro = Incontro(g1, g2, formato, seme=seme, dettaglio=COMPLETO if completo else ESSENZIALE, taratura=self.taratura, basi_infortunio=basi, cali=cali)
         risposta['seme'] = incontro.seme
         try:
             for momento in incontro.momenti():
@@ -233,10 +257,11 @@ class MotorePartita:
             raise ValueError(errore)
         formato = formato_singolare(set_al_meglio)
         g1, g2 = self.giocatori[id_g1], self.giocatori[id_g2]
-        incontro = Incontro(g1, g2, formato, seme=seme, dettaglio=COMPLETO, taratura=self.taratura)
+        basi, cali = self.basi_e_cali(g1, g2)
+        incontro = Incontro(g1, g2, formato, seme=seme, dettaglio=COMPLETO, taratura=self.taratura, basi_infortunio=basi, cali=cali)
         gemello = None
         if con_gemello:
-            gemello = Incontro(g1, g2, formato, seme=incontro.seme, dettaglio=COMPLETO, taratura=self.taratura, velocita=velocita)
+            gemello = Incontro(g1, g2, formato, seme=incontro.seme, dettaglio=COMPLETO, taratura=self.taratura, velocita=velocita, basi_infortunio=basi, cali=cali)
         risultato = incontro.gioca()
         risultato.registrazione = self.registra(risultato)
         return risultato, gemello
@@ -278,12 +303,17 @@ class MotorePartita:
         """
         if risultato.formato.tipo != "singolare":
             return []
+        if risultato.esito == TAVOLINO:
+            return self._registra_tavolino(risultato, info_torneo, sfida)
         id_a, id_b = risultato.parti
         vince_a = risultato.vincitore == "A"
         id_vinc, id_perd = (id_a, id_b) if vince_a else (id_b, id_a)
         g_vinc, g_perd = self.giocatori[id_vinc], self.giocatori[id_perd]
         stats_vinc, stats_perd = risultato.statistiche[id_vinc], risultato.statistiche[id_perd]
-        sa, sb = risultato.set_vinti
+        # Col ritiro contano soltanto i set giocati: quelli aggiunti 11 a 0 servono alla classifica del torneo.
+        giocati = risultato.set[:risultato.set_giocati]
+        sa = sum(1 for a, b in giocati if a > b)
+        sb = len(giocati) - sa
         set_vinc, set_perd = (sa, sb) if vince_a else (sb, sa)
         g_vinc.partitevinte += 1
         g_perd.partiteperse += 1
@@ -313,21 +343,72 @@ class MotorePartita:
             g_vinc.ultima_amichevole = g_perd.ultima_amichevole = self.mondo.datetime_corrente_simulazione
         self._annota_risultato(g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo)
         frasi = [f"Punti allenamento: {_punti(pa_vinc)} a {g_vinc.nome} {g_vinc.cognome}, {_punti(pa_perd)} a {g_perd.nome} {g_perd.cognome}."]
-        caso_degli_infortuni = random.Random(f"infortuni-{risultato.seme}")
-        for g in (g_vinc, g_perd):
-            frase = infortuni.infortuna(self.mondo, g, risultato.statistiche[g.id].azioni, caso_degli_infortuni)
+        frasi.extend(self.registra_infortuni(risultato))
+        return frasi
+
+    def registra_infortuni(self, risultato, diario=True):
+        """
+        Porta nel mondo gli infortuni e gli acciacchi che il motore ha estratto, tappa 12: la durata e
+        il calo da un generatore nato dal seme dell'incontro, così l'incontro rigiocato dà gli stessi.
+        Gli infortuni vanno nel diario di tutti, gli acciacchi soltanto in quello dei tuoi tesserati;
+        senza diario, nella registrazione leggera, in nessuno. Restituisce le frasi da mostrare.
+        """
+        frasi = []
+        caso = random.Random(f"durata-{risultato.seme}")
+        for gid, _set_n, sede in risultato.infortuni:
+            frase = infortuni.colpisci(self.mondo, self.giocatori[gid], sede, caso, annota=diario)
+            if frase:
+                frasi.append(frase)
+        for gid, sede in risultato.acciacchi:
+            g = self.giocatori[gid]
+            frase = infortuni.acciacca(self.mondo, g, sede, caso, annota=diario and self._tuo(g))
             if frase:
                 frasi.append(frase)
         return frasi
 
+    @staticmethod
+    def _nome_del_tipo(tipo_incontro):
+        return {esperienza.TORNEO: "la partita del torneo", esperienza.SFIDA: "la sfida"}.get(tipo_incontro, "l'amichevole")
+
     def _annota_risultato(self, g_vinc, g_perd, risultato, vince_a, set_vinc, set_perd, tipo_incontro):
-        """Il risultato nei diari dei due giocatori, ciascuno con i set dal suo punto di vista."""
-        tipo = {esperienza.TORNEO: "la partita del torneo", esperienza.SFIDA: "la sfida"}.get(tipo_incontro, "l'amichevole")
-        dal_vincitore = [(a, b) if vince_a else (b, a) for a, b in risultato.set]
+        """
+        Il risultato nei diari dei due giocatori, ciascuno con i set dal suo punto di vista. Col ritiro,
+        dalla tappa 12, i set giocati davvero e chi si è ritirato.
+        """
+        tipo = self._nome_del_tipo(tipo_incontro)
+        giocati = risultato.set[:risultato.set_giocati]
+        dal_vincitore = [(a, b) if vince_a else (b, a) for a, b in giocati]
         set_vincitore = ", ".join(f"{a} a {b}" for a, b in dal_vincitore)
         set_perdente = ", ".join(f"{b} a {a}" for a, b in dal_vincitore)
-        self.mondo.annota(g_vinc, f"Vince {tipo} contro {g_perd.nome} {g_perd.cognome}, {set_vinc} set a {set_perd}: {set_vincitore}.")
-        self.mondo.annota(g_perd, f"Perde {tipo} contro {g_vinc.nome} {g_vinc.cognome}, {set_perd} set a {set_vinc}: {set_perdente}.")
+        nome_perd, nome_vinc = f"{g_perd.nome} {g_perd.cognome}", f"{g_vinc.nome} {g_vinc.cognome}"
+        if risultato.esito != RITIRO:
+            self.mondo.annota(g_vinc, f"Vince {tipo} contro {nome_perd}, {set_vinc} set a {set_perd}: {set_vincitore}.")
+            self.mondo.annota(g_perd, f"Perde {tipo} contro {nome_vinc}, {set_perd} set a {set_vinc}: {set_perdente}.")
+            return
+        dopo = f"dopo {len(giocati)} set"
+        if g_vinc.id in risultato.ritirato:
+            self.mondo.annota(g_vinc, f"Vince {tipo} contro {nome_perd}: si ritirano tutti e due {dopo}, e vince chi ha vinto più set: {set_vincitore}.")
+        else:
+            self.mondo.annota(g_vinc, f"Vince {tipo} contro {nome_perd}, che si ritira {dopo}: {set_vincitore}.")
+        self.mondo.annota(g_perd, f"Perde {tipo} contro {nome_vinc}: si ritira {dopo}, {set_perdente}.")
+
+    def _registra_tavolino(self, risultato, info_torneo=None, sfida=None):
+        """
+        La sconfitta a tavolino, D32 e risposta 8 di Gabriele: niente punti allenamento, niente
+        esperienza, niente costanza, e la partita non entra nella carriera di nessuno dei due; soltanto
+        una voce nel diario dei tuoi tesserati. Restituisce le frasi da mostrare.
+        """
+        id_a, id_b = risultato.parti
+        vince_a = risultato.vincitore == "A"
+        g_vinc, g_perd = (self.giocatori[id_a], self.giocatori[id_b]) if vince_a else (self.giocatori[id_b], self.giocatori[id_a])
+        tipo = self._nome_del_tipo(esperienza.TORNEO if info_torneo else esperienza.SFIDA if sfida else esperienza.AMICHEVOLE)
+        assente = accorda(g_perd.sesso, "presentato")
+        perche = f"è {accorda(g_perd.sesso, 'infortunato')}" if g_perd.infortunato and not g_perd.puo_giocare else f"non si è {assente}"
+        if self._tuo(g_vinc):
+            self.mondo.annota(g_vinc, f"Vince a tavolino {tipo} contro {g_perd.nome} {g_perd.cognome}, che non si è {assente}.")
+        if self._tuo(g_perd):
+            self.mondo.annota(g_perd, f"Perde a tavolino {tipo} contro {g_vinc.nome} {g_vinc.cognome}: {perche}.")
+        return [f"{g_perd.nome} {g_perd.cognome} non si presenta: {g_vinc.nome} {g_vinc.cognome} vince a tavolino."]
 
     # La cronaca su file.
 

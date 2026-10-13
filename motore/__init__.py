@@ -14,12 +14,16 @@ from motore.eventi import ErroreMotore, Evento
 from motore.incontro import (
     COMPLETO,
     ESSENZIALE,
+    REGOLARE,
+    RITIRO,
     SINGOLARE_3,
     SINGOLARE_5,
     SQUADRE,
+    TAVOLINO,
     Formato,
     Incontro,
     RisultatoIncontro,
+    a_tavolino,
     formato_singolare,
     simula_incontro,
 )
@@ -27,5 +31,5 @@ from motore.scambio import EsitoPunto
 from motore.squadre import Squadra
 from motore.taratura import TARATURA, Taratura
 
-__all__ = ("COMPLETO", "ESSENZIALE", "SINGOLARE_3", "SINGOLARE_5", "SQUADRE", "TARATURA", "ErroreMotore", "EsitoPunto", "Evento", "Formato", "Incontro",
-           "RisultatoIncontro", "Squadra", "Taratura", "formato_singolare", "simula_incontro")
+__all__ = ("COMPLETO", "ESSENZIALE", "REGOLARE", "RITIRO", "SINGOLARE_3", "SINGOLARE_5", "SQUADRE", "TARATURA", "TAVOLINO", "ErroreMotore", "EsitoPunto",
+           "Evento", "Formato", "Incontro", "RisultatoIncontro", "Squadra", "Taratura", "a_tavolino", "formato_singolare", "simula_incontro")

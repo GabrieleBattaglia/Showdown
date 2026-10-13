@@ -1228,11 +1228,18 @@ def risultato_amichevole(risultato, mondo):
     id_a, id_b = risultato.parti
     vince_a = risultato.vincitore == "A"
     vincitore, perdente = (mondo.giocatori[id_a], mondo.giocatori[id_b]) if vince_a else (mondo.giocatori[id_b], mondo.giocatori[id_a])
+    al_meglio = f"Amichevole al meglio dei {risultato.formato.set_al_meglio} set."
+    if risultato.esito == "ritiro":
+        # Dalla tappa 12: col ritiro si dicono soltanto i set giocati, e chi si è ritirato.
+        giocati = risultato.set[:risultato.set_giocati]
+        parziali = ", ".join(f"{a} a {b}" if vince_a else f"{b} a {a}" for a, b in giocati)
+        chi = " e ".join(nome_completo(mondo.giocatori[gid]) for gid in risultato.ritirato)
+        verbo = "si ritira" if len(risultato.ritirato) == 1 else "si ritirano"
+        return f"Vince {nome_completo(vincitore)} contro {nome_completo(perdente)}: {chi} {verbo} dopo {len(giocati)} set, {parziali}. {al_meglio}"
     sa, sb = risultato.set_vinti
     mio, suo = (sa, sb) if vince_a else (sb, sa)
     parziali = ", ".join(f"{a} a {b}" if vince_a else f"{b} a {a}" for a, b in risultato.set)
-    return (f"Vince {nome_completo(vincitore)}, {mio} set a {suo} contro {nome_completo(perdente)}: {parziali}. "
-            f"Amichevole al meglio dei {risultato.formato.set_al_meglio} set.")
+    return f"Vince {nome_completo(vincitore)}, {mio} set a {suo} contro {nome_completo(perdente)}: {parziali}. {al_meglio}"
 
 
 def _dopo_il_risultato(risultato, mondo):
