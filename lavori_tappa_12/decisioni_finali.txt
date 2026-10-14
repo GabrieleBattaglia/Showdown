@@ -1,0 +1,18 @@
+Decisioni di Gabriele del 14 ottobre 2026 sui punti lasciati aperti dal workflow della tappa 12 (rapporti/da_decidere.txt). Vincolanti come D32.
+1. Il computer troppo ricco a regime e i campioni liberi: il computer spende secondo la cassa; quando ha la cassa piena può offrire di più e tesserare i campioni, e la cassa smette di crescere. Va ritarata l'economia e rifatta la prova di 60 anni. La consigliata.
+2. La partenza dell'utente (cassa da 20.000 a circa 3.000 nel primo anno dello scenario): si lascia così. La consigliata.
+3. Le coppe d'argento delle sfide perse: restano, come in D32, ma nella gloria valgono una piccola parte di quella d'oro, così perdere tante sfide non conviene. La consigliata.
+4. Il tempo del giorno simulato a regime (0,7-0,85 s in media, 1,4-2,1 s nel peggiore, salvataggio 7 s): accelerare adesso, prima di chiudere la tappa, senza cambiare gli esiti. Non la consigliata (che era una issue per dopo).
+5. Gli spareggi dei gironi: la regola dell'articolo 8 del Regolamento Eventi Federali FISPIC del 23 giugno 2026 (scontro diretto, poi differenza set e differenza punti negli scontri diretti; fra tre o più gli stessi criteri nei soli scontri fra loro, ripartendo dalla regola dei due), e se tutto resta pari il più forte per classe invece del sorteggio. La consigliata, già applicata.
+6. Il bersaglio della carriera perfetta: la media di tutte le carriere perfette arriva ad A1 a 50 anni; le fonti dei punti si tarano su quella media. La consigliata.
+7. I pesi della classe si aggiornano adesso ai pesi nuovi del valore (le battute da 0,71 a 0,47), e somma e ancore della carriera perfetta si ricalcolano una volta, nella stessa taratura dell'economia; poi tornano congelati. La consigliata.
+8. L'ordine delle fonti d'esperienza è quello delle parole di D32, dalla più piccola alla più grande: età, amichevoli, sfide, club, tornei; per esempio età 2, amichevoli 2,5, sfide 3, club 4,5, tornei 8, sempre 20 a 50 anni. La consigliata; correggere anche i numeri d'esempio scritti in D32.
+9. La Coppa delle polisportive come i tornei: dà alla rosa la fedeltà come una medaglia (4 oro, 3 argento, 2 bronzo, 1 legno) e l'esperienza di fasi e piazzamenti come nei tornei individuali. La consigliata.
+10. Invio nei dialoghi delle sfide come nel calendario: Invio sugli elenchi non fa niente, si lancia o si accetta solo col pulsante (Alt+L, Alt+A). La consigliata.
+11. La seconda riga della barra di stato dice quante sfide restano da lanciare, entro i 40 caratteri. La consigliata.
+Letture e scelte tecniche di ClaudIA sugli altri punti lasciati aperti, da applicare.
+12. La fatica della giornata (risposta 5) vale anche nella gara a squadre e nell'esito rapido a squadre: ogni incontro dopo il primo del giorno parte con un quarto delle azioni già giocate.
+13. Gli incontri non regolari dall'anno 50 della prova lunga (uno ogni 32-35, sopra il bersaglio di circa uno su 45 della risposta sugli infortuni) si riportano nel bersaglio a regime con la nuova taratura, senza toccare i ritiri dei mondi giovani, che stanno sotto.
+14. Il guadagno delle accelerazioni si misura a processore libero, e ogni accelerazione resta identica al bit (impronte di tests/dati/impronte_tappa_12.json).
+15. GBUtils V205 si pubblica alla chiusura, insieme a Showdown; i tasti nuovi e i 69 suoni della finestra (con i 5 aggiunti e i 3 riusati) si confermano al collaudo e all'ascolto di Gabriele.
+16. Le altre scelte tecniche degli agenti elencate in rapporti/da_decidere.txt restano come sono.
