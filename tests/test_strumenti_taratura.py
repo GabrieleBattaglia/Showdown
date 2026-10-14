@@ -12,11 +12,13 @@ favorito del banco con la scala ferma della 1.50.0, e l'oblio dell'apprendista n
 della carriera perfetta, che scatta a ogni mese come nel mondo vero.
 """
 
+import datetime
 import hashlib
 import math
 import random
 import statistics
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -336,3 +338,30 @@ def test_la_carriera_perfetta_gioca_il_calendario():
     assert r["seduta"] == 150 and r["punti_totali"] == pytest.approx(150 + sum(r["grezzi"][f] * fattori[f] for f in fattori))
     assert r["conteggi"]["giorni"] == pytest.approx(150 * cp.FATTORE_GRUPPO) and r["eta_a1"] > cp.ETA_INGRESSO
     assert cp.blocco_costanti(fattori, esperienze)[1].startswith("PA_FATTORE_AMICHEVOLE = ")
+
+
+def test_la_carriera_perfetta_va_al_mondiale_coi_punti_e_si_misura_in_media():
+    # La revisione del 14 ottobre 2026: la carriera va al mondiale coi punti dell'ultimo anno, come nel
+    # mondo, e i bersagli si leggono sulla media delle estrazioni di ogni nato.
+    import mondi_sintetici as ms
+    mondo_10 = ms.mondo_sintetico(60, 10, 3)
+    regime = ms.mondo_sintetico(120, None, 4, primo_id=600_000, candidati=420)
+    cp.prepara_contesto(cp.contesto_in_dizionari(mondo_10, regime, cp.calendario_predefinito(150)))
+    fattori, esperienze = cp.fonti_in_vigore()
+    nato = next(g for g in cp.nati(60, 11) if cp.senza_tratti(g))
+    c = cp.Carriera(nato, 11, fattori, esperienze, giorni=150, coda_da=cp.ETA_INGRESSO)
+    oggi = cp.DATA_INIZIO + datetime.timedelta(days=400)
+    c.punti_recenti = [(oggi.toordinal() - 400, 5000.0), (oggi.toordinal() - 30, costanti.PUNTI_PER_IL_MONDIALE["m"] - 1)]
+    mondiale = types.SimpleNamespace(data_apertura=oggi, data_inizio=oggi + datetime.timedelta(days=10), data_fine=oggi + datetime.timedelta(days=12))
+    c.g.sesso = "m"
+    c._mondiale_che_apre([mondiale], oggi)
+    assert c.mondiale is None and c.punti_dell_anno(oggi) == costanti.PUNTI_PER_IL_MONDIALE["m"] - 1
+    c.punti_recenti.append((oggi.toordinal() - 10, 1.0))
+    c._mondiale_che_apre([mondiale], oggi)
+    assert c.mondiale is mondiale
+    carriere = [{"seme": s, "id": s, "estrazione": k, "eta_a1": eta, "punti_totali": 100.0 * eta, "seduta": 10.0, "esperienza_libera": 20.0,
+                 "grezzi": {"torneo": 1.0}, "grezzi_mondiale": 0.0, "conteggi": {"giorni": 1.0}, "storia": {"mondiali": k}}
+                for s, etas in ((1, (49.0, 50.0, 51.0)), (2, (48.0, 48.5, 49.0))) for k, eta in enumerate(etas)]
+    medie = cp.medie_per_nato(carriere)
+    assert [m["eta_a1"] for m in medie] == [50.0, 48.5] and medie[0]["rappresentante"]["eta_a1"] == 50.0
+    assert medie[0]["eta_a1_max"] == 51.0 and medie[0]["mondiali"] == 1.0

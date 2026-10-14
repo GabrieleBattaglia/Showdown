@@ -1,21 +1,21 @@
 {
- "nota": "Revisione della tappa 12, 14 ottobre 2026: gli spareggi del girone con la regola dei due dell'articolo 8, i riposi del tabellone che restano alle prime teste, la convocazione al mondiale con modelli_torneo.idoneo e gli impegni del sostituto, le iscrizioni tolte che l'automatica non riprende, l'albo coi nomi dei modelli per voce, le differite per sede e la chiave premi_tornei del rapporto; la somma della finestra del palmarès, più veloce, da sola lascia le impronte uguali al bit",
+ "nota": "Revisione della tappa 12, 14 ottobre 2026: l'esito rapido ritarato sui mondi maturi, con la pendenza che scende col livello medio della coppia e la pendenza della gara a squadre a 0,3989, e i fattori dei punti allenamento della carriera perfetta rifatta, che va al mondiale coi punti come nel mondo: torneo 3,813, amichevole 0,517, sfida 1,028",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "de43423b1f5769eb0dbc457d4c24d4caab270d80dd62e95b214b33f6eafd2b8b",
-  "vivi": 716,
-  "attivi": 716,
-  "tesserati": 636,
-  "polisportive": 43
+  "sha256": "bc1d9df809b9cdbe759cbd8dc61ef0b8f864d460a99fac593da8e664392f751e",
+  "vivi": 717,
+  "attivi": 717,
+  "tesserati": 630,
+  "polisportive": 42
  },
  "mondo_a_regime": {
-  "sha256": "ec5951ca24d68dc9ad6b2dbee82c55138af1496e9bfd2b32bfc7552948531c54",
-  "vivi": 1648,
-  "attivi": 1248,
-  "tesserati": 1088,
-  "polisportive": 76
+  "sha256": "9aec2cd46285232f325f7cb2637cb3880958293b3851c63cade6f04a4f8a1147",
+  "vivi": 1664,
+  "attivi": 1264,
+  "tesserati": 1091,
+  "polisportive": 77
  }
 }

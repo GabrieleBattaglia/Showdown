@@ -94,12 +94,24 @@ def numero(valore, decimali=1):
 
 
 def esito(scarto, massimo, errore=0.0):
-    """Dentro se lo scarto sta nel bersaglio; dentro col rumore se ci sta togliendo due volte l'errore della misura; altrimenti FUORI."""
+    """
+    Dentro se lo scarto sta nel bersaglio; dentro col rumore se ci sta togliendo una volta l'errore
+    della misura; altrimenti FUORI. Fino alla revisione del 14 ottobre 2026 si toglievano due errori, e
+    il bersaglio di 2 punti diventava di 4.
+    """
     if abs(scarto) <= massimo:
         return "dentro"
-    if errore and abs(scarto) - 2.0 * errore <= massimo:
+    if errore and abs(scarto) - errore <= massimo:
         return "dentro col rumore"
     return "FUORI"
+
+
+def scarto_appaiato(voci, vince_motore, vince_rapido):
+    """Lo scarto del favorito, esito rapido meno motore sugli stessi incontri, in punti percentuali, con l'errore appaiato della media."""
+    d = [(vince_rapido(v) == v["favorito"]) - (vince_motore(v) == v["favorito"]) for v in voci]
+    if len(d) < 2:
+        return 0.0, 0.0
+    return 100.0 * statistics.fmean(d), 100.0 * statistics.pstdev(d) / math.sqrt(len(d))
 
 
 # Le popolazioni.
@@ -112,7 +124,7 @@ def popolazioni(quanti):
     return prova + anno_10 + regime
 
 
-def popolazione_salvata(percorso, quanti=None, seme=1):
+def popolazione_salvata(percorso, quanti=None, seme=1, spostamento=PRIMO_ID_SALVATI):
     """
     I giocatori in attività che strumenti/simulazione_lunga.py --salva-popolazione ha scritto, che possono
     giocare, con gli identificativi spostati; con quanti, un campione a caso di quella grandezza.
@@ -122,7 +134,7 @@ def popolazione_salvata(percorso, quanti=None, seme=1):
     giocatori = []
     for voce in dati["giocatori"]:
         g = Giocatore.da_dizionario(voce)
-        g.id += PRIMO_ID_SALVATI
+        g.id += spostamento
         if g.puo_giocare:
             giocatori.append(g)
     if quanti and len(giocatori) > quanti:
@@ -368,31 +380,41 @@ def _limiti():
     return [0.0] + [f[0] for f in FASCE_DISTACCO if f[0] is not None] + [math.inf]
 
 
-def per_fascia(voci, vince_motore, vince_rapido):
-    """Per ogni fascia di distacco: il nome, gli incontri, e la vittoria del favorito col motore e con l'esito rapido, in percentuale."""
+def per_fascia(voci, vince_motore, vince_rapido, appaiato=False):
+    """
+    Per ogni fascia di distacco: il nome, gli incontri, e la vittoria del favorito col motore e con
+    l'esito rapido, in percentuale; con appaiato anche l'errore appaiato dello scarto.
+    """
     uscita = []
     for (basso, alto), (_l, nome, _b) in zip(itertools.pairwise(_limiti()), FASCE_DISTACCO, strict=True):
         fascia = [v for v in voci if basso <= v["distacco"] < alto]
         if fascia:
             motore = 100.0 * sum(1 for v in fascia if vince_motore(v) == v["favorito"]) / len(fascia)
             rapido = 100.0 * sum(1 for v in fascia if vince_rapido(v) == v["favorito"]) / len(fascia)
-            uscita.append((nome, len(fascia), motore, rapido))
+            if appaiato:
+                uscita.append((nome, len(fascia), motore, rapido, scarto_appaiato(fascia, vince_motore, vince_rapido)[1]))
+            else:
+                uscita.append((nome, len(fascia), motore, rapido))
     return uscita
 
 
 # Il ritocco della pendenza.
 
-def _gioca_rapido_in_casa(lavoro, taratura):
+def _gioca_rapido_in_casa(lavoro, taratura, memoria=None):
     id_a, id_b, set_al_meglio, seme, acciaccato = lavoro
     a, b = _GIOCATORI_PER_FORZA[id_a], _GIOCATORI_PER_FORZA[id_b]
     cali = {acciaccato[0]: acciaccato[1]} if acciaccato else None
-    return esito_rapido.gioca(a, b, formato_singolare(set_al_meglio), seme, basi_infortunio=_basi(a, b), cali=cali, taratura=taratura).vincitore
+    return esito_rapido.gioca(a, b, formato_singolare(set_al_meglio), seme, basi_infortunio=_basi(a, b), cali=cali, taratura=taratura, memoria=memoria).vincitore
 
 
-# Il ritocco a due fattori: la pendenza della forza e il peso della fatica. La prima griglia è larga, la
-# seconda stringe attorno al migliore della prima.
+# Il ritocco a tre fattori: la pendenza della forza, il peso della fatica e, dalla revisione del 14
+# ottobre 2026, la pendenza che scende col livello medio dei due. La prima griglia è larga, la seconda
+# stringe attorno al migliore della prima.
 GRIGLIA_PENDENZA = tuple(round(0.95 + 0.05 * i, 3) for i in range(7))
 GRIGLIA_FATICA = tuple(round(1.0 + 0.25 * i, 3) for i in range(7))
+GRIGLIA_LIVELLO = tuple(round(0.05 * i, 3) for i in range(9))
+# I quarti di livello, che l'errore del ritocco e la verifica guardano fascia per fascia.
+QUARTI_DI_LIVELLO = 4
 
 
 def _gruppi_del_ritocco(v):
@@ -400,16 +422,32 @@ def _gruppi_del_ritocco(v):
     return {lato: [nome for nome in nomi if nome.startswith("età") or nome == "l'acciaccato"] for lato, nomi in gruppi_dei_residui(v).items()}
 
 
-def errore_del_ritocco(voci, gruppi, chiave="rapido_prova"):
+def quarti_di_livello(voci):
+    """Le soglie dei quarti del livello medio delle coppie, che sta in v["livello"]."""
+    livelli = sorted(v["livello"] for v in voci)
+    return [livelli[len(livelli) * k // QUARTI_DI_LIVELLO] for k in range(1, QUARTI_DI_LIVELLO)]
+
+
+def quarto_di(v, soglie):
+    return sum(1 for s in soglie if v["livello"] >= s)
+
+
+def errore_del_ritocco(voci, gruppi, chiave="rapido_prova", soglie=None):
     """
     La somma dei quadrati degli scarti fra motore ed esito rapido, in punti percentuali, pesati per gli
-    incontri: le fasce del favorito, formato per formato, e i residui delle fasce d'età e degli acciaccati.
+    incontri: le fasce del favorito, formato per formato e, con le soglie, quarto di livello per quarto
+    di livello, e i residui delle fasce d'età e degli acciaccati.
     """
     errore = 0.0
     for set_al_meglio in (3, 5):
         gruppo = [v for v in voci if v["formato"] == set_al_meglio]
         for _nome, n, motore, rapido in per_fascia(gruppo, lambda v: v["vincitore"], lambda v, c=chiave: v[c]):
             errore += n * (motore - rapido) ** 2
+        if soglie:
+            for quarto in range(QUARTI_DI_LIVELLO):
+                parte = [v for v in gruppo if quarto_di(v, soglie) == quarto]
+                for _nome, n, motore, rapido in per_fascia(parte, lambda v: v["vincitore"], lambda v, c=chiave: v[c]):
+                    errore += n * (motore - rapido) ** 2
     differenze = {}
     for v, gruppi_v in zip(voci, gruppi, strict=True):
         for lato, nomi in gruppi_v.items():
@@ -423,37 +461,48 @@ def errore_del_ritocco(voci, gruppi, chiave="rapido_prova"):
 
 def ritocca_pendenza(voci, lavori, taratura, scrivi):
     """
-    I due fattori che rimettono al loro posto le vittorie: uno sulla pendenza della forza, per il
-    favorito, e uno sul peso della fatica, per i giovani contro gli anziani e per gli acciaccati, perché
-    la regressione sugli scambi li fa uscire tutti e due un poco più piatti del vero. Gli incontri
-    della taratura si rigiocano con l'esito rapido per ogni coppia di fattori provata, con gli stessi
-    semi, e vince la coppia con la somma più piccola dei quadrati degli scarti, errore_del_ritocco:
-    prima su una griglia larga, poi su una stretta attorno alla migliore. Restituisce la taratura ritoccata.
+    I tre fattori che rimettono al loro posto le vittorie: uno sulla pendenza della forza, per il
+    favorito, uno sul peso della fatica, per i giovani contro gli anziani e per gli acciaccati, perché
+    la regressione sugli scambi li fa uscire tutti e due un poco più piatti del vero, e la pendenza del
+    livello, PENDENZA_LIVELLO, perché nel motore il favorito conta meno fra i forti: la revisione del 14
+    ottobre 2026 ha visto lo scarto del favorito salire dal quarto più debole al più forte delle coppie,
+    da meno 2 a più 5 punti. Il livello di riferimento è la mediana del livello delle coppie. Gli
+    incontri della taratura si rigiocano con l'esito rapido per ogni terna di fattori provata, con gli
+    stessi semi, e vince la terna con la somma più piccola dei quadrati degli scarti, errore_del_ritocco,
+    che guarda anche i quarti di livello: prima su una griglia larga, poi su una stretta attorno alla
+    migliore. Restituisce la taratura ritoccata.
     """
+    memoria = {}
     for v, lavoro in zip(voci, lavori, strict=True):
         v["favorito"], v["distacco"] = favorito_e_distacco(lavoro[0], lavoro[1])
+        v["livello"] = (esito_rapido.forza(_GIOCATORI_PER_FORZA[lavoro[0]], taratura, memoria) + esito_rapido.forza(_GIOCATORI_PER_FORZA[lavoro[1]], taratura, memoria)) / 2.0
+    riferimento = round(statistics.median(v["livello"] for v in voci), 2)
+    soglie = quarti_di_livello(voci)
     gruppi = [_gruppi_del_ritocco(v) for v in voci]
     provati = {}
 
-    def prova(c1, c2):
-        chiave = (round(c1, 4), round(c2, 4))
+    def prova(c1, c2, c3):
+        chiave = (round(c1, 4), round(c2, 4), round(c3, 4))
         if chiave not in provati:
-            t = dataclasses.replace(taratura, PENDENZA=round(taratura.PENDENZA * c1, 4), K_FATICA=round(taratura.K_FATICA * c2, 3))
+            t = dataclasses.replace(taratura, PENDENZA=round(taratura.PENDENZA * c1, 4), K_FATICA=round(taratura.K_FATICA * c2, 3), PENDENZA_LIVELLO=round(c3, 4),
+                                    LIVELLO_RIFERIMENTO=riferimento)
             for v, lavoro in zip(voci, lavori, strict=True):
-                v["rapido_prova"] = _gioca_rapido_in_casa(lavoro, t)
-            provati[chiave] = errore_del_ritocco(voci, gruppi)
+                v["rapido_prova"] = _gioca_rapido_in_casa(lavoro, t, memoria)
+            provati[chiave] = errore_del_ritocco(voci, gruppi, soglie=soglie)
         return provati[chiave]
 
-    migliore = min(((c1, c2) for c1 in GRIGLIA_PENDENZA for c2 in GRIGLIA_FATICA), key=lambda c: prova(*c))
-    stretta = [(round(migliore[0] + 0.0125 * i, 4), round(migliore[1] + 0.1 * j, 4)) for i in range(-2, 3) for j in range(-2, 3) if migliore[1] + 0.1 * j > 0]
+    migliore = min(((c1, c2, c3) for c1 in GRIGLIA_PENDENZA for c2 in GRIGLIA_FATICA for c3 in GRIGLIA_LIVELLO), key=lambda c: prova(*c))
+    stretta = [(round(migliore[0] + 0.0125 * i, 4), round(migliore[1] + 0.1 * j, 4), round(migliore[2] + 0.0125 * k, 4))
+               for i in range(-2, 3) for j in range(-2, 3) for k in range(-2, 3) if migliore[1] + 0.1 * j > 0 and migliore[2] + 0.0125 * k >= 0]
     migliore = min(stretta, key=lambda c: prova(*c))
-    senza = prova(1.0, 1.0)
-    scrivi(f"Il ritocco sugli incontri della taratura, rigiocati con l'esito rapido per {len(provati)} coppie di fattori: la pendenza per {numero(migliore[0], 4)} e il peso "
-           f"della fatica per {numero(migliore[1], 3)}; la somma pesata dei quadrati degli scarti scende da {numero(senza / len(voci), 2)} senza ritocco a "
-           f"{numero(provati[migliore] / len(voci), 2)} per incontro.")
+    senza = prova(1.0, 1.0, 0.0)
+    scrivi(f"Il ritocco sugli incontri della taratura, rigiocati con l'esito rapido per {len(provati)} terne di fattori: la pendenza per {numero(migliore[0], 4)}, il peso "
+           f"della fatica per {numero(migliore[1], 3)}, la pendenza del livello {numero(migliore[2], 4)} attorno al livello {numero(riferimento, 2)}; la somma pesata dei "
+           f"quadrati degli scarti scende da {numero(senza / len(voci), 2)} senza ritocco a {numero(provati[migliore] / len(voci), 2)} per incontro.")
     for v in voci:
         v.pop("rapido_prova", None)
-    return dataclasses.replace(taratura, PENDENZA=round(taratura.PENDENZA * migliore[0], 4), K_FATICA=round(taratura.K_FATICA * migliore[1], 3))
+    return dataclasses.replace(taratura, PENDENZA=round(taratura.PENDENZA * migliore[0], 4), K_FATICA=round(taratura.K_FATICA * migliore[1], 3),
+                               PENDENZA_LIVELLO=round(migliore[2], 4), LIVELLO_RIFERIMENTO=riferimento)
 
 
 def ritocca_pendenza_squadre(gare, lavori, taratura, scrivi):
@@ -590,16 +639,25 @@ def verifica(voci, gare, scrivi, extra=None):
             fuori.append(nome)
         return giudizio
 
+    soglie = quarti_di_livello(voci) if voci and "livello" in voci[0] else None
     for set_al_meglio in (3, 5):
         gruppo = [v for v in voci if v["formato"] == set_al_meglio]
         if not gruppo:
             continue
         scrivi(f"Al meglio dei {set_al_meglio}, {len(gruppo)} incontri.")
-        for nome, n, motore, rapido in per_fascia(gruppo, lambda v: v["vincitore"], lambda v: v["rapido"]["vincitore"]):
-            errore = 100.0 * math.sqrt(2.0 * (motore / 100.0) * (1.0 - motore / 100.0) / n)
+        for nome, n, motore, rapido, errore in per_fascia(gruppo, lambda v: v["vincitore"], lambda v: v["rapido"]["vincitore"], appaiato=True):
             scrivi(f"Distacco {nome}, {n} incontri: il favorito vince il {numero(motore)} per cento col motore e il {numero(rapido)} con l'esito rapido, "
-                   f"scarto {numero(rapido - motore)}, con un errore di {numero(errore)}, bersaglio entro {numero(SCARTO_FASCIA)}: "
+                   f"scarto {numero(rapido - motore)}, con un errore appaiato di {numero(errore)}, bersaglio entro {numero(SCARTO_FASCIA)}: "
                    f"{giudica(f'fascia {nome} al meglio dei {set_al_meglio}', rapido - motore, SCARTO_FASCIA, errore, n)}.")
+        if soglie:
+            # Dalla revisione del 14 ottobre 2026 anche quarto di livello per quarto di livello, perché lì stava lo scarto del mondo maturo.
+            for quarto in range(QUARTI_DI_LIVELLO):
+                parte = [v for v in gruppo if quarto_di(v, soglie) == quarto]
+                pezzi = []
+                for nome, n, motore, rapido, errore in per_fascia(parte, lambda v: v["vincitore"], lambda v: v["rapido"]["vincitore"], appaiato=True):
+                    giudizio = giudica(f"fascia {nome} al meglio dei {set_al_meglio}, quarto di livello {quarto + 1}", rapido - motore, SCARTO_FASCIA, errore, n)
+                    pezzi.append(f"{nome}, {n} incontri, {numero(motore)} e {numero(rapido)}, scarto {numero(rapido - motore)} più o meno {numero(errore)}, {giudizio}")
+                scrivi(f"Quarto di livello {quarto + 1} al meglio dei {set_al_meglio}: " + "; ".join(pezzi) + ".")
         media_m, oltre_m, ris_m = misure_dei_set(gruppo)
         media_r, oltre_r, ris_r = misure_dei_set([v["rapido"] for v in gruppo])
         scrivi(f"Punti medi per set {numero(media_m, 2)} col motore e {numero(media_r, 2)} con l'esito rapido, bersaglio entro {numero(SCARTO_PUNTI_SET, 1)}: "
@@ -631,10 +689,9 @@ def verifica(voci, gare, scrivi, extra=None):
     if gare:
         for g in gare:
             g["favorito"], g["distacco"] = favorita_e_distacco_squadre(g["a"], g["b"])
-        for nome, n, motore, rapido in per_fascia(gare, lambda x: x["vincitore"], lambda x: x["rapido"]["vincitore"]):
-            errore = 100.0 * math.sqrt(2.0 * (motore / 100.0) * (1.0 - motore / 100.0) / n)
+        for nome, n, motore, rapido, errore in per_fascia(gare, lambda x: x["vincitore"], lambda x: x["rapido"]["vincitore"], appaiato=True):
             scrivi(f"Gara a squadre, distacco {nome}, {n} gare: la favorita vince il {numero(motore)} per cento col motore e il {numero(rapido)} con l'esito rapido, "
-                   f"scarto {numero(rapido - motore)}, con un errore di {numero(errore)}, bersaglio entro {numero(SCARTO_SQUADRE)}: "
+                   f"scarto {numero(rapido - motore)}, con un errore appaiato di {numero(errore)}, bersaglio entro {numero(SCARTO_SQUADRE)}: "
                    f"{giudica(f'gara a squadre, fascia {nome}', rapido - motore, SCARTO_SQUADRE, errore, n)}.")
         punti_m = statistics.fmean(sum(g["set"][0]) for g in gare)
         punti_r = statistics.fmean(sum(g["rapido"]["set"][0]) for g in gare)
@@ -667,7 +724,7 @@ def tempo_dell_esito_rapido(giocatori, taratura, quanti=4000):
 def blocco(taratura):
     righe = ["Il blocco da copiare nei predefiniti di TaraturaRapida, in esito_rapido.py:", f"_PESI = {taratura.PESI!r}", f"_PESI_TRATTI = {taratura.PESI_TRATTI_RAPIDI!r}"]
     for campo in ("PESO_LETTURA", "PENDENZA", "K_FATICA", "VANTAGGIO_BATTUTA", "GOAL_BASE", "GOAL_DISTACCO", "GOAL_LIVELLO", "PENALITA", "AZIONI_PER_SCAMBIO",
-                  "ATTACCHI_PER_SCAMBIO", "PENDENZA_SQUADRE", "K_FATICA_SQUADRE", "VANTAGGIO_BATTUTA_SQUADRE", "GOAL_SQUADRE"):
+                  "ATTACCHI_PER_SCAMBIO", "PENDENZA_SQUADRE", "K_FATICA_SQUADRE", "VANTAGGIO_BATTUTA_SQUADRE", "GOAL_SQUADRE", "PENDENZA_LIVELLO", "LIVELLO_RIFERIMENTO"):
         righe.append(f"{campo} = {getattr(taratura, campo)!r}")
     return righe
 
@@ -680,7 +737,9 @@ def main():
     parser.add_argument("--giocatori", type=int, default=1500, help="i giocatori di ognuna delle tre popolazioni")
     parser.add_argument("--processi", type=int, default=1, help="quanti processi usare, uno se non indicato")
     parser.add_argument("--veloce", action="store_true", help="un primo giro piccolo: 1.500 incontri, 400 gare a squadre, 2.000 di verifica, 600 giocatori per popolazione")
-    parser.add_argument("--popolazione", type=Path, default=None, help="aggiunge i giocatori salvati da simulazione_lunga.py --salva-popolazione; con --solo-verifica si gioca soltanto su loro")
+    parser.add_argument("--popolazione", type=Path, nargs="*", default=[],
+                        help="aggiunge i giocatori salvati da simulazione_lunga.py --salva-popolazione, anche di più file; con --solo-verifica si gioca soltanto su loro")
+    parser.add_argument("--campione", type=int, default=3000, help="quanti giocatori prendere da ogni popolazione salvata, 3.000 se non indicato; zero per tutti")
     parser.add_argument("--solo-verifica", action="store_true", help="niente taratura: la verifica dei numeri di adesso di TaraturaRapida")
     parser.add_argument("--senza-ritocco", action="store_true", help="la taratura senza il ritocco della pendenza, per il confronto")
     parser.add_argument("--rapporto", type=Path, default=None, help="scrive la carta della taratura in questo file")
@@ -694,15 +753,22 @@ def main():
         righe.append(riga)
         print(riga, flush=True)
 
-    salvati, data_salvati = popolazione_salvata(argomenti.popolazione) if argomenti.popolazione else ([], "")
+    # Le popolazioni salvate, ciascuna coi suoi identificativi, per dire la verifica popolazione per popolazione.
+    salvati, origini = [], []
+    for numero_file, percorso in enumerate(argomenti.popolazione, start=1):
+        giocatori_file, data_file = popolazione_salvata(percorso, argomenti.campione or None, seme=numero_file, spostamento=PRIMO_ID_SALVATI * numero_file)
+        salvati.extend(giocatori_file)
+        origini.append((f"{percorso.name} al {data_file[:10]}", PRIMO_ID_SALVATI * numero_file, PRIMO_ID_SALVATI * (numero_file + 1)))
     if argomenti.solo_verifica and salvati:
         giocatori = salvati
     else:
         giocatori = popolazioni(argomenti.giocatori) + salvati
+        origini = [("popolazione di prova", 0, 200_000), ("mondo sintetico all'anno 10", 200_000, 400_000), ("mondo sintetico a regime", 400_000, PRIMO_ID_SALVATI),
+                   *origini]
     for g in giocatori:
         _GIOCATORI_PER_FORZA[g.id] = g
     profili = {g.id: _profilo(g) for g in giocatori}
-    descrizione = f"{len(giocatori)} giocatori" + (f", di cui {len(salvati)} del mondo simulato al {data_salvati[:10]}" if salvati else " in tre popolazioni")
+    descrizione = f"{len(giocatori)} giocatori" + (f", di cui {len(salvati)} di {len(argomenti.popolazione)} mondi simulati" if salvati else " in tre popolazioni")
     if argomenti.solo_verifica:
         taratura = esito_rapido.TARATURA_RAPIDA
         scrivi(f"Verifica dell'esito rapido sul motore vero, coi numeri di adesso di TaraturaRapida: {descrizione}.")
@@ -724,14 +790,29 @@ def main():
             taratura = ritocca_pendenza(voci, lavori, taratura, scrivi)
             taratura = ritocca_pendenza_squadre(gare, lavori_gare, taratura, scrivi)
     verifiche = in_parallelo(gioca_singolari, giocatori, coppie(giocatori, argomenti.verifica, 2), argomenti.processi, rapido_anche=True, taratura=taratura)
+    memoria = {}
     for v in verifiche:
         v["favorito"], v["distacco"] = favorito_e_distacco(v["a"], v["b"])
+        v["livello"] = (esito_rapido.forza(_GIOCATORI_PER_FORZA[v["a"]], taratura, memoria) + esito_rapido.forza(_GIOCATORI_PER_FORZA[v["b"]], taratura, memoria)) / 2.0
     gare_verifica = in_parallelo(gioca_gare, giocatori, squadre_a_caso(giocatori, max(1, argomenti.verifica // 8), 2), argomenti.processi, rapido_anche=True,
                                  taratura=taratura)
     extra = (sonda_fatica(giocatori, max(200, argomenti.verifica // 20), 3, taratura), sonda_pari_forti(giocatori, max(300, argomenti.verifica // 15), 4, taratura))
     scrivi(f"La verifica: {len(verifiche)} incontri e {len(gare_verifica)} gare a squadre su altre coppie e altri semi, giocati col motore e con l'esito rapido.")
     fuori = verifica(verifiche, gare_verifica, scrivi, extra)
     scrivi("Bersagli fuori: " + ("; ".join(fuori) if fuori else "nessuno") + ".")
+    # La verifica popolazione per popolazione, sulle coppie con tutti e due i giocatori della stessa: si
+    # dice, e i bersagli sono quelli di sopra; qui conta vedere che nessuna popolazione stia da parte.
+    for nome, basso, alto in origini:
+        sue = [v for v in verifiche if basso <= v["a"] < alto and basso <= v["b"] < alto]
+        if len(sue) < MINIMO_PER_GIUDICARE:
+            continue
+        pezzi = []
+        for set_al_meglio in (3, 5):
+            for fascia, n, motore, rapido, errore in per_fascia([v for v in sue if v["formato"] == set_al_meglio], lambda v: v["vincitore"],
+                                                               lambda v: v["rapido"]["vincitore"], appaiato=True):
+                pezzi.append(f"al meglio dei {set_al_meglio}, {fascia}, {n} incontri, scarto {numero(rapido - motore)} più o meno {numero(errore)}"
+                             + ("" if n < MINIMO_PER_GIUDICARE else f", {esito(rapido - motore, SCARTO_FASCIA, errore)}"))
+        scrivi(f"Popolazione {nome}, {len(sue)} incontri: " + "; ".join(pezzi) + ".")
     scrivi(f"L'esito rapido costa {numero(tempo_dell_esito_rapido(giocatori, taratura), 1)} microsecondi a incontro al meglio dei 3, con la memoria della forza.")
     for riga in blocco(taratura):
         scrivi(riga)

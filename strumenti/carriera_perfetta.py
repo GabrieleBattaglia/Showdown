@@ -34,6 +34,17 @@ Lo strumento stampa: i fattori e le esperienze da copiare in costanti.py, le quo
 della seduta, i punti al mese, l'età di A1 dei cinque semi e dei tre ipovedenti, l'esperienza a 50
 anni senza tetto, la classe a 20, 30, 40 e 50 anni, quanto pesa il mondiale, i casi tipici di oggi e
 le lettere dei mondi sintetici.
+La revisione del 14 ottobre 2026 ha cambiato due cose. Primo, una carriera sola per nato era una
+fortuna dell'estrazione: con altri semi del caso la stessa carriera arrivava ad A1 dopo i 50 anni. Ora
+i nati sono dieci, ciascuno giocato con cinque estrazioni del caso, e il bersaglio è la media del nato
+più lento, fra 49,5 e 50 anni, con al più una carriera su dieci dopo i 50; l'esperienza si risolve
+sulla media dello stesso nato. Alla fine i mondi sintetici si rifanno coi fattori trovati e tutte le
+carriere si rigiocano, così la carta si riproduce da costanti.py. Secondo, la carriera va al mondiale
+come nel mondo: all'apertura, se i punti della classifica dell'ultimo anno, presi coi piazzamenti come
+fa premiazioni.chiudi, passano la soglia del trentaduesimo convocato del mondo a regime,
+PUNTI_PER_IL_MONDIALE; prima bastava il punteggio di classe del trentaduesimo del mondo sintetico, e la
+carriera giocava sei mondiali sempre, dal primo a 32 anni e mezzo. Gli avversari del mondiale restano
+i primi 31 per classe del mondo sintetico a regime, che per forza somigliano ai convocati del mondo.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/carriera_perfetta.py --processi 8 --rapporto carriera.txt
     python strumenti/carriera_perfetta.py --veloce
@@ -70,6 +81,7 @@ import esperienza  # noqa: E402
 import formule  # noqa: E402
 import iscrizioni  # noqa: E402
 import modelli_torneo  # noqa: E402
+import palmares  # noqa: E402
 import partita  # noqa: E402
 import percorsi  # noqa: E402
 import tornei  # noqa: E402
@@ -95,11 +107,20 @@ ESPERIENZA_AMICHEVOLI, ESPERIENZA_SFIDE, ESPERIENZA_CLUB, ESPERIENZA_TORNEI = 2.
 PARTI_DEI_TORNEI = {"incontri_torneo": 0.5, "fasi": 0.2, "piazzamenti": 0.3}
 # Il bersaglio: la più lenta delle carriere vedenti ad A1 fra 49 e mezzo e 50 anni, cercata nel mezzo.
 ETA_A1_BERSAGLIO = 49.75
-TOLLERANZA_ETA = 0.08
-TOLLERANZA_FATTORI = 0.01
-# I nati di riferimento della carriera perfetta, vedenti, e gli ipovedenti, misurati per dire quando arrivano ad A1.
-SEMI_RIFERIMENTO = (11, 12, 13, 21, 99)
+# Dalla revisione del 14 ottobre 2026 il bersaglio è una media di cinque estrazioni, e la convocazione
+# al mondiale coi punti è una soglia: chi la passa per poco o la manca cambia di molto i suoi punti. La
+# media del nato più lento oscilla così di qualche decimo d'anno da un passo all'altro anche coi semi
+# fermi, e i fattori di qualche per cento: le tolleranze di prima, 0,08 anni e l'uno per cento, non si
+# raggiungevano mai.
+TOLLERANZA_ETA = 0.2
+TOLLERANZA_FATTORI = 0.03
+# I nati di riferimento della carriera perfetta, vedenti, e gli ipovedenti, misurati per dire quando
+# arrivano ad A1; ciascuno con ESTRAZIONI del caso, dalla revisione del 14 ottobre 2026, e al più
+# QUOTA_DOPO_I_50 delle carriere vedenti arriva ad A1 dopo i 50 anni.
+SEMI_RIFERIMENTO = (11, 12, 13, 21, 99, 31, 47, 58, 73, 85)
 SEMI_IPOVEDENTI = (11, 12, 13)
+ESTRAZIONI = 5
+QUOTA_DOPO_I_50 = 0.10
 # Il mondo sintetico a regime grande quanto il mondo vero, per il mondiale: i primi 32 di circa 10.300 per sesso.
 ATTIVI_A_REGIME = 20_600
 QUALIFICATI_MONDIALE = 32
@@ -277,6 +298,8 @@ class Carriera:
         self.prossimo = None
         self.iscrizione = None
         self.mondiale = None
+        # I punti della classifica dei piazzamenti, coppie di giorno e punti, per la convocazione al mondiale.
+        self.punti_recenti = []
         self.torneo = None
         self.id_torneo = 0
         self.contatore_tornei = 0.0
@@ -350,10 +373,19 @@ class Carriera:
         g.aggiorna_icv()
         return self
 
+    def punti_dell_anno(self, oggi):
+        """I punti della classifica dell'ultimo anno fino a oggi, come palmares.punti_dell_anno."""
+        limite = oggi.toordinal() - costanti.GIORNI_PUNTI_RECENTI
+        return sum(punti for giorno, punti in self.punti_recenti if giorno > limite)
+
     def _mondiale_che_apre(self, mondiali, oggi):
-        """All'apertura del mondiale del suo sesso, la convocazione se il punteggio di classe sta fra i primi 32; un'iscrizione che si sovrappone lascia il posto."""
+        """
+        All'apertura del mondiale del suo sesso, la convocazione come nel mondo: se i punti dell'ultimo
+        anno passano quelli del trentaduesimo convocato del mondo a regime; un'iscrizione che si
+        sovrappone lascia il posto.
+        """
         for ed in mondiali:
-            if ed.data_apertura == oggi and classe.punteggio(self.g) >= _CONTESTO["soglie"][self.g.sesso]:
+            if ed.data_apertura == oggi and self.punti_dell_anno(oggi) >= costanti.PUNTI_PER_IL_MONDIALE[self.g.sesso]:
                 self.mondiale = ed
                 if self.iscrizione is not None and self.iscrizione.data_inizio <= ed.data_fine and ed.data_inizio <= self.iscrizione.data_fine:
                     self.iscrizione = None
@@ -466,6 +498,7 @@ class Carriera:
         if torneo.stato != tornei.CONCLUSO:
             return
         posto = torneo.classifica_finale.index(self.g.id) + 1
+        self.punti_recenti.append((datetime.date.fromisoformat(torneo.data_inizio).toordinal(), palmares.punti_classifica(posto, importanza)))
         fasi = torneo.fasi_superate().get(self.g.id, 0)
         self._esperienza(self.esperienze["fasi"] * fasi * importanza)
         self.conteggi["fasi"] += fasi * importanza
@@ -544,11 +577,48 @@ def _nato_di_riferimento(seme, ipovedente=False):
     return al_percentile([g for g in nati(4000, seme) if senza_tratti(g) and g.ipovedente == ipovedente], 0.9)
 
 
-def gioca_una_carriera(seme, ipovedente, fattori, esperienze, giorni=GIORNI_CARRIERA):
-    """Una carriera in un processo, col contesto già pronto: il riassunto."""
+def gioca_una_carriera(seme, ipovedente, fattori, esperienze, giorni=GIORNI_CARRIERA, estrazione=0):
+    """
+    Una carriera in un processo, col contesto già pronto: il riassunto, col seme del nato e l'estrazione.
+    L'estrazione zero gioca col caso di prima, seme; le altre col caso seme-estrazione.
+    """
     imposta_fonti(fattori, esperienze)
     coda_da = 30.0 if giorni >= GIORNI_CARRIERA else ETA_INGRESSO
-    return Carriera(_nato_di_riferimento(seme, ipovedente), seme, fattori, esperienze, giorni=giorni, coda_da=coda_da).gioca().riassunto()
+    caso = seme if estrazione == 0 else f"{seme}-{estrazione}"
+    riassunto = Carriera(_nato_di_riferimento(seme, ipovedente), caso, fattori, esperienze, giorni=giorni, coda_da=coda_da).gioca().riassunto()
+    riassunto["seme"], riassunto["estrazione"] = seme, estrazione
+    return riassunto
+
+
+def medie_per_nato(carriere):
+    """
+    Le carriere raccolte per nato, con le medie delle sue estrazioni: età di A1, punti totali, seduta,
+    punti grezzi e conteggi dell'esperienza, esperienza senza tetto; e la carriera che le rappresenta,
+    quella con l'età di A1 più vicina alla media.
+    """
+    per_nato = {}
+    for c in carriere:
+        per_nato.setdefault(c["seme"], []).append(c)
+    medie = []
+    for seme, gruppo in per_nato.items():
+        eta = statistics.fmean(c["eta_a1"] for c in gruppo)
+        medie.append({
+            "seme": seme, "id": gruppo[0]["id"], "carriere": gruppo, "eta_a1": eta, "eta_a1_min": min(c["eta_a1"] for c in gruppo),
+            "eta_a1_max": max(c["eta_a1"] for c in gruppo), "punti_totali": statistics.fmean(c["punti_totali"] for c in gruppo),
+            "seduta": statistics.fmean(c["seduta"] for c in gruppo), "esperienza_libera": statistics.fmean(c["esperienza_libera"] for c in gruppo),
+            "grezzi": {f: statistics.fmean(c["grezzi"][f] for c in gruppo) for f in gruppo[0]["grezzi"]},
+            "grezzi_mondiale": statistics.fmean(c["grezzi_mondiale"] for c in gruppo),
+            "conteggi": {k: statistics.fmean(c["conteggi"][k] for c in gruppo) for k in gruppo[0]["conteggi"]},
+            "mondiali": statistics.fmean(c["storia"]["mondiali"] for c in gruppo),
+            "rappresentante": min(gruppo, key=lambda c: abs(c["eta_a1"] - eta)),
+        })
+    return sorted(medie, key=lambda m: m["seme"])
+
+
+def gioca_le_carriere(esecutore, semi, ipovedente, fattori, esperienze, giorni, estrazioni):
+    """Tutte le carriere dei nati dati, ciascuno con le sue estrazioni, sui processi dell'esecutore."""
+    futuri = [esecutore.submit(gioca_una_carriera, seme, ipovedente, fattori, esperienze, giorni, k) for seme in semi for k in range(estrazioni)]
+    return [f.result() for f in futuri]
 
 
 # Il metodo del punto 10.4.
@@ -580,32 +650,35 @@ def costruisci_contesto(fattori, esperienze, quanti, attivi, predefinito, stampa
 
 
 def esegui(argomenti, stampa):
-    """La ricerca dei fattori e delle esperienze, giro per giro: restituisce i fattori, le esperienze, i riassunti delle carriere e i mondi dell'ultimo giro."""
+    """
+    La ricerca dei fattori e delle esperienze, giro per giro, sulla media del nato più lento; alla fine i
+    mondi sintetici rifatti coi fattori trovati e tutte le carriere rigiocate. Restituisce i fattori, le
+    esperienze, le medie per nato delle carriere vedenti e delle ipovedenti, i mondi della verifica e la storia.
+    """
     fattori, esperienze = fonti_in_vigore()
     predefinito = calendario_predefinito(argomenti.giorni)
     storia = []
     totale = None
-    ultimi = None
     contesto = mondo_10 = regime = None
     for giro in range(1, argomenti.giri + 1):
         contesto, mondo_10, regime = costruisci_contesto(fattori, esperienze, argomenti.giocatori, argomenti.attivi, predefinito, stampa)
-        stampa(f"Giro {giro}: soglia del mondiale, il punteggio di classe del trentaduesimo, {numero(contesto['soglie']['m'], 4)} per gli uomini e "
-               f"{numero(contesto['soglie']['f'], 4)} per le donne.")
+        stampa(f"Giro {giro}: i mondiali si giocano coi punti dell'ultimo anno, soglia {numero(costanti.PUNTI_PER_IL_MONDIALE['m'], 0)} per gli uomini e "
+               f"{numero(costanti.PUNTI_PER_IL_MONDIALE['f'], 0)} per le donne; il punteggio di classe del trentaduesimo del mondo sintetico, la regola di prima, "
+               f"sarebbe {numero(contesto['soglie']['m'], 4)} e {numero(contesto['soglie']['f'], 4)}.")
         fattori_di_inizio_giro = dict(fattori)
         with concurrent.futures.ProcessPoolExecutor(max_workers=argomenti.processi, initializer=prepara_contesto, initargs=(contesto,)) as esecutore:
             punti_secante = []
             for passo in range(1, argomenti.passi + 1):
-                futuri = [esecutore.submit(gioca_una_carriera, seme, False, fattori, esperienze, argomenti.giorni) for seme in SEMI_RIFERIMENTO]
-                carriere = [f.result() for f in futuri]
-                lenta = max(carriere, key=lambda c: c["eta_a1"])
+                medie = medie_per_nato(gioca_le_carriere(esecutore, argomenti.semi, False, fattori, esperienze, argomenti.giorni, argomenti.estrazioni))
+                lenta = max(medie, key=lambda m: m["eta_a1"])
                 eta = lenta["eta_a1"]
                 totale_giocato = lenta["punti_totali"]
                 punti_secante.append((math.log(totale_giocato), eta))
+                dopo_i_50 = sum(1 for m in medie for c in m["carriere"] if c["eta_a1"] > ETA_USCITA) / sum(len(m["carriere"]) for m in medie)
                 stampa(f"Giro {giro}, passo {passo}: fattori torneo {numero(fattori[esperienza.TORNEO], 3)}, amichevole {numero(fattori[esperienza.AMICHEVOLE], 3)}, "
-                       f"sfida {numero(fattori[esperienza.SFIDA], 3)}; totale della più lenta {numero(totale_giocato, 0)} punti; età di A1 "
-                       + ", ".join(numero(c["eta_a1"], 2) for c in carriere) + "; esperienza a 50 anni senza tetto "
-                       + ", ".join(numero(c["esperienza_libera"], 2) for c in carriere) + ".")
-                ultimi = carriere
+                       f"sfida {numero(fattori[esperienza.SFIDA], 3)}; totale medio del nato più lento {numero(totale_giocato, 0)} punti; età media di A1 per nato "
+                       + ", ".join(numero(m["eta_a1"], 2) for m in medie) + f"; carriere dopo i 50 anni {numero(100 * dopo_i_50, 0)} per cento; esperienza media a 50 "
+                       "anni senza tetto " + ", ".join(numero(m["esperienza_libera"], 2) for m in medie) + ".")
                 nuove_esperienze = esperienze_dai_conteggi(lenta["conteggi"])
                 if len(punti_secante) == 1:
                     log_totale = punti_secante[-1][0] + 0.04 * (eta - ETA_A1_BERSAGLIO)
@@ -628,10 +701,13 @@ def esegui(argomenti, stampa):
         stampa(f"Fine del giro {giro}: i fattori si sono spostati al più del {numero(100 * spostamento_giro, 1)} per cento dall'inizio del giro.")
         if giro > 1 and spostamento_giro <= TOLLERANZA_FATTORI:
             break
+    # La verifica: i mondi sintetici rifatti coi fattori trovati, come li farebbe chi rilancia lo
+    # strumento con costanti.py aggiornato, e tutte le carriere rigiocate su quei mondi.
+    contesto, mondo_10, regime = costruisci_contesto(fattori, esperienze, argomenti.giocatori, argomenti.attivi, predefinito, stampa)
     with concurrent.futures.ProcessPoolExecutor(max_workers=argomenti.processi, initializer=prepara_contesto, initargs=(contesto,)) as esecutore:
-        futuri = [esecutore.submit(gioca_una_carriera, seme, True, fattori, esperienze, argomenti.giorni) for seme in SEMI_IPOVEDENTI]
-        ipovedenti = [f.result() for f in futuri]
-    return fattori, esperienze, ultimi, ipovedenti, mondo_10, regime, storia
+        vedenti = medie_per_nato(gioca_le_carriere(esecutore, argomenti.semi, False, fattori, esperienze, argomenti.giorni, argomenti.estrazioni))
+        ipovedenti = medie_per_nato(gioca_le_carriere(esecutore, SEMI_IPOVEDENTI, True, fattori, esperienze, argomenti.giorni, min(3, argomenti.estrazioni)))
+    return fattori, esperienze, vedenti, ipovedenti, mondo_10, regime, storia
 
 
 # Il racconto.
@@ -653,47 +729,65 @@ def blocco_costanti(fattori, esperienze):
             f"ESPERIENZA_PIAZZAMENTO_BASE = {esperienze['piazzamenti']:.5f}"]
 
 
-def racconta(fattori, esperienze, carriere, ipovedenti, mondo_10, regime, storia, argomenti, scrivi):
-    """Le righe del racconto: le quote, le età, l'esperienza, la classe, il mondiale, i casi tipici e le lettere."""
+def racconta(fattori, esperienze, vedenti, ipovedenti, mondo_10, regime, storia, argomenti, scrivi):
+    """
+    Le righe del racconto, sulla verifica coi mondi rifatti: le quote, le età per nato con le loro
+    estrazioni, l'esperienza, la classe, il mondiale, i casi tipici e le lettere. I numeri dei bersagli
+    sono le medie del nato più lento; la storia e le tappe sono della sua carriera più vicina alla media.
+    """
     imposta_fonti(fattori, esperienze)
-    lenta = max(carriere, key=lambda c: c["eta_a1"])
-    totale = lenta["punti_totali"]
-    per_fonte = {f: lenta["grezzi"][f] * fattori[f] for f in fattori}
-    scrivi(f"La ricerca ha fatto {len(storia)} passi in {max(s['giro'] for s in storia)} giri.")
-    scrivi(f"La carriera più lenta, il nato numero {lenta['id']}: {numero(totale, 0)} punti allenamento in {GIORNI_CARRIERA} giorni, {numero(totale / MESI_CARRIERA, 1)} al mese di "
-           f"30 giorni; la seduta ne fa il {numero(100 * lenta['seduta'] / totale)} per cento, i tornei il {numero(100 * per_fonte[esperienza.TORNEO] / totale)}, le amichevoli il "
-           f"{numero(100 * per_fonte[esperienza.AMICHEVOLE] / totale)}, le sfide il {numero(100 * per_fonte[esperienza.SFIDA] / totale)}; sulla parte delle partite, le proporzioni "
-           f"40, 34 e 4 di D32 diventano {numero(78 * per_fonte[esperienza.TORNEO] / (totale - lenta['seduta']), 2)}, "
-           f"{numero(78 * per_fonte[esperienza.AMICHEVOLE] / (totale - lenta['seduta']), 2)} e {numero(78 * per_fonte[esperienza.SFIDA] / (totale - lenta['seduta']), 2)}.")
+    media = max(vedenti, key=lambda m: m["eta_a1"])
+    lenta = media["rappresentante"]
+    totale = media["punti_totali"]
+    per_fonte = {f: media["grezzi"][f] * fattori[f] for f in fattori}
+    tutte = [c for m in vedenti for c in m["carriere"]]
+    dopo_i_50 = sum(1 for c in tutte if c["eta_a1"] > ETA_USCITA)
+    ricerca = f"La ricerca ha fatto {len(storia)} passi in {max(s['giro'] for s in storia)} giri" if storia else "Soltanto la verifica, coi fattori e le esperienze di costanti.py"
+    scrivi(f"{ricerca}; la verifica, coi mondi sintetici rifatti coi fattori trovati, ha giocato "
+           f"{len(tutte)} carriere vedenti, {len(vedenti)} nati con {argomenti.estrazioni} estrazioni del caso ciascuno, e "
+           f"{sum(len(m['carriere']) for m in ipovedenti)} carriere ipovedenti.")
+    scrivi(f"Il nato più lento, numero {media['id']} del seme {media['seme']}: in media {numero(totale, 0)} punti allenamento in {GIORNI_CARRIERA} giorni, "
+           f"{numero(totale / MESI_CARRIERA, 1)} al mese di 30 giorni; la seduta ne fa il {numero(100 * media['seduta'] / totale)} per cento, i tornei il "
+           f"{numero(100 * per_fonte[esperienza.TORNEO] / totale)}, le amichevoli il {numero(100 * per_fonte[esperienza.AMICHEVOLE] / totale)}, le sfide il "
+           f"{numero(100 * per_fonte[esperienza.SFIDA] / totale)}; sulla parte delle partite, le proporzioni 40, 34 e 4 di D32 diventano "
+           f"{numero(78 * per_fonte[esperienza.TORNEO] / (totale - media['seduta']), 2)}, {numero(78 * per_fonte[esperienza.AMICHEVOLE] / (totale - media['seduta']), 2)} e "
+           f"{numero(78 * per_fonte[esperienza.SFIDA] / (totale - media['seduta']), 2)}.")
     s = lenta["storia"]
-    scrivi(f"Che cosa ha giocato: {s['tornei']} tornei, di cui {s['mondiali']} mondiali, con {s['incontri_torneo']} incontri e {s['vinti_torneo']} vinti; "
-           f"{s['salti']} turni saltati col contatore; medaglie: {s['medaglie']['oro']} ori, {s['medaglie']['argento']} argenti, {s['medaglie']['bronzo']} bronzi, "
-           f"{s['medaglie']['legno']} legni, {s['titoli_mondiali']} titoli mondiali; {s['sfide']} sfide, {s['sfide_vinte']} vinte; {s['amichevoli']} amichevoli. "
-           f"Un incontro di torneo vale in media {numero(lenta['grezzi'][esperienza.TORNEO] * fattori[esperienza.TORNEO] / max(1, s['incontri_torneo']), 1)} punti, "
-           f"un'amichevole {numero(lenta['grezzi'][esperienza.AMICHEVOLE] * fattori[esperienza.AMICHEVOLE] / max(1, s['amichevoli']), 2)}, una sfida "
+    scrivi(f"Che cosa ha giocato la sua carriera più vicina alla media, estrazione {lenta['estrazione']}: {s['tornei']} tornei, di cui {s['mondiali']} mondiali, con "
+           f"{s['incontri_torneo']} incontri e {s['vinti_torneo']} vinti; {s['salti']} turni saltati col contatore; medaglie: {s['medaglie']['oro']} ori, "
+           f"{s['medaglie']['argento']} argenti, {s['medaglie']['bronzo']} bronzi, {s['medaglie']['legno']} legni, {s['titoli_mondiali']} titoli mondiali; {s['sfide']} sfide, "
+           f"{s['sfide_vinte']} vinte; {s['amichevoli']} amichevoli. Un incontro di torneo vale in media "
+           f"{numero(lenta['grezzi'][esperienza.TORNEO] * fattori[esperienza.TORNEO] / max(1, s['incontri_torneo']), 1)} punti, un'amichevole "
+           f"{numero(lenta['grezzi'][esperienza.AMICHEVOLE] * fattori[esperienza.AMICHEVOLE] / max(1, s['amichevoli']), 2)}, una sfida "
            f"{numero(lenta['grezzi'][esperienza.SFIDA] * fattori[esperienza.SFIDA] / max(1, s['sfide']), 2)}.")
-    primo = s["primo_mondiale"]
-    scrivi(f"Il mondiale, con l'importanza 4: la carriera più lenta lo gioca per la prima volta a {numero(primo, 1) + ' anni' if primo else 'nessuna età'}, e i suoi incontri "
-           f"fanno il {numero(100 * lenta['grezzi_mondiale'] / max(1e-9, lenta['grezzi'][esperienza.TORNEO]))} per cento dei punti grezzi dei tornei: i punti si spostano "
+    primi = [c["storia"]["primo_mondiale"] for c in tutte if c["storia"]["primo_mondiale"]]
+    scrivi(f"Il mondiale, con l'importanza 4 e la convocazione per i punti dell'ultimo anno come nel mondo: le carriere vedenti ne giocano da "
+           f"{min(c['storia']['mondiali'] for c in tutte)} a {max(c['storia']['mondiali'] for c in tutte)}, in media {numero(statistics.fmean(c['storia']['mondiali'] for c in tutte), 1)}, "
+           f"il primo fra {numero(min(primi), 1) if primi else 'nessuna'} e {numero(max(primi), 1) if primi else 'nessuna'} anni; nel nato più lento i mondiali fanno il "
+           f"{numero(100 * media['grezzi_mondiale'] / max(1e-9, media['grezzi'][esperienza.TORNEO]))} per cento dei punti grezzi dei tornei: i punti si spostano "
            "verso la fine della carriera, come vuole Gabriele, risposta 10.")
-    scrivi("Le cinque carriere vedenti: " + "; ".join(
-        f"nato numero {c['id']}, A1 a {numero(c['eta_a1'], 2)} anni, somma a 50 {numero(c['somma_50'], 1)}, esperienza a 50 senza tetto {numero(c['esperienza_libera'], 2)}, "
-        f"{c['storia']['tornei']} tornei, {c['storia']['mondiali']} mondiali" for c in carriere) + ".")
-    scrivi("Le tre carriere di nati ipovedenti, con lo sconto del 7 per cento sulle caratteristiche di gioco: " + "; ".join(
-        f"nato numero {c['id']}, A1 a {numero(c['eta_a1'], 2)} anni, somma a 50 {numero(c['somma_50'], 1)}" for c in ipovedenti) + ".")
-    conteggi = lenta["conteggi"]
+    scrivi(f"Le {len(vedenti)} carriere vedenti, nato per nato, l'età media di A1 con la più giovane e la più vecchia delle estrazioni: " + "; ".join(
+        f"nato numero {m['id']} del seme {m['seme']}, A1 in media a {numero(m['eta_a1'], 2)} anni, da {numero(m['eta_a1_min'], 2)} a {numero(m['eta_a1_max'], 2)}, "
+        f"esperienza a 50 senza tetto {numero(m['esperienza_libera'], 2)}, mondiali {numero(m['mondiali'], 1)}" for m in vedenti) + ".")
+    scrivi(f"Le carriere vedenti ad A1 dopo i 50 anni: {dopo_i_50} su {len(tutte)}, il {numero(100 * dopo_i_50 / len(tutte), 0)} per cento. Su tutte le carriere vedenti "
+           f"l'età di A1 è in media {numero(statistics.fmean(c['eta_a1'] for c in tutte), 2)} anni, mediana {numero(statistics.median(c['eta_a1'] for c in tutte), 2)}, "
+           f"e l'esperienza a 50 anni senza tetto in media {numero(statistics.fmean(c['esperienza_libera'] for c in tutte), 2)}: sono le misure che oscillano meno.")
+    scrivi("Le carriere di nati ipovedenti, con lo sconto del 7 per cento sulle caratteristiche di gioco: " + "; ".join(
+        f"nato numero {m['id']}, A1 in media a {numero(m['eta_a1'], 2)} anni, da {numero(m['eta_a1_min'], 2)} a {numero(m['eta_a1_max'], 2)}" for m in ipovedenti) + ".")
+    conteggi = media["conteggi"]
     eta_parte = costanti.ESPERIENZA_PER_ANNO_DI_VITA * (ETA_USCITA - ETA_INGRESSO)
     parti = {"età": eta_parte, "amichevoli": esperienze["amichevoli"] * conteggi["amichevoli"], "sfide": esperienze["sfide"] * conteggi["sfide"],
              "club": esperienze["club"] * conteggi["giorni"], "incontri di torneo": esperienze["incontri_torneo"] * conteggi["incontri_torneo"],
              "fasi superate": esperienze["fasi"] * conteggi["fasi"], "piazzamenti": esperienze["piazzamenti"] * conteggi["piazzamenti"]}
-    scrivi("L'esperienza della carriera più lenta a 50 anni, fonte per fonte: " + ", ".join(f"{nome} {numero(v, 2)}" for nome, v in parti.items())
+    scrivi("L'esperienza media del nato più lento a 50 anni, fonte per fonte: " + ", ".join(f"{nome} {numero(v, 2)}" for nome, v in parti.items())
            + f"; i tornei insieme {numero(parti['incontri di torneo'] + parti['fasi superate'] + parti['piazzamenti'], 2)}; in tutto senza tetto "
-           f"{numero(lenta['esperienza_libera'], 2)}.")
+           f"{numero(media['esperienza_libera'], 2)}.")
     for anni, t in sorted(lenta["tappe"].items()):
-        scrivi(f"Carriera più lenta a {anni} anni: classe {t['classe']}, somma {numero(t['somma'], 1)}, valore {numero(t['valore'])}, esperienza {numero(t['esperienza'], 2)}.")
-    scrivi("I bersagli del punto 13.3: la più lenta delle cinque carriere vedenti ad A1 fra 49,5 e 50 anni, e nessuna dopo i 50: "
-           + ("dentro" if all(c["eta_a1"] <= 50.0 for c in carriere) and 49.5 <= lenta["eta_a1"] <= 50.0 else "FUORI")
-           + f"; l'esperienza a 50 anni senza tetto fra 19,9 e 20,1: {'dentro' if 19.9 <= lenta['esperienza_libera'] <= 20.1 else 'FUORI'}.")
+        scrivi(f"La carriera del nato più lento vicina alla media a {anni} anni: classe {t['classe']}, somma {numero(t['somma'], 1)}, valore {numero(t['valore'])}, "
+               f"esperienza {numero(t['esperienza'], 2)}.")
+    scrivi("I bersagli del punto 13.3, sulle medie per nato dalla revisione del 14 ottobre 2026: il nato vedente più lento ad A1 in media fra 49,5 e 50 anni, e al più una "
+           f"carriera su dieci dopo i 50: {'dentro' if 49.5 <= media['eta_a1'] <= 50.0 and dopo_i_50 <= QUOTA_DOPO_I_50 * len(tutte) else 'FUORI'}; l'esperienza media a "
+           f"50 anni senza tetto fra 19,9 e 20,1: {'dentro' if 19.9 <= media['esperienza_libera'] <= 20.1 else 'FUORI'}.")
     # I casi tipici, con le gare del mondo, e le lettere dei mondi sintetici.
     nati_11 = nati(4000, 11)
     puliti = [g for g in nati_11 if senza_tratti(g)]
@@ -726,16 +820,19 @@ def racconta(fattori, esperienze, carriere, ipovedenti, mondo_10, regime, storia
 def main():
     parser = argparse.ArgumentParser(description="La carriera perfetta di MESS col calendario vero: i fattori dei punti e le costanti dell'esperienza.")
     parser.add_argument("--processi", type=int, default=min(8, os.cpu_count() or 1), help="quanti processi giocano le carriere, fino a 8 se il computer li ha")
-    parser.add_argument("--giri", type=int, default=3, help="i giri al più, ciascuno coi mondi sintetici rifatti, 3 se non indicati")
+    parser.add_argument("--giri", type=int, default=3, help="i giri al più, ciascuno coi mondi sintetici rifatti, 3 se non indicati; zero per la sola verifica")
     parser.add_argument("--passi", type=int, default=10, help="i passi al più delle secanti in un giro, 10 se non indicati")
     parser.add_argument("--giocatori", type=int, default=3000, help="i giocatori del mondo sintetico all'anno 10, 3000 se non indicato")
     parser.add_argument("--attivi", type=int, default=ATTIVI_A_REGIME, help="i giocatori del mondo sintetico a regime, 20.600 se non indicato")
     parser.add_argument("--giorni", type=int, default=GIORNI_CARRIERA, help="i giorni della carriera, 4.428 se non indicato; più corta soltanto per provare lo strumento")
+    parser.add_argument("--estrazioni", type=int, default=ESTRAZIONI, help="le estrazioni del caso di ogni nato, 5 se non indicato")
+    parser.add_argument("--nati", type=int, default=len(SEMI_RIFERIMENTO), help="quanti nati di riferimento, i primi di SEMI_RIFERIMENTO, 10 se non indicato")
     parser.add_argument("--veloce", action="store_true", help="per provare lo strumento: mondi piccoli, un giro e due passi")
     parser.add_argument("--rapporto", type=Path, default=None, help="salva il racconto anche in questo file")
     argomenti = parser.parse_args()
     if argomenti.veloce:
         argomenti.giocatori, argomenti.attivi, argomenti.giri, argomenti.passi = 600, 3000, 1, 2
+    argomenti.semi = SEMI_RIFERIMENTO[:max(1, argomenti.nati)]
     inizio = time.perf_counter()
     righe = []
 

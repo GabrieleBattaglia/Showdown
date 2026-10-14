@@ -46,12 +46,19 @@ TRATTI_RAPIDI = ("mancino", "ambidestro", "giocorapido", "cambiovelocita")
 # verifica finale del punto 13.5, sulla popolazione del mondo simulato all'anno 20 col seme 2026, ha trovato il favorito della
 # fascia dal 15 al 30 per cento a 4 punti sopra il motore. Questi numeri vengono dalla taratura rifatta su quella popolazione e
 # sulle tre di prima, 20.000 incontri e 4.000 gare a squadre: la pendenza per 1,04, il peso della fatica per 1,40, la pendenza
-# della gara a squadre per 1,38; la verifica su 40.000 incontri e 5.000 gare li mette tutti dentro, qualcuno col rumore.
-_PESI = {"lungolineasx": 0.369, "lungolineadx": 0.593, "diagonalesx": 0.111, "diagonaledx": 0.528, "singolaspondasx": 0.326, "singolaspondadx": 0.597,
-         "doppiaspondasx": 0.445, "doppiaspondadx": 0.267, "triplaspondasx": 0.174, "triplaspondadx": 0.312, "bomba": 0.071, "battutasx": 0.637,
-         "battutadx": 0.656, "chiusura_dritto": 2.283, "chiusura_rovescio": 2.951, "blocco_dritto": 0.97, "blocco_rovescio": 1.369, "difesa": 3.451,
-         "tenutapaletta": 1.273, "controllopalla": 0.743, "attacco": 1.401, "precisione": 2.665, "forza": 1.533, "resistenza": 0.277}
-_PESI_TRATTI = {"mancino": 0.068, "ambidestro": 0.089, "giocorapido": -0.009, "cambiovelocita": 0.092}
+# della gara a squadre per 1,38; la verifica su 40.000 incontri e 5.000 gare li metteva tutti dentro, qualcuno col rumore.
+# La revisione del 14 ottobre 2026 ha visto il favorito del mondo maturo, agli anni 40 e 60, da 2 a 5 punti sopra il motore, e lo
+# scarto crescere col livello medio della coppia, da meno 2 nel quarto più debole a più 5 nel più forte, già all'anno 20. Questi
+# numeri vengono dalla taratura rifatta sulle tre popolazioni sintetiche e sui mondi simulati all'anno 20 del seme 2026, all'anno 40
+# del 404 e all'anno 60 dell'8888, 30.000 incontri e 4.000 gare a squadre, col ritocco a tre fattori: la pendenza per 1,00, il peso
+# della fatica per 1,50 e la pendenza che scende col livello, 0,2375 attorno a 4,63; la gara a squadre per 1,35. La verifica, con
+# l'errore appaiato e una sola volta l'errore di tolleranza, mette dentro tutte le fasce del favorito, al meglio dei 3 e dei 5, e
+# toglie lo scarto dei quarti di livello; resta fuori di poco il 3 a 0 al meglio dei 5, 40,1 per cento contro 43,4.
+_PESI = {"lungolineasx": 0.392, "lungolineadx": 0.498, "diagonalesx": 0.289, "diagonaledx": 0.49, "singolaspondasx": 0.402, "singolaspondadx": 0.643,
+         "doppiaspondasx": 0.508, "doppiaspondadx": 0.41, "triplaspondasx": 0.056, "triplaspondadx": 0.257, "bomba": 0.18, "battutasx": 0.767,
+         "battutadx": 0.577, "chiusura_dritto": 2.28, "chiusura_rovescio": 2.923, "blocco_dritto": 0.871, "blocco_rovescio": 1.317, "difesa": 3.232,
+         "tenutapaletta": 1.23, "controllopalla": 0.832, "attacco": 1.388, "precisione": 2.723, "forza": 1.483, "resistenza": 0.252}
+_PESI_TRATTI = {"mancino": 0.05, "ambidestro": 0.084, "giocorapido": 0.014, "cambiovelocita": 0.063}
 # Ogni quanti scambi si aggiorna la fatica: cambia piano, e calcolarla a ogni scambio costava metà dell'incontro.
 SCAMBI_PER_FATICA = 4
 
@@ -69,20 +76,30 @@ class TaraturaRapida:
     """
     PESI: dict = dataclasses.field(default_factory=lambda: dict(_PESI))
     PESI_TRATTI_RAPIDI: dict = dataclasses.field(default_factory=lambda: dict(_PESI_TRATTI))
-    PESO_LETTURA: float = 1.188
-    PENDENZA: float = 0.3061
-    K_FATICA: float = 2.995
-    VANTAGGIO_BATTUTA: float = 0.0824
-    GOAL_BASE: float = 0.1872
-    GOAL_DISTACCO: float = 0.2382
-    GOAL_LIVELLO: float = -0.0797
-    PENALITA: float = 0.00026
-    AZIONI_PER_SCAMBIO: float = 6.787
-    ATTACCHI_PER_SCAMBIO: float = 1.743
-    PENDENZA_SQUADRE: float = 0.4275
-    K_FATICA_SQUADRE: float = 2.531
-    VANTAGGIO_BATTUTA_SQUADRE: float = 0.0819
-    GOAL_SQUADRE: float = 0.045
+    PESO_LETTURA: float = 1.219
+    PENDENZA: float = 0.2945
+    K_FATICA: float = 3.114
+    VANTAGGIO_BATTUTA: float = 0.0764
+    GOAL_BASE: float = 0.0873
+    GOAL_DISTACCO: float = 0.22
+    GOAL_LIVELLO: float = -0.0544
+    PENALITA: float = 0.00027
+    AZIONI_PER_SCAMBIO: float = 6.901
+    ATTACCHI_PER_SCAMBIO: float = 1.778
+    # La taratura dava 0,4199; la verifica sui mondi maturi lasciati fuori metteva la favorita della
+    # fascia dal 15 al 30 per cento da 3 a 5 punti sopra il motore, e un campione di 16.000 gare sulle
+    # sette popolazioni sceglie questa, per 0,95: tutte le fasce entro mezzo punto, ed entro 1 sui soli mondi maturi.
+    PENDENZA_SQUADRE: float = 0.3989
+    K_FATICA_SQUADRE: float = 2.975
+    VANTAGGIO_BATTUTA_SQUADRE: float = 0.0843
+    GOAL_SQUADRE: float = 0.0705
+    # La pendenza che scende col livello medio dei due, dalla revisione del 14 ottobre 2026: nel motore,
+    # a parità di distacco, il favorito conta un poco meno fra giocatori forti, e senza questo termine
+    # l'esito rapido dava al favorito del mondo maturo fino a 4 o 5 punti più del motore. A zero è
+    # l'esito rapido di prima; LIVELLO_RIFERIMENTO è il livello dove il termine vale niente, la mediana
+    # delle coppie della taratura.
+    PENDENZA_LIVELLO: float = 0.2375
+    LIVELLO_RIFERIMENTO: float = 4.63
 
 
 TARATURA_RAPIDA = TaraturaRapida()
@@ -117,6 +134,14 @@ def forza(g, taratura=TARATURA_RAPIDA, memoria=None):
     if memoria is not None:
         memoria[g.id] = valore
     return valore
+
+
+def pendenza_del_livello(livello, taratura=TARATURA_RAPIDA):
+    """
+    Il fattore della pendenza al livello medio dei due: uno al livello di riferimento, che scende
+    di PENDENZA_LIVELLO per ogni punto di forza sopra e sale sotto, fra la metà e il doppio.
+    """
+    return max(0.5, min(2.0, 1.0 - taratura.PENDENZA_LIVELLO * (livello - taratura.LIVELLO_RIFERIMENTO)))
 
 
 def _logistica(x):
@@ -196,8 +221,8 @@ def gioca(g_a, g_b, formato, seme, basi_infortunio=None, azioni_iniziali=None, c
     rng = random.Random(seme)
     gara = _Gara((g_a, g_b), rng, basi_infortunio, cali, azioni_iniziali)
     fa, fb = forza(g_a, t, memoria), forza(g_b, t, memoria)
-    differenza = t.PENDENZA * (fa - fb)
     livello = (fa + fb) / 2.0
+    differenza = t.PENDENZA * pendenza_del_livello(livello, t) * (fa - fb)
     goal_a = t.GOAL_BASE + t.GOAL_DISTACCO * (fa - fb) + t.GOAL_LIVELLO * livello
     goal_b = t.GOAL_BASE + t.GOAL_DISTACCO * (fb - fa) + t.GOAL_LIVELLO * livello
     p_goal = (_logistica(goal_a), _logistica(goal_b))

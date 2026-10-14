@@ -323,7 +323,10 @@ ESPERIENZA_RISERVA_QUOTA = 0.5
 # quattro, da 0,3 a 0,06, sparisce. Le prime stime erano molto più alte, perché contavano sui 410
 # incontri di torneo del conto del progetto senza l'importanza e su piazzamenti medi: la carriera
 # perfetta vera vince 54 dei suoi 69 tornei e 6 mondiali, con l'importanza 4, e le fasi superate e i
-# piazzamenti in alto le danno molto più di quanto pensato.
+# piazzamenti in alto le danno molto più di quanto pensato. La revisione del 14 ottobre 2026 li lascia:
+# con la carriera perfetta che va al mondiale coi punti come nel mondo, la media dell'esperienza a 50 anni
+# di tutte le carriere vedenti sta attorno a 20, mentre quella del nato più lento cambia di un punto da
+# una misura all'altra, secondo quanti mondiali gioca.
 ESPERIENZA_PER_PARTITA_TORNEO = 0.0074
 ESPERIENZA_PER_FASE_SUPERATA = 0.00442
 ESPERIENZA_PIAZZAMENTO_BASE = 0.03425
@@ -434,9 +437,18 @@ DISTACCO_PIU_DEBOLE = 25.0
 # punti, un'amichevole 1,98, una sfida 3,18. Le altre quattro arrivano ad A1 fra 49,41 e 49,55 anni, i
 # tre ipovedenti fra 47,1 e 49,2. La carriera più lenta gioca il primo mondiale a 32 anni e mezzo, e i
 # mondiali, con l'importanza 4, fanno il 29 per cento dei suoi punti dei tornei.
-PA_FATTORE_AMICHEVOLE = 0.506
-PA_FATTORE_TORNEO = 3.434
-PA_FATTORE_SFIDA = 1.022
+# La revisione del 14 ottobre 2026 ha rifatto la carriera perfetta: dieci nati con cinque estrazioni del
+# caso ciascuno, perché una carriera sola per nato era una fortuna dell'estrazione, e il mondiale con la
+# convocazione del mondo, coi punti dell'ultimo anno, PUNTI_PER_IL_MONDIALE, invece del punteggio di
+# classe. Con la soglia dei punti la stessa carriera gioca da zero a dieci mondiali, e la sua età di A1
+# varia di qualche anno da un'estrazione all'altra: la media del nato più lento oscilla di mezzo anno da
+# una misura all'altra anche coi semi fermi. Questi fattori vengono dalla media dei passi della ricerca
+# con la media del nato più lento nel bersaglio, corretta con la retta dell'età sul totale stimata su
+# tutti i sedici passi: il torneo sale da 3,434 a 3,813, l'amichevole da 0,506 a 0,517, la sfida da
+# 1,022 a 1,028. La carta è strumenti/carriera_perfetta_tappa_12.txt.
+PA_FATTORE_AMICHEVOLE = 0.517
+PA_FATTORE_TORNEO = 3.813
+PA_FATTORE_SFIDA = 1.028
 # Il costo dei punti, tarato sul valore: il costo marginale di una caratteristica è
 # COSTO_PER_PUNTO_PESATO per il suo peso nel valore, per lo sconto, diviso l'efficacia, per
 # exp(CRESCITA_DEL_COSTO per il livello relativo). Dal livello zero al tetto il costo cresce di
@@ -764,6 +776,14 @@ CONTEGGI_GARE_MONDO = (
     (35, 50, 0.2142, 0.0369, 0.0640, 0.0151, 0.0022, 0.0215),
     (50, 76, 0.2025, 0.0431, 0.0619, 0.0138, 0.0019, 0.0265),
 )
+# La convocazione al mondiale per gli strumenti, dalla revisione del 14 ottobre 2026: i punti della
+# classifica dell'ultimo anno del trentaduesimo convocato del mondo a regime, per sesso, cioè la soglia
+# che la carriera perfetta deve passare all'apertura del mondiale, come nel mondo, invece del punteggio
+# di classe del trentaduesimo del mondo sintetico. Misurati sulle popolazioni salvate dalla simulazione
+# lunga agli anni 40 e 60 dei semi 101, 404 e 8888: da 590 a 620 punti per gli uomini, da 600 a 625 per
+# le donne; all'anno 20 erano da 570 a 600. Nel mondo a regime i convocati sono per circa un terzo fra i
+# primi 32 per classe, e gli altri arrivano fino al cinquecentesimo posto e oltre.
+PUNTI_PER_IL_MONDIALE = {"m": 605.0, "f": 610.0}
 
 
 def discrepanze_raggruppamenti():
