@@ -1103,12 +1103,17 @@ class Mondo:
         chi è nella finestra; all'utente il mondo ricorda chi entra nella finestra e chi entra
         nell'ultimo mese, con una voce nei due diari. Poi il computer riporta il prezzo dei suoi
         tesserati in vendita al valore di mercato del giorno, che con la scadenza scende.
+        Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, il giorno di oggi si prende una volta
+        sola, e l'inizio della finestra si ricorda per scadenza: le scadenze sono pochi primi del mese, e
+        la finestra di contratti.in_finestra si ricalcolava per ogni tesserato del computer.
         """
+        oggi = data.date()
+        inizi = {}
         for poli in list(self.polisportive.values()):
             for g in self._rosa(poli):
                 if g.contratto_scadenza is None:
                     continue
-                if g.contratto_scadenza.date() <= data.date():
+                if g.contratto_scadenza.date() <= oggi:
                     if contratti.ha_rinnovo(g):
                         contratti.subentra_il_rinnovo(g)
                         self.annota(g, f"Comincia il contratto rinnovato con {poli.nome}: {scritta_in_euro(g.contratto_stipendio)} al mese fino al {data_breve(g.contratto_scadenza)}.", data)
@@ -1118,7 +1123,14 @@ class Mondo:
                 if contratti.ha_rinnovo(g) or not contratti.puo_trattare(g):
                     continue
                 if poli.is_cpu_controlled:
-                    if contratti.in_finestra(g, data):
+                    # contratti.in_finestra, con l'inizio della finestra ricordato per le scadenze senza fuso.
+                    scadenza = g.contratto_scadenza
+                    inizio = inizi.get(scadenza) if scadenza.tzinfo is None else None
+                    if inizio is None:
+                        inizio = contratti.inizio_finestra(g).date()
+                        if scadenza.tzinfo is None:
+                            inizi[scadenza] = inizio
+                    if inizio <= oggi < scadenza.date():
                         self._rinnovo_cpu(poli, g, data, rapporto)
                     continue
                 mesi = contratti.mesi_interi(data, g.contratto_scadenza)
@@ -1167,7 +1179,8 @@ class Mondo:
             return False
         g.proposte_rinnovo += 1
         g.ultima_trattativa = data
-        if not caso(contratti.probabilita_rinnovo(g, poli, offerta, mesi)):
+        # La richiesta è quella di sopra: proposte e trattativa non la cambiano.
+        if not caso(contratti.probabilita_rinnovo(g, poli, offerta, mesi, richiesta)):
             return False
         contratti.concorda_rinnovo(g, offerta, mesi)
         self._annota_rinnovo(poli, g, data)
