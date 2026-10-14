@@ -1,18 +1,18 @@
 {
- "nota": "Taratura della tappa 12, passo 4, secondo commit: i fattori dei punti e le costanti dell'esperienza della carriera perfetta col calendario vero, la scala del valore, lo sponsor, i coefficienti del palmarès e la gloria richiesta dell'economia, l'esito rapido ritarato sulla popolazione dell'anno 20, i conteggi delle gare dopo l'economia, e la data del ritmo sparsa nel mondo a regime. Il motore resta identico.",
+ "nota": "Taratura della tappa 12, passo 4, terzo commit: il fattore comune della gloria richiesta da 1,81 a 1,9, cioè K_ICV_GLORIA_RICHIESTA 1,706 e GLORIA_RICHIESTA_FISSA 23, perché il rapporto con la 1.60.11 stia nel 10 per cento all'anno 10 e al 20. Il motore resta identico.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "898a627cbe1d34e14d650815bab3557bf4fbb2de9eca21a64b3152fb3fb9a285",
-  "vivi": 744,
-  "attivi": 744,
-  "tesserati": 662,
-  "polisportive": 45
+  "sha256": "3a0689ff1b8df931964335046413256e4144b0d59edd8154e512c2cfec9859f6",
+  "vivi": 716,
+  "attivi": 716,
+  "tesserati": 636,
+  "polisportive": 43
  },
  "mondo_a_regime": {
-  "sha256": "3fb3574fa7712e6195043558a48b1c5b0125bec8a686a98f0c8b0c82b1d0d574",
+  "sha256": "544169c0fcba53f3e610cdd909d193ff21b0c158a056b0694417abd0a946292b",
   "vivi": 1648,
   "attivi": 1248,
   "tesserati": 1088,

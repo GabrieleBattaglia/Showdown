@@ -194,6 +194,10 @@ def misure(mondo, dell_anno=None):
         lettera = classe.classe(g).codice[0]
         lettere[lettera] = lettere.get(lettera, 0) + 1
     primi = sorted(attivi, key=lambda g: g.indice_collettivo_valore, reverse=True)[:100]
+    # Dalla tappa 12 anche la gloria mediana del computer e il rapporto della gloria richiesta mediana dei liberi, punto 13.4.
+    glorie = [p.gloria for p in cpu]
+    richieste = [g.gloria_richiesta for g in attivi if g.appartenenza == "*"]
+    gloria_mediana = statistics.median(glorie) if glorie else 0.0
     return {
         "attivi": len(attivi), "tesserati": len(tesserati), "polisportive": len(cpu),
         "primi_100": 100.0 * sum(1 for g in primi if g.appartenenza != "*") / max(1, len(primi)),
@@ -202,6 +206,7 @@ def misure(mondo, dell_anno=None):
         "monte_su_sponsor": monte / max(1, sponsor),
         "valore": (percentile(valori, 0.1), percentile(valori, 0.5), percentile(valori, 0.9)),
         "fasce": fasce, "lettere": lettere, "anno": dict(dell_anno or {}),
+        "gloria_mediana": gloria_mediana, "rapporto_richiesta": statistics.median(richieste) / max(1.0, gloria_mediana) if richieste else 0.0,
     }
 
 
@@ -924,7 +929,7 @@ def prova_lunga(anni, semi, processi, stampa=print, gloria=None):
             s10, s50, s90 = m["stipendi"]
             voci.append(f"seme {seme}: valore mediano {numero(m['valore'][1], 1)}, stipendi {numero(s10)}, {numero(s50)} e {numero(s90)}, cassa mediana {numero(m['casse'][1])}, "
                         f"tesserati {numero(100 * m['tesserati'] / max(1, m['attivi']))} per cento su {m['attivi']}, primi 100 tesserati al {numero(m['primi_100'])} per cento, "
-                        f"un giorno {numero(m['millisecondi'])} millisecondi")
+                        f"gloria mediana del computer {numero(m['gloria_mediana'])}, rapporto della gloria richiesta {numero(m['rapporto_richiesta'], 3)}, un giorno {numero(m['millisecondi'])} millisecondi")
         righe.append(f"Anno {decennio}: " + "; ".join(voci) + ".")
     for seme in semi:
         fuori = fuori_dalla_solvibilita(risultati[seme])
@@ -1130,9 +1135,12 @@ def scenario_utente(semi, processi, anni_prima=ANNI_PRIMA_DELL_UTENTE, anni_uten
                          f"{a['medaglie'][0]} ori, {a['medaglie'][1]} argenti, {a['medaglie'][2]} bronzi e {a['medaglie'][3]} legni; i tesserati passano acciaccati il "
                          f"{numero(100.0 * a['giorni_acciaccati'] / max(1, a['giorni_di_tesserati']), 1)} per cento dei giorni e infortunati il "
                          f"{numero(100.0 * a['giorni_infortunati'] / max(1, a['giorni_di_tesserati']), 1)}; dei primi 100 del mondo è tesserato il {numero(a['primi_100'])} per cento.")
-        ultimo = annuali[-1]
-        righe.append(f"Seme {seme}, il mondo alla fine: {ultimo['attivi']} giocatori in attività, tesserati al {numero(100 * ultimo['tesserati'] / max(1, ultimo['attivi']))} "
-                     f"per cento, cassa mediana del computer {numero(ultimo['casse'][1])} euro, valore mediano {numero(ultimo['valore'][1], 1)}.")
+        for m in (x for x in annuali if x["numero_anno"] in (anni_prima, anni_prima + anni_utente)):
+            s10, s50, s90 = m["stipendi"]
+            righe.append(f"Seme {seme}, il mondo all'anno {m['numero_anno']}: {m['attivi']} giocatori in attività, tesserati al {numero(100 * m['tesserati'] / max(1, m['attivi']))} "
+                         f"per cento, cassa mediana del computer {numero(m['casse'][1])} euro, stipendi pagati {numero(s10)}, {numero(s50)} e {numero(s90)}, valore mediano "
+                         f"{numero(m['valore'][1], 1)}, gloria mediana del computer {numero(m['gloria_mediana'])}, gloria richiesta mediana dei liberi su quella del computer "
+                         f"{numero(m['rapporto_richiesta'], 3)}.")
     righe.append(f"I bersagli dello scenario: lo sponsor dell'utente, in media sull'anno, non supera il {numero(SPONSOR_SU_STIPENDI_MASSIMO)} per cento degli stipendi pagati, "
                  f"{'dentro' if esiti['sponsor'] else 'FUORI'}; nei primi {ANNI_DI_PARTENZA} anni non scende sotto il {numero(SPONSOR_SU_STIPENDI_PARTENZA)} per cento, "
                  f"{'dentro' if esiti['partenza'] else 'FUORI'}; dei primi 100 del mondo è tesserato almeno l'{numero(PRIMI_100_TESSERATI_MINIMI)} per cento, "

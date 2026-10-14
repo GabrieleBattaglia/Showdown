@@ -144,15 +144,19 @@ SEDI_INFORTUNIO = (
 # prime stime, all'anno 20, la gloria richiesta mediana dei liberi era 2,4 volte la gloria mediana del
 # computer, contro 0,92 della 1.60.11, e il computer non riusciva più a tesserare, al 78 per cento.
 # strumenti/simulazione_lunga.py --cerca-economia trova il fattore comune in forma chiusa sul campione
-# dell'anno 20, 1,81 sui valori della 1.60.11: 1,628 e 22. Col mondo che ne viene il rapporto è da
-# 0,97 a 1,04 all'anno 10, contro 0,93-1,06 della 1.60.11, e da 0,82 a 0,84 all'anno 20, contro
-# 0,85-1,02, in media 0,92: entro il 10 per cento, sul bordo all'anno 20.
-K_ICV_GLORIA_RICHIESTA = 1.628
+# dell'anno 20, 1,81 sui valori della 1.60.11. Col mondo finale, però, il rapporto con 1,81 era 0,99
+# all'anno 10, come lo 0,99 della 1.60.11, e 0,79 all'anno 20, il 14 per cento sotto lo 0,92 della
+# 1.60.11; con 1,94 era 1,10 all'anno 10, l'11 per cento sopra, e 0,89 all'anno 20, il 3 sotto. Nel
+# mondo che gioca il rapporto scende dall'anno 10 al 20 del 20 per cento, nella 1.60.11 dell'8, perché
+# la gloria del computer cresce mentre si riempie la finestra del palmarès: con un fattore solo i due
+# anni non stanno tutti e due sul rapporto della 1.60.11. Il fattore scelto, 1,9, li mette attorno al 7
+# per cento sopra e sotto, dentro il 10 del progetto: 1,706 e 23.
+K_ICV_GLORIA_RICHIESTA = 1.706
 ETA_PICCO_RICHIESTA_GLORIA_ANNI = 17.0
 ETA_MINIMO_RICHIESTA_GLORIA_ANNI = 55.0
 MAX_FATTORE_ETA_GLORIA = 2.7
 MIN_FATTORE_ETA_GLORIA = 0.1
-GLORIA_RICHIESTA_FISSA = 22
+GLORIA_RICHIESTA_FISSA = 23
 GLORIA_RICHIESTA_MINIMA_ASSOLUTA = 8
 MAX_GLORIA_RICHIESTA = 1500
 FATTORE_GLORIA_RICHIESTA_AMBIDESTRO = 1.35
