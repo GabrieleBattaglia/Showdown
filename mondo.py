@@ -204,6 +204,53 @@ class _Vetrina:
         return trovato if trovato is not None else self._cerca(2 * nodo + 1, meta, fine, gloria, da)
 
 
+class _Mercato:
+    """
+    I giocatori in vendita del giorno per gli acquisti del computer, dalla tappa 12, decisione 4 di
+    Gabriele del 14 ottobre 2026: le righe di Mondo._vendibili dal valore più alto, a parità di valore
+    nel loro ordine, perché l'ordinamento è stabile, e soltanto quelle col prezzo entro il prezzo più
+    alto che il computer paga, che nessuna polisportiva può superare. Così la prima riga che va bene a
+    una polisportiva è proprio quella che prima trovava scorrendo tutte le righe, la più forte e, a pari
+    forza, la prima: la scelta resta la stessa. Le scorte dei prezzi e degli stipendi più bassi da ogni
+    riga in giù fermano la ricerca appena nessuna riga rimasta può stare nei conti. Prima ogni
+    polisportiva del computer scorreva tutti i giocatori in vendita: nel mondo a regime, con un mercato
+    affollato, più di mezzo secondo al giorno.
+    """
+
+    def __init__(self, righe):
+        self.righe = sorted((riga for riga in righe if not riga[2] > riga[3]), key=lambda riga: riga[0].indice_collettivo_valore, reverse=True)
+        self.prezzi_minimi = [0] * len(self.righe)
+        self.stipendi_minimi = [0] * len(self.righe)
+        prezzo_minimo = stipendio_minimo = math.inf
+        for posto in range(len(self.righe) - 1, -1, -1):
+            _g, _venditore, prezzo, _massimo, chiesto = self.righe[posto]
+            prezzo_minimo = min(prezzo_minimo, prezzo)
+            stipendio_minimo = min(stipendio_minimo, chiesto)
+            self.prezzi_minimi[posto] = prezzo_minimo
+            self.stipendi_minimi[posto] = stipendio_minimo
+
+    def scelta(self, poli, spendibile, massimo, debole):
+        """
+        Il giocatore che la polisportiva compra, con chi lo vende e il prezzo, oppure None: il più forte
+        ancora in vendita al prezzo di stamattina, non suo, col prezzo nella cassa da spendere, lo
+        stipendio nei conti e, a rosa piena, più forte del tesserato che vale meno.
+        """
+        soglia = None if debole is None else debole.indice_collettivo_valore
+        prezzi_minimi, stipendi_minimi = self.prezzi_minimi, self.stipendi_minimi
+        for posto, (g, venditore, prezzo, _massimo, chiesto) in enumerate(self.righe):
+            if prezzi_minimi[posto] > spendibile or stipendi_minimi[posto] > massimo:
+                return None
+            if soglia is not None and g.indice_collettivo_valore <= soglia:
+                return None
+            # Chi è già stato comprato oggi non è più in vendita.
+            if venditore is poli or venditore.in_vendita.get(g.id) != prezzo:
+                continue
+            if prezzo > spendibile or chiesto > massimo:
+                continue
+            return g, venditore, prezzo
+        return None
+
+
 class Mondo:
     def __init__(self, notifica=None):
         self.notifica = notifica or _silenzio
@@ -836,9 +883,9 @@ class Mondo:
                 if self._scambio(poli, liberi, vetrina, prossimo, monte, data):
                     tesserati += 1
                     svincolati += 1
-        vendibili = self._vendibili(data or self.datetime_corrente_simulazione)
+        mercato = _Mercato(self._vendibili(data or self.datetime_corrente_simulazione))
         for poli in cpu:
-            if self._compra_dal_mercato(poli, data, vendibili):
+            if self._compra_dal_mercato(poli, data, mercato):
                 comprati += 1
         return tesserati, svincolati, comprati
 
@@ -903,11 +950,13 @@ class Mondo:
                     righe.append((g, venditore, prezzo, valore_di_mercato(g, oggi) * RIALZO_CPU, stipendio(g)))
         return righe
 
-    def _compra_dal_mercato(self, poli, data, vendibili=None):
+    def _compra_dal_mercato(self, poli, data, mercato=None):
         """
         Una polisportiva del computer compra il più forte dei giocatori in vendita, se il prezzo non
         supera di molto il suo valore di mercato e se ci sta nei conti; a rosa piena solo se è più
-        forte del tesserato che vale meno, che lascia libero. Al massimo un acquisto al giorno.
+        forte del tesserato che vale meno, che lascia libero. Al massimo un acquisto al giorno. Dalla
+        tappa 12 la ricerca la fa il mercato del giorno, _Mercato, costruito una volta per tutte le
+        polisportive del computer; senza, se ne costruisce uno.
         """
         if self.mosse_rimaste(poli) <= 0:
             return False
@@ -922,17 +971,7 @@ class Mondo:
         buonuscita = contratti.buonuscita(debole, oggi) if debole else 0
         spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU - buonuscita
         massimo = sponsor + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
-        scelta = None
-        for g, venditore, prezzo, prezzo_massimo, chiesto in (self._vendibili(oggi) if vendibili is None else vendibili):
-            # Chi è già stato comprato oggi non è più in vendita.
-            if venditore is poli or venditore.in_vendita.get(g.id) != prezzo:
-                continue
-            if prezzo > spendibile or prezzo > prezzo_massimo or chiesto > massimo:
-                continue
-            if debole is not None and g.indice_collettivo_valore <= debole.indice_collettivo_valore:
-                continue
-            if scelta is None or g.indice_collettivo_valore > scelta[0].indice_collettivo_valore:
-                scelta = (g, venditore, prezzo)
+        scelta = (_Mercato(self._vendibili(oggi)) if mercato is None else mercato).scelta(poli, spendibile, massimo, debole)
         if scelta is None:
             return False
         g, venditore, prezzo = scelta

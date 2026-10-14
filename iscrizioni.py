@@ -173,6 +173,53 @@ def scegli(edizioni, g, s, impegni):
     return min(scelte, key=lambda ed: (ed.data_inizio, -ed.importanza, 0 if ed.sesso == g.sesso else 1, ed.nome))
 
 
+class _Scelte:
+    """
+    La regola di scegli per le iscrizioni automatiche del giorno, dalla tappa 12, decisione 4 di
+    Gabriele del 14 ottobre 2026: le edizioni aperte si mettono in fila una volta sola per ogni sesso,
+    quelle del sesso e le aperte, nei due ordini della regola, la più importante poi la più vicina per
+    la settimana che segue la data del giocatore, la più vicina poi la più importante per le altre; a
+    parità nell'ordine delle edizioni, perché l'ordinamento è stabile. La prima della fila che va bene al
+    giocatore è proprio quella che scegli trova col minimo: la scelta resta la stessa. Prima ogni
+    giocatore in attesa rifaceva l'elenco delle candidate e i due minimi, leggendo ogni volta date,
+    sesso e filtri di tutte le edizioni aperte: con decine di migliaia di atleti, centinaia di
+    millisecondi al giorno.
+    """
+
+    def __init__(self, aperte):
+        self.aperte = aperte
+        self.file = {}
+
+    def _file(self, sesso):
+        if sesso not in self.file:
+            adatte = [(ed, ed.data_inizio, ed.data_fine, ed.filtri) for ed in self.aperte if ed.sesso == "aperto" or ed.sesso == sesso]
+            vicine = sorted(adatte, key=lambda riga: (-riga[0].importanza, riga[1], 0 if riga[0].sesso == sesso else 1, riga[0].nome))
+            lontane = sorted(adatte, key=lambda riga: (riga[1], -riga[0].importanza, 0 if riga[0].sesso == sesso else 1, riga[0].nome))
+            self.file[sesso] = (vicine, lontane)
+        return self.file[sesso]
+
+    @staticmethod
+    def _va(ed, inizio, fine, filtri, g, impegni, tolte):
+        if tolte is not None and ed.id in tolte:
+            return False
+        if filtri and not modelli_torneo.idoneo(ed.oggetto_modello, g):
+            return False
+        return not _sovrapposta(inizio, fine, impegni)
+
+    def scegli(self, g, s, impegni, tolte=None):
+        """L'edizione di scegli per il giocatore dalla data s, tolte quelle da cui l'utente l'ha tolto; None se non ce n'è."""
+        vicine, lontane = self._file(g.sesso)
+        finestra = s + datetime.timedelta(days=GIORNI_ANTICIPO_ISCRIZIONE)
+        for ed, inizio, fine, filtri in vicine:
+            if s <= inizio <= finestra and self._va(ed, inizio, fine, filtri, g, impegni, tolte):
+                return ed
+        # Nessuna nella settimana: quelle della settimana sono già state scartate, e restano le più lontane.
+        for ed, inizio, fine, filtri in lontane:
+            if inizio > finestra and self._va(ed, inizio, fine, filtri, g, impegni, tolte):
+                return ed
+        return None
+
+
 # I pagamenti.
 
 def paga(poli, euro):
@@ -198,6 +245,10 @@ def automatiche(mondo, calendario, data, rapporto):
     """
     Le iscrizioni automatiche del giorno: il computer, i liberi e i tuoi tesserati con l'iscrizione
     automatica accesa, chi è in attesa, ciascuno all'edizione che la regola sceglie per lui.
+    Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, la regola la fa _Scelte, e per il
+    computer la cassa si guarda prima della scelta con la quota più bassa delle edizioni aperte: se
+    nemmeno quella resta sopra il monte stipendi, non resta nessuna, e il tesserato si salta come prima,
+    senza cercargli un'edizione. Le iscrizioni sono le stesse.
     """
     oggi = _giorno(data)
     domani = oggi + datetime.timedelta(days=1)
@@ -211,6 +262,8 @@ def automatiche(mondo, calendario, data, rapporto):
     tolte = calendario.tolte_per_giocatore()
     morti = mondo._ids_morti_processati_sessione
     monti = {}
+    scelte = _Scelte(aperte)
+    quota_minima = min(ed.quota for ed in aperte)
     for gid, g in mondo.giocatori.items():
         if g.ritirato or gid in morti or g.infortunato or gid in iscritti:
             continue
@@ -224,10 +277,14 @@ def automatiche(mondo, calendario, data, rapporto):
         elif poli.is_cpu_controlled:
             if troppo_carico(g, False):
                 continue
+            if poli.nome not in monti:
+                monti[poli.nome] = mondo.monte_stipendi(poli)
+            if poli.cassa - quota_minima < monti[poli.nome]:
+                continue
         elif not g.iscrizione_automatica:
             continue
         s = max(domani, prossimo.date()) if prossimo is not None else domani
-        ed = scegli([e for e in aperte if e.id not in tolte[gid]] if gid in tolte else aperte, g, s, impegni.get(gid, ()))
+        ed = scelte.scegli(g, s, impegni.get(gid, ()), tolte.get(gid))
         if ed is None:
             continue
         quota = ed.quota if poli is not None else 0
@@ -235,8 +292,6 @@ def automatiche(mondo, calendario, data, rapporto):
             ed.aggiungi(gid, None, 0, LIBERO)
             continue
         if poli.is_cpu_controlled:
-            if poli.nome not in monti:
-                monti[poli.nome] = mondo.monte_stipendi(poli)
             if poli.cassa - quota < monti[poli.nome]:
                 continue
             paga(poli, quota)

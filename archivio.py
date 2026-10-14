@@ -53,12 +53,14 @@ un campo: non tocca caratteristiche, valori, contratti, stipendi, casse, fedelt�
 
 import contextlib
 import datetime
+import gc
 import gzip
 import hashlib
 import hmac
 import json
 import os
 import shutil
+import struct
 import types
 import zlib
 
@@ -107,6 +109,9 @@ APPLICAZIONE = "MESS"
 FORMATO = 7
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
+# Il segnaposto dei giocatori mentre si scrive il resto del documento, _testo_firmato: due caratteri
+# d'uso privato che nessun nome e nessun diario contiene.
+_SEGNAPOSTO_GIOCATORI = "giocatori di MESS"
 # Da dove viene il mondo appena caricato.
 NATO = "nato"
 CARICATO = "caricato"
@@ -152,6 +157,70 @@ def firma(documento):
     return hmac.new(CHIAVE_FIRMA, canonico, hashlib.sha256).hexdigest()
 
 
+def _canonico(dato):
+    return json.dumps(dato, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def _testo_firmato(contenuto):
+    """
+    Il testo del file, in pezzi di byte da scrivere uno dopo l'altro: il documento con la sua firma.
+    Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, i giocatori, quasi tutto il mondo, si
+    scrivono una volta sola, nella forma canonica della firma, coi campi in ordine alfabetico, e lo
+    stesso testo serve alla firma e al file: prima il mondo si scriveva due volte, una per la firma e una
+    per il file, e a regime erano secondi a ogni salvataggio. Al posto dei giocatori il resto del
+    documento ha un segnaposto, che si scrive due volte, nelle due forme, ed è piccolo; la firma si
+    calcola sui pezzi della forma canonica, senza rifare un testo unico. Il file resta un JSON del
+    formato 7: chi lo legge, anche una versione di prima, rifà la forma canonica e trova la stessa
+    firma, e i campi di un giocatore si leggono per nome, in qualunque ordine. Se il segnaposto
+    comparisse anche altrove, il testo si fa nel modo di prima.
+    """
+    segno = json.dumps(_SEGNAPOSTO_GIOCATORI, ensure_ascii=False)
+    guscio = {**contenuto, "mondo": {**contenuto["mondo"], "giocatori": _SEGNAPOSTO_GIOCATORI}}
+    canonico = _canonico(guscio).split(segno)
+    if len(canonico) == 2:
+        giocatori = _canonico(contenuto["mondo"]["giocatori"]).encode("utf-8")
+        calcolo = hmac.new(CHIAVE_FIRMA, canonico[0].encode("utf-8"), hashlib.sha256)
+        calcolo.update(giocatori)
+        calcolo.update(canonico[1].encode("utf-8"))
+        scritto = json.dumps({**guscio, "firma": calcolo.hexdigest()}, ensure_ascii=False, separators=(",", ":")).split(segno)
+        if len(scritto) == 2:
+            return [scritto[0].encode("utf-8"), giocatori, scritto[1].encode("utf-8")]
+    return [json.dumps({**contenuto, "firma": firma(contenuto)}, ensure_ascii=False, separators=(",", ":")).encode("utf-8")]
+
+
+@contextlib.contextmanager
+def _senza_raccolta():
+    """
+    La raccolta dei cicli di Python spenta mentre si compone e si scrive il documento, e riaccesa dopo
+    se lo era. Il documento è fatto di milioni di dizionari ed elenchi senza cicli, che se ne vanno da
+    soli appena non servono più; la raccolta, che a ogni gruppo di oggetti nuovi ripassa anche quelli
+    vecchi del mondo, raddoppiava il tempo del comporre. Dalla tappa 12, decisione 4 di Gabriele del 14
+    ottobre 2026: il salvataggio non cambia.
+    """
+    accesa = gc.isenabled()
+    gc.disable()
+    try:
+        yield
+    finally:
+        if accesa:
+            gc.enable()
+
+
+def _comprimi(pezzi):
+    """
+    I pezzi compressi in gzip col livello 6, uno dopo l'altro, senza rifare il testo intero: il file è
+    un gzip come quello di gzip.compress, che gzip.decompress legge per intero, e l'intestazione si
+    completa come la completa gzip.compress, con l'ora a zero e il sistema 255, così gli stessi dati
+    danno sempre gli stessi byte. I byte compressi non sono quelli che gzip.compress darebbe sul testo
+    intero, perché il compressore li fa anche secondo i pezzi che riceve: il testo che ne esce è lo stesso.
+    """
+    compressore = zlib.compressobj(6, zlib.DEFLATED, 31)
+    compressi = [compressore.compress(pezzo) for pezzo in pezzi]
+    compressi.append(compressore.flush())
+    dati = b"".join(compressi)
+    return struct.pack("<4sLBB", dati, 0, dati[8], 255) + dati[10:]
+
+
 def componi(mondo):
     """Il mondo come documento da salvare, senza firma. I giocatori usciti di scena nella sessione non ci sono più."""
     morti = mondo._ids_morti_processati_sessione
@@ -181,10 +250,10 @@ def scrivi(mondo, percorso, percorso_copia):
     Scrive il mondo nel file indicato con la scrittura sicura, e il salvataggio precedente nella
     copia. Restituisce il documento scritto e gli avvisi, cioè le cose andate storte senza danno.
     """
-    contenuto = componi(mondo)
-    testo = json.dumps({**contenuto, "firma": firma(contenuto)}, ensure_ascii=False, separators=(",", ":"))
-    # Con l'ora di compressione a zero, gli stessi dati danno sempre gli stessi byte.
-    dati = gzip.compress(testo.encode("utf-8"), compresslevel=6, mtime=0)
+    with _senza_raccolta():
+        contenuto = componi(mondo)
+        # Con l'ora di compressione a zero, gli stessi dati danno sempre gli stessi byte.
+        dati = _comprimi(_testo_firmato(contenuto))
     temporaneo = percorso + ".tmp"
     avvisi = []
     try:

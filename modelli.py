@@ -384,11 +384,34 @@ def _voce_da_json(voce, chi):
     raise errore
 
 
+# Le date già scritte in testo dai salvataggi, tappa 12, decisione 4 di Gabriele del 14 ottobre 2026: le
+# voci dei diari di un mondo maturo sono centinaia di migliaia, con poche migliaia di date diverse, e
+# scrivere ogni volta la data in testo era la spesa più grossa del comporre il salvataggio.
+_DATE_IN_TESTO = {}
+_DATE_IN_TESTO_MASSIMO = 200_000
+
+
+def data_in_testo(data):
+    """
+    La data in testo, come la scrive isoformat: per una data e ora senza fuso il testo si ricorda, perché
+    due date e ore senza fuso uguali hanno lo stesso testo. Le altre, come le date con il fuso, che
+    possono essere uguali con testi diversi, si scrivono ogni volta.
+    """
+    if type(data) is not datetime.datetime or data.tzinfo is not None:
+        return data.isoformat()
+    testo = _DATE_IN_TESTO.get(data)
+    if testo is None:
+        if len(_DATE_IN_TESTO) >= _DATE_IN_TESTO_MASSIMO:
+            _DATE_IN_TESTO.clear()
+        testo = _DATE_IN_TESTO[data] = data.isoformat()
+    return testo
+
+
 def _voce_a_json(voce):
     """Una voce di diario per il salvataggio: la data in testo, e gli elenchi copiati, perché il documento non li condivida col diario."""
-    copia = {**voce, "data": voce["data"].isoformat()}
+    copia = {**voce, "data": data_in_testo(voce["data"])}
     if "da" in voce and "anno" in voce:
-        copia["da"] = voce["da"].isoformat()
+        copia["da"] = data_in_testo(voce["da"])
     if "spesa" in voce:
         copia["spesa"] = [list(s) for s in voce["spesa"]]
         copia["valore"] = list(voce["valore"])
@@ -405,29 +428,38 @@ def _mese_valido(chiave):
     return len(chiave) == 7 and anno.isdigit() and mese.isdigit() and 1 <= int(mese) <= 12
 
 
+def _data_a_json(valore):
+    return None if valore is None else data_in_testo(valore)
+
+
+# Come si scrive nel salvataggio ogni tipo di campo che non è un tipo semplice: i tipi semplici, int,
+# float, str e bool, si scrivono convertendo il valore al tipo. Dalla tappa 12, decisione 4 di Gabriele
+# del 14 ottobre 2026, è una tabella, e i modelli ne prendono una volta sola la funzione di ogni campo:
+# prima ogni campo di ogni giocatore scorreva la catena dei confronti di a_json, e comporre il
+# salvataggio di un mondo maturo costava secondi. Le conversioni sono le stesse.
+_A_JSON = {
+    PUNTI_DATATI: lambda valore: [[int(giorno), float(punti)] for giorno, punti in valore],
+    TITOLI: lambda valore: [dict(voce) for voce in valore],
+    PALMARES: lambda valore: {chiave: [float(m), float(c)] for chiave, (m, c) in sorted(valore.items())},
+    VENDITE: lambda valore: {str(gid): int(prezzo) for gid, prezzo in sorted(valore.items())},
+    BILANCI: lambda valore: [{**voce, "data": data_in_testo(voce["data"])} for voce in valore],
+    CONTI: lambda valore: {voce: int(valore[voce]) for voce in VOCI_CONTI},
+    DIARIO: lambda valore: [_voce_a_json(voce) for voce in valore],
+    DATA: _data_a_json,
+    DATA_O_NULLA: _data_a_json,
+    TESTO_O_NULLA: lambda valore: None if valore is None else str(valore),
+    LISTA_INTERI: lambda valore: [int(v) for v in valore],
+}
+
+
+def conversione_a_json(tipo):
+    """La funzione che scrive un valore del tipo dato nella forma del salvataggio JSON: quella della tabella, o il tipo semplice stesso."""
+    return _A_JSON.get(tipo, tipo)
+
+
 def a_json(valore, tipo):
     """Un valore di un modello nella forma che il salvataggio JSON sa scrivere."""
-    if tipo == PUNTI_DATATI:
-        return [[int(giorno), float(punti)] for giorno, punti in valore]
-    if tipo == TITOLI:
-        return [dict(voce) for voce in valore]
-    if tipo == PALMARES:
-        return {chiave: [float(m), float(c)] for chiave, (m, c) in sorted(valore.items())}
-    if tipo == VENDITE:
-        return {str(gid): int(prezzo) for gid, prezzo in sorted(valore.items())}
-    if tipo == BILANCI:
-        return [{**voce, "data": voce["data"].isoformat()} for voce in valore]
-    if tipo == CONTI:
-        return {voce: int(valore[voce]) for voce in VOCI_CONTI}
-    if tipo == DIARIO:
-        return [_voce_a_json(voce) for voce in valore]
-    if tipo in (DATA, DATA_O_NULLA):
-        return None if valore is None else valore.isoformat()
-    if tipo == TESTO_O_NULLA:
-        return None if valore is None else str(valore)
-    if tipo == LISTA_INTERI:
-        return [int(v) for v in valore]
-    return tipo(valore)
+    return conversione_a_json(tipo)(valore)
 
 
 def da_json(valore, tipo, chi, campo):
@@ -565,6 +597,12 @@ def _controlla_campi_della_tappa_12(g, chi):
             sbagliati.append(campo)
     if sbagliati:
         raise ValueError(f"{chi}: il campo {sbagliati[0]} non è valido: {getattr(g, sbagliati[0])!r}")
+
+
+# Le conversioni dei campi salvati, prese una volta sola dalla tabella di a_json.
+_CONVERSIONI_GIOCATORE = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_GIOCATORE)
+_CONVERSIONI_ASPETTO = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_ASPETTO)
+_CONVERSIONI_POLISPORTIVA = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_POLISPORTIVA)
 
 
 class Giocatore:
@@ -745,12 +783,12 @@ class Giocatore:
 
     def a_dizionario(self):
         """Il giocatore come dizionario per il salvataggio JSON."""
-        dati = {campo: a_json(getattr(self, campo), tipo) for campo, tipo in CAMPI_GIOCATORE}
+        dati = {campo: converti(getattr(self, campo)) for campo, converti in _CONVERSIONI_GIOCATORE}
         tratti = getattr(self, "tratti", None)
         if tratti:
             dati["tratti"] = tratti
         else:
-            dati.update({campo: a_json(getattr(self, campo), tipo) for campo, tipo in CAMPI_ASPETTO})
+            dati.update({campo: converti(getattr(self, campo)) for campo, converti in _CONVERSIONI_ASPETTO})
         return dati
 
     @classmethod
@@ -1061,7 +1099,7 @@ class Polisportiva:
 
     def a_dizionario(self):
         """La polisportiva come dizionario per il salvataggio JSON."""
-        return {campo: a_json(getattr(self, campo), tipo) for campo, tipo in CAMPI_POLISPORTIVA}
+        return {campo: converti(getattr(self, campo)) for campo, converti in _CONVERSIONI_POLISPORTIVA}
 
     @classmethod
     def da_dizionario(cls, dati):
