@@ -316,6 +316,9 @@ GRUPPI = (
     ("Tornei, il pannello e le classifiche", {
         "dialogo_tornei_in_corso": "mess_tornei_in_corso",
         "differita_al_via": "mess_differita_al_via",
+        # Esc prima della fine dell'ascolto in differita, D30: un suono suo, che non svela il risultato e
+        # non è quello di ogni Annulla; nasce con la revisione del 14 ottobre 2026.
+        "differita_interrotta": "mess_differita_interrotta",
         "cronaca_torneo_letta": "mess_cronaca_torneo",
         "risultato_svelato": "mess_risultato_svelato",
         "risultati_svelati_tutti": "mess_risultati_svelati_tutti",
@@ -568,6 +571,7 @@ AZIONI = {
     "iscrizione_non_idoneo": "nel calendario l'atleta non può giocare quel torneo, per sesso, classe, età o qualificazione",
     "dialogo_tornei_in_corso": "si apre il pannello dei tornei in corso e conclusi di recente, con Ctrl+Y",
     "differita_al_via": "si apre la finestra dal vivo per ascoltare in differita un incontro dei tuoi, di torneo o di sfida",
+    "differita_interrotta": "nell'ascolto in differita Esc prima della fine, e l'incontro resta da ascoltare senza svelare il risultato",
     "cronaca_torneo_letta": "la cronaca di un incontro dei tuoi, di torneo o di sfida, aperta da leggere",
     "risultato_svelato": "il risultato di un incontro dei tuoi che si mostra, dopo l'ascolto in differita o con Mostra il risultato",
     "risultati_svelati_tutti": "Mostra tutti i risultati svela in un colpo gli incontri dei tuoi ancora da ascoltare",
@@ -596,7 +600,7 @@ AZIONI = {
     "sfida_accettata_dall_avversario": "la polisportiva del computer accetta la tua sfida, che si gioca domani",
     "sfida_rifiutata_dall_avversario": "la polisportiva del computer rifiuta la tua sfida, e dice perché",
     "nessuna_sfida_da_lanciare": "la tua polisportiva non ha più sfide da lanciare questo mese",
-    "dialogo_sfide_in_arrivo": "si aprono le sfide in arrivo, a cui rispondere entro domani, con Ctrl+Shift+F",
+    "dialogo_sfide_in_arrivo": "si aprono le sfide in arrivo, a cui rispondere entro oggi, prima dell'avanzamento seguente, con Ctrl+Shift+F",
     "sfida_accettata": "accetti una sfida in arrivo, con la tua formazione",
     "sfida_rifiutata": "rifiuti una sfida in arrivo",
     "dialogo_formazione": "si apre la formazione per una sfida o la rosa per la coppa, con titolari e riserve",
@@ -614,7 +618,7 @@ AZIONI = {
     "tua_sfida_vinta": "nell'avanzamento la tua polisportiva vince una sfida",
     "tua_sfida_persa": "nell'avanzamento la tua polisportiva perde una sfida",
     "tua_sfida_a_tavolino": "nell'avanzamento la tua polisportiva perde una sfida a tavolino, senza una squadra valida",
-    "sfida_ricevuta": "nell'avanzamento una polisportiva del computer sfida la tua, e aspetta la risposta entro domani",
+    "sfida_ricevuta": "nell'avanzamento una polisportiva del computer sfida la tua, e aspetta la risposta entro oggi",
     "sfida_decaduta": "nell'avanzamento una sfida alla tua polisportiva decade, senza risposta",
     "tuoi_qualificati_mondiale": "nell'avanzamento tuoi atleti convocati al campionato mondiale",
     "tua_qualificazione_coppa": "nell'avanzamento la tua polisportiva qualificata alla Coppa delle polisportive",
@@ -795,11 +799,13 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
         ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", lambda n: "tuo atleta campione del mondo" if n == 1 else f"{n} tuoi atleti campioni del mondo"),
         ("tue_medaglie_oro", "tua_medaglia_oro", lambda n: conta(n, "medaglia d'oro per i tuoi", "medaglie d'oro per i tuoi")),
         ("tue_coppe_oro", "tua_coppa_oro", coppa("d'oro")),
+        # A pari metallo prima la medaglia e poi la coppa, come per l'oro: la revisione del 14 ottobre 2026
+        # ha visto che prima un legno di un open passava davanti a un argento della Coppa delle polisportive.
         ("tue_medaglie_argento", "tua_medaglia_argento", lambda n: conta(n, "medaglia d'argento per i tuoi", "medaglie d'argento per i tuoi")),
-        ("tue_medaglie_bronzo", "tua_medaglia_bronzo", lambda n: conta(n, "medaglia di bronzo per i tuoi", "medaglie di bronzo per i tuoi")),
-        ("tue_medaglie_legno", "tua_medaglia_legno", lambda n: conta(n, "medaglia di legno per i tuoi", "medaglie di legno per i tuoi")),
         ("tue_coppe_argento", "tua_coppa_argento", coppa("d'argento")),
+        ("tue_medaglie_bronzo", "tua_medaglia_bronzo", lambda n: conta(n, "medaglia di bronzo per i tuoi", "medaglie di bronzo per i tuoi")),
         ("tue_coppe_bronzo", "tua_coppa_bronzo", coppa("di bronzo")),
+        ("tue_medaglie_legno", "tua_medaglia_legno", lambda n: conta(n, "medaglia di legno per i tuoi", "medaglie di legno per i tuoi")),
         ("tue_coppe_legno", "tua_coppa_legno", coppa("di legno")),
         ("tue_sfide_vinte", "tua_sfida_vinta", lambda n: conta(n, "sfida vinta", "sfide vinte")),
         ("tue_sfide_perse", "tua_sfida_persa", lambda n: conta(n, "sfida persa", "sfide perse")),

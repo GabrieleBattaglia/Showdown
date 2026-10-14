@@ -22,10 +22,14 @@ accesa, saltando gli infortunati; se la cassa non basta non iscrive, e lo conta 
 e per edizione; la regola del carico non vale per i tuoi.
 A mano dici tu: un no soltanto se il giocatore non è un tuo tesserato della polisportiva attiva, se
 non è idoneo, se l'edizione è chiusa, se si sovrappone a un altro suo impegno, o se la cassa non ha
-la quota. Iscrivere paga, togliere rimborsa; nessuno dei due tocca la data del ritmo.
-Il campionato mondiale convoca all'apertura delle iscrizioni i migliori del suo sesso per i punti
-dell'ultimo anno, gratis, risposta 10; un'iscrizione che si sovrappone ai suoi giorni si annulla col
-rimborso, perché il mondiale ha la precedenza.
+la quota. Iscrivere paga, togliere rimborsa; nessuno dei due tocca la data del ritmo, e un'edizione
+tolta l'iscrizione automatica non la riprende fino al suo sorteggio.
+Il campionato mondiale convoca all'apertura delle iscrizioni i migliori per i punti dell'ultimo
+anno fra chi può giocarlo, gratis, risposta 10; un'iscrizione che si sovrappone ai suoi giorni si
+annulla col rimborso, perché il mondiale ha la precedenza. Dalla revisione del 14 ottobre 2026 chi
+può giocarlo lo dice modelli_torneo.idoneo, come per le iscrizioni, e il sostituto di un convocato,
+al sorteggio o quando lo togli, segue le stesse regole dei convocati: niente impegni che non si
+annullano negli stessi giorni, le iscrizioni sovrapposte annullate col rimborso, il diario per i tuoi.
 """
 
 import datetime
@@ -203,6 +207,8 @@ def automatiche(mondo, calendario, data, rapporto):
         return
     iscritti = calendario.iscritti_alle_edizioni()
     impegni = calendario.impegni(mondo)
+    # Le edizioni da cui l'utente ha tolto un suo tesserato non si riprendono in automatico.
+    tolte = calendario.tolte_per_giocatore()
     morti = mondo._ids_morti_processati_sessione
     monti = {}
     for gid, g in mondo.giocatori.items():
@@ -221,7 +227,7 @@ def automatiche(mondo, calendario, data, rapporto):
         elif not g.iscrizione_automatica:
             continue
         s = max(domani, prossimo.date()) if prossimo is not None else domani
-        ed = scegli(aperte, g, s, impegni.get(gid, ()))
+        ed = scegli([e for e in aperte if e.id not in tolte[gid]] if gid in tolte else aperte, g, s, impegni.get(gid, ()))
         if ed is None:
             continue
         quota = ed.quota if poli is not None else 0
@@ -277,9 +283,10 @@ def problema_iscrizione(mondo, id_edizione, g, poli):
         return f"{nome_completo(g)} non può giocare {ed.nome}: è un torneo per altri giocatori."
     if g.id in ed.ids():
         return f"{nome_completo(g)} è già {accorda(g.sesso, 'iscritto')} a {ed.nome}."
-    for inizio, fine, descrizione in calendario.impegni_descritti(mondo, g.id):
+    for inizio, fine, descrizione, tipo in calendario.impegni_descritti(mondo, g.id):
         if inizio <= ed.data_fine and ed.data_inizio <= fine:
-            return f"{nome_completo(g)} negli stessi giorni ha già {descrizione}: due tornei negli stessi giorni non si giocano."
+            regola = "due tornei negli stessi giorni non si giocano" if tipo == "torneo" else "un torneo e una sfida negli stessi giorni non si giocano"
+            return f"{nome_completo(g)} negli stessi giorni ha già {descrizione}: {regola}."
     if poli.cassa < ed.quota:
         return f"La cassa di {poli.nome} ha {scritta_in_euro(poli.cassa)}: l'iscrizione costa {scritta_in_euro(ed.quota)}."
     return None
@@ -313,76 +320,112 @@ def problema_ritiro(mondo, id_edizione, g, poli):
 
 def togli(mondo, id_edizione, g, poli):
     """
-    L'utente toglie il suo tesserato dall'edizione, fino al sorteggio: la quota torna, voce rimborsi.
-    Dal mondiale, il posto passa al primo dei non convocati. Restituisce il rimborso; ValueError col motivo.
+    L'utente toglie il suo tesserato dall'edizione, fino al sorteggio: la quota torna, voce rimborsi, e
+    l'iscrizione automatica non lo rimette in quell'edizione. Dal mondiale, il posto passa al primo dei
+    non convocati. Restituisce il rimborso; ValueError col motivo.
     """
     problema = problema_ritiro(mondo, id_edizione, g, poli)
     if problema:
         raise ValueError(problema)
-    ed = _edizione(mondo.calendario, id_edizione)
+    calendario = mondo.calendario
+    ed = _edizione(calendario, id_edizione)
     iscritto = ed.togli(g.id)
     euro = rimborsa(mondo, iscritto)
+    # La revisione del 14 ottobre 2026: senza questo ricordo, il giorno dopo l'iscrizione automatica
+    # trovava il tesserato di nuovo in attesa, lo riscriveva alla stessa edizione e la quota si pagava
+    # di nuovo. Il ricordo dura fino al sorteggio dell'edizione.
+    calendario.ricorda_tolta(g.id, ed.id)
     mondo.annota(g, f"Non gioca più {ed.nome}: l'iscrizione è tolta.")
     mondo.annota(poli, f"Toglie {nome_completo(g)} da {ed.nome}" + (f": rimborso di {scritta_in_euro(euro)}." if euro else "."))
     if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
         # Chi hai tolto non torna convocato: resta fra gli esclusi, come gli infortunati sostituiti.
         ed.esclusi.append(g.id)
-        sostituto = prossimo_convocato(mondo, ed)
+        sostituto = prossimo_convocato(mondo, calendario, ed)
         if sostituto is not None:
-            ed.aggiungi(sostituto.id, club_di(mondo, sostituto), 0, QUALIFICATO)
+            convoca(mondo, calendario, ed, sostituto)
     return euro
 
 
 # Il mondiale, punto 5.8.
 
-def classifica_dell_anno(mondo, sesso, oggi):
+def classifica_dell_anno(mondo, modello, oggi):
     """
-    I giocatori in attività del sesso, liberi compresi, per i punti dell'ultimo anno: a parità passa chi
-    ha il punteggio di classe più alto, poi l'identificativo più basso, risposta 10 di Gabriele.
+    I giocatori in attività che possono giocare il modello del mondiale, liberi compresi, per i punti
+    dell'ultimo anno: a parità passa chi ha il punteggio di classe più alto, poi l'identificativo più
+    basso, risposta 10 di Gabriele. Chi può giocarlo lo dice modelli_torneo.idoneo, come per le
+    iscrizioni: il sesso, con l'aperto per tutti, e i filtri di classe e d'età che l'editor permette;
+    prima della revisione del 14 ottobre 2026 contava soltanto il sesso, e un mondiale giovani
+    convocava gli adulti, uno aperto nessuno.
     """
     morti = mondo._ids_morti_processati_sessione
-    attivi = [g for gid, g in mondo.giocatori.items() if gid not in morti and not g.ritirato and g.sesso == sesso]
+    attivi = [g for gid, g in mondo.giocatori.items() if gid not in morti and not g.ritirato and modelli_torneo.idoneo(modello, g)]
     return sorted(attivi, key=lambda g: (-palmares.punti_dell_anno(g, oggi), -classe.punteggio(g), g.id))
 
 
-def prossimo_convocato(mondo, ed, escludi=()):
-    """Il primo della classifica dell'anno che non è già convocato, può giocare e non è escluso; None se non c'è."""
-    gia = set(ed.ids()) | set(escludi) | set(ed.esclusi)
-    for g in classifica_dell_anno(mondo, ed.sesso, _giorno(mondo.datetime_corrente_simulazione)):
-        if g.id not in gia and g.puo_giocare:
+def _sovrapposti(inizio, fine, intervalli):
+    return any(a <= fine and inizio <= b for a, b in intervalli)
+
+
+def convoca(mondo, calendario, ed, g, rapporto=None):
+    """
+    Un convocato al mondiale, gratis e senza toccare la data del ritmo: le sue iscrizioni che si
+    sovrappongono ai giorni del mondiale si annullano col rimborso, perché il mondiale ha la
+    precedenza. Il tuo convocato lo sa dal diario, e con il rapporto dell'avanzamento anche dalle notizie.
+    """
+    for altra in calendario.edizioni:
+        if altra is ed or not altra.individuale or g.id not in altra.ids() or not (altra.data_inizio <= ed.data_fine and ed.data_inizio <= altra.data_fine):
+            continue
+        rimborsa(mondo, altra.togli(g.id))
+        if tuo(mondo, g):
+            mondo.annota(g, f"Lascia {altra.nome}: è {accorda(g.sesso, 'convocato')} a {ed.nome}, che ha la precedenza.")
+    ed.aggiungi(g.id, club_di(mondo, g), 0, QUALIFICATO)
+    if tuo(mondo, g):
+        mondo.annota(g, f"{accorda(g.sesso, 'Convocato')} a {ed.nome}, dal {data_breve(ed.data_inizio)}.")
+        if rapporto is not None:
+            rapporto["tuoi_qualificati"] += 1
+            rapporto["notizie"].append(f"{nome_completo(g)} è {accorda(g.sesso, 'convocato')} a {ed.nome}.")
+
+
+def prossimo_convocato(mondo, calendario, ed):
+    """
+    Il primo della classifica dell'anno che non è già convocato, può giocare, non è escluso e nei giorni
+    del mondiale non ha un impegno che non si annulla: una sede in corso, la rosa della coppa o una
+    sfida accettata. Le sue iscrizioni a un torneo negli stessi giorni non contano, perché convoca le
+    annulla. None se non c'è. Prima della revisione del 14 ottobre 2026 non guardava gli impegni, e il
+    sostituto poteva giocare due tornei nello stesso giorno.
+    """
+    gia = set(ed.ids()) | set(ed.esclusi)
+    fissi = calendario.impegni(mondo, esclusa=ed, con_le_iscrizioni=False)
+    for g in classifica_dell_anno(mondo, ed.oggetto_modello, _giorno(mondo.datetime_corrente_simulazione)):
+        if g.id not in gia and g.puo_giocare and not _sovrapposti(ed.data_inizio, ed.data_fine, fissi.get(g.id, ())):
             return g
     return None
 
 
 def convoca_mondiale(mondo, calendario, ed, rapporto):
     """
-    All'apertura delle iscrizioni del mondiale si convocano i migliori del suo sesso per i punti
-    dell'ultimo anno, fino al tetto, gratis e senza toccare la data del ritmo; le iscrizioni che si
-    sovrappongono ai suoi giorni si annullano col rimborso. I tuoi convocati lo sanno dal diario.
+    All'apertura delle iscrizioni del mondiale si convocano i migliori per i punti dell'ultimo anno fra
+    chi può giocarlo, fino al tetto, saltando chi negli stessi giorni ha un impegno che non si annulla;
+    le iscrizioni che si sovrappongono si annullano col rimborso. I tuoi convocati lo sanno dal diario.
     """
     oggi = _giorno(mondo.datetime_corrente_simulazione)
-    for g in classifica_dell_anno(mondo, ed.sesso, oggi)[:ed.tetto]:
-        for altra in calendario.edizioni:
-            if altra is ed or g.id not in altra.ids() or not (altra.data_inizio <= ed.data_fine and ed.data_inizio <= altra.data_fine):
-                continue
-            rimborsa(mondo, altra.togli(g.id))
-            if tuo(mondo, g):
-                mondo.annota(g, f"Lascia {altra.nome}: è {accorda(g.sesso, 'convocato')} a {ed.nome}, che ha la precedenza.")
-        ed.aggiungi(g.id, club_di(mondo, g), 0, QUALIFICATO)
-        if tuo(mondo, g):
-            rapporto["tuoi_qualificati"] += 1
-            mondo.annota(g, f"{accorda(g.sesso, 'Convocato')} a {ed.nome}, dal {data_breve(ed.data_inizio)}.")
-            rapporto["notizie"].append(f"{nome_completo(g)} è {accorda(g.sesso, 'convocato')} a {ed.nome}.")
+    fissi = calendario.impegni(mondo, esclusa=ed, con_le_iscrizioni=False)
+    for g in classifica_dell_anno(mondo, ed.oggetto_modello, oggi):
+        if len(ed.iscritti) >= ed.tetto:
+            break
+        if _sovrapposti(ed.data_inizio, ed.data_fine, fissi.get(g.id, ())):
+            continue
+        convoca(mondo, calendario, ed, g, rapporto)
 
 
-def sostituisci_gli_infortunati(mondo, ed):
-    """Al sorteggio del mondiale chi è infortunato lascia il posto al primo dei non convocati che può giocare."""
+def sostituisci_gli_infortunati(mondo, calendario, ed, rapporto=None):
+    """Al sorteggio del mondiale chi è infortunato lascia il posto al primo dei non convocati che può giocare, con le regole di convoca."""
     for iscritto in list(ed.iscritti):
         g = mondo.giocatori.get(iscritto["id"])
         if g is not None and g.puo_giocare and not g.ritirato:
             continue
         ed.togli(iscritto["id"])
         ed.esclusi.append(iscritto["id"])
-        sostituto = prossimo_convocato(mondo, ed)
+        sostituto = prossimo_convocato(mondo, calendario, ed)
         if sostituto is not None:
-            ed.aggiungi(sostituto.id, club_di(mondo, sostituto), 0, QUALIFICATO)
+            convoca(mondo, calendario, ed, sostituto, rapporto)

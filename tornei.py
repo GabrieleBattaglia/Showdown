@@ -448,7 +448,10 @@ class Torneo:
         """
         Al primo turno del tabellone due compagni dello stesso girone non si affrontano, quando si può:
         il più debole dei due si scambia con chi sta allo stesso posto del confronto più vicino, se lo
-        scambio non crea un altro conflitto. I riposi restano dove sono.
+        scambio non crea un altro conflitto. I riposi restano dove sono, e restano alle prime teste: un
+        confronto con un riposo non entra negli scambi, perché il debole prenderebbe il riposo della
+        testa e la testa dovrebbe giocare, contro il punto 4.9 del progetto; lo ha visto la revisione
+        del 14 ottobre 2026.
         """
         girone_di = {gid: lettera for lettera, ids in gironi_di_prima.gironi.items() for gid in ids}
 
@@ -469,7 +472,7 @@ class Torneo:
                     if not 0 <= j < confronti:
                         continue
                     altro = 2 * j + lato
-                    if posti[altro] is None:
+                    if posti[altro] is None or posti[2 * j + 1 - lato] is None:
                         continue
                     posti[debole], posti[altro] = posti[altro], posti[debole]
                     if conflitto(k) or conflitto(j):
@@ -710,30 +713,45 @@ def _statistiche(incontri, ids):
 def _spareggio(torneo, gruppo, incontri):
     """
     L'ordine di un gruppo a pari vittorie nel girone, secondo l'articolo 8 del Regolamento Eventi
-    Federali della FISPIC, deliberazione del Consiglio federale del 23 giugno 2026. Fra due: prima le
-    vittorie negli scontri diretti, poi la differenza set e la differenza punti negli scontri diretti.
-    Fra tre o più: le vittorie negli scontri diretti fra loro, poi la differenza set e la differenza
-    punti negli scontri diretti fra loro; quando restano due a pari merito si ricomincia dalla regola
-    dei due, e quando ne restano tre o più, meno di prima, dalla regola dei tre fra loro soli. Al posto
-    del sorteggio la forza al sorteggio, scelta dell'architetto, perché il risultato sia ripetibile.
+    Federali della FISPIC, deliberazione del Consiglio federale del 23 giugno 2026. Fra due, il punto 1:
+    prima le vittorie negli scontri diretti, poi la differenza set e la differenza punti negli scontri
+    diretti. Fra tre o più, il punto 2: le vittorie negli scontri diretti fra tutti quelli a pari punti,
+    poi la differenza set e la differenza punti negli stessi scontri, un criterio dopo l'altro, e ogni
+    criterio divide soltanto chi il criterio di prima ha lasciato pari. Il testo aggiunge: «nel momento
+    in cui rimangono due atleti in situazione di parità, deve essere adottato il punto 1, partendo dalla
+    lettera a)»; quindi un blocco che resta di due, dopo qualunque criterio, si decide subito con lo
+    scontro diretto fra loro due, e non col criterio seguente calcolato su tutti. Un blocco di tre o più
+    che resta pari dopo la differenza punti riparte dal punto 2 fra loro soli, se sono meno di prima,
+    lettura dell'architetto che il testo non esclude. Al posto del sorteggio la forza al sorteggio,
+    scelta dell'architetto, perché il risultato sia ripetibile. La revisione del 14 ottobre 2026 ha
+    corretto la prima versione, che ordinava tutto il gruppo con i tre criteri insieme e tornava allo
+    scontro diretto soltanto quando erano pari in tutti e tre.
     """
     if len(gruppo) <= 1:
         return list(gruppo)
     conti = _statistiche(incontri, gruppo)
+    criteri = (lambda gid: conti[gid][0], lambda gid: conti[gid][1] - conti[gid][2], lambda gid: conti[gid][3] - conti[gid][4])
+    if len(gruppo) == 2:
+        # Il punto 1: fra due gli scontri diretti sono gli incontri fra loro, e i tre criteri si leggono in fila.
+        def chiave(gid):
+            return tuple(criterio(gid) for criterio in criteri)
+        primo, secondo = sorted(gruppo, key=chiave, reverse=True)
+        return [primo, secondo] if chiave(primo) != chiave(secondo) else torneo._per_forza(gruppo)
 
-    def chiave(gid):
-        vittorie, set_vinti, set_persi, punti_fatti, punti_subiti = conti[gid]
-        return vittorie, set_vinti - set_persi, punti_fatti - punti_subiti
+    def dividi(blocco, livello):
+        if len(blocco) == 1:
+            return list(blocco)
+        if len(blocco) == 2:
+            return _spareggio(torneo, blocco, incontri)
+        if livello == len(criteri):
+            return _spareggio(torneo, blocco, incontri) if len(blocco) < len(gruppo) else torneo._per_forza(blocco)
+        criterio = criteri[livello]
+        ordine = []
+        for valore in sorted({criterio(gid) for gid in blocco}, reverse=True):
+            ordine.extend(dividi([gid for gid in blocco if criterio(gid) == valore], livello + 1))
+        return ordine
 
-    ordinati = sorted(gruppo, key=chiave, reverse=True)
-    risultato = []
-    for chiave_comune in sorted({chiave(gid) for gid in gruppo}, reverse=True):
-        pari = [gid for gid in ordinati if chiave(gid) == chiave_comune]
-        if len(pari) == len(gruppo) or len(pari) == 1:
-            risultato.extend(torneo._per_forza(pari) if len(pari) > 1 else pari)
-        else:
-            risultato.extend(_spareggio(torneo, pari, incontri))
-    return risultato
+    return dividi(list(gruppo), 0)
 
 
 def classifica_girone(torneo, fase, lettera):

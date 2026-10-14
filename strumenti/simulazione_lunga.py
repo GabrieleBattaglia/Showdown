@@ -228,7 +228,7 @@ def riga_dell_anno(anno, m, millisecondi):
 # Le misure del calendario della tappa 12, punto 13.4: per anno di calendario, cioè ogni 365 giorni simulati.
 GIORNI_PER_ANNO_DI_CALENDARIO = 365
 VOCI_DEL_CALENDARIO = ("tornei_conclusi", "incontri_torneo", "incontri_ritiro", "incontri_tavolino", "infortuni_in_gara", "acciacchi_in_gara",
-                       "sfide_giocate", "edizioni_annullate")
+                       "sfide_giocate", "edizioni_annullate", "premi_tornei")
 
 
 def fascia_di(anni):
@@ -443,7 +443,9 @@ class MisuraDelCalendario:
         richiesta = statistics.median(g.gloria_richiesta for g in liberi) / max(1, statistics.median(glorie)) if liberi and glorie else 0.0
         voci_albo = [voce for voce in mondo.calendario.albo.voci[self.voci_albo_prima:] if voce[6]]
         iscritti_per_sede = statistics.fmean(voce[7] for voce in voci_albo) if voci_albo else 0.0
-        premi = sum(sum(voce[9]) for voce in voci_albo)
+        # Tutti i premi pagati dalle sedi concluse; l'albo conserva soltanto quelli del podio, dal 69 al 79 per cento del totale.
+        premi = v["premi_tornei"]
+        premi_podio = sum(sum(voce[9]) for voce in voci_albo)
         medaglie_date = sum(len(voce[8]) for voce in voci_albo)
         punti = "; ".join(f"dai {da} ai {a} anni {numero(somma / max(1, quanti), 3)}" for (da, a), (somma, quanti) in self.punti_per_fascia.items())
         conteggi = self.conteggi_al_giorno()
@@ -463,7 +465,8 @@ class MisuraDelCalendario:
             "ms_sfide": statistics.fmean(self.ms_sfide), "conteggi": {f"{da}-{a}": voci for (da, a), voci in conteggi.items()},
         })
         riga = (f"Anno di calendario {self.numero_anno}, {giorni} giorni: {v['tornei_conclusi']} sedi concluse, con {numero(iscritti_per_sede, 1)} iscritti per sede, "
-                f"{v['edizioni_annullate']} edizioni annullate, {medaglie_date} medaglie e coppe dei tornei e {numero(premi)} euro di premi; "
+                f"{v['edizioni_annullate']} edizioni annullate, {medaglie_date} medaglie e coppe dei tornei e {numero(premi)} euro di premi, "
+                f"di cui {numero(premi_podio)} al podio; "
                 f"{v['incontri_torneo']} incontri di torneo, {numero(v['incontri_torneo'] / giorni, 1)} al giorno in media e {max(self.incontri_al_giorno)} nel giorno più pieno; "
                 f"ritiri {numero(100 * v['incontri_ritiro'] / incontri, 2)} per cento degli incontri, tavolini {numero(100 * v['incontri_tavolino'] / incontri, 2)}, "
                 f"uno non regolare ogni {numero(incontri / max(1, v['incontri_ritiro'] + v['incontri_tavolino']), 1)}; "

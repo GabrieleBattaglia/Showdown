@@ -25,6 +25,13 @@ incontri dei tuoi da ascoltare, dopo una domanda col no già scelto, perché non
 prima della fine dell'ascolto non svela niente. Le classifiche dicono comunque chi va avanti.
 L'albo d'oro conserva ogni podio per sempre, risposta 13: ci si arriva per modello e per anno, e per
 ogni edizione si leggono i podi delle sue sedi, tutte o soltanto quelle con i tuoi.
+La revisione del 14 ottobre 2026 ha tolto il pulsante predefinito dai tre dialoghi: nel calendario Invio
+su un elenco iscriveva e pagava, nel pannello ascoltava da qualunque elenco l'incontro scelto negli
+Incontri, nell'albo chiudeva. Ora Invio ascolta soltanto sull'elenco degli incontri, e altrove non fa
+niente. Mostra del pannello ha una voce in più, le ultime edizioni concluse con i tuoi, dalle
+differite del calendario: D32 vuole riascoltabile l'ultimo concluso anche dopo le due settimane, e lì
+restano i tuoi incontri, col podio della sede preso dall'albo. Esc durante l'ascolto ha il suo suono,
+differita_interrotta, come vuole D30.
 """
 
 import datetime
@@ -39,6 +46,7 @@ import sfide
 import suoni
 import testi
 import tornei
+from calendario import SedeInDifferita
 from gui import sfide as gui_sfide
 from gui.dal_vivo import ALLA_FINE, CON_ESC, ascolta_in_differita
 from gui.dialoghi import Lettura, _Dialogo
@@ -51,9 +59,12 @@ RIPETIZIONE_IGNORATA = 0.5
 GIORNI_AVANTI = 30
 APERTE, PROSSIME, IN_CORSO = "aperte", "prossime", "in_corso"
 SCELTE_DEL_CALENDARIO = ((APERTE, "Edizioni aperte alle iscrizioni"), (PROSSIME, "Edizioni dei prossimi 30 giorni"), (IN_CORSO, "Edizioni in corso"))
-CON_I_TUOI, TUTTI_IN_CORSO, CONCLUSI_TUOI, TUTTI_CONCLUSI = "tuoi", "in_corso", "conclusi_tuoi", "conclusi"
+CON_I_TUOI, TUTTI_IN_CORSO, CONCLUSI_TUOI, TUTTI_CONCLUSI, DIFFERITE = "tuoi", "in_corso", "conclusi_tuoi", "conclusi", "differite"
+# L'ultima voce, dalla revisione del 14 ottobre 2026: D32 vuole da riascoltare l'ultimo concluso anche
+# dopo le due settimane in cui le sedi concluse restano nel pannello.
 SCELTE_DEL_PANNELLO = ((CON_I_TUOI, "Tornei con i tuoi atleti"), (TUTTI_IN_CORSO, "Tutti i tornei in corso"),
-                       (CONCLUSI_TUOI, "Conclusi di recente con i tuoi"), (TUTTI_CONCLUSI, "Tutti i conclusi di recente"))
+                       (CONCLUSI_TUOI, "Conclusi di recente con i tuoi"), (TUTTI_CONCLUSI, "Tutti i conclusi di recente"),
+                       (DIFFERITE, "Ultime edizioni concluse con i tuoi, da riascoltare"))
 TUTTE_LE_SEDI, SEDI_CON_I_TUOI = "tutte", "tuoi"
 SCELTE_DELL_ALBO = ((TUTTE_LE_SEDI, "Tutte le sedi"), (SEDI_CON_I_TUOI, "Soltanto le sedi con i tuoi sul podio"))
 
@@ -101,7 +112,8 @@ def ascolta_e_ricorda(genitore, mondo, differita, seme, impostazioni, tuoi, data
         valide["velocita_gioco"] = velocita
     uscita, velocita = ascolta_in_differita(genitore, differita, seme, valide, tuoi)
     if uscita == CON_ESC:
-        suoni.suona("annullato")
+        # D30: l'uscita con Esc ha un suono suo, che non svela il risultato, e non quello di ogni Annulla.
+        suoni.suona("differita_interrotta")
         return None, velocita
     if uscita == ALLA_FINE:
         suoni.suona("resto_dell_incontro")
@@ -173,8 +185,10 @@ class CalendarioTornei(_Dialogo):
         self.elenco_iscrivibili = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         self.etichetta("Is&critti dei tuoi")
         self.elenco_iscritti = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        # Nessun pulsante predefinito, punto 12.3: con Iscrivi predefinito, Invio su un elenco o su Mostra
+        # iscriveva e pagava la quota per l'atleta scelto nell'altro elenco, revisione del 14 ottobre 2026.
         self.iscrivi_pulsante, togli, pannello, _chiudi = self.pulsanti((wx.ID_ANY, "Iscri&vi"), (wx.ID_ANY, "&Togli"),
-                                                                       (wx.ID_ANY, "&Pannello del torneo"), (wx.ID_CANCEL, "C&hiudi"))
+                                                                       (wx.ID_ANY, "&Pannello del torneo"), (wx.ID_CANCEL, "C&hiudi"), predefinito=False)
         self.iscrivi_pulsante.Bind(wx.EVT_BUTTON, self.iscrivi)
         togli.Bind(wx.EVT_BUTTON, self.togli)
         pannello.Bind(wx.EVT_BUTTON, self.al_pannello)
@@ -335,7 +349,7 @@ class CalendarioTornei(_Dialogo):
             return "iscrizione_non_idoneo"
         if g.id in ed.ids():
             return "campo_da_correggere"
-        for inizio, fine, _descrizione in self.mondo.calendario.impegni_descritti(self.mondo, g.id):
+        for inizio, fine, _descrizione, _tipo in self.mondo.calendario.impegni_descritti(self.mondo, g.id):
             if inizio <= ed.data_fine and ed.data_inizio <= fine:
                 return "iscrizione_sovrapposta"
         if self.poli.cassa < ed.quota:
@@ -472,9 +486,14 @@ class PannelloTornei(_Dialogo):
         self.elenco_classifica = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         self.etichetta("&Incontri")
         self.elenco_incontri = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
-        ascolta, leggi, mostra = self.pulsanti((wx.ID_ANY, "&Ascolta in differita"), (wx.ID_ANY, "&Leggi la cronaca"), (wx.ID_ANY, "&Mostra il risultato"))
+        # Nessun pulsante predefinito: Invio ascolta soltanto sull'elenco degli incontri, punto 12.2, e
+        # sugli altri elenchi non fa niente; prima, con Ascolta predefinito, Invio su Tornei o su Parti
+        # ascoltava l'incontro scelto negli Incontri, che in quel momento non si guardava.
+        ascolta, leggi, mostra = self.pulsanti((wx.ID_ANY, "&Ascolta in differita"), (wx.ID_ANY, "&Leggi la cronaca"), (wx.ID_ANY, "&Mostra il risultato"),
+                                               predefinito=False)
         tutti, scheda, _chiudi = self.pulsanti((wx.ID_ANY, "Mostra t&utti i risultati"), (wx.ID_ANY, "Scheda del &giocatore"), (wx.ID_CANCEL, "C&hiudi"),
                                               predefinito=False)
+        self.invio_su(self.elenco_incontri, self.ascolta)
         ascolta.Bind(wx.EVT_BUTTON, self.ascolta)
         leggi.Bind(wx.EVT_BUTTON, self.leggi)
         mostra.Bind(wx.EVT_BUTTON, self.mostra_risultato)
@@ -503,10 +522,17 @@ class PannelloTornei(_Dialogo):
     def _tornei_da_mostrare(self):
         cal = self.mondo.calendario
         modo = self._modo()
+        if modo == DIFFERITE:
+            return [sede for _voce, sede in cal.sedi_in_differita()]
         insieme = cal.tornei if modo in (CON_I_TUOI, TUTTI_IN_CORSO) else list(reversed(cal.conclusi))
         if modo in (CON_I_TUOI, CONCLUSI_TUOI):
             insieme = [t for t in insieme if tuoi_nel_torneo(self.mondo, t, self.tuoi)]
         return list(insieme)
+
+    def _riga(self, torneo):
+        if isinstance(torneo, SedeInDifferita):
+            return testi.riga_della_sede_in_differita(torneo)
+        return testi.riga_del_pannello(torneo, len(tuoi_nel_torneo(self.mondo, torneo, self.tuoi)))
 
     def aggiorna(self, posto=None):
         """Riscrive la testata e l'elenco dei tornei tenendo il posto, e sotto le parti, la classifica e gli incontri."""
@@ -515,9 +541,10 @@ class PannelloTornei(_Dialogo):
         con_i_tuoi = sum(1 for t in cal.tornei if tuoi_nel_torneo(self.mondo, t, self.tuoi))
         self.info.SetLabel(testi.testata_del_pannello(len(cal.tornei), con_i_tuoi, len(cal.conclusi)))
         self.mostrati = self._tornei_da_mostrare()
-        righe = [testi.riga_del_pannello(t, len(tuoi_nel_torneo(self.mondo, t, self.tuoi))) for t in self.mostrati]
+        righe = [self._riga(t) for t in self.mostrati]
         vuoto = {CON_I_TUOI: "Nessun torneo in corso con i tuoi atleti.", TUTTI_IN_CORSO: "Nessun torneo in corso.",
-                 CONCLUSI_TUOI: "Nessun torneo dei tuoi concluso negli ultimi 14 giorni.", TUTTI_CONCLUSI: "Nessun torneo concluso negli ultimi 14 giorni."}[self._modo()]
+                 CONCLUSI_TUOI: "Nessun torneo dei tuoi concluso negli ultimi 14 giorni.", TUTTI_CONCLUSI: "Nessun torneo concluso negli ultimi 14 giorni.",
+                 DIFFERITE: "Nessuna edizione conclusa con i tuoi da riascoltare."}[self._modo()]
         self._riscrivi(self.elenco_tornei, righe or [vuoto], posto)
         self.al_torneo()
         self.pannello.Layout()
@@ -534,6 +561,10 @@ class PannelloTornei(_Dialogo):
         if torneo is None:
             self.parti = []
             self._riscrivi(self.elenco_parti, ["Nessun torneo scelto."], 0)
+        elif isinstance(torneo, SedeInDifferita):
+            # Di un'edizione delle differite restano soltanto i tuoi incontri, e il podio nell'albo.
+            self.parti = [("I tuoi incontri, col podio della sede", ("differita", None, None))]
+            self._riscrivi(self.elenco_parti, [self.parti[0][0]], 0)
         else:
             self.parti = testi.parti_del_torneo(torneo, bool(tuoi_nel_torneo(self.mondo, torneo, self.tuoi)))
             self._riscrivi(self.elenco_parti, [testo for testo, _chiave in self.parti], posto)
@@ -553,6 +584,15 @@ class PannelloTornei(_Dialogo):
             self.righe_classifica, self.incontri = [], []
             self._riscrivi(self.elenco_classifica, ["Niente da mostrare."], 0)
             self._riscrivi(self.elenco_incontri, ["Niente da mostrare."], 0)
+            return
+        if isinstance(torneo, SedeInDifferita):
+            albo = self.mondo.calendario.albo
+            voce = testi.voce_della_sede_in_differita(albo, torneo)
+            podio = voce[8] if voce is not None else []
+            self.righe_classifica = [(albo.club[p][0] if p is not None else None) if torneo.squadre else p[0] for p in podio]
+            self._riscrivi(self.elenco_classifica, testi.podio_della_sede_in_differita(albo, torneo), posto_classifica)
+            self.incontri = sorted(torneo.incontri(), key=lambda i: (i.fase, i.turno, i.finalina, i.gruppo, i.posto))
+            self._riscrivi(self.elenco_incontri, [testi.incontro_in_elenco(torneo, i) for i in self.incontri] or ["Nessun incontro."], posto_incontri)
             return
         tuoi = tuoi_nel_torneo(self.mondo, torneo, self.tuoi)
         self.righe_classifica = self._gid_della_classifica(torneo, chiave, tuoi)
@@ -597,7 +637,7 @@ class PannelloTornei(_Dialogo):
         if not incontro.differita:
             self.avvisa("Questo incontro non si può ascoltare: si riascoltano soltanto gli incontri giocati dai tuoi atleti.", self.elenco_incontri, "nessuna_differita")
             return None, None
-        if torneo.stato != tornei.IN_CORSO:
+        if torneo.stato != tornei.IN_CORSO and not isinstance(torneo, SedeInDifferita):
             voce = self.mondo.calendario.differite.get(torneo.modello["id"])
             if voce is None or voce["edizione"] != torneo.edizione:
                 self.avvisa("Questo incontro non si può più ascoltare: un'edizione più recente dello stesso torneo ha preso il suo posto.", self.elenco_incontri,
@@ -700,12 +740,13 @@ class AlboDOro(_Dialogo):
         importanze = {}
         for voce in self.albo.voci:
             importanze[voce[0]] = max(importanze.get(voce[0], 0.0), voce[3])
-        self.modelli = sorted(importanze, key=lambda m: (-(importanze[m] >= 3), -importanze[m], self.albo.modelli.get(m, m).casefold()))
+        # Un modello per ogni nome che ha avuto: le edizioni passate tengono il nome di allora.
+        self.modelli = sorted(importanze, key=lambda m: (-(importanze[m] >= 3), -importanze[m], self.albo.nome_del_modello(m).casefold(), m))
         self.anni = []
         self.edizioni = []
         self.sedi = []
         self.etichetta("&Modello")
-        self.scelta_modello = self.aggiungi(wx.Choice(self.pannello, choices=[self.albo.modelli.get(m, m) for m in self.modelli] or ["L'albo è ancora vuoto"]))
+        self.scelta_modello = self.aggiungi(wx.Choice(self.pannello, choices=[self.albo.nome_del_modello(m) for m in self.modelli] or ["L'albo è ancora vuoto"]))
         self.etichetta("&Anno")
         self.scelta_anno = self.aggiungi(wx.Choice(self.pannello))
         self.etichetta("M&ostra")
@@ -714,7 +755,8 @@ class AlboDOro(_Dialogo):
         self.elenco_edizioni = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         self.etichetta("&Podi")
         self.elenco_podi = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
-        self.pulsanti((wx.ID_CANCEL, "C&hiudi"))
+        # Senza pulsante predefinito: Invio su un'edizione o su un podio non chiude l'albo, Esc sì.
+        self.pulsanti((wx.ID_CANCEL, "C&hiudi"), predefinito=False)
         self.scelta_modello.SetSelection(0)
         self.scelta_mostra.SetSelection(0)
         self.scelta_modello.Bind(wx.EVT_CHOICE, lambda event: self.al_modello())

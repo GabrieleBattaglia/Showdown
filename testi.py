@@ -45,6 +45,7 @@ import infortuni
 import mercato
 import modelli_torneo
 import palmares
+import sfide
 import tornei
 import version
 from archivio import NATO
@@ -1009,7 +1010,7 @@ def _fatti_avanzamento(rapporto):
     if rapporto.get("sfide_decadute"):
         frasi.append(f"{conta(rapporto['sfide_decadute'], 'sfida alle tue polisportive è decaduta', 'sfide alle tue polisportive sono decadute')} senza risposta.")
     if rapporto.get("sfide_in_attesa"):
-        frasi.append(f"{conta(rapporto['sfide_in_attesa'], 'sfida aspetta', 'sfide aspettano')} la tua risposta entro domani.")
+        frasi.append(f"{conta(rapporto['sfide_in_attesa'], 'sfida aspetta', 'sfide aspettano')} la tua risposta entro oggi, prima dell'avanzamento seguente.")
     gare = unisci([
         conta(rapporto["tornei_conclusi"], "torneo concluso", "tornei conclusi") if rapporto.get("tornei_conclusi") else "",
         conta(rapporto["incontri_torneo"], "incontro di torneo", "incontri di torneo") if rapporto.get("incontri_torneo") else "",
@@ -1214,7 +1215,7 @@ def voce_dell_albo(albo, voce):
     iscritti: oro Mario Rossi, PoliTeam04; argento ...»; per la coppa i club; l'edizione non disputata.
     """
     modello, tipo, _sesso, _importanza, data, numero, sede, iscritti, podio, _premi = voce
-    testa = f"{albo.modelli.get(modello, modello)}, edizione {numero}"
+    testa = f"{albo.nome_del_modello(modello)}, edizione {numero}"
     if sede:
         testa += f", sede {sede}"
     testa += f", {data_breve(datetime.date.fromisoformat(data))}"
@@ -1222,16 +1223,21 @@ def voce_dell_albo(albo, voce):
     partecipanti = conta(iscritti, "polisportiva", "polisportive") if squadre else conta(iscritti, "iscritto", "iscritti")
     if not podio:
         return f"{testa}: edizione non disputata, con {partecipanti}."
+    return f"{testa}, {partecipanti}: " + "; ".join(_posti_del_podio(albo, voce)) + "."
+
+
+def _posti_del_podio(albo, voce):
+    """I posti del podio di una voce dell'albo, uno per medaglia: «oro Mario Rossi, PoliTeam04», o la polisportiva nella coppa."""
     parti = []
-    for medaglia, posto in zip(palmares.MEDAGLIE, podio, strict=False):
-        if squadre:
+    for medaglia, posto in zip(palmares.MEDAGLIE, voce[8], strict=False):
+        if voce[1] == "squadre":
             chi = albo.club[posto][0] if posto is not None else "una polisportiva"
         else:
             gid, club = posto
             nome, cognome = albo.giocatori[str(gid)]
             chi = f"{nome} {cognome}" + (f", {albo.club[club][0]}" if club is not None else "")
         parti.append(f"{medaglia} {chi}")
-    return f"{testa}, {partecipanti}: " + "; ".join(parti) + "."
+    return parti
 
 
 # La finestra dei tornei, tappa 12, passo 3, punto 12 del progetto: i testi del calendario, del
@@ -1524,9 +1530,37 @@ def riga_edizione_dell_albo(albo, voci):
 def podio_dell_albo(albo, voce):
     """Il podio di una sede nell'albo, senza il nome del modello e l'edizione, che l'elenco ha già: sede 3, 25 iscritti: oro ...; argento ..."""
     testo = voce_dell_albo(albo, voce)
-    testa = f"{albo.modelli.get(voce[0], voce[0])}, edizione {voce[5]}, "
+    testa = f"{albo.nome_del_modello(voce[0])}, edizione {voce[5]}, "
     testo = testo.removeprefix(testa)
     return testo[0].upper() + testo[1:]
+
+
+def riga_della_sede_in_differita(sede):
+    """
+    Una sede delle ultime edizioni concluse con i tuoi, nel pannello: «Open maschile del sabato,
+    edizione 57, sede 3, dal 18 ottobre 2026: 4 incontri dei tuoi, 2 da ascoltare».
+    """
+    incontri = sede.incontri()
+    da_ascoltare = sum(1 for i in incontri if i.giocato and i.differita and not i.svelato)
+    testo = f"{sede.modello['nome']}, edizione {sede.numero}, sede {sede.sede}, dal {data_breve(datetime.date.fromisoformat(sede.data_inizio))}: "
+    testo += conta(len(incontri), "incontro dei tuoi", "incontri dei tuoi")
+    return testo + (f", {da_ascoltare} da ascoltare." if da_ascoltare else ", tutti già ascoltati o mostrati.")
+
+
+def voce_della_sede_in_differita(albo, sede):
+    """La voce dell'albo d'oro della sede delle differite: lo stesso modello, la stessa edizione e la stessa sede; None se non c'è."""
+    for voce in reversed(albo.voci):
+        if albo.id_del_modello(voce[0]) == sede.modello["id"] and voce[5] == sede.numero and voce[6] == sede.sede:
+            return voce
+    return None
+
+
+def podio_della_sede_in_differita(albo, sede):
+    """Il podio della sede delle differite, dall'albo d'oro: una riga per posto, «oro Mario Rossi, PoliTeam04»."""
+    voce = voce_della_sede_in_differita(albo, sede)
+    if voce is None or not voce[8]:
+        return ["Il podio di questa sede non è nell'albo d'oro."]
+    return _posti_del_podio(albo, voce)
 
 
 def classifica_mondiale(mondo, quanti=100, tuoi=()):
@@ -1664,8 +1698,11 @@ def riga_bersaglio(dati):
 
 
 def riga_sfida_in_arrivo(s, forza):
-    """Una sfida che aspetta la tua risposta: PoliTeam04 sfida Club Di Prova, forza 0,58; rispondi entro il 15 ottobre 2026."""
-    return f"{s.sfidante['nome']} sfida {s.sfidata['nome']}, {forza_a_parole(forza)}; rispondi entro il {data_breve(s.scadenza)}"
+    """
+    Una sfida che aspetta la tua risposta: PoliTeam04 sfida Club Di Prova, forza 0,58; rispondi entro
+    il 14 ottobre 2026, cioè l'ultimo giorno in cui la proposta aspetta, non quello della scadenza.
+    """
+    return f"{s.sfidante['nome']} sfida {s.sfidata['nome']}, {forza_a_parole(forza)}; rispondi entro il {data_breve(sfide.ultimo_giorno_per_rispondere(s))}"
 
 
 def riga_dello_storico(s, mondo):
@@ -1893,7 +1930,8 @@ GUIDA_DEI_TORNEI = (
 GUIDA_DELLE_SFIDE = (
     "Le sfide fra polisportive sono gare a squadre, un set a 31, con due giocatori di un sesso e uno dell'altro al tavolo e fino a tre riserve. Ogni polisportiva "
     "ne riceve due da lanciare il primo del mese, fino a quattro; si lanciano a una polisportiva del computer con Ctrl+W, che risponde subito, e quelle che "
-    "ricevi si accettano o si rifiutano con Ctrl+Maiusc+F entro il giorno dopo, poi decadono. La formazione proposta si cambia prima di lanciare o di accettare; "
+    "ricevi si accettano o si rifiutano con Ctrl+Maiusc+F entro il giorno in cui arrivano: all'avanzamento seguente decadono. La formazione proposta si "
+    "cambia prima di lanciare o di accettare; "
     "la sfida si gioca all'avanzamento seguente, e la posta è una coppa, d'oro a chi vince e d'argento a chi perde. Lo storico, Ctrl+Maiusc+H, fa riascoltare "
     "e leggere le ultime dieci."
 )

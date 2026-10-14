@@ -164,6 +164,31 @@ def test_i_compagni_di_girone_si_separano_al_primo_turno():
     assert {frozenset((i.a, i.b)) for i in primo_turno} == {frozenset((1, 3)), frozenset((2, 4))}
 
 
+def test_separare_i_compagni_di_girone_non_sposta_i_riposi():
+    # La revisione del 14 ottobre 2026: 24 iscritti a gironi_32, 6 gironi da 4, 12 qualificati e un
+    # tabellone da 16 con 4 riposi. I due ultimi gironi li vincono i deboli, 20 nel girone E col 17
+    # secondo e 19 nel girone F col 18; dopo la separazione dei compagni i riposi restano alle prime
+    # quattro teste, e nessun primo turno mette di fronte due dello stesso girone.
+    torneo = _torneo(24)
+    gironi = torneo.fasi[0].gironi
+    assert gironi["E"] == [5, 8, 17, 20] and gironi["F"] == [6, 7, 18, 19]
+    # Nei gironi vince chi ha il rango più basso, di solito il più forte; nel tabellone il più forte.
+    rango = {gid: gid for gid in range(1, 25)} | {20: -100, 17: -99, 19: -100, 18: -99}
+
+    def gioca(incontro, _azioni):
+        vince_a = rango[incontro.a] < rango[incontro.b] if incontro.fase == 0 else torneo.forza(incontro.a) > torneo.forza(incontro.b)
+        return {"esito": "regolare", "vince": "A" if vince_a else "B", "set": _set_vinti(incontro, vince_a), "set_giocati": incontro.set_al_meglio // 2 + 1}
+
+    torneo.giornata(gioca, "2030-03-02")
+    promossi = torneo.fasi[0].promossi
+    tabellone = torneo.fasi[1]
+    primo = tabellone.del_turno(1)
+    riposi = sorted(i.a for i in primo if i.esito == tornei.RIPOSO)
+    assert riposi == sorted(promossi[:4]) == [1, 2, 3, 4]
+    girone_di = {gid: lettera for lettera, ids in gironi.items() for gid in ids}
+    assert all(girone_di[i.a] != girone_di[i.b] for i in primo if i.b is not None)
+
+
 def test_la_finalina_e_nessuno_sconfitto_rientra():
     torneo = _torneo(32)
     giorni = gioca_tutto(torneo, gioca_per_forza(torneo))
@@ -250,6 +275,21 @@ def test_quando_ne_restano_due_si_ricomincia_dallo_scontro_diretto():
     risultati[frozenset((1, 2))] = _r(1, (11, 0), (11, 0))
     torneo = _girone_scritto(4, risultati)
     assert torneo.classifica_finale[0] == 3
+
+
+def test_due_rimasti_pari_dopo_la_differenza_set_li_decide_lo_scontro_diretto():
+    # La revisione del 14 ottobre 2026, articolo 8 della FISPIC: cinque a due vittorie; la differenza
+    # set fra tutti stacca 5 e lascia 3 e 4 pari, e 1 e 2 pari. Due rimasti pari ripartono dal punto 1,
+    # lo scontro diretto, anche se la differenza punti fra tutti direbbe il contrario: 4 ne ha più di 3,
+    # ma 3 ha battuto 4; 2 ne ha più di 1, ma 1 ha battuto 2.
+    a_tre = ((11, 9), (9, 11), (11, 9))
+    risultati = {frozenset((1, 2)): _r(1, *a_tre), frozenset((1, 3)): _r(1, *a_tre), frozenset((2, 3)): _r(2, *a_tre), frozenset((2, 4)): _r(2, *a_tre),
+                 frozenset((3, 4)): _r(3, *a_tre), frozenset((3, 5)): _r(3, *a_tre), frozenset((4, 1)): _r(4, (11, 1), (1, 11), (11, 1)),
+                 frozenset((4, 5)): _r(4, *a_tre), frozenset((5, 1)): _r(5, (11, 9), (11, 9)), frozenset((5, 2)): _r(5, (11, 9), (11, 9))}
+    torneo = _girone_scritto(5, risultati)
+    conti = tornei._statistiche(torneo.incontri(), torneo.iscritti)
+    assert {gid: (c[0], c[1] - c[2], c[3] - c[4]) for gid, c in conti.items()} == {1: (2, -1, -10), 2: (2, -1, -2), 3: (2, 0, 0), 4: (2, 0, 8), 5: (2, 2, 4)}
+    assert torneo.classifica_finale == [5, 3, 4, 1, 2]
 
 
 def test_fra_due_a_pari_vittorie_decide_lo_scontro_diretto():

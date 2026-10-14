@@ -144,7 +144,10 @@ CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", 
                    "sfide_ricevute", "sfide_in_attesa", "sfide_decadute", "tue_sfide_vinte", "tue_sfide_perse", "tue_sfide_a_tavolino",
                    "calendario_con_problemi",
                    # Il passo 3 della tappa 12: i campionati mondiali conclusi, notizia del mondo nella barra.
-                   "mondiali_conclusi")
+                   "mondiali_conclusi",
+                   # La revisione della tappa 12: tutti i premi pagati dalle sedi concluse, non soltanto quelli del podio
+                   # che l'albo conserva, per la misura del calendario nella simulazione lunga.
+                   "premi_tornei")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"

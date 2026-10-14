@@ -34,6 +34,7 @@ import copy
 import datetime
 import os
 import random
+import types
 
 import classe
 import esito_rapido
@@ -193,13 +194,44 @@ class Edizione:
                    copy.deepcopy(dati["iscritti"]), list(dati["esclusi"]))
 
 
+class SedeInDifferita:
+    """
+    Una sede di un'edizione conclusa nelle differite, con quello che serve al pannello e ai testi per
+    dire i suoi incontri come quelli di una sede vera: il modello col nome che aveva, l'edizione, il
+    numero della sede, i nomi degli iscritti e la grandezza dei tabelloni. Non è un torneo: non ha
+    classifiche, che restano nell'albo d'oro.
+    """
+
+    stato = tornei.CONCLUSO
+
+    def __init__(self, voce, sede):
+        self.voce = voce
+        self.dati = sede
+        self.modello = {"id": voce["modello"], "nome": voce["nome"]}
+        self.edizione = voce["edizione"]
+        self.numero = voce["numero"]
+        self.sede = sede["sede"]
+        self.data_inizio = voce["data"]
+        self.squadre = voce["squadre"]
+        self.info = {gid: {"nome": sede["nomi"].get(str(gid), str(gid))} for i in sede["incontri"] for gid in (i.a, i.b) if gid is not None}
+        self.fasi = {int(indice): types.SimpleNamespace(grandezza=grandezza) for indice, grandezza in sede["grandezze"].items()}
+
+    def incontri(self):
+        return list(self.dati["incontri"])
+
+
 class Calendario:
     """
     Lo stato del calendario nel mondo: il contatore degli identificativi, l'ultima apertura e il numero
     dell'ultima edizione di ogni modello, le edizioni con le iscrizioni aperte, le sedi in corso e
     quelle concluse da meno di due settimane, il numero dell'edizione di ogni sede, gli incontri dei tuoi
     tesserati dell'ultima edizione conclusa di ogni modello, le iscrizioni dei tuoi già saltate per la
-    cassa, e l'albo d'oro.
+    cassa, quelle che hai tolto, e l'albo d'oro.
+    Le differite, dalla revisione del 14 ottobre 2026, si leggono dal pannello anche dopo le due
+    settimane, come vuole D32, «per il torneo in corso e l'ultimo concluso»: per ogni modello l'ultima
+    edizione con i tuoi, sede per sede, con i nomi e i tabelloni che servono a dire gli incontri. In
+    memoria gli incontri sono gli stessi oggetti delle sedi concluse, così un risultato svelato da una
+    parte lo è anche dall'altra; alla lettura del salvataggio si ricollegano.
     """
 
     def __init__(self):
@@ -212,6 +244,7 @@ class Calendario:
         self.numeri_dei_tornei = {}
         self.differite = {}
         self.saltate = []
+        self.tolte = []
         self.albo = Albo()
         # Non si salvano: la memoria della forza del giorno e i giorni di gioco di ogni sede.
         self._memoria_forza = {}
@@ -254,15 +287,16 @@ class Calendario:
             return list(torneo.iscritti)
         return [gid for info in torneo.info.values() for gid in info.get("rosa", ())]
 
-    def impegni(self, mondo, esclusa=None):
+    def impegni(self, mondo, esclusa=None, con_le_iscrizioni=True):
         """
         Gli impegni di ogni giocatore nei giorni che vengono, come intervalli di date: le edizioni a cui è
         iscritto o in cui è nella rosa della coppa, tranne quella esclusa, le sedi in corso che gioca e,
-        dal commit delle sfide, le sfide accettate.
+        dal commit delle sfide, le sfide accettate. Senza le iscrizioni restano gli impegni che non si
+        annullano, quelli che il mondiale rispetta: le sedi in corso, le rose della coppa e le sfide.
         """
         impegni = {}
         for ed in self.edizioni:
-            if ed is esclusa:
+            if ed is esclusa or (ed.individuale and not con_le_iscrizioni):
                 continue
             for gid in ed.giocatori():
                 impegni.setdefault(gid, []).append((ed.data_inizio, ed.data_fine))
@@ -287,19 +321,23 @@ class Calendario:
         return impegnati
 
     def impegni_descritti(self, mondo, gid):
-        """Gli impegni di un giocatore con la loro descrizione a parole, per i rifiuti dell'iscrizione a mano."""
+        """
+        Gli impegni di un giocatore con la loro descrizione a parole e il tipo, torneo o sfida, per i
+        rifiuti dell'iscrizione a mano: quadruple di inizio, fine, descrizione e tipo. Il tipo c'è dalla
+        revisione del 14 ottobre 2026, perché il rifiuto diceva «due tornei» anche davanti a una sfida.
+        """
         risultato = []
         for ed in self.edizioni:
             if gid in ed.giocatori():
                 cosa = "l'iscrizione" if ed.individuale else "la rosa della sua polisportiva"
-                risultato.append((ed.data_inizio, ed.data_fine, f"{cosa} a {ed.nome}, dal {data_breve(ed.data_inizio)}"))
+                risultato.append((ed.data_inizio, ed.data_fine, f"{cosa} a {ed.nome}, dal {data_breve(ed.data_inizio)}", "torneo"))
         for torneo in self.tornei:
             if gid in self.giocatori_del_torneo(torneo):
                 inizio, fine = self._intervallo_del_torneo(torneo)
-                risultato.append((inizio, fine, f"{torneo.modello['nome']}, in corso dal {data_breve(inizio)}"))
+                risultato.append((inizio, fine, f"{torneo.modello['nome']}, in corso dal {data_breve(inizio)}", "torneo"))
         for s in mondo.sfide.attive:
             if s.stato == sfide.ACCETTATA and any(gid in ids for ids in s.convocati.values()):
-                risultato.append((s.data_gioco, s.data_gioco, f"una sfida fra {s.sfidante['nome']} e {s.sfidata['nome']}, il {data_breve(s.data_gioco)}"))
+                risultato.append((s.data_gioco, s.data_gioco, f"una sfida fra {s.sfidante['nome']} e {s.sfidata['nome']}, il {data_breve(s.data_gioco)}", "sfida"))
         return risultato
 
     def ha_giocato_oggi(self, gid, oggi):
@@ -315,8 +353,17 @@ class Calendario:
         return False
 
     def da_svelare(self):
-        """Gli incontri dei tuoi ancora da ascoltare, nelle sedi in corso e in quelle concluse di recente, risposta 18 di Gabriele."""
-        return [i for torneo in (*self.tornei, *self.conclusi) for i in torneo.incontri() if i.giocato and i.differita and not i.svelato]
+        """
+        Gli incontri dei tuoi ancora da ascoltare, risposta 18 di Gabriele: nelle sedi in corso, in quelle
+        concluse di recente e nelle ultime edizioni concluse delle differite, ciascuno una volta sola.
+        """
+        visti = set()
+        risultato = []
+        for i in [i for torneo in (*self.tornei, *self.conclusi) for i in torneo.incontri()] + [i for _voce, sede in self.sedi_in_differita() for i in sede.incontri()]:
+            if id(i) not in visti and i.giocato and i.differita and not i.svelato:
+                visti.add(id(i))
+                risultato.append(i)
+        return risultato
 
     def svela_tutti(self):
         """Mostra tutti i risultati, la regola che Gabriele ha aggiunto alla risposta 18: svela in un colpo solo gli incontri dei tuoi da ascoltare, e dice quanti."""
@@ -332,18 +379,43 @@ class Calendario:
         self.saltate.append([gid, id_edizione])
         return True
 
+    def ricorda_tolta(self, gid, id_edizione):
+        """Un'iscrizione che l'utente ha tolto: l'iscrizione automatica non rimette il giocatore in quell'edizione, fino al suo sorteggio."""
+        if [gid, id_edizione] not in self.tolte:
+            self.tolte.append([gid, id_edizione])
+
+    def tolte_per_giocatore(self):
+        """Le edizioni tolte dall'utente, per giocatore: un dizionario dall'identificativo all'insieme delle edizioni."""
+        per_giocatore = {}
+        for gid, id_edizione in self.tolte:
+            per_giocatore.setdefault(gid, set()).add(id_edizione)
+        return per_giocatore
+
     def conserva_differite(self, torneo, tuoi):
-        """Gli incontri dei tuoi tesserati della sede conclusa, per riascoltarli, al posto di quelli dell'edizione di prima dello stesso modello."""
-        incontri = [i.a_dizionario() for i in torneo.incontri() if i.differita and (i.a in tuoi or i.b in tuoi)]
+        """
+        Gli incontri dei tuoi tesserati della sede conclusa, per riascoltarli, al posto di quelli
+        dell'edizione di prima dello stesso modello: gli stessi oggetti della sede, con i nomi degli
+        iscritti e la grandezza dei tabelloni, che servono a dirli a parole.
+        """
+        incontri = [i for i in torneo.incontri() if i.differita and (i.a in tuoi or i.b in tuoi)]
         if not incontri:
             return
+        sede = {"sede": torneo.sede, "nomi": {str(gid): torneo.info[gid]["nome"] for i in incontri for gid in (i.a, i.b) if gid is not None},
+                "grandezze": {str(f.indice): f.grandezza for f in torneo.fasi if f.tipo == formule.TABELLONE}, "incontri": incontri}
         voce = self.differite.get(torneo.modello["id"])
         if voce is not None and voce["edizione"] == torneo.edizione:
-            voce["incontri"].extend(incontri)
-            voce["sedi"].append(torneo.sede)
+            voce["sedi"].append(sede)
             return
-        self.differite[torneo.modello["id"]] = {"edizione": torneo.edizione, "nome": torneo.modello["nome"], "sedi": [torneo.sede],
-                                                "data": torneo.data_inizio, "incontri": incontri}
+        self.differite[torneo.modello["id"]] = {"modello": torneo.modello["id"], "edizione": torneo.edizione, "numero": self.numero_di(torneo),
+                                                "nome": torneo.modello["nome"], "data": torneo.data_inizio, "squadre": torneo.squadre, "sedi": [sede]}
+
+    def sedi_in_differita(self):
+        """Le sedi delle ultime edizioni concluse con i tuoi, dalla più recente: coppie della voce del modello e della sede, come SedeInDifferita."""
+        coppie = []
+        for voce in sorted(self.differite.values(), key=lambda v: (v["data"], v["nome"]), reverse=True):
+            for sede in sorted(voce["sedi"], key=lambda s: s["sede"]):
+                coppie.append((voce, SedeInDifferita(voce, sede)))
+        return coppie
 
     # Il giorno.
 
@@ -399,8 +471,9 @@ class Calendario:
         for ed in [ed for ed in self.edizioni if ed.data_inizio <= oggi]:
             self.edizioni.remove(ed)
             self.saltate = [voce for voce in self.saltate if voce[1] != ed.id]
+            self.tolte = [voce for voce in self.tolte if voce[1] != ed.id]
             if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
-                iscrizioni.sostituisci_gli_infortunati(mondo, ed)
+                iscrizioni.sostituisci_gli_infortunati(mondo, self, ed, rapporto)
             elif ed.qualificazione == modelli_torneo.GLORIA:
                 sfide.rimpiazza_le_chiuse(mondo, self, ed, rapporto)
             if len(ed.iscritti) < ed.minimo:
@@ -631,7 +704,8 @@ class Calendario:
             "prossimo_id": self.prossimo_id, "ultime_aperture": dict(self.ultime_aperture), "numeri": dict(self.numeri),
             "edizioni": [ed.a_dizionario() for ed in self.edizioni], "tornei": [t.a_dizionario() for t in self.tornei],
             "conclusi": [t.a_dizionario() for t in self.conclusi], "numeri_dei_tornei": [[k, v] for k, v in self.numeri_dei_tornei.items()],
-            "differite": copy.deepcopy(self.differite), "saltate": [list(v) for v in self.saltate], "albo": self.albo.a_dizionario(),
+            "differite": {mid: _differita_a_dizionario(voce) for mid, voce in self.differite.items()}, "saltate": [list(v) for v in self.saltate],
+            "tolte": [list(v) for v in self.tolte], "albo": self.albo.a_dizionario(),
         }
 
     @classmethod
@@ -641,7 +715,7 @@ class Calendario:
         di edizioni e sedi, sotto il contatore; stati e esiti validi; ogni nome dell'albo nelle sue tabelle.
         Un giocatore che non c'è più resta nelle sedi, perché può essere uscito di scena.
         """
-        campi = {"prossimo_id", "ultime_aperture", "numeri", "edizioni", "tornei", "conclusi", "numeri_dei_tornei", "differite", "saltate", "albo"}
+        campi = {"prossimo_id", "ultime_aperture", "numeri", "edizioni", "tornei", "conclusi", "numeri_dei_tornei", "differite", "saltate", "tolte", "albo"}
         _controlla(isinstance(dati, dict) and set(dati) == campi, "Il calendario salvato ha i campi sbagliati.")
         cal = cls()
         _controlla(_intero(dati["prossimo_id"]) and dati["prossimo_id"] >= 1, "Calendario: il contatore non è valido.")
@@ -661,16 +735,46 @@ class Calendario:
         _controlla(isinstance(dati["numeri_dei_tornei"], list) and all(isinstance(v, list) and len(v) == 2 and _intero(v[0]) and _intero(v[1]) for v in dati["numeri_dei_tornei"]),
                    "Calendario: i numeri delle sedi non sono validi.")
         cal.numeri_dei_tornei = dict(dati["numeri_dei_tornei"])
-        _controlla(isinstance(dati["differite"], dict) and all(isinstance(v, dict) and isinstance(v.get("incontri"), list) for v in dati["differite"].values()),
-                   "Calendario: le differite non sono valide.")
-        for voce in dati["differite"].values():
-            for incontro in voce["incontri"]:
-                tornei.IncontroDelTorneo.da_dizionario(incontro)
-        cal.differite = copy.deepcopy(dati["differite"])
-        _controlla(isinstance(dati["saltate"], list) and all(isinstance(v, list) and len(v) == 2 for v in dati["saltate"]), "Calendario: le iscrizioni saltate non sono valide.")
+        _controlla(isinstance(dati["differite"], dict), "Calendario: le differite non sono valide.")
+        cal.differite = {mid: _differita_da_dizionario(mid, voce) for mid, voce in dati["differite"].items()}
+        # Gli incontri delle sedi concluse di recente e quelli delle differite tornano a essere gli stessi oggetti.
+        for torneo in cal.conclusi:
+            voce = cal.differite.get(torneo.modello["id"])
+            if voce is None or voce["edizione"] != torneo.edizione:
+                continue
+            per_id = {i.id: i for i in torneo.incontri()}
+            for sede in voce["sedi"]:
+                if sede["sede"] == torneo.sede:
+                    sede["incontri"] = [per_id.get(i.id, i) for i in sede["incontri"]]
+        for campo, nome in (("saltate", "saltate"), ("tolte", "tolte dall'utente")):
+            _controlla(isinstance(dati[campo], list) and all(isinstance(v, list) and len(v) == 2 for v in dati[campo]), f"Calendario: le iscrizioni {nome} non sono valide.")
         cal.saltate = [list(v) for v in dati["saltate"]]
+        cal.tolte = [list(v) for v in dati["tolte"]]
         cal.albo = Albo.da_dizionario(dati["albo"])
         return cal
+
+
+def _differita_a_dizionario(voce):
+    """Una voce delle differite da salvare: gli incontri diventano dizionari."""
+    return {**{k: copy.deepcopy(v) for k, v in voce.items() if k != "sedi"},
+            "sedi": [{**{k: copy.deepcopy(v) for k, v in sede.items() if k != "incontri"}, "incontri": [i.a_dizionario() for i in sede["incontri"]]}
+                     for sede in voce["sedi"]]}
+
+
+def _differita_da_dizionario(mid, voce):
+    """Una voce delle differite dal salvataggio, con gli incontri ricostruiti; ValueError col motivo se non va."""
+    campi = {"modello", "edizione", "numero", "nome", "data", "squadre", "sedi"}
+    _controlla(isinstance(voce, dict) and set(voce) == campi and voce["modello"] == mid and isinstance(voce["sedi"], list)
+               and _intero(voce["edizione"]) and _intero(voce["numero"]) and isinstance(voce["nome"], str) and isinstance(voce["data"], str)
+               and isinstance(voce["squadre"], bool), f"Calendario: la differita del modello {mid} non è valida.")
+    sedi = []
+    for sede in voce["sedi"]:
+        _controlla(isinstance(sede, dict) and set(sede) == {"sede", "nomi", "grandezze", "incontri"} and _intero(sede["sede"]) and isinstance(sede["nomi"], dict)
+                   and isinstance(sede["grandezze"], dict) and all(isinstance(k, str) and k.isdigit() and _intero(v) for k, v in sede["grandezze"].items())
+                   and isinstance(sede["incontri"], list), f"Calendario: una sede della differita del modello {mid} non è valida.")
+        sedi.append({"sede": sede["sede"], "nomi": dict(sede["nomi"]), "grandezze": dict(sede["grandezze"]),
+                     "incontri": [tornei.IncontroDelTorneo.da_dizionario(i) for i in sede["incontri"]]})
+    return {**{k: copy.deepcopy(voce[k]) for k in campi - {"sedi"}}, "sedi": sedi}
 
 
 def descrivi(calendario, g, oggi):

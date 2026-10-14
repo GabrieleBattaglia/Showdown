@@ -73,7 +73,7 @@ def test_un_file_rovinato_e_scartato_e_detto_in_problemi(gestore, cartella_di_pr
     problemi = gestore.problemi()
     assert len(problemi) == 2 and any("Rovinato.json" in p for p in problemi)
     # L'identificativo nuovo viene dopo il più alto, anche di un file scartato ma leggibile.
-    assert gestore.nuovo_id() == "modello_51"
+    assert mt._numero_dell_id(gestore.nuovo_id()) > 50
 
 
 def test_una_formula_che_manca_e_detta_in_problemi(gestore):
@@ -212,9 +212,9 @@ def test_l_identificativo_resta_alla_rinomina_e_cambia_al_duplicato(gestore, car
     cartella = cartella_di_prova / mt.CARTELLA
     assert not (cartella / "Open maschile del sabato.json").exists() and (cartella / "Open del sabato sera.json").exists()
     copia = gestore.duplica("modello_2")
-    assert copia.id == "modello_11" and copia.nome == "Copia di Open del sabato sera"
+    assert mt._numero_dell_id(copia.id) > 10 and copia.nome == "Copia di Open del sabato sera"
     seconda = gestore.duplica("modello_2")
-    assert seconda.id == "modello_12" and seconda.nome == "Copia di Open del sabato sera 2"
+    assert mt._numero_dell_id(seconda.id) > mt._numero_dell_id(copia.id) and seconda.nome == "Copia di Open del sabato sera 2"
     gestore.elimina(copia.id)
     assert gestore.modello(copia.id) is None and len(gestore.modelli()[0]) == 11
     with pytest.raises(ValueError, match="Esiste già"):
@@ -242,6 +242,29 @@ def test_il_ripristino_mette_da_parte_i_file_di_prima(gestore, cartella_di_prova
     assert "Il mio open.json" in salvati and formule.NOME_FILE in salvati and len(salvati) == 10
     assert (cartella_di_prova / formule.NOME_FILE).exists()
     assert gestore.ripristina_predefiniti() != da_parte
+
+
+def test_l_identificativo_di_un_modello_non_torna_mai(gestore, monkeypatch):
+    # La revisione del 14 ottobre 2026: con l'orologio fermo, un modello eliminato, l'ultimo nato, o un
+    # ripristino del calendario predefinito non restituiscono il suo identificativo a un modello nuovo,
+    # che erediterebbe la sua storia nel calendario del mondo.
+    monkeypatch.setattr(mt, "adesso", lambda: datetime.datetime(2027, 6, 18, 9, 30, 12))
+    copia = gestore.duplica("modello_1")
+    assert copia.id == "modello_20270618093012"
+    gestore.elimina(copia.id)
+    dopo = gestore.nuovo_id()
+    assert dopo != copia.id and mt._numero_dell_id(dopo) > mt._numero_dell_id(copia.id)
+    altra = gestore.duplica("modello_1")
+    gestore.ripristina_predefiniti()
+    assert len(gestore.modelli()[0]) == 10 and mt._numero_dell_id(gestore.nuovo_id()) > mt._numero_dell_id(altra.id)
+
+
+def test_un_modello_a_squadre_non_ha_premi_in_euro():
+    # La revisione del 14 ottobre 2026: la coppa si gioca per le coppe, risposta 14, e la chiusura non paga premi.
+    squadre = {"tipo": mt.SQUADRE, "sesso": None, "qualificazione": mt.GLORIA, "quota_iscrizione": 0, "contributo_federazione": 0.0, "montepremi_minimo": 0}
+    assert mt.problema_dei_campi(_modello(**squadre).a_dizionario()) is None
+    for campo, valore in (("montepremi_minimo", 2000), ("quota_iscrizione", 10), ("contributo_federazione", 1.0)):
+        assert mt.problema_dei_campi(_modello(**(squadre | {campo: valore})).a_dizionario()).startswith("Un torneo a squadre non ha premi in euro")
 
 
 def test_gli_oggetti_con_nome_e_formula_bastano_a_in_uso():

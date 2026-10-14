@@ -64,18 +64,26 @@ def nella_finestra(chiave, oggi):
 
 
 def somma_finestra(poli, oggi):
-    """I punti delle medaglie e delle coppe della polisportiva negli ultimi 5 anni del calendario, fino a oggi."""
+    """
+    I punti delle medaglie e delle coppe della polisportiva negli ultimi 5 anni del calendario, fino a
+    oggi, sommati nello stesso ordine di sempre, così i numeri restano uguali fino all'ultimo bit. Il
+    mese di oggi si calcola una volta sola e quello di ogni chiave senza chiamate, perché la revisione
+    del 14 ottobre 2026 ha visto che nella_finestra, chiamata per ogni mese di ogni polisportiva ogni
+    giorno, era la catena più cara del giorno a regime. Le chiavi hanno sempre la forma AAAA-MM di mese().
+    """
+    fine = oggi.year * 12 + oggi.month - 1
     medaglie = coppe = 0.0
     for chiave, (m, c) in poli.palmares_recente.items():
-        if nella_finestra(chiave, oggi):
+        if 0 <= fine - (int(chiave[:4]) * 12 + int(chiave[5:7]) - 1) < MESI_PALMARES_GLORIA:
             medaglie += m
             coppe += c
     return medaglie, coppe
 
 
 def sfoltisci(poli, oggi):
-    """Toglie dal palmarès recente i mesi usciti dalla finestra; restituisce quanti ne ha tolti."""
-    vecchi = [chiave for chiave in poli.palmares_recente if not nella_finestra(chiave, oggi)]
+    """Toglie dal palmarès recente i mesi usciti dalla finestra, col conto veloce di somma_finestra; restituisce quanti ne ha tolti."""
+    fine = oggi.year * 12 + oggi.month - 1
+    vecchi = [chiave for chiave in poli.palmares_recente if not 0 <= fine - (int(chiave[:4]) * 12 + int(chiave[5:7]) - 1) < MESI_PALMARES_GLORIA]
     for chiave in vecchi:
         del poli.palmares_recente[chiave]
     return len(vecchi)
@@ -118,8 +126,9 @@ def classifica_mondiale(mondo, sesso):
     for gid, g in mondo.giocatori.items():
         if gid in morti or g.sesso != sesso or (g.punti_mondiali <= 0 and not g.ori):
             continue
+        # I titoli mondiali sono i mondiali vinti, come per le vecchie glorie: g.titoli tiene anche gli altri podi del mondiale.
         righe.append({"id": gid, "nome": f"{g.nome} {g.cognome}", "punti": g.punti_mondiali, "ori": g.ori, "argenti": g.argenti, "bronzi": g.bronzi,
-                      "legni": g.legni, "titoli": sum(1 for t in g.titoli if t.get("mondiale")), "vivo": True})
+                      "legni": g.legni, "titoli": sum(1 for t in g.titoli if t.get("mondiale") and t.get("posto") == 1), "vivo": True})
     visti = {r["id"] for r in righe}
     for voce in mondo.vecchie_glorie:
         if voce.get("sesso") != sesso or voce.get("id") in visti or not voce.get("punti_mondiali"):

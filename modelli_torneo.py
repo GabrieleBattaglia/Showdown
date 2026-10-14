@@ -47,6 +47,9 @@ RISORSA = os.path.join("dati", "tornei", "modelli")
 ESTENSIONE = ".json"
 PREFISSO_ID = "modello_"
 PREFISSO_RIPRISTINO = "prima_del_ripristino_"
+# Il file della cartella tornei che ricorda il numero più alto mai dato a un modello: non è un modello,
+# non ha l'estensione dei modelli, e il ripristino del calendario predefinito non lo sposta.
+CONTATORE = "ultimo_identificativo.txt"
 INDIVIDUALE = "individuale"
 SQUADRE = "squadre"
 TIPI = (INDIVIDUALE, SQUADRE)
@@ -232,6 +235,10 @@ def problema_dei_campi(dati):
         return "L'età minima non può superare la massima."
     if dati["tipo"] == SQUADRE and any(dati[campo] is not None for campo in ("classe_minima", "classe_massima", "eta_minima", "eta_massima")):
         return "I filtri di classe e d'età valgono soltanto per i tornei individuali."
+    # La revisione del 14 ottobre 2026: un modello a squadre con un montepremi prometteva premi che la
+    # chiusura della coppa non paga, perché la coppa si gioca per le coppe, risposta 14 di Gabriele.
+    if dati["tipo"] == SQUADRE and (dati["quota_iscrizione"] or dati["contributo_federazione"] or dati["montepremi_minimo"]):
+        return "Un torneo a squadre non ha premi in euro: quota d'iscrizione, contributo della federazione e montepremi minimo restano a zero."
     return None
 
 
@@ -422,14 +429,33 @@ class GestoreModelli:
 
     def nuovo_id(self):
         """
-        L'identificativo di un modello nuovo: modello_ e il numero dopo il più alto che i file usano,
-        compresi quelli scartati ma leggibili. Non il primo libero, perché un modello eliminato non
-        presti il suo numero, e la sua storia nel calendario del mondo, al primo modello che nasce
-        dopo; resta un caso: eliminato l'ultimo nato, il numero torna al nuovo.
+        L'identificativo di un modello nuovo, che non torna mai: modello_ e l'istante della creazione,
+        AAAAMMGGhhmmss, oppure il numero dopo il più alto che i file usano, compresi quelli scartati ma
+        leggibili, se è più grande. Un modello eliminato non presta mai il suo numero, e con lui la sua
+        storia nel calendario del mondo, l'ultima apertura, la numerazione delle edizioni e le
+        differite, a un modello che nasce dopo: nemmeno dopo il ripristino del calendario predefinito,
+        né se si elimina l'ultimo nato, come succedeva prima della revisione del 14 ottobre 2026 col
+        numero dopo il più alto. I modelli predefiniti tengono i loro numeri piccoli, da 1 a 10.
         """
         _validi, _scartati, visti = self._letti()
-        numeri = [int(i[len(PREFISSO_ID):]) for i in visti if i.startswith(PREFISSO_ID) and i[len(PREFISSO_ID):].isdigit()]
-        return f"{PREFISSO_ID}{max(numeri, default=0) + 1}"
+        numeri = [_numero_dell_id(i) for i in visti]
+        numero = max(int(adesso().strftime("%Y%m%d%H%M%S")), max(numeri, default=0) + 1, self._ultimo_dato() + 1)
+        while f"{PREFISSO_ID}{numero}" in visti:
+            numero += 1
+        return f"{PREFISSO_ID}{numero}"
+
+    def _ultimo_dato(self):
+        """Il numero più alto mai salvato in questa cartella, che il file CONTATORE ricorda anche dopo un'eliminazione o un ripristino; zero se non c'è."""
+        try:
+            with open(os.path.join(self.cartella(), CONTATORE), encoding="utf-8") as f:
+                return int(f.read().strip())
+        except (OSError, ValueError):
+            return 0
+
+    def _ricorda_id(self, id_modello):
+        numero = _numero_dell_id(id_modello)
+        if numero > self._ultimo_dato():
+            _scrivi_sicuro(os.path.join(self.cartella(), CONTATORE), f"{numero}\n")
 
     def problema_nome(self, nome, escluso=None):
         """
@@ -472,6 +498,7 @@ class GestoreModelli:
         if vecchio and vecchio != nuovo:
             with contextlib.suppress(FileNotFoundError):
                 os.remove(os.path.join(cartella, vecchio))
+        self._ricorda_id(modello.id)
         self.azzera_cache()
 
     def elimina(self, id_modello):
@@ -547,6 +574,13 @@ class GestoreModelli:
                 frasi.append(f"Il modello {m.nome}, nel file {file}, non può aprire edizioni: {errore}")
         frasi.extend(f"La formula {chi} è scartata: {motivo}" for chi, motivo in formule_scartate)
         return frasi
+
+
+def _numero_dell_id(id_modello):
+    """Il numero di un identificativo di modello, modello_ seguito da cifre; zero se non lo è."""
+    if isinstance(id_modello, str) and id_modello.startswith(PREFISSO_ID) and id_modello[len(PREFISSO_ID):].isdigit():
+        return int(id_modello[len(PREFISSO_ID):])
+    return 0
 
 
 def _scrivi_sicuro(percorso, testo):

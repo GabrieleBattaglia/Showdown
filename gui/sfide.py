@@ -4,7 +4,8 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-14 con il terzo passo della tappa 12, decisione D32, risposte 15 e 16 di Gabriele e
 punti 8 e 12.6 del progetto. Una sfida è una gara a squadre IBSA, un set a 31, con due giocatori di un
 sesso e uno dell'altro al tavolo e fino a tre riserve; la tua polisportiva ne lancia due al mese, fino
-a quattro, e il computer risponde subito; a quelle che ricevi rispondi entro il giorno dopo.
+a quattro, e il computer risponde subito; a quelle che ricevi rispondi entro il giorno in cui
+arrivano, perché all'avanzamento seguente decadono.
 La sezione della formazione è la stessa nel lancio, nelle sfide in arrivo e nella rosa per la Coppa
 delle polisportive: Titolare 1, 2 e 3 nell'ordine della rotazione, e Riserva 1, 2 e 3, ciascuno una
 scelta fra i convocabili, già riempite con la convocazione automatica, che è soltanto una proposta,

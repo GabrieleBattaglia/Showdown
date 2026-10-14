@@ -131,6 +131,11 @@ def test_la_classifica_mondiale_per_sempre_con_le_vecchie_glorie():
     assert classifica[0]["punti"] == 300.0 and classifica[0]["titoli"] == 1 and not classifica[0]["vivo"]
     assert all(r["id"] != donne[0].id for r in classifica)
     assert palmares.classifica_mondiale(mondo, "f")[0]["id"] == donne[0].id
+    # La revisione del 14 ottobre 2026: fra i vivi, come fra le vecchie glorie, i titoli mondiali sono i
+    # mondiali vinti; un argento al mondiale sta nei titoli del giocatore ma non è un titolo mondiale.
+    if len(uomini) > 1:
+        uomini[1].titoli = [{"data": "2031-06-01", "torneo": "Campionato mondiale maschile", "posto": 2, "mondiale": True}]
+        assert next(r for r in palmares.classifica_mondiale(mondo, "m") if r["id"] == uomini[1].id)["titoli"] == 0
 
 
 def test_la_voce_aggregata_dell_anno():

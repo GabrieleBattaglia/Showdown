@@ -24,6 +24,7 @@ import esito_rapido
 import iscrizioni
 import modelli_torneo
 import sfide
+import testi
 import tornei
 from costanti import (
     ESPERIENZA_PER_SFIDA,
@@ -160,6 +161,25 @@ def test_la_proposta_del_computer_decade_dopo_un_giorno_senza_consumare(quieta):
     assert rapporto["sfide_decadute"] == 1 and rapporto["sfide_in_attesa"] == 0
     assert mondo.sfide.storico[0].stato == sfide.DECADUTA and a.sfide_da_lanciare == 2
     assert "decaduta: nessuna risposta" in c.diario[0]["testo"]
+
+
+def test_la_data_scritta_e_l_ultimo_giorno_per_rispondere(quieta):
+    # La revisione del 14 ottobre 2026: i testi dicevano la data della scadenza, quando la sfida è già
+    # decaduta. La data scritta dev'essere l'ultimo giorno in cui la sfida è ancora in arrivo.
+    mondo, a, _b, c = _mondo()
+    rapporto = Mondo.rapporto_vuoto(OGGI)
+    sfide._proponi(mondo, a, c, sfide.convoca(mondo, a, DOMANI), OGGI.date(), rapporto)
+    s = sfide.in_arrivo(mondo, c)[0]
+    scritta = testi.data_breve(sfide.ultimo_giorno_per_rispondere(s))
+    assert scritta == testi.data_breve(OGGI.date())
+    assert f"rispondi entro il {scritta}" in testi.riga_sfida_in_arrivo(s, 0.5)
+    assert f"si risponde entro il {scritta}, prima dell'avanzamento seguente" in rapporto["notizie"][-1]
+    assert any(f"si risponde entro il {scritta}" in voce.get("testo", "") for voce in c.diario)
+    # Il giorno scritto la sfida aspetta ancora; all'avanzamento seguente decade.
+    assert sfide.in_arrivo(mondo, c) == [s]
+    mondo.datetime_corrente_simulazione = DOMANI
+    sfide.giorno(mondo, DOMANI, Mondo.rapporto_vuoto(DOMANI))
+    assert sfide.in_arrivo(mondo, c) == [] and s.stato == sfide.DECADUTA
 
 
 def test_la_tua_sfida_accettata_si_gioca_il_giorno_dopo(larga):

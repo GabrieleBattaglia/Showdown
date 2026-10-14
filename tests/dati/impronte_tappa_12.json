@@ -1,18 +1,18 @@
 {
- "nota": "Taratura della tappa 12, passo 4, terzo commit: il fattore comune della gloria richiesta da 1,81 a 1,9, cioè K_ICV_GLORIA_RICHIESTA 1,706 e GLORIA_RICHIESTA_FISSA 23, perché il rapporto con la 1.60.11 stia nel 10 per cento all'anno 10 e al 20. Il motore resta identico.",
+ "nota": "Revisione della tappa 12, 14 ottobre 2026: gli spareggi del girone con la regola dei due dell'articolo 8, i riposi del tabellone che restano alle prime teste, la convocazione al mondiale con modelli_torneo.idoneo e gli impegni del sostituto, le iscrizioni tolte che l'automatica non riprende, l'albo coi nomi dei modelli per voce, le differite per sede e la chiave premi_tornei del rapporto; la somma della finestra del palmarès, più veloce, da sola lascia le impronte uguali al bit",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "3a0689ff1b8df931964335046413256e4144b0d59edd8154e512c2cfec9859f6",
+  "sha256": "de43423b1f5769eb0dbc457d4c24d4caab270d80dd62e95b214b33f6eafd2b8b",
   "vivi": 716,
   "attivi": 716,
   "tesserati": 636,
   "polisportive": 43
  },
  "mondo_a_regime": {
-  "sha256": "544169c0fcba53f3e610cdd909d193ff21b0c158a056b0694417abd0a946292b",
+  "sha256": "ec5951ca24d68dc9ad6b2dbee82c55138af1496e9bfd2b32bfc7552948531c54",
   "vivi": 1648,
   "attivi": 1248,
   "tesserati": 1088,

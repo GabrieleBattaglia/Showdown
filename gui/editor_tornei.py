@@ -60,6 +60,10 @@ class ModelloTorneoDialogo(_Dialogo):
         self.formule = formule_valide
         self.gestore = gestore
         self.risultato = None
+        # Le lettere, tutte diverse: fra campi e pulsanti sono ventotto, e le lettere che le etichette
+        # italiane offrono sono ventuno più la K della classe; i campi numerici meno usati prendono una
+        # cifra del loro intervallo, che a orecchio dice anche i limiti. Revisione del 14 ottobre 2026:
+        # prima sette etichette erano senza lettera, fra cui il Riepilogo, che ora ha la R.
         self.etichetta("&Nome, da 3 a 60 caratteri")
         self.nome = self.aggiungi(wx.TextCtrl(self.pannello, value=modello.nome))
         self.etichetta("N&ote")
@@ -74,15 +78,15 @@ class ModelloTorneoDialogo(_Dialogo):
         nomi_formule = [f"{f['nome']}, fino a {formule.tetto(f)} iscritti per sede" for f in self.formule]
         posto = next((i for i, f in enumerate(self.formule) if f["id"] == modello.formula), 0)
         self.formula = self._scelta(nomi_formule or ["nessuna formula valida"], posto)
-        self.etichetta("&Ricorrenza")
+        self.etichetta("Ri&correnza")
         self.ricorrenza = self._scelta([nome for _k, nome in RICORRENZE], [k for k, _n in RICORRENZE].index(modello.ricorrenza["tipo"]))
         self.etichetta("&Giorno")
         self.giorno = self.aggiungi(wx.Choice(self.pannello))
         self.etichetta("M&ese, per la ricorrenza annuale")
         self.mese = self._scelta([modelli_torneo.nome_del_mese(n) for n in range(1, 13)], modello.ricorrenza.get("mese", 1) - 1)
-        self.etichetta("Giorni d'&iscrizione prima dell'inizio")
+        self.etichetta(f"Giorni d'iscrizione prima dell'inizio, da {modelli_torneo.GIORNI_ISCRIZIONE[0]} a &{modelli_torneo.GIORNI_ISCRIZIONE[1]}")
         self.giorni_iscrizione = self._numero(*modelli_torneo.GIORNI_ISCRIZIONE, modello.giorni_iscrizione)
-        self.etichetta("Minimo d'is&critti")
+        self.etichetta(f"Minimo d'iscritti, almeno &{modelli_torneo.MINIMO_ISCRITTI}")
         self.minimo = self._numero(modelli_torneo.MINIMO_ISCRITTI, formule.PARTECIPANTI_MASSIMI, modello.minimo_iscritti)
         self.etichetta("Set &base degli incontri, al meglio di")
         self.set_al_meglio = self._scelta([f"{n} set" for n in SET], SET.index(modello.set_al_meglio))
@@ -94,7 +98,7 @@ class ModelloTorneoDialogo(_Dialogo):
         self.turni = self._numero(*modelli_torneo.INCONTRI_AL_GIORNO, modello.incontri_al_giorno)
         self.etichetta("Im&portanza, che pesa punti, esperienza, classifica e palmarès")
         self.importanza = self._scelta([_numero_corto(x) for x in IMPORTANZE], IMPORTANZE.index(modello.importanza) if modello.importanza in IMPORTANZE else 2)
-        self.etichetta("&Quota d'iscrizione, in euro")
+        self.etichetta("Quota d'iscrizione, in euro, &0 per un torneo gratis")
         self.quota = self._numero(0, modelli_torneo.QUOTA_MASSIMA, modello.quota_iscrizione)
         self.etichetta("Contributo della federa&zione, 1 raddoppia il montepremi")
         self.contributo = self._scelta([_numero_corto(x) for x in CONTRIBUTI],
@@ -103,22 +107,22 @@ class ModelloTorneoDialogo(_Dialogo):
         self.montepremi_minimo = self._numero(0, modelli_torneo.MONTEPREMI_MINIMO_MASSIMO, modello.montepremi_minimo)
         self.etichetta("Quanti posti &hanno un premio")
         self.posti = self._numero(1, formule.PARTECIPANTI_MASSIMI, modello.posti_premiati)
-        self.etichetta("Percentuale del montepremi al primo")
+        self.etichetta("Percentuale del montepremi al primo, da &1 a 100")
         # La percentuale di partenza è quella della pendenza del modello: finché non cambiano lei e i
         # posti, la pendenza resta quella, senza l'arrotondamento della percentuale.
         self._partenza = (round(tornei.prima_percentuale(modello.pendenza_premi, modello.posti_premiati)), modello.posti_premiati, modello.pendenza_premi)
         self.percentuale = self._numero(1, 100, self._partenza[0])
-        self.etichetta("Qualificazione")
+        self.etichetta("&Qualificazione")
         self.qualificazione = self._scelta([nome for _k, nome in QUALIFICAZIONI], [k for k, _n in QUALIFICAZIONI].index(modello.qualificazione))
-        self.etichetta("Classe minima, la più debole ammessa")
+        self.etichetta(f"Classe minima, la più debole ammessa, da {CLASSI[1]} a &{CLASSI[-1]}")
         self.classe_minima = self._scelta([c or NESSUN_LIMITE for c in CLASSI], CLASSI.index(modello.classe_minima))
-        self.etichetta("Classe massima, la più forte ammessa")
+        self.etichetta("Classe mass&ima, la più forte ammessa")
         self.classe_massima = self._scelta([c or NESSUN_LIMITE for c in CLASSI], CLASSI.index(modello.classe_massima))
-        self.etichetta("Età minima in anni, zero per nessun limite")
+        self.etichetta(f"Età minima in anni, da &{modelli_torneo.ETA[0]} a {modelli_torneo.ETA[1]}, oppure 0 per nessun limite")
         self.eta_minima = self._numero(0, modelli_torneo.ETA[1], modello.eta_minima or 0)
-        self.etichetta("Età massima in anni, zero per nessun limite")
+        self.etichetta(f"Età massima in anni, da {modelli_torneo.ETA[0]} a 1&20, oppure 0 per nessun limite")
         self.eta_massima = self._numero(0, modelli_torneo.ETA[1], modello.eta_massima or 0)
-        self.etichetta("Riepilogo")
+        self.etichetta("&Riepilogo")
         self.riepilogo = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2), 1)
         salva, _annulla = self.pulsanti((wx.ID_OK, "Sal&va"), (wx.ID_CANCEL, "Annulla"))
         salva.Bind(wx.EVT_BUTTON, self.conferma)
@@ -172,6 +176,7 @@ class ModelloTorneoDialogo(_Dialogo):
     def dati(self):
         """Il modello come lo dicono i campi, come dizionario, senza controllarlo."""
         tipo = TIPI[self.tipo.GetSelection()][0]
+        individuale = tipo == modelli_torneo.INDIVIDUALE
         ricorrenza_tipo = self._tipo_della_ricorrenza()
         if ricorrenza_tipo == modelli_torneo.SETTIMANALE:
             ricorrenza = {"tipo": ricorrenza_tipo, "giorno": self.giorno.GetSelection()}
@@ -192,8 +197,10 @@ class ModelloTorneoDialogo(_Dialogo):
             "formula": formula["id"] if formula else self.modello.formula, "ricorrenza": ricorrenza, "giorni_iscrizione": self.giorni_iscrizione.GetValue(),
             "minimo_iscritti": self.minimo.GetValue(), "set_al_meglio": SET[self.set_al_meglio.GetSelection()], "set_finali": SET[self.set_finali.GetSelection()],
             "finali_da": FINALI_DA[self.finali_da.GetSelection()][0], "incontri_al_giorno": self.turni.GetValue(),
-            "importanza": IMPORTANZE[self.importanza.GetSelection()], "quota_iscrizione": self.quota.GetValue(),
-            "contributo_federazione": CONTRIBUTI[self.contributo.GetSelection()], "montepremi_minimo": self.montepremi_minimo.GetValue(),
+            # Un torneo a squadre non ha premi in euro, risposta 14: i tre campi dei soldi valgono zero, e sono spenti.
+            "importanza": IMPORTANZE[self.importanza.GetSelection()], "quota_iscrizione": self.quota.GetValue() if individuale else 0,
+            "contributo_federazione": CONTRIBUTI[self.contributo.GetSelection()] if individuale else 0.0,
+            "montepremi_minimo": self.montepremi_minimo.GetValue() if individuale else 0,
             "posti_premiati": posti, "pendenza_premi": pendenza,
             "qualificazione": QUALIFICAZIONI[self.qualificazione.GetSelection()][0], "classe_minima": CLASSI[self.classe_minima.GetSelection()],
             "classe_massima": CLASSI[self.classe_massima.GetSelection()], "eta_minima": self.eta_minima.GetValue() or None,
@@ -202,7 +209,9 @@ class ModelloTorneoDialogo(_Dialogo):
 
     def aggiorna(self, event=None):
         """Il riepilogo con i campi di adesso: la formula, i giorni, i set, i premi stimati e il denaro nuovo; o il motivo per cui il modello non va."""
-        self.sesso.Enable(TIPI[self.tipo.GetSelection()][0] == modelli_torneo.INDIVIDUALE)
+        individuale = TIPI[self.tipo.GetSelection()][0] == modelli_torneo.INDIVIDUALE
+        for controllo in (self.sesso, self.quota, self.contributo, self.montepremi_minimo):
+            controllo.Enable(individuale)
         dati = self.dati()
         problema = modelli_torneo.problema_dei_campi(dati)
         if problema:
@@ -256,13 +265,16 @@ class EditorModelli(_Dialogo):
         self.sizer.Add(self.info, 0, wx.ALL, 8)
         self.etichetta("&Modelli")
         self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        # Nessun pulsante predefinito, e Invio su un modello lo modifica: con Nuovo predefinito Invio
+        # apriva un modello nuovo invece di quello scelto, revisione del 14 ottobre 2026.
         nuovo, modifica, duplica, elimina, _chiudi = self.pulsanti((wx.ID_ANY, "&Nuovo"), (wx.ID_ANY, "M&odifica"), (wx.ID_ANY, "&Duplica"),
-                                                                 (wx.ID_ANY, "&Elimina"), (wx.ID_CANCEL, "C&hiudi"))
+                                                                 (wx.ID_ANY, "&Elimina"), (wx.ID_CANCEL, "C&hiudi"), predefinito=False)
         nuovo.Bind(wx.EVT_BUTTON, self.nuovo)
         modifica.Bind(wx.EVT_BUTTON, self.modifica)
         duplica.Bind(wx.EVT_BUTTON, self.duplica)
         elimina.Bind(wx.EVT_BUTTON, self.elimina)
         self.elenco.Bind(wx.EVT_LISTBOX_DCLICK, self.modifica)
+        self.invio_su(self.elenco, self.modifica)
         self.aggiorna(0)
         self.completa((640, 480))
         self.elenco.SetFocus()
@@ -444,7 +456,10 @@ class EditorFormule(_Dialogo):
         self.fasi = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         self.etichetta("S&tato della formula")
         self.stato = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
-        nuova, elimina, aggiungi = self.pulsanti((wx.ID_ANY, "N&uova formula"), (wx.ID_ANY, "&Elimina formula"), (wx.ID_ANY, "A&ggiungi fase"))
+        # Nessun pulsante predefinito, e Invio su una fase la modifica: con Nuova formula predefinita,
+        # Invio nel nome o sulle fasi creava una formula nuova, revisione del 14 ottobre 2026.
+        nuova, elimina, aggiungi = self.pulsanti((wx.ID_ANY, "N&uova formula"), (wx.ID_ANY, "&Elimina formula"), (wx.ID_ANY, "A&ggiungi fase"),
+                                                 predefinito=False)
         modifica, togli, salva, _chiudi = self.pulsanti((wx.ID_ANY, "&Modifica fase"), (wx.ID_ANY, "T&ogli fase"), (wx.ID_ANY, "&Salva"),
                                                         (wx.ID_CANCEL, "C&hiudi"), predefinito=False)
         nuova.Bind(wx.EVT_BUTTON, self.nuova)
@@ -458,6 +473,7 @@ class EditorFormule(_Dialogo):
         self.nome.Bind(wx.EVT_TEXT, self.al_nome)
         self.descrizione.Bind(wx.EVT_TEXT, self.alla_descrizione)
         self.fasi.Bind(wx.EVT_LISTBOX_DCLICK, self.modifica_fase)
+        self.invio_su(self.fasi, self.modifica_fase)
         self._riempi_scelta(0)
         self.completa((600, 560))
         self.scelta.SetFocus()

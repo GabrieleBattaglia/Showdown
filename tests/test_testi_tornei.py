@@ -63,23 +63,30 @@ def test_i_risultati_dei_tuoi_restano_nascosti_finche_non_si_mostrano(in_corso):
 
 def test_l_albo_d_oro_a_parole():
     albo = Albo()
-    albo.modelli = {"modello_1": "Open maschile del martedì", "modello_8": "Campionato mondiale maschile", "modello_10": "Coppa delle polisportive"}
+    open_, mondiale, coppa_ = (albo.indice_del_modello(*m) for m in (("modello_1", "Open maschile del martedì"), ("modello_8", "Campionato mondiale maschile"),
+                                                                     ("modello_10", "Coppa delle polisportive")))
     albo.giocatori = {"7": ["Mario", "Rossi"], "9": ["Luca", "Bianchi"]}
     albo.club = [["PoliTeam04", "2020-01-01"], ["Club Di Prova", "2026-01-01"]]
-    singolare = ["modello_1", "individuale", "m", 1.0, "2026-10-06", 57, 3, 25, [[7, 0], [9, None]], [100, 60]]
+    singolare = [open_, "individuale", "m", 1.0, "2026-10-06", 57, 3, 25, [[7, 0], [9, None]], [100, 60]]
     assert testi.voce_dell_albo(albo, singolare) == ("Open maschile del martedì, edizione 57, sede 3, 6 ottobre 2026, 25 iscritti: "
                                                      "oro Mario Rossi, PoliTeam04; argento Luca Bianchi.")
-    coppa = ["modello_10", "squadre", None, 3.0, "2027-06-15", 2, 1, 40, [1, 0], [0, 0]]
+    coppa = [coppa_, "squadre", None, 3.0, "2027-06-15", 2, 1, 40, [1, 0], [0, 0]]
     assert testi.voce_dell_albo(albo, coppa) == "Coppa delle polisportive, edizione 2, sede 1, 15 giugno 2027, 40 polisportive: oro Club Di Prova; argento PoliTeam04."
-    annullato = ["modello_8", "individuale", "m", 4.0, "2026-12-10", 3, 0, 6, [], []]
+    annullato = [mondiale, "individuale", "m", 4.0, "2026-12-10", 3, 0, 6, [], []]
     assert testi.voce_dell_albo(albo, annullato) == "Campionato mondiale maschile, edizione 3, 10 dicembre 2026: edizione non disputata, con 6 iscritti."
+    # La revisione del 14 ottobre 2026: un modello rinominato ha una voce nuova nella tabella, e le
+    # edizioni di prima tengono il nome che avevano.
+    rinominato = albo.indice_del_modello("modello_1", "Open del martedì sera")
+    assert rinominato != open_ and albo.indice_del_modello("modello_1", "Open maschile del martedì") == open_
+    assert testi.voce_dell_albo(albo, singolare).startswith("Open maschile del martedì, edizione 57")
+    assert testi.voce_dell_albo(albo, [rinominato, *singolare[1:5], 58, *singolare[6:]]).startswith("Open del martedì sera, edizione 58")
 
 
 def test_il_riepilogo_coi_tornei_le_sfide_e_le_notizie():
     primo = Mondo.rapporto_vuoto("ieri")
     primo.update(tornei_conclusi=2, incontri_torneo=40, sfide_giocate=3, sfide_in_attesa=2, notizie=["Mario Rossi vince la medaglia d'oro a Open maschile del martedì."])
     testo = testi._fatti_avanzamento(primo)
-    assert "Mario Rossi vince la medaglia d'oro" in testo and "2 sfide aspettano la tua risposta entro domani." in testo
+    assert "Mario Rossi vince la medaglia d'oro" in testo and "2 sfide aspettano la tua risposta entro oggi, prima dell'avanzamento seguente." in testo
     assert "Nel mondo: 2 tornei conclusi, 40 incontri di torneo e 3 sfide fra polisportive." in testo
     secondo = Mondo.rapporto_vuoto("oggi")
     secondo.update(sfide_in_attesa=0, notizie=["Club Di Prova vince la sfida con PoliTeam04, 31 a 27."])

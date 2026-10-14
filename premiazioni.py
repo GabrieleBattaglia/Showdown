@@ -75,6 +75,7 @@ def chiudi(mondo, calendario, torneo, data, rapporto):
     toccate = set()
     rapporto["tornei_conclusi"] += 1
     rapporto["mondiali_conclusi"] += mondiale
+    rapporto["premi_tornei"] += sum(torneo.premi.values())
     per_club = {}
     tuoi = []
     for posto, gid in enumerate(classifica, start=1):
@@ -239,14 +240,33 @@ class Albo:
     alla chiusura e mai sfoltite: i modelli col nome che avevano, i giocatori con nome e cognome, i club
     col nome e il giorno di fondazione. Così un podio si legge anche dopo l'uscita del giocatore e la
     chiusura del club. Un'edizione del mondiale che non si disputa ha la sua voce, con la sede zero.
+    Il modello di una voce, dalla revisione del 14 ottobre 2026, è il posto nella tabella delle coppie
+    di identificativo e nome, come i club: prima era l'identificativo, con un nome solo per modello
+    riscritto a ogni chiusura, e una rinomina cambiava il nome a tutte le edizioni passate.
     """
 
     def __init__(self):
         self.voci = []
-        self.modelli = {}
+        self.modelli = []
+        self._indice_modello = {}
         self.giocatori = {}
         self.club = []
         self._indice_club = {}
+
+    def indice_del_modello(self, id_modello, nome):
+        """Il posto della coppia di identificativo e nome nella tabella dei modelli, che si allunga a ogni nome nuovo."""
+        chiave = (id_modello, nome)
+        if chiave not in self._indice_modello:
+            self._indice_modello[chiave] = len(self.modelli)
+            self.modelli.append([id_modello, nome])
+        return self._indice_modello[chiave]
+
+    def nome_del_modello(self, indice):
+        """Il nome che il modello della voce aveva quando la voce è nata."""
+        return self.modelli[indice][1]
+
+    def id_del_modello(self, indice):
+        return self.modelli[indice][0]
 
     def indice_del_club(self, club):
         if club is None:
@@ -260,7 +280,7 @@ class Albo:
     def registra(self, mondo, torneo, numero):
         """La voce della sede conclusa, con i nomi nelle tabelle."""
         modello = torneo.modello
-        self.modelli[modello["id"]] = modello["nome"]
+        indice = self.indice_del_modello(modello["id"], modello["nome"])
         podio = []
         for gid in torneo.classifica_finale[:4]:
             info = torneo.info[gid]
@@ -274,17 +294,17 @@ class Albo:
             self.giocatori[str(gid)] = [nome, cognome]
             podio.append([gid, self.indice_del_club(info.get("club"))])
         premi = [torneo.premi.get(gid, 0) for gid in torneo.classifica_finale[:4]]
-        self.voci.append([modello["id"], modello["tipo"], modello["sesso"], modello["importanza"], torneo.data_inizio, numero, torneo.sede,
+        self.voci.append([indice, modello["tipo"], modello["sesso"], modello["importanza"], torneo.data_inizio, numero, torneo.sede,
                           len(torneo.iscritti), podio, premi])
 
     def non_disputato(self, ed, numero):
         """La voce di un'edizione che non si disputa, per pochi iscritti: sede zero, nessun podio."""
-        self.modelli[ed.modello_id] = ed.nome
-        self.voci.append([ed.modello_id, ed.modello["tipo"], ed.modello["sesso"], ed.modello["importanza"], ed.data_inizio.isoformat(), numero, 0,
+        indice = self.indice_del_modello(ed.modello_id, ed.nome)
+        self.voci.append([indice, ed.modello["tipo"], ed.modello["sesso"], ed.modello["importanza"], ed.data_inizio.isoformat(), numero, 0,
                           len(ed.iscritti), [], []])
 
     def a_dizionario(self):
-        return {"voci": [list(v) for v in self.voci], "modelli": dict(self.modelli), "giocatori": {k: list(v) for k, v in self.giocatori.items()},
+        return {"voci": [list(v) for v in self.voci], "modelli": [list(m) for m in self.modelli], "giocatori": {k: list(v) for k, v in self.giocatori.items()},
                 "club": [list(c) for c in self.club]}
 
     @classmethod
@@ -297,14 +317,17 @@ class Albo:
             raise ValueError("L'albo d'oro: la tabella dei club non è valida.")
         albo.club = [list(c) for c in dati["club"]]
         albo._indice_club = {(c[0], c[1]): n for n, c in enumerate(albo.club)}
-        if not isinstance(dati["modelli"], dict) or not isinstance(dati["giocatori"], dict):
+        if (not isinstance(dati["modelli"], list) or not all(isinstance(m, list) and len(m) == 2 and all(isinstance(x, str) for x in m) for m in dati["modelli"])
+                or not isinstance(dati["giocatori"], dict)):
             raise ValueError("L'albo d'oro: le tabelle dei nomi non sono valide.")
-        albo.modelli = dict(dati["modelli"])
+        albo.modelli = [list(m) for m in dati["modelli"]]
+        albo._indice_modello = {(m[0], m[1]): n for n, m in enumerate(albo.modelli)}
         albo.giocatori = {k: list(v) for k, v in dati["giocatori"].items()}
         if not isinstance(dati["voci"], list):
             raise ValueError("L'albo d'oro: le voci non sono un elenco.")
         for voce in dati["voci"]:
-            if not isinstance(voce, list) or len(voce) != 10 or voce[0] not in albo.modelli or not isinstance(voce[8], list):
+            if (not isinstance(voce, list) or len(voce) != 10 or not isinstance(voce[0], int) or isinstance(voce[0], bool)
+                    or not 0 <= voce[0] < len(albo.modelli) or not isinstance(voce[8], list)):
                 raise ValueError(f"L'albo d'oro: una voce non è valida: {voce!r}")
             for posto in voce[8]:
                 club = posto if voce[1] == modelli_torneo.SQUADRE else posto[1]

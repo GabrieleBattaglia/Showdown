@@ -13,6 +13,7 @@ scheda, l'acciacco nella formazione; le notizie e il suono unico dell'avanzament
 """
 
 import datetime
+import itertools
 import json
 
 import pytest
@@ -269,7 +270,8 @@ def test_l_ascolto_in_differita_svela_e_esc_no(pannello, suonati, monkeypatch):
     dialogo.elenco_incontri.SetSelection(indice)
     _uscita(monkeypatch, dal_vivo.CON_ESC)
     dialogo.ascolta()
-    assert not incontro.svelato and dialogo.ultimo is None and suonati[-2:] == ["differita_al_via", "annullato"]
+    # Esc ha il suo suono, D30, non quello di ogni Annulla.
+    assert not incontro.svelato and dialogo.ultimo is None and suonati[-2:] == ["differita_al_via", "differita_interrotta"]
     _uscita(monkeypatch, dal_vivo.AL_RISULTATO)
     dialogo.elenco_incontri.SetSelection(indice)
     dialogo.ascolta()
@@ -319,6 +321,112 @@ def test_il_gemello_di_ogni_incontro_dei_tuoi_e_il_registrato(pannello):
         if incontro.differita:
             risultato, _nomi = risultato_della_differita(incontro.differita, incontro.seme)
             assert [list(s) for s in risultato.set] == incontro.set and risultato.esito == incontro.esito
+
+
+def test_invio_ascolta_soltanto_sull_elenco_degli_incontri(pannello, suonati, monkeypatch):
+    # La revisione del 14 ottobre 2026: niente pulsante predefinito, e Invio ascolta soltanto sugli
+    # incontri, punto 12.2; sugli altri elenchi non fa niente.
+    _mondo, dialogo = pannello
+    assert dialogo.GetDefaultItem() is None
+    _parte(dialogo, "I tuoi incontri")
+    dialogo.elenco_incontri.SetSelection(_da_ascoltare(dialogo))
+    _uscita(monkeypatch, dal_vivo.CON_ESC)
+    for elenco in (dialogo.elenco_tornei, dialogo.elenco_parti, dialogo.elenco_classifica, dialogo.scelta):
+        assert not dialogo.invio(elenco)
+    assert suonati == []
+    # Il tasto vero passa dal gancio dei tasti del dialogo, col controllo che ha il fuoco.
+    monkeypatch.setattr(dialoghi, "controllo_col_fuoco", lambda: dialogo.elenco_incontri)
+    evento = wx.KeyEvent(wx.wxEVT_CHAR_HOOK)
+    evento.SetKeyCode(wx.WXK_RETURN)
+    dialogo._tasto_invio(evento)
+    assert suonati == ["differita_al_via", "differita_interrotta"]
+
+
+def test_l_ultima_edizione_conclusa_si_ascolta_dopo_le_due_settimane(pannello, suonati, monkeypatch):
+    # D32: dal pannello si ascoltano gli incontri del torneo in corso e dell'ultimo concluso; le sedi
+    # concluse lasciano il pannello dopo 14 giorni, le differite restano, e Mostra le fa scegliere.
+    mondo, dialogo = pannello
+    for g in mondo.giocatori.values():
+        g.iscrizione_automatica = False
+    data = MARTEDI
+    while mondo.calendario.tornei:
+        data += datetime.timedelta(days=1)
+        giorno(mondo, data)
+    torneo = mondo.calendario.conclusi[0]
+    mondo.calendario.sfoltisci(data + datetime.timedelta(days=20))
+    assert torneo not in mondo.calendario.conclusi
+    # Il salvataggio e la rilettura tengono le differite.
+    mondo.calendario = mondo.calendario.da_dizionario(mondo.calendario.a_dizionario())
+    dialogo.scelta.SetSelection(next(i for i, (k, _n) in enumerate(gui_tornei.SCELTE_DEL_PANNELLO) if k == gui_tornei.DIFFERITE))
+    dialogo.aggiorna(0)
+    assert dialogo.elenco_tornei.GetString(0).startswith("Open maschile del martedì, edizione 1, sede 1, dal 6 ottobre 2026: ")
+    assert dialogo.elenco_classifica.GetString(0).startswith("oro ") and dialogo.elenco_classifica.GetCount() == 4
+    indice = _da_ascoltare(dialogo)
+    incontro = dialogo.incontri[indice]
+    assert dialogo.elenco_incontri.GetString(indice).endswith(", tuo, giocato, da ascoltare.")
+    dialogo.elenco_incontri.SetSelection(indice)
+    _uscita(monkeypatch, dal_vivo.AL_RISULTATO)
+    dialogo.ascolta()
+    assert incontro.svelato and suonati[-2:] == ["differita_al_via", "risultato_svelato"]
+    # Lo svelato resta nella copia salvata, e Mostra tutti i risultati conta anche le differite.
+    copia = mondo.calendario.da_dizionario(mondo.calendario.a_dizionario())
+    salvati = [i for _voce, sede in copia.sedi_in_differita() for i in sede.incontri() if i.id == incontro.id]
+    assert salvati and salvati[0].svelato
+    assert len(mondo.calendario.da_svelare()) == sum(1 for _v, s in mondo.calendario.sedi_in_differita() for i in s.incontri() if not i.svelato)
+
+
+def test_nei_dialoghi_dei_tornei_invio_non_preme_pulsanti(calendario, gestore, suonati, monkeypatch):
+    # La revisione del 14 ottobre 2026: con un pulsante predefinito, Invio su un elenco iscriveva e
+    # pagava, creava un modello o una formula nuovi, o chiudeva l'albo. Nessuno ce l'ha più, e negli
+    # editor Invio su un modello o su una fase lo modifica.
+    mondo, _club, dialogo = calendario
+    assert dialogo.GetDefaultItem() is None
+    albo = gui_tornei.AlboDOro(None, mondo)
+    editor = gui_editor.EditorModelli(None, gestore)
+    formule_editor = gui_editor.EditorFormule(None, gestore)
+    try:
+        assert albo.GetDefaultItem() is None and editor.GetDefaultItem() is None and formule_editor.GetDefaultItem() is None
+        monkeypatch.setattr(gui_editor.ModelloTorneoDialogo, "ShowModal", lambda self: wx.ID_CANCEL)
+        monkeypatch.setattr(gui_editor.FaseDialogo, "ShowModal", lambda self: wx.ID_CANCEL)
+        editor.elenco.SetSelection(0)
+        assert editor.invio(editor.elenco) and suonati[-2:] == ["dialogo_modello_torneo", "annullato"]
+        assert formule_editor.invio(formule_editor.fasi) and suonati[-2:] == ["dialogo_fase", "annullato"]
+        assert not formule_editor.invio(formule_editor.nome) and not formule_editor.modificata
+    finally:
+        albo.Destroy()
+        editor.Destroy()
+        formule_editor.Destroy()
+
+
+def _etichette_e_lettere(dialogo):
+    """Le etichette dei campi di un dialogo, cioè i testi fissi che precedono un controllo, e le lettere di etichette, caselle e pulsanti."""
+    figli = list(dialogo.pannello.GetChildren())
+    campi = (wx.ListBox, wx.Choice, wx.TextCtrl, wx.SpinCtrl, wx.CheckBox)
+    etichette = [w.GetLabel() for w, dopo in itertools.pairwise(figli) if isinstance(w, wx.StaticText) and isinstance(dopo, campi)]
+    con_lettera = etichette + [w.GetLabel() for w in figli if isinstance(w, (wx.CheckBox, wx.Button)) and w.GetId() != wx.ID_CANCEL]
+    lettere = [t[t.index("&") + 1].casefold() for t in con_lettera if "&" in t]
+    return etichette, lettere
+
+
+def test_le_etichette_dei_dialoghi_nuovi_hanno_la_lettera(calendario, gestore, sfidanti):
+    # Il punto 12.5 e la regola delle etichette: ogni campo ha la sua lettera, e nessuna si ripete.
+    mondo, _club, dialogo_calendario = calendario
+    mondo_sfide, club, _cpu = sfidanti
+    modello = gestore.modello("modello_1")
+    dialoghi_nuovi = [dialogo_calendario, gui_tornei.PannelloTornei(None, mondo), gui_tornei.AlboDOro(None, mondo), gui_editor.EditorModelli(None, gestore),
+                      gui_editor.ModelloTorneoDialogo(None, modello, formule.leggi()[0], gestore), gui_editor.EditorFormule(None, gestore),
+                      gui_editor.FaseDialogo(None, {"tipo": formule.GIRONI, "partecipanti": 8, "gironi": 2, "promossi": 2, "finalina": False}, 0, False),
+                      gui_sfide.LanciaSfida(None, mondo_sfide, club), gui_sfide.SfideInArrivo(None, mondo_sfide, club), gui_sfide.StoricoSfide(None, mondo_sfide)]
+    try:
+        for d in dialoghi_nuovi:
+            etichette, lettere = _etichette_e_lettere(d)
+            senza = [e for e in etichette if "&" not in e]
+            assert not senza, f"{d.GetTitle()}: etichette senza lettera: {senza}"
+            doppie = sorted({c for c in lettere if lettere.count(c) > 1})
+            assert not doppie, f"{d.GetTitle()}: lettere ripetute: {doppie}"
+    finally:
+        for d in dialoghi_nuovi[1:]:
+            d.Destroy()
 
 
 def test_la_scheda_dal_pannello(pannello, suonati, monkeypatch):
@@ -644,11 +752,12 @@ def test_l_ordine_delle_notizie_dei_tornei_e_delle_sfide():
         ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", "tuo atleta campione del mondo"),
         ("tue_medaglie_oro", "tua_medaglia_oro", "2 medaglie d'oro per i tuoi"),
         ("tue_coppe_oro", "tua_coppa_oro", "coppa d'oro per la tua polisportiva"),
+        # A pari metallo la medaglia e poi la coppa, come per l'oro.
         ("tue_medaglie_argento", "tua_medaglia_argento", "1 medaglia d'argento per i tuoi"),
-        ("tue_medaglie_bronzo", "tua_medaglia_bronzo", "1 medaglia di bronzo per i tuoi"),
-        ("tue_medaglie_legno", "tua_medaglia_legno", "1 medaglia di legno per i tuoi"),
         ("tue_coppe_argento", "tua_coppa_argento", "coppa d'argento per la tua polisportiva"),
+        ("tue_medaglie_bronzo", "tua_medaglia_bronzo", "1 medaglia di bronzo per i tuoi"),
         ("tue_coppe_bronzo", "tua_coppa_bronzo", "coppa di bronzo per la tua polisportiva"),
+        ("tue_medaglie_legno", "tua_medaglia_legno", "1 medaglia di legno per i tuoi"),
         ("tue_coppe_legno", "tua_coppa_legno", "coppa di legno per la tua polisportiva"),
         ("tue_sfide_vinte", "tua_sfida_vinta", "1 sfida vinta"),
         ("tue_sfide_perse", "tua_sfida_persa", "1 sfida persa"),

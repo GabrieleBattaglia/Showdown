@@ -122,7 +122,7 @@ def test_l_albo_conserva_tutto_e_si_legge_dopo(chiusa):
     mondo, calendario, a = chiusa["mondo"], chiusa["calendario"], chiusa["a"]
     albo = calendario.albo
     voce = albo.voci[0]
-    assert voce[:8] == ["modello_1", "individuale", "m", 1.0, "2026-10-05", 4, 1, 8]
+    assert voce[:8] == [0, "individuale", "m", 1.0, "2026-10-05", 4, 1, 8] and albo.modelli[0] == ["modello_1", "Open maschile del martedì"]
     podio = voce[8]
     assert [p[0] for p in podio] == [1, 5, 3, 4] and podio[3][1] is None
     assert albo.club[podio[0][1]] == [a.nome, a.datetime_creazione_sim.date().isoformat()] and albo.club[podio[1][1]] == ["Club Chiuso", "2020-01-01"]

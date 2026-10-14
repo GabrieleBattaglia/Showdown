@@ -15,6 +15,7 @@ import pytest
 from aiuti_calendario import OGGI, apri, iscrivi_tutti, mondo_di_prova, polisportiva
 
 import iscrizioni
+import sfide
 from mondo import Mondo
 
 MARTEDI, SABATO, GP = "Open maschile del martedì", "Open maschile del sabato", "Gran Premio maschile"
@@ -125,6 +126,42 @@ def test_la_data_del_ritmo_non_si_tocca_togliendo_o_annullando():
     assert poli.cassa == 100 and poli.conti_del_mese["rimborsi"] == 10 and mondo.giocatori[1].prossimo_torneo is None
     with pytest.raises(ValueError, match="non è iscritto"):
         iscrizioni.togli(mondo, ed.id, mondo.giocatori[1], poli)
+
+
+def test_l_automatica_non_riprende_l_edizione_che_hai_tolto():
+    # La revisione del 14 ottobre 2026: tolto un tesserato iscritto in automatico, il giorno dopo
+    # l'automatica lo riscriveva alla stessa edizione e la quota si pagava di nuovo. Ora quell'edizione
+    # resta tolta fino al suo sorteggio, e l'automatica può scegliere un'altra edizione.
+    mondo = mondo_di_prova(1, 0)
+    poli = polisportiva(mondo, "Club Di Prova", cpu=False, cassa=100, ids=(1,))
+    g = mondo.giocatori[1]
+    apri(mondo, OGGI, MARTEDI)
+    _automatiche(mondo, OGGI)
+    scelta = next(ed for ed in mondo.calendario.edizioni if 1 in ed.ids())
+    assert poli.cassa == 90
+    iscrizioni.togli(mondo, scelta.id, g, poli)
+    assert poli.cassa == 100
+    _automatiche(mondo, OGGI + datetime.timedelta(days=1))
+    assert 1 not in scelta.ids()
+    altra = [ed for ed in mondo.calendario.edizioni if 1 in ed.ids()]
+    assert all(ed.id != scelta.id for ed in altra) and poli.cassa == 100 - 10 * len(altra)
+    # Il ricordo si salva col calendario, e se ne va al sorteggio dell'edizione.
+    assert mondo.calendario.da_dizionario(mondo.calendario.a_dizionario()).tolte == [[1, scelta.id]]
+    mondo.calendario.sorteggi(mondo, datetime.datetime.combine(scelta.data_inizio, OGGI.time()), Mondo.rapporto_vuoto(OGGI))
+    assert mondo.calendario.tolte == []
+
+
+def test_la_sovrapposizione_con_una_sfida_dice_la_sfida():
+    # La revisione del 14 ottobre 2026: il rifiuto diceva «due tornei negli stessi giorni» anche davanti a una sfida.
+    mondo = mondo_di_prova(2, 0)
+    poli = polisportiva(mondo, "Club Di Prova", cpu=False, cassa=1000, ids=(1,))
+    cpu = polisportiva(mondo, "PoliTeam01", cpu=True, ids=(2,))
+    ed = next(e for e in apri(mondo, OGGI, MARTEDI) if e.data_inizio == datetime.date(2026, 10, 6))
+    giorno = datetime.date(2026, 10, 6)
+    mondo.sfide.attive.append(sfide.Sfida(mondo.sfide.nuovo_id(), iscrizioni.club_della(poli), iscrizioni.club_della(cpu), OGGI.date(), OGGI.date(),
+                                          sfide.ACCETTATA, giorno, {"sfidante": [1], "sfidata": [2]}))
+    problema = iscrizioni.problema_iscrizione(mondo, ed.id, mondo.giocatori[1], poli)
+    assert "una sfida fra Club Di Prova e PoliTeam01" in problema and problema.endswith("un torneo e una sfida negli stessi giorni non si giocano.")
 
 
 def test_a_mano_senza_il_limite_e_l_automatica_che_poi_aspetta():

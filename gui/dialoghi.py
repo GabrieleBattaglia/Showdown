@@ -78,6 +78,11 @@ MODI_DI_SEGUIRE = ((ASSISTI, "Assisti"), (VAI_ALLA_FINE, "Vai alla fine"))
 LIVELLI_DI_CRONACA = ((cronaca.SINTETICA, "Sintetica"), (cronaca.NORMALE, "Normale"), (cronaca.TECNICA, "Tecnica"))
 
 
+def controllo_col_fuoco():
+    """Il controllo che ha il fuoco: una funzione a sé, perché le prove sul desktop nascosto la sostituiscono."""
+    return wx.Window.FindFocus()
+
+
 class _Dialogo(wx.Dialog):
     """La base dei dialoghi: pannello che scorre, sizer verticale, chiusura con Esc."""
 
@@ -88,7 +93,9 @@ class _Dialogo(wx.Dialog):
         self._timer_del_suono = None
 
     def etichetta(self, testo):
-        self.sizer.Add(wx.StaticText(self.pannello, label=testo), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        controllo = wx.StaticText(self.pannello, label=testo)
+        self.sizer.Add(controllo, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        return controllo
 
     def aggiungi(self, controllo, proporzione=0):
         self.sizer.Add(controllo, proporzione, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
@@ -113,6 +120,35 @@ class _Dialogo(wx.Dialog):
     def completa(self, misura):
         self.pannello.SetSizer(self.sizer)
         adatta_finestra(self, self.pannello, misura)
+
+    def invio_su(self, controllo, azione):
+        """
+        Invio su quel controllo fa l'azione, e su nessun altro, per i dialoghi senza pulsante
+        predefinito: nel pannello dei tornei Invio su un incontro lo ascolta, negli editor Invio su un
+        modello o su una fase lo modifica. Con un pulsante predefinito, invece, Invio su qualunque
+        elenco lo premeva, e un'azione pensata per un elenco partiva da un altro; lo ha visto la
+        revisione della tappa 12, il 14 ottobre 2026. Il tasto si prende prima di Windows, con
+        EVT_CHAR_HOOK, perché in un dialogo Invio su un elenco non arriva all'elenco.
+        """
+        if not hasattr(self, "_azioni_dell_invio"):
+            self._azioni_dell_invio = []
+            self.Bind(wx.EVT_CHAR_HOOK, self._tasto_invio)
+        self._azioni_dell_invio.append((controllo, azione))
+
+    def invio(self, fuoco):
+        """L'azione di Invio sul controllo che ha il fuoco, se ce n'è una: vero se è partita."""
+        if fuoco is None:
+            return False
+        for controllo, azione in getattr(self, "_azioni_dell_invio", ()):
+            if fuoco is controllo or fuoco.GetId() == controllo.GetId():
+                azione()
+                return True
+        return False
+
+    def _tasto_invio(self, event):
+        if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.HasAnyModifiers() and self.invio(controllo_col_fuoco()):
+            return
+        event.Skip()
 
     def chiudi(self, codice):
         """Chiude il dialogo con il codice dato; fuori da ShowModal, come nei collaudi, lo annota soltanto."""

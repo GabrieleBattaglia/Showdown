@@ -18,7 +18,9 @@ sua ultima sfida è più vecchia di cinque giorni e se convoca una squadra valid
 Ogni giorno, dopo i tornei, ogni polisportiva del computer con una sfida da lanciare la lancia col 7
 per cento, a un bersaglio a caso con una squadra valida e la forza nella sua forbice, fino a tre
 tentativi: fra polisportive del computer si gioca subito, con l'esito rapido; a una tua arriva una
-proposta, a cui rispondi entro il giorno dopo, poi decade. Le tue sfide le lanci dal menu Partite, e
+proposta, a cui rispondi entro il giorno in cui arriva: all'avanzamento seguente decade, e i testi
+dicono quel giorno, ultimo_giorno_per_rispondere, dalla revisione del 14 ottobre 2026, che ha trovato
+scritto il giorno dopo, quando la sfida era già decaduta. Le tue sfide le lanci dal menu Partite, e
 il computer risponde subito; accettate, si giocano all'avanzamento seguente, col motore vero, e le
 fotografie dei giocatori permettono di riascoltarle. Il giorno della sfida la formazione si
 riconvoca: chi non c'è più lascia il posto alle riserve, e chi non ha più una squadra valida perde a
@@ -612,6 +614,14 @@ def _lanci_del_computer(mondo, data, rapporto, memoria):
     return toccate
 
 
+def ultimo_giorno_per_rispondere(s):
+    """
+    L'ultimo giorno in cui una proposta aspetta la risposta: quello prima della scadenza, perché
+    all'avanzamento che porta il mondo alla scadenza la proposta decade per prima cosa.
+    """
+    return s.scadenza - datetime.timedelta(days=1)
+
+
 def _proponi(mondo, cpu, poli, convocati, oggi, rapporto):
     """Una polisportiva del computer sfida una tua: la proposta aspetta la risposta fino all'avanzamento seguente."""
     scadenza = oggi + datetime.timedelta(days=GIORNI_RISPOSTA_SFIDA)
@@ -619,9 +629,10 @@ def _proponi(mondo, cpu, poli, convocati, oggi, rapporto):
               convocati={"sfidante": [g.id for g in convocati], "sfidata": []})
     mondo.sfide.attive.append(s)
     rapporto["sfide_ricevute"] += 1
+    ultimo = data_breve(ultimo_giorno_per_rispondere(s))
     # Con la data: in un recupero di più giorni la sfida può essere già decaduta quando si legge il riepilogo.
-    rapporto["notizie"].append(f"{cpu.nome} sfida {poli.nome}, il {data_breve(oggi)}: si risponde entro il {data_breve(scadenza)}.")
-    mondo.annota(poli, f"{cpu.nome} lancia una sfida: si risponde entro il {data_breve(scadenza)}, e si gioca all'avanzamento che segue la risposta.")
+    rapporto["notizie"].append(f"{cpu.nome} sfida {poli.nome}, il {data_breve(oggi)}: si risponde entro il {ultimo}, prima dell'avanzamento seguente.")
+    mondo.annota(poli, f"{cpu.nome} lancia una sfida: si risponde entro il {ultimo}, prima dell'avanzamento seguente, e si gioca all'avanzamento che segue la risposta.")
 
 
 # Le sfide dell'utente, per i dialoghi del passo 3 e per l'interfaccia testuale.

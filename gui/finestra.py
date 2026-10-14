@@ -902,7 +902,7 @@ class FinestraPrincipale(wx.Frame):
         self._concludi(testo, f"sfide: {testi.conta(len(esiti), 'lancio', 'lanci')}", "lavoro_concluso", bool(esiti))
 
     def sfide_in_arrivo(self):
-        """Le sfide che aspettano la risposta della polisportiva attiva, entro il giorno dopo: accettare con la formazione o rifiutare."""
+        """Le sfide che aspettano la risposta della polisportiva attiva, entro oggi, prima dell'avanzamento seguente: accettare con la formazione o rifiutare."""
         p = self._attiva()
         if p is None:
             return

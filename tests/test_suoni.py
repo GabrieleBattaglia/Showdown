@@ -139,6 +139,63 @@ def test_nessun_timbro_della_partita_e_quasi_uguale_a_un_altro():
         assert not uguali, f"il ruolo {ruolo} della partita ha le stesse note o bande di {uguali}"
 
 
+_SEMITONI = {"c": 0, "d": 2, "e": 4, "f": 5, "g": 7, "a": 9, "b": 11}
+# Le coppie nate prima della tappa 12 e già ascoltate: due famiglie volute per altezza, F5 e F7, la
+# velocità che sale e scende, e una coppia della tappa 11.
+_COPPIE_GIA_ASCOLTATE = {frozenset(("meteora_velocita_giu", "meteora_velocita_su")), frozenset(("spostamento_f5", "spostamento_f7")),
+                         frozenset(("mess_programma_cambiato", "meteora_marker_messo"))}
+
+
+def _altezza(nota, rumore):
+    """Il semitono di una nota, o il centro di una banda di rumore in semitoni; None se non si legge."""
+    if rumore:
+        m = re.fullmatch(r"(\d+)-(\d+)", nota)
+        return 12.0 * np.log2(np.sqrt(float(m.group(1)) * float(m.group(2))) / 440.0) if m else None
+    m = re.fullmatch(r"([a-g])(#|b)?(-?\d)", nota)
+    if not m:
+        return None
+    return _SEMITONI[m.group(1)] + (1 if m.group(2) == "#" else -1 if m.group(2) == "b" else 0) + 12 * int(m.group(3))
+
+
+def _figura(preset):
+    """L'onda e la figura di un preset senza le pause: per ogni elemento l'altezza d'inizio, quella di fine e la durata; None se non si legge."""
+    score, kind, _adsr = Acusticator.preset(preset)
+    elementi = []
+    for i in range(0, len(score), 4):
+        nota, durata = str(score[i]), float(score[i + 1])
+        if nota == "p":
+            continue
+        valori = [_altezza(x, kind in (5, 6, 7, 8)) for x in nota.split(".")]
+        if None in valori:
+            return kind, None
+        elementi.append((valori[0], valori[-1], durata))
+    return kind, elementi
+
+
+def _quasi_uguali(fa, fb):
+    """Stessi intervalli fra gli elementi, stesse scivolate e durate entro 25 millisecondi: la stessa figura, soltanto trasposta."""
+    if not fa or len(fa) != len(fb):
+        return False
+    if any(abs(da - db) > 0.025 + 1e-9 or abs((fia - ia) - (fib - ib)) > 0.5 for (ia, fia, da), (ib, fib, db) in zip(fa, fb, strict=True)):
+        return False
+    return all(abs((fa[k][0] - fa[k - 1][1]) - (fb[k][0] - fb[k - 1][1])) <= 0.5 for k in range(1, len(fa)))
+
+
+def test_nessun_preset_e_la_figura_trasposta_di_un_altro():
+    # La revisione della tappa 12, D24: né due preset uguali né quasi uguali. Oltre ai doppioni e alle
+    # stesse note, nessun preset usato da MESS è la stessa figura di un altro, con la stessa onda,
+    # soltanto spostata d'altezza: sei coppie della V205 lo erano, e sono state rifatte.
+    usati = sorted(set(suoni.EVENTI.values()) | set(partita_sonora.SUONI.values()))
+    figure = {p: _figura(p) for p in usati}
+    coppie = []
+    for i, a in enumerate(usati):
+        for b in usati[i + 1:]:
+            (ka, fa), (kb, fb) = figure[a], figure[b]
+            if ka == kb and fa is not None and fb is not None and frozenset((a, b)) not in _COPPIE_GIA_ASCOLTATE and _quasi_uguali(fa, fb):
+                coppie.append((a, b))
+    assert not coppie, f"preset che sono la stessa figura trasposta: {coppie}"
+
+
 def test_nessuna_onda_quadra_salvo_donazione():
     quadre = [preset for preset in suoni.EVENTI.values() if Acusticator.preset(preset)[1] == 2]
     assert quadre == ["donazione"]
