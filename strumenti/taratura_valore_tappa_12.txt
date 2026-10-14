@@ -1,0 +1,39 @@
+Taratura del valore complessivo sul motore di partita, 2026-10-14 02:52, semi 9, 19, 29 e 39.
+Primo passo: per ogni seme 3200 giocatori, e 400 per la verifica, contro 48 sparring fissi; in tutto 691200 incontri al meglio dei 3 set in 495,9 secondi, con 7 processi.
+Secondo passo: la regressione spiega, seme per seme, il 94,9, 95,4, 95,2 e 95,5 per cento della varianza del rating, e il 94,1, 95,4, 95,3 e 95,2 per cento nella popolazione di verifica. I pesi sono la media dei semi.
+Nella verifica il rating si lega al valore della tappa 8 con una correlazione media di 0,891, e al valore nuovo, coi pesi medi, con 0,971.
+I tratti seme per seme, in punti di valore con la scala di costanti.py, B 1,1414: mancino 4,6, 2,4, 3,4 e 3,4; ambidestro 7,2, 4,2, 3,5 e 5,5; giocorapido 0,8, 0,9, 0,6 e 1,6; cambiovelocita 5,3, 5,4, 5,8 e 5,4.
+Terzo passo: il mondo maturo di 10 anni simulati col seme 9, 5805 giocatori in attività, in 124,8 secondi. La prima stima della scala, che conserva la mediana del valore di prima e il monte stipendi di questo mondo fermo: A -39,41, B 1,1151. Quella vera si cerca con simulazione_lunga.py --cerca-scala, dopo aver copiato i pesi.
+Il valore di prima nel mondo maturo: mediana 148,5, decimo percentile 120,6, novantesimo 186,1, da 69,1 a 272,0.
+Il valore nuovo nel mondo maturo: mediana 148,5, decimo percentile 113,7, novantesimo 187,9, da 55,1 a 272,5.
+Fra i due valori, nel mondo maturo, la correlazione è 0,537. La media del fattore di stipendio è 1,684 col valore di prima e 1,684 col nuovo.
+Il valore nuovo di mille neonati: mediana 135,9, decimo percentile 103,1, novantesimo 170,2, da 62,2 a 227,2.
+Quarto passo, i pesi in punti di valore: per ogni punto della caratteristica, e fra parentesi da zero al massimo della scala.
+lungolineasx 0,52 (21); lungolineadx 0,52 (21); diagonalesx 0,56 (22); diagonaledx 0,56 (22); singolaspondasx 0,54 (22); singolaspondadx 0,54 (22); doppiaspondasx 0,55 (22); doppiaspondadx 0,55 (22); triplaspondasx 0,47 (19); triplaspondadx 0,47 (19); bomba 0,57 (23); battutasx 0,52 (21); battutadx 0,52 (21); chiusura_dritto 2,53 (101); chiusura_rovescio 3,12 (125); blocco_dritto 1,46 (58); blocco_rovescio 1,76 (70); difesa 3,80 (152); tenutapaletta 1,40 (56); controllopalla 0,89 (35); attacco 1,57 (63); precisione 11,76 (118); forza 6,44 (64); resistenza 4,24 (42).
+I tratti in punti di valore: mancino 3,4; ambidestro 5,0; giocorapido 1,0; cambiovelocita 5,4.
+Con la scala di costanti.py, B 1,1414, i punti di valore si moltiplicano per 1,024: mancino 3,4; ambidestro 5,1; giocorapido 1,0; cambiovelocita 5,5; un punto di precisione 12,04, uno di resistenza 4,34.
+Nessuna caratteristica è quasi inerte: tutte pesano almeno un quarto della media di quelle di gioco.
+Il temperamento, dal calmissimo di tau meno 0,8 all'impetuoso di tau 0,8, vale -1,3 punti di valore, bersaglio entro 5.
+L'esperienza di carriera, da 0 a 12, vale 25,4 punti di valore; un punto di fattore d'età della stanchezza ne vale -22,0; la costanza recente, da zero alla costanza piena, ne vale 6,8, e resta fuori dal valore.
+La curva del favorito, col valore nuovo, su una terza popolazione:
+Con un distacco meno del 5 per cento: 204 partite, il favorito ne vince il 49,0 per cento, bersaglio da 50 a 58, FUORI.
+Con un distacco fra il 5 e il 15 per cento: 373 partite, il favorito ne vince il 66,2 per cento, bersaglio da 58 a 70, dentro.
+Con un distacco fra il 15 e il 30 per cento: 475 partite, il favorito ne vince il 80,2 per cento, bersaglio da 70 a 85, dentro.
+Con un distacco oltre il 30 per cento: 1948 partite, il favorito ne vince il 97,1 per cento, bersaglio da 85 a 96, FUORI.
+Quinto passo, la verifica a coppie: 1920 soggetti destrimani in 4 gruppi, uno per seme, ciascuno contro 40 avversari, con gli stessi semi; un punto di valore vale 5,43 millesimi di rating, misurati su difesa, chiusure, forza e attacco.
+Nelle partite un punto di precisione allenata vale 12,1 punti di valore; il valore gliene dà 11,8.
+Nelle partite un punto di resistenza innata vale 3,9 punti di valore; il valore gliene dà 4,2.
+Nelle partite la costanza piena contro la costanza zero vale 6,5 punti di valore; il valore gliene dà 0,0.
+Nelle partite il mancino, con chiusure e blocchi specchiati vale 2,6 punti di valore; il valore gliene dà 3,4.
+Il mancino gruppo per gruppo, nell'ordine dei semi: 2,6, 2,4, 2,6, 2,9 punti di valore; la media 2,6, con un errore della media di 0,1.
+Il blocco da copiare in costanti.py, con la prima stima della scala:
+PESI_VALORE = {
+    "lungolineasx": 0.47, "lungolineadx": 0.47, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.49, "singolaspondadx": 0.49,
+    "doppiaspondasx": 0.49, "doppiaspondadx": 0.49, "triplaspondasx": 0.42, "triplaspondadx": 0.42, "bomba": 0.52, "battutasx": 0.47,
+    "battutadx": 0.47, "chiusura_dritto": 2.27, "chiusura_rovescio": 2.80, "blocco_dritto": 1.31, "blocco_rovescio": 1.57, "difesa": 3.41,
+    "tenutapaletta": 1.26, "controllopalla": 0.80, "attacco": 1.41, "precisione": 10.55, "forza": 5.78, "resistenza": 3.80,
+}
+PESI_TRATTI = {"mancino": 3.0, "ambidestro": 4.5, "giocorapido": 0.9, "cambiovelocita": 4.8}
+SCALA_VALORE_A = -39.41
+SCALA_VALORE_B = 1.1151
+Taratura completata in 1685,1 secondi.

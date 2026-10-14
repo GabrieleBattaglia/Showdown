@@ -158,6 +158,11 @@ def test_l_esito_rapido_somiglia_al_motore():
         conti[fascia][0] += 1
         conti[fascia][1] += simula_incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=ESSENZIALE).vincitore == favorito
         conti[fascia][2] += esito_rapido.gioca(a, b, SINGOLARE_3, seme).vincitore == favorito
+    # Dalla taratura fine del passo 4: una fascia con una cinquantina di incontri ha un errore di quasi 8
+    # punti, e il bersaglio di 6 lì non dice niente; si giudicano le fasce con almeno cento incontri, e
+    # tutti gli incontri insieme entro 3 punti. La verifica vera, su 40.000 incontri, la fa la taratura.
     for quanti, motore, rapido in conti.values():
-        if quanti >= 40:
+        if quanti >= 100:
             assert abs(100.0 * (motore - rapido) / quanti) <= 6.0, conti
+    totale = sum(c[0] for c in conti.values())
+    assert abs(100.0 * sum(c[1] - c[2] for c in conti.values()) / totale) <= 3.0, conti

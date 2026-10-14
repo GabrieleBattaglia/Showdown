@@ -62,12 +62,29 @@ NASCITA_DEL_MONDO = datetime.datetime(2026, 1, 1, 9, 0, tzinfo=datetime.UTC)
 CAMPI_DEL_MONDO_REALE = ("salvato", "versione", "ultimo_avanzamento")
 CAMPI_REALI_GIOCATORE = ("datacreazione_reale", "versione")
 CAMPI_REALI_POLISPORTIVA = ("datacreazione_reale", "datetime_ultimo_movimento", "versione_creazione")
-# L'esperienza delle gare di un tesserato del computer per anno d'età, dalla tappa 12, punto 6.4 del
-# progetto: con le fonti nuove l'esperienza del club scende, e senza le gare il mondo sintetico
-# avrebbe il 60 per cento d'esperienza in meno di quello vero. Una stima ai ritmi di regime: un
-# torneo ogni 61 giorni, cioè 1,8 tornei per anno d'età, ciascuno con circa 3,5 incontri, una fase e
-# mezza superata e un piazzamento medio, circa 0,08 d'esperienza a torneo, e qualche sfida.
-ESPERIENZA_GARE_PER_ANNO = 0.15
+# Le gare dei giocatori del mondo, dalla tappa 12, punti 6.4 e 13.3 del progetto: con le fonti nuove
+# l'esperienza del club scende, e senza le gare il mondo sintetico avrebbe il 60 per cento
+# d'esperienza in meno di quello vero, e meno punti allenamento, perché nel mondo che gioca i tesserati
+# del computer e i liberi prendono dai tornei e dalle sfide quasi quanto dalla seduta. I conteggi
+# grezzi per fascia d'età li misura strumenti/simulazione_lunga.py e stanno in costanti.py, in
+# CONTEGGI_GARE_MONDO: qui diventano punti ed esperienza coi fattori e le costanti di adesso, così la
+# carriera perfetta, che li cambia a ogni giro, ritrova i mondi sintetici coi suoi numeri. Fino al passo
+# 3 della tappa al loro posto c'era una stima dell'esperienza sola, 0,15 per anno d'età.
+
+
+def gare_al_giorno(anni):
+    """
+    I punti allenamento e l'esperienza che un giocatore del mondo prende in un giorno dalle gare, ai
+    ritmi misurati della sua fascia d'età: i conteggi grezzi di CONTEGGI_GARE_MONDO per i fattori delle
+    fonti e le costanti dell'esperienza di adesso. Zero fuori dalle fasce.
+    """
+    for da, a, punti_torneo, punti_sfida, incontri_torneo, fasi, piazzamenti, sfide in costanti.CONTEGGI_GARE_MONDO:
+        if da <= anni < a:
+            punti = costanti.PA_FATTORE_TORNEO * punti_torneo + costanti.PA_FATTORE_SFIDA * punti_sfida
+            esperienza_del_giorno = (esperienza.PER_PARTITA[esperienza.TORNEO] * incontri_torneo + esperienza.ESPERIENZA_PER_FASE_SUPERATA * fasi
+                                     + esperienza.ESPERIENZA_PIAZZAMENTO_BASE * piazzamenti + esperienza.PER_PARTITA[esperienza.SFIDA] * sfide)
+            return punti, esperienza_del_giorno
+    return 0.0, 0.0
 
 
 def nati(quanti, seme, primo_id=1):
@@ -80,10 +97,12 @@ def nati(quanti, seme, primo_id=1):
         random.setstate(stato)
 
 
-def allena_a_passi(g, da, a, punti_al_giorno, programma, in_polisportiva=True, amichevoli_al_giorno=0.0, passo=1.0):
+def allena_a_passi(g, da, a, punti_al_giorno, programma, in_polisportiva=True, amichevoli_al_giorno=0.0, passo=1.0, gare=0.0):
     """
     L'allenamento sintetico, a passi di un anno: i punti del passo, spesi secondo il programma
     all'età di metà passo, il calo dei livelli alti, il declino dai 50 anni; l'esperienza dalle sue fonti.
+    Dalla tappa 12, con gare, una quota da 0 a 1, anche i punti e l'esperienza delle gare del mondo
+    della fascia d'età di metà passo, gare_al_giorno; l'esperienza delle gare la conta mondo_sintetico.
     """
     anni = da
     per_anno = costanti.ESPERIENZA_PER_ANNO_DI_VITA + (esperienza.ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * GIORNI_ANNO * FATTORE_GRUPPO if in_polisportiva else 0.0)
@@ -92,7 +111,7 @@ def allena_a_passi(g, da, a, punti_al_giorno, programma, in_polisportiva=True, a
         tratto = min(passo, a - anni)
         giorni = tratto * GIORNI_ANNO
         g.eta = int((anni + tratto / 2) * GIORNI_ANNO)
-        g.punti_allenamento += punti_al_giorno * giorni
+        g.punti_allenamento += (punti_al_giorno + gare * gare_al_giorno(anni + tratto / 2)[0]) * giorni
         allenamento.allena_secondo_programma(g, programma=programma)
         allenamento.mantenimento_del_mese(g, giorni)
         # Nel mondo l'oblio dell'apprendista rapido scatta il primo di ogni mese, e un anno d'età ne ha
@@ -112,13 +131,15 @@ def allena_a_passi(g, da, a, punti_al_giorno, programma, in_polisportiva=True, a
     return g
 
 
-def mondo_sintetico(quanti, anni_mondo, seme, primo_id=100_000, candidati=None):
+def mondo_sintetico(quanti, anni_mondo, seme, primo_id=100_000, candidati=None, gare=1.0):
     """
     I giocatori in attività di un mondo nato anni_mondo anni fa, o a regime con None: ingresso fra 9
     e 45 anni, ritiro fra 58 e 75, morte fra 70 e 103, l'uscita prematura; ciascuno si allena dal
     suo ingresso secondo la sua indole, il 90 per cento dei giorni da tesserato. I nati candidati
     sono il doppio dei giocatori chiesti, se non si dice altro: a regime ne passa poco più di un
-    terzo, e chi ne vuole tanti ne chiede di più.
+    terzo, e chi ne vuole tanti ne chiede di più. Dalla taratura della tappa 12 ciascuno gioca anche
+    le gare del mondo della sua fascia d'età, con la quota gare, tutte se non si dice altro, e ne
+    prende i punti e l'esperienza.
     """
     rng = random.Random(f"sintetico-{seme}-{anni_mondo}")
     candidati = nati(quanti * 2 if candidati is None else candidati, seme, primo_id)
@@ -134,9 +155,15 @@ def mondo_sintetico(quanti, anni_mondo, seme, primo_id=100_000, candidati=None):
         if eta >= ritiro or eta >= morte or rng.random() > math.exp(-uscita_annua * da_quanto):
             continue
         g.eta = int(ingresso * GIORNI_ANNO)
-        allena_a_passi(g, ingresso, eta, 0.9 * costanti.PA_SEDUTA + 0.1 * costanti.PA_SEDUTA * costanti.QUOTA_SEDUTA_LIBERI, g.indole, passo=1.0)
-        per_anno = costanti.ESPERIENZA_PER_ANNO_DI_VITA + 0.9 * (esperienza.ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * GIORNI_ANNO * FATTORE_GRUPPO + ESPERIENZA_GARE_PER_ANNO)
-        g.esperienza = min(costanti.ESPERIENZA_MASSIMA, da_quanto * per_anno)
+        allena_a_passi(g, ingresso, eta, 0.9 * costanti.PA_SEDUTA + 0.1 * costanti.PA_SEDUTA * costanti.QUOTA_SEDUTA_LIBERI, g.indole, passo=1.0, gare=gare)
+        per_anno = costanti.ESPERIENZA_PER_ANNO_DI_VITA + 0.9 * esperienza.ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * GIORNI_ANNO * FATTORE_GRUPPO
+        dalle_gare = 0.0
+        anno = ingresso
+        while anno < eta - 1e-9:
+            tratto = min(1.0, eta - anno)
+            dalle_gare += gare * gare_al_giorno(anno + tratto / 2)[1] * tratto * GIORNI_ANNO
+            anno += tratto
+        g.esperienza = min(costanti.ESPERIENZA_MASSIMA, da_quanto * per_anno + dalle_gare)
         giocatori.append(g)
     return giocatori
 

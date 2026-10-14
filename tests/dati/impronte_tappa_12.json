@@ -1,21 +1,21 @@
 {
- "nota": "Rigenerate col sesto commit del passo 2 della tappa 12: le sfide fra polisportive e la Coppa delle polisportive girano nel mondo, col caso del mondo per i lanci del computer; nuovi campi delle sfide nelle polisportive e delle gare a squadre nei giocatori, e il registro delle sfide. Motore invariato.",
+ "nota": "Taratura della tappa 12, passo 4, primo commit: il calo dell'acciacco da 0,012-0,028 a 0,011-0,0257, i pesi del valore rimisurati sul motore della 1.60.11 (battute da 0,71 a 0,47) e i mondi sintetici che giocano le gare del mondo coi conteggi della simulazione lunga. Il motore resta identico.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "5a6aba65448eb29ba05b122d1670cb4bf98f2bff74ee44a62e10172cfcd59903",
-  "vivi": 717,
-  "attivi": 717,
-  "tesserati": 640,
-  "polisportive": 43
+  "sha256": "05d7b40856f8fbfb10cc02e1ba05b2745b3bdf70e02624e66527e8fb90040e21",
+  "vivi": 656,
+  "attivi": 656,
+  "tesserati": 572,
+  "polisportive": 39
  },
  "mondo_a_regime": {
-  "sha256": "7d00b972cd388f1fd3080877b1243a79f340f842e54da30110a31c723a42a2e9",
-  "vivi": 1666,
-  "attivi": 1266,
-  "tesserati": 1089,
-  "polisportive": 77
+  "sha256": "633b3dd6ad51a70fbf2bd2d84d7979d5ef91f3b6dafb47b125ebc67315a710f1",
+  "vivi": 1660,
+  "attivi": 1260,
+  "tesserati": 1094,
+  "polisportive": 76
  }
 }

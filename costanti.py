@@ -561,15 +561,26 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # mostrato cambia per tutti con la scala e i pesi nuovi, nel suo mondo da 140,6 a 131,3 di
 # mediana; la risposta 6, «la migrazione non cambia i valori di nessuno», è stata letta come
 # «nessuna caratteristica cambia», e l'altra lettura chiederebbe di tenere qui la scala della 1.50.0.
+# La taratura della tappa 12, il 14 ottobre 2026, punto 13.2 del progetto, sul motore della 1.60.11 col
+# freno alle battute alte e col ritiro a fine set: sui quattro semi di sempre, 691.200 incontri, la
+# regressione spiega il 94,9, 95,4, 95,2 e 95,5 per cento delle vittorie, e dal 94,1 al 95,4 nelle
+# verifiche. Il freno ha fatto quello che la issue 2 aveva previsto: il peso delle battute scende da
+# 0,71 a 0,47. Il resto si muove poco, e quasi tutto in su di qualche centesimo, perché la media delle
+# caratteristiche di gioco resta 1: la precisione da 10,25 a 10,55, la difesa da 3,33 a 3,41; i tratti
+# salgono, il mancino da 2,7 a 3,0, l'ambidestro da 3,9 a 4,5, il cambio di velocità da 4,5 a 4,8. La
+# verifica a coppie è concorde: un punto di precisione vale 12,1 punti di valore e il valore gliene dà
+# 11,8, uno di resistenza 3,9 e 4,2, il mancino 2,6 e 3,4, dentro la banda da 2 a 6 di Gabriele. I pesi
+# della classe, PESI_CLASSE e PESI_TRATTI_CLASSE, restano quelli congelati della tappa 11, con le
+# battute a 0,71: la classe premia le battute più del valore, ed è una decisione per Gabriele.
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
 PESI_VALORE = {
-    "lungolineasx": 0.46, "lungolineadx": 0.46, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.46, "singolaspondadx": 0.46,
-    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.41, "triplaspondadx": 0.41, "bomba": 0.50, "battutasx": 0.71,
-    "battutadx": 0.71, "chiusura_dritto": 2.20, "chiusura_rovescio": 2.73, "blocco_dritto": 1.29, "blocco_rovescio": 1.55, "difesa": 3.33,
-    "tenutapaletta": 1.25, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.25, "forza": 5.59, "resistenza": 3.63,
+    "lungolineasx": 0.47, "lungolineadx": 0.47, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.49, "singolaspondadx": 0.49,
+    "doppiaspondasx": 0.49, "doppiaspondadx": 0.49, "triplaspondasx": 0.42, "triplaspondadx": 0.42, "bomba": 0.52, "battutasx": 0.47,
+    "battutadx": 0.47, "chiusura_dritto": 2.27, "chiusura_rovescio": 2.80, "blocco_dritto": 1.31, "blocco_rovescio": 1.57, "difesa": 3.41,
+    "tenutapaletta": 1.26, "controllopalla": 0.80, "attacco": 1.41, "precisione": 10.55, "forza": 5.78, "resistenza": 3.80,
 }
-PESI_TRATTI = {"mancino": 2.7, "ambidestro": 3.9, "giocorapido": 0.9, "cambiovelocita": 4.5}
+PESI_TRATTI = {"mancino": 3.0, "ambidestro": 4.5, "giocorapido": 0.9, "cambiovelocita": 4.8}
 SCALA_VALORE_A = -50.68
 SCALA_VALORE_B = 1.1414
 SOGLIA_PESO_INERTE = 0.25
@@ -593,14 +604,19 @@ MONTEPREMI_MINIMO_MASSIMO = 5000
 # all'uno su 45 di Gabriele. Il rischio della seduta all'intensa, D31, resta com'è.
 QUOTA_INFORTUNI_CHE_FERMANO = 0.2
 # L'acciacco: «qualche giorno» sono da 3 a 7 giorni, «un poco meno» un calo dell'efficienza estratto
-# fra il minimo e il massimo, pieno il primo giorno, che scende in linea retta fino a zero. Prime
-# stime, scelte dell'architetto: con la media a 0,02 l'acciaccato al primo giorno vince contro un
-# pari circa il 45 per cento degli incontri al meglio dei 3; le fissa strumenti/banco_partite.py
-# --acciacco, punto 13.1 del progetto, e il collaudo di Gabriele dirà se il calo si sente.
+# fra il minimo e il massimo, pieno il primo giorno, che scende in linea retta fino a zero. Le prime
+# stime dell'architetto erano 0,012 e 0,028, con la media a 0,02. La taratura del 14 ottobre 2026,
+# strumenti/banco_partite.py --acciacco, punto 13.1 del progetto: ogni giocatore contro il proprio
+# gemello, con gli stessi semi, senza calo e col calo del primo giorno a sei scale delle prime stime,
+# su tre semi, 30.000 incontri al meglio dei 3 di cui un quinto fra i forti alla pari. Con le prime
+# stime l'acciaccato vinceva il 45,0, il 44,2 e il 44,5 per cento, dentro la banda dal 44 al 46, ma
+# sotto il 45 del mezzo: ogni scala in più toglie circa 6 punti di vittoria, e la scala che porta al
+# 45 è 0,92, cioè 0,011 e 0,0257 nella proporzione delle prime stime, calo medio 0,0184. Il collaudo di
+# Gabriele dirà se il calo si sente.
 ACCIACCO_GIORNI_MINIMO = 3
 ACCIACCO_GIORNI_MASSIMO = 7
-ACCIACCO_CALO_MINIMO = 0.012
-ACCIACCO_CALO_MASSIMO = 0.028
+ACCIACCO_CALO_MINIMO = 0.011
+ACCIACCO_CALO_MASSIMO = 0.0257
 # La fatica della giornata di torneo, risposta 5 di Gabriele: ogni incontro dopo il primo del giorno
 # parte con un quarto delle azioni già giocate quel giorno da ciascuno, nel motore e nell'esito rapido.
 FATICA_RESIDUA_GIORNATA = 0.25
@@ -678,6 +694,24 @@ FORBICI_SFIDA = {"prudente": (0.85, 1.15), "equilibrata": (0.75, 1.30), "ardita"
 CONVOCATI_SFIDA = 6
 GIORNI_RISPOSTA_SFIDA = 1
 DIFFERITE_SFIDE_TUE = 10
+# Le gare del mondo per gli strumenti, punto 13.3 del progetto: le sfide che una polisportiva del
+# computer gioca in un mese, e per fascia d'età, al giorno per giocatore in attività che non è
+# dell'utente, i conteggi grezzi delle gare, cioè i punti allenamento dei tornei e delle sfide divisi per
+# il fattore della loro fonte, e le volte per l'importanza degli incontri di torneo, delle fasi superate,
+# dei piazzamenti, col premio a scalare senza la sua base, e delle sfide. Li misura
+# strumenti/simulazione_lunga.py, e li usano strumenti/mondi_sintetici.py, perché i giocatori dei mondi
+# sintetici giochino come quelli del mondo, e strumenti/carriera_perfetta.py. La prima misura, del 14
+# ottobre 2026, è la media del terzo anno di calendario di due simulazioni di tre anni, semi 2026 e 7,
+# coi valori di partenza della tappa: 2,15 e 2,10 sfide al mese per polisportiva; i tornei a testa dei
+# tesserati sani erano 4,1 e 4,3 l'anno, sotto il ritmo di Gabriele, perché le casse del computer erano
+# ancora quelle di prima della taratura dell'economia.
+SFIDE_GIOCATE_AL_MESE = 2.1
+CONTEGGI_GARE_MONDO = (
+    (9, 20, 0.1938, 0.0353, 0.0567, 0.0156, 0.0025, 0.0210),
+    (20, 35, 0.1974, 0.0434, 0.0569, 0.0170, 0.0028, 0.0252),
+    (35, 50, 0.1629, 0.0416, 0.0494, 0.0110, 0.0017, 0.0251),
+    (50, 76, 0.1430, 0.0634, 0.0443, 0.0096, 0.0014, 0.0350),
+)
 
 
 def discrepanze_raggruppamenti():

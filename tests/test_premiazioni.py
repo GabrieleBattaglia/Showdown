@@ -20,6 +20,7 @@ import palmares
 import premiazioni
 import tornei
 from calendario import Calendario
+from costanti import ESPERIENZA_PER_FASE_SUPERATA
 from mondo import Mondo
 
 # L'ordine di forza: 1 del computer, 5 di un club chiuso, 3 dell'utente, 4 libero, 2 del computer, gli altri liberi.
@@ -94,7 +95,7 @@ def test_esperienza_fedelta_e_bandiera(chiusa):
     mondo, torneo = chiusa["mondo"], chiusa["torneo"]
     g1 = mondo.giocatori[1]
     fasi = torneo.fasi_superate()
-    atteso = fasi[1] * 0.012 + esperienza.premio_piazzamento(1)
+    atteso = fasi[1] * ESPERIENZA_PER_FASE_SUPERATA + esperienza.premio_piazzamento(1)
     assert g1.esperienza == pytest.approx(atteso)
     assert mondo.giocatori[8].esperienza == pytest.approx(esperienza.premio_piazzamento(8))
     assert g1.fedelta == 81.0 and any("Diventa una bandiera" in v.get("testo", "") for v in g1.diario)

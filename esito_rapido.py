@@ -39,15 +39,17 @@ __all__ = ("TARATURA_RAPIDA", "RisultatoRapido", "TaraturaRapida", "forza", "gio
 
 _FISICHE = ("precisione", "forza", "resistenza")
 TRATTI_RAPIDI = ("mancino", "ambidestro", "giocorapido", "cambiovelocita")
-# I pesi di partenza, quelli trovati da strumenti/taratura_esito_rapido.py: vedi la carta della taratura.
-# Il primo giro della taratura, del 14 ottobre 2026: 3.000 incontri e 800 gare a squadre su 2.400
-# giocatori di tre popolazioni, con la verifica su 2.000 incontri e 500 gare; la carta è
-# strumenti/taratura_esito_rapido.txt. La taratura fine la rifà il passo 4 della tappa, punto 13.
-_PESI = {"lungolineasx": 0.446, "lungolineadx": 0.636, "diagonalesx": 0.35, "diagonaledx": 0.469, "singolaspondasx": 0.2, "singolaspondadx": 0.542,
-         "doppiaspondasx": 0.403, "doppiaspondadx": 0.609, "triplaspondasx": 0.0, "triplaspondadx": 0.388, "bomba": 0.139, "battutasx": 0.476,
-         "battutadx": 0.627, "chiusura_dritto": 2.296, "chiusura_rovescio": 2.649, "blocco_dritto": 1.227, "blocco_rovescio": 1.209, "difesa": 3.02,
-         "tenutapaletta": 1.455, "controllopalla": 0.79, "attacco": 1.143, "precisione": 2.454, "forza": 1.951, "resistenza": 0.52}
-_PESI_TRATTI = {"mancino": 0.061, "ambidestro": -0.067, "giocorapido": 0.012, "cambiovelocita": 0.014}
+# I pesi trovati da strumenti/taratura_esito_rapido.py: vedi la carta della taratura, strumenti/taratura_esito_rapido.txt.
+# Il primo giro, del 14 ottobre 2026, 3.000 incontri e 800 gare a squadre, dava al favorito da 2 a 4 punti meno del motore.
+# La taratura fine dello stesso giorno, passo 4 della tappa: 20.000 incontri e 4.000 gare a squadre su 4.500 giocatori di tre
+# popolazioni, con il ritocco della pendenza, per 1,26, e del peso della fatica, per 1,65, e della pendenza della gara a squadre,
+# per 1,48, perché la regressione sugli scambi li fa uscire più piatti del vero; la verifica su 40.000 incontri e 5.000 gare li
+# mette tutti dentro i bersagli del punto 6.4 del progetto, qualcuno col rumore.
+_PESI = {"lungolineasx": 0.417, "lungolineadx": 0.3, "diagonalesx": 0.358, "diagonaledx": 0.482, "singolaspondasx": 0.431, "singolaspondadx": 0.585,
+         "doppiaspondasx": 0.488, "doppiaspondadx": 0.174, "triplaspondasx": 0.222, "triplaspondadx": 0.289, "bomba": 0.332, "battutasx": 0.742,
+         "battutadx": 0.497, "chiusura_dritto": 2.298, "chiusura_rovescio": 3.02, "blocco_dritto": 1.05, "blocco_rovescio": 1.202, "difesa": 3.122,
+         "tenutapaletta": 1.411, "controllopalla": 0.828, "attacco": 1.39, "precisione": 2.417, "forza": 1.525, "resistenza": 0.421}
+_PESI_TRATTI = {"mancino": 0.042, "ambidestro": 0.089, "giocorapido": 0.016, "cambiovelocita": 0.096}
 # Ogni quanti scambi si aggiorna la fatica: cambia piano, e calcolarla a ogni scambio costava metà dell'incontro.
 SCAMBI_PER_FATICA = 4
 
@@ -65,20 +67,20 @@ class TaraturaRapida:
     """
     PESI: dict = dataclasses.field(default_factory=lambda: dict(_PESI))
     PESI_TRATTI_RAPIDI: dict = dataclasses.field(default_factory=lambda: dict(_PESI_TRATTI))
-    PESO_LETTURA: float = 1.099
-    PENDENZA: float = 0.2948
-    K_FATICA: float = 1.904
-    VANTAGGIO_BATTUTA: float = 0.0888
-    GOAL_BASE: float = -0.2445
-    GOAL_DISTACCO: float = 0.2399
-    GOAL_LIVELLO: float = 0.0336
-    PENALITA: float = 0.00033
-    AZIONI_PER_SCAMBIO: float = 6.668
-    ATTACCHI_PER_SCAMBIO: float = 1.7
-    PENDENZA_SQUADRE: float = 0.3067
-    K_FATICA_SQUADRE: float = 3.123
-    VANTAGGIO_BATTUTA_SQUADRE: float = 0.0958
-    GOAL_SQUADRE: float = 0.1577
+    PESO_LETTURA: float = 1.241
+    PENDENZA: float = 0.3775
+    K_FATICA: float = 3.434
+    VANTAGGIO_BATTUTA: float = 0.0904
+    GOAL_BASE: float = -0.179
+    GOAL_DISTACCO: float = 0.225
+    GOAL_LIVELLO: float = 0.0194
+    PENALITA: float = 0.00028
+    AZIONI_PER_SCAMBIO: float = 6.689
+    ATTACCHI_PER_SCAMBIO: float = 1.707
+    PENDENZA_SQUADRE: float = 0.4555
+    K_FATICA_SQUADRE: float = 2.894
+    VANTAGGIO_BATTUTA_SQUADRE: float = 0.1021
+    GOAL_SQUADRE: float = 0.1831
 
 
 TARATURA_RAPIDA = TaraturaRapida()

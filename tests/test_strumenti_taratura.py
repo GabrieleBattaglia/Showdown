@@ -281,3 +281,58 @@ def test_la_resa_di_riferimento_vuole_tutti_i_sedici_gruppi():
     del rese[be.GRUPPI["precisione"]]
     with pytest.raises(ValueError, match="precisione"):
         be.resa_di_riferimento(rese)
+
+
+def test_la_sonda_dell_acciacco_tiene_la_proporzione_delle_prime_stime():
+    # Tappa 12, punto 13.1: ogni giocatore contro il gemello, con e senza calo; il minimo e il massimo trovati stanno nella proporzione di 0,012 e 0,028.
+    giocatori = [g for g in pp.genera(40, 5) if g.puo_giocare]
+    righe, (minimo, massimo) = bp.sonda_acciacco(giocatori, 12, 4, random.Random(3), {})
+    assert righe[0].startswith("Sonda dell'acciacco: 12 incontri") and "ACCIACCO_CALO_MINIMO" in righe[-1]
+    assert minimo > 0 and massimo / minimo == pytest.approx(0.028 / 0.012, rel=0.01)
+
+
+def test_la_gloria_in_forma_chiusa():
+    # Tappa 12, punto 13.4: i coefficienti del palmarès portano la quota mediana al 50 per cento e il primo
+    # decimo il più vicino possibile al 65; il fattore della gloria richiesta dà il rapporto chiesto.
+    rng = random.Random(8)
+    club = []
+    for i in range(400):
+        coppe = 30.0 if i % 10 == 0 else rng.uniform(0.0, 3.0)
+        club.append((rng.uniform(120.0, 150.0), rng.uniform(5.0, 40.0), coppe))
+    richieste = [rng.uniform(150.0, 350.0) for _ in range(300)]
+    k_medaglie, k_coppe, fattore, (mediana, decimo) = sl.gloria_in_forma_chiusa([(club, richieste)], rapporto=1.5)
+    assert mediana == pytest.approx(50.0, abs=1.0) and k_medaglie > 0 and k_coppe >= 0
+    assert decimo == pytest.approx(65.0, abs=6.0)
+    glorie = [resto + k_medaglie * rm + k_coppe * rc for resto, rm, rc in club]
+    assert fattore * statistics.median(richieste) / statistics.median(glorie) == pytest.approx(1.5)
+
+
+def test_i_fattori_e_le_esperienze_della_carriera_perfetta():
+    # Tappa 12, punto 10.4: la parte delle partite si divide nelle proporzioni 40, 34 e 4 di D32, e
+    # l'esperienza fonte per fonte dà 2,5, 1,5, 5 e 9, coi tornei divisi 50, 20 e 30.
+    grezzi = {"torneo": 1500.0, "amichevole": 14000.0, "sfida": 800.0}
+    fattori = cp.fattori_per_totale(20_000.0, 4428.0, grezzi)
+    parti = {fonte: fattori[fonte] * grezzi[fonte] for fonte in grezzi}
+    assert sum(parti.values()) == pytest.approx(20_000.0 - 4428.0)
+    assert parti["torneo"] / parti["amichevole"] == pytest.approx(40 / 34) and parti["sfida"] / parti["amichevole"] == pytest.approx(4 / 34)
+    conteggi = {"amichevoli": 3500.0, "sfide": 300.0, "giorni": 4649.4, "incontri_torneo": 600.0, "fasi": 150.0, "piazzamenti": 60.0}
+    esperienze = cp.esperienze_dai_conteggi(conteggi)
+    assert esperienze["amichevoli"] * conteggi["amichevoli"] == pytest.approx(2.5) and esperienze["club"] * conteggi["giorni"] == pytest.approx(5.0)
+    assert sum(esperienze[v] * conteggi[v] for v in ("incontri_torneo", "fasi", "piazzamenti")) == pytest.approx(9.0)
+    assert esperienze["fasi"] * conteggi["fasi"] == pytest.approx(9.0 * 0.2)
+
+
+def test_la_carriera_perfetta_gioca_il_calendario():
+    # Tappa 12, punto 10.4: una carriera corta, coi mondi sintetici piccoli, gioca tornei, sfide e
+    # amichevoli; il totale è la seduta più i punti grezzi per i fattori, e il blocco si stampa.
+    import mondi_sintetici as ms
+    mondo_10 = ms.mondo_sintetico(60, 10, 3)
+    regime = ms.mondo_sintetico(120, None, 4, primo_id=600_000, candidati=420)
+    cp.prepara_contesto(cp.contesto_in_dizionari(mondo_10, regime, cp.calendario_predefinito(150)))
+    fattori, esperienze = cp.fonti_in_vigore()
+    nato = next(g for g in cp.nati(60, 11) if cp.senza_tratti(g))
+    r = cp.Carriera(nato, 11, fattori, esperienze, giorni=150, coda_da=cp.ETA_INGRESSO).gioca().riassunto()
+    assert r["storia"]["tornei"] >= 1 and r["storia"]["incontri_torneo"] >= 2 and r["storia"]["amichevoli"] > 50 and r["storia"]["sfide"] >= 3
+    assert r["seduta"] == 150 and r["punti_totali"] == pytest.approx(150 + sum(r["grezzi"][f] * fattori[f] for f in fattori))
+    assert r["conteggi"]["giorni"] == pytest.approx(150 * cp.FATTORE_GRUPPO) and r["eta_a1"] > cp.ETA_INGRESSO
+    assert cp.blocco_costanti(fattori, esperienze)[1].startswith("PA_FATTORE_AMICHEVOLE = ")

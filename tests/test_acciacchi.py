@@ -14,6 +14,7 @@ import pytest
 from aiuti_motore import giocatore
 
 import infortuni
+from costanti import ACCIACCO_CALO_MASSIMO, ACCIACCO_CALO_MINIMO
 from modelli import Giocatore, Polisportiva
 from mondo import Mondo
 from motore import COMPLETO, ESSENZIALE, SINGOLARE_3, Incontro, simula_incontro
@@ -52,14 +53,14 @@ def test_resta_il_piu_pesante_e_l_infortunio_lo_cancella():
     g = giocatore(1)
     mondo = _mondo(g)
     frase = infortuni.acciacca(mondo, g, "caviglia", random.Random(1))
-    assert frase and g.acciacco_sede == "caviglia" and 3 <= g.acciacco_giorni <= 7 and 0.012 <= g.acciacco_calo <= 0.028
+    assert frase and g.acciacco_sede == "caviglia" and 3 <= g.acciacco_giorni <= 7 and ACCIACCO_CALO_MINIMO <= g.acciacco_calo <= ACCIACCO_CALO_MASSIMO
     pesante = (g.acciacco_calo, g.acciacco_fino)
     # Un acciacco più leggero non lo sostituisce; il giorno dopo quello di prima pesa meno, e uno nuovo lo sostituisce.
     for seme in range(2, 40):
         rng = random.Random(seme)
         prova = random.Random(seme)
         prova.randint(3, 7)
-        if prova.uniform(0.012, 0.028) < pesante[0]:
+        if prova.uniform(ACCIACCO_CALO_MINIMO, ACCIACCO_CALO_MASSIMO) < pesante[0]:
             assert infortuni.acciacca(mondo, g, "schiena", rng) is None
             assert (g.acciacco_calo, g.acciacco_fino, g.acciacco_sede) == (*pesante, "caviglia")
             break
