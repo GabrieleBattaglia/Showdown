@@ -1006,6 +1006,8 @@ def _fatti_avanzamento(rapporto):
         frasi.append(f"{conta(rapporto['tuoi_in_scadenza'], 'tuo contratto sta', 'tuoi contratti stanno')} per scadere: si rinnovano con Ctrl+Maiusc+K.")
     # Dalla tappa 12 i tornei e le sfide: le notizie dei tuoi, le sfide che aspettano e i numeri del mondo.
     frasi.extend(rapporto.get("notizie") or [])
+    if rapporto.get("sfide_decadute"):
+        frasi.append(f"{conta(rapporto['sfide_decadute'], 'sfida alle tue polisportive è decaduta', 'sfide alle tue polisportive sono decadute')} senza risposta.")
     if rapporto.get("sfide_in_attesa"):
         frasi.append(f"{conta(rapporto['sfide_in_attesa'], 'sfida aspetta', 'sfide aspettano')} la tua risposta entro domani.")
     gare = unisci([
@@ -1442,12 +1444,15 @@ def _automatica(g):
     return f"automatica dal {data_breve(g.prossimo_torneo)}" if g.prossimo_torneo is not None else "automatica accesa"
 
 
-def riga_atleta_del_calendario(g, mondo, origine=None):
+def riga_atleta_del_calendario(g, mondo, origine=None, ed=None):
     """
     Un tuo tesserato negli elenchi del calendario: Mario Rossi, D2, acciaccato al ginocchio destro fino
-    al 20 ottobre 2026, automatica dal 18 dicembre 2026; per un iscritto anche come, a mano o in automatico.
+    al 20 ottobre 2026, automatica dal 18 dicembre 2026; per un iscritto anche come, a mano o in automatico;
+    con l'edizione, se è un torneo per altri giocatori lo dice.
     """
     parti = [nome_completo(g), codice_classe(g)]
+    if ed is not None and ed.individuale and (ed.sesso not in ("aperto", g.sesso) or (ed.filtri and not modelli_torneo.idoneo(ed.oggetto_modello, g))):
+        parti.append("non può giocarlo")
     if g.infortunato and g.infortunio_fine_datetime and not g.puo_giocare:
         parti.append(f"{accorda(g, 'infortunato')} fino al {data_breve(g.infortunio_fine_datetime)}")
     testo = acciacco(g, mondo.datetime_corrente_simulazione)
@@ -1697,6 +1702,12 @@ def riga_convocabile(g, mondo):
     if g.infortunato and not g.puo_giocare:
         testo += f", {accorda(g, 'infortunato')}"
     return testo
+
+
+def convocabili_insufficienti(quanti):
+    """Il perché della formazione impossibile: troppo pochi tesserati possono giocare quel giorno."""
+    chi = {0: "nessun tesserato può giocare", 1: "soltanto un tesserato può giocare"}.get(quanti, f"soltanto {quanti} tesserati possono giocare")
+    return f"Quel giorno {chi}, senza altri impegni: per una squadra ne servono tre, due di un sesso e uno dell'altro."
 
 
 def stato_della_formazione(problema, titolari=()):

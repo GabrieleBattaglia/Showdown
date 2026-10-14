@@ -292,7 +292,7 @@ class CalendarioTornei(_Dialogo):
                 g = self.mondo.giocatori.get(iscritto["id"])
                 if g is not None and iscritto["club"] == club and g.id not in self.poli.tesserati:
                     self.iscritti.append((g, iscritto["origine"]))
-            righe_iscrivibili = [testi.riga_atleta_del_calendario(g, self.mondo) for g in self.iscrivibili] or ["Tutti i tuoi tesserati sono già iscritti."]
+            righe_iscrivibili = [testi.riga_atleta_del_calendario(g, self.mondo, ed=ed) for g in self.iscrivibili] or ["Tutti i tuoi tesserati sono già iscritti."]
             righe_iscritti = [testi.riga_atleta_del_calendario(g, self.mondo, origine) for g, origine in self.iscritti] or ["Nessuno dei tuoi è iscritto."]
         else:
             iscritto = ed.iscritto(self.poli.nome)

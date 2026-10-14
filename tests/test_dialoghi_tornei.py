@@ -132,8 +132,9 @@ def test_la_pressione_ripetuta_si_ignora(calendario, suonati, orologio, monkeypa
 def test_i_rifiuti_del_calendario_col_loro_suono(calendario, suonati, messaggi):
     _mondo, club, dialogo = calendario
     martedi = _scegli_edizione(dialogo, "Open maschile del martedì", datetime.date(2026, 10, 13))
-    # La donna non gioca un open maschile.
+    # La donna non gioca un open maschile: la sua riga lo dice già, e l'iscrizione la rifiuta.
     _scegli(dialogo.elenco_iscrivibili, dialogo.iscrivibili, 21)
+    assert ", non può giocarlo, " in dialogo.elenco_iscrivibili.GetStringSelection()
     dialogo.iscrivi()
     assert suonati[-1] == "iscrizione_non_idoneo" and "è un torneo per altri giocatori" in messaggi[-1]
     # Due tornei negli stessi giorni non si giocano: il martedì 13 dura fino al 15, quando comincia il Gran Premio.
@@ -548,6 +549,31 @@ def test_le_sfide_in_arrivo_si_accettano_o_si_rifiutano(sfidanti, suonati, messa
         assert suonati[-1] == "sfida_rifiutata" and messaggi[-1] == "Sfida di PoliTeam04 rifiutata."
     finally:
         dialogo.Destroy()
+
+
+def test_con_meno_di_tre_convocabili_la_formazione_lo_dice(sfidanti, suonati, messaggi):
+    # Dalla prova della finestra vera: con due soli tesserati liberi il lancio non mostra un doppione, ma il perché.
+    mondo, club, _cpu = sfidanti
+    for gid in (2, 3):
+        mondo._lascia(club, mondo.giocatori[gid])
+    dialogo = gui_sfide.LanciaSfida(None, mondo, club)
+    try:
+        scelte = [s.GetSelection() for s in dialogo.formazione.scelte[:3]]
+        assert scelte == [0, 1, wx.NOT_FOUND]
+        atteso = "Quel giorno soltanto 2 tesserati possono giocare, senza altri impegni: per una squadra ne servono tre, due di un sesso e uno dell'altro."
+        assert dialogo.formazione.stato.GetValue() == f"Formazione non valida: {atteso}"
+        dialogo.lancia()
+        assert suonati[-1] == "formazione_non_valida" and messaggi[-1] == atteso
+    finally:
+        dialogo.Destroy()
+
+
+def test_il_riepilogo_dice_le_sfide_decadute():
+    rapporto = Mondo.rapporto_vuoto(OGGI) | {"ticks": 3, "giorni": 3, "sfide_decadute": 2,
+                                             "notizie": ["PoliTeam04 sfida Club Di Prova, il 5 ottobre 2026: si risponde entro il 6 ottobre 2026."]}
+    testo = testi.riepilogo_avanzamento(rapporto)
+    assert "PoliTeam04 sfida Club Di Prova, il 5 ottobre 2026: si risponde entro il 6 ottobre 2026. 2 sfide alle tue polisportive sono decadute senza risposta." in testo
+    assert "entro domani" not in testo
 
 
 def test_la_formazione_dice_l_acciacco(sfidanti):

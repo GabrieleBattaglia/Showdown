@@ -68,7 +68,8 @@ class SezioneFormazione:
             if gid in per_id:
                 scelta.SetSelection(per_id[gid] + (0 if titolare else 1))
             elif titolare:
-                scelta.SetSelection(min(posto, len(righe) - 1) if righe else wx.NOT_FOUND)
+                # Senza proposta i titolari sono i primi convocabili, e il posto resta vuoto se non ce n'è uno per lui.
+                scelta.SetSelection(posto if posto < len(righe) else wx.NOT_FOUND)
             else:
                 scelta.SetSelection(0)
         self._valida = None
@@ -90,6 +91,9 @@ class SezioneFormazione:
         return scelti
 
     def problema(self):
+        """Il perché la formazione non va, o None; con meno di tre convocabili lo dice subito, invece di un doppione o di un posto vuoto."""
+        if len(self.convocabili) < GIOCATORI_AL_TAVOLO:
+            return testi.convocabili_insufficienti(len(self.convocabili))
         return self.controlla(self.ids())
 
     def aggiorna_stato(self, suono=True):
@@ -193,6 +197,8 @@ class LanciaSfida(_Dialogo):
         problema = sfide.problema_lancio(self.mondo, self.poli, bersaglio["nome"], ids)
         if problema:
             perche = self._suono_del_problema(bersaglio["nome"])
+            if perche == "formazione_non_valida":
+                problema = self.formazione.problema() or problema
             self.avvisa(problema, self.elenco if perche != "formazione_non_valida" else self.formazione.scelte[0], perche)
             return
         cognomi = testi.unisci([self.mondo.giocatori[gid].cognome for gid in ids[:GIOCATORI_AL_TAVOLO]])
@@ -280,7 +286,7 @@ class SfideInArrivo(_Dialogo):
         ids = self.formazione.ids()
         problema = sfide.problema_risposta(self.mondo, s.id, self.poli, ids)
         if problema:
-            self.avvisa(problema, self.formazione.scelte[0], "formazione_non_valida")
+            self.avvisa(self.formazione.problema() or problema, self.formazione.scelte[0], "formazione_non_valida")
             return
         cognomi = testi.unisci([self.mondo.giocatori[gid].cognome for gid in ids[:GIOCATORI_AL_TAVOLO]])
         if not self._conferma(f"Accettare la sfida di {s.sfidante['nome']}, con {cognomi}? Si gioca domani."):

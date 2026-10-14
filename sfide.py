@@ -619,7 +619,8 @@ def _proponi(mondo, cpu, poli, convocati, oggi, rapporto):
               convocati={"sfidante": [g.id for g in convocati], "sfidata": []})
     mondo.sfide.attive.append(s)
     rapporto["sfide_ricevute"] += 1
-    rapporto["notizie"].append(f"{cpu.nome} sfida {poli.nome}: si risponde entro domani.")
+    # Con la data: in un recupero di più giorni la sfida può essere già decaduta quando si legge il riepilogo.
+    rapporto["notizie"].append(f"{cpu.nome} sfida {poli.nome}, il {data_breve(oggi)}: si risponde entro il {data_breve(scadenza)}.")
     mondo.annota(poli, f"{cpu.nome} lancia una sfida: si risponde entro il {data_breve(scadenza)}, e si gioca all'avanzamento che segue la risposta.")
 
 
