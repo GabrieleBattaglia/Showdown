@@ -33,6 +33,14 @@ contratti con i rinnovi, e le notizie dell'avanzamento sui contratti e sugli inf
 Sono ventidue suoni nuovi, tutti mess_, entrati nella collezione con la V204. La probabilità del
 rinnovo si sposta d'altezza come quella dell'ingaggio, ma con un timbro suo. Le parti della tappa
 11 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Con la tappa 12, il 2026-10-14, decisione D32 e punto 12.9 del progetto, il mondo gioca: arrivano i
+gruppi del calendario e delle iscrizioni, del pannello dei tornei con l'albo e la classifica mondiale,
+degli editor dei modelli e delle formule, delle sfide, e delle notizie dei tornei e delle sfide, più la
+casella dell'iscrizione automatica nella sala allenamento. Sono sessantanove suoni nuovi, tutti mess_,
+entrati nella collezione con la V205, ciascuno per un evento solo: le medaglie e le coppe hanno un
+metallo a testa, e gli esiti opposti si distinguono a orecchio. Quando il mondo avanza, la notizia più
+importante sceglie ancora il suono e la riga della barra, nell'ordine del punto 12.8. Le parti della
+tappa 12 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 """
 
 import sys
@@ -267,6 +275,9 @@ GRUPPI = (
         # Scattano a ogni freccia sulle due scelte: un tocco minimo e un battito di cuore.
         "programma_cambiato": "mess_programma_cambiato",
         "intensita_cambiata": "mess_intensita_cambiata",
+        # Dalla tappa 12, la casella dell'iscrizione automatica ai tornei: un timbro che si accende e il suo specchio.
+        "iscrizione_automatica_accesa": "mess_iscrizione_automatica_accesa",
+        "iscrizione_automatica_spenta": "mess_iscrizione_automatica_spenta",
     }),
     ("Contratti, i rinnovi", {
         "dialogo_contratti": "mess_contratti_aperti",
@@ -290,6 +301,88 @@ GRUPPI = (
         "tuoi_contratti_scaduti": "mess_contratto_scaduto",
         "tuo_tesserato_infortunato_in_seduta": "mess_infortunio_in_allenamento",
     }),
+    # La tappa 12, il mondo che gioca, punto 12.9 del progetto: un preset nuovo per evento, tutti mess_.
+    ("Tornei, il calendario e le iscrizioni", {
+        "dialogo_calendario_tornei": "mess_calendario_tornei",
+        "dialogo_iscrizioni_tornei": "mess_iscrizioni_tornei",
+        # Il gettone che entra e quello che torna: l'iscrizione pagata e quella tolta col rimborso.
+        "iscrizione_fatta": "mess_iscrizione_fatta",
+        "iscrizione_tolta": "mess_iscrizione_tolta",
+        # I tre rifiuti, ciascuno col suo perché: la cassa, i giorni già presi, il torneo per altri.
+        "iscrizione_cassa_insufficiente": "mess_iscrizione_senza_quota",
+        "iscrizione_sovrapposta": "mess_iscrizione_sovrapposta",
+        "iscrizione_non_idoneo": "mess_iscrizione_non_idoneo",
+    }),
+    ("Tornei, il pannello e le classifiche", {
+        "dialogo_tornei_in_corso": "mess_tornei_in_corso",
+        "differita_al_via": "mess_differita_al_via",
+        "cronaca_torneo_letta": "mess_cronaca_torneo",
+        "risultato_svelato": "mess_risultato_svelato",
+        "risultati_svelati_tutti": "mess_risultati_svelati_tutti",
+        "nessun_risultato_da_svelare": "mess_niente_da_svelare",
+        "nessuna_differita": "mess_nessuna_differita",
+        "albo_d_oro": "mess_albo_d_oro",
+        "classifica_mondiale": "mess_classifica_mondiale",
+    }),
+    ("Tornei, gli editor", {
+        "dialogo_editor_modelli": "mess_editor_modelli",
+        "dialogo_modello_torneo": "mess_modello_torneo",
+        "modello_salvato": "mess_modello_salvato",
+        "modello_duplicato": "mess_modello_duplicato",
+        "modello_eliminato": "mess_modello_eliminato",
+        "dialogo_editor_formule": "mess_editor_formule",
+        "formula_nuova": "mess_formula_nuova",
+        "formula_salvata": "mess_formula_salvata",
+        "formula_non_valida": "mess_formula_non_valida",
+        "formula_in_uso": "mess_formula_in_uso",
+        "formula_eliminata": "mess_formula_eliminata",
+        "dialogo_fase": "mess_fase_dialogo",
+        "fase_aggiunta": "mess_fase_aggiunta",
+        "fase_modificata": "mess_fase_modificata",
+        "fase_tolta": "mess_fase_tolta",
+        "calendario_ripristinato": "mess_calendario_ripristinato",
+        # Suona all'avvio, a ogni avanzamento che lo trova e all'apertura dell'editor: è lo stesso evento.
+        "calendario_illeggibile": "mess_calendario_illeggibile",
+    }),
+    ("Partite, le sfide", {
+        "dialogo_lancia_sfida": "mess_lancia_sfida",
+        "sfida_accettata_dall_avversario": "mess_sfida_raccolta",
+        "sfida_rifiutata_dall_avversario": "mess_sfida_declinata",
+        "nessuna_sfida_da_lanciare": "mess_nessuna_sfida_da_lanciare",
+        "dialogo_sfide_in_arrivo": "mess_sfide_in_arrivo",
+        "sfida_accettata": "mess_sfida_accettata",
+        "sfida_rifiutata": "mess_sfida_rifiutata",
+        "dialogo_formazione": "mess_formazione",
+        "formazione_non_valida": "mess_formazione_non_valida",
+        "storico_sfide": "mess_storico_sfide",
+    }),
+    ("Tornei e sfide, le notizie", {
+        # Le medaglie e le coppe dei tuoi, dalla più preziosa: ogni metallo ha il suo suono.
+        "tua_medaglia_oro": "mess_medaglia_oro",
+        "tua_medaglia_argento": "mess_medaglia_argento",
+        "tua_medaglia_bronzo": "mess_medaglia_bronzo",
+        "tua_medaglia_legno": "mess_medaglia_legno",
+        "tuo_titolo_mondiale": "mess_titolo_mondiale",
+        "tua_coppa_oro": "mess_coppa_oro",
+        "tua_coppa_argento": "mess_coppa_argento",
+        "tua_coppa_bronzo": "mess_coppa_bronzo",
+        "tua_coppa_legno": "mess_coppa_legno",
+        "tua_sfida_vinta": "mess_sfida_vinta",
+        "tua_sfida_persa": "mess_sfida_persa",
+        "tua_sfida_a_tavolino": "mess_sfida_a_tavolino",
+        "sfida_ricevuta": "mess_sfida_ricevuta",
+        "sfida_decaduta": "mess_sfida_decaduta",
+        "tuoi_qualificati_mondiale": "mess_qualificati_mondiale",
+        "tua_qualificazione_coppa": "mess_qualificazione_coppa",
+        "tue_iscrizioni_saltate": "mess_iscrizioni_saltate",
+        "tuo_infortunio_in_gara": "mess_infortunio_in_gara",
+        "tuo_acciacco": "mess_acciacco",
+        "tuo_tavolino": "mess_tavolino",
+        "tuo_torneo_concluso": "mess_torneo_concluso",
+        "tue_iscrizioni_automatiche": "mess_iscrizioni_automatiche",
+        "edizione_annullata": "mess_edizione_annullata",
+        "mondiale_concluso": "mess_mondiale_concluso",
+    }),
 )
 EVENTI = {evento: preset for _titolo, gruppo in GRUPPI for evento, preset in gruppo.items()}
 
@@ -311,7 +404,7 @@ AZIONI = {
     "fuoco_vista": "F5, il fuoco va nella vista principale",
     "fuoco_barra": "F7, il fuoco va nella barra di stato",
     "annullato": "un'operazione annullata, con Esc o con Annulla in un dialogo",
-    "lavoro_concluso": "la chiusura del mercato, delle vendite, degli arretrati, della sala allenamento o dei contratti dopo averci lavorato",
+    "lavoro_concluso": "la chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, del calendario o degli editor dopo averci lavorato",
     "nessuna_selezione": "un pulsante premuto senza niente di scelto su cui lavorare",
     "campo_da_correggere": "un valore da correggere in un campo, e il dialogo resta aperto",
     "elenco_svuotato": "un elenco che si restringe mentre si scrive, e resta vuoto",
@@ -376,7 +469,7 @@ AZIONI = {
     "richiesta_password": "la richiesta della password prima di chiudere una polisportiva protetta",
     "domanda_chiusura_polisportiva": "la domanda se chiudere per sempre la polisportiva attiva",
     "polisportiva_chiusa": "una polisportiva chiusa per sempre",
-    "scheda_polisportiva": "la scheda della polisportiva attiva, con Ctrl+M",
+    "scheda_polisportiva": "la scheda della polisportiva attiva, con Ctrl+M, o di quella scelta nel lancio di una sfida",
     "tesserati_polisportiva": "i tesserati della polisportiva attiva, con Ctrl+Shift+T",
     "diario_polisportiva": "il diario della polisportiva attiva, con Ctrl+Shift+M",
     "elenco_polisportive": "l'elenco delle polisportive, con Ctrl+Shift+E",
@@ -393,7 +486,7 @@ AZIONI = {
     "filtro_aggiunto": "nel mercato un filtro aggiunto",
     "filtro_tolto": "nel mercato un filtro tolto",
     "filtri_tutti_tolti": "nel mercato tutti i filtri tolti",
-    "mercato_scheda_giocatore": "nel mercato, nella sala allenamento e nei contratti, la scheda del giocatore scelto",
+    "mercato_scheda_giocatore": "nel mercato, nella sala allenamento, nei contratti e nel pannello dei tornei, la scheda del giocatore scelto",
     "dialogo_cifra_ingaggio": "si apre il dialogo della cifra d'ingaggio di un libero",
     "probabilita_ingaggio": "la probabilità che il libero accetti, mentre si scrive la cifra: più è alta, più è acuto",
     "dialogo_cifra_offerta_d_acquisto": "si apre il dialogo della cifra da offrire per un tesserato di un'altra polisportiva",
@@ -427,9 +520,9 @@ AZIONI = {
     "amichevole_vinta": "l'amichevole la vince il tuo tesserato",
     "amichevole_persa": "l'amichevole la perde il tuo tesserato",
     "amichevole_fra_tuoi": "un'amichevole fra due tuoi tesserati",
-    "nessun_incontro": "Salva la cronaca quando nella sessione non c'è ancora un'amichevole",
-    "cronaca_salvata": "la cronaca dell'amichevole salvata nel suo file, con Ctrl+Shift+O",
-    "cronaca_non_salvata": "la cronaca dell'amichevole che non si può scrivere nel file",
+    "nessun_incontro": "Salva la cronaca quando nella sessione non c'è ancora un incontro mostrato o ascoltato",
+    "cronaca_salvata": "la cronaca dell'ultimo incontro, amichevole, di torneo o di sfida, salvata nel suo file, con Ctrl+Shift+O",
+    "cronaca_non_salvata": "la cronaca dell'ultimo incontro che non si può scrivere nel file",
     "amichevole_al_via": "si apre la finestra della partita dal vivo, con Assisti",
     "riscaldamento_saltato": "nella partita dal vivo il riscaldamento saltato",
     "resto_dell_incontro": "nella partita dal vivo Alt+V, Vai alla fine",
@@ -452,6 +545,8 @@ AZIONI = {
     "allenando_infortunato": "nella sala allenamento il tesserato scelto è infortunato e oggi non si allena",
     "programma_cambiato": "nella sala allenamento cambia il programma del tesserato",
     "intensita_cambiata": "nella sala allenamento cambia l'intensità del tesserato",
+    "iscrizione_automatica_accesa": "nella sala allenamento si accende l'iscrizione automatica ai tornei del tesserato, con Alt+U",
+    "iscrizione_automatica_spenta": "nella sala allenamento si spegne l'iscrizione automatica ai tornei del tesserato, con Alt+U",
     "dialogo_contratti": "si apre il dialogo dei contratti e dei rinnovi, con Ctrl+Shift+K",
     "probabilita_rinnovo": "la probabilità che il tesserato accetti il rinnovo, mentre si scrivono stipendio e durata: più è alta, più è acuto",
     "rinnovo_accettato": "il tesserato accetta il rinnovo del contratto",
@@ -464,6 +559,73 @@ AZIONI = {
     "tuoi_contratti_in_scadenza": "nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo",
     "tuoi_contratti_scaduti": "nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero",
     "tuo_tesserato_infortunato_in_seduta": "nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento",
+    "dialogo_calendario_tornei": "si apre il calendario dei tornei e delle iscrizioni, con Ctrl+U",
+    "dialogo_iscrizioni_tornei": "si aprono le iscrizioni dei tuoi atleti alla prima edizione aperta, con Ctrl+J",
+    "iscrizione_fatta": "nel calendario un tuo atleta iscritto a un torneo con la quota pagata, o la rosa della tua polisportiva per la coppa",
+    "iscrizione_tolta": "nel calendario l'iscrizione di un tuo atleta tolta, con la quota rimborsata",
+    "iscrizione_cassa_insufficiente": "nel calendario la cassa della polisportiva non basta per la quota d'iscrizione",
+    "iscrizione_sovrapposta": "nel calendario l'atleta negli stessi giorni ha già un altro torneo o un'altra sfida",
+    "iscrizione_non_idoneo": "nel calendario l'atleta non può giocare quel torneo, per sesso, classe, età o qualificazione",
+    "dialogo_tornei_in_corso": "si apre il pannello dei tornei in corso e conclusi di recente, con Ctrl+Y",
+    "differita_al_via": "si apre la finestra dal vivo per ascoltare in differita un incontro dei tuoi, di torneo o di sfida",
+    "cronaca_torneo_letta": "la cronaca di un incontro dei tuoi, di torneo o di sfida, aperta da leggere",
+    "risultato_svelato": "il risultato di un incontro dei tuoi che si mostra, dopo l'ascolto in differita o con Mostra il risultato",
+    "risultati_svelati_tutti": "Mostra tutti i risultati svela in un colpo gli incontri dei tuoi ancora da ascoltare",
+    "nessun_risultato_da_svelare": "Mostra tutti i risultati quando non c'è nessun incontro dei tuoi da svelare",
+    "nessuna_differita": "un incontro che non si può ascoltare né leggere: non è dei tuoi, o la sua edizione è già stata sostituita",
+    "albo_d_oro": "si apre l'albo d'oro dei tornei, con Ctrl+Shift+B",
+    "classifica_mondiale": "la classifica mondiale per sempre, uomini e donne, con Ctrl+Shift+W",
+    "dialogo_editor_modelli": "si apre l'editor dei modelli di torneo, con Ctrl+Shift+J",
+    "dialogo_modello_torneo": "nell'editor si apre il dialogo di un modello di torneo, nuovo o da modificare",
+    "modello_salvato": "un modello di torneo salvato",
+    "modello_duplicato": "un modello di torneo duplicato, con un identificativo nuovo",
+    "modello_eliminato": "un modello di torneo eliminato",
+    "dialogo_editor_formule": "si apre l'editor delle formule dei tornei, con Ctrl+Shift+Y",
+    "formula_nuova": "nell'editor delle formule nasce una formula nuova, ancora da salvare",
+    "formula_salvata": "una formula valida salvata nel file delle formule",
+    "formula_non_valida": "una formula che non si può salvare, con il motivo",
+    "formula_in_uso": "si vuole eliminare una formula che dei modelli usano ancora",
+    "formula_eliminata": "una formula eliminata dal file delle formule",
+    "dialogo_fase": "nell'editor delle formule si apre il dialogo di una fase, nuova o da modificare",
+    "fase_aggiunta": "nell'editor delle formule una fase aggiunta in fondo",
+    "fase_modificata": "nell'editor delle formule una fase cambiata, con quelle che seguono aggiornate",
+    "fase_tolta": "nell'editor delle formule una fase tolta",
+    "calendario_ripristinato": "il calendario predefinito rimesso, con quello di prima messo da parte",
+    "calendario_illeggibile": "un modello o una formula dei tornei che non si leggono, all'avvio, nell'avanzamento o all'apertura dell'editor",
+    "dialogo_lancia_sfida": "si apre il lancio di una sfida a una polisportiva del computer, con Ctrl+W",
+    "sfida_accettata_dall_avversario": "la polisportiva del computer accetta la tua sfida, che si gioca domani",
+    "sfida_rifiutata_dall_avversario": "la polisportiva del computer rifiuta la tua sfida, e dice perché",
+    "nessuna_sfida_da_lanciare": "la tua polisportiva non ha più sfide da lanciare questo mese",
+    "dialogo_sfide_in_arrivo": "si aprono le sfide in arrivo, a cui rispondere entro domani, con Ctrl+Shift+F",
+    "sfida_accettata": "accetti una sfida in arrivo, con la tua formazione",
+    "sfida_rifiutata": "rifiuti una sfida in arrivo",
+    "dialogo_formazione": "si apre la formazione per una sfida o la rosa per la coppa, con titolari e riserve",
+    "formazione_non_valida": "una formazione che non va, con il motivo: il due più uno, un doppione o un impegno",
+    "storico_sfide": "si apre lo storico delle sfide delle tue polisportive, con Ctrl+Shift+H",
+    "tua_medaglia_oro": "nell'avanzamento un tuo atleta vince la medaglia d'oro in un torneo",
+    "tua_medaglia_argento": "nell'avanzamento un tuo atleta vince la medaglia d'argento",
+    "tua_medaglia_bronzo": "nell'avanzamento un tuo atleta vince la medaglia di bronzo",
+    "tua_medaglia_legno": "nell'avanzamento un tuo atleta arriva quarto, la medaglia di legno",
+    "tuo_titolo_mondiale": "nell'avanzamento un tuo atleta vince il campionato mondiale",
+    "tua_coppa_oro": "nell'avanzamento la tua polisportiva vince la coppa d'oro della Coppa delle polisportive",
+    "tua_coppa_argento": "nell'avanzamento la tua polisportiva prende la coppa d'argento della Coppa delle polisportive",
+    "tua_coppa_bronzo": "nell'avanzamento la tua polisportiva prende la coppa di bronzo della Coppa delle polisportive",
+    "tua_coppa_legno": "nell'avanzamento la tua polisportiva arriva quarta alla Coppa delle polisportive, la coppa di legno",
+    "tua_sfida_vinta": "nell'avanzamento la tua polisportiva vince una sfida",
+    "tua_sfida_persa": "nell'avanzamento la tua polisportiva perde una sfida",
+    "tua_sfida_a_tavolino": "nell'avanzamento la tua polisportiva perde una sfida a tavolino, senza una squadra valida",
+    "sfida_ricevuta": "nell'avanzamento una polisportiva del computer sfida la tua, e aspetta la risposta entro domani",
+    "sfida_decaduta": "nell'avanzamento una sfida alla tua polisportiva decade, senza risposta",
+    "tuoi_qualificati_mondiale": "nell'avanzamento tuoi atleti convocati al campionato mondiale",
+    "tua_qualificazione_coppa": "nell'avanzamento la tua polisportiva qualificata alla Coppa delle polisportive",
+    "tue_iscrizioni_saltate": "nell'avanzamento l'iscrizione automatica di un tuo atleta salta, perché la cassa non ha la quota",
+    "tuo_infortunio_in_gara": "nell'avanzamento un tuo atleta si fa male in gara e si ferma, anche col ritiro",
+    "tuo_acciacco": "nell'avanzamento un tuo atleta esce da una gara con un acciacco, e per qualche giorno rende un poco meno",
+    "tuo_tavolino": "nell'avanzamento un tuo atleta perde a tavolino, perché non si presenta",
+    "tuo_torneo_concluso": "nell'avanzamento finisce un torneo dei tuoi, senza medaglie",
+    "tue_iscrizioni_automatiche": "nell'avanzamento l'iscrizione automatica iscrive tuoi atleti a un torneo",
+    "edizione_annullata": "nell'avanzamento un torneo con tuoi iscritti si annulla per pochi iscritti, e la quota torna",
+    "mondiale_concluso": "nell'avanzamento finisce un campionato mondiale",
 }
 
 # Il volume a cui ogni preset suona com'è stato pensato.
@@ -588,18 +750,23 @@ def _riproduci(evento, preset, sync=False, fattore=1.0, semitoni=0.0):
     return Acusticator.riproduci(buffer, sync=sync)
 
 
-def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False):
+def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=None):
     """
     Il suono di un avanzamento del mondo e il testo della quarta riga della barra di stato, scelti
     insieme perché non dicano cose diverse: al massimo un suono per avanzamento, quello della notizia
-    più importante. Prima il salvataggio che non riesce, poi le notizie delle tue polisportive, nello
-    stesso ordine della barra: tesserati andati via, tornati liberi a fine contratto, stipendi non
-    pagati, giocatori venduti, tesserati usciti di scena, infortunati in seduta, ritirati, contratti
-    in scadenza o tesserati diventati bandiere; poi il primo del mese, se hai una polisportiva. Un
-    avanzamento di più giorni ha il suo suono, che copre le notizie del mondo: dopo un'assenza ce ne
-    sono quasi sempre, e le racconta il riepilogo. Per il giorno singolo le notizie del mondo, dalla
-    più pesante, e infine il giorno qualunque. Restituisce la coppia (evento, testo), o (None, None)
-    se il mondo non è avanzato.
+    più importante. Prima il salvataggio che non riesce; poi i tesserati andati via, quelli tornati
+    liberi a fine contratto e gli stipendi non pagati; dalla tappa 12, punto 12.8 del progetto, il
+    calendario dei tornei con problemi, la sfida che aspetta la tua risposta, con il nome di chi sfida
+    se ci sta, sfidante, il titolo mondiale, le medaglie e le coppe dalla più preziosa, prima le
+    medaglie e poi le coppe a pari metallo, le sfide vinte, perse e perse a tavolino, le convocazioni
+    al mondiale e alla coppa, le iscrizioni saltate per la cassa; poi le altre notizie dei tuoi,
+    venduti, usciti di scena, infortunati in seduta, infortunati e a tavolino in gara, ritirati,
+    contratti in scadenza e bandiere; poi gli acciacchi in gara, il torneo finito senza medaglie, le
+    iscrizioni automatiche, la sfida decaduta e il torneo annullato; poi il primo del mese, se hai una
+    polisportiva. Un avanzamento di più giorni ha il suo suono, che copre le notizie del mondo: dopo
+    un'assenza ce ne sono quasi sempre, e le racconta il riepilogo. Per il giorno singolo le notizie del
+    mondo, dal mondiale concluso alla più leggera, e infine il giorno qualunque. Restituisce la coppia
+    (evento, testo), o (None, None) se il mondo non è avanzato; il testo sta nei quaranta caratteri.
     """
     if not rapporto or not rapporto["ticks"]:
         return None, None
@@ -609,17 +776,52 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False):
         testo = f"mondo avanzato {di_giorni}, non salvato"
         # Dopo un'assenza di mesi il testo supererebbe i quaranta caratteri della barra.
         return "salvataggio_non_riuscito", testo if len(testo) <= 40 else f"avanzato {di_giorni}, non salvato"
+
+    def sfida_in_attesa(n):
+        if n == 1:
+            testo = f"sfida da {sfidante}, rispondi oggi" if sfidante else ""
+            return testo if testo and len(testo) <= 40 else "sfida ricevuta, rispondi oggi"
+        return f"{n} sfide da rispondere oggi"
+
+    def coppa(colore):
+        return lambda n: f"coppa {colore} per la tua polisportiva" if n == 1 else f"{n} coppe {colore} alle tue"
+
     tuoi = (
         ("tuoi_partiti", "tuoi_tesserati_partiti", lambda n: f"{conta(n, 'tesserato andato via', 'tesserati andati via')}, non pagati"),
         ("tuoi_scaduti", "tuoi_contratti_scaduti", lambda n: conta(n, "tesserato libero a fine contratto", "tesserati liberi a fine contratto")),
         ("tuoi_non_pagati", "stipendi_non_pagati", lambda _n: "stipendi non pagati, vedi il bilancio"),
+        ("calendario_con_problemi", "calendario_illeggibile", lambda _n: "calendario dei tornei con problemi"),
+        ("sfide_in_attesa", "sfida_ricevuta", sfida_in_attesa),
+        ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", lambda n: "tuo atleta campione del mondo" if n == 1 else f"{n} tuoi atleti campioni del mondo"),
+        ("tue_medaglie_oro", "tua_medaglia_oro", lambda n: conta(n, "medaglia d'oro per i tuoi", "medaglie d'oro per i tuoi")),
+        ("tue_coppe_oro", "tua_coppa_oro", coppa("d'oro")),
+        ("tue_medaglie_argento", "tua_medaglia_argento", lambda n: conta(n, "medaglia d'argento per i tuoi", "medaglie d'argento per i tuoi")),
+        ("tue_medaglie_bronzo", "tua_medaglia_bronzo", lambda n: conta(n, "medaglia di bronzo per i tuoi", "medaglie di bronzo per i tuoi")),
+        ("tue_medaglie_legno", "tua_medaglia_legno", lambda n: conta(n, "medaglia di legno per i tuoi", "medaglie di legno per i tuoi")),
+        ("tue_coppe_argento", "tua_coppa_argento", coppa("d'argento")),
+        ("tue_coppe_bronzo", "tua_coppa_bronzo", coppa("di bronzo")),
+        ("tue_coppe_legno", "tua_coppa_legno", coppa("di legno")),
+        ("tue_sfide_vinte", "tua_sfida_vinta", lambda n: conta(n, "sfida vinta", "sfide vinte")),
+        ("tue_sfide_perse", "tua_sfida_persa", lambda n: conta(n, "sfida persa", "sfide perse")),
+        ("tue_sfide_a_tavolino", "tua_sfida_a_tavolino", lambda n: conta(n, "sfida persa a tavolino", "sfide perse a tavolino")),
+        ("tuoi_qualificati", "tuoi_qualificati_mondiale", lambda n: conta(n, "tuo atleta convocato al mondiale", "tuoi atleti convocati al mondiale")),
+        ("tue_qualificazioni_coppa", "tua_qualificazione_coppa",
+         lambda n: "tua polisportiva qualificata alla coppa" if n == 1 else f"{n} tue polisportive alla coppa"),
+        ("tue_iscrizioni_saltate", "tue_iscrizioni_saltate", lambda n: conta(n, "iscrizione saltata per la cassa", "iscrizioni saltate per la cassa")),
         ("tuoi_venduti", "tuo_tesserato_venduto", lambda n: conta(n, "tuo giocatore venduto", "tuoi giocatori venduti")),
         ("tuoi_usciti", "tuo_tesserato_uscito_di_scena", lambda n: conta(n, "tuo tesserato uscito di scena", "tuoi tesserati usciti di scena")),
         ("tuoi_infortunati_in_seduta", "tuo_tesserato_infortunato_in_seduta",
          lambda n: "tuo tesserato infortunato in seduta" if n == 1 else f"{n} tuoi tesserati infortunati in seduta"),
+        ("tuoi_infortuni_in_gara", "tuo_infortunio_in_gara", lambda n: conta(n, "tuo atleta infortunato in gara", "tuoi atleti infortunati in gara")),
+        ("tuoi_tavolini", "tuo_tavolino", lambda n: conta(n, "tuo atleta perde a tavolino", "tuoi atleti perdono a tavolino")),
         ("tuoi_ritirati", "tuo_tesserato_ritirato", lambda n: conta(n, "tuo tesserato ritirato", "tuoi tesserati ritirati")),
         ("tuoi_in_scadenza", "tuoi_contratti_in_scadenza", lambda n: "1 contratto in scadenza, rinnovalo" if n == 1 else f"{n} contratti in scadenza, rinnovali"),
         ("tue_bandiere", "tuo_tesserato_bandiera", lambda n: conta(n, "tuo tesserato diventa bandiera", "tuoi tesserati diventano bandiere")),
+        ("tuoi_acciacchi", "tuo_acciacco", lambda n: conta(n, "tuo atleta acciaccato in gara", "tuoi atleti acciaccati in gara")),
+        ("tuoi_tornei_conclusi", "tuo_torneo_concluso", lambda n: conta(n, "torneo dei tuoi concluso", "tornei dei tuoi conclusi")),
+        ("tue_iscrizioni", "tue_iscrizioni_automatiche", lambda n: conta(n, "iscrizione automatica dei tuoi", "iscrizioni automatiche dei tuoi")),
+        ("sfide_decadute", "sfida_decaduta", lambda n: conta(n, "sfida decaduta senza risposta", "sfide decadute senza risposta")),
+        ("tue_edizioni_annullate", "edizione_annullata", lambda n: conta(n, "torneo dei tuoi annullato", "tornei dei tuoi annullati")),
     )
     for chiave, evento, testo in tuoi:
         if rapporto.get(chiave):
@@ -628,6 +830,9 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False):
         return "primo_del_mese", "primo del mese, stipendi pagati"
     if giorni > 1:
         return "mondo_avanzato_piu_giorni", f"mondo avanzato {di_giorni}"
+    if rapporto.get("mondiali_conclusi"):
+        n = rapporto["mondiali_conclusi"]
+        return "mondiale_concluso", "campionato mondiale concluso" if n == 1 else f"{n} campionati mondiali conclusi"
     notizie = (
         ("morti", "notizia_morte", "morto", "morti"),
         ("poli_chiuse", "polisportiva_cpu_chiusa", "polisportiva chiusa", "polisportive chiuse"),

@@ -132,7 +132,8 @@ def test_le_lettere_della_sala_e_dei_contratti_non_si_ripetono(sala, mondo):
             testi_con_lettera = [c.GetLabel() for c in d.pannello.GetChildren() if "&" in c.GetLabel()]
             lettere = [t[t.index("&") + 1].lower() for t in testi_con_lettera]
             assert len(lettere) == len(set(lettere)), testi_con_lettera
-        assert len([c for c in sala.pannello.GetChildren() if "&" in c.GetLabel()]) == 11
+        # Dalla tappa 12 c'è anche la casella dell'iscrizione automatica ai tornei, con Alt+U.
+        assert len([c for c in sala.pannello.GetChildren() if "&" in c.GetLabel()]) == 12
         assert len([c for c in dialogo.pannello.GetChildren() if "&" in c.GetLabel()]) == 7
     finally:
         dialogo.Destroy()
@@ -230,7 +231,7 @@ def test_programma_e_intensita_valgono_subito(sala, suonati):
     sala.all_intensita()
     assert suonati == ["programma_cambiato", "intensita_cambiata"]
     assert sala.cambi() == [testi.cambio_in_sala(g)]
-    assert sala.cambi()[0].endswith(", intensità intensa.")
+    assert sala.cambi()[0].endswith(", intensità intensa, iscrizione automatica ai tornei accesa.")
 
 
 def test_gli_avvisi_della_sala_con_i_loro_suoni(sala, mondo, messaggi, suonati):
@@ -280,9 +281,9 @@ def test_la_sala_nella_finestra(finestra, mondo, messaggi, monkeypatch, cartella
     monkeypatch.setattr(dialoghi.SalaAllenamento, "ShowModal", una_spesa_e_un_cambio)
     finestra.sala_allenamento()
     righe = finestra.vista.GetValue().splitlines()
-    assert righe[0] == "Sala allenamento di Club Della Sala: 1 spesa e 1 cambio di programma o d'intensità."
+    assert righe[0] == "Sala allenamento di Club Della Sala: 1 spesa e 1 cambio di programma, d'intensità o d'iscrizione."
     assert righe[1].startswith(f"{_nome(sorted((mondo.giocatori[i] for i in poli.tesserati), key=lambda x: _nome(x).casefold())[0])}: 150,5 punti spesi")
-    assert righe[2].endswith(", intensità leggera.")
+    assert righe[2].endswith(", intensità leggera, iscrizione automatica ai tornei accesa.")
     assert suonati[0] == "dialogo_sala_allenamento" and suonati[-1] == "lavoro_concluso"
     assert finestra.ultimo_evento == "sala: 1 spesa e 1 cambio"
     assert (cartella_di_prova / FILE_MONDO).exists()
@@ -305,7 +306,7 @@ def test_la_barra_della_sala_con_i_soli_cambi(finestra, mondo, messaggi, monkeyp
 
     monkeypatch.setattr(dialoghi.SalaAllenamento, "ShowModal", un_cambio)
     finestra.sala_allenamento()
-    assert finestra.vista.GetValue().splitlines()[0] == "Sala allenamento di Club Della Sala: nessuna spesa e 1 cambio di programma o d'intensità."
+    assert finestra.vista.GetValue().splitlines()[0] == "Sala allenamento di Club Della Sala: nessuna spesa e 1 cambio di programma, d'intensità o d'iscrizione."
     assert finestra.ultimo_evento == "sala: 1 cambio"
     assert (cartella_di_prova / FILE_MONDO).exists()
 
@@ -333,7 +334,7 @@ def test_i_testi_della_sala_accordati(mondo):
     g.punti_allenamento = 1.0
     g.programma = "aggressiva" if g.indole != "aggressiva" else "difensiva"
     assert ", 1 punto, programma " in testi.riga_allenando(g, mondo)
-    assert testi.cambio_in_sala(g).endswith(f"programma {testi.nome_programma(g.programma)}, intensità normale.")
+    assert testi.cambio_in_sala(g).endswith(f"programma {testi.nome_programma(g.programma)}, intensità normale, iscrizione automatica ai tornei accesa.")
     assert testi.esito_allenamento(g, 1, g.indice_collettivo_valore, testi.codice_classe(g)).startswith(f"{_nome(g)}: 1 punto speso, valore da ")
 
 

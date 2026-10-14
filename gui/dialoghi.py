@@ -29,6 +29,11 @@ programma, e si scelgono programma e intensità; nei contratti si propongono i r
 della probabilità come al mercato. La spiegazione dell'ingaggio comincia con il contratto che il
 giocatore propone. Le domande sì o no dei dialoghi nascono tutte da _conferma, con il no già scelto.
 Le parti della tappa 11 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dalla tappa 12, il 2026-10-14, decisione D32 e punto 12.4 del progetto, la sala allenamento ha la
+casella dell'iscrizione automatica ai tornei dell'allenando scelto, che vale subito e si conta fra i
+cambi della chiusura, e l'allenando dice anche l'acciacco. I dialoghi dei tornei stanno in
+gui/tornei.py e gui/editor_tornei.py, quelli delle sfide in gui/sfide.py. Le parti della tappa 12 sono
+di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 """
 
 import contextlib
@@ -1029,8 +1034,9 @@ class SalaAllenamento(_Dialogo):
         self.impostazioni = impostazioni
         self.esiti = []
         self.allenandi = sorted((mondo.giocatori[gid] for gid in poli.tesserati if gid in mondo.giocatori), key=lambda g: testi.nome_completo(g).casefold())
-        # Programma e intensità di ciascuno all'apertura: alla chiusura dicono che cosa è cambiato.
-        self.di_partenza = {g.id: (g.programma, g.intensita) for g in self.allenandi}
+        # Programma, intensità e, dalla tappa 12, iscrizione automatica ai tornei di ciascuno all'apertura:
+        # alla chiusura dicono che cosa è cambiato.
+        self.di_partenza = {g.id: (g.programma, g.intensita, g.iscrizione_automatica) for g in self.allenandi}
         self.indoli = list(INDOLI)
         self.livelli = list(INTENSITA)
         self.info = wx.StaticText(self.pannello, label="")
@@ -1048,6 +1054,8 @@ class SalaAllenamento(_Dialogo):
         self.programma = self.aggiungi(wx.Choice(self.pannello, choices=[testi.nome_programma(k).capitalize() for k in self.indoli]))
         self.etichetta("&Intensità")
         self.intensita = self.aggiungi(wx.Choice(self.pannello, choices=[k.capitalize() for k in self.livelli]))
+        # Dalla tappa 12, decisione D32 e punto 12.4: l'iscrizione automatica ai tornei dell'allenando scelto.
+        self.automatica = self.aggiungi(wx.CheckBox(self.pannello, label="Iscrizione a&utomatica ai tornei"))
         scheda, _chiudi = self.pulsanti((wx.ID_ANY, "Sche&da"), (wx.ID_CANCEL, "C&hiudi"), predefinito=False)
         spendi.Bind(wx.EVT_BUTTON, self.spendi)
         completo.Bind(wx.EVT_BUTTON, self.completo)
@@ -1059,6 +1067,7 @@ class SalaAllenamento(_Dialogo):
         self.punti.Bind(wx.EVT_TEXT, self.aggiorna_anteprima)
         self.programma.Bind(wx.EVT_CHOICE, self.al_programma)
         self.intensita.Bind(wx.EVT_CHOICE, self.all_intensita)
+        self.automatica.Bind(wx.EVT_CHECKBOX, self.all_automatica)
         self.aggiorna(0, nuovo=True)
         self.completa((640, 600))
         self.elenco.SetFocus()
@@ -1103,6 +1112,7 @@ class SalaAllenamento(_Dialogo):
                 self.programma.SetString(indice, voce)
         self.programma.SetSelection(self.indoli.index(g.programma) if g.programma in self.indoli else 0)
         self.intensita.SetSelection(self.livelli.index(g.intensita) if g.intensita in self.livelli else 0)
+        self.automatica.SetValue(bool(g.iscrizione_automatica))
         self.aggiorna_anteprima()
 
     def al_allenando(self, event=None):
@@ -1262,9 +1272,21 @@ class SalaAllenamento(_Dialogo):
         suoni.suona("intensita_cambiata")
         self.aggiorna()
 
+    def all_automatica(self, event=None):
+        """La casella dell'iscrizione automatica ai tornei, punto 12.4: vale subito, col suo suono, acceso o spento."""
+        g = self._scelto()
+        if g is None:
+            return
+        nuova = bool(self.automatica.GetValue())
+        if nuova == bool(g.iscrizione_automatica):
+            return
+        g.iscrizione_automatica = nuova
+        suoni.suona("iscrizione_automatica_accesa" if nuova else "iscrizione_automatica_spenta")
+        self.aggiorna()
+
     def cambi(self):
-        """Le righe dei tesserati a cui sono cambiati programma o intensità rispetto all'apertura."""
-        return [testi.cambio_in_sala(g) for g in self.allenandi if (g.programma, g.intensita) != self.di_partenza[g.id]]
+        """Le righe dei tesserati a cui sono cambiati programma, intensità o iscrizione automatica rispetto all'apertura."""
+        return [testi.cambio_in_sala(g) for g in self.allenandi if (g.programma, g.intensita, g.iscrizione_automatica) != self.di_partenza[g.id]]
 
     def scheda(self, event=None):
         g = self._scelto()

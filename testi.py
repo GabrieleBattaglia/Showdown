@@ -24,6 +24,12 @@ percentuale verso la classe seguente; l'indole, l'ambizione, il programma, l'int
 recente a parole; i tratti rari dell'allenamento; lo stipendio fisso del contratto e il valore di
 mercato del giorno; il contratto, con la finestra del rinnovo. Ci sono i testi della sala
 allenamento e dei contratti, che la finestra mostra, e la guida spiega classe, allenamento e contratti.
+Dalla tappa 12, il 2026-10-14, decisione D32, il mondo gioca: la scheda ha i tornei e il palmarès, con
+la classifica mondiale e il ritmo dei tornei, e l'acciacco accanto all'infortunio; ci sono i testi del
+calendario e delle iscrizioni, del pannello dei tornei con le sue classifiche e i risultati dei tuoi
+nascosti finché non li ascolti, dell'albo d'oro, della classifica mondiale, degli editor dei modelli e
+delle formule, delle sfide e del calendario che non si legge; la guida spiega tornei e sfide. Le parti
+della tappa 12 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 """
 
 import copy
@@ -291,6 +297,73 @@ def infortunio(g):
     return testo
 
 
+def acciacco(g, oggi, con_calo=False):
+    """
+    L'acciacco della tappa 12 a parole, oppure una stringa vuota se non ce n'è: acciaccato al ginocchio
+    destro fino al 20 ottobre 2026: rende un poco meno. Con con_calo dice anche quanto rende di meno oggi.
+    """
+    calo = infortuni.calo_acciacco(g, oggi)
+    fino = getattr(g, "acciacco_fino", None)
+    if fino is None or calo <= 0:
+        return ""
+    dove = infortuni.frase_sede(g.acciacco_sede)
+    testo = accorda(g, "acciaccato") + (f" {dove}" if dove else "") + f" fino al {data_breve(fino)}: rende un poco meno"
+    if con_calo:
+        testo += f", oggi il {numero(calo * 100)} per cento"
+    return testo
+
+
+def ritmo_dei_tornei(g, mondo):
+    """
+    La riga del ritmo dei tornei nella scheda: per i tuoi tesserati iscrizione automatica accesa, dal
+    18 ottobre 2026, oppure spenta; per gli altri da quando il mondo può iscriverli al torneo seguente.
+    """
+    club = mondo.polisportive.get(g.appartenenza)
+    dal = f", dal {data_breve(g.prossimo_torneo)}" if g.prossimo_torneo is not None else ""
+    if club is not None and not club.is_cpu_controlled:
+        return f"Iscrizione automatica ai tornei: accesa{dal}." if g.iscrizione_automatica else "Iscrizione automatica ai tornei: spenta, si iscrive a mano dal calendario."
+    if g.prossimo_torneo is None:
+        return "Ritmo dei tornei: può iscriversi al primo torneo utile."
+    return f"Ritmo dei tornei: il prossimo dal {data_breve(g.prossimo_torneo)}."
+
+
+def _medagliere(chi):
+    """Le medaglie a parole, per un giocatore o una polisportiva: 2 ori, 1 argento; nessuna."""
+    parti = [conta(getattr(chi, campo), singolare, plurale) for campo, singolare, plurale in
+             (("ori", "oro", "ori"), ("argenti", "argento", "argenti"), ("bronzi", "bronzo", "bronzi"), ("legni", "legno", "legni")) if getattr(chi, campo)]
+    return unisci(parti) or "nessuna"
+
+
+def posto_mondiale(g, mondo):
+    """Il posto del giocatore nella classifica mondiale del suo sesso, oppure None se non ci sta ancora."""
+    for posto, riga in enumerate(palmares.classifica_mondiale(mondo, g.sesso), start=1):
+        if riga["id"] == g.id:
+            return posto
+    return None
+
+
+def _tornei_e_palmares(g, mondo):
+    """
+    La parte della scheda della tappa 12, punto 12.7: tornei giocati, medaglie, titoli, punti della
+    classifica mondiale e posto, gare a squadre vinte e perse, e la riga del ritmo dei tornei.
+    """
+    righe = ["[TORNEI E PALMARÈS]"]
+    righe.append(f"Tornei giocati: {g.tornei_giocati} | Medaglie: {_medagliere(g)} | Gare a squadre: {g.gare_squadre_vinte} vinte, {g.gare_squadre_perse} perse")
+    posto = posto_mondiale(g, mondo)
+    classifica = "maschile" if g.sesso == "m" else "femminile"
+    mondiale = f"Classifica mondiale {classifica}: {numero(g.punti_mondiali)} punti" + (f", {posto}° posto" if posto else ", non ancora in classifica")
+    righe.append(f"{mondiale} | Punti dell'ultimo anno: {numero(palmares.punti_dell_anno(g, mondo.datetime_corrente_simulazione.date()))}")
+    if g.titoli:
+        titoli = [f"{voce['torneo']} del {data_breve(datetime.date.fromisoformat(voce['data'][:10]))}, {_posto_del_titolo(voce['posto'])}" for voce in g.titoli]
+        righe.append(f"Titoli: {'; '.join(titoli)}.")
+    righe.append(ritmo_dei_tornei(g, mondo))
+    return righe
+
+
+def _posto_del_titolo(posto):
+    return {1: "oro", 2: "argento", 3: "bronzo", 4: "legno"}.get(posto, f"{posto}° posto")
+
+
 def carattere(g):
     """Il temperamento di oggi a parole e accordato, con le fasce di costanti.py: focoso, focosa."""
     attuale = g.temperamento_attuale
@@ -365,6 +438,10 @@ def scheda_giocatore(g, mondo):
     if g.infortunato and g.infortunio_fine_datetime:
         testo = infortunio(g)
         tratti += f" | {testo[0].upper()}{testo[1:]}"
+    # Dalla tappa 12, accanto all'infortunio, l'acciacco con la sede, la fine e il calo di oggi.
+    testo = acciacco(g, mondo.datetime_corrente_simulazione, con_calo=True)
+    if testo:
+        tratti += f" | {testo[0].upper()}{testo[1:]}"
     righe.append(tratti)
     righe.extend(_economia_del_giocatore(g, mondo))
     for titolo, gruppo in GRUPPI:
@@ -376,8 +453,7 @@ def scheda_giocatore(g, mondo):
     righe.append("[CARRIERA]")
     righe.append(f"Partite: {partite} (V:{g.partitevinte} - S:{g.partiteperse}) | Vittorie: {numero(g.partitevinte * 100 / partite if partite else 0)}%")
     righe.append(f"Set: {set_giocati} (V:{g.setsvinti} - S:{g.setspersi}) | Goal fatti: {g.goalsfatti} | Goal subiti: {g.goalssubiti}")
-    if any((g.ori, g.argenti, g.bronzi, g.legni)):
-        righe.append(f"MEDAGLIERE: Oro:{g.ori} | Argento:{g.argenti} | Bronzo:{g.bronzi} | Legno:{g.legni}")
+    righe.extend(_tornei_e_palmares(g, mondo))
     righe.extend(_classifiche(g, mondo))
     al_compleanno = ANNO_SIMULAZIONE_GIORNI - g.eta % ANNO_SIMULAZIONE_GIORNI
     righe.append(f"Età: {formatta_eta_sim(g.eta)} simulati | Prossimo compleanno fra {conta(al_compleanno, 'giorno', 'giorni')}")
@@ -623,6 +699,15 @@ def scheda_polisportiva(p, mondo):
         righe.append(f"Medaglie dei tesserati: Oro:{p.ori} | Argento:{p.argenti} | Bronzo:{p.bronzi} | Legno:{p.legni}")
     else:
         righe.append("Nessun trofeo, per ora.")
+    # Dalla tappa 12, punto 12.7: il palmarès degli ultimi cinque anni, che fa la gloria, e le sfide.
+    medaglie, coppe = palmares.somma_finestra(p, mondo.datetime_corrente_simulazione)
+    righe.append(f"Palmarès degli ultimi cinque anni, che conta nella gloria: {numero(medaglie)} punti di medaglie e {numero(coppe)} punti di coppe.")
+    sfide = f"Sfide: {conta(p.sfide_vinte, 'vinta', 'vinte')} e {conta(p.sfide_perse, 'persa', 'perse')}"
+    if not p.is_cpu_controlled:
+        sfide += f" | Sfide da lanciare: {max(0, p.sfide_da_lanciare - mondo.sfide.lanciate_in_sospeso(p.nome))}"
+    if p.ultima_sfida is not None:
+        sfide += f" | Ultima sfida il {data_breve(p.ultima_sfida)}"
+    righe.append(sfide)
     righe.append("[TESSERATI]")
     presenti = [mondo.giocatori[gid] for gid in p.tesserati if gid in mondo.giocatori]
     if presenti:
@@ -1099,7 +1184,7 @@ def incontro_in_elenco(torneo, incontro, mostra=False):
     con la differita e non ancora svelato, dice soltanto «tuo, giocato, da ascoltare», risposta 18, a
     meno di mostrarlo lo stesso.
     """
-    testa = f"Turno {incontro.turno}" if incontro.gruppo == tornei.TABELLONE else f"Girone {incontro.gruppo}, turno {incontro.turno}"
+    testa = nome_del_turno(torneo, incontro).capitalize() if incontro.gruppo == tornei.TABELLONE else f"Girone {incontro.gruppo}, turno {incontro.turno}"
     if incontro.data:
         testa += f", {data_breve(datetime.date.fromisoformat(incontro.data))}"
     a = _nome_corto(torneo, incontro.a)
@@ -1145,6 +1230,493 @@ def voce_dell_albo(albo, voce):
             chi = f"{nome} {cognome}" + (f", {albo.club[club][0]}" if club is not None else "")
         parti.append(f"{medaglia} {chi}")
     return f"{testa}, {partecipanti}: " + "; ".join(parti) + "."
+
+
+# La finestra dei tornei, tappa 12, passo 3, punto 12 del progetto: i testi del calendario, del
+# pannello, dell'albo, della classifica mondiale, degli editor e delle sfide. Sono funzioni pure come
+# le altre, e la finestra le mostra negli elenchi e nella vista principale.
+
+SESSI_DEI_TORNEI = {"m": "maschile", "f": "femminile", "aperto": "aperto a tutti", None: "a squadre"}
+# Dove si esce dal tabellone, a parole, per la classifica generale di un torneo in corso.
+USCITE_DAL_TABELLONE = {2: "in finale", 4: "in semifinale", 8: "ai quarti", 16: "agli ottavi", 32: "ai sedicesimi", 64: "ai trentaduesimi"}
+MEDAGLIE_A_PAROLE = {"oro": "medaglia d'oro", "argento": "medaglia d'argento", "bronzo": "medaglia di bronzo", "legno": "medaglia di legno"}
+COPPE_A_PAROLE = {"oro": "coppa d'oro", "argento": "coppa d'argento", "bronzo": "coppa di bronzo", "legno": "coppa di legno"}
+
+
+def nome_del_turno(torneo, incontro):
+    """Il turno di un incontro del tabellone a parole: quarti, semifinale, finale, finale per il terzo posto; turno 2 oltre i trentaduesimi."""
+    if incontro.finalina:
+        return "finale per il terzo posto"
+    fase = torneo.fasi[incontro.fase]
+    rimasti = fase.grandezza >> (incontro.turno - 1)
+    return {2: "finale", 4: "semifinale"}.get(rimasti, NOMI_DEL_TABELLONE.get(rimasti, f"turno {incontro.turno}"))
+
+
+def _club_dell_iscritto(torneo, gid):
+    info = torneo.info[gid]
+    return f", {info['club']['nome']}" if info.get("club") and not torneo.squadre else ""
+
+
+def _vincitore_del_torneo(torneo):
+    """Chi ha vinto una sede conclusa, col nome che aveva nel torneo; None se non è conclusa."""
+    if torneo.stato != tornei.CONCLUSO or not torneo.classifica_finale:
+        return None
+    return torneo.info[torneo.classifica_finale[0]]["nome"]
+
+
+def riga_del_pannello(torneo, tuoi=0):
+    """Una sede nell'elenco del pannello: in corso con la fase, o conclusa con chi l'ha vinta, e i tuoi atleti."""
+    testo = torneo_in_elenco(torneo, tuoi)
+    vincitore = _vincitore_del_torneo(torneo)
+    if vincitore:
+        testo = testo.replace(": concluso", f": concluso, vince {vincitore}", 1)
+    return testo
+
+
+def testata_del_pannello(in_corso, con_i_tuoi, conclusi):
+    """In testa al pannello: Tornei in corso 12, 2 con i tuoi atleti; conclusi di recente 30."""
+    return f"Tornei in corso: {in_corso}, {con_i_tuoi} con i tuoi atleti. Conclusi negli ultimi 14 giorni: {conclusi}."
+
+
+def parti_del_torneo(torneo, con_i_tuoi=False):
+    """
+    Le parti di una sede, nel pannello: la classifica generale, i tuoi incontri se ci sono, i gironi di
+    ogni fase a gironi e il tabellone; come coppie di testo e chiave, la chiave come la vuole classifica_della_parte.
+    """
+    parti = [("Classifica generale", ("generale", None, None))]
+    if con_i_tuoi:
+        parti.append(("I tuoi incontri", ("tuoi", None, None)))
+    piu_fasi = sum(1 for f in torneo.fasi if f.tipo == formule.GIRONI) > 1
+    for fase in torneo.fasi:
+        if fase.tipo == formule.GIRONI:
+            for lettera in fase.gironi:
+                testo = f"Fase {fase.indice + 1}, girone {lettera}" if piu_fasi else ("Girone unico" if len(fase.gironi) == 1 else f"Girone {lettera}")
+                parti.append((testo, ("girone", fase.indice, lettera)))
+        else:
+            parti.append(("Tabellone" if not piu_fasi else f"Fase {fase.indice + 1}, tabellone", ("tabellone", fase.indice, None)))
+    return parti
+
+
+def _eliminati(torneo):
+    """Chi è uscito da una sede ancora in corso, con dove, nell'ordine inverso dell'uscita: per la classifica generale provvisoria."""
+    usciti = []
+    for fase in torneo.fasi:
+        if fase.tipo == formule.GIRONI:
+            if not fase.finita or fase.ultima:
+                continue
+            for lettera in fase.gironi:
+                ordine = tornei.classifica_girone(torneo, fase, lettera)
+                for posto, gid in enumerate(ordine[fase.per_girone:], start=fase.per_girone + 1):
+                    usciti.append((gid, f"fuori nel girone {lettera}, {posto}°"))
+            continue
+        for incontro in fase.incontri:
+            if incontro.giocato and not incontro.finalina:
+                sconfitto = torneo.sconfitto(incontro)
+                if sconfitto is not None:
+                    usciti.append((sconfitto, f"fuori {USCITE_DAL_TABELLONE.get(fase.grandezza >> (incontro.turno - 1), 'nel tabellone')}"))
+    return list(reversed(usciti))
+
+
+def _righe_generali(torneo):
+    """Le righe della classifica generale, ciascuna col suo iscritto: coppie di identificativo e testo."""
+    if torneo.stato == tornei.CONCLUSO:
+        righe = []
+        for posto, gid in enumerate(torneo.classifica_finale, start=1):
+            riga = f"{posto}. {torneo.info[gid]['nome']}{_club_dell_iscritto(torneo, gid)}"
+            medaglia = palmares.MEDAGLIE[posto - 1] if posto <= len(palmares.MEDAGLIE) else None
+            if medaglia:
+                riga += f", {(COPPE_A_PAROLE if torneo.squadre else MEDAGLIE_A_PAROLE)[medaglia]}"
+            if torneo.premi.get(gid):
+                riga += f", premio di {euro(torneo.premi[gid])}"
+            righe.append((gid, riga))
+        return righe
+    if torneo.stato != tornei.IN_CORSO:
+        return []
+    usciti = _eliminati(torneo)
+    fuori = {gid for gid, _dove in usciti}
+    righe = [(gid, f"{torneo.info[gid]['nome']}{_club_dell_iscritto(torneo, gid)}, in gara") for gid in torneo.iscritti if gid not in fuori]
+    righe.extend((gid, f"{torneo.info[gid]['nome']}{_club_dell_iscritto(torneo, gid)}, {dove}") for gid, dove in usciti)
+    return righe
+
+
+def classifica_generale(torneo):
+    """
+    La classifica generale di una sede: a torneo concluso il posto di tutti, con le medaglie e i premi;
+    in corso chi è ancora in gara, in ordine di testa di serie, e poi chi è uscito, dall'ultimo.
+    """
+    if torneo.stato not in (tornei.CONCLUSO, tornei.IN_CORSO):
+        return ["Torneo annullato."]
+    return [riga for _gid, riga in _righe_generali(torneo)]
+
+
+def classifica_del_tabellone(torneo, fase):
+    """
+    Il tabellone nel pannello: chi è ancora in gara col suo prossimo incontro; a tabellone finito, chi
+    l'ha vinto e chi è arrivato secondo.
+    """
+    righe = []
+    for incontro in sorted(fase.incontri, key=lambda i: (i.turno, i.finalina, i.posto)):
+        if incontro.giocato or incontro.b is None:
+            continue
+        turno = nome_del_turno(torneo, incontro)
+        for gid, altro in ((incontro.a, incontro.b), (incontro.b, incontro.a)):
+            righe.append(f"{torneo.info[gid]['nome']}{_club_dell_iscritto(torneo, gid)}: prossimo incontro contro {_nome_corto(torneo, altro)}, {turno}")
+    if righe:
+        return righe
+    finale = next((i for i in fase.del_turno(fase.turni) if not i.finalina and i.giocato), None)
+    if finale is None:
+        return ["Il tabellone non ha ancora incontri."]
+    vincitore, secondo = torneo.vincitore(finale), torneo.sconfitto(finale)
+    if not fase.ultima:
+        return [f"Il tabellone di questa fase è finito: passano {unisci([torneo.info[gid]['nome'] for gid in fase.promossi])}."]
+    righe = [f"Il tabellone è finito: vince {torneo.info[vincitore]['nome']}"]
+    if secondo is not None:
+        righe[0] += f", secondo {torneo.info[secondo]['nome']}"
+    righe[0] += "."
+    return righe
+
+
+def classifica_della_parte(torneo, chiave, tuoi=()):
+    """Le righe della classifica di una parte del pannello: la generale, i tuoi, un girone o il tabellone."""
+    tipo, indice, lettera = chiave
+    if tipo == "girone":
+        return classifica_del_girone(torneo, torneo.fasi[indice], lettera)
+    if tipo == "tabellone":
+        return classifica_del_tabellone(torneo, torneo.fasi[indice])
+    if tipo == "tuoi":
+        righe = [riga for gid, riga in _righe_generali(torneo) if gid in tuoi]
+    else:
+        righe = classifica_generale(torneo)
+    return righe or ["Nessun iscritto."]
+
+
+def incontri_della_parte(torneo, chiave, tuoi=()):
+    """Gli incontri di una parte del pannello, nell'ordine in cui si giocano; per la generale tutti, per i tuoi soltanto i loro."""
+    tipo, indice, lettera = chiave
+    if tipo == "girone":
+        scelti = [i for i in torneo.fasi[indice].incontri if i.gruppo == lettera]
+    elif tipo == "tabellone":
+        scelti = list(torneo.fasi[indice].incontri)
+    elif tipo == "tuoi":
+        scelti = [i for i in torneo.incontri() if i.a in tuoi or i.b in tuoi]
+    else:
+        scelti = torneo.incontri()
+    return sorted(scelti, key=lambda i: (i.fase, i.turno, i.finalina, i.gruppo, i.posto))
+
+
+def risultato_di_un_incontro(torneo, incontro):
+    """Il risultato di un incontro dei tuoi da mostrare, quello che l'elenco nasconde finché non si ascolta: la sua riga, svelata."""
+    return incontro_in_elenco(torneo, incontro, mostra=True)
+
+
+# Il calendario e le iscrizioni, punto 12.3.
+
+def testata_del_calendario(p, aperte):
+    """In testa al calendario: la cassa della polisportiva attiva e le edizioni aperte."""
+    return f"{p.nome}: cassa {euro(p.cassa)}; {conta(aperte, 'edizione aperta', 'edizioni aperte')} alle iscrizioni."
+
+
+def riga_edizione(ed, tuoi=0):
+    """Un'edizione aperta nel calendario, col sesso: Open maschile del martedì, maschile, dal 13 ottobre 2026, edizione 2: 25 iscritti, 2 tuoi; quota 10 euro."""
+    testo = edizione_in_calendario(ed, tuoi)
+    return testo.replace(f"{ed.nome}, ", f"{ed.nome}, {SESSI_DEI_TORNEI.get(ed.sesso, ed.sesso)}, ", 1)
+
+
+def riga_edizione_prevista(modello, inizio):
+    """Un'edizione dei prossimi giorni che non ha ancora aperto le iscrizioni: quando comincia e quando si apre."""
+    apertura = inizio - datetime.timedelta(days=modello.giorni_iscrizione)
+    return f"{modello.nome}, {SESSI_DEI_TORNEI.get(modello.sesso, modello.sesso)}, dal {data_breve(inizio)}: le iscrizioni si aprono il {data_breve(apertura)}."
+
+
+def riga_edizione_in_corso(nome, sesso, inizio, sedi, tuoi=0):
+    """Un'edizione già cominciata nel calendario: Open maschile del sabato, maschile, dal 18 ottobre 2026: in corso in 3 sedi, 2 tuoi atleti."""
+    testo = f"{nome}, {SESSI_DEI_TORNEI.get(sesso, sesso)}, dal {data_breve(inizio)}: in corso in {conta(sedi, 'sede', 'sedi')}"
+    if tuoi:
+        testo += f", {conta(tuoi, 'tuo atleta', 'tuoi atleti')}"
+    return testo + "."
+
+
+def _automatica(g):
+    if not g.iscrizione_automatica:
+        return "automatica spenta"
+    return f"automatica dal {data_breve(g.prossimo_torneo)}" if g.prossimo_torneo is not None else "automatica accesa"
+
+
+def riga_atleta_del_calendario(g, mondo, origine=None):
+    """
+    Un tuo tesserato negli elenchi del calendario: Mario Rossi, D2, acciaccato al ginocchio destro fino
+    al 20 ottobre 2026, automatica dal 18 dicembre 2026; per un iscritto anche come, a mano o in automatico.
+    """
+    parti = [nome_completo(g), codice_classe(g)]
+    if g.infortunato and g.infortunio_fine_datetime and not g.puo_giocare:
+        parti.append(f"{accorda(g, 'infortunato')} fino al {data_breve(g.infortunio_fine_datetime)}")
+    testo = acciacco(g, mondo.datetime_corrente_simulazione)
+    if testo:
+        parti.append(testo.split(":", 1)[0])
+    if origine:
+        parti.append({"mano": "iscritto a mano", "automatica": "iscritto in automatico", "qualificato": "convocato", "computer": "iscritto dal club",
+                      "libero": "iscritto da libero"}.get(origine, origine).replace("iscritto", accorda(g, "iscritto")))
+    parti.append(_automatica(g))
+    return ", ".join(parti)
+
+
+def riga_della_rosa(g, mondo, posto):
+    """Un giocatore della rosa per la coppa, col suo posto: titolare 1, 2 e 3, poi le riserve."""
+    ruolo = f"titolare {posto}" if posto <= 3 else f"riserva {posto - 3}"
+    testo = f"{nome_completo(g)}, {codice_classe(g)}, {ruolo}"
+    acc = acciacco(g, mondo.datetime_corrente_simulazione)
+    return testo + (f", {acc.split(':', 1)[0]}" if acc else "")
+
+
+def iscrizione_fatta(g, ed, quota):
+    return f"{accorda(g, 'Iscritto')} {nome_completo(g)} a {ed.nome} del {data_breve(ed.data_inizio)}" + (f", per {euro(quota)}." if quota else ".")
+
+
+def iscrizione_tolta(g, ed, rimborso):
+    return f"{accorda(g, 'Tolto')} {nome_completo(g)} da {ed.nome} del {data_breve(ed.data_inizio)}" + (f": rimborso di {euro(rimborso)}." if rimborso else ".")
+
+
+def rosa_iscritta(poli, ed, giocatori):
+    return f"Rosa di {poli.nome} per {ed.nome}: {unisci([g.cognome for g in giocatori])}."
+
+
+def riepilogo_calendario(p, fatte):
+    """Il riepilogo del calendario alla chiusura: quante iscrizioni fatte e tolte, poi una riga per operazione."""
+    if not fatte:
+        return f"Calendario e iscrizioni di {p.nome}: nessuna iscrizione cambiata."
+    iscritte = sum(1 for tipo, _testo in fatte if tipo == "iscritto")
+    tolte = sum(1 for tipo, _testo in fatte if tipo == "tolto")
+    rose = sum(1 for tipo, _testo in fatte if tipo == "rosa")
+    parti = [conta(iscritte, "iscrizione", "iscrizioni") if iscritte else "", conta(tolte, "iscrizione tolta", "iscrizioni tolte") if tolte else "",
+             conta(rose, "rosa per la coppa", "rose per la coppa") if rose else ""]
+    return "\n".join([f"Calendario e iscrizioni di {p.nome}: {unisci(parti)}.", *(testo for _tipo, testo in fatte)])
+
+
+def evento_calendario(fatte):
+    """Il fatto del calendario nella barra: calendario: 2 iscrizioni, 1 tolta."""
+    iscritte = sum(1 for tipo, _testo in fatte if tipo in ("iscritto", "rosa"))
+    tolte = sum(1 for tipo, _testo in fatte if tipo == "tolto")
+    return f"calendario: {conta(iscritte, 'iscrizione', 'iscrizioni')}, {tolte} {'tolta' if tolte == 1 else 'tolte'}"
+
+
+# L'albo d'oro e la classifica mondiale, punti 12.1 e 5.9.
+
+def anno_della_voce(voce):
+    return int(voce[4][:4])
+
+
+def riga_edizione_dell_albo(albo, voci):
+    """Un'edizione nell'albo, dalle voci delle sue sedi: Edizione 57, 18 ottobre 2026: 3 sedi, 75 iscritti; non disputata."""
+    prima = voci[0]
+    testa = f"Edizione {prima[5]}, {data_breve(datetime.date.fromisoformat(prima[4]))}"
+    iscritti = sum(v[7] for v in voci)
+    if all(not v[8] for v in voci):
+        return f"{testa}: non disputata, con {conta(iscritti, 'iscritto', 'iscritti')}."
+    chi = conta(iscritti, "polisportiva", "polisportive") if prima[1] == modelli_torneo.SQUADRE else conta(iscritti, "iscritto", "iscritti")
+    return f"{testa}: {conta(len(voci), 'sede', 'sedi')}, {chi}."
+
+
+def podio_dell_albo(albo, voce):
+    """Il podio di una sede nell'albo, senza il nome del modello e l'edizione, che l'elenco ha già: sede 3, 25 iscritti: oro ...; argento ..."""
+    testo = voce_dell_albo(albo, voce)
+    testa = f"{albo.modelli.get(voce[0], voce[0])}, edizione {voce[5]}, "
+    testo = testo.removeprefix(testa)
+    return testo[0].upper() + testo[1:]
+
+
+def classifica_mondiale(mondo, quanti=100, tuoi=()):
+    """
+    La classifica mondiale per sempre, come un medagliere storico, D32 e punto 5.9: gli uomini e poi
+    le donne, i primi cento con posto, nome, punti, ori, argenti, bronzi e titoli mondiali, e sotto i tuoi
+    tesserati che stanno più in basso, col loro posto.
+    """
+    righe = ["Classifica mondiale per sempre, come un medagliere storico: i punti di tutti i tornei giocati, vecchie glorie comprese."]
+    for sesso, titolo, singolare, plurale in (("m", "Uomini", "giocatore", "giocatori"), ("f", "Donne", "giocatrice", "giocatrici")):
+        elenco = palmares.classifica_mondiale(mondo, sesso)
+        if not elenco:
+            righe.append(f"{titolo}: ancora nessuno in classifica.")
+            continue
+        righe.append(f"{titolo}: {conta(len(elenco), singolare + ' in classifica', plurale + ' in classifica')}, ecco i primi {min(quanti, len(elenco))}.")
+        sotto = []
+        for posto, riga in enumerate(elenco, start=1):
+            if posto <= quanti:
+                righe.append(_riga_mondiale(posto, riga, riga["id"] in tuoi))
+            elif riga["id"] in tuoi:
+                sotto.append(_riga_mondiale(posto, riga, True))
+        if sotto:
+            righe.append(f"I tuoi tesserati più in basso: {len(sotto)}.")
+            righe.extend(sotto)
+    return "\n".join(righe)
+
+
+def _riga_mondiale(posto, riga, tuo):
+    testo = (f"{posto}. {riga['nome']}, {numero(riga['punti'])} punti, ori {riga['ori']}, argenti {riga['argenti']}, bronzi {riga['bronzi']}, "
+             f"titoli mondiali {riga['titoli']}")
+    if not riga["vivo"]:
+        testo += ", vecchia gloria"
+    if tuo:
+        testo += ", tuo tesserato"
+    return testo
+
+
+# Gli editor dei modelli e delle formule, punto 12.5, sul modello di generate_formula_summary di Terminal Beast.
+
+def ricorrenza_a_parole(ricorrenza):
+    """La ricorrenza di un modello a parole: ogni martedì; il 15 di ogni mese; ogni anno il 10 dicembre."""
+    if ricorrenza["tipo"] == modelli_torneo.SETTIMANALE:
+        return f"ogni {modelli_torneo.nome_del_giorno(ricorrenza['giorno'])}"
+    if ricorrenza["tipo"] == modelli_torneo.MENSILE:
+        return f"il {ricorrenza['giorno']} di ogni mese"
+    return f"ogni anno il {ricorrenza['giorno']} {modelli_torneo.nome_del_mese(ricorrenza['mese'])}"
+
+
+def riga_modello(modello):
+    """Un modello nell'editor: Open maschile del martedì, maschile, ogni martedì, attivo."""
+    stato = "attivo" if modello.attivo else "fermo"
+    return f"{modello.nome}, {SESSI_DEI_TORNEI.get(modello.sesso, modello.sesso)}, {ricorrenza_a_parole(modello.ricorrenza)}, {stato}"
+
+
+def riga_fase(fase, indice):
+    """Una fase nell'editor delle formule: Fase 1: gironi, 32 partecipanti in 8 gironi da 4, passano 2 per girone."""
+    if fase["tipo"] == formule.GIRONI:
+        grandezza = fase["partecipanti"] // max(1, fase["gironi"])
+        gironi = "un girone unico" if fase["gironi"] == 1 else f"{fase['gironi']} gironi da {grandezza}"
+        testo = f"Fase {indice + 1}: gironi, {fase['partecipanti']} partecipanti in {gironi}"
+        return testo + (f", passano {fase['promossi']} per girone" if fase["promossi"] else "")
+    testo = f"Fase {indice + 1}: tabellone da {fase['partecipanti']}"
+    return testo + (", con la finalina per il terzo posto" if fase["finalina"] else "")
+
+
+def riepilogo_formula(formula, modello=None):
+    """
+    Il riassunto di una formula per l'editor dei modelli, copiato da generate_formula_summary di
+    Terminal Beast senza pareggi e senza maiuscole gridate: le fasi, quanti iscritti per sede, e con il
+    modello i giorni di gioco e i set.
+    """
+    if formula is None:
+        return "La formula del modello non c'è, o non è valida: se ne sceglie un'altra."
+    righe = [f"Formula {formula['nome']}" + (f": {formula['descrizione']}" if formula.get("descrizione") else ".")]
+    righe.append(f"{conta(len(formula['fasi']), 'fase', 'fasi')}: " + "; ".join(riga_fase(f, i)[len(f'Fase {i + 1}: '):] for i, f in enumerate(formula["fasi"])) + ".")
+    tetto = formule.tetto(formula)
+    if modello is not None:
+        righe.append(f"Ogni sede ha al massimo {tetto} iscritti e almeno {modello.minimo_iscritti}; con più iscritti l'edizione si divide in sedi parallele.")
+        durata = modelli_torneo.durata_prevista(modello, formula)
+        righe.append(f"Si gioca in {conta(durata, 'giorno', 'giorni')} al massimo, {conta(modello.incontri_al_giorno, 'turno', 'turni')} al giorno.")
+        finali = {0: "", 2: "la finale", 4: "dalle semifinali", 8: "dai quarti"}[modello.finali_da]
+        if modello.tipo == modelli_torneo.SQUADRE:
+            righe.append("Ogni incontro è una gara a squadre, un set a 31 punti.")
+        elif finali and modello.set_finali != modello.set_al_meglio:
+            righe.append(f"Gli incontri si giocano al meglio dei {modello.set_al_meglio} set, {finali} al meglio dei {modello.set_finali}.")
+        else:
+            righe.append(f"Gli incontri si giocano al meglio dei {modello.set_al_meglio} set.")
+    else:
+        righe.append(f"Ogni sede ha al massimo {tetto} iscritti.")
+    return " ".join(righe)
+
+
+def edizioni_al_mese(modello):
+    """Quante edizioni apre il modello in un mese simulato, in media: un settimanale circa quattro, un mensile una, un annuale un dodicesimo."""
+    return {modelli_torneo.SETTIMANALE: 30 / 7, modelli_torneo.MENSILE: 1.0, modelli_torneo.ANNUALE: 1 / 12}[modello.ricorrenza["tipo"]]
+
+
+def riepilogo_premi(modello, formula):
+    """
+    I premi stimati di una sede piena, per l'editor: il montepremi, quanto va ai primi quattro, la
+    percentuale al primo, e quanto denaro nuovo la federazione mette in un mese, una sede per edizione.
+    """
+    if formula is None:
+        return ""
+    tetto = formule.tetto(formula)
+    if modello.tipo == modelli_torneo.SQUADRE:
+        quote = 0
+    else:
+        quote = modello.quota_iscrizione * tetto
+    montepremi = tornei.montepremi(modello.a_dizionario(), tetto if quote else 0)
+    if montepremi <= 0:
+        return "Nessun premio in euro: si gioca per le medaglie, o per le coppe."
+    premi = tornei.calcola_premi(montepremi, min(modello.posti_premiati, tetto), modello.pendenza_premi, tetto)
+    primi = "; ".join(f"{posto}° {euro(premio)}" for posto, premio in enumerate(premi[:4], start=1))
+    percentuale = tornei.prima_percentuale(modello.pendenza_premi, min(modello.posti_premiati, tetto))
+    nuovo = max(0, montepremi - quote)
+    testo = (f"Una sede piena paga {euro(quote)} di quote e ha un montepremi di {euro(montepremi)}, diviso fra i primi {len(premi)}: {primi}; "
+             f"al primo va il {numero(percentuale, 0)} per cento.")
+    return testo + f" La federazione mette {euro(nuovo)} di denaro nuovo per sede piena, circa {euro(round(nuovo * edizioni_al_mese(modello)))} al mese con una sede per edizione."
+
+
+# Le sfide, punto 12.6.
+
+def forza_a_parole(forza):
+    """La forza di una squadra nell'esito rapido, con due decimali: 0,62."""
+    return "nessuna squadra valida" if forza is None else f"forza {numero(forza, 2)}"
+
+
+def riga_bersaglio(dati):
+    """Una polisportiva del computer da sfidare: PoliTeam04, forza 0,62, gloria 140, ultima sfida il 3 ottobre 2026."""
+    testo = f"{dati['nome']}, {forza_a_parole(dati['forza'])}, gloria {dati['gloria']}"
+    if dati["ultima_sfida"] is not None:
+        testo += f", ultima sfida il {data_breve(dati['ultima_sfida'])}"
+    return testo
+
+
+def riga_sfida_in_arrivo(s, forza):
+    """Una sfida che aspetta la tua risposta: PoliTeam04 sfida Club Di Prova, forza 0,58; rispondi entro il 15 ottobre 2026."""
+    return f"{s.sfidante['nome']} sfida {s.sfidata['nome']}, {forza_a_parole(forza)}; rispondi entro il {data_breve(s.scadenza)}"
+
+
+def riga_dello_storico(s, mondo):
+    """Una sfida dello storico delle tue polisportive, dal punto di vista della tua: con chi, come è finita, quando, e se si riascolta."""
+    tue = [lato for lato in ("sfidante", "sfidata") if (p := mondo.polisportive.get(s.club(lato)["nome"])) is not None and not p.is_cpu_controlled]
+    mia = tue[0] if tue else "sfidante"
+    altra = "sfidata" if mia == "sfidante" else "sfidante"
+    quando = data_breve(s.data_gioco or s.lancio)
+    testa = f"{quando}: {s.club(mia)['nome']} contro {s.club(altra)['nome']}"
+    if s.stato == "rifiutata":
+        return f"{testa}, rifiutata" + (" da te" if mia == "sfidata" else "")
+    if s.stato == "decaduta":
+        return f"{testa}, decaduta"
+    if s.risultato is None:
+        return f"{testa}, {s.stato}"
+    vinta = s.risultato["vince"] == mia
+    punti = s.risultato["punti"]
+    mio, suo = (punti[0], punti[1]) if mia == "sfidante" else (punti[1], punti[0])
+    if s.risultato["esito"] == "tavolino":
+        testo = f"{testa}, {'vinta' if vinta else 'persa'} a tavolino"
+    else:
+        testo = f"{testa}, {'vinta' if vinta else 'persa'} {mio} a {suo}"
+    cognomi = [mondo.giocatori[gid].cognome for gid in s.risultato.get("titolari", [[], []])[("sfidante", "sfidata").index(mia)] if gid in mondo.giocatori]
+    if cognomi:
+        testo += f", con {unisci(cognomi)}"
+    return testo + ("; si ascolta in differita" if s.differita else "")
+
+
+def riga_convocabile(g, mondo):
+    """Un convocabile della formazione: Mario Rossi, D2, uomo, acciaccato."""
+    testo = f"{nome_completo(g)}, {codice_classe(g)}, {'uomo' if g.sesso == 'm' else 'donna'}"
+    if infortuni.calo_acciacco(g, mondo.datetime_corrente_simulazione) > 0:
+        testo += f", {accorda(g, 'acciaccato')}"
+    if g.infortunato and not g.puo_giocare:
+        testo += f", {accorda(g, 'infortunato')}"
+    return testo
+
+
+def stato_della_formazione(problema, titolari=()):
+    """La riga di stato della formazione: valida, con chi va al tavolo, o il perché no."""
+    if problema:
+        return f"Formazione non valida: {problema}"
+    return f"Formazione valida: al tavolo {unisci([g.cognome for g in titolari])}." if titolari else "Formazione valida."
+
+
+def testata_del_lancio(p, disponibili):
+    return f"{p.nome}: {conta(disponibili, 'sfida da lanciare', 'sfide da lanciare')} questo mese. La sfida accettata si gioca all'avanzamento di domani."
+
+
+# Il calendario che non si legge, punto 12.10.
+
+def calendario_illeggibile(problemi):
+    """Il perché, nella vista all'avvio, quando un modello o una formula dei tornei non si leggono, e cosa fare."""
+    return (f"Il calendario dei tornei ha {conta(len(problemi), 'problema', 'problemi')}: " + " ".join(p if p.endswith(".") else p + "." for p in problemi)
+            + " Il mondo apre soltanto le edizioni dei modelli validi. Si corregge con l'editor dei modelli, Ctrl+Maiusc+J, con quello delle formule, "
+            "Ctrl+Maiusc+Y, oppure rimettendo il calendario predefinito dal menu Tornei.")
 
 
 def spesa_nel_diario(voce):
@@ -1262,6 +1834,7 @@ def guida(voci):
         righe.append(f"Menu {menu}: {elenco}.")
     righe.append("Con Tab si passa dalla vista principale alla barra di stato e ritorno; F5 porta sulla vista principale, F7 sulla barra di stato.")
     righe.append(GUIDA_DELLA_PARTITA_DAL_VIVO)
+    righe.extend((GUIDA_DEI_TORNEI, GUIDA_DELLE_SFIDE))
     righe.extend((LEGENDA_CLASSE, LEGENDA_ALLENAMENTO, LEGENDA_CONTRATTI))
     righe.append(LEGENDA_BARRA)
     return "\n".join(righe)
@@ -1291,6 +1864,27 @@ LEGENDA_CONTRATTI = (
     "parte alla scadenza di quello in corso. Chi non rinnova torna libero, e nessuno incassa niente; nella finestra il suo valore di mercato scende, "
     "fino al 40 per cento alla scadenza. Lo svincolo a contratto in corso costa una buonuscita, metà degli stipendi che restano. "
     "Un mese di contratto è un mese del calendario simulato: circa 10 giorni veri."
+)
+
+
+# I tornei e le sfide nella guida ai comandi, tappa 12, punto 12.11 del progetto.
+GUIDA_DEI_TORNEI = (
+    "I tornei si giocano da soli, secondo il calendario dei modelli: ogni modello apre le sue edizioni qualche giorno prima, e chi si iscrive gioca in sedi "
+    "parallele, divise a serpentina per classe. I tuoi tesserati si iscrivono dal calendario, Ctrl+U, quanto vuoi, oppure in automatico, un torneo ogni due "
+    "mesi, con la casella Iscrizione automatica della sala allenamento; il computer e i liberi seguono lo stesso ritmo. Nel calendario si iscrive e si toglie "
+    "soltanto coi pulsanti: la quota si paga subito e torna se togli l'iscrizione prima del sorteggio. Le partite dei tuoi si giocano col motore vero anche a "
+    "programma chiuso: nel pannello dei tornei, Ctrl+Y, un incontro dei tuoi resta da ascoltare finché non lo ascolti in differita, Invio sull'incontro, non ne "
+    "leggi la cronaca o non ne chiedi il risultato; Mostra tutti i risultati li svela tutti insieme, dopo una domanda. Le classifiche e le notizie dicono comunque "
+    "chi va avanti. Ogni anno c'è un campionato mondiale per sesso, a cui si è convocati per i punti dell'ultimo anno, e la Coppa delle polisportive a squadre, "
+    "per gloria. L'albo d'oro, Ctrl+Maiusc+B, conserva ogni podio per sempre, la classifica mondiale, Ctrl+Maiusc+W, i punti di tutta la carriera. Gli editor "
+    "cambiano soltanto le edizioni future, e il calendario predefinito si rimette dal menu Tornei, senza perdere quello di prima."
+)
+GUIDA_DELLE_SFIDE = (
+    "Le sfide fra polisportive sono gare a squadre, un set a 31, con due giocatori di un sesso e uno dell'altro al tavolo e fino a tre riserve. Ogni polisportiva "
+    "ne riceve due da lanciare il primo del mese, fino a quattro; si lanciano a una polisportiva del computer con Ctrl+W, che risponde subito, e quelle che "
+    "ricevi si accettano o si rifiutano con Ctrl+Maiusc+F entro il giorno dopo, poi decadono. La formazione proposta si cambia prima di lanciare o di accettare; "
+    "la sfida si gioca all'avanzamento seguente, e la posta è una coppa, d'oro a chi vince e d'argento a chi perde. Lo storico, Ctrl+Maiusc+H, fa riascoltare "
+    "e leggere le ultime dieci."
 )
 
 
@@ -1350,6 +1944,14 @@ def righe_degli_eventi(voci, nomi, livello="normale"):
         if nel_punto and apre:
             a, b = evento.punteggio or (0, 0)
             righe.append(f"Set {evento.set_n}, {nomi['A'].testo} {a}, {nomi['B'].testo} {b}.")
+        if evento.tipo == "CAMBIO_AL_TAVOLO":
+            # La gara a squadre, tappa 12, punto 8.9: a ogni livello il campo dice chi gioca adesso.
+            testo = cronaca.frase(evento, nomi, livello)
+            if testo:
+                righe.append(testo)
+            dati = evento.dati or {}
+            righe.append(f"Al tavolo {cronaca._n(nomi, dati.get('batte'))} contro {cronaca._n(nomi, dati.get('entra'))}.")
+            continue
         if livello == cronaca.SINTETICA and nel_punto:
             if evento.tipo in ("PUNTO", "RIPETIZIONE") and momento.esito is not None:
                 righe.append(cronaca.riga_sintetica(momento.esito, nomi))
@@ -1370,22 +1972,36 @@ def dove_ascolti(nomi, ascoltatore):
     return f"Ascolti da {nomi[ascoltatore].testo}, alla sua testata del tavolo; {nomi[altro].testo} sta di fronte, oltre lo schermo."
 
 
-def guida_dal_vivo(nomi, ascoltatore, set_al_meglio, velocita):
-    """Il testo con cui si apre il campo della cronaca della finestra dal vivo: chi gioca, da dove si ascolta, i tasti e la velocità."""
-    return "\n".join([
-        f"Partita dal vivo: {nomi['A'].testo} contro {nomi['B'].testo}, al meglio dei {set_al_meglio} set. L'incontro è già registrato nel mondo.",
+def guida_dal_vivo(nomi, ascoltatore, set_al_meglio, velocita, differita=False):
+    """
+    Il testo con cui si apre il campo della cronaca della finestra dal vivo: chi gioca, da dove si
+    ascolta, i tasti e la velocità. Dalla tappa 12 anche la partita in differita di un torneo o di una
+    sfida, e la gara a squadre, un set a 31, dove il lato è quello della squadra.
+    """
+    squadre = set_al_meglio == 1
+    gara = "gara a squadre, un set a 31 punti" if squadre else f"al meglio dei {set_al_meglio} set"
+    if differita:
+        testa = f"Partita in differita: {nomi['A'].testo} contro {nomi['B'].testo}, {gara}. Il risultato resta nascosto finché non arrivi alla fine."
+    else:
+        testa = f"Partita dal vivo: {nomi['A'].testo} contro {nomi['B'].testo}, {gara}. L'incontro è già registrato nel mondo."
+    altra_parte = "dell'altra squadra" if squadre else "dell'altro giocatore"
+    righe = [
+        testa,
         dove_ascolti(nomi, ascoltatore),
         "Invio o spazio su Prosegui fanno sentire il gioco fino al punto seguente; mentre suona, lo stesso tasto lo ferma e lo riprende, e salta il riscaldamento.",
-        "Alt+F ascolta fino a fine set, Alt+L passa dalla parte dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce senza svelarlo.",
+        f"Alt+F ascolta fino a fine set, Alt+L passa dalla parte {altra_parte}, Alt+V va alla fine e mostra il risultato, Esc esce senza svelarlo.",
         f"Più e meno cambiano la velocità di gioco, ora {velocita}: accorcia le pause e la procedura dell'arbitro, mai l'azione.",
         "Time-out, cambio campo e inizio del set non si sentono: il suono riprende dalla ripresa del gioco.",
-        "In questo campo, dopo ogni tranche, c'è la cronaca di quello che hai appena sentito, pause lunghe comprese; "
-        "F1 ci rimette questa guida, Maiusc+Tab torna al pulsante.",
-    ])
+    ]
+    if squadre:
+        righe.append("Le formazioni si leggono nella cronaca, e a ogni cambio al tavolo un suono breve: il campo dice chi gioca adesso.")
+    righe.append("In questo campo, dopo ogni tranche, c'è la cronaca di quello che hai appena sentito, pause lunghe comprese; "
+                 "F1 ci rimette questa guida, Maiusc+Tab torna al pulsante.")
+    return "\n".join(righe)
 
 
-def titolo_dal_vivo(nomi, velocita):
-    return f"Dal vivo, {nomi['A'].testo} contro {nomi['B'].testo}, velocità {velocita}"
+def titolo_dal_vivo(nomi, velocita, differita=False):
+    return f"{'In differita' if differita else 'Dal vivo'}, {nomi['A'].testo} contro {nomi['B'].testo}, velocità {velocita}"
 
 
 SPIEGAZIONE_VELOCITA = ("La velocità di gioco vale per tutte le partite dal vivo: a 1 le pause fra i punti e la procedura dell'arbitro durano come nella realtà, "
@@ -1399,7 +2015,10 @@ SPIEGAZIONE_VOLUMI = ("Il volume degli effetti sonori, da 0 a 100: a 50 i suoni 
 # L'amichevole nella finestra, tappa 9: risultato e cronaca salvata.
 
 SALVA_LA_CRONACA = "La cronaca dell'incontro si salva in un file con Ctrl+Maiusc+O."
-NESSUNA_AMICHEVOLE = "Nella sessione non hai ancora giocato un'amichevole: se ne gioca una con Ctrl+O."
+NESSUNA_AMICHEVOLE = ("Nella sessione non hai ancora mostrato né ascoltato un incontro: un'amichevole si gioca con Ctrl+O, e gli incontri dei tuoi nei tornei "
+                      "e nelle sfide si ascoltano o si leggono dal pannello dei tornei, Ctrl+Y, e dallo storico delle sfide, Ctrl+Maiusc+H.")
+# Come si chiama l'ultimo incontro nelle frasi della cronaca salvata, dalla tappa 12.
+NOMI_DEGLI_INCONTRI = {"amichevole": "dell'amichevole", "torneo": "dell'incontro di torneo", "sfida": "della sfida"}
 
 
 def risultato_amichevole(risultato, mondo):
@@ -1464,12 +2083,12 @@ def nessuno_per_l_amichevole(mondo, ora, poli=None, primo=None):
     return f"{chi}: ognuno gioca al massimo un incontro per giorno simulato, amichevole, torneo o sfida, e chi è infortunato o ritirato non gioca. {quando}"
 
 
-def cronaca_salvata(percorso, livello, nomi):
-    return f"La cronaca {livello} dell'amichevole fra {nomi['A'].testo} e {nomi['B'].testo} è nel file {percorso}."
+def cronaca_salvata(percorso, livello, nomi, tipo="amichevole"):
+    return f"La cronaca {livello} {NOMI_DEGLI_INCONTRI.get(tipo, tipo)} fra {nomi['A'].testo} e {nomi['B'].testo} è nel file {percorso}."
 
 
-def cronaca_non_salvata(errore):
-    return f"La cronaca dell'amichevole non si è potuta salvare: {errore}."
+def cronaca_non_salvata(errore, tipo="amichevole"):
+    return f"La cronaca {NOMI_DEGLI_INCONTRI.get(tipo, tipo)} non si è potuta salvare: {errore}."
 
 
 # La sala allenamento e i contratti, tappa 11, decisione D31: i testi che la finestra mostra.
@@ -1499,6 +2118,10 @@ def riga_allenando(g, mondo):
     riga = f"{nome_completo(g)}, classe {codice_classe(g)}, {quanti_punti(g.punti_allenamento)}, {programma_e_indole(g)}, intensità {g.intensita}"
     if not allenamento.puo_allenarsi(g) and g.infortunio_fine_datetime:
         riga += f", {accorda(g, 'infortunato')} fino al {g.infortunio_fine_datetime.day} {MESI[g.infortunio_fine_datetime.month - 1]}, non si allena"
+    # Dalla tappa 12, punto 12.4: l'acciacco, come l'infortunio.
+    testo = acciacco(g, mondo.datetime_corrente_simulazione)
+    if testo:
+        riga += f", {testo}"
     return riga
 
 
@@ -1593,8 +2216,12 @@ def voce_della_sala(esito, spese):
 
 
 def cambio_in_sala(g):
-    """Programma e intensità di un tesserato cambiati in sala, per il riepilogo: Mario Rossi: programma di rimessa, intensità intensa."""
-    return f"{nome_completo(g)}: programma {programma(g)}, intensità {g.intensita}."
+    """
+    Programma, intensità e iscrizione automatica di un tesserato cambiati in sala, per il riepilogo:
+    Mario Rossi: programma di rimessa, intensità intensa, iscrizione automatica ai tornei accesa.
+    """
+    automatica = "accesa" if g.iscrizione_automatica else "spenta"
+    return f"{nome_completo(g)}: programma {programma(g)}, intensità {g.intensita}, iscrizione automatica ai tornei {automatica}."
 
 
 def allenando_fermo(g):
@@ -1635,7 +2262,7 @@ def riepilogo_sala(p, esiti, cambi=()):
         return f"Sala allenamento di {p.nome}: nessuna spesa."
     parti = [conta(len(esiti), "spesa", "spese") if esiti else "nessuna spesa"]
     if cambi:
-        parti.append(conta(len(cambi), "cambio di programma o d'intensità", "cambi di programma o d'intensità"))
+        parti.append(conta(len(cambi), "cambio di programma, d'intensità o d'iscrizione", "cambi di programma, d'intensità o d'iscrizione"))
     return "\n".join([f"Sala allenamento di {p.nome}: {unisci(parti)}.", *esiti, *cambi])
 
 

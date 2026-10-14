@@ -142,7 +142,9 @@ CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", 
                    "tue_coppe_oro", "tue_coppe_argento", "tue_coppe_bronzo", "tue_coppe_legno", "tuoi_premi", "tuoi_infortuni_in_gara",
                    "tuoi_acciacchi", "tuoi_tavolini", "tuoi_qualificati", "tue_qualificazioni_coppa", "tuoi_tornei_conclusi",
                    "sfide_ricevute", "sfide_in_attesa", "sfide_decadute", "tue_sfide_vinte", "tue_sfide_perse", "tue_sfide_a_tavolino",
-                   "calendario_con_problemi")
+                   "calendario_con_problemi",
+                   # Il passo 3 della tappa 12: i campionati mondiali conclusi, notizia del mondo nella barra.
+                   "mondiali_conclusi")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"

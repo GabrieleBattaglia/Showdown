@@ -74,6 +74,7 @@ def chiudi(mondo, calendario, torneo, data, rapporto):
     oggi = _giorno(data)
     toccate = set()
     rapporto["tornei_conclusi"] += 1
+    rapporto["mondiali_conclusi"] += mondiale
     per_club = {}
     tuoi = []
     for posto, gid in enumerate(classifica, start=1):

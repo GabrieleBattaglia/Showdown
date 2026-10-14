@@ -172,6 +172,43 @@ def gemello_in_differita(incontro, velocita=1.0):
 gemello_squadre_in_differita = gemello_in_differita
 
 
+def nomi_dell_incontro(incontro):
+    """
+    I nomi della cronaca di un incontro ancora da svolgere, come quello gemello in differita: si leggono
+    dalle sue parti, perché i giocatori fotografati possono non esserci più nel mondo.
+    """
+    a, b = incontro.parti["A"], incontro.parti["B"]
+    if isinstance(a, Squadra):
+        return C.nomi_dei_giocatori([*a.giocatori, *b.giocatori], squadre=(a, b))
+    return C.nomi_dei_giocatori([a, b])
+
+
+def risultato_della_differita(differita, seme):
+    """
+    Il gemello di un incontro in differita giocato tutto in modalità completa, per leggerne la cronaca o
+    salvarla: il risultato, con i momenti, e i nomi della cronaca.
+    """
+    gemello = gemello_da_differita(differita, seme)
+    nomi = nomi_dell_incontro(gemello)
+    return gemello.gioca(), nomi
+
+
+def ascoltatore_della_differita(differita, tuoi):
+    """
+    Da quale parte si ascolta un incontro in differita: quella del tuo giocatore o della tua squadra,
+    tuoi è l'insieme dei loro identificativi o dei nomi delle tue polisportive; A se nessuna delle due.
+    """
+    if differita.get("formato") == FORMATO_SQUADRE:
+        nomi = differita.get("nomi") or ["", ""]
+        if nomi[1] in tuoi and nomi[0] not in tuoi:
+            return "B"
+        return "A"
+    fotografie = differita.get("fotografie") or [{}, {}]
+    if fotografie[1].get("id") in tuoi and fotografie[0].get("id") not in tuoi:
+        return "B"
+    return "A"
+
+
 class MotorePartita:
     """Gioca le partite fra i giocatori di un mondo, e le registra nelle loro carriere."""
 
@@ -633,16 +670,18 @@ class MotorePartita:
 
     # La cronaca su file.
 
-    def salva_cronaca(self, risultato, livello=C.NORMALE, istante=None, data_simulata=None):
+    def salva_cronaca(self, risultato, livello=C.NORMALE, istante=None, data_simulata=None, nomi=None):
         """
         Scrive la cronaca dell'incontro in un file della cartella cronache e ne restituisce il
         percorso. istante e data_simulata sono il momento reale e il giorno simulato dell'incontro,
         per l'intestazione e il nome del file: chi salva più tardi, come la finestra, li ha fissati
         quando si è giocato; senza, valgono quelli di adesso, che per chi salva subito sono gli stessi.
+        nomi, dalla tappa 12, sono quelli di un incontro in differita, i cui giocatori fotografati
+        possono non esserci più nel mondo; senza, si leggono dal mondo.
         """
         if risultato.momenti is None:
             raise ValueError("La cronaca c'è soltanto per gli incontri giocati in modalità completa.")
-        nomi = self.nomi(risultato)
+        nomi = nomi or self.nomi(risultato)
         istante = istante or adesso()
         data_simulata = data_simulata or self.mondo.datetime_corrente_simulazione
         righe = C.intestazione(risultato, nomi, istante, data_simulata)
