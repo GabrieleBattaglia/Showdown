@@ -347,8 +347,9 @@ def test_chi_esce_di_scena_esce_anche_dalla_vendita_e_il_computer_non_compra_i_m
 
 # La issue 1, dalla tappa 12: le polisportive del computer si contano sui soli attivi e sulle sole polisportive del computer.
 
-def _vivi(mondo):
-    return list(mondo.giocatori.values())
+def _attivi(mondo):
+    """I giocatori in attività, contati come il mondo li conta dalla decisione 4 di Gabriele del 14 ottobre 2026, in _fai_invecchiare."""
+    return sum(1 for g in mondo.giocatori.values() if not g.ritirato)
 
 
 def test_il_computer_conta_soltanto_i_giocatori_in_attivita(mondo):
@@ -356,9 +357,9 @@ def test_il_computer_conta_soltanto_i_giocatori_in_attivita(mondo):
         g.ritirato = True
     # Dieci attivi diviso 16,5 fa 0,6: una polisportiva del computer sì, la seconda no. Con i ritirati
     # contati, come prima della issue 1, il limite sarebbe stato 40 diviso 16,5, cioè tre.
-    assert mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+    assert mondo._serve_una_polisportiva_cpu(_attivi(mondo))
     mondo.crea_polisportiva_cpu(INIZIO)
-    assert not mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+    assert not mondo._serve_una_polisportiva_cpu(_attivi(mondo))
 
 
 def test_le_polisportive_dell_utente_non_entrano_nel_conto(mondo):
@@ -367,11 +368,11 @@ def test_le_polisportive_dell_utente_non_entrano_nel_conto(mondo):
     for nome in ("Club Uno", "Club Due", "Club Tre"):
         mondo.fonda_polisportiva(nome)
     # Diciassette attivi: una polisportiva del computer ci sta, anche con tre dell'utente.
-    assert mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+    assert mondo._serve_una_polisportiva_cpu(_attivi(mondo))
     mondo.crea_polisportiva_cpu(INIZIO)
-    assert mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+    assert mondo._serve_una_polisportiva_cpu(_attivi(mondo))
     mondo.crea_polisportiva_cpu(INIZIO)
-    assert not mondo._serve_una_polisportiva_cpu(_vivi(mondo))
+    assert not mondo._serve_una_polisportiva_cpu(_attivi(mondo))
 
 
 def test_ogni_giorno_nascono_da_due_a_nove_giocatori(mondo):

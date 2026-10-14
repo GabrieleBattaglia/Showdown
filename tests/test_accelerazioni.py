@@ -10,6 +10,7 @@ e la rilettura del modo di prima, anche quando il segnaposto compare altrove e l
 modo di prima. Un file scritto nel modo di prima si legge uguale.
 """
 
+import copy
 import datetime
 import gc
 import gzip
@@ -19,13 +20,17 @@ import types
 
 import pytest
 
+import allenamento
 import archivio
+import costanti
 import iscrizioni
 import modelli
 import modelli_torneo
 import mondo as modulo_mondo
+import palmares
+import tratti
 from costanti import FILE_MONDO
-from modelli import Polisportiva
+from modelli import Giocatore, Polisportiva
 from mondo import Mondo
 
 INIZIO = datetime.datetime(2026, 3, 1, 9, 30)
@@ -111,6 +116,100 @@ def test_le_iscrizioni_automatiche_scelgono_come_prima(monkeypatch):
             tolte = {ed.id for ed in aperte if rng.random() < 0.15} or None
             di_prima = iscrizioni.scegli([e for e in aperte if e.id not in tolte] if tolte else aperte, g, s, impegni)
             assert scelte.scegli(g, s, impegni, tolte) is di_prima
+
+
+# La finestra della gloria e il declino.
+
+def _somma_di_prima(poli, oggi):
+    """La somma del palmarès recente di prima della decisione 4: ogni chiave letta coi suoi numeri."""
+    fine = oggi.year * 12 + oggi.month - 1
+    medaglie = coppe = 0.0
+    for chiave, (m, c) in poli.palmares_recente.items():
+        if 0 <= fine - (int(chiave[:4]) * 12 + int(chiave[5:7]) - 1) < palmares.MESI_PALMARES_GLORIA:
+            medaglie += m
+            coppe += c
+    return medaglie, coppe
+
+
+def test_la_finestra_della_gloria_somma_come_prima():
+    rng = random.Random("finestra della gloria")
+    for _ in range(500):
+        oggi = datetime.date(rng.randint(2026, 2120), rng.randint(1, 12), rng.randint(1, 28))
+        poli = types.SimpleNamespace(palmares_recente={})
+        for _ in range(rng.randint(0, 80)):
+            anno, mese = oggi.year - rng.randint(-1, 7), rng.randint(1, 12)
+            # Anche chiavi scritte in un'altra forma, che il conto di sempre legge lo stesso.
+            # Lo zero arabo-indiano, che int legge come lo zero.
+            chiave = f"{anno:04d}-{mese:02d}" if rng.random() < 0.9 else f"{anno:04d}-{mese:02d}"[:5] + f"{mese:02d}".replace("0", chr(0x660))
+            poli.palmares_recente[chiave] = [rng.choice((0.0, 0.6, 30.0, 1.5)) * rng.random(), rng.choice((0.0, 2.0, 100.0)) * rng.random()]
+        assert palmares.somma_finestra(poli, oggi) == _somma_di_prima(poli, oggi)
+
+
+def _declino_di_prima(g, giorni_passati):
+    """Il declino della tappa 12 prima della decisione 4, col fattore calcolato ogni volta."""
+    inizio = tratti.giorni_inizio_declino(g)
+    if giorni_passati <= 0 or g.eta < inizio:
+        return
+    prog_eta = max(0, g.eta - inizio)
+    aging_f = min(1.0, prog_eta / max(1, costanti.AGING_PEAK_AGE_GIORNI - costanti.AGING_START_AGE_GIORNI))
+    manten_ann = max(0.0, 1.0 - aging_f * costanti.MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM)
+    manten_tot = pow(pow(manten_ann, 1.0 / costanti.ANNO_SIMULAZIONE_GIORNI), giorni_passati)
+    for attr in costanti.ATTRIBUTI_INVECCHIABILI:
+        invecchiata = g.__dict__[attr] * manten_tot
+        g.__dict__[attr] = invecchiata if invecchiata > 0.0 else 0.0
+
+
+def test_il_declino_col_fattore_ricordato_e_quello_di_prima():
+    random.seed(3)
+    for eta_anni, giorni in ((49.9, 1), (50, 1), (55.5, 1), (63, 1), (70, 1), (63, 30), (80, 1)):
+        g = Giocatore(1, INIZIO)
+        g.eta = int(eta_anni * costanti.ANNO_SIMULAZIONE_GIORNI)
+        copia = copy.deepcopy(g)
+        for _ in range(3):
+            g._applica_declino_aggregato(giorni)
+            _declino_di_prima(copia, giorni)
+            g.eta += 1
+            copia.eta += 1
+        assert [g.__dict__[a].hex() for a in costanti.ATTRIBUTI_INVECCHIABILI] == [copia.__dict__[a].hex() for a in costanti.ATTRIBUTI_INVECCHIABILI]
+
+
+def _mantenimento_di_prima(g, giorni):
+    """Il calo dei livelli alti e l'oblio del primo del mese di prima della decisione 4, con getattr e setattr."""
+    perso = 0.0
+    oblio = tratti.oblio_mensile(g)
+    quota = giorni / costanti.ANNO_SIMULAZIONE_GIORNI
+    for c in allenamento.CARATTERISTICHE:
+        nome_base, nome_allenata = allenamento._NOMI[c]
+        allenata = getattr(g, nome_allenata)
+        if allenata <= 0.0:
+            continue
+        t = allenamento._TETTI[c]
+        relativo = (getattr(g, nome_base) + allenata) / t
+        nuova = allenata
+        if relativo > costanti.SOGLIA_CALO_LIVELLI_ALTI:
+            eccesso = (relativo - costanti.SOGLIA_CALO_LIVELLI_ALTI) / (1.0 - costanti.SOGLIA_CALO_LIVELLI_ALTI)
+            nuova = max(0.0, nuova - costanti.CALO_MASSIMO_ANNUO * eccesso ** 3 * t * quota)
+        nuova *= oblio
+        if nuova != allenata:
+            perso += allenata - nuova
+            setattr(g, nome_allenata, nuova)
+    if perso > 0.0:
+        g.aggiorna_icv()
+    return perso
+
+
+def test_il_mantenimento_del_mese_e_quello_di_prima():
+    random.seed(4)
+    rng = random.Random("mantenimento")
+    for numero in range(60):
+        g = Giocatore(numero + 1, INIZIO)
+        for c in allenamento.CARATTERISTICHE:
+            nome_base, nome_allenata = allenamento._NOMI[c]
+            setattr(g, nome_allenata, max(0.0, allenamento._TETTI[c] * rng.uniform(0.5, 1.0) - getattr(g, nome_base)))
+        copia = copy.deepcopy(g)
+        giorni = rng.choice((28, 30, 31))
+        assert allenamento.mantenimento_del_mese(g, giorni).hex() == _mantenimento_di_prima(copia, giorni).hex()
+        assert {k: v for k, v in vars(g).items() if k != "diario"} == {k: v for k, v in vars(copia).items() if k != "diario"}
 
 
 # Il salvataggio.

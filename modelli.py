@@ -599,6 +599,21 @@ def _controlla_campi_della_tappa_12(g, chi):
         raise ValueError(f"{chi}: il campo {sbagliati[0]} non è valido: {getattr(g, sbagliati[0])!r}")
 
 
+def _fattore_del_declino(prog_eta, giorni_passati):
+    """Per quanto si moltiplicano le caratteristiche dopo tanti giorni di declino, a prog_eta giorni dal suo inizio."""
+    range_decl = max(1, AGING_PEAK_AGE_GIORNI - AGING_START_AGE_GIORNI)
+    aging_f = min(1.0, prog_eta / range_decl)
+    reduc_ann = aging_f * MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM
+    manten_ann = max(0.0, 1.0 - reduc_ann)
+    manten_giorn = pow(manten_ann, 1.0 / ANNO_SIMULAZIONE_GIORNI)
+    return pow(manten_giorn, giorni_passati)
+
+
+# I fattori di un giorno di declino, per i giorni dall'inizio, dalla decisione 4 di Gabriele del 14
+# ottobre 2026: dipendono soltanto da quelli, con le costanti del modulo, che non cambiano.
+_FATTORI_DEL_DECLINO = {}
+
+
 # Le conversioni dei campi salvati, prese una volta sola dalla tabella di a_json.
 _CONVERSIONI_GIOCATORE = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_GIOCATORE)
 _CONVERSIONI_ASPETTO = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_ASPETTO)
@@ -1012,7 +1027,7 @@ class Giocatore:
             return
         self.indole = indole_dalle_innate(self)
 
-    def _applica_declino_aggregato(self, giorni_passati):
+    def _applica_declino_aggregato(self, giorni_passati, inizio=None):
         """
         Il declino dovuto all'età per i giorni trascorsi: dai 50 anni, e dalla tappa 11 dai 44 per la
         maturazione precoce e dai 56 per la tardiva, con la stessa curva spostata.
@@ -1020,17 +1035,21 @@ class Giocatore:
         direttamente nel dizionario del giocatore, e il minimo a zero è un confronto: a regime il
         declino era il 43 per cento del giorno simulato, e così costa la metà. I numeri sono gli
         stessi fino all'ultimo bit, e lo provano le impronte di tests/test_identita_motore.py.
+        Dalla decisione 4 di Gabriele del 14 ottobre 2026 l'inizio del declino si può dare già
+        calcolato, e il fattore di un giorno si ricorda per i giorni dall'inizio, che sono gli stessi per
+        molti giocatori: è lo stesso conto, fatto una volta sola, _fattore_del_declino.
         """
-        inizio = tratti.giorni_inizio_declino(self)
+        if inizio is None:
+            inizio = tratti.giorni_inizio_declino(self)
         if giorni_passati <= 0 or self.eta < inizio or ANNO_SIMULAZIONE_GIORNI <= 0:
             return
         prog_eta = max(0, self.eta - inizio)
-        range_decl = max(1, AGING_PEAK_AGE_GIORNI - AGING_START_AGE_GIORNI)
-        aging_f = min(1.0, prog_eta / range_decl)
-        reduc_ann = aging_f * MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM
-        manten_ann = max(0.0, 1.0 - reduc_ann)
-        manten_giorn = pow(manten_ann, 1.0 / ANNO_SIMULAZIONE_GIORNI)
-        manten_tot = pow(manten_giorn, giorni_passati)
+        if giorni_passati == 1:
+            manten_tot = _FATTORI_DEL_DECLINO.get(prog_eta)
+            if manten_tot is None:
+                manten_tot = _FATTORI_DEL_DECLINO[prog_eta] = _fattore_del_declino(prog_eta, 1)
+        else:
+            manten_tot = _fattore_del_declino(prog_eta, giorni_passati)
         caratteristiche = self.__dict__
         for attr in ATTRIBUTI_INVECCHIABILI:
             invecchiata = caratteristiche[attr] * manten_tot
@@ -1153,7 +1172,7 @@ class Polisportiva:
         numero, che è l'ordine dei giocatori nel mondo: la somma resta identica, fino all'ultimo
         decimale, a quando si scorreva il mondo intero per ogni polisportiva.
         """
-        self.indicecollettivotesserati = sum(giocatori[gid].indice_collettivo_valore for gid in sorted(set(self.tesserati)) if gid in giocatori and gid not in ids_morti)
+        self.indicecollettivotesserati = sum(g.indice_collettivo_valore for gid in sorted(set(self.tesserati)) if (g := giocatori.get(gid)) is not None and gid not in ids_morti)
 
     def aggiungi_tesserato(self, gid, icv):
         if gid not in self.tesserati:
@@ -1187,10 +1206,11 @@ class Polisportiva:
         eta_gg = 0
         icv_tot = 0.
         for gid in self.tesserati:
-            if gid in giocatori and gid not in ids_morti and not giocatori[gid].ritirato:
+            g = giocatori.get(gid)
+            if g is not None and gid not in ids_morti and not g.ritirato:
                 n_val += 1
-                eta_gg += giocatori[gid].eta
-                icv_tot += giocatori[gid].indice_collettivo_valore
+                eta_gg += g.eta
+                icv_tot += g.indice_collettivo_valore
         if n_val > 0 and ANNO_SIMULAZIONE_GIORNI > 0:
             icv_m = icv_tot / n_val
             eta_m_a = eta_gg / n_val / ANNO_SIMULAZIONE_GIORNI

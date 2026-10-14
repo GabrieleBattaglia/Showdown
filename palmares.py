@@ -72,12 +72,31 @@ def somma_finestra(poli, oggi):
     giorno, era la catena più cara del giorno a regime. Le chiavi hanno sempre la forma AAAA-MM di mese().
     """
     fine = oggi.year * 12 + oggi.month - 1
+    finestra = _mesi_della_finestra(fine)
     medaglie = coppe = 0.0
     for chiave, (m, c) in poli.palmares_recente.items():
-        if 0 <= fine - (int(chiave[:4]) * 12 + int(chiave[5:7]) - 1) < MESI_PALMARES_GLORIA:
+        # Dalla decisione 4 di Gabriele del 14 ottobre 2026 i mesi della finestra si scrivono una volta
+        # sola, e una chiave che non è fra loro si guarda col conto di sempre: così anche una chiave
+        # scritta in un'altra forma resta dove stava.
+        if chiave in finestra or 0 <= fine - (int(chiave[:4]) * 12 + int(chiave[5:7]) - 1) < MESI_PALMARES_GLORIA:
             medaglie += m
             coppe += c
     return medaglie, coppe
+
+
+_FINESTRE = {}
+
+
+def _mesi_della_finestra(fine):
+    """Le chiavi AAAA-MM dei mesi della finestra della gloria che finisce col mese numero fine, contato da gennaio dell'anno zero."""
+    finestra = _FINESTRE.get(fine)
+    if finestra is None:
+        if len(_FINESTRE) > 1000:
+            _FINESTRE.clear()
+        # Soltanto gli anni di quattro cifre, la forma di mese(), che il conto di sempre legge allo stesso modo.
+        finestra = _FINESTRE[fine] = frozenset(f"{indice // 12:04d}-{indice % 12 + 1:02d}" for indice in range(fine - MESI_PALMARES_GLORIA + 1, fine + 1)
+                                               if 0 <= indice < 10000 * 12)
+    return finestra
 
 
 def sfoltisci(poli, oggi):

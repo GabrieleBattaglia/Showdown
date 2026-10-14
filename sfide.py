@@ -101,9 +101,20 @@ def tua(poli):
 
 # Il carattere e la forza.
 
+_CARATTERI_DEI_NOMI = {}
+
+
 def carattere(nome):
-    """Il carattere di una polisportiva del computer, dal suo nome, senza toccare il caso del mondo: prudente, equilibrata o ardita."""
-    return random.Random(f"MESS-carattere-{nome}").choice(CARATTERI)
+    """
+    Il carattere di una polisportiva del computer, dal suo nome, senza toccare il caso del mondo:
+    prudente, equilibrata o ardita. Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, si
+    ricorda per nome: il generatore nato dal nome dà sempre lo stesso carattere, e farlo nascere a ogni
+    lancio e a ogni risposta del computer costava migliaia di generatori al giorno.
+    """
+    risultato = _CARATTERI_DEI_NOMI.get(nome)
+    if risultato is None:
+        risultato = _CARATTERI_DEI_NOMI[nome] = random.Random(f"MESS-carattere-{nome}").choice(CARATTERI)
+    return risultato
 
 
 def forbice(nome):

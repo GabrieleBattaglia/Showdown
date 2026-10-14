@@ -51,12 +51,21 @@ def fattore_gruppo(rosa):
     return 1.0 + K_GRUPPO_ESPERIENZA * sum(g.esperienza for g in rosa) / len(rosa) / ESPERIENZA_MASSIMA
 
 
-def del_giorno(g, in_polisportiva, fattore=1.0):
-    """L'esperienza di un giorno simulato: quella dell'età per tutti, e per chi è in polisportiva quella del club per il fattore del gruppo."""
+def quanto_del_giorno(in_polisportiva, fattore=1.0):
+    """
+    Quanta esperienza dà un giorno simulato: quella dell'età per tutti, e per chi è in polisportiva quella
+    del club per il fattore del gruppo. Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, il
+    mondo la calcola una volta per polisportiva al giorno, invece che per ogni giocatore.
+    """
     quanto = _PER_GIORNO_DI_VITA
     if in_polisportiva:
         quanto += ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * fattore
-    _aggiungi(g, quanto)
+    return quanto
+
+
+def del_giorno(g, in_polisportiva, fattore=1.0):
+    """L'esperienza di un giorno simulato, quella di quanto_del_giorno, fino al massimo."""
+    _aggiungi(g, quanto_del_giorno(in_polisportiva, fattore))
 
 
 def da_partita(g, tipo=AMICHEVOLE, importanza=1.0):

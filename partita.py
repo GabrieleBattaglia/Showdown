@@ -513,7 +513,11 @@ class MotorePartita:
         il calo da un generatore nato dal seme dell'incontro, così l'incontro rigiocato dà gli stessi.
         Gli infortuni vanno nel diario di chi riceve le voci, gli acciacchi soltanto in quello dei tuoi
         tesserati; senza diario, nella registrazione leggera, in nessuno. Restituisce le frasi da mostrare.
+        Dalla decisione 4 di Gabriele del 14 ottobre 2026 il generatore nasce soltanto se c'è un infortunio o
+        un acciacco: è suo, e senza estrazioni non serve; prima nasceva per ogni incontro registrato.
         """
+        if not risultato.infortuni and not risultato.acciacchi:
+            return []
         annota = self._chi_annota(diario, solo_tuoi)
         frasi = []
         caso = random.Random(f"durata-{risultato.seme}")
@@ -626,6 +630,10 @@ class MotorePartita:
         dalla tappa 12, i set giocati davvero e chi si è ritirato. annota dice chi riceve la voce.
         """
         annota = annota or (lambda _g: True)
+        # Dalla decisione 4 di Gabriele del 14 ottobre 2026: se nessuno dei due riceve la voce, come nei
+        # tornei del computer, le frasi non si scrivono nemmeno.
+        if not annota(g_vinc) and not annota(g_perd):
+            return
 
         def scrivi(g, testo):
             if annota(g):
