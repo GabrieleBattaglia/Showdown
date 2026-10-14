@@ -17,7 +17,8 @@ tesserati su dieci: la media, la mediana e il giorno peggiore di --giorni giorni
 calendario con --anno, e un profilo con la quota delle parti del giorno. Dal secondo passo della
 tappa nel giorno ci saranno anche i tornei e le sfide.
 Con --salvataggio il salvataggio dello stesso mondo, diari compresi: comporre il documento,
-firmarlo, scriverlo in JSON e comprimerlo, con le grandezze; poi lo stesso con un albo d'oro di
+scriverne il testo firmato e comprimerlo, come archivio.scrivi dalla decisione 4 di Gabriele del 14
+ottobre 2026, con le grandezze; poi lo stesso con un albo d'oro di
 sessant'anni costruito apposta, della forma decisa al punto 5.10 del progetto, voci corte e nomi
 nelle tabelle, perché l'albo conserva tutto per sempre, risposta 13 di Gabriele.
 Con --rapporto il racconto va anche in strumenti/profilo_tappa_12.txt, o nel file indicato; con --nota
@@ -31,7 +32,6 @@ Uso, dalla cartella del progetto o da qualunque altra:
 import argparse
 import cProfile
 import datetime
-import gzip
 import json
 import platform
 import pstats
@@ -237,23 +237,27 @@ def albo_di_prova(anni, rng):
 
 
 def _tempi_del_salvataggio(documento_fn):
-    """I tempi e le grandezze delle quattro fasi del salvataggio come le fa archivio.scrivi, senza scrivere su disco."""
-    inizio = time.perf_counter()
-    contenuto = documento_fn()
-    composto = time.perf_counter()
-    firmato = archivio.firma(contenuto)
-    firma = time.perf_counter()
-    testo = json.dumps({**contenuto, "firma": firmato}, ensure_ascii=False, separators=(",", ":"))
-    scritto = time.perf_counter()
-    dati = gzip.compress(testo.encode("utf-8"), compresslevel=6, mtime=0)
-    compresso = time.perf_counter()
-    return {"componi": composto - inizio, "firma": firma - composto, "dumps": scritto - firma, "gzip": compresso - scritto,
-            "chiaro": len(testo.encode("utf-8")), "compresso": len(dati), "contenuto": contenuto}
+    """
+    I tempi e le grandezze delle tre fasi del salvataggio come le fa archivio.scrivi, senza scrivere su
+    disco: comporre il documento, scrivere il testo firmato e comprimerlo. Dalla decisione 4 di Gabriele
+    del 14 ottobre 2026 il testo e la firma sono una fase sola, archivio._testo_firmato, e la raccolta
+    della memoria resta spenta come in archivio.scrivi.
+    """
+    with archivio._senza_raccolta():
+        inizio = time.perf_counter()
+        contenuto = documento_fn()
+        composto = time.perf_counter()
+        pezzi = archivio._testo_firmato(contenuto)
+        firmato = time.perf_counter()
+        dati = archivio._comprimi(pezzi)
+        compresso = time.perf_counter()
+    return {"componi": composto - inizio, "testo": firmato - composto, "gzip": compresso - firmato,
+            "chiaro": sum(len(pezzo) for pezzo in pezzi), "compresso": len(dati), "contenuto": contenuto}
 
 
 def frase_del_salvataggio(nome, t):
-    totale = t["componi"] + t["firma"] + t["dumps"] + t["gzip"]
-    return (f"{nome}: comporre {numero(t['componi'], 2)} secondi, firmare {numero(t['firma'], 2)}, scrivere il JSON {numero(t['dumps'], 2)}, comprimere "
+    totale = t["componi"] + t["testo"] + t["gzip"]
+    return (f"{nome}: comporre {numero(t['componi'], 2)} secondi, scrivere il testo e firmarlo {numero(t['testo'], 2)}, comprimere "
             f"{numero(t['gzip'], 2)}, in tutto {numero(totale, 2)} secondi senza la scrittura su disco; {numero(t['chiaro'] / 1e6, 1)} MB in chiaro e "
             f"{numero(t['compresso'] / 1e6, 1)} MB compressi")
 

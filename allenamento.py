@@ -172,9 +172,29 @@ def _applica(g, spese):
         attributi[nome_allenata] = max(0.0, min(_TETTI[spesa.caratteristica] - base, spesa.a - base))
 
 
+_TABELLE_DEI_PESI = {}
+
+
 def _pesi_per_punto(g):
-    """I pesi per punto di tutte le caratteristiche per quel giocatore, in una volta, come valore.peso_per_punto."""
+    """
+    I pesi per punto di tutte le caratteristiche per quel giocatore, in una volta, come valore.peso_per_punto.
+    Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, la tabella dipende soltanto da ambidestro
+    e mancino e si fa una volta per ciascun caso, finché i pesi del valore restano quelli: è condivisa, e
+    chi la riceve la legge e basta. Nei giorni in cui migliaia di giocatori spendono insieme, rifarla per
+    ognuno era un decimo del riempimento.
+    """
     pesi = valore.PESI_VALORE
+    chiave = (bool(getattr(g, "ambidestro", False)), bool(getattr(g, "mancino", False)))
+    ricordata = _TABELLE_DEI_PESI.get(chiave)
+    if ricordata is not None and ricordata[0] is pesi:
+        return ricordata[1]
+    tabella = _tabella_dei_pesi(g, pesi)
+    _TABELLE_DEI_PESI[chiave] = (pesi, tabella)
+    return tabella
+
+
+def _tabella_dei_pesi(g, pesi):
+    """La tabella di _pesi_per_punto, fatta da capo."""
     tabella = {c: pesi[c] for c in CARATTERISTICHE if c[:-2] not in ("chiusura", "blocco")}
     for ruolo in ("chiusura", "blocco"):
         dritto, rovescio = pesi[ruolo + "_dritto"], pesi[ruolo + "_rovescio"]

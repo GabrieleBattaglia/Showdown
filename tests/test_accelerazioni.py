@@ -29,6 +29,7 @@ import modelli_torneo
 import mondo as modulo_mondo
 import palmares
 import tratti
+import valore
 from costanti import FILE_MONDO
 from modelli import Giocatore, Polisportiva
 from mondo import Mondo
@@ -210,6 +211,18 @@ def test_il_mantenimento_del_mese_e_quello_di_prima():
         giorni = rng.choice((28, 30, 31))
         assert allenamento.mantenimento_del_mese(g, giorni).hex() == _mantenimento_di_prima(copia, giorni).hex()
         assert {k: v for k, v in vars(g).items() if k != "diario"} == {k: v for k, v in vars(copia).items() if k != "diario"}
+
+
+def test_la_tabella_dei_pesi_ricordata_e_quella_fatta_da_capo(monkeypatch):
+    for ambidestro, mancino in ((False, False), (False, True), (True, False), (True, True)):
+        g = types.SimpleNamespace(ambidestro=ambidestro, mancino=mancino)
+        for _ in range(2):
+            assert allenamento._pesi_per_punto(g) == allenamento._tabella_dei_pesi(g, valore.PESI_VALORE)
+    # Coi pesi del valore cambiati la tabella si rifà.
+    nuovi = {nome: 2 * peso for nome, peso in valore.PESI_VALORE.items()}
+    monkeypatch.setattr(valore, "PESI_VALORE", nuovi)
+    g = types.SimpleNamespace(ambidestro=False, mancino=True)
+    assert allenamento._pesi_per_punto(g) == allenamento._tabella_dei_pesi(g, nuovi)
 
 
 # Il salvataggio.
