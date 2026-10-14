@@ -71,13 +71,13 @@ def test_i_piazzamenti_a_scalare_per_i_primi_dodici():
 
 
 def test_l_ordine_delle_fonti_nella_carriera_perfetta():
-    # Dalla tappa 12, D32: con le prime stime dei conteggi della carriera perfetta, 3.580 amichevoli,
-    # 330 sfide e 410 incontri di torneo, le fonti vanno dalla più piccola alla più grande: età,
-    # amichevoli, sfide, club e tornei, e la somma è circa 20. La taratura fine la fa carriera_perfetta.py.
+    # Dalla tappa 12, D32: con i conteggi della carriera perfetta della taratura, 3.614 amichevoli,
+    # 265 sfide e 460 incontri di torneo, le fonti vanno dalla più piccola alla più grande: sfide, età,
+    # amichevoli, club e tornei, per i numeri del progetto 1,5, 2,05, 2,5, 5 e 9, e la somma è circa 20.
     giorni = 41 * ANNO_SIMULAZIONE_GIORNI
     eta = ESPERIENZA_PER_ANNO_DI_VITA * 41
-    amichevoli = ESPERIENZA_PER_AMICHEVOLE * 3580
-    sfide = ESPERIENZA_PER_SFIDA * 330
+    amichevoli = ESPERIENZA_PER_AMICHEVOLE * 3614
+    sfide = ESPERIENZA_PER_SFIDA * 265
     club = ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA * giorni * 1.05
     assert sfide < eta < amichevoli < club
     tornei = ESPERIENZA_MASSIMA - (eta + amichevoli + sfide + club)

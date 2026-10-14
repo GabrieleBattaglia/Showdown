@@ -139,14 +139,20 @@ SEDI_INFORTUNIO = (
 # Gloria richiesta dal giocatore. Dalla tappa 12, punto 9.4 del progetto e risposta 11 di Gabriele, la
 # gloria mediana del computer raddoppia col palmarès, e la gloria che i giocatori chiedono raddoppia
 # con lei, perché per la polisportiva mediana il rapporto fra gloria chiesta e offerta resti quello
-# della tappa 11: erano 0,9 e 12. Prime stime, che fissa la simulazione lunga al punto 13.4. La
-# polisportiva nuova dell'utente, con metà della gloria mediana, paga ingaggi più cari.
-K_ICV_GLORIA_RICHIESTA = 1.8
+# della tappa 11: erano 0,9 e 12, e le prime stime 1,8 e 24. La polisportiva nuova dell'utente, con
+# metà della gloria mediana, paga ingaggi più cari. La taratura del 14 ottobre 2026, punto 13.4: con le
+# prime stime, all'anno 20, la gloria richiesta mediana dei liberi era 2,4 volte la gloria mediana del
+# computer, contro 0,92 della 1.60.11, e il computer non riusciva più a tesserare, al 78 per cento.
+# strumenti/simulazione_lunga.py --cerca-economia trova il fattore comune in forma chiusa sul campione
+# dell'anno 20, 1,81 sui valori della 1.60.11: 1,628 e 22. Col mondo che ne viene il rapporto è da
+# 0,97 a 1,04 all'anno 10, contro 0,93-1,06 della 1.60.11, e da 0,82 a 0,84 all'anno 20, contro
+# 0,85-1,02, in media 0,92: entro il 10 per cento, sul bordo all'anno 20.
+K_ICV_GLORIA_RICHIESTA = 1.628
 ETA_PICCO_RICHIESTA_GLORIA_ANNI = 17.0
 ETA_MINIMO_RICHIESTA_GLORIA_ANNI = 55.0
 MAX_FATTORE_ETA_GLORIA = 2.7
 MIN_FATTORE_ETA_GLORIA = 0.1
-GLORIA_RICHIESTA_FISSA = 24
+GLORIA_RICHIESTA_FISSA = 22
 GLORIA_RICHIESTA_MINIMA_ASSOLUTA = 8
 MAX_GLORIA_RICHIESTA = 1500
 FATTORE_GLORIA_RICHIESTA_AMBIDESTRO = 1.35
@@ -214,8 +220,12 @@ CAPITALE_INIZIALE = 20_000
 # che per la polisportiva mediana del computer raddoppia: lo sponsor per gloria scende a 8, cioè 16,1
 # per 135 diviso 270, così la mediana incassa lo sponsor di prima, e la polisportiva nuova
 # dell'utente, senza palmarès, ne incassa circa un quarto in meno: partire è più difficile, come ha
-# scelto Gabriele. Prima stima, che fissa strumenti/simulazione_lunga.py --cerca-economia.
-SPONSOR_PER_GLORIA = 8.0
+# scelto Gabriele. La taratura del 14 ottobre 2026, strumenti/simulazione_lunga.py --cerca-economia,
+# punto 13.4: prima la gloria all'anno 20, poi la scala e lo sponsor all'anno 10, come alla tappa 11,
+# sui semi 2026, 7, 13 e 21. Con la scala nuova e la gloria nuova la bisezione dà 7,8, con la cassa
+# mediana del computer all'anno 10 fra 4.870 e 5.050 euro; all'anno 20 sale fra 5.880 e 6.160, perché
+# la gloria cresce mentre si riempie la finestra di cinque anni del palmarès.
+SPONSOR_PER_GLORIA = 7.8
 QUOTA_SPONSOR_SUL_VALORE = 0.09
 STIPENDIO_DI_RIFERIMENTO = 200
 VALORE_DI_RIFERIMENTO = 140
@@ -286,23 +296,33 @@ ESPERIENZA_PER_ANNO_DI_VITA = 0.05
 # Dalla tappa 12, D32 e punto 10.3 del progetto, le fonti si abbassano perché i tornei e le sfide
 # entrano nella carriera perfetta, che resta a 20 di esperienza a 50 anni. Dalla fonte più piccola
 # alla più grande, regola di Gabriele: l'età 2,05, le amichevoli 2,5, le sfide 1,5, il club 5, i
-# tornei 9, fatti di incontri, fasi superate e piazzamenti. Prime stime, che fissa
-# strumenti/carriera_perfetta.py riscritto, al punto 13.3. Fino alla tappa 11 le amichevoli valevano
+# tornei 9, fatti di incontri, fasi superate e piazzamenti. Fino alla tappa 11 le amichevoli valevano
 # 0,00125 e il giorno in polisportiva 0,00279: con l'età 2,05, le amichevoli 4,98, il club il resto.
-ESPERIENZA_PER_AMICHEVOLE = 0.0007
-ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.00108
+# Le prime stime del progetto erano 0,0007, 0,00108 e 0,005, e per i tornei 0,011, 0,012 e 0,06. La
+# taratura del 14 ottobre 2026, strumenti/carriera_perfetta.py riscritto, punto 13.3: la carriera
+# perfetta gioca davvero il calendario predefinito, 69 tornei di cui 6 mondiali, 456 incontri di
+# torneo, 265 sfide e 3.614 amichevoli in 4.428 giorni, e le costanti si risolvono fonte per fonte
+# sulla carriera più lenta, che a 50 anni ha 20,05 di esperienza senza il tetto: l'età 2,05, le
+# amichevoli 2,50, le sfide 1,50, il club 5,00, i tornei 9,00, cioè 4,50 dagli incontri, 1,80 dalle
+# fasi superate e 2,70 dai piazzamenti; le cinque carriere vedenti hanno da 19,78 a 20,19. La carta è
+# strumenti/carriera_perfetta_tappa_12.txt.
+ESPERIENZA_PER_AMICHEVOLE = 0.000692
+ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.001075
 K_GRUPPO_ESPERIENZA = 0.2
-ESPERIENZA_PER_SFIDA = 0.005
+ESPERIENZA_PER_SFIDA = 0.00566
 # Le riserve di una sfida prendono metà dell'esperienza dei titolari, risposta 15 di Gabriele: stare
 # in squadra insegna qualcosa, ma senza punti allenamento né partite nella carriera.
 ESPERIENZA_RISERVA_QUOTA = 0.5
 # I tornei, per l'importanza: ogni incontro giocato, ogni fase superata, cioè un girone passato o un
 # turno di tabellone vinto o saltato col riposo, e il piazzamento a scalare per i primi 12, regola di
 # Gabriele; nessuna quota per la sola partecipazione, risposta 9. Il vecchio premio dei soli primi
-# quattro, da 0,3 a 0,06, sparisce.
-ESPERIENZA_PER_PARTITA_TORNEO = 0.011
-ESPERIENZA_PER_FASE_SUPERATA = 0.012
-ESPERIENZA_PIAZZAMENTO_BASE = 0.06
+# quattro, da 0,3 a 0,06, sparisce. Le prime stime erano molto più alte, perché contavano sui 410
+# incontri di torneo del conto del progetto senza l'importanza e su piazzamenti medi: la carriera
+# perfetta vera vince 54 dei suoi 69 tornei e 6 mondiali, con l'importanza 4, e le fasi superate e i
+# piazzamenti in alto le danno molto più di quanto pensato.
+ESPERIENZA_PER_PARTITA_TORNEO = 0.0074
+ESPERIENZA_PER_FASE_SUPERATA = 0.00442
+ESPERIENZA_PIAZZAMENTO_BASE = 0.03425
 SCALA_PIAZZAMENTI = (1.0, 0.8, 0.65, 0.55, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0.15, 0.10)
 # La classe, da K0 ad A1, D31: il 70 per cento al valore pesato e il 30 all'esperienza. Il valore
 # pesato si misura in rapporto alla somma della carriera perfetta dai 9 ai 50 anni, che vale A1.
@@ -397,10 +417,22 @@ DISTACCO_PIU_DEBOLE = 25.0
 # conto della carriera perfetta di 4.428 giorni con circa 3.580 amichevoli, 410 incontri di torneo e
 # 330 sfide, perché la seduta faccia il 22 per cento dei punti, i tornei il 40, le amichevoli il 34 e
 # le sfide il 4, D32: un'amichevole vale circa 1,9 punti, la metà di prima, e un incontro di torneo
-# circa 19, nove amichevoli. Li fissa strumenti/carriera_perfetta.py riscritto, al punto 13.3.
-PA_FATTORE_AMICHEVOLE = 0.48
-PA_FATTORE_TORNEO = 4.9
-PA_FATTORE_SFIDA = 0.75
+# circa 19, nove amichevoli. Le prime stime erano 0,48, 4,9 e 0,75.
+# La taratura del 14 ottobre 2026, strumenti/carriera_perfetta.py riscritto, punto 13.3: le cinque
+# carriere perfette vedenti giocano davvero il calendario predefinito, i tornei con tornei.py e i loro
+# incontri col motore, il mondiale quando si qualificano, le sfide e le amichevoli, contro i mondi
+# sintetici che giocano anche loro; il totale si cerca col metodo delle secanti perché la più lenta
+# arrivi ad A1 nel mezzo del bersaglio fra 49,5 e 50 anni, e si divide nelle proporzioni 40, 34 e 4
+# della parte delle partite. La prima corsa aveva dato 0,515, 3,512 e 1,045; questa è la terza, coi
+# conteggi delle gare del mondo dopo l'economia e l'esito rapido della verifica finale: la più lenta
+# arriva ad A1 a 49,76 anni con 20.876 punti, 141 al mese, la seduta ne fa il 21,2 per cento, i
+# tornei il 40,4, le amichevoli il 34,3, le sfide il 4,0; un incontro di torneo vale in media 18,5
+# punti, un'amichevole 1,98, una sfida 3,18. Le altre quattro arrivano ad A1 fra 49,41 e 49,55 anni, i
+# tre ipovedenti fra 47,1 e 49,2. La carriera più lenta gioca il primo mondiale a 32 anni e mezzo, e i
+# mondiali, con l'importanza 4, fanno il 29 per cento dei suoi punti dei tornei.
+PA_FATTORE_AMICHEVOLE = 0.506
+PA_FATTORE_TORNEO = 3.434
+PA_FATTORE_SFIDA = 1.022
 # Il costo dei punti, tarato sul valore: il costo marginale di una caratteristica è
 # COSTO_PER_PUNTO_PESATO per il suo peso nel valore, per lo sconto, diviso l'efficacia, per
 # exp(CRESCITA_DEL_COSTO per il livello relativo). Dal livello zero al tetto il costo cresce di
@@ -572,6 +604,12 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # 11,8, uno di resistenza 3,9 e 4,2, il mancino 2,6 e 3,4, dentro la banda da 2 a 6 di Gabriele. I pesi
 # della classe, PESI_CLASSE e PESI_TRATTI_CLASSE, restano quelli congelati della tappa 11, con le
 # battute a 0,71: la classe premia le battute più del valore, ed è una decisione per Gabriele.
+# La scala della tappa 12, punto 13.4: coi pesi nuovi e col mondo che gioca, i giocatori del computer
+# prendono dai tornei e dalle sfide quasi quanto dalla seduta e il mondo è più forte; la forma chiusa
+# all'anno 10, in tre giri, dà A -38,33 e B 1,0295, con la mediana del valore a 135 e lo stipendio
+# pagato a 100, 200 e da 450 a 470 euro al decimo, cinquantesimo e novantesimo percentile, tesserati al
+# 91 per cento. All'anno 20 la mediana del valore sale a 144, lo stipendio mediano a 240 e quello del
+# decimo percentile a 110 o 120. La carta è strumenti/economia_tappa_12.txt.
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
 PESI_VALORE = {
@@ -581,8 +619,8 @@ PESI_VALORE = {
     "tenutapaletta": 1.26, "controllopalla": 0.80, "attacco": 1.41, "precisione": 10.55, "forza": 5.78, "resistenza": 3.80,
 }
 PESI_TRATTI = {"mancino": 3.0, "ambidestro": 4.5, "giocorapido": 0.9, "cambiovelocita": 4.8}
-SCALA_VALORE_A = -50.68
-SCALA_VALORE_B = 1.1414
+SCALA_VALORE_A = -38.33
+SCALA_VALORE_B = 1.0295
 SOGLIA_PESO_INERTE = 0.25
 # La tappa 12, il mondo che gioca, decisione D32 e progetto definitivo del 13 ottobre 2026. Le
 # costanti nascono man mano che nascono le parti del mondo che le usano, ciascuna col suo racconto.
@@ -636,9 +674,17 @@ MESI_PALMARES_GLORIA = 60
 # I coefficienti della radice dei punti: erano 8 per le medaglie e 12 per le coppe, e con i volumi del
 # calendario il palmarès avrebbe fatto l'83 per cento della gloria. Gabriele lo vuole a metà, risposta
 # 11: il 50 per cento della gloria della polisportiva mediana del computer dopo vent'anni, il 65 per
-# il primo decimo. Prime stime, che fissa strumenti/simulazione_lunga.py --cerca-economia al punto 13.4.
-K_GLORIA_MEDAGLIE = 3.0
-K_GLORIA_COPPE = 3.0
+# il primo decimo. Le prime stime erano 3 e 3. La taratura del 14 ottobre 2026, punto 13.4: con 3 e 3,
+# all'anno 20, il palmarès faceva il 38 per cento della gloria mediana e il 47 del primo decimo.
+# strumenti/simulazione_lunga.py --cerca-economia li cerca in forma chiusa sul campione dell'anno 20,
+# dove la finestra di cinque anni del calendario è piena: il primo giro ha dato 9,01 e 0, il secondo
+# 3,36 e 9,79, perché le coppe, soprattutto quelle della Coppa delle polisportive, stanno nelle
+# polisportive più gloriose e alzano il primo decimo. Con questi due, e con la scala e lo sponsor
+# trovati dopo, il palmarès fa all'anno 20 il 51 per cento della gloria della polisportiva mediana del
+# computer e dal 65 al 66 del primo decimo, dentro i bersagli dal 45 al 55 e dal 60 al 70; all'anno 10,
+# con la finestra ancora a metà, il 44 e il 59.
+K_GLORIA_MEDAGLIE = 3.36
+K_GLORIA_COPPE = 9.79
 # Una coppa d'oro di una sfida vale 2 punti, una della Coppa delle polisportive 300: cinque anni di
 # sfide valgono quanto una Coppa vinta.
 IMPORTANZA_COPPA_SFIDA = 0.02
@@ -701,16 +747,18 @@ DIFFERITE_SFIDE_TUE = 10
 # dei piazzamenti, col premio a scalare senza la sua base, e delle sfide. Li misura
 # strumenti/simulazione_lunga.py, e li usano strumenti/mondi_sintetici.py, perché i giocatori dei mondi
 # sintetici giochino come quelli del mondo, e strumenti/carriera_perfetta.py. La prima misura, del 14
-# ottobre 2026, è la media del terzo anno di calendario di due simulazioni di tre anni, semi 2026 e 7,
-# coi valori di partenza della tappa: 2,15 e 2,10 sfide al mese per polisportiva; i tornei a testa dei
-# tesserati sani erano 4,1 e 4,3 l'anno, sotto il ritmo di Gabriele, perché le casse del computer erano
-# ancora quelle di prima della taratura dell'economia.
+# ottobre 2026, era la media del terzo anno di calendario di due simulazioni di tre anni coi valori di
+# partenza della tappa, quando i tornei a testa dei tesserati sani erano 4,1 e 4,3 l'anno, sotto il
+# ritmo di Gabriele, perché le casse del computer erano ancora quelle di prima della taratura
+# dell'economia. Questi sono quelli dopo l'economia: la media degli anni di calendario dal quarto al
+# sesto di quattro simulazioni di vent'anni, semi 2026, 7, 13 e 21, coi tornei a testa a 5,6 l'anno e
+# 2,1 sfide al mese per polisportiva; i punti dei tornei sono dal 10 al 40 per cento più di prima.
 SFIDE_GIOCATE_AL_MESE = 2.1
 CONTEGGI_GARE_MONDO = (
-    (9, 20, 0.1938, 0.0353, 0.0567, 0.0156, 0.0025, 0.0210),
-    (20, 35, 0.1974, 0.0434, 0.0569, 0.0170, 0.0028, 0.0252),
-    (35, 50, 0.1629, 0.0416, 0.0494, 0.0110, 0.0017, 0.0251),
-    (50, 76, 0.1430, 0.0634, 0.0443, 0.0096, 0.0014, 0.0350),
+    (9, 20, 0.2095, 0.0270, 0.0626, 0.0125, 0.0017, 0.0155),
+    (20, 35, 0.2464, 0.0411, 0.0703, 0.0211, 0.0034, 0.0231),
+    (35, 50, 0.2142, 0.0369, 0.0640, 0.0151, 0.0022, 0.0215),
+    (50, 76, 0.2025, 0.0431, 0.0619, 0.0138, 0.0019, 0.0265),
 )
 
 

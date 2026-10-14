@@ -1,0 +1,51 @@
+Carriera perfetta col calendario vero, tappa 12: somma congelata 363,5, sfide della polisportiva 2,10 al mese, carriere di 4428 giorni.
+Mondi sintetici del giro: 3000 giocatori all'anno 10 e 20600 a regime, pronti in 47,3 secondi.
+Giro 1: soglia del mondiale, il punteggio di classe del trentaduesimo, 0,6967 per gli uomini e 0,7012 per le donne.
+Giro 1, passo 1: fattori torneo 3,512, amichevole 0,515, sfida 1,045; totale della più lenta 20909 punti; età di A1 49,43, 48,96, 48,80, 48,71, 49,43; esperienza a 50 anni senza tetto 19,78, 20,69, 20,60, 20,56, 20,02.
+Giro 1, passo 2: fattori torneo 3,509, amichevole 0,499, sfida 1,005; totale della più lenta 20891 punti; età di A1 48,68, 49,42, 49,40, 49,42, 49,55; esperienza a 50 anni senza tetto 20,67, 20,59, 20,54, 20,45, 20,25.
+Giro 1, passo 3: fattori torneo 3,468, amichevole 0,503, sfida 1,015; totale della più lenta 20856 punti; età di A1 48,84, 49,43, 49,41, 49,43, 49,80; esperienza a 50 anni senza tetto 20,46, 20,38, 20,33, 20,24, 20,05.
+Fine del giro 1: i fattori si sono spostati al più del 2,8 per cento dall'inizio del giro.
+Mondi sintetici del giro: 3000 giocatori all'anno 10 e 20600 a regime, pronti in 49,0 secondi.
+Giro 2: soglia del mondiale, il punteggio di classe del trentaduesimo, 0,6962 per gli uomini e 0,7007 per le donne.
+Giro 2, passo 1: fattori torneo 3,468, amichevole 0,503, sfida 1,015; totale della più lenta 20856 punti; età di A1 49,43, 49,53, 49,40, 49,43, 49,82; esperienza a 50 anni senza tetto 19,96, 20,24, 20,38, 20,22, 19,98.
+Giro 2, passo 2: fattori torneo 3,486, amichevole 0,505, sfida 1,010; totale della più lenta 20946 punti; età di A1 49,42, 49,44, 49,39, 49,43, 49,42; esperienza a 50 anni senza tetto 20,03, 20,26, 20,40, 20,29, 20,34.
+Giro 2, passo 3: fattori torneo 3,447, amichevole 0,506, sfida 1,022; totale della più lenta 20911 punti; età di A1 49,43, 49,60, 49,41, 49,43, 49,43; esperienza a 50 anni senza tetto 19,82, 20,10, 20,18, 20,09, 20,15.
+Giro 2, passo 4: fattori torneo 3,434, amichevole 0,506, sfida 1,022; totale della più lenta 20876 punti; età di A1 49,43, 49,76, 49,41, 49,51, 49,55; esperienza a 50 anni senza tetto 19,78, 20,05, 20,19, 20,04, 20,01.
+Fine del giro 2: i fattori si sono spostati al più del 1,0 per cento dall'inizio del giro.
+La ricerca ha fatto 7 passi in 2 giri.
+La carriera più lenta, il nato numero 892: 20876 punti allenamento in 4428 giorni, 141,4 al mese di 30 giorni; la seduta ne fa il 21,2 per cento, i tornei il 40,4, le amichevoli il 34,3, le sfide il 4,0; sulla parte delle partite, le proporzioni 40, 34 e 4 di D32 diventano 40,00, 34,00 e 4,00.
+Che cosa ha giocato: 69 tornei, di cui 6 mondiali, con 456 incontri e 426 vinti; 8 turni saltati col contatore; medaglie: 54 ori, 0 argenti, 2 bronzi, 2 legni, 6 titoli mondiali; 265 sfide, 197 vinte; 3614 amichevoli. Un incontro di torneo vale in media 18,5 punti, un'amichevole 1,98, una sfida 3,18.
+Il mondiale, con l'importanza 4: la carriera più lenta lo gioca per la prima volta a 32,5 anni, e i suoi incontri fanno il 28,8 per cento dei punti grezzi dei tornei: i punti si spostano verso la fine della carriera, come vuole Gabriele, risposta 10.
+Le cinque carriere vedenti: nato numero 616, A1 a 49,43 anni, somma a 50 367,5, esperienza a 50 senza tetto 19,78, 69 tornei, 6 mondiali; nato numero 892, A1 a 49,76 anni, somma a 50 364,0, esperienza a 50 senza tetto 20,05, 69 tornei, 6 mondiali; nato numero 2437, A1 a 49,41 anni, somma a 50 366,3, esperienza a 50 senza tetto 20,19, 69 tornei, 6 mondiali; nato numero 181, A1 a 49,51 anni, somma a 50 366,3, esperienza a 50 senza tetto 20,04, 70 tornei, 6 mondiali; nato numero 1941, A1 a 49,55 anni, somma a 50 365,1, esperienza a 50 senza tetto 20,01, 69 tornei, 6 mondiali.
+Le tre carriere di nati ipovedenti, con lo sconto del 7 per cento sulle caratteristiche di gioco: nato numero 866, A1 a 47,12 anni, somma a 50 378,8; nato numero 2977, A1 a 49,22 anni, somma a 50 373,0; nato numero 2110, A1 a 48,14 anni, somma a 50 376,9.
+L'esperienza della carriera più lenta a 50 anni, fonte per fonte: età 2,05, amichevoli 2,50, sfide 1,50, club 5,00, incontri di torneo 4,50, fasi superate 1,80, piazzamenti 2,70; i tornei insieme 9,00; in tutto senza tetto 20,05.
+Carriera più lenta a 20 anni: classe D7, somma 247,0, valore 217,7, esperienza 4,16.
+Carriera più lenta a 30 anni: classe C5, somma 288,6, valore 261,0, esperienza 8,47.
+Carriera più lenta a 40 anni: classe B2, somma 331,5, valore 305,5, esperienza 14,44.
+Carriera più lenta a 50 anni: classe A1, somma 364,0, valore 339,2, esperienza 20,05.
+I bersagli del punto 13.3: la più lenta delle cinque carriere vedenti ad A1 fra 49,5 e 50 anni, e nessuna dopo i 50: dentro; l'esperienza a 50 anni senza tetto fra 19,9 e 20,1: dentro.
+Caso, mediano del computer, in polisportiva dai 20 anni, a 35: classe F1, valore 155,7, esperienza 2,58, stipendio 320 euro.
+Caso, mediano del computer, in polisportiva dai 20 anni, a 50: classe E3, valore 179,2, esperienza 5,16, stipendio 620 euro.
+Caso, libero mediano a 50 anni: classe F5, valore 156,3, esperienza 1,25, stipendio 310 euro.
+Caso, mediano dell'utente dai 20 anni, con un'amichevole ogni due giorni e i tornei, a 25: classe F9, valore 146,4, esperienza 1,05, stipendio 240 euro.
+Caso, mediano dell'utente dai 20 anni, con un'amichevole ogni due giorni e i tornei, a 30: classe F0, valore 164,2, esperienza 2,09, stipendio 390 euro.
+Caso, mediano dell'utente dai 20 anni, con un'amichevole ogni due giorni e i tornei, a 35: classe E6, valore 179,5, esperienza 3,14, stipendio 590 euro.
+Caso, mediano dell'utente dai 20 anni, con un'amichevole ogni due giorni e i tornei, a 40: classe E2, valore 192,3, esperienza 4,19, stipendio 830 euro.
+Caso, bravo dell'utente dai 15 anni, con un'amichevole ogni due giorni e i tornei, a 30: classe E1, valore 205,3, esperienza 3,14, stipendio 1120 euro.
+Caso, bravo dell'utente dai 15 anni, con un'amichevole ogni due giorni e i tornei, a 40: classe D3, valore 233,0, esperienza 5,23, stipendio 2370 euro.
+Caso, bravo dell'utente dai 15 anni, con un'amichevole ogni due giorni e i tornei, a 50: classe C7, valore 254,9, esperienza 7,33, stipendio 4310 euro.
+Mondo sintetico all'anno 10: lettere D 0,0, E 6,6, F 29,4, G 38,3, H 20,4, I 4,9, J 0,3; valore mediano 135,1.
+Mondo sintetico a regime: lettere C 4,2, D 18,8, E 34,4, F 21,1, G 14,3, H 6,0, I 1,1, J 0,1; valore mediano 160,2.
+Mondo sintetico all'anno 20: lettere D 0,5, E 25,9, F 31,8, G 27,6, H 11,7, I 2,5, J 0,1; valore mediano 143,3.
+Mondo sintetico all'anno 40: lettere C 0,6, D 16,1, E 37,1, F 22,8, G 14,9, H 7,2, I 1,2, J 0,1; valore mediano 156,3.
+Il blocco da copiare in costanti.py:
+PA_FATTORE_AMICHEVOLE = 0.506
+PA_FATTORE_TORNEO = 3.434
+PA_FATTORE_SFIDA = 1.022
+ESPERIENZA_PER_AMICHEVOLE = 0.000692
+ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.001075
+ESPERIENZA_PER_SFIDA = 0.00566
+ESPERIENZA_PER_PARTITA_TORNEO = 0.00740
+ESPERIENZA_PER_FASE_SUPERATA = 0.00442
+ESPERIENZA_PIAZZAMENTO_BASE = 0.03425
+Misura completata in 306,1 secondi.

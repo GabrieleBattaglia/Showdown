@@ -1057,7 +1057,10 @@ class ScenarioUtente:
         rosa = sorted(mondo._rosa(self.poli), key=lambda g: g.id)
         di_turno = [g for i, g in enumerate(rosa) if (i + giorno) % 2 == 0 and g.puo_giocare_amichevole(mondo.datetime_corrente_simulazione)]
         for a, b in zip(di_turno[0::2], di_turno[1::2], strict=False):
-            risultato = simula_incontro(a, b, SINGOLARE_3, seme=self.rng.getrandbits(63), dettaglio=ESSENZIALE)
+            # Dalla tappa 12 il motore estrae gli infortuni e gli acciacchi, e l'amichevole li riceve
+            # come nel gioco, con le basi d'infortunio e i cali di oggi.
+            basi, cali = self.motore.basi_e_cali(a, b)
+            risultato = simula_incontro(a, b, SINGOLARE_3, seme=self.rng.getrandbits(63), dettaglio=ESSENZIALE, basi_infortunio=basi, cali=cali)
             self.motore.registra(risultato)
             self.anno["amichevoli"] += 1
 

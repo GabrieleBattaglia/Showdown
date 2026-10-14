@@ -66,7 +66,8 @@ FUNZIONI_DEL_MOTORE = (("gioca_punto", "scambio.py"), ("prepara_punto", "campo.p
 FUNZIONI_DEL_GIORNO = (("_fai_invecchiare", "mondo.py"), ("_applica_declino_aggregato", "modelli.py"), ("_allenamento_del_giorno", "mondo.py"),
                        ("_esegui_logica_cpu_polisportive", "mondo.py"), ("_compra_dal_mercato", "mondo.py"), ("_stipendio_massimo", "mondo.py"),
                        ("aggiorna_icv", "modelli.py"), ("aggiorna_stato_polisportive", "mondo.py"), ("_primo_del_mese", "mondo.py"),
-                       ("crea_giocatori_casuali", "mondo.py"), ("crea_polisportiva_cpu", "mondo.py"))
+                       ("crea_giocatori_casuali", "mondo.py"), ("crea_polisportiva_cpu", "mondo.py"), ("giorno", "calendario.py"), ("automatiche", "iscrizioni.py"),
+                       ("gioca", "esito_rapido.py"), ("registra", "partita.py"), ("chiudi", "premiazioni.py"), ("giorno", "sfide.py"))
 # L'albo d'oro di prova: le sedi concluse in un anno di calendario a regime, i giocatori e i club
 # diversi che salgono sul podio in sessant'anni, stime del punto 1.4 del progetto.
 SEDI_ALL_ANNO = 4300
@@ -180,17 +181,28 @@ def costruisci_mondo(attivi, seme, scrivi):
     return mondo
 
 
-def misura_giorno(mondo, giorni, scrivi):
-    """La media, la mediana e il giorno peggiore dei giorni misurati, dopo un giorno di riscaldamento, e il profilo di tre giorni."""
+def misura_giorno(mondo, giorni, scrivi, riscaldamento=1):
+    """
+    La media, la mediana e il giorno peggiore dei giorni misurati, dopo i giorni di riscaldamento, e il
+    profilo di tre giorni. Dalla taratura della tappa 12 il riscaldamento si sceglie: il mondo a regime
+    nasce col calendario vuoto, e soltanto dopo un paio di mesi ha le sue edizioni aperte e le sue sedi
+    in corso come il mondo vero; i giorni misurati dicono anche gli incontri di torneo e le sfide.
+    """
     stato = random.getstate()
     random.seed("profilo-giorno")
     try:
-        ms.avanza_un_giorno(mondo)
-        tempi = []
+        inizio_riscaldamento = time.perf_counter()
+        for _ in range(max(1, riscaldamento)):
+            ms.avanza_un_giorno(mondo)
+        if riscaldamento > 1:
+            scrivi(f"Riscaldamento di {riscaldamento} giorni in {numero(time.perf_counter() - inizio_riscaldamento)} secondi.")
+        tempi, incontri, sfide = [], [], []
         for _ in range(giorni):
             inizio = time.perf_counter()
-            ms.avanza_un_giorno(mondo)
+            rapporto = ms.avanza_un_giorno(mondo)
             tempi.append(time.perf_counter() - inizio)
+            incontri.append(rapporto["incontri_torneo"])
+            sfide.append(rapporto["sfide_giocate"])
         profilo = cProfile.Profile()
         for _ in range(3):
             profilo.enable()
@@ -199,9 +211,11 @@ def misura_giorno(mondo, giorni, scrivi):
     finally:
         random.setstate(stato)
     riassunto = ms.riassunto_del_mondo(mondo)
+    peggiore = max(range(len(tempi)), key=lambda i: tempi[i])
     scrivi(f"Il giorno simulato, {giorni} giorni senza profilo: media {numero(1000 * statistics.fmean(tempi))} millisecondi, mediana "
-           f"{numero(1000 * statistics.median(tempi))}, il più veloce {numero(1000 * min(tempi))}, il peggiore {numero(1000 * max(tempi))}. "
-           f"Alla fine il mondo ha {riassunto['attivi']} attivi, {riassunto['tesserati']} tesserati e {riassunto['polisportive']} polisportive.")
+           f"{numero(1000 * statistics.median(tempi))}, il più veloce {numero(1000 * min(tempi))}, il peggiore {numero(1000 * max(tempi))}, con "
+           f"{incontri[peggiore]} incontri di torneo; in media {numero(statistics.fmean(incontri), 1)} incontri di torneo e {numero(statistics.fmean(sfide), 1)} sfide al giorno, "
+           f"al più {max(incontri)} incontri. Alla fine il mondo ha {riassunto['attivi']} attivi, {riassunto['tesserati']} tesserati e {riassunto['polisportive']} polisportive.")
     scrivi("Il profilo di tre giorni: " + frase_delle_quote(quote_del_profilo(profilo, FUNZIONI_DEL_GIORNO)) + ".")
 
 
@@ -272,6 +286,7 @@ def main():
     parser.add_argument("--attivi", type=int, default=5000, help="i giocatori in attività del mondo a regime, 5000 se non indicato")
     parser.add_argument("--giorni", type=int, default=20, help="i giorni misurati, 20 se non indicato")
     parser.add_argument("--anno", action="store_true", help="misura un anno di calendario, 365 giorni")
+    parser.add_argument("--riscaldamento", type=int, default=1, help="i giorni da far avanzare prima di misurare, uno se non indicato; 90 perché il calendario sia pieno")
     parser.add_argument("--quanti", type=int, default=400, help="gli incontri per formato di --incontri, 400 se non indicato")
     parser.add_argument("--seme", type=int, default=31, help="il seme del mondo a regime, 31 se non indicato")
     parser.add_argument("--rapporto", nargs="?", type=Path, const=RAPPORTO_PREDEFINITO, default=None, help="salva il racconto, in strumenti/profilo_tappa_12.txt se non si dà un file")
@@ -300,7 +315,7 @@ def main():
         if argomenti.giorno or argomenti.salvataggio:
             mondo = costruisci_mondo(argomenti.attivi, argomenti.seme, scrivi)
             if argomenti.giorno:
-                misura_giorno(mondo, 365 if argomenti.anno else argomenti.giorni, scrivi)
+                misura_giorno(mondo, 365 if argomenti.anno else argomenti.giorni, scrivi, argomenti.riscaldamento)
             if argomenti.salvataggio:
                 misura_salvataggio(mondo, scrivi)
     finally:

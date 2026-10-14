@@ -1,53 +1,89 @@
-Taratura dell'esito rapido sul motore vero: 4500 giocatori in tre popolazioni, 20000 incontri e 4000 gare a squadre, pronti in 4,6 secondi.
-Regressioni fatte in 34,5 secondi, su 613630 scambi dei singolari e 133505 delle gare a squadre; la pendenza della regressione è 0,2990, quella della gara a squadre 0,3088.
-Il ritocco sugli incontri della taratura, rigiocati con l'esito rapido per 73 coppie di fattori: la pendenza per 1,2625 e il peso della fatica per 1,650; la somma pesata dei quadrati degli scarti scende da 12,23 senza ritocco a 1,51 per incontro.
-Il ritocco della pendenza della gara a squadre, sulle gare della taratura: il fattore scelto è 1,475.
+La carta della taratura dell'esito rapido della tappa 12, punti 6.4 e 13.5 del progetto, 14 ottobre 2026. La storia in breve: il primo giro del passo 2 dava al favorito da 2 a 4 punti meno del motore; la prima corsa del passo 4 ha mostrato perché, con gli anziani dai 50 anni fino a 9 punti sopra il motore e gli acciaccati 3 e mezzo, e ha portato al ritocco a due fattori, la pendenza e il peso della fatica, scelto rigiocando con l'esito rapido gli incontri della taratura; la taratura su tre popolazioni passava tutti i bersagli, con la pendenza per 1,26 e la fatica per 1,65. La verifica finale del punto 13.5, sui giocatori in attività del mondo simulato all'anno 20 col seme 2026, ha trovato la fascia dal 15 al 30 per cento al meglio dei 3 a 4,1 punti sopra il motore, fuori: come vuole il progetto, la taratura si è rifatta su quella popolazione insieme alle altre tre, ed è quella qui sotto, seguita dalla verifica sulla sola popolazione dell'anno 20, che ora sta dentro.
+La taratura rifatta, su quattro popolazioni:
+Taratura dell'esito rapido sul motore vero: 15611 giocatori, di cui 11111 del mondo simulato al 2031-12-01, 20000 incontri e 4000 gare a squadre, pronti in 12,7 secondi.
+Regressioni fatte in 111,9 secondi, su 638258 scambi dei singolari e 139496 delle gare a squadre; la pendenza della regressione è 0,2950, quella della gara a squadre 0,3109.
+Il ritocco sugli incontri della taratura, rigiocati con l'esito rapido per 73 coppie di fattori: la pendenza per 1,0375 e il peso della fatica per 1,400; la somma pesata dei quadrati degli scarti scende da 9,56 senza ritocco a 2,10 per incontro.
+Il ritocco della pendenza della gara a squadre, sulle gare della taratura: il fattore scelto è 1,375.
 La verifica: 40000 incontri e 5000 gare a squadre su altre coppie e altri semi, giocati col motore e con l'esito rapido.
-Al meglio dei 3, 32060 incontri.
-Distacco meno del 5 per cento, 14554 incontri: il favorito vince il 50,3 per cento col motore e il 50,4 con l'esito rapido, scarto 0,2, con un errore di 0,6, bersaglio entro 2,0: dentro.
-Distacco fra il 5 e il 15 per cento, 2986 incontri: il favorito vince il 59,4 per cento col motore e il 59,8 con l'esito rapido, scarto 0,4, con un errore di 1,3, bersaglio entro 2,0: dentro.
-Distacco fra il 15 e il 30 per cento, 3494 incontri: il favorito vince il 71,9 per cento col motore e il 74,0 con l'esito rapido, scarto 2,1, con un errore di 1,1, bersaglio entro 2,0: dentro col rumore.
-Distacco oltre il 30 per cento, 11026 incontri: il favorito vince il 92,6 per cento col motore e il 93,3 con l'esito rapido, scarto 0,7, con un errore di 0,4, bersaglio entro 2,0: dentro.
-Punti medi per set 17,30 col motore e 17,23 con l'esito rapido, bersaglio entro 0,3: dentro. Set oltre i 12 punti 5,1 e 5,2 per cento, bersaglio entro 1,5: dentro.
-Risultati in set degli incontri regolari, motore ed esito rapido: 2 a 0 63,9 e 63,6; 2 a 1 36,1 e 36,4; lo scarto più grande 0,3, bersaglio entro 3,0: dentro.
-Al meglio dei 5, 7940 incontri.
-Distacco meno del 5 per cento, 3682 incontri: il favorito vince il 51,7 per cento col motore e il 52,2 con l'esito rapido, scarto 0,5, con un errore di 1,2, bersaglio entro 2,0: dentro.
-Distacco fra il 5 e il 15 per cento, 678 incontri: il favorito vince il 61,4 per cento col motore e il 62,1 con l'esito rapido, scarto 0,7, con un errore di 2,6, bersaglio entro 2,0: dentro.
-Distacco fra il 15 e il 30 per cento, 899 incontri: il favorito vince il 72,9 per cento col motore e il 76,4 con l'esito rapido, scarto 3,6, con un errore di 2,1, bersaglio entro 2,0: dentro col rumore.
-Distacco oltre il 30 per cento, 2681 incontri: il favorito vince il 93,8 per cento col motore e il 94,0 con l'esito rapido, scarto 0,3, con un errore di 0,7, bersaglio entro 2,0: dentro.
-Punti medi per set 17,38 col motore e 17,21 con l'esito rapido, bersaglio entro 0,3: dentro. Set oltre i 12 punti 5,4 e 5,1 per cento, bersaglio entro 1,5: dentro.
-Risultati in set degli incontri regolari, motore ed esito rapido: 3 a 0 46,0 e 46,6; 3 a 1 30,6 e 29,9; 3 a 2 23,3 e 23,5; lo scarto più grande 0,7, bersaglio entro 3,0: dentro.
-Motore, tutti gli incontri: infortuni che fermano 354, acciacchi 1366, ritiri 246.
-Esito rapido, tutti gli incontri: infortuni che fermano 324, acciacchi 1380, ritiri 218.
-Infortuni che fermano per incontro: 0,89 col motore e 0,81 con l'esito rapido ogni cento incontri, scarto relativo -8,5 per cento, con un errore di 7,4, bersaglio entro 5: dentro col rumore.
-Acciacchi per incontro: 3,42 col motore e 3,45 con l'esito rapido ogni cento incontri, scarto relativo 1,0 per cento, con un errore di 3,8, bersaglio entro 5: dentro.
-Ritiri per incontro: 0,61 col motore e 0,55 con l'esito rapido ogni cento incontri, scarto relativo -11,4 per cento, con un errore di 8,8, bersaglio entro 5: dentro col rumore.
-I residui, cioè la vittoria col motore meno quella con l'esito rapido di chi sta nel gruppo, in punti percentuali, con le volte che ha giocato e l'errore della media, bersaglio entro 3,0: età dai 0 anni, 629, 1,6 più o meno 2,1, dentro; età dai 10 anni, 13199, 0,6 più o meno 0,5, dentro; età dai 20 anni, 17523, -0,3 più o meno 0,4, dentro; età dai 30 anni, 21023, -0,0 più o meno 0,4, dentro; età dai 40 anni, 16406, 0,5 più o meno 0,4, dentro; età dai 50 anni, 7032, -0,1 più o meno 0,7, dentro; età dai 60 anni, 3702, -3,0 più o meno 0,9, dentro; età dai 70 anni, 486, 1,0 più o meno 2,5, dentro; indole aggressiva, 9650, -1,1 più o meno 0,6, dentro; indole atletica, 10173, -1,1 più o meno 0,5, dentro; indole battuta, 10221, -0,0 più o meno 0,5, dentro; indole completa, 7188, -0,4 più o meno 0,7, dentro; indole controllo, 9951, 0,9 più o meno 0,6, dentro; indole difensiva, 7493, -0,9 più o meno 0,6, dentro; indole muro, 7026, 2,9 più o meno 0,7, dentro; indole rimessa, 7578, 1,1 più o meno 0,6, dentro; indole tecnica, 10720, -0,5 più o meno 0,5, dentro; l'acciaccato, 3934, -1,8 più o meno 0,9, dentro; la donna nelle coppie miste, 20030, -0,1 più o meno 0,4, dentro; tratto ambidestro, 2906, 1,1 più o meno 1,1, dentro; tratto cambiovelocita, 11723, -1,1 più o meno 0,5, dentro; tratto giocorapido, 8975, -0,7 più o meno 0,6, dentro; tratto mancino, 7280, 1,0 più o meno 0,6, dentro.
-Gara a squadre, distacco meno del 5 per cento, 609 gare: la favorita vince il 49,8 per cento col motore e il 53,4 con l'esito rapido, scarto 3,6, con un errore di 2,9, bersaglio entro 3,0: dentro col rumore.
-Gara a squadre, distacco fra il 5 e il 15 per cento, 1002 gare: la favorita vince il 65,6 per cento col motore e il 61,9 con l'esito rapido, scarto -3,7, con un errore di 2,1, bersaglio entro 3,0: dentro col rumore.
-Gara a squadre, distacco fra il 15 e il 30 per cento, 1196 gare: la favorita vince il 77,3 per cento col motore e il 75,1 con l'esito rapido, scarto -2,2, con un errore di 1,7, bersaglio entro 3,0: dentro.
-Gara a squadre, distacco oltre il 30 per cento, 2193 gare: la favorita vince il 91,9 per cento col motore e il 93,7 con l'esito rapido, scarto 1,8, con un errore di 0,8, bersaglio entro 3,0: dentro.
-Gara a squadre, 5000 gare: punti del set 51,79 col motore e 51,55 con l'esito rapido, bersaglio entro 1,0: dentro.
-Sonda della stanchezza al meglio dei 3: il giovane resistente vince contro sé stesso anziano il 85,8 per cento col motore e il 91,0 con l'esito rapido.
-Sonda della stanchezza al meglio dei 5: il giovane resistente vince contro sé stesso anziano il 96,0 per cento col motore e il 99,2 con l'esito rapido, bersaglio entro 4,0: dentro.
-Forti alla pari, 2666 incontri al meglio dei 3: uno con un set oltre i 12 punti ogni 6,9 col motore e ogni 6,8 con l'esito rapido, D25 e D26 da sette a otto.
+Al meglio dei 3, 32074 incontri.
+Distacco meno del 5 per cento, 14741 incontri: il favorito vince il 50,8 per cento col motore e il 51,3 con l'esito rapido, scarto 0,5, con un errore di 0,6, bersaglio entro 2,0: dentro.
+Distacco fra il 5 e il 15 per cento, 3469 incontri: il favorito vince il 62,1 per cento col motore e il 61,8 con l'esito rapido, scarto -0,3, con un errore di 1,2, bersaglio entro 2,0: dentro.
+Distacco fra il 15 e il 30 per cento, 4098 incontri: il favorito vince il 72,2 per cento col motore e il 74,4 con l'esito rapido, scarto 2,1, con un errore di 1,0, bersaglio entro 2,0: dentro col rumore.
+Distacco oltre il 30 per cento, 9766 incontri: il favorito vince il 91,4 per cento col motore e il 91,6 con l'esito rapido, scarto 0,1, con un errore di 0,4, bersaglio entro 2,0: dentro.
+Punti medi per set 17,55 col motore e 17,59 con l'esito rapido, bersaglio entro 0,3: dentro. Set oltre i 12 punti 5,6 e 5,6 per cento, bersaglio entro 1,5: dentro.
+Risultati in set degli incontri regolari, motore ed esito rapido: 2 a 0 61,1 e 59,7; 2 a 1 38,9 e 40,3; lo scarto più grande 1,4, bersaglio entro 3,0: dentro.
+Al meglio dei 5, 7926 incontri.
+Distacco meno del 5 per cento, 3716 incontri: il favorito vince il 50,5 per cento col motore e il 49,2 con l'esito rapido, scarto -1,2, con un errore di 1,2, bersaglio entro 2,0: dentro.
+Distacco fra il 5 e il 15 per cento, 823 incontri: il favorito vince il 61,2 per cento col motore e il 65,1 con l'esito rapido, scarto 3,9, con un errore di 2,4, bersaglio entro 2,0: dentro col rumore.
+Distacco fra il 15 e il 30 per cento, 950 incontri: il favorito vince il 77,6 per cento col motore e il 75,1 con l'esito rapido, scarto -2,5, con un errore di 1,9, bersaglio entro 2,0: dentro col rumore.
+Distacco oltre il 30 per cento, 2437 incontri: il favorito vince il 93,5 per cento col motore e il 93,0 con l'esito rapido, scarto -0,5, con un errore di 0,7, bersaglio entro 2,0: dentro.
+Punti medi per set 17,56 col motore e 17,54 con l'esito rapido, bersaglio entro 0,3: dentro. Set oltre i 12 punti 5,6 e 5,6 per cento, bersaglio entro 1,5: dentro.
+Risultati in set degli incontri regolari, motore ed esito rapido: 3 a 0 41,3 e 41,2; 3 a 1 32,7 e 33,6; 3 a 2 26,0 e 25,1; lo scarto più grande 0,9, bersaglio entro 3,0: dentro.
+Motore, tutti gli incontri: infortuni che fermano 334, acciacchi 1411, ritiri 230.
+Esito rapido, tutti gli incontri: infortuni che fermano 345, acciacchi 1474, ritiri 248.
+Infortuni che fermano per incontro: 0,83 col motore e 0,86 con l'esito rapido ogni cento incontri, scarto relativo 3,3 per cento, con un errore di 7,8, bersaglio entro 5: dentro.
+Acciacchi per incontro: 3,53 col motore e 3,69 con l'esito rapido ogni cento incontri, scarto relativo 4,5 per cento, con un errore di 3,8, bersaglio entro 5: dentro.
+Ritiri per incontro: 0,57 col motore e 0,62 con l'esito rapido ogni cento incontri, scarto relativo 7,8 per cento, con un errore di 9,5, bersaglio entro 5: dentro col rumore.
+I residui, cioè la vittoria col motore meno quella con l'esito rapido di chi sta nel gruppo, in punti percentuali, con le volte che ha giocato e l'errore della media, bersaglio entro 3,0: età dai 0 anni, 242, 0,0 più o meno 3,4, dentro; età dai 10 anni, 8794, 0,4 più o meno 0,6, dentro; età dai 20 anni, 17869, 0,5 più o meno 0,4, dentro; età dai 30 anni, 22288, -0,3 più o meno 0,4, dentro; età dai 40 anni, 19442, -0,1 più o meno 0,4, dentro; età dai 50 anni, 9567, -0,3 più o meno 0,6, dentro; età dai 60 anni, 1666, -1,2 più o meno 1,5, dentro; età dai 70 anni, 132, 3,0 più o meno 5,1, pochi incontri, non si giudica; indole aggressiva, 9593, -1,6 più o meno 0,6, dentro; indole atletica, 10139, -1,2 più o meno 0,6, dentro; indole battuta, 10587, 1,0 più o meno 0,6, dentro; indole completa, 7501, 0,8 più o meno 0,7, dentro; indole controllo, 10233, -1,0 più o meno 0,6, dentro; indole difensiva, 7761, 0,1 più o meno 0,7, dentro; indole muro, 6268, 0,3 più o meno 0,8, dentro; indole rimessa, 7383, 2,9 più o meno 0,7, dentro; indole tecnica, 10535, -0,3 più o meno 0,6, dentro; l'acciaccato, 4042, 1,8 più o meno 0,9, dentro; la donna nelle coppie miste, 19854, 0,0 più o meno 0,4, dentro; tratto ambidestro, 3457, 0,7 più o meno 1,0, dentro; tratto cambiovelocita, 11885, -0,9 più o meno 0,5, dentro; tratto giocorapido, 9508, 0,5 più o meno 0,6, dentro; tratto mancino, 6876, -0,3 più o meno 0,7, dentro.
+Gara a squadre, distacco meno del 5 per cento, 784 gare: la favorita vince il 53,3 per cento col motore e il 53,1 con l'esito rapido, scarto -0,3, con un errore di 2,5, bersaglio entro 3,0: dentro.
+Gara a squadre, distacco fra il 5 e il 15 per cento, 1383 gare: la favorita vince il 65,5 per cento col motore e il 65,6 con l'esito rapido, scarto 0,1, con un errore di 1,8, bersaglio entro 3,0: dentro.
+Gara a squadre, distacco fra il 15 e il 30 per cento, 1390 gare: la favorita vince il 77,3 per cento col motore e il 78,5 con l'esito rapido, scarto 1,2, con un errore di 1,6, bersaglio entro 3,0: dentro.
+Gara a squadre, distacco oltre il 30 per cento, 1443 gare: la favorita vince il 91,7 per cento col motore e il 92,9 con l'esito rapido, scarto 1,2, con un errore di 1,0, bersaglio entro 3,0: dentro.
+Gara a squadre, 5000 gare: punti del set 52,80 col motore e 52,52 con l'esito rapido, bersaglio entro 1,0: dentro.
+Sonda della stanchezza al meglio dei 3: il giovane resistente vince contro sé stesso anziano il 85,1 per cento col motore e il 88,2 con l'esito rapido.
+Sonda della stanchezza al meglio dei 5: il giovane resistente vince contro sé stesso anziano il 95,8 per cento col motore e il 98,1 con l'esito rapido, bersaglio entro 4,0: dentro.
+Forti alla pari, 2666 incontri al meglio dei 3: uno con un set oltre i 12 punti ogni 6,6 col motore e ogni 6,6 con l'esito rapido, D25 e D26 da sette a otto.
 Bersagli fuori: nessuno.
-L'esito rapido costa 48,8 microsecondi a incontro al meglio dei 3, con la memoria della forza.
+L'esito rapido costa 53,4 microsecondi a incontro al meglio dei 3, con la memoria della forza.
 Il blocco da copiare nei predefiniti di TaraturaRapida, in esito_rapido.py:
-_PESI = {'lungolineasx': 0.417, 'lungolineadx': 0.3, 'diagonalesx': 0.358, 'diagonaledx': 0.482, 'singolaspondasx': 0.431, 'singolaspondadx': 0.585, 'doppiaspondasx': 0.488, 'doppiaspondadx': 0.174, 'triplaspondasx': 0.222, 'triplaspondadx': 0.289, 'bomba': 0.332, 'battutasx': 0.742, 'battutadx': 0.497, 'chiusura_dritto': 2.298, 'chiusura_rovescio': 3.02, 'blocco_dritto': 1.05, 'blocco_rovescio': 1.202, 'difesa': 3.122, 'tenutapaletta': 1.411, 'controllopalla': 0.828, 'attacco': 1.39, 'precisione': 2.417, 'forza': 1.525, 'resistenza': 0.421}
-_PESI_TRATTI = {'mancino': 0.042, 'ambidestro': 0.089, 'giocorapido': 0.016, 'cambiovelocita': 0.096}
-PESO_LETTURA = 1.241
-PENDENZA = 0.3775
-K_FATICA = 3.434
-VANTAGGIO_BATTUTA = 0.0904
-GOAL_BASE = -0.179
-GOAL_DISTACCO = 0.225
-GOAL_LIVELLO = 0.0194
-PENALITA = 0.00028
-AZIONI_PER_SCAMBIO = 6.689
-ATTACCHI_PER_SCAMBIO = 1.707
-PENDENZA_SQUADRE = 0.4555
-K_FATICA_SQUADRE = 2.894
-VANTAGGIO_BATTUTA_SQUADRE = 0.1021
-GOAL_SQUADRE = 0.1831
-Taratura completata in 271,7 secondi.
+_PESI = {'lungolineasx': 0.369, 'lungolineadx': 0.593, 'diagonalesx': 0.111, 'diagonaledx': 0.528, 'singolaspondasx': 0.326, 'singolaspondadx': 0.597, 'doppiaspondasx': 0.445, 'doppiaspondadx': 0.267, 'triplaspondasx': 0.174, 'triplaspondadx': 0.312, 'bomba': 0.071, 'battutasx': 0.637, 'battutadx': 0.656, 'chiusura_dritto': 2.283, 'chiusura_rovescio': 2.951, 'blocco_dritto': 0.97, 'blocco_rovescio': 1.369, 'difesa': 3.451, 'tenutapaletta': 1.273, 'controllopalla': 0.743, 'attacco': 1.401, 'precisione': 2.665, 'forza': 1.533, 'resistenza': 0.277}
+_PESI_TRATTI = {'mancino': 0.068, 'ambidestro': 0.089, 'giocorapido': -0.009, 'cambiovelocita': 0.092}
+PESO_LETTURA = 1.188
+PENDENZA = 0.3061
+K_FATICA = 2.995
+VANTAGGIO_BATTUTA = 0.0824
+GOAL_BASE = 0.1872
+GOAL_DISTACCO = 0.2382
+GOAL_LIVELLO = -0.0797
+PENALITA = 0.00026
+AZIONI_PER_SCAMBIO = 6.787
+ATTACCHI_PER_SCAMBIO = 1.743
+PENDENZA_SQUADRE = 0.4275
+K_FATICA_SQUADRE = 2.531
+VANTAGGIO_BATTUTA_SQUADRE = 0.0819
+GOAL_SQUADRE = 0.045
+Taratura completata in 479,3 secondi.
+La verifica del punto 13.5 coi numeri nuovi, sulla sola popolazione del mondo simulato all'anno 20:
+Verifica dell'esito rapido sul motore vero, coi numeri di adesso di TaraturaRapida: 11111 giocatori, di cui 11111 del mondo simulato al 2031-12-01.
+La verifica: 40000 incontri e 5000 gare a squadre su altre coppie e altri semi, giocati col motore e con l'esito rapido.
+Al meglio dei 3, 32004 incontri.
+Distacco meno del 5 per cento, 14988 incontri: il favorito vince il 50,4 per cento col motore e il 49,8 con l'esito rapido, scarto -0,6, con un errore di 0,6, bersaglio entro 2,0: dentro.
+Distacco fra il 5 e il 15 per cento, 3787 incontri: il favorito vince il 63,0 per cento col motore e il 63,4 con l'esito rapido, scarto 0,4, con un errore di 1,1, bersaglio entro 2,0: dentro.
+Distacco fra il 15 e il 30 per cento, 4470 incontri: il favorito vince il 73,8 per cento col motore e il 75,2 con l'esito rapido, scarto 1,4, con un errore di 0,9, bersaglio entro 2,0: dentro.
+Distacco oltre il 30 per cento, 8759 incontri: il favorito vince il 91,2 per cento col motore e il 91,0 con l'esito rapido, scarto -0,3, con un errore di 0,4, bersaglio entro 2,0: dentro.
+Punti medi per set 17,66 col motore e 17,73 con l'esito rapido, bersaglio entro 0,3: dentro. Set oltre i 12 punti 5,8 e 5,9 per cento, bersaglio entro 1,5: dentro.
+Risultati in set degli incontri regolari, motore ed esito rapido: 2 a 0 59,7 e 58,5; 2 a 1 40,3 e 41,5; lo scarto più grande 1,2, bersaglio entro 3,0: dentro.
+Al meglio dei 5, 7996 incontri.
+Distacco meno del 5 per cento, 3785 incontri: il favorito vince il 51,2 per cento col motore e il 50,4 con l'esito rapido, scarto -0,8, con un errore di 1,1, bersaglio entro 2,0: dentro.
+Distacco fra il 5 e il 15 per cento, 976 incontri: il favorito vince il 59,4 per cento col motore e il 62,7 con l'esito rapido, scarto 3,3, con un errore di 2,2, bersaglio entro 2,0: dentro col rumore.
+Distacco fra il 15 e il 30 per cento, 1113 incontri: il favorito vince il 77,7 per cento col motore e il 79,3 con l'esito rapido, scarto 1,6, con un errore di 1,8, bersaglio entro 2,0: dentro.
+Distacco oltre il 30 per cento, 2122 incontri: il favorito vince il 92,8 per cento col motore e il 93,9 con l'esito rapido, scarto 1,0, con un errore di 0,8, bersaglio entro 2,0: dentro.
+Punti medi per set 17,64 col motore e 17,69 con l'esito rapido, bersaglio entro 0,3: dentro. Set oltre i 12 punti 5,6 e 5,9 per cento, bersaglio entro 1,5: dentro.
+Risultati in set degli incontri regolari, motore ed esito rapido: 3 a 0 39,1 e 39,5; 3 a 1 34,7 e 34,4; 3 a 2 26,1 e 26,1; lo scarto più grande 0,4, bersaglio entro 3,0: dentro.
+Motore, tutti gli incontri: infortuni che fermano 365, acciacchi 1520, ritiri 245.
+Esito rapido, tutti gli incontri: infortuni che fermano 383, acciacchi 1462, ritiri 263.
+Infortuni che fermano per incontro: 0,91 col motore e 0,96 con l'esito rapido ogni cento incontri, scarto relativo 4,9 per cento, con un errore di 7,5, bersaglio entro 5: dentro.
+Acciacchi per incontro: 3,80 col motore e 3,65 con l'esito rapido ogni cento incontri, scarto relativo -3,8 per cento, con un errore di 3,6, bersaglio entro 5: dentro.
+Ritiri per incontro: 0,61 col motore e 0,66 con l'esito rapido ogni cento incontri, scarto relativo 7,3 per cento, con un errore di 9,2, bersaglio entro 5: dentro col rumore.
+I residui, cioè la vittoria col motore meno quella con l'esito rapido di chi sta nel gruppo, in punti percentuali, con le volte che ha giocato e l'errore della media, bersaglio entro 3,0: età dai 0 anni, 39, 17,9 più o meno 8,0, pochi incontri, non si giudica; età dai 10 anni, 6843, 0,7 più o meno 0,7, dentro; età dai 20 anni, 17923, -0,6 più o meno 0,4, dentro; età dai 30 anni, 23105, -0,5 più o meno 0,4, dentro; età dai 40 anni, 20552, 0,7 più o meno 0,4, dentro; età dai 50 anni, 10598, 0,4 più o meno 0,6, dentro; età dai 60 anni, 940, -2,6 più o meno 1,9, dentro; indole aggressiva, 9569, -2,0 più o meno 0,6, dentro; indole atletica, 10275, -0,2 più o meno 0,6, dentro; indole battuta, 10587, 1,5 più o meno 0,6, dentro; indole completa, 7509, 0,7 più o meno 0,7, dentro; indole controllo, 10180, -1,3 più o meno 0,6, dentro; indole difensiva, 7841, 0,2 più o meno 0,7, dentro; indole muro, 6016, 0,8 più o meno 0,8, dentro; indole rimessa, 7436, 2,9 più o meno 0,7, dentro; indole tecnica, 10587, -1,4 più o meno 0,6, dentro; l'acciaccato, 4049, 0,3 più o meno 0,9, dentro; la donna nelle coppie miste, 19977, -0,6 più o meno 0,4, dentro; tratto ambidestro, 3648, 0,6 più o meno 1,0, dentro; tratto cambiovelocita, 12025, -0,1 più o meno 0,5, dentro; tratto giocorapido, 9746, 0,9 più o meno 0,6, dentro; tratto mancino, 6463, -0,4 più o meno 0,7, dentro.
+Gara a squadre, distacco meno del 5 per cento, 972 gare: la favorita vince il 53,7 per cento col motore e il 53,6 con l'esito rapido, scarto -0,1, con un errore di 2,3, bersaglio entro 3,0: dentro.
+Gara a squadre, distacco fra il 5 e il 15 per cento, 1513 gare: la favorita vince il 63,1 per cento col motore e il 65,1 con l'esito rapido, scarto 2,0, con un errore di 1,8, bersaglio entro 3,0: dentro.
+Gara a squadre, distacco fra il 15 e il 30 per cento, 1485 gare: la favorita vince il 76,4 per cento col motore e il 77,7 con l'esito rapido, scarto 1,3, con un errore di 1,6, bersaglio entro 3,0: dentro.
+Gara a squadre, distacco oltre il 30 per cento, 1030 gare: la favorita vince il 90,5 per cento col motore e il 92,6 con l'esito rapido, scarto 2,1, con un errore di 1,3, bersaglio entro 3,0: dentro.
+Gara a squadre, 5000 gare: punti del set 53,21 col motore e 53,14 con l'esito rapido, bersaglio entro 1,0: dentro.
+Sonda della stanchezza al meglio dei 3: il giovane resistente vince contro sé stesso anziano il 84,8 per cento col motore e il 88,1 con l'esito rapido.
+Sonda della stanchezza al meglio dei 5: il giovane resistente vince contro sé stesso anziano il 95,2 per cento col motore e il 98,2 con l'esito rapido, bersaglio entro 4,0: dentro.
+Forti alla pari, 2666 incontri al meglio dei 3: uno con un set oltre i 12 punti ogni 6,5 col motore e ogni 6,2 con l'esito rapido, D25 e D26 da sette a otto.
+Bersagli fuori: nessuno.
+L'esito rapido costa 51,2 microsecondi a incontro al meglio dei 3, con la memoria della forza.
+Verifica completata in 100,6 secondi.

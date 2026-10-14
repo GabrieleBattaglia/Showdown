@@ -36,7 +36,7 @@ import archivio  # noqa: E402
 import costanti  # noqa: E402
 import esperienza  # noqa: E402
 import tratti  # noqa: E402
-from modelli import Giocatore, Polisportiva  # noqa: E402
+from modelli import Giocatore, Polisportiva, ritmo_iniziale  # noqa: E402
 from mondo import DURATA_TICK, Mondo  # noqa: E402
 
 NASCITA = datetime.datetime(2026, 1, 1)  # noqa: DTZ001 - data segnaposto, come quelle del motore
@@ -192,6 +192,10 @@ def mondo_a_regime(attivi, ritirati, polisportive, seme, data=DATA_REGIME, per_p
         else:
             g.etaritiro = max(g.etaritiro, g.eta + 400)
             g.etamorte = max(g.etamorte, g.etaritiro + 400)
+        # Dalla taratura della tappa 12 la data del ritmo dei tornei si sparge sui due mesi dal giorno del
+        # mondo, come alla migrazione: nata coi giocatori del 2026, cadeva tutta nel passato, e il primo
+        # giorno l'intero mondo si iscriveva insieme.
+        g.prossimo_torneo = ritmo_iniziale(g.id, data)
         mondo.giocatori[g.id] = g
     mondo.prossimo_id = max(mondo.giocatori) + 1
     disponibili = [g for g in giocatori if not g.ritirato]

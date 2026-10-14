@@ -41,15 +41,17 @@ _FISICHE = ("precisione", "forza", "resistenza")
 TRATTI_RAPIDI = ("mancino", "ambidestro", "giocorapido", "cambiovelocita")
 # I pesi trovati da strumenti/taratura_esito_rapido.py: vedi la carta della taratura, strumenti/taratura_esito_rapido.txt.
 # Il primo giro, del 14 ottobre 2026, 3.000 incontri e 800 gare a squadre, dava al favorito da 2 a 4 punti meno del motore.
-# La taratura fine dello stesso giorno, passo 4 della tappa: 20.000 incontri e 4.000 gare a squadre su 4.500 giocatori di tre
-# popolazioni, con il ritocco della pendenza, per 1,26, e del peso della fatica, per 1,65, e della pendenza della gara a squadre,
-# per 1,48, perché la regressione sugli scambi li fa uscire più piatti del vero; la verifica su 40.000 incontri e 5.000 gare li
-# mette tutti dentro i bersagli del punto 6.4 del progetto, qualcuno col rumore.
-_PESI = {"lungolineasx": 0.417, "lungolineadx": 0.3, "diagonalesx": 0.358, "diagonaledx": 0.482, "singolaspondasx": 0.431, "singolaspondadx": 0.585,
-         "doppiaspondasx": 0.488, "doppiaspondadx": 0.174, "triplaspondasx": 0.222, "triplaspondadx": 0.289, "bomba": 0.332, "battutasx": 0.742,
-         "battutadx": 0.497, "chiusura_dritto": 2.298, "chiusura_rovescio": 3.02, "blocco_dritto": 1.05, "blocco_rovescio": 1.202, "difesa": 3.122,
-         "tenutapaletta": 1.411, "controllopalla": 0.828, "attacco": 1.39, "precisione": 2.417, "forza": 1.525, "resistenza": 0.421}
-_PESI_TRATTI = {"mancino": 0.042, "ambidestro": 0.089, "giocorapido": 0.016, "cambiovelocita": 0.096}
+# La taratura fine dello stesso giorno, passo 4 della tappa, su tre popolazioni, con un ritocco della pendenza e del peso della
+# fatica, perché la regressione sugli scambi li fa uscire più piatti del vero, passava tutti i bersagli del punto 6.4; la
+# verifica finale del punto 13.5, sulla popolazione del mondo simulato all'anno 20 col seme 2026, ha trovato il favorito della
+# fascia dal 15 al 30 per cento a 4 punti sopra il motore. Questi numeri vengono dalla taratura rifatta su quella popolazione e
+# sulle tre di prima, 20.000 incontri e 4.000 gare a squadre: la pendenza per 1,04, il peso della fatica per 1,40, la pendenza
+# della gara a squadre per 1,38; la verifica su 40.000 incontri e 5.000 gare li mette tutti dentro, qualcuno col rumore.
+_PESI = {"lungolineasx": 0.369, "lungolineadx": 0.593, "diagonalesx": 0.111, "diagonaledx": 0.528, "singolaspondasx": 0.326, "singolaspondadx": 0.597,
+         "doppiaspondasx": 0.445, "doppiaspondadx": 0.267, "triplaspondasx": 0.174, "triplaspondadx": 0.312, "bomba": 0.071, "battutasx": 0.637,
+         "battutadx": 0.656, "chiusura_dritto": 2.283, "chiusura_rovescio": 2.951, "blocco_dritto": 0.97, "blocco_rovescio": 1.369, "difesa": 3.451,
+         "tenutapaletta": 1.273, "controllopalla": 0.743, "attacco": 1.401, "precisione": 2.665, "forza": 1.533, "resistenza": 0.277}
+_PESI_TRATTI = {"mancino": 0.068, "ambidestro": 0.089, "giocorapido": -0.009, "cambiovelocita": 0.092}
 # Ogni quanti scambi si aggiorna la fatica: cambia piano, e calcolarla a ogni scambio costava metà dell'incontro.
 SCAMBI_PER_FATICA = 4
 
@@ -67,20 +69,20 @@ class TaraturaRapida:
     """
     PESI: dict = dataclasses.field(default_factory=lambda: dict(_PESI))
     PESI_TRATTI_RAPIDI: dict = dataclasses.field(default_factory=lambda: dict(_PESI_TRATTI))
-    PESO_LETTURA: float = 1.241
-    PENDENZA: float = 0.3775
-    K_FATICA: float = 3.434
-    VANTAGGIO_BATTUTA: float = 0.0904
-    GOAL_BASE: float = -0.179
-    GOAL_DISTACCO: float = 0.225
-    GOAL_LIVELLO: float = 0.0194
-    PENALITA: float = 0.00028
-    AZIONI_PER_SCAMBIO: float = 6.689
-    ATTACCHI_PER_SCAMBIO: float = 1.707
-    PENDENZA_SQUADRE: float = 0.4555
-    K_FATICA_SQUADRE: float = 2.894
-    VANTAGGIO_BATTUTA_SQUADRE: float = 0.1021
-    GOAL_SQUADRE: float = 0.1831
+    PESO_LETTURA: float = 1.188
+    PENDENZA: float = 0.3061
+    K_FATICA: float = 2.995
+    VANTAGGIO_BATTUTA: float = 0.0824
+    GOAL_BASE: float = 0.1872
+    GOAL_DISTACCO: float = 0.2382
+    GOAL_LIVELLO: float = -0.0797
+    PENALITA: float = 0.00026
+    AZIONI_PER_SCAMBIO: float = 6.787
+    ATTACCHI_PER_SCAMBIO: float = 1.743
+    PENDENZA_SQUADRE: float = 0.4275
+    K_FATICA_SQUADRE: float = 2.531
+    VANTAGGIO_BATTUTA_SQUADRE: float = 0.0819
+    GOAL_SQUADRE: float = 0.045
 
 
 TARATURA_RAPIDA = TaraturaRapida()
