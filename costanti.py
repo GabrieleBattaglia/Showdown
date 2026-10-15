@@ -313,9 +313,9 @@ MESI_MINIMI_MIGRAZIONE = 12
 # agganci della tappa 12, con un premio per i piazzamenti.
 ESPERIENZA_PER_ANNO_DI_VITA = 0.05
 # Dalla tappa 12, D32 e punto 10.3 del progetto, le fonti si abbassano perché i tornei e le sfide
-# entrano nella carriera perfetta, che resta a 20 di esperienza a 50 anni. Dalla fonte più piccola
-# alla più grande, regola di Gabriele: l'età 2,05, le amichevoli 2,5, le sfide 1,5, il club 5, i
-# tornei 9, fatti di incontri, fasi superate e piazzamenti. Fino alla tappa 11 le amichevoli valevano
+# entrano nella carriera perfetta, che resta a 20 di esperienza a 50 anni. Le prime stime seguivano i
+# numeri d'esempio di D32: l'età 2,05, le amichevoli 2,5, le sfide 1,5, il club 5, i tornei 9, fatti
+# di incontri, fasi superate e piazzamenti. Fino alla tappa 11 le amichevoli valevano
 # 0,00125 e il giorno in polisportiva 0,00279: con l'età 2,05, le amichevoli 4,98, il club il resto.
 # Le prime stime del progetto erano 0,0007, 0,00108 e 0,005, e per i tornei 0,011, 0,012 e 0,06. La
 # taratura del 14 ottobre 2026, strumenti/carriera_perfetta.py riscritto, punto 13.3: la carriera
@@ -325,10 +325,19 @@ ESPERIENZA_PER_ANNO_DI_VITA = 0.05
 # amichevoli 2,50, le sfide 1,50, il club 5,00, i tornei 9,00, cioè 4,50 dagli incontri, 1,80 dalle
 # fasi superate e 2,70 dai piazzamenti; le cinque carriere vedenti hanno da 19,78 a 20,19. La carta è
 # strumenti/carriera_perfetta_tappa_12.txt.
+# La decisione 8 di Gabriele del 14 ottobre 2026: vale l'ordine delle parole di D32, dalla fonte più
+# piccola alla più grande, età, amichevoli, sfide, club e tornei, e non quello dei numeri d'esempio, che
+# mettevano le sfide sotto l'età: l'età 2, le amichevoli 2,5, le sfide 3, il club 4,5, i tornei 8, sempre
+# 20 a 50 anni. I valori di partenza vengono dalla taratura di sopra, nella proporzione delle quote nuove
+# sulle vecchie, così coi conteggi di quella carriera le quote sono proprio queste: l'età e le amichevoli
+# restano, la sfida raddoppia da 0,00566 a 0,01132, il giorno in polisportiva scende di un decimo da
+# 0,001075 a 0,000968, gli incontri, le fasi e i piazzamenti dei tornei di un nono, da 0,0074, 0,00442 e
+# 0,03425 a 0,00658, 0,00393 e 0,03044. La taratura della carriera perfetta del passo seguente li risolve
+# di nuovo fonte per fonte, con i bersagli nuovi di strumenti/carriera_perfetta.py.
 ESPERIENZA_PER_AMICHEVOLE = 0.000692
-ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.001075
+ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.000968
 K_GRUPPO_ESPERIENZA = 0.2
-ESPERIENZA_PER_SFIDA = 0.00566
+ESPERIENZA_PER_SFIDA = 0.01132
 # Le riserve di una sfida prendono metà dell'esperienza dei titolari, risposta 15 di Gabriele: stare
 # in squadra insegna qualcosa, ma senza punti allenamento né partite nella carriera.
 ESPERIENZA_RISERVA_QUOTA = 0.5
@@ -341,10 +350,11 @@ ESPERIENZA_RISERVA_QUOTA = 0.5
 # piazzamenti in alto le danno molto più di quanto pensato. La revisione del 14 ottobre 2026 li lascia:
 # con la carriera perfetta che va al mondiale coi punti come nel mondo, la media dell'esperienza a 50 anni
 # di tutte le carriere vedenti sta attorno a 20, mentre quella del nato più lento cambia di un punto da
-# una misura all'altra, secondo quanti mondiali gioca.
-ESPERIENZA_PER_PARTITA_TORNEO = 0.0074
-ESPERIENZA_PER_FASE_SUPERATA = 0.00442
-ESPERIENZA_PIAZZAMENTO_BASE = 0.03425
+# una misura all'altra, secondo quanti mondiali gioca. Dalla decisione 8 di Gabriele del 14 ottobre 2026
+# i tornei fanno 8 invece di 9, e i tre valori scendono di un nono: vedi sopra.
+ESPERIENZA_PER_PARTITA_TORNEO = 0.00658
+ESPERIENZA_PER_FASE_SUPERATA = 0.00393
+ESPERIENZA_PIAZZAMENTO_BASE = 0.03044
 SCALA_PIAZZAMENTI = (1.0, 0.8, 0.65, 0.55, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0.15, 0.10)
 # La classe, da K0 ad A1, D31: il 70 per cento al valore pesato e il 30 all'esperienza. Il valore
 # pesato si misura in rapporto alla somma della carriera perfetta dai 9 ai 50 anni, che vale A1.

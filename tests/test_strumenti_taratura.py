@@ -311,7 +311,8 @@ def test_la_gloria_in_forma_chiusa():
 
 def test_i_fattori_e_le_esperienze_della_carriera_perfetta():
     # Tappa 12, punto 10.4: la parte delle partite si divide nelle proporzioni 40, 34 e 4 di D32, e
-    # l'esperienza fonte per fonte dà 2,5, 1,5, 5 e 9, coi tornei divisi 50, 20 e 30.
+    # l'esperienza fonte per fonte, dalla decisione 8 di Gabriele del 14 ottobre 2026, dà 2,5, 3, 4,5 e
+    # 8, coi tornei divisi 50, 20 e 30.
     grezzi = {"torneo": 1500.0, "amichevole": 14000.0, "sfida": 800.0}
     fattori = cp.fattori_per_totale(20_000.0, 4428.0, grezzi)
     parti = {fonte: fattori[fonte] * grezzi[fonte] for fonte in grezzi}
@@ -319,9 +320,19 @@ def test_i_fattori_e_le_esperienze_della_carriera_perfetta():
     assert parti["torneo"] / parti["amichevole"] == pytest.approx(40 / 34) and parti["sfida"] / parti["amichevole"] == pytest.approx(4 / 34)
     conteggi = {"amichevoli": 3500.0, "sfide": 300.0, "giorni": 4649.4, "incontri_torneo": 600.0, "fasi": 150.0, "piazzamenti": 60.0}
     esperienze = cp.esperienze_dai_conteggi(conteggi)
-    assert esperienze["amichevoli"] * conteggi["amichevoli"] == pytest.approx(2.5) and esperienze["club"] * conteggi["giorni"] == pytest.approx(5.0)
-    assert sum(esperienze[v] * conteggi[v] for v in ("incontri_torneo", "fasi", "piazzamenti")) == pytest.approx(9.0)
-    assert esperienze["fasi"] * conteggi["fasi"] == pytest.approx(9.0 * 0.2)
+    assert esperienze["amichevoli"] * conteggi["amichevoli"] == pytest.approx(2.5) and esperienze["sfide"] * conteggi["sfide"] == pytest.approx(3.0)
+    assert esperienze["club"] * conteggi["giorni"] == pytest.approx(4.5)
+    assert sum(esperienze[v] * conteggi[v] for v in ("incontri_torneo", "fasi", "piazzamenti")) == pytest.approx(8.0)
+    assert esperienze["fasi"] * conteggi["fasi"] == pytest.approx(8.0 * 0.2)
+
+
+def test_l_ordine_delle_fonti_d_esperienza():
+    # La decisione 8 di Gabriele del 14 ottobre 2026: dalla fonte più piccola alla più grande, età,
+    # amichevoli, sfide, club e tornei, sempre 20 a 50 anni. L'età dai 9 ai 50 anni fa circa 2 da sé.
+    eta = costanti.ESPERIENZA_PER_ANNO_DI_VITA * (cp.ETA_USCITA - cp.ETA_INGRESSO)
+    fonti = (eta, cp.ESPERIENZA_AMICHEVOLI, cp.ESPERIENZA_SFIDE, cp.ESPERIENZA_CLUB, cp.ESPERIENZA_TORNEI)
+    assert list(fonti) == sorted(fonti) and len(set(fonti)) == len(fonti)
+    assert sum(fonti) == pytest.approx(costanti.ESPERIENZA_MASSIMA, abs=0.1)
 
 
 def test_la_carriera_perfetta_gioca_il_calendario():

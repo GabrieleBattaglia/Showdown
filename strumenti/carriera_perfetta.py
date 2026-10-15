@@ -26,8 +26,10 @@ la più lenta delle cinque carriere vedenti arrivi ad A1 a 49 anni e tre quarti,
 bersaglio fra 49 e mezzo e 50; la seduta è fissa, quindi la parte delle partite è T meno la seduta, e
 si divide fra tornei, amichevoli e sfide nelle proporzioni 40, 34 e 4 di D32; ogni fattore è la sua
 parte divisa per i suoi punti grezzi. L'esperienza si risolve allo stesso modo, fonte per fonte, sulla
-somma senza il tetto di 20: l'età fa da sé, le amichevoli 2,5, le sfide 1,5, il club 5 e i tornei 9,
-divisi 50 per cento agli incontri, 20 alle fasi superate e 30 ai piazzamenti. Il totale si cerca col
+somma senza il tetto di 20: l'età fa da sé, circa 2, le amichevoli 2,5, le sfide 3, il club 4,5 e i
+tornei 8, divisi 50 per cento agli incontri, 20 alle fasi superate e 30 ai piazzamenti; è l'ordine
+delle parole di D32, dalla fonte più piccola alla più grande, che vale dalla decisione 8 di Gabriele
+del 14 ottobre 2026, mentre prima le sfide facevano 1,5, il club 5 e i tornei 9. Il totale si cerca col
 metodo delle secanti sul logaritmo di T; i mondi sintetici, che giocano le gare del mondo coi fattori
 del giro, si rifanno a ogni giro, finché i fattori non si spostano più dell'uno per cento.
 Lo strumento stampa: i fattori e le esperienze da copiare in costanti.py, le quote ottenute, la quota
@@ -103,7 +105,9 @@ DATA_INIZIO = datetime.date(2026, 1, 1)
 # Le quote dei punti delle partite di D32, sulla parte delle partite, e quelle dell'esperienza, punto 10.3.
 QUOTE_PARTITE = {esperienza.TORNEO: 40.0, esperienza.AMICHEVOLE: 34.0, esperienza.SFIDA: 4.0}
 QUOTA_SEDUTA_ATTESA = 22.0
-ESPERIENZA_AMICHEVOLI, ESPERIENZA_SFIDE, ESPERIENZA_CLUB, ESPERIENZA_TORNEI = 2.5, 1.5, 5.0, 9.0
+# L'ordine delle fonti d'esperienza, decisione 8 di Gabriele del 14 ottobre 2026: età, amichevoli, sfide,
+# club e tornei, dalla più piccola alla più grande; l'età fa circa 2 da sé.
+ESPERIENZA_AMICHEVOLI, ESPERIENZA_SFIDE, ESPERIENZA_CLUB, ESPERIENZA_TORNEI = 2.5, 3.0, 4.5, 8.0
 PARTI_DEI_TORNEI = {"incontri_torneo": 0.5, "fasi": 0.2, "piazzamenti": 0.3}
 # Il bersaglio: la più lenta delle carriere vedenti ad A1 fra 49 e mezzo e 50 anni, cercata nel mezzo.
 ETA_A1_BERSAGLIO = 49.75

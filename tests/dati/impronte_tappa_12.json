@@ -1,21 +1,21 @@
 {
- "nota": "Decisione 3 di Gabriele del 14 ottobre 2026: la coppa d'argento di una sfida persa giocando vale nella gloria un decimo di quella d'oro, QUOTA_GLORIA_ARGENTO_SFIDA, invece della metà. Cambiano il mondo nato e quello a regime, dove si giocano sfide; con la quota a 0,5 le due impronte restano quelle della decisione 1.",
+ "nota": "Decisione 8 di Gabriele del 14 ottobre 2026: le fonti d'esperienza nell'ordine delle parole di D32, età, amichevoli, sfide, club e tornei, con i valori di partenza per 2, 2,5, 3, 4,5 e 8: la sfida 0,01132, il giorno in polisportiva 0,000968, gli incontri, le fasi e i piazzamenti dei tornei 0,00658, 0,00393 e 0,03044. Cambiano il mondo nato e quello a regime, perché l'esperienza entra nella classe e nello stipendio.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "18b95a3f35b962ee9b5ede5fe910cb396a2037aae4dd9372138c60d90c1c3487",
-  "vivi": 754,
-  "attivi": 754,
-  "tesserati": 673,
-  "polisportive": 46
+  "sha256": "958b9c3710ba2a166d2cf5fc9eca6994faf06cefc9fb3ba4b9fbe762a5dc0c45",
+  "vivi": 731,
+  "attivi": 731,
+  "tesserati": 654,
+  "polisportive": 44
  },
  "mondo_a_regime": {
-  "sha256": "cfc00c177683a81ae9474857e7b69c8c75bf02526a6531733b5f2a793dc9fd3d",
-  "vivi": 1667,
-  "attivi": 1267,
-  "tesserati": 1076,
+  "sha256": "46c388f17942fb6bf623f02df61d37c97234dfa8bc19e3f2f16b79377c444df3",
+  "vivi": 1664,
+  "attivi": 1264,
+  "tesserati": 1077,
   "polisportive": 77
  }
 }
