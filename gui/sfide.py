@@ -16,6 +16,9 @@ Lo storico tiene le sfide delle tue polisportive, e delle ultime dieci giocate f
 differita o leggerne la cronaca.
 Ogni dialogo segue lo schema degli altri: pannello che scorre, etichette con la lettera, controlli
 nativi a selezione singola, avvisi che lasciano aperto il dialogo col suono del loro perché.
+Dalla decisione 10 di Gabriele del 14 ottobre 2026 Lancia una sfida e Sfide in arrivo non hanno un
+pulsante predefinito, come il calendario: Invio sugli elenchi non fa niente, e si lancia o si accetta
+soltanto col pulsante, Alt+L o Alt+A. Prima Invio sull'elenco lanciava o accettava.
 """
 
 import wx
@@ -142,8 +145,9 @@ class LanciaSfida(_Dialogo):
     """
     Il lancio di una sfida dal menu Partite, punto 12.6: la testata con le sfide da lanciare, le
     polisportive del computer con la forza della loro squadra di domani, la gloria e l'ultima sfida, la
-    formazione e i pulsanti Lancia, Scheda della polisportiva e Chiudi. Il computer risponde subito,
-    e l'esito arriva in un messaggio col suo suono; in esiti restano i messaggi, per la vista.
+    formazione e i pulsanti Lancia, Scheda della polisportiva e Chiudi, nessuno predefinito: si lancia
+    soltanto con Alt+L, decisione 10 di Gabriele del 14 ottobre 2026. Il computer risponde subito, e
+    l'esito arriva in un messaggio col suo suono; in esiti restano i messaggi, per la vista.
     """
 
     def __init__(self, genitore, mondo, poli, impostazioni=None):
@@ -161,7 +165,7 @@ class LanciaSfida(_Dialogo):
         giorno = sfide.giorno_del_gioco(mondo)
         self.formazione = SezioneFormazione(self, mondo, sfide.convocabili(mondo, poli, giorno), sfide.proposta(mondo, poli),
                                             lambda ids: sfide.problema_formazione(mondo, poli, ids, giorno))
-        lancia, scheda, _chiudi = self.pulsanti((wx.ID_ANY, "&Lancia"), (wx.ID_ANY, "Sc&heda della polisportiva"), (wx.ID_CANCEL, "&Chiudi"))
+        lancia, scheda, _chiudi = self.pulsanti((wx.ID_ANY, "&Lancia"), (wx.ID_ANY, "Sc&heda della polisportiva"), (wx.ID_CANCEL, "&Chiudi"), predefinito=False)
         lancia.Bind(wx.EVT_BUTTON, self.lancia)
         scheda.Bind(wx.EVT_BUTTON, self.scheda)
         self.aggiorna(0)
@@ -232,7 +236,8 @@ class SfideInArrivo(_Dialogo):
     """
     Le sfide che aspettano la risposta della polisportiva attiva, punto 12.6: chi sfida, la forza della
     sua squadra e la scadenza; la formazione, proposta per il giorno del gioco e da cambiare se vuoi; i
-    pulsanti Accetta, Rifiuta e Chiudi. In esiti restano i messaggi, per la vista.
+    pulsanti Accetta, Rifiuta e Chiudi, nessuno predefinito: si accetta soltanto con Alt+A, decisione 10
+    di Gabriele del 14 ottobre 2026. In esiti restano i messaggi, per la vista.
     """
 
     def __init__(self, genitore, mondo, poli):
@@ -248,7 +253,7 @@ class SfideInArrivo(_Dialogo):
         self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         giorno = sfide.giorno_del_gioco(mondo)
         self.formazione = SezioneFormazione(self, mondo, sfide.convocabili(mondo, poli, giorno), sfide.proposta(mondo, poli), self._problema_della_formazione)
-        accetta, rifiuta, _chiudi = self.pulsanti((wx.ID_ANY, "&Accetta"), (wx.ID_ANY, "&Rifiuta"), (wx.ID_CANCEL, "&Chiudi"))
+        accetta, rifiuta, _chiudi = self.pulsanti((wx.ID_ANY, "&Accetta"), (wx.ID_ANY, "&Rifiuta"), (wx.ID_CANCEL, "&Chiudi"), predefinito=False)
         accetta.Bind(wx.EVT_BUTTON, self.accetta)
         rifiuta.Bind(wx.EVT_BUTTON, self.rifiuta)
         self.aggiorna(0)

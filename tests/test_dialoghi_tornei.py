@@ -659,6 +659,26 @@ def test_le_sfide_in_arrivo_si_accettano_o_si_rifiutano(sfidanti, suonati, messa
         dialogo.Destroy()
 
 
+def test_nei_dialoghi_delle_sfide_invio_non_lancia_e_non_accetta(sfidanti, messaggi):
+    # La decisione 10 di Gabriele del 14 ottobre 2026: come nel calendario, nessun pulsante predefinito.
+    # Invio sugli elenchi di Lancia una sfida e di Sfide in arrivo non lancia né accetta: si lancia
+    # soltanto con Alt+L e si accetta soltanto con Alt+A.
+    mondo, club, cpu = sfidanti
+    oggi = mondo.datetime_corrente_simulazione.date()
+    sfide._proponi(mondo, cpu, club, sfide.convoca(mondo, cpu, oggi + datetime.timedelta(days=1)), oggi, Mondo.rapporto_vuoto(oggi))
+    lancio = gui_sfide.LanciaSfida(None, mondo, club)
+    arrivo = gui_sfide.SfideInArrivo(None, mondo, club)
+    try:
+        for dialogo in (lancio, arrivo):
+            assert dialogo.GetDefaultItem() is None and not dialogo.invio(dialogo.elenco)
+        etichette = [w.GetLabel() for d in (lancio, arrivo) for w in d.pannello.GetChildren() if isinstance(w, wx.Button)]
+        assert "&Lancia" in etichette and "&Accetta" in etichette
+        assert [s.stato for s in mondo.sfide.attive] == [sfide.PROPOSTA] and sfide.disponibili(mondo, club) == 2 and messaggi == []
+    finally:
+        lancio.Destroy()
+        arrivo.Destroy()
+
+
 def test_con_meno_di_tre_convocabili_la_formazione_lo_dice(sfidanti, suonati, messaggi):
     # Dalla prova della finestra vera: con due soli tesserati liberi il lancio non mostra un doppione, ma il perché.
     mondo, club, _cpu = sfidanti

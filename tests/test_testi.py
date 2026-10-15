@@ -109,10 +109,14 @@ def test_barra_di_stato(mondo):
     assert len(righe) == 4
     assert all(len(r) <= 40 for r in righe)
     assert righe[0] == "s06/10/2026 18:00 a5h00m"
-    assert righe[1] == "Club Di Prova g100 t3/15 m5 c20"
+    # La decisione 11 di Gabriele del 14 ottobre 2026: d dice le sfide che restano da lanciare.
+    assert righe[1] == "Club Di Prova g100 t3/15 m5 c20 d2"
+    mondo.miapolisportiva_attiva.sfide_da_lanciare = 4
+    assert testi.righe_barra(mondo, None, ADESSO)[1].endswith(" c20 d4")
     assert re.fullmatch(r"l\d+ t3 f\d+ n40 p2", righe[2])
     mondo.miapolisportiva_attiva.nome = "Un nome di polisportiva lunghissimo, ben oltre i quaranta caratteri"
-    assert len(testi.righe_barra(mondo, "x" * 60, ADESSO)[1]) == 40
+    seconda = testi.righe_barra(mondo, "x" * 60, ADESSO)[1]
+    assert len(seconda) == 40 and seconda.endswith(" g100 t3/15 m5 c20 d4")
     mondo.miapolisportiva_attiva = None
     assert testi.righe_barra(mondo, None, ADESSO)[1] == "nessuna polisportiva attiva"
 

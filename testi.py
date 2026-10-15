@@ -81,7 +81,8 @@ LARGHEZZA_BARRA = 40
 LEGENDA_BARRA = (
     "La barra di stato ha quattro righe, ciascuna entro quaranta caratteri, scritte a codici: una lettera e un numero. "
     "Prima riga, il tempo: s è la data simulata, a il tempo che manca al prossimo avanzamento del mondo. "
-    "Seconda riga, la polisportiva attiva: prima il nome, poi g la gloria, t i tesserati sul massimo, m le mosse di mercato rimaste oggi, c la cassa in migliaia di euro. "
+    "Seconda riga, la polisportiva attiva: prima il nome, poi g la gloria, t i tesserati sul massimo, m le mosse di mercato rimaste oggi, c la cassa in migliaia di euro, "
+    "d le sfide che restano da lanciare. "
     "Terza riga, la popolazione: l i giocatori liberi, t i tesserati, f quelli fermi perché ritirati o infortunati, n il totale, p le polisportive. "
     "Quarta riga, a parole, l'ultima cosa successa."
 )
@@ -1045,7 +1046,11 @@ def _entro(testo, larghezza=LARGHEZZA_BARRA):
 
 
 def righe_barra(mondo, ultimo, ora):
-    """Le quattro righe della barra di stato, a codici, ciascuna entro quaranta caratteri."""
+    """
+    Le quattro righe della barra di stato, a codici, ciascuna entro quaranta caratteri. Dalla decisione
+    11 di Gabriele del 14 ottobre 2026 la seconda dice anche, con d, quante sfide restano da lanciare,
+    e il nome della polisportiva si accorcia perché la riga resti nei quaranta caratteri.
+    """
     mancano = mondo.prossimo_avanzamento() - ora
     minuti = max(0, int(mancano.total_seconds() // 60))
     tempo = f"s{mondo.datetime_corrente_simulazione:%d/%m/%Y %H:%M} a{minuti // 60}h{minuti % 60:02d}m"
@@ -1053,7 +1058,8 @@ def righe_barra(mondo, ultimo, ora):
     if p is None:
         club = "nessuna polisportiva attiva"
     else:
-        codici = f" g{p.gloria} t{len(p.tesserati)}/{p.maxtesserati} m{LIMITE_MOVIMENTI_PER_TICK - p.movimenti_oggi} c{p.cassa // 1000}"
+        codici = (f" g{p.gloria} t{len(p.tesserati)}/{p.maxtesserati} m{LIMITE_MOVIMENTI_PER_TICK - p.movimenti_oggi} c{p.cassa // 1000}"
+                  f" d{sfide.disponibili(mondo, p)}")
         club = p.nome[:LARGHEZZA_BARRA - len(codici)] + codici
     morti = mondo._ids_morti_processati_sessione
     vivi = [g for gid, g in mondo.giocatori.items() if gid not in morti]
@@ -1929,11 +1935,12 @@ GUIDA_DEI_TORNEI = (
 )
 GUIDA_DELLE_SFIDE = (
     "Le sfide fra polisportive sono gare a squadre, un set a 31, con due giocatori di un sesso e uno dell'altro al tavolo e fino a tre riserve. Ogni polisportiva "
-    "ne riceve due da lanciare il primo del mese, fino a quattro; si lanciano a una polisportiva del computer con Ctrl+W, che risponde subito, e quelle che "
-    "ricevi si accettano o si rifiutano con Ctrl+Maiusc+F entro il giorno in cui arrivano: all'avanzamento seguente decadono. La formazione proposta si "
-    "cambia prima di lanciare o di accettare; "
-    "la sfida si gioca all'avanzamento seguente, e la posta è una coppa, d'oro a chi vince e d'argento a chi perde. Lo storico, Ctrl+Maiusc+H, fa riascoltare "
-    "e leggere le ultime dieci."
+    "ne riceve due da lanciare il primo del mese, fino a quattro, e la barra di stato dice con d quante ne restano; si lanciano a una polisportiva del "
+    "computer con Ctrl+W, che risponde subito, e quelle che ricevi si accettano o si rifiutano con Ctrl+Maiusc+F entro il giorno in cui arrivano: "
+    "all'avanzamento seguente decadono. La formazione proposta si cambia prima di lanciare o di accettare; si lancia soltanto col pulsante Lancia, Alt+L, "
+    "e si accetta soltanto con Accetta, Alt+A: Invio sugli elenchi non fa niente. "
+    "La sfida si gioca all'avanzamento seguente, e la posta è una coppa, d'oro a chi vince e d'argento a chi perde, che nella gloria vale poco. Lo storico, "
+    "Ctrl+Maiusc+H, fa riascoltare e leggere le ultime dieci."
 )
 
 
