@@ -15,7 +15,12 @@ Con --giorno il giorno simulato di un mondo a regime di strumenti/mondi_sintetic
 attivi quanti ne dice --attivi, un terzo di ritirati e le polisportive del computer per nove
 tesserati su dieci: la media, la mediana e il giorno peggiore di --giorni giorni, o di un anno di
 calendario con --anno, e un profilo con la quota delle parti del giorno. Dal secondo passo della
-tappa nel giorno ci saranno anche i tornei e le sfide.
+tappa nel giorno ci saranno anche i tornei e le sfide. La verifica del 15 ottobre 2026 ha visto che
+quel mondo non resta a regime: i contratti sono firmati tutti lo stesso giorno, le casse sono di
+5.000 euro e non c'è palmarès, e in 210 giorni perde un quarto dei tesserati e gioca meno di un terzo
+degli incontri di torneo del mondo vero all'anno 60. Serve a confrontare due versioni del codice sullo
+stesso mondo; il tempo del giorno a regime si misura sui mondi che la prova lunga di
+strumenti/simulazione_lunga.py salva con --salva-mondi, caricati come li carica il programma.
 Con --salvataggio il salvataggio dello stesso mondo, diari compresi: comporre il documento,
 scriverne il testo firmato e comprimerlo, come archivio.scrivi dalla decisione 4 di Gabriele del 14
 ottobre 2026, con le grandezze; poi lo stesso con un albo d'oro di

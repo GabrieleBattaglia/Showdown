@@ -379,10 +379,18 @@ ESPERIENZA_PER_ANNO_DI_VITA = 0.05
 # sfida passa da 0,01132 a 0,01130, gli incontri, le fasi e i piazzamenti dei tornei salgono da 0,00658,
 # 0,00393 e 0,03044 a 0,00688, 0,00415 e 0,03247, perché la media delle carriere gioca meno mondiali e
 # vince un poco meno del nato su cui si erano risolti.
-ESPERIENZA_PER_AMICHEVOLE = 0.000691
+# La verifica del 15 ottobre 2026 ha rimisurato la soglia del mondiale, PUNTI_PER_IL_MONDIALE, e con la
+# soglia più bassa la carriera perfetta gioca più mondiali, in media 7,2 invece di 4,5, con più punti e
+# più esperienza dai tornei. La ricerca del 16 ottobre risolve di nuovo le costanti: nella verifica
+# l'esperienza media a 50 anni senza tetto è 20,10, a un soffio dal bordo della banda da 19,9 a 20,1;
+# l'età 2,05, le amichevoli 2,50, le sfide 3,00, il club 4,50, i tornei 8,05, cioè 4,01 dagli incontri,
+# 1,61 dalle fasi superate e 2,43 dai piazzamenti. L'amichevole passa da 0,000691 a 0,000693, la sfida
+# da 0,01130 a 0,01132, il club resta; gli incontri, le fasi e i piazzamenti dei tornei scendono da
+# 0,00688, 0,00415 e 0,03247 a 0,00622, 0,00377 e 0,02931.
+ESPERIENZA_PER_AMICHEVOLE = 0.000693
 ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.000968
 K_GRUPPO_ESPERIENZA = 0.2
-ESPERIENZA_PER_SFIDA = 0.01130
+ESPERIENZA_PER_SFIDA = 0.01132
 # Le riserve di una sfida prendono metà dell'esperienza dei titolari, risposta 15 di Gabriele: stare
 # in squadra insegna qualcosa, ma senza punti allenamento né partite nella carriera.
 ESPERIENZA_RISERVA_QUOTA = 0.5
@@ -397,9 +405,9 @@ ESPERIENZA_RISERVA_QUOTA = 0.5
 # di tutte le carriere vedenti sta attorno a 20, mentre quella del nato più lento cambia di un punto da
 # una misura all'altra, secondo quanti mondiali gioca. Dalla decisione 8 di Gabriele del 14 ottobre 2026
 # i tornei fanno 8 invece di 9, e i tre valori scendono di un nono: vedi sopra.
-ESPERIENZA_PER_PARTITA_TORNEO = 0.00688
-ESPERIENZA_PER_FASE_SUPERATA = 0.00415
-ESPERIENZA_PIAZZAMENTO_BASE = 0.03247
+ESPERIENZA_PER_PARTITA_TORNEO = 0.00622
+ESPERIENZA_PER_FASE_SUPERATA = 0.00377
+ESPERIENZA_PIAZZAMENTO_BASE = 0.02931
 SCALA_PIAZZAMENTI = (1.0, 0.8, 0.65, 0.55, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0.15, 0.10)
 # La classe, da K0 ad A1, D31: il 70 per cento al valore pesato e il 30 all'esperienza. Il valore
 # pesato si misura in rapporto alla somma della carriera perfetta dai 9 ai 50 anni, che vale A1.
@@ -440,6 +448,13 @@ SCALA_PIAZZAMENTI = (1.0, 0.8, 0.65, 0.55, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0
 # 0,204230 e il novantanovesimo a 0,406390; quella del bravo dell'utente a 35 anni si converte, a 0,609334
 # (col caso tipico di oggi sarebbe 0,544130). I livelli si allargano ancora dal basso verso l'alto:
 # 0,0052 fra I9 e F0, 0,0101 fra F0 e D0, 0,0135 fra D0 e A1. Da qui sono di nuovo congelate.
+# La verifica del 15 ottobre 2026: la decisione 7 chiede di ricalcolare le ancore, e quella del bravo
+# convertita non era più il bravo a 35 anni, che coi fattori nuovi stava a D7. Si rifà per definizione,
+# una volta, coi fattori della ricerca del 16 ottobre: il caso tipico del bravo dell'utente a 35 anni ha
+# 0,535616 di punteggio, l'ancora del livello 30 passa da 0,609 a 0,535. I livelli si allargano ancora
+# dal basso verso l'alto: 0,0052 fra I9 e F0, 0,0065 fra F0 e D0, 0,0160 fra D0 e A1. La carriera
+# perfetta non cambia, perché A1 resta la somma congelata; cambia la classe di chi sta in mezzo, che a
+# parità di punteggio sale fino a sette livelli intorno a D0. Da qui le ancore restano congelate.
 PESO_VALORE_CLASSE = 0.7
 PESO_ESPERIENZA_CLASSE = 0.3
 SOMMA_CARRIERA_PERFETTA = 366.2
@@ -450,7 +465,7 @@ PESI_CLASSE = {
     "tenutapaletta": 1.26, "controllopalla": 0.80, "attacco": 1.41, "precisione": 10.55, "forza": 5.78, "resistenza": 3.80,
 }
 PESI_TRATTI_CLASSE = {"mancino": 3.0, "ambidestro": 4.5, "giocorapido": 0.9, "cambiovelocita": 4.8}
-ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.406), (30, 0.609), (1, 1.0))
+ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.406), (30, 0.535), (1, 1.0))
 NUM_GIOCATORI_INIZIALI = 50
 # Quanti giocatori nuovi entrano nel mondo ogni giorno simulato, estremi compresi. Fino alla tappa 11
 # da 1 a 7, la grandezza scelta con D18, circa 15.000 attivi e 20.000 vivi a regime. Dalla tappa 12,
@@ -543,9 +558,20 @@ DISTACCO_PIU_DEBOLE = 25.0
 # Prendono in media 20.612 punti, 140 al mese: la seduta il 21,5 per cento, i tornei il 39,9, le
 # amichevoli il 34,5, le sfide il 4,1, cioè 39,7, 34,3 e 4,0 sulla parte delle partite, i tornei prima
 # fonte come vuole D32. Gli ipovedenti arrivano ad A1 in media fra 47,5 e 50,8 anni.
-PA_FATTORE_AMICHEVOLE = 0.500
-PA_FATTORE_TORNEO = 3.574
-PA_FATTORE_SFIDA = 1.000
+# La verifica del 15 ottobre 2026: PUNTI_PER_IL_MONDIALE era quella di prima della decisione 1, 605 e
+# 610 punti, mentre il trentaduesimo del mondo a regime ne ha da 512 a 550; con la soglia vera la
+# carriera perfetta andava al mondiale più spesso e arrivava ad A1 in media a 47,80 anni. La ricerca del
+# 16 ottobre, con la soglia a 527 e 539, sei passi in due giri, 32 minuti con sei processi: il torneo
+# scende da 3,574 a 3,172, l'amichevole da 0,500 a 0,494, la sfida da 1,000 a 0,986. Nella verifica coi
+# mondi sintetici rifatti, le cinquanta carriere arrivano ad A1 in media a 49,94 anni, mediana 50,10,
+# dalla più giovane a 47,66 alla più vecchia a 51,66, con un errore della media sui dieci nati di 0,12;
+# il 54 per cento dopo i 50, il nato più lento in media a 50,41. Giocano da 4 a 10 mondiali, in media
+# 7,2, il primo fra 18,9 e 39,2 anni. Prendono in media 20.522 punti, 139 al mese: la seduta il 21,6 per
+# cento, i tornei il 40,3, le amichevoli il 34,1, le sfide il 4,0, cioè 40,1, 34,0 e 4,0 sulla parte
+# delle partite. Gli ipovedenti arrivano ad A1 in media fra 46,8 e 48,5 anni.
+PA_FATTORE_AMICHEVOLE = 0.494
+PA_FATTORE_TORNEO = 3.172
+PA_FATTORE_SFIDA = 0.986
 # Il costo dei punti, tarato sul valore: il costo marginale di una caratteristica è
 # COSTO_PER_PUNTO_PESATO per il suo peso nel valore, per lo sconto, diviso l'efficacia, per
 # exp(CRESCITA_DEL_COSTO per il livello relativo). Dal livello zero al tetto il costo cresce di
@@ -897,7 +923,13 @@ CONTEGGI_GARE_MONDO = (
 # lunga agli anni 40 e 60 dei semi 101, 404 e 8888: da 590 a 620 punti per gli uomini, da 600 a 625 per
 # le donne; all'anno 20 erano da 570 a 600. Nel mondo a regime i convocati sono per circa un terzo fra i
 # primi 32 per classe, e gli altri arrivano fino al cinquecentesimo posto e oltre.
-PUNTI_PER_IL_MONDIALE = {"m": 605.0, "f": 610.0}
+# La verifica del 15 ottobre 2026: dopo la decisione 1 e la ritaratura il trentaduesimo del mondo
+# all'anno 60 ha da 512 a 550 punti, sui quattro mondi finali della ritaratura e su due di semi nuovi,
+# e con 605 e 610 la carriera perfetta andava al mondiale molto meno di quanto ci andrebbe nel mondo:
+# con la soglia vera arrivava ad A1 a 47,8 anni invece che a 50. Le medie di quei sei mondi, 527 per
+# gli uomini e 539 per le donne, sono la soglia della ricerca dei fattori che segue; la prova di
+# sessant'anni dopo la controlla dall'anno 40 al 60.
+PUNTI_PER_IL_MONDIALE = {"m": 527.0, "f": 539.0}
 
 
 def discrepanze_raggruppamenti():

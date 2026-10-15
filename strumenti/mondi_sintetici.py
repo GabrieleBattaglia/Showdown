@@ -175,6 +175,10 @@ def mondo_a_regime(attivi, ritirati, polisportive, seme, data=DATA_REGIME, per_p
     presi a caso fra gli attivi, cassa di 5.000 euro e un contratto firmato il giorno indicato. Le
     età del ritiro e della morte si spostano in là di qualche anno, così nei giorni misurati il mondo
     resta della grandezza chiesta, salvo le uscite premature. Non tocca il caso del mondo.
+    Non è un mondo che resta a regime, ha visto la verifica del 15 ottobre 2026: con i contratti tutti dello
+    stesso giorno, le casse uguali e senza palmarès, in 210 giorni perde un quarto dei tesserati e gioca meno
+    di un terzo degli incontri di torneo del mondo vero all'anno 60. Va bene per le impronte e per confrontare
+    due versioni del codice; il tempo del giorno a regime si misura sui mondi salvati dalla prova lunga.
     Restituisce il mondo; ValueError se il mondo sintetico non dà abbastanza giocatori.
     """
     giocatori = mondo_sintetico(attivi + ritirati, None, seme, candidati=int((attivi + ritirati) * CANDIDATI_PER_GIOCATORE_A_REGIME))
