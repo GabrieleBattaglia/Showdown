@@ -334,10 +334,17 @@ ESPERIENZA_PER_ANNO_DI_VITA = 0.05
 # 0,001075 a 0,000968, gli incontri, le fasi e i piazzamenti dei tornei di un nono, da 0,0074, 0,00442 e
 # 0,03425 a 0,00658, 0,00393 e 0,03044. La taratura della carriera perfetta del passo seguente li risolve
 # di nuovo fonte per fonte, con i bersagli nuovi di strumenti/carriera_perfetta.py.
-ESPERIENZA_PER_AMICHEVOLE = 0.000692
+# La ritaratura del 15 ottobre 2026, con la decisione 6 di Gabriele: le costanti si risolvono sulla media
+# dei conteggi di tutte le carriere vedenti, e nella verifica la loro esperienza media a 50 anni senza
+# tetto è 19,93, l'età 2,05, le amichevoli 2,50, le sfide 3,00, il club 4,50, i tornei 7,88, cioè 3,94
+# dagli incontri, 1,58 dalle fasi superate e 2,37 dai piazzamenti. L'amichevole e il club restano, la
+# sfida passa da 0,01132 a 0,01130, gli incontri, le fasi e i piazzamenti dei tornei salgono da 0,00658,
+# 0,00393 e 0,03044 a 0,00688, 0,00415 e 0,03247, perché la media delle carriere gioca meno mondiali e
+# vince un poco meno del nato su cui si erano risolti.
+ESPERIENZA_PER_AMICHEVOLE = 0.000691
 ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.000968
 K_GRUPPO_ESPERIENZA = 0.2
-ESPERIENZA_PER_SFIDA = 0.01132
+ESPERIENZA_PER_SFIDA = 0.01130
 # Le riserve di una sfida prendono metà dell'esperienza dei titolari, risposta 15 di Gabriele: stare
 # in squadra insegna qualcosa, ma senza punti allenamento né partite nella carriera.
 ESPERIENZA_RISERVA_QUOTA = 0.5
@@ -352,9 +359,9 @@ ESPERIENZA_RISERVA_QUOTA = 0.5
 # di tutte le carriere vedenti sta attorno a 20, mentre quella del nato più lento cambia di un punto da
 # una misura all'altra, secondo quanti mondiali gioca. Dalla decisione 8 di Gabriele del 14 ottobre 2026
 # i tornei fanno 8 invece di 9, e i tre valori scendono di un nono: vedi sopra.
-ESPERIENZA_PER_PARTITA_TORNEO = 0.00658
-ESPERIENZA_PER_FASE_SUPERATA = 0.00393
-ESPERIENZA_PIAZZAMENTO_BASE = 0.03044
+ESPERIENZA_PER_PARTITA_TORNEO = 0.00688
+ESPERIENZA_PER_FASE_SUPERATA = 0.00415
+ESPERIENZA_PIAZZAMENTO_BASE = 0.03247
 SCALA_PIAZZAMENTI = (1.0, 0.8, 0.65, 0.55, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0.15, 0.10)
 # La classe, da K0 ad A1, D31: il 70 per cento al valore pesato e il 30 all'esperienza. Il valore
 # pesato si misura in rapporto alla somma della carriera perfetta dai 9 ai 50 anni, che vale A1.
@@ -388,9 +395,16 @@ SCALA_PIAZZAMENTI = (1.0, 0.8, 0.65, 0.55, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0
 # strumenti/carriera_perfetta.py --ricalcola-classe, e poi tornano congelate anche loro: lo strumento
 # tiene i pesi, la somma e le ancore della tappa 11, da cui converte. Fino al ricalcolo restano quelle
 # della tappa 11, e coi pesi nuovi la classe di tutti si sposta di poco.
+# Il ricalcolo, il 15 ottobre 2026, una volta sola: le cinquanta carriere perfette vedenti coi fattori di
+# allora hanno a 50 anni una somma coi pesi nuovi più alta dello 0,75 per cento di quella coi pesi della
+# tappa 11, la stessa per tutte, perché spendono i punti nello stesso modo; la somma passa da 363,5 a
+# 366,2, per difetto al decimo. Le ancore dei nati si rifanno coi pesi nuovi, il primo percentile a
+# 0,204230 e il novantanovesimo a 0,406390; quella del bravo dell'utente a 35 anni si converte, a 0,609334
+# (col caso tipico di oggi sarebbe 0,544130). I livelli si allargano ancora dal basso verso l'alto:
+# 0,0052 fra I9 e F0, 0,0101 fra F0 e D0, 0,0135 fra D0 e A1. Da qui sono di nuovo congelate.
 PESO_VALORE_CLASSE = 0.7
 PESO_ESPERIENZA_CLASSE = 0.3
-SOMMA_CARRIERA_PERFETTA = 363.5
+SOMMA_CARRIERA_PERFETTA = 366.2
 PESI_CLASSE = {
     "lungolineasx": 0.47, "lungolineadx": 0.47, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.49, "singolaspondadx": 0.49,
     "doppiaspondasx": 0.49, "doppiaspondadx": 0.49, "triplaspondasx": 0.42, "triplaspondadx": 0.42, "bomba": 0.52, "battutasx": 0.47,
@@ -398,7 +412,7 @@ PESI_CLASSE = {
     "tenutapaletta": 1.26, "controllopalla": 0.80, "attacco": 1.41, "precisione": 10.55, "forza": 5.78, "resistenza": 3.80,
 }
 PESI_TRATTI_CLASSE = {"mancino": 3.0, "ambidestro": 4.5, "giocorapido": 0.9, "cambiovelocita": 4.8}
-ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.404), (30, 0.609), (1, 1.0))
+ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.406), (30, 0.609), (1, 1.0))
 NUM_GIOCATORI_INIZIALI = 50
 # Quanti giocatori nuovi entrano nel mondo ogni giorno simulato, estremi compresi. Fino alla tappa 11
 # da 1 a 7, la grandezza scelta con D18, circa 15.000 attivi e 20.000 vivi a regime. Dalla tappa 12,
@@ -480,9 +494,20 @@ DISTACCO_PIU_DEBOLE = 25.0
 # con la media del nato più lento nel bersaglio, corretta con la retta dell'età sul totale stimata su
 # tutti i sedici passi: il torneo sale da 3,434 a 3,813, l'amichevole da 0,506 a 0,517, la sfida da
 # 1,022 a 1,028. La carta è strumenti/carriera_perfetta_tappa_12.txt.
-PA_FATTORE_AMICHEVOLE = 0.517
-PA_FATTORE_TORNEO = 3.813
-PA_FATTORE_SFIDA = 1.028
+# La decisione 6 di Gabriele del 14 ottobre 2026: il bersaglio è la media di tutte le carriere vedenti,
+# che arriva ad A1 a 50 anni con 20 di esperienza. La ritaratura del 15 ottobre 2026, dopo il ricalcolo
+# della classe della decisione 7, strumenti/carriera_perfetta.py --ricalcola-classe: nove passi in due giri,
+# col totale cercato sulla retta ai minimi quadrati dei passi del giro, perché la media delle cinquanta
+# carriere oscilla di tre decimi d'anno da un passo all'altro anche coi fattori quasi fermi. Il torneo
+# scende da 3,813 a 3,574, l'amichevole da 0,517 a 0,500, la sfida da 1,028 a 1,000. Nella verifica coi
+# mondi sintetici rifatti, le cinquanta carriere arrivano ad A1 in media a 50,15 anni, mediana 50,15, dalla
+# più giovane a 45,4 alla più vecchia a 56,9, e una su due dopo i 50; il nato più lento in media a 53,2.
+# Prendono in media 20.612 punti, 140 al mese: la seduta il 21,5 per cento, i tornei il 39,9, le
+# amichevoli il 34,5, le sfide il 4,1, cioè 39,7, 34,3 e 4,0 sulla parte delle partite, i tornei prima
+# fonte come vuole D32. Gli ipovedenti arrivano ad A1 in media fra 47,5 e 50,8 anni.
+PA_FATTORE_AMICHEVOLE = 0.500
+PA_FATTORE_TORNEO = 3.574
+PA_FATTORE_SFIDA = 1.000
 # Il costo dei punti, tarato sul valore: il costo marginale di una caratteristica è
 # COSTO_PER_PUNTO_PESATO per il suo peso nel valore, per lo sconto, diviso l'efficacia, per
 # exp(CRESCITA_DEL_COSTO per il livello relativo). Dal livello zero al tetto il costo cresce di

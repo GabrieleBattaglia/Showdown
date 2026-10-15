@@ -51,7 +51,11 @@ punti allenamento al giorno che i tesserati del computer prendono dalle gare per
 millisecondi del giorno, in media e nel peggiore, divisi fra mondo, tornei e sfide. --giorni fissa i
 giorni simulati al posto degli anni; --salva-popolazione scrive alla fine i giocatori in attività in
 un file JSON compresso, per la verifica dell'esito rapido del punto 13.5. I bersagli nuovi e la
-ricerca dell'economia con i tornei sono del passo 4 della tappa.
+ricerca dell'economia con i tornei sono del passo 4 della tappa. Dalla decisione 1 di Gabriele del 14
+ottobre 2026, il computer che spende secondo la cassa, la prova lunga controlla anche i primi 100 del
+mondo per valore, tesserati almeno all'80 per cento in tutti gli anni come nello scenario dell'utente; e
+con --salva-mondi scrive alla fine il mondo di ogni seme, per misurare il giorno a regime a processore
+libero senza rifare la simulazione.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/simulazione_lunga.py
     python strumenti/simulazione_lunga.py --giorni 1095 --seme 2026 --rapporto calendario.txt
@@ -493,7 +497,7 @@ def salva_popolazione(mondo, percorso):
     return len(giocatori)
 
 
-def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True, ogni_giorno=None, annuali=None, giorni=None, misura_calendario=None):
+def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True, ogni_giorno=None, annuali=None, giorni=None, misura_calendario=None, salva=None):
     """
     Fa nascere un mondo in una cartella temporanea e lo fa avanzare di tanti anni simulati.
     Restituisce il mondo e le righe del racconto; la cartella si cancella alla fine. Il caso del
@@ -502,7 +506,10 @@ def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True, ogni_giorno=
     riepilogo dell'avanzamento: è lì che agisce l'utente dello scenario. Con annuali, un elenco,
     vi aggiunge le misure di ogni anno, con l'anno e i millisecondi del giorno. Dalla tappa 12, con
     giorni si simulano quei giorni al posto degli anni, e con misura_calendario, una
-    MisuraDelCalendario, il racconto ha anche le righe del calendario per anno di calendario.
+    MisuraDelCalendario, il racconto ha anche le righe del calendario per anno di calendario. Con
+    salva, un percorso, alla fine scrive il mondo in quel file, come il programma, e lo stato del caso
+    accanto, nello stesso nome con .caso al posto di .json.gz: serve a misurare il giorno a regime a
+    processore libero senza rifare la simulazione.
     """
     cartella = tempfile.mkdtemp(prefix="mess_simulazione_lunga_")
     cartella_vera = percorsi.cartella
@@ -549,6 +556,11 @@ def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True, ogni_giorno=
                     ultimo = time.perf_counter()
         if misura_calendario is not None and giorni % GIORNI_PER_ANNO_DI_CALENDARIO:
             racconta(misura_calendario.chiudi_anno(mondo))
+        if salva is not None:
+            salva = Path(salva)
+            salva.parent.mkdir(parents=True, exist_ok=True)
+            archivio.scrivi(mondo, str(salva), str(salva) + ".bak")
+            salva.with_name(salva.name.replace(".json.gz", "") + ".caso").write_text(repr(random.getstate()), encoding="utf-8")
     finally:
         percorsi.cartella = cartella_vera
         archivio.adesso, archivio.adesso_utc = orologi_veri
@@ -825,13 +837,17 @@ def cerca_economia(anni, semi, cassa_bersaglio, processi, giri=3, passi=6, stamp
     return a, b, sponsor, righe
 
 
-def _anni_della_prova_lunga(anni, seme, gloria=None):
-    """Una prova lunga in un processo a parte: le misure di ogni anno, e dalla tappa 12 quelle di ogni anno di calendario."""
+def _anni_della_prova_lunga(anni, seme, gloria=None, salva_mondi=None):
+    """
+    Una prova lunga in un processo a parte: le misure di ogni anno, e dalla tappa 12 quelle di ogni anno
+    di calendario. Con salva_mondi, una cartella, vi scrive alla fine il mondo, lunga_SEME_anno_ANNI.json.gz.
+    """
     if gloria is not None:
         _imposta(valore.SCALA_VALORE_A, valore.SCALA_VALORE_B, gloria=gloria)
     annuali = []
     misura = MisuraDelCalendario()
-    simula(anni, seme, stampa=None, misura_ogni_anno=False, annuali=annuali, misura_calendario=misura)
+    salva = Path(salva_mondi) / f"lunga_{seme}_anno_{anni}.json.gz" if salva_mondi is not None else None
+    simula(anni, seme, stampa=None, misura_ogni_anno=False, annuali=annuali, misura_calendario=misura, salva=salva)
     return seme, annuali, misura.anni_dati
 
 
@@ -879,6 +895,11 @@ def controlli_della_tappa_12(anni, semi, risultati):
             m = next(x for x in annuali if x["numero_anno"] == decennio)
             if 100.0 - 100.0 * m["tesserati"] / max(1, m["attivi"]) < LIBERI_MINIMI:
                 fuori.append(f"liberi sotto il {numero(LIBERI_MINIMI)} per cento all'anno {decennio}")
+        # Dalla decisione 1 di Gabriele del 14 ottobre 2026 il computer tessera i campioni: i primi 100
+        # del mondo per valore tesserati almeno all'80 per cento in tutti gli anni, come nello scenario.
+        sotto = [m["numero_anno"] for m in annuali if m["primi_100"] < PRIMI_100_TESSERATI_MINIMI]
+        if sotto:
+            fuori.append(f"primi 100 tesserati sotto l'{numero(PRIMI_100_TESSERATI_MINIMI)} per cento in {len(sotto)} anni, dall'anno {sotto[0]} all'anno {sotto[-1]}")
         ultimo = annuali[-1]
         if anni >= 50 and not ATTIVI_A_REGIME[0] <= ultimo["attivi"] <= ATTIVI_A_REGIME[1]:
             fuori.append(f"{ultimo['attivi']} attivi alla fine, fuori da {ATTIVI_A_REGIME[0]} e {ATTIVI_A_REGIME[1]}")
@@ -914,15 +935,17 @@ def fuori_dalla_solvibilita(annuali):
     return fuori
 
 
-def prova_lunga(anni, semi, processi, stampa=print, gloria=None):
+def prova_lunga(anni, semi, processi, stampa=print, gloria=None, salva_mondi=None):
     """
     La prova lunga: tanti anni su più semi in parallelo. Per decennio il valore mediano, gli
     stipendi pagati e le casse del computer; anno per anno il controllo di solvibilità.
-    Restituisce le righe del racconto. Dalla tappa 12 anche i bersagli nuovi, controlli_della_tappa_12.
+    Restituisce le righe del racconto. Dalla tappa 12 anche i bersagli nuovi, controlli_della_tappa_12;
+    con salva_mondi, una cartella, il mondo di ogni seme alla fine, per misurare il giorno a regime.
     """
     from simulazione_lunga import _anni_della_prova_lunga as lavoro
     with ProcessPoolExecutor(max_workers=max(1, min(processi, len(semi)))) as esecutore:
-        completi = {seme: (annuali, anni_dati) for seme, annuali, anni_dati in [f.result() for f in [esecutore.submit(lavoro, anni, seme, gloria) for seme in semi]]}
+        futuri = [esecutore.submit(lavoro, anni, seme, gloria, salva_mondi) for seme in semi]
+        completi = {seme: (annuali, anni_dati) for seme, annuali, anni_dati in [f.result() for f in futuri]}
     risultati = {seme: annuali for seme, (annuali, _anni_dati) in completi.items()}
     righe = [f"Prova lunga, {anni} anni sui semi {', '.join(str(s) for s in semi)}."]
     for decennio in range(10, anni + 1, 10):
@@ -1041,7 +1064,11 @@ class ScenarioUtente:
                 mondo.paga(self.poli, g, importo)
 
     def _tessera(self, mondo):
-        """Riempie la rosa con i liberi più forti fino a 30 anni, offrendo il 30 per cento in più dell'ingaggio, se il monte stipendi sta nella regola del computer."""
+        """
+        Riempie la rosa con i liberi più forti fino a 30 anni, offrendo il 30 per cento in più dell'ingaggio,
+        se il monte stipendi sta nella regola del computer: dalla decisione 1 di Gabriele del 14 ottobre 2026
+        è economia.spesa_mensile_cpu, che con la cassa sotto la soglia della cassa piena è quella di prima.
+        """
         poli = self.poli
         if len(poli.tesserati) >= TESSERATI_UTENTE or mondo.mosse_rimaste(poli) <= 0:
             return
@@ -1052,7 +1079,7 @@ class ScenarioUtente:
             ingaggio = economia.arrotonda(economia.ingaggio_richiesto(g, poli) * RIALZO_INGAGGIO_UTENTE)
             monte = mondo.monte_stipendi(poli) + economia.stipendio(g)
             sponsor = mondo.sponsor(poli) + costanti.QUOTA_SPONSOR_SUL_VALORE * economia.valore_di_mercato_pieno(g)
-            if ingaggio + monte > poli.cassa or monte > sponsor + (poli.cassa - ingaggio) / costanti.PARTI_DI_CASSA_PER_STIPENDI:
+            if ingaggio + monte > poli.cassa or monte > economia.spesa_mensile_cpu(sponsor, poli.cassa - ingaggio):
                 continue
             if mondo.problema_offerta(poli, g, ingaggio) is None:
                 reputazione = economia.fattore_reputazione(g, poli)
@@ -1078,7 +1105,10 @@ class ScenarioUtente:
                 self.anno["spese"] += 1
 
     def _rinnovi(self, mondo, oggi):
-        """Propone il rinnovo a chi è nella finestra, alla richiesta e alla durata proposta, se il monte stipendi nuovo sta nella regola del computer."""
+        """
+        Propone il rinnovo a chi è nella finestra, alla richiesta e alla durata proposta, se il monte stipendi
+        nuovo sta nella regola del computer, economia.spesa_mensile_cpu dalla decisione 1 di Gabriele.
+        """
         poli = self.poli
         for g in mondo._rosa(poli):
             if mondo.problema_rinnovo(poli, g) is not None:
@@ -1087,7 +1117,7 @@ class ScenarioUtente:
             richiesta = contratti.richiesta_rinnovo(g, poli, mesi)
             self.anno["rinnovo_su_richiesta"].append(richiesta / max(1, economia.stipendio(g)))
             monte = mondo.monte_stipendi(poli) - economia.stipendio_pagato(g) + richiesta
-            if monte > mondo.sponsor(poli) + poli.cassa / costanti.PARTI_DI_CASSA_PER_STIPENDI:
+            if monte > economia.spesa_mensile_cpu(mondo.sponsor(poli), poli.cassa):
                 if g.id not in self.mancati:
                     self.mancati.add(g.id)
                     self.anno["rinnovi_mancati"] += 1
@@ -1180,13 +1210,14 @@ def main():
     parser.add_argument("--rapporto-richiesta", type=_decimale, default=None, help="con --anni-gloria, il rapporto fra gloria richiesta dei liberi e gloria del computer da tenere")
     parser.add_argument("--gloria", type=_decimale, nargs=3, metavar=("KM", "KC", "F"), default=None,
                         help="i coefficienti del palmarès e il fattore della gloria richiesta da provare, con --scala, --cerca-economia o --prova-lunga")
+    parser.add_argument("--salva-mondi", type=Path, default=None, help="con --prova-lunga, scrive alla fine il mondo di ogni seme in questa cartella")
     argomenti = parser.parse_args()
     inizio = time.perf_counter()
     semi = argomenti.semi or [2026, 7, 13, 21]
     argomenti.anni = argomenti.anni or (ANNI_PROVA_LUNGA if argomenti.prova_lunga else 10)
     gloria = tuple(argomenti.gloria) if argomenti.gloria else None
     if argomenti.prova_lunga:
-        righe, _risultati = prova_lunga(argomenti.anni, semi, argomenti.processi, gloria=gloria)
+        righe, _risultati = prova_lunga(argomenti.anni, semi, argomenti.processi, gloria=gloria, salva_mondi=argomenti.salva_mondi)
         righe.append(f"Prova completata in {numero(time.perf_counter() - inizio)} secondi.")
         print(righe[-1])
     elif argomenti.scenario_utente:

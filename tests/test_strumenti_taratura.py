@@ -206,6 +206,38 @@ def test_il_controllo_di_solvibilita_della_prova_lunga():
     assert [anno for anno, _t, _c in sl.fuori_dalla_solvibilita(anni)] == [2, 3, 4]
 
 
+def test_la_prova_lunga_controlla_i_primi_100_tesserati():
+    # La decisione 1 di Gabriele del 14 ottobre 2026: il computer tessera i campioni, e la prova lunga
+    # vuole i primi 100 del mondo per valore tesserati almeno all'80 per cento in tutti gli anni.
+    annuali = [{"numero_anno": n, "tesserati": 90, "attivi": 100, "primi_100": primi} for n, primi in ((1, 95.0), (2, 79.0), (3, 81.0), (4, 60.0))]
+    righe = sl.controlli_della_tappa_12(4, [7], {7: (annuali, [])})
+    assert "primi 100 tesserati sotto l'80 per cento in 2 anni, dall'anno 2 all'anno 4" in righe[-1]
+    for m in annuali:
+        m["primi_100"] = 80.0
+    assert sl.controlli_della_tappa_12(4, [7], {7: (annuali, [])})[-1].endswith("tutti dentro.")
+
+
+def test_la_simulazione_salva_il_mondo_alla_fine(tmp_path, monkeypatch):
+    # Con salva la simulazione scrive il mondo e lo stato del caso, per misurare il giorno a regime;
+    # il mondo riletto ha gli stessi giocatori, e il caso di chi chiama resta com'era.
+    import ast
+
+    import archivio
+    import percorsi
+    from mondo import Mondo
+
+    file = tmp_path / "mondi" / "lunga_5_anno_0.json.gz"
+    stato = random.getstate()
+    mondo, _righe = sl.simula(seme=5, giorni=2, stampa=None, misura_ogni_anno=False, salva=file)
+    assert random.getstate() == stato
+    monkeypatch.setattr(percorsi, "cartella", lambda: str(tmp_path))
+    riletto = Mondo()
+    archivio.costruisci(archivio.leggi(str(file)), riletto)
+    assert set(riletto.giocatori) == set(mondo.giocatori) and riletto.datetime_corrente_simulazione == mondo.datetime_corrente_simulazione
+    caso = ast.literal_eval((tmp_path / "mondi" / "lunga_5_anno_0.caso").read_text(encoding="utf-8"))
+    assert isinstance(caso, tuple) and caso != stato
+
+
 def test_la_sonda_della_stanchezza_misura_giocatori_possibili():
     # La resistenza innata nasce fra 0 e il 60 per cento del suo vecchio massimo, cioè 3, e non
     # cresce; dalla tappa 11 il totale arriva al tetto di 10, e la costanza va da 0 alla costanza
@@ -351,7 +383,13 @@ def test_il_ricalcolo_della_classe_si_fa_una_volta_e_converte(classe_ripristinat
     # ai pesi nuovi della classe una volta sola, poi tornano congelate.
     classe = classe_ripristinata
     assert set(cp.PESI_CLASSE_PRIMA) == set(costanti.PESI_CLASSE) and set(cp.PESI_TRATTI_CLASSE_PRIMA) == set(costanti.PESI_TRATTI_CLASSE)
-    assert cp.PESI_CLASSE_PRIMA["battutasx"] == 0.71 and cp.classe_da_ricalcolare()
+    # Il ricalcolo del 15 ottobre 2026 è già in costanti.py, e un altro si rifiuta; la prova rimette la
+    # classe della tappa 11 nel processo per provare la conversione.
+    assert cp.PESI_CLASSE_PRIMA["battutasx"] == 0.71 and not cp.classe_da_ricalcolare()
+    with pytest.raises(SystemExit, match="già stata ricalcolata"):
+        cp.ricalcola_classe(types.SimpleNamespace(), print)
+    cp.imposta_classe(cp.SOMMA_CARRIERA_PERFETTA_PRIMA, cp.ANCORE_CLASSE_PRIMA)
+    assert cp.classe_da_ricalcolare()
     # La somma: quella di prima per il rapporto medio, per difetto al decimo.
     carriere = [{"somma_50": 330.0, "somma_50_prima": 300.0}, {"somma_50": 230.0, "somma_50_prima": 200.0}]
     somma, rapporti = cp.somma_convertita(carriere)
@@ -421,3 +459,24 @@ def test_la_carriera_perfetta_va_al_mondiale_coi_punti_e_si_misura_in_media():
     medie = cp.medie_per_nato(carriere)
     assert [m["eta_a1"] for m in medie] == [50.0, 48.5] and medie[0]["rappresentante"]["eta_a1"] == 50.0
     assert medie[0]["eta_a1_max"] == 51.0 and medie[0]["mondiali"] == 1.0
+    # La decisione 6 di Gabriele del 14 ottobre 2026: il bersaglio è la media di tutte le carriere vedenti.
+    tutte = cp.media_di_tutte(carriere)
+    assert tutte["eta_a1"] == pytest.approx(49.25) and tutte["seme"] is None and tutte["punti_totali"] == pytest.approx(4925.0)
+    assert tutte["rappresentante"]["eta_a1"] == 49.0 and tutte["eta_a1_min"] == 48.0 and tutte["eta_a1_max"] == 51.0
+    assert cp.ETA_A1_BERSAGLIO == 50.0 and cp.BANDA_ETA_A1[0] < cp.ETA_A1_BERSAGLIO < cp.BANDA_ETA_A1[1]
+
+
+def test_il_totale_del_passo_seguente_viene_dalla_retta_di_tutti_i_passi():
+    # Con una misura sola la pendenza di prima stima, 25 anni per logaritmo; con due la secante; con
+    # più la retta ai minimi quadrati di tutte, che non rincorre il rumore dell'ultima; il passo resta
+    # entro 0,15 di logaritmo dall'ultimo totale provato.
+    assert cp.prossimo_totale([(10.0, 50.5)]) == pytest.approx(10.0 + 0.5 / 25.0)
+    assert cp.prossimo_totale([(10.0, 51.0), (10.1, 48.0)]) == pytest.approx(10.0 + 1.0 / 30.0)
+    punti = [(10.0, 51.0), (10.1, 48.0), (10.05, 49.9), (10.04, 50.4)]
+    x = [p[0] for p in punti]
+    y = [p[1] for p in punti]
+    pendenza = statistics.linear_regression(x, y).slope
+    assert cp.prossimo_totale(punti) == pytest.approx(statistics.fmean(x) + (50.0 - statistics.fmean(y)) / pendenza)
+    # Una pendenza che non scende torna alla prima stima, e il passo si ferma a 0,15.
+    assert cp.prossimo_totale([(10.0, 49.0), (10.1, 49.5)]) == pytest.approx(statistics.fmean((10.0, 10.1)) + (50.0 - 49.25) / -25.0)
+    assert cp.prossimo_totale([(10.0, 60.0)]) == pytest.approx(10.15)

@@ -30,8 +30,9 @@ def test_le_soglie_sono_cento_e_scendono():
 
 
 # I punteggi esatti di chi fa da ancora, come li ha misurati strumenti/carriera_perfetta.py nella revisione
-# della tappa 11: il nato del primo e del novantanovesimo percentile, il bravo dell'utente a 35 anni.
-ANCORE_ESATTE = ((89, 0.204776), (50, 0.404708), (30, 0.609318))
+# della tappa 11: il nato del primo e del novantanovesimo percentile, il bravo dell'utente a 35 anni. Dal
+# ricalcolo della classe del 15 ottobre 2026, decisione 7 di Gabriele, quelli coi pesi nuovi.
+ANCORE_ESATTE = ((89, 0.204230), (50, 0.406390), (30, 0.609334))
 
 
 @pytest.mark.parametrize(("livello", "punteggio"), ANCORE_ESATTE)
