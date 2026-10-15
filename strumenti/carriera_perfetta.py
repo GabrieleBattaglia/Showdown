@@ -67,6 +67,14 @@ quella media, e i fattori e le esperienze si risolvono sui suoi punti grezzi e s
 nato più lento e le carriere che arrivano dopo i 50 anni si dicono, senza essere bersagli. Con le misure
 di un giro la retta del totale si stima ai minimi quadrati su tutti i passi, e non più con le secanti
 sugli ultimi due, che rincorrevano il rumore.
+La verifica del 15 ottobre 2026 ha cambiato due cose. Il giudizio del bersaglio guarda anche l'errore
+della media sui nati, cioè la deviazione delle loro medie divisa per la radice di quanti sono: con dieci
+nati circa mezzo anno, il doppio della mezza banda, e con altri semi lo stesso codice usciva fuori. La
+media sta «dentro» nella banda, «dentro l'errore della media» quando ne esce ma dista da 50 meno di due
+errori, altrimenti «FUORI». E l'ancora del bravo dell'utente si fa per definizione, come vuole la
+decisione 7: il punteggio del suo caso tipico a 35 anni, coi fattori trovati, arrotondato per difetto al
+millesimo. Il ricalcolo del 15 ottobre l'aveva convertita, e coi fattori nuovi chi per definizione sta a
+D0 stava a D7: la carta dice il bravo a 35 anni accanto all'ancora in vigore.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/carriera_perfetta.py --processi 8 --rapporto carriera.txt
     python strumenti/carriera_perfetta.py --ricalcola-classe --processi 8 --rapporto carriera.txt
@@ -689,6 +697,29 @@ def medie_per_nato(carriere):
     return sorted((_media(gruppo, seme) for seme, gruppo in per_nato.items()), key=lambda m: m["seme"])
 
 
+def errore_della_media(medie):
+    """
+    L'errore della media dell'età di A1 sui nati: la deviazione delle medie dei nati divisa per la radice
+    di quanti sono, zero con un nato solo. Con dieci nati circa mezzo anno, verifica del 15 ottobre 2026.
+    """
+    eta = [m["eta_a1"] for m in medie]
+    return statistics.stdev(eta) / math.sqrt(len(eta)) if len(eta) > 1 else 0.0
+
+
+def giudizio_eta(media, errore):
+    """
+    Il giudizio sul bersaglio della decisione 6: «dentro» nella banda; «dentro l'errore della media» fuori
+    dalla banda ma a meno di due errori da 50, dove la banda è più stretta di quello che i nati sanno dire;
+    altrimenti «FUORI». Dalla verifica del 15 ottobre 2026: la banda da 49,75 a 50,25 è metà dell'errore
+    della media di dieci nati, e il giudizio dipendeva dai semi.
+    """
+    if BANDA_ETA_A1[0] <= media <= BANDA_ETA_A1[1]:
+        return "dentro"
+    if abs(media - ETA_A1_BERSAGLIO) < 2 * errore:
+        return "dentro l'errore della media"
+    return "FUORI"
+
+
 def media_di_tutte(carriere):
     """
     Le medie di tutte le carriere date, come _media, senza seme né numero del nato: il bersaglio della
@@ -787,18 +818,18 @@ def somma_convertita(carriere):
 def ancore_ricalcolate(somma, nati_del_seme, bravo_a_35):
     """
     Le ancore della classe coi pesi nuovi e con la somma nuova, arrotondate per difetto al millesimo come
-    nella tappa 11, perché chi fa da ancora stia nel suo livello. I nati del primo e del novantanovesimo
-    percentile per somma della classe, senza esperienza, si rifanno per definizione. Il bravo dell'utente a
-    35 anni si converte: l'ancora di prima più la differenza della sua parte del valore, il 70 per cento
-    del valore pesato sulla somma, fra i pesi nuovi con la somma nuova e i pesi di prima con la somma di
-    prima; la parte dell'esperienza non cambia. Restituisce le ancore e i punteggi esatti, per le prove.
+    nella tappa 11, perché chi fa da ancora stia nel suo livello: tutte per definizione, decisione 7 di
+    Gabriele del 14 ottobre 2026. I nati del primo e del novantanovesimo percentile per somma della
+    classe, senza esperienza; il bravo dell'utente col punteggio del suo caso tipico a 35 anni, che chi
+    chiama gioca coi fattori in vigore. Fino alla verifica del 15 ottobre 2026 il bravo si convertiva
+    dall'ancora di prima, e coi fattori nuovi chi per definizione sta a D0 stava a D7. Restituisce le
+    ancore e i punteggi esatti, per le prove.
     """
     somme = sorted(classe.somma_classe(g) for g in nati_del_seme)
     primo = punteggio(somme[len(somme) // 100], 0.0, somma)
     novantanovesimo = punteggio(somme[len(somme) * 99 // 100], 0.0, somma)
     livello_bravo = ANCORA_DEL_BRAVO[0]
-    bravo = dict(ANCORE_CLASSE_PRIMA)[livello_bravo] + costanti.PESO_VALORE_CLASSE * (
-        classe.somma_classe(bravo_a_35) / somma - somma_classe_prima(bravo_a_35) / SOMMA_CARRIERA_PERFETTA_PRIMA)
+    bravo = punteggio(classe.somma_classe(bravo_a_35), bravo_a_35.esperienza, somma)
     esatti = {89: primo, 50: novantanovesimo, livello_bravo: bravo}
     ancore = ((100, 0.0), *((n, math.floor(p * 1000) / 1000) for n, p in sorted(esatti.items(), reverse=True)), (1, 1.0))
     return ancore, esatti
@@ -837,8 +868,8 @@ def ricalcola_classe(argomenti, stampa):
            f"la somma congelata passa da {numero(SOMMA_CARRIERA_PERFETTA_PRIMA)} a {numero(somma)}. Coi pesi nuovi e la somma di prima le carriere arrivavano "
            f"ad A1 in media a {numero(eta_prima, 2)} anni.")
     stampa(f"Le ancore nuove, punteggi esatti: nato del primo percentile {numero(esatti[89], 6)}, del novantanovesimo {numero(esatti[50], 6)}, il bravo "
-           f"dell'utente a {ANCORA_DEL_BRAVO[1]} anni, convertito, {numero(esatti[ANCORA_DEL_BRAVO[0]], 6)}; per confronto, il suo punteggio per definizione "
-           f"col caso tipico di adesso sarebbe {numero(classe.punteggio(bravo_a_35), 6)}. Arrotondate per difetto al millesimo: {ancore!r}. Un livello vale "
+           f"dell'utente a {ANCORA_DEL_BRAVO[1]} anni col caso tipico dei fattori in vigore {numero(esatti[ANCORA_DEL_BRAVO[0]], 6)}. Arrotondate per difetto "
+           f"al millesimo: {ancore!r}. Un livello vale "
            f"{numero(passi[0], 4)} di punteggio fra I9 e F0, {numero(passi[1], 4)} fra F0 e D0, {numero(passi[2], 4)} fra D0 e A1"
            + ("; i livelli si allargano dal basso verso l'alto, come vuole D31." if passi[0] < passi[1] < passi[2] else
               "; ATTENZIONE, i livelli NON si allargano dal basso verso l'alto, come vorrebbe D31."))
@@ -989,10 +1020,11 @@ def racconta(fattori, esperienze, vedenti, ipovedenti, mondo_10, regime, storia,
     for anni, t in sorted(lenta["tappe"].items()):
         scrivi(f"La carriera più vicina all'età media di A1, a {anni} anni: classe {t['classe']}, somma {numero(t['somma'], 1)}, valore {numero(t['valore'])}, "
                f"esperienza {numero(t['esperienza'], 2)}.")
-    eta_dentro = BANDA_ETA_A1[0] <= media["eta_a1"] <= BANDA_ETA_A1[1]
+    errore = errore_della_media(vedenti)
     esperienza_dentro = BANDA_ESPERIENZA[0] <= media["esperienza_libera"] <= BANDA_ESPERIENZA[1]
     scrivi("I bersagli della decisione 6 di Gabriele del 14 ottobre 2026, sulla media di tutte le carriere vedenti: ad A1 in media fra "
-           f"{numero(BANDA_ETA_A1[0], 2)} e {numero(BANDA_ETA_A1[1], 2)} anni, {'dentro' if eta_dentro else 'FUORI'}; l'esperienza media a 50 anni senza tetto fra "
+           f"{numero(BANDA_ETA_A1[0], 2)} e {numero(BANDA_ETA_A1[1], 2)} anni, {numero(media['eta_a1'], 2)} con un errore della media sui {len(vedenti)} nati di "
+           f"{numero(errore, 2)}, {giudizio_eta(media['eta_a1'], errore)}; l'esperienza media a 50 anni senza tetto fra "
            f"{numero(BANDA_ESPERIENZA[0])} e {numero(BANDA_ESPERIENZA[1])}, {'dentro' if esperienza_dentro else 'FUORI'}. Il nato più lento e le carriere dopo i 50 "
            "anni si dicono senza essere bersagli.")
     # I casi tipici, con le gare del mondo, e le lettere dei mondi sintetici.
@@ -1005,10 +1037,17 @@ def racconta(fattori, esperienze, vedenti, ipovedenti, mondo_10, regime, storia,
     for anni in (25, 30, 35, 40):
         casi.append((f"mediano dell'utente dai 20 anni, con un'amichevole ogni due giorni e i tornei, a {anni}",
                      allena_a_passi(pronto(mediano, 20), 20, anni, 1.0 + amichevole_mediano, "completa", amichevoli_al_giorno=0.5, gare=1.0)))
-    for anni in (30, 40, 50):
+    for anni in (30, 35, 40, 50):
         casi.append((f"bravo dell'utente dai 15 anni, con un'amichevole ogni due giorni e i tornei, a {anni}", bravo_dell_utente(bravo, fattori, anni)))
     for nome, g in casi:
         scrivi(f"Caso, {nome}: classe {classe.classe(g).codice}, valore {numero(g.indice_collettivo_valore)}, esperienza {numero(g.esperienza, 2)}, stipendio {economia.stipendio(g)} euro.")
+    # L'ancora del bravo, decisione 7 e verifica del 15 ottobre 2026: per definizione il suo caso tipico a 35 anni.
+    bravo_a_35 = bravo_dell_utente(bravo, fattori, ANCORA_DEL_BRAVO[1])
+    esatto = classe.punteggio(bravo_a_35)
+    in_vigore = dict(costanti.ANCORE_CLASSE)[ANCORA_DEL_BRAVO[0]]
+    scrivi(f"L'ancora del bravo dell'utente, il livello {ANCORA_DEL_BRAVO[0]}, cioè D0, a {ANCORA_DEL_BRAVO[1]} anni: col caso tipico di questi fattori il suo punteggio è "
+           f"{numero(esatto, 6)}, per difetto al millesimo {numero(math.floor(esatto * 1000) / 1000, 3)}, contro {numero(in_vigore, 3)} di costanti.py"
+           + (", uguale." if math.floor(esatto * 1000) / 1000 == in_vigore else "; da aggiornare in ANCORE_CLASSE e nelle prove."))
     mondi = {"all'anno 10": mondo_10, "a regime": regime}
     if not argomenti.veloce:
         for anni in (20, 40):

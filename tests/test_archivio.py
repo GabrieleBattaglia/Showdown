@@ -8,6 +8,7 @@ formato 6, con la migrazione che dà i contratti ai tesserati e il rifiuto dei s
 """
 
 import datetime
+import gc
 import gzip
 import json
 import os
@@ -78,6 +79,23 @@ def test_salva_e_ricarica(cartella_di_prova):
     assert ricaricato.prossimo_id == 13
     assert set(os.listdir(cartella_di_prova)) == {FILE_MONDO}
     assert "segreta" not in _testo(cartella_di_prova / FILE_MONDO)
+
+
+def test_la_memoria_si_congela_dopo_il_caricamento_e_il_salvataggio(cartella_di_prova):
+    # Decisione 4 di Gabriele del 14 ottobre 2026, dalla verifica del 15 ottobre: il mondo caricato o
+    # appena salvato si mette da parte per la raccolta dei cicli, che non lo ripassa più a ogni giro.
+    try:
+        gc.unfreeze()
+        assert archivio.salva(_mondo_popolato()) and gc.get_freeze_count() > 0
+        gc.unfreeze()
+        ricaricato = _ricarica()
+        assert gc.get_freeze_count() > 0 and len(ricaricato.giocatori) == 12
+        # Un salvataggio rifiutato non congela niente.
+        gc.unfreeze()
+        ricaricato.salvataggio_bloccato = True
+        assert not archivio.salva(ricaricato) and gc.get_freeze_count() == 0
+    finally:
+        gc.unfreeze()
 
 
 def test_il_salvataggio_precedente_diventa_la_copia(cartella_di_prova):

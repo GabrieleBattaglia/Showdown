@@ -217,6 +217,35 @@ def test_la_prova_lunga_controlla_i_primi_100_tesserati():
     assert sl.controlli_della_tappa_12(4, [7], {7: (annuali, [])})[-1].endswith("tutti dentro.")
 
 
+def test_i_controlli_della_verifica_nella_prova_lunga():
+    # La verifica del 15 ottobre 2026: i primi 10 e 20 tesserati, la soglia del mondiale del mondo
+    # contro quella della carriera perfetta, la cassa mediana del computer ferma a regime.
+    soglia = costanti.PUNTI_PER_IL_MONDIALE
+    annuali = [{"numero_anno": n, "primi_10": 9 if n < 30 else 6, "primi_20": 18, "soglia_mondiale": {"m": soglia["m"] + 40, "f": soglia["f"] - 5},
+                "casse": (0, 10_000 + 1_000 * max(0, n - 45), 0)} for n in range(1, 61)]
+    fuori = sl.fuori_dai_controlli_della_verifica(annuali)
+    assert fuori[0] == "dei primi 10 tesserati meno di 8 in 31 anni, dall'anno 30 all'anno 60, al più basso 6"
+    assert fuori[1].startswith("soglia del mondiale per gli uomini dall'anno 40 al 60 in media ") and len(fuori) == 3
+    assert fuori[2].startswith("cassa mediana del computer che cresce di 1000 euro l'anno dall'anno 45 al 60")
+    for m in annuali:
+        m["primi_10"], m["soglia_mondiale"], m["casse"] = 8, dict(soglia), (0, 9_000 + 200 * max(0, m["numero_anno"] - 45), 0)
+    assert sl.fuori_dai_controlli_della_verifica(annuali) == []
+    # Le misure di prima, senza le chiavi nuove, passano senza i controlli nuovi.
+    assert sl.fuori_dai_controlli_della_verifica([{"numero_anno": 50, "primi_100": 90.0, "casse": (0, 5000, 0)}]) == []
+
+
+def test_lo_scenario_dell_utente_spende_con_la_regola_della_1_60_11():
+    # La verifica del 15 ottobre 2026: la polisportiva dell'utente nasce coi 20.000 euro del capitale,
+    # sopra la soglia della cassa piena, e la regola del computer della decisione 1 le avrebbe dato il
+    # premio; la decisione 2 vuole la partenza com'era, lo sponsor più un ventiquattresimo della cassa.
+    import economia
+
+    for sponsor, cassa in ((1500, 18_500), (1500, 13_000), (900, 5_000)):
+        assert sl.spesa_mensile_utente(sponsor, cassa) == sponsor + cassa / costanti.PARTI_DI_CASSA_PER_STIPENDI
+    differenza = economia.spesa_mensile_cpu(1500, 18_500) - sl.spesa_mensile_utente(1500, 18_500)
+    assert differenza == pytest.approx((18_500 - costanti.SOGLIA_CASSA_PIENA_CPU) / costanti.MESI_CASSA_PIENA_CPU) and differenza > 1000
+
+
 def test_la_simulazione_salva_il_mondo_alla_fine(tmp_path, monkeypatch):
     # Con salva la simulazione scrive il mondo e lo stato del caso, per misurare il giorno a regime;
     # il mondo riletto ha gli stessi giocatori, e il caso di chi chiama resta com'era.
@@ -234,6 +263,9 @@ def test_la_simulazione_salva_il_mondo_alla_fine(tmp_path, monkeypatch):
     riletto = Mondo()
     archivio.costruisci(archivio.leggi(str(file)), riletto)
     assert set(riletto.giocatori) == set(mondo.giocatori) and riletto.datetime_corrente_simulazione == mondo.datetime_corrente_simulazione
+    # Le misure nuove della verifica del 15 ottobre 2026: i primi 10 e 20 tesserati e la soglia del mondiale.
+    m = sl.misure(mondo)
+    assert 0 <= m["primi_10"] <= 10 and m["primi_10"] <= m["primi_20"] <= 20 and set(m["soglia_mondiale"]) == {"m", "f"}
     caso = ast.literal_eval((tmp_path / "mondi" / "lunga_5_anno_0.caso").read_text(encoding="utf-8"))
     assert isinstance(caso, tuple) and caso != stato
 
@@ -394,15 +426,14 @@ def test_il_ricalcolo_della_classe_si_fa_una_volta_e_converte(classe_ripristinat
     carriere = [{"somma_50": 330.0, "somma_50_prima": 300.0}, {"somma_50": 230.0, "somma_50_prima": 200.0}]
     somma, rapporti = cp.somma_convertita(carriere)
     assert rapporti == pytest.approx([1.1, 1.15]) and somma == math.floor(cp.SOMMA_CARRIERA_PERFETTA_PRIMA * 1.125 * 10) / 10
-    # Le ancore: i nati per definizione, il bravo convertito sulla sua parte del valore.
+    # Le ancore: tutte per definizione, anche il bravo col suo caso tipico, dalla verifica del 15 ottobre 2026.
     nati = cp.nati(300, 11)
     bravo = giocatore(5, valore=12.0, anni=35, esperienza=9.0)
     ancore, esatti = cp.ancore_ricalcolate(somma, nati, bravo)
     somme = sorted(classe.somma_classe(g) for g in nati)
     assert esatti[89] == pytest.approx(costanti.PESO_VALORE_CLASSE * somme[3] / somma)
     assert esatti[50] == pytest.approx(costanti.PESO_VALORE_CLASSE * somme[297] / somma)
-    assert esatti[30] == pytest.approx(0.609 + costanti.PESO_VALORE_CLASSE * (classe.somma_classe(bravo) / somma
-                                                                            - cp.somma_classe_prima(bravo) / cp.SOMMA_CARRIERA_PERFETTA_PRIMA))
+    assert esatti[30] == pytest.approx(costanti.PESO_VALORE_CLASSE * classe.somma_classe(bravo) / somma + costanti.PESO_ESPERIENZA_CLASSE * 9.0 / 20.0)
     assert [n for n, _p in ancore] == [100, 89, 50, 30, 1] and all(p == math.floor(esatti[n] * 1000) / 1000 for n, p in ancore[1:4])
     # Messa la classe nuova nel processo, chi fa da ancora sta nel suo livello, il contesto la porta ai
     # processi, e un secondo ricalcolo si rifiuta.
@@ -464,6 +495,9 @@ def test_la_carriera_perfetta_va_al_mondiale_coi_punti_e_si_misura_in_media():
     assert tutte["eta_a1"] == pytest.approx(49.25) and tutte["seme"] is None and tutte["punti_totali"] == pytest.approx(4925.0)
     assert tutte["rappresentante"]["eta_a1"] == 49.0 and tutte["eta_a1_min"] == 48.0 and tutte["eta_a1_max"] == 51.0
     assert cp.ETA_A1_BERSAGLIO == 50.0 and cp.BANDA_ETA_A1[0] < cp.ETA_A1_BERSAGLIO < cp.BANDA_ETA_A1[1]
+    # La verifica del 15 ottobre 2026: l'errore della media sui nati, e il giudizio che ne tiene conto.
+    assert cp.errore_della_media(medie) == pytest.approx(statistics.stdev((50.0, 48.5)) / math.sqrt(2)) and cp.errore_della_media(medie[:1]) == 0.0
+    assert cp.giudizio_eta(49.9, 0.1) == "dentro" and cp.giudizio_eta(49.5, 0.3) == "dentro l'errore della media" and cp.giudizio_eta(49.0, 0.3) == "FUORI"
 
 
 def test_il_totale_del_passo_seguente_viene_dalla_retta_di_tutti_i_passi():

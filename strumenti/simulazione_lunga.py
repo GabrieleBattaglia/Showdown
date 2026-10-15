@@ -29,7 +29,8 @@ pagare, con i tesserati almeno all'85 per cento dei giocatori in attività e la 
 2.000 e 15.000 euro. È il controllo sul mondo a regime: la scala si tara all'anno 10, e da lì il
 mondo deriva.
 Con --scenario-utente, all'anno 10 nasce una polisportiva dell'utente che allena: tessera al mercato
-i quindici liberi più forti fino a 30 anni che può pagare con la regola del computer, così il monte
+i quindici liberi più forti fino a 30 anni che può pagare con la regola del computer della 1.60.11,
+lo sponsor più un ventiquattresimo della cassa, senza il premio della cassa piena, così il monte
 stipendi parte vicino al suo limite, e riempie allo stesso modo i posti che si liberano; ognuno gioca un'amichevole ogni due
 giorni contro un compagno; ogni giorno Allena tutti spende i punti di tutti secondo il programma;
 ogni rinnovo si propone alla richiesta, se la cassa lo regge con la regola del computer; gli
@@ -55,7 +56,10 @@ ricerca dell'economia con i tornei sono del passo 4 della tappa. Dalla decisione
 ottobre 2026, il computer che spende secondo la cassa, la prova lunga controlla anche i primi 100 del
 mondo per valore, tesserati almeno all'80 per cento in tutti gli anni come nello scenario dell'utente; e
 con --salva-mondi scrive alla fine il mondo di ogni seme, per misurare il giorno a regime a processore
-libero senza rifare la simulazione.
+libero senza rifare la simulazione. Dalla verifica del 15 ottobre 2026 la prova lunga misura e controlla
+anche i primi 10 e i primi 20 del mondo tesserati, la soglia del mondiale del mondo contro quella della
+carriera perfetta e la cassa mediana del computer ferma a regime; la memoria si congela a fine anno,
+come fa il programma dopo ogni salvataggio, e lo scenario dell'utente spende con la regola della 1.60.11.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/simulazione_lunga.py
     python strumenti/simulazione_lunga.py --giorni 1095 --seme 2026 --rapporto calendario.txt
@@ -198,6 +202,13 @@ def misure(mondo, dell_anno=None):
         lettera = classe.classe(g).codice[0]
         lettere[lettera] = lettere.get(lettera, 0) + 1
     primi = sorted(attivi, key=lambda g: g.indice_collettivo_valore, reverse=True)[:100]
+    # Dalla verifica del 15 ottobre 2026 anche i primi 10 e i primi 20, i veri campioni, e la soglia del
+    # mondiale, cioè i punti dell'ultimo anno del trentaduesimo fra gli attivi di ogni sesso.
+    oggi = mondo.datetime_corrente_simulazione.date()
+    soglie = {}
+    for sesso in ("m", "f"):
+        punti = sorted((palmares.punti_dell_anno(g, oggi) for g in attivi if g.sesso == sesso), reverse=True)
+        soglie[sesso] = punti[QUALIFICATI_MONDIALE - 1] if len(punti) >= QUALIFICATI_MONDIALE else 0.0
     # Dalla tappa 12 anche la gloria mediana del computer e il rapporto della gloria richiesta mediana dei liberi, punto 13.4.
     glorie = [p.gloria for p in cpu]
     richieste = [g.gloria_richiesta for g in attivi if g.appartenenza == "*"]
@@ -205,6 +216,8 @@ def misure(mondo, dell_anno=None):
     return {
         "attivi": len(attivi), "tesserati": len(tesserati), "polisportive": len(cpu),
         "primi_100": 100.0 * sum(1 for g in primi if g.appartenenza != "*") / max(1, len(primi)),
+        "primi_10": sum(1 for g in primi[:10] if g.appartenenza != "*"), "primi_20": sum(1 for g in primi[:20] if g.appartenenza != "*"),
+        "soglia_mondiale": soglie,
         "stipendi": (percentile(stipendi, 0.1), percentile(stipendi, 0.5), percentile(stipendi, 0.9)),
         "casse": (percentile(casse, 0.1), percentile(casse, 0.5), percentile(casse, 0.9)),
         "monte_su_sponsor": monte / max(1, sponsor),
@@ -224,7 +237,9 @@ def riga_dell_anno(anno, m, millisecondi):
     return (f"Anno {anno}: {m['attivi']} giocatori in attività, {numero(100 * m['tesserati'] / max(1, m['attivi']))} per cento tesserati, "
             f"{m['polisportive']} polisportive del computer. Stipendi pagati {numero(s10)}, {numero(s50)} e {numero(s90)} euro al decimo, cinquantesimo e novantesimo percentile; "
             f"casse {numero(c10)}, {numero(c50)} e {numero(c90)} euro; il monte stipendi è il {numero(100 * m['monte_su_sponsor'])} per cento dello sponsor. "
-            f"Valore {numero(v10)}, {numero(v50)} e {numero(v90)}; dei primi 100 per valore è tesserato il {numero(m['primi_100'])} per cento. "
+            f"Valore {numero(v10)}, {numero(v50)} e {numero(v90)}; dei primi 100 per valore è tesserato il {numero(m['primi_100'])} per cento, "
+            f"dei primi 10 {m['primi_10']} e dei primi 20 {m['primi_20']}; il trentaduesimo per punti dell'ultimo anno ne ha "
+            f"{numero(m['soglia_mondiale']['m'])} fra gli uomini e {numero(m['soglia_mondiale']['f'])} fra le donne. "
             f"Per fasce d'età: {fasce}. Classi per lettera, per cento: {lettere}. "
             f"Nell'anno: {anno_trascorso}. Un giorno simulato chiede {numero(millisecondi)} millisecondi.")
 
@@ -553,6 +568,9 @@ def simula(anni=10, seme=2026, stampa=print, misura_ogni_anno=True, ogni_giorno=
                         if misura_ogni_anno or giorno == giorni:
                             racconta(riga_dell_anno(giorno // GIORNI_PER_ANNO, m, millisecondi))
                     dell_anno = dict.fromkeys(VOCI_DELL_ANNO, 0)
+                    # Il programma congela la memoria dopo ogni salvataggio, dalla verifica del 15 ottobre
+                    # 2026: qui a fine anno, fuori dai tempi del giorno. Non cambia nessun esito.
+                    archivio.congela_la_memoria()
                     ultimo = time.perf_counter()
         if misura_calendario is not None and giorni % GIORNI_PER_ANNO_DI_CALENDARIO:
             racconta(misura_calendario.chiudi_anno(mondo))
@@ -861,6 +879,20 @@ TORNEI_A_TESTA = (5.0, 6.0)
 RITIRI_AL_MEGLIO_DEI_3 = (0.7, 1.4)
 UNO_NON_REGOLARE_OGNI = (35.0, 60.0)
 SCOSTAMENTO_GLORIA = 20.0
+# Dalla verifica del 15 ottobre 2026. I veri campioni tesserati, come i primi 100: almeno 8 dei primi 10
+# e 16 dei primi 20, in tutti gli anni. La soglia del mondiale del mondo, il trentaduesimo per punti
+# dell'ultimo anno di ogni sesso, in media dall'anno 40 al 60, non più lontana di 15 punti da
+# costanti.PUNTI_PER_IL_MONDIALE, che la carriera perfetta usa al posto del mondo: 15 punti spostano
+# l'età media di A1 di circa mezzo anno. E la cassa mediana del computer ferma a regime, decisione 1 di
+# Gabriele del 14 ottobre 2026: dall'anno 45 al 60 la retta dei minimi quadrati non sale più di 250 euro
+# l'anno, non soltanto la cassa dentro la banda.
+PRIMI_10_TESSERATI_MINIMI = 8
+PRIMI_20_TESSERATI_MINIMI = 16
+QUALIFICATI_MONDIALE = 32
+SCARTO_SOGLIA_MONDIALE = 15.0
+ANNI_SOGLIA_MONDIALE = (40, 60)
+ANNI_CASSA_FERMA = (45, 60)
+PENDENZA_CASSA_MASSIMA = 250.0
 GIORNO_MEDIO_MASSIMO = 450.0
 GIORNO_PEGGIORE_MASSIMO = 650.0
 
@@ -900,6 +932,7 @@ def controlli_della_tappa_12(anni, semi, risultati):
         sotto = [m["numero_anno"] for m in annuali if m["primi_100"] < PRIMI_100_TESSERATI_MINIMI]
         if sotto:
             fuori.append(f"primi 100 tesserati sotto l'{numero(PRIMI_100_TESSERATI_MINIMI)} per cento in {len(sotto)} anni, dall'anno {sotto[0]} all'anno {sotto[-1]}")
+        fuori.extend(fuori_dai_controlli_della_verifica(annuali))
         ultimo = annuali[-1]
         if anni >= 50 and not ATTIVI_A_REGIME[0] <= ultimo["attivi"] <= ATTIVI_A_REGIME[1]:
             fuori.append(f"{ultimo['attivi']} attivi alla fine, fuori da {ATTIVI_A_REGIME[0]} e {ATTIVI_A_REGIME[1]}")
@@ -922,6 +955,34 @@ def controlli_della_tappa_12(anni, semi, risultati):
                 fuori.append(f"gloria mediana all'anno {decennio} {numero(c['gloria_mediana'])} contro {numero(al_20['gloria_mediana'])} all'anno 20")
         righe.append(f"Seme {seme}, i bersagli nuovi della tappa 12: " + ("tutti dentro." if not fuori else "FUORI " + "; ".join(fuori) + "."))
     return righe
+
+
+def fuori_dai_controlli_della_verifica(annuali):
+    """
+    I controlli della verifica del 15 ottobre 2026, sulle misure di ogni anno che li hanno: i primi 10 e
+    i primi 20 tesserati, la soglia del mondiale del mondo contro quella della carriera perfetta, e la
+    cassa mediana del computer ferma a regime. Restituisce le frasi di quello che sta fuori.
+    """
+    fuori = []
+    for chiave, minimo, quanti in (("primi_10", PRIMI_10_TESSERATI_MINIMI, 10), ("primi_20", PRIMI_20_TESSERATI_MINIMI, 20)):
+        sotto = [m["numero_anno"] for m in annuali if chiave in m and m[chiave] < minimo]
+        if sotto:
+            peggiore = min(m[chiave] for m in annuali if chiave in m)
+            fuori.append(f"dei primi {quanti} tesserati meno di {minimo} in {len(sotto)} anni, dall'anno {sotto[0]} all'anno {sotto[-1]}, al più basso {peggiore}")
+    soglie = [m["soglia_mondiale"] for m in annuali if "soglia_mondiale" in m and ANNI_SOGLIA_MONDIALE[0] <= m["numero_anno"] <= ANNI_SOGLIA_MONDIALE[1]]
+    for sesso, chi in (("m", "gli uomini"), ("f", "le donne")):
+        if soglie:
+            media = statistics.fmean(s[sesso] for s in soglie)
+            if abs(media - costanti.PUNTI_PER_IL_MONDIALE[sesso]) > SCARTO_SOGLIA_MONDIALE:
+                fuori.append(f"soglia del mondiale per {chi} dall'anno {ANNI_SOGLIA_MONDIALE[0]} al {ANNI_SOGLIA_MONDIALE[1]} in media {numero(media)} punti, "
+                             f"contro {numero(costanti.PUNTI_PER_IL_MONDIALE[sesso])} della carriera perfetta")
+    casse = [(m["numero_anno"], m["casse"][1]) for m in annuali if ANNI_CASSA_FERMA[0] <= m["numero_anno"] <= ANNI_CASSA_FERMA[1]]
+    if len(casse) >= 2:
+        pendenza = statistics.linear_regression([a for a, _c in casse], [c for _a, c in casse]).slope
+        if pendenza > PENDENZA_CASSA_MASSIMA:
+            fuori.append(f"cassa mediana del computer che cresce di {numero(pendenza)} euro l'anno dall'anno {casse[0][0]} al {casse[-1][0]}, "
+                         f"oltre i {numero(PENDENZA_CASSA_MASSIMA)}")
+    return fuori
 
 
 def fuori_dalla_solvibilita(annuali):
@@ -955,6 +1016,8 @@ def prova_lunga(anni, semi, processi, stampa=print, gloria=None, salva_mondi=Non
             s10, s50, s90 = m["stipendi"]
             voci.append(f"seme {seme}: valore mediano {numero(m['valore'][1], 1)}, stipendi {numero(s10)}, {numero(s50)} e {numero(s90)}, cassa mediana {numero(m['casse'][1])}, "
                         f"tesserati {numero(100 * m['tesserati'] / max(1, m['attivi']))} per cento su {m['attivi']}, primi 100 tesserati al {numero(m['primi_100'])} per cento, "
+                        f"dei primi 10 {m.get('primi_10', '?')} e dei primi 20 {m.get('primi_20', '?')}, soglia del mondiale "
+                        f"{numero(m.get('soglia_mondiale', {}).get('m', 0))} e {numero(m.get('soglia_mondiale', {}).get('f', 0))}, "
                         f"gloria mediana del computer {numero(m['gloria_mediana'])}, rapporto della gloria richiesta {numero(m['rapporto_richiesta'], 3)}, un giorno {numero(m['millisecondi'])} millisecondi")
         righe.append(f"Anno {decennio}: " + "; ".join(voci) + ".")
     for seme in semi:
@@ -969,6 +1032,19 @@ def prova_lunga(anni, semi, processi, stampa=print, gloria=None, salva_mondi=Non
         if stampa:
             stampa(riga)
     return righe, completi
+
+
+def spesa_mensile_utente(sponsor, cassa):
+    """
+    Il monte stipendi che lo scenario si permette per la polisportiva dell'utente: la regola del computer
+    della 1.60.11, lo sponsor più un ventiquattresimo della cassa, senza il premio della cassa piena della
+    decisione 1 di Gabriele del 14 ottobre 2026. La polisportiva dell'utente nasce coi 20.000 euro del
+    capitale, sopra la soglia della cassa piena, e col premio i primi ingaggi si permettevano fino a circa
+    1.060 euro al mese di stipendi in più: la cassa del primo anno finiva a 6.700-9.100 euro invece che
+    attorno ai 3.000 su cui Gabriele, con la decisione 2, aveva scelto di lasciare la partenza com'era.
+    Verifica del 15 ottobre 2026.
+    """
+    return sponsor + cassa / costanti.PARTI_DI_CASSA_PER_STIPENDI
 
 
 class ScenarioUtente:
@@ -1066,8 +1142,7 @@ class ScenarioUtente:
     def _tessera(self, mondo):
         """
         Riempie la rosa con i liberi più forti fino a 30 anni, offrendo il 30 per cento in più dell'ingaggio,
-        se il monte stipendi sta nella regola del computer: dalla decisione 1 di Gabriele del 14 ottobre 2026
-        è economia.spesa_mensile_cpu, che con la cassa sotto la soglia della cassa piena è quella di prima.
+        se il monte stipendi sta nella regola di spesa dell'utente, spesa_mensile_utente.
         """
         poli = self.poli
         if len(poli.tesserati) >= TESSERATI_UTENTE or mondo.mosse_rimaste(poli) <= 0:
@@ -1079,7 +1154,7 @@ class ScenarioUtente:
             ingaggio = economia.arrotonda(economia.ingaggio_richiesto(g, poli) * RIALZO_INGAGGIO_UTENTE)
             monte = mondo.monte_stipendi(poli) + economia.stipendio(g)
             sponsor = mondo.sponsor(poli) + costanti.QUOTA_SPONSOR_SUL_VALORE * economia.valore_di_mercato_pieno(g)
-            if ingaggio + monte > poli.cassa or monte > economia.spesa_mensile_cpu(sponsor, poli.cassa - ingaggio):
+            if ingaggio + monte > poli.cassa or monte > spesa_mensile_utente(sponsor, poli.cassa - ingaggio):
                 continue
             if mondo.problema_offerta(poli, g, ingaggio) is None:
                 reputazione = economia.fattore_reputazione(g, poli)
@@ -1107,7 +1182,7 @@ class ScenarioUtente:
     def _rinnovi(self, mondo, oggi):
         """
         Propone il rinnovo a chi è nella finestra, alla richiesta e alla durata proposta, se il monte stipendi
-        nuovo sta nella regola del computer, economia.spesa_mensile_cpu dalla decisione 1 di Gabriele.
+        nuovo sta nella regola di spesa dell'utente, spesa_mensile_utente.
         """
         poli = self.poli
         for g in mondo._rosa(poli):
@@ -1117,7 +1192,7 @@ class ScenarioUtente:
             richiesta = contratti.richiesta_rinnovo(g, poli, mesi)
             self.anno["rinnovo_su_richiesta"].append(richiesta / max(1, economia.stipendio(g)))
             monte = mondo.monte_stipendi(poli) - economia.stipendio_pagato(g) + richiesta
-            if monte > economia.spesa_mensile_cpu(mondo.sponsor(poli), poli.cassa):
+            if monte > spesa_mensile_utente(mondo.sponsor(poli), poli.cassa):
                 if g.id not in self.mancati:
                     self.mancati.add(g.id)
                     self.anno["rinnovi_mancati"] += 1

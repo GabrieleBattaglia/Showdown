@@ -206,6 +206,20 @@ def _senza_raccolta():
             gc.enable()
 
 
+def congela_la_memoria():
+    """
+    Mette da parte la memoria del mondo per la raccolta dei cicli di Python, dopo il caricamento e dopo
+    ogni salvataggio: decisione 4 di Gabriele del 14 ottobre 2026, accelerare senza cambiare gli esiti,
+    dalla verifica del 15 ottobre. Il mondo sono milioni di oggetti che vivono a lungo, e ogni tanto la
+    raccolta completa li ripassava tutti: nel mondo a regime circa un secondo, in un giorno qualunque,
+    che diventava il giorno peggiore dell'anno. Prima si raccolgono i cicli già da buttare, poi quello che
+    resta si mette da parte, e la raccolta ripassa soltanto gli oggetti nati dopo. Un ciclo di oggetti
+    messi da parte che diventa da buttare resta in memoria fino alla chiusura: il giorno ne fa pochissimi.
+    """
+    gc.collect()
+    gc.freeze()
+
+
 def _comprimi(pezzi):
     """
     I pezzi compressi in gzip col livello 6, uno dopo l'altro, senza rifare il testo intero: il file è
@@ -653,8 +667,16 @@ def carica(mondo):
     Carica il mondo dal salvataggio, oppure dalla copia di sicurezza se il salvataggio non si
     può usare; se non c'è nessuno dei due, fa nascere un mondo nuovo. Restituisce da dove viene il
     mondo: NATO, CARICATO o DALLA_COPIA. Se i file ci sono ma nessuno dei due si legge, blocca i
-    salvataggi del mondo e solleva SalvataggioIllegibile.
+    salvataggi del mondo e solleva SalvataggioIllegibile. Dalla verifica del 15 ottobre 2026, a mondo
+    pronto la memoria si congela, congela_la_memoria.
     """
+    origine = _carica(mondo)
+    congela_la_memoria()
+    return origine
+
+
+def _carica(mondo):
+    """Il caricamento di carica, senza la memoria congelata."""
     principale = percorsi.percorso(FILE_MONDO)
     copia = percorsi.percorso(FILE_MONDO_COPIA)
     if not os.path.exists(principale) and not os.path.exists(copia):
@@ -722,6 +744,8 @@ def salva_con_avvisi(mondo):
     except (OSError, TypeError, ValueError) as e:
         mondo.notifica(f"Salvataggio non riuscito: {e}. Il salvataggio precedente è rimasto com'era.")
         return False, []
+    # Dalla verifica del 15 ottobre 2026 la memoria si congela dopo ogni salvataggio riuscito.
+    congela_la_memoria()
     salvato = contenuto["mondo"]
     testo = f"Mondo salvato: {_quanti(len(salvato['giocatori']), len(salvato['polisportive']))}."
     usciti = len(mondo.giocatori) - len(salvato["giocatori"])
