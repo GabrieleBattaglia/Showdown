@@ -1,21 +1,21 @@
 {
- "nota": "Revisione della tappa 12, 14 ottobre 2026: l'esito rapido ritarato sui mondi maturi, con la pendenza che scende col livello medio della coppia e la pendenza della gara a squadre a 0,3989, e i fattori dei punti allenamento della carriera perfetta rifatta, che va al mondiale coi punti come nel mondo: torneo 3,813, amichevole 0,517, sfida 1,028",
+ "nota": "Decisione 1 di Gabriele del 14 ottobre 2026: il computer spende secondo la cassa, e oltre 10.000 euro un ottavo della cassa in più si aggiunge agli stipendi e al prezzo che si permette. Cambiano il mondo nato e quello a regime, perché le polisportive del computer nascono con 20.000 euro di capitale; con la soglia irraggiungibile le due impronte restano quelle di prima, quindi il mercato rifatto senza il filtro dei prezzi sceglie come prima.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "bc1d9df809b9cdbe759cbd8dc61ef0b8f864d460a99fac593da8e664392f751e",
-  "vivi": 717,
-  "attivi": 717,
-  "tesserati": 630,
+  "sha256": "5cc6ac83a134915fff8dba6698555561116c9a28200d1bddf05385f5c89baaf6",
+  "vivi": 693,
+  "attivi": 693,
+  "tesserati": 619,
   "polisportive": 42
  },
  "mondo_a_regime": {
-  "sha256": "9aec2cd46285232f325f7cb2637cb3880958293b3851c63cade6f04a4f8a1147",
+  "sha256": "99a4a253e37972a9f414625dcfaefa9b9d2f198337a51bdc7cde010a2a66c346",
   "vivi": 1664,
   "attivi": 1264,
-  "tesserati": 1091,
+  "tesserati": 1078,
   "polisportive": 77
  }
 }

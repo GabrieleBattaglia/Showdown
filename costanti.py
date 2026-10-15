@@ -259,6 +259,21 @@ MESI_DI_RISERVA_CPU = 1
 PARTI_DI_CASSA_PER_STIPENDI = 24
 # Quanti candidati troppo cari il computer scorre in un giorno, prima di lasciar perdere.
 SCARTI_MASSIMI_CPU = 30
+# Il computer spende secondo la cassa, decisione 1 di Gabriele del 14 ottobre 2026: con la cassa piena
+# può offrire di più e tesserare i campioni, e la cassa smette di crescere. Nella prova di sessant'anni
+# della taratura della tappa 12 la cassa mediana del computer passava i 15.000 euro dall'anno 40 e
+# arrivava a 44.000-54.000 all'anno 60, mentre i più forti del mondo restavano liberi: chiedevano più di
+# quanto lo sponsor e un ventiquattresimo della cassa lasciassero spendere a chiunque. Oltre
+# SOGLIA_CASSA_PIENA_CPU, il doppio della cassa mediana che la taratura dell'economia cerca all'anno 10,
+# la cassa in più si conta spesa in MESI_CASSA_PIENA_CPU mesi: un mese di quella spesa si aggiunge agli
+# stipendi che il computer si permette, nei tesseramenti, negli acquisti e nei rinnovi, e al prezzo più
+# alto che paga per un giocatore in vendita. Sotto la soglia non cambia niente. I mesi sono il parametro
+# che la taratura dell'economia del passo seguente fissa con la prova di sessant'anni; il valore di
+# partenza viene dal mondo del seme 2026 all'anno 50, dove la cassa mediana del computer è di 27.300
+# euro e 45 dei primi 100 per valore sono liberi: con 8 mesi 34 di loro stanno nei conti di almeno una
+# polisportiva del computer, con 12 mesi 22, con le regole di prima nessuno.
+SOGLIA_CASSA_PIENA_CPU = 10_000
+MESI_CASSA_PIENA_CPU = 8
 # Un'offerta d'acquisto per un tesserato del computer, decisione D23: la polisportiva vuole il suo
 # valore di mercato, e fino a metà in più per il più forte della rosa.
 IMPORTANZA_MASSIMA = 0.5

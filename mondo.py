@@ -94,7 +94,6 @@ from costanti import (
     NOME_POLISPORTIVA_MAX,
     NOME_POLISPORTIVA_MIN,
     PA_SEDUTA,
-    PARTI_DI_CASSA_PER_STIPENDI,
     PROB_CHIUSURA_BASE_GIORNALIERA,
     PROB_CREAZIONE_POLI_CPU_PER_TICK,
     PROB_SCAMBIO_CPU_GIORNALIERA,
@@ -118,7 +117,9 @@ from economia import (
     ingaggio_richiesto,
     mesi_di_pazienza,
     pazienza_per_euro,
+    premio_cassa_piena,
     scritta_in_euro,
+    spesa_mensile_cpu,
     sponsor_mensile,
     stipendio,
     stipendio_pagato,
@@ -208,17 +209,22 @@ class _Mercato:
     """
     I giocatori in vendita del giorno per gli acquisti del computer, dalla tappa 12, decisione 4 di
     Gabriele del 14 ottobre 2026: le righe di Mondo._vendibili dal valore più alto, a parità di valore
-    nel loro ordine, perché l'ordinamento è stabile, e soltanto quelle col prezzo entro il prezzo più
-    alto che il computer paga, che nessuna polisportiva può superare. Così la prima riga che va bene a
-    una polisportiva è proprio quella che prima trovava scorrendo tutte le righe, la più forte e, a pari
-    forza, la prima: la scelta resta la stessa. Le scorte dei prezzi e degli stipendi più bassi da ogni
-    riga in giù fermano la ricerca appena nessuna riga rimasta può stare nei conti. Prima ogni
-    polisportiva del computer scorreva tutti i giocatori in vendita: nel mondo a regime, con un mercato
-    affollato, più di mezzo secondo al giorno.
+    nel loro ordine, perché l'ordinamento è stabile. Così la prima riga che va bene a una polisportiva è
+    proprio quella che prima trovava scorrendo tutte le righe, la più forte e, a pari forza, la prima: la
+    scelta resta la stessa. Le scorte dei prezzi e degli stipendi più bassi da ogni riga in giù fermano
+    la ricerca appena nessuna riga rimasta può stare nei conti. Prima ogni polisportiva del computer
+    scorreva tutti i giocatori in vendita: nel mondo a regime, con un mercato affollato, più di mezzo
+    secondo al giorno.
+    Fino alla decisione 1 di Gabriele del 14 ottobre 2026 le righe col prezzo oltre il prezzo più alto
+    che il computer paga si toglievano subito, perché nessuna polisportiva poteva superarlo. Ora quel
+    tetto cresce col premio della cassa piena di ciascuna, e la cassa di chi vende cresce durante gli
+    acquisti del giorno: le righe restano tutte, e il tetto si guarda in scelta. Con il premio a zero la
+    scelta è quella di prima; le scorte dei minimi, che ora contano anche quelle righe, fermano la
+    ricerca un poco più tardi, mai prima.
     """
 
     def __init__(self, righe):
-        self.righe = sorted((riga for riga in righe if not riga[2] > riga[3]), key=lambda riga: riga[0].indice_collettivo_valore, reverse=True)
+        self.righe = sorted(righe, key=lambda riga: riga[0].indice_collettivo_valore, reverse=True)
         self.prezzi_minimi = [0] * len(self.righe)
         self.stipendi_minimi = [0] * len(self.righe)
         prezzo_minimo = stipendio_minimo = math.inf
@@ -239,15 +245,16 @@ class _Mercato:
             return True
         return debole is not None and self.righe[0][0].indice_collettivo_valore <= debole.indice_collettivo_valore
 
-    def scelta(self, poli, spendibile, massimo, debole):
+    def scelta(self, poli, spendibile, massimo, debole, premio=0.0):
         """
         Il giocatore che la polisportiva compra, con chi lo vende e il prezzo, oppure None: il più forte
-        ancora in vendita al prezzo di stamattina, non suo, col prezzo nella cassa da spendere, lo
-        stipendio nei conti e, a rosa piena, più forte del tesserato che vale meno.
+        ancora in vendita al prezzo di stamattina, non suo, col prezzo nella cassa da spendere e non oltre
+        il prezzo più alto che il computer paga più il premio della cassa piena, lo stipendio nei conti e,
+        a rosa piena, più forte del tesserato che vale meno.
         """
         soglia = None if debole is None else debole.indice_collettivo_valore
         prezzi_minimi, stipendi_minimi = self.prezzi_minimi, self.stipendi_minimi
-        for posto, (g, venditore, prezzo, _massimo, chiesto) in enumerate(self.righe):
+        for posto, (g, venditore, prezzo, tetto, chiesto) in enumerate(self.righe):
             if prezzi_minimi[posto] > spendibile or stipendi_minimi[posto] > massimo:
                 return None
             if soglia is not None and g.indice_collettivo_valore <= soglia:
@@ -255,7 +262,7 @@ class _Mercato:
             # Chi è già stato comprato oggi non è più in vendita.
             if venditore is poli or venditore.in_vendita.get(g.id) != prezzo:
                 continue
-            if prezzo > spendibile or chiesto > massimo:
+            if prezzo > spendibile or chiesto > massimo or prezzo > tetto + premio:
                 continue
             return g, venditore, prezzo
         return None
@@ -921,9 +928,10 @@ class Mondo:
     def _stipendio_massimo(self, poli, monte, spendibile):
         """
         Lo stipendio più alto che una polisportiva del computer può aggiungere: deve stare nello
-        sponsor più una parte della cassa, e l'ingaggio più basso possibile deve stare nella cassa.
+        sponsor più una parte della cassa, e con la cassa piena nel suo premio, decisione 1 di Gabriele
+        del 14 ottobre 2026; e l'ingaggio più basso possibile deve stare nella cassa.
         """
-        nei_conti = self._sponsor_memorizzato(poli) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
+        nei_conti = spesa_mensile_cpu(self._sponsor_memorizzato(poli), poli.cassa) - monte
         nella_cassa = spendibile / (MESI_DI_INGAGGIO * REPUTAZIONE_MINIMA * RIALZO_CPU)
         return min(nei_conti, nella_cassa)
 
@@ -987,7 +995,9 @@ class Mondo:
         supera di molto il suo valore di mercato e se ci sta nei conti; a rosa piena solo se è più
         forte del tesserato che vale meno, che lascia libero. Al massimo un acquisto al giorno. Dalla
         tappa 12 la ricerca la fa il mercato del giorno, _Mercato, costruito una volta per tutte le
-        polisportive del computer; senza, se ne costruisce uno.
+        polisportive del computer; senza, se ne costruisce uno. Con la cassa piena, decisione 1 di
+        Gabriele del 14 ottobre 2026, il premio della cassa piena alza lo stipendio che si permette e il
+        prezzo che paga oltre il valore di mercato.
         """
         if self.mosse_rimaste(poli) <= 0:
             return False
@@ -1005,8 +1015,8 @@ class Mondo:
         # Lo sponsor, il conto più caro, serve soltanto se il mercato ha qualcosa alla portata della cassa.
         if mercato.chiuso(spendibile, debole):
             return False
-        massimo = self._sponsor_memorizzato(poli) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
-        scelta = mercato.scelta(poli, spendibile, massimo, debole)
+        massimo = spesa_mensile_cpu(self._sponsor_memorizzato(poli), poli.cassa) - monte
+        scelta = mercato.scelta(poli, spendibile, massimo, debole, premio_cassa_piena(poli.cassa))
         if scelta is None:
             return False
         g, venditore, prezzo = scelta
@@ -1163,14 +1173,15 @@ class Mondo:
         Il computer prova a rinnovare un tesserato nella finestra, una volta al mese: offre la
         richiesta per la durata che il giocatore propone, con il suo rialzo. Se il monte stipendi,
         con lo stipendio nuovo al posto del vecchio, non sta nello sponsor più una parte della
-        cassa, non rinnova: mette il giocatore in vendita al valore di mercato e lo lascia scadere.
+        cassa, e con la cassa piena il suo premio, decisione 1 di Gabriele del 14 ottobre 2026, non
+        rinnova: mette il giocatore in vendita al valore di mercato e lo lascia scadere.
         Restituisce vero se il giocatore ha accettato.
         """
         mesi = contratti.durata_proposta(g)
         richiesta = contratti.richiesta_rinnovo(g, poli, mesi)
         offerta = arrotonda(richiesta * RIALZO_RINNOVO_CPU)
         monte = self.monte_stipendi(poli) - stipendio_pagato(g) + offerta
-        if monte > self._sponsor_del_mese(poli) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI:
+        if monte > spesa_mensile_cpu(self._sponsor_del_mese(poli), poli.cassa):
             if g.id not in poli.in_vendita:
                 prezzo = max(1, valore_di_mercato(g, data))
                 poli.in_vendita[g.id] = prezzo

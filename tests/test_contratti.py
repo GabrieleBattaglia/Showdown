@@ -347,6 +347,25 @@ def test_il_computer_che_non_puo_pagare_vende_e_lascia_scadere(mondo, monkeypatc
     assert cpu.in_vendita[g.id] == economia.valore_di_mercato(g, dopo) < economia.valore_di_mercato_pieno(g)
 
 
+def test_con_la_cassa_piena_il_computer_rinnova_chi_costa_di_piu(mondo, monkeypatch):
+    # La decisione 1 di Gabriele del 14 ottobre 2026: il premio della cassa piena vale anche nei rinnovi.
+    # Due polisportive senza sponsor, con la cassa di dodici volte l'offerta: un ventiquattresimo della
+    # cassa ne copre metà, col premio due. La soglia a zero lascia la prova indipendente dalla taratura.
+    monkeypatch.setattr(modulo_mondo, "sponsor_mensile", lambda _poli, _rosa: 0)
+    monkeypatch.setattr(modulo_mondo, "caso", lambda _p: True)
+    monkeypatch.setattr(economia, "SOGLIA_CASSA_PIENA_CPU", 0)
+    esiti = []
+    for gid, mesi_della_cassa in ((7, float("inf")), (8, economia.MESI_CASSA_PIENA_CPU)):
+        monkeypatch.setattr(economia, "MESI_CASSA_PIENA_CPU", mesi_della_cassa)
+        cpu = _cpu(mondo, (gid,))
+        g = mondo.giocatori[gid]
+        offerta = economia.arrotonda(contratti.richiesta_rinnovo(g, cpu, contratti.durata_proposta(g)) * 1.15)
+        cpu.cassa = 12 * offerta
+        mondo._contratti_del_mese(contratti.inizio_finestra(g).replace(hour=12), Mondo.rapporto_vuoto(INIZIO))
+        esiti.append((contratti.ha_rinnovo(g), g.id in cpu.in_vendita))
+    assert esiti == [(False, True), (True, False)]
+
+
 def test_il_valore_di_mercato_scende_soltanto_nella_finestra(mondo):
     cpu = _cpu(mondo, (8, 9))
     g = mondo.giocatori[8]
