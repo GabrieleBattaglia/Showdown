@@ -18,6 +18,7 @@ from aiuti_calendario import OGGI, apri, giorno, iscrivi_tutti, modelli, mondo_d
 import archivio
 import esito_rapido
 import formule
+import iscrizioni
 import modelli_torneo
 import tornei
 from calendario import Calendario
@@ -93,6 +94,35 @@ def test_l_annullamento_con_i_rimborsi_e_la_riscrittura_del_giorno_dopo():
     iscritti = mondo.calendario.iscritti_alle_edizioni()
     assert iscritti >= {1, 2, 3} and rapporto["tue_iscrizioni"] == 3 and poli.cassa == 70
     assert all(1 in ed.ids() for ed in mondo.calendario.edizioni if ed.nome == "Gran Premio maschile")
+
+
+def test_al_sorteggio_chi_ha_lasciato_l_attivita_esce_e_la_quota_torna():
+    # La lettura 13 delle decisioni finali di Gabriele del 14 ottobre 2026, dalla verifica del 15 ottobre:
+    # chi si è ritirato dall'attività o è uscito di scena da iscritto lascia l'edizione al sorteggio, e la
+    # quota torna al club; l'infortunato resta, a suo rischio, e perde a tavolino.
+    mondo = mondo_di_prova(6, 0)
+    poli = polisportiva(mondo, "Club Di Prova", cpu=False, cassa=100, ids=range(1, 7))
+    ed = apri(mondo, OGGI, MARTEDI)[0]
+    for gid in range(1, 7):
+        ed.aggiungi(gid, {"nome": poli.nome, "fondazione": poli.datetime_creazione_sim.date().isoformat()}, 10, "mano")
+    poli.cassa -= 60
+    martedi = OGGI + datetime.timedelta(days=1)
+    mondo.datetime_corrente_simulazione = martedi
+    ritirato, morto, fermo = mondo.giocatori[1], mondo.giocatori[2], mondo.giocatori[3]
+    ritirato.ritirato = True
+    mondo._lascia(poli, ritirato)
+    mondo._uscita(morto, "morte", martedi, morto.eta)
+    fermo.infortunato, fermo.infortunio_sede = True, "ginocchio"
+    fermo.infortunio_fine_datetime = martedi + datetime.timedelta(days=30)
+    mondo.calendario.sorteggi(mondo, martedi, Mondo.rapporto_vuoto(martedi))
+    sedi = [t for t in mondo.calendario.tornei if t.edizione == ed.id]
+    assert {gid for t in sedi for gid in t.iscritti} == {3, 4, 5, 6}
+    assert poli.cassa == 60 and poli.conti_del_mese["rimborsi"] == 20
+    voci = [voce["testo"] for voce in poli.diario if ed.nome in voce["testo"]]
+    assert any("dall'attività prima del sorteggio, e la quota di 10 euro torna." in v for v in voci)
+    assert any("di scena prima del sorteggio, e la quota di 10 euro torna." in v for v in voci)
+    # Senza nessuno da togliere, il sorteggio è quello di prima.
+    assert iscrizioni.togli_chi_ha_lasciato(mondo, ed) == 0
 
 
 def test_i_turni_del_giorno_e_le_fasi_in_giorni_diversi():

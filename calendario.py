@@ -14,7 +14,9 @@ con la rinomina. Ogni edizione congela una copia del suo modello e della sua for
 cambiano soltanto le edizioni future, D9 e D32. Se un modello o una formula non si leggono, il
 calendario apre soltanto le edizioni dei modelli validi, e il riepilogo lo dice: niente si ferma in
 silenzio.
-Al sorteggio un'edizione sotto il minimo si annulla con i rimborsi, risposta 19; le altre si dividono
+Al sorteggio chi si è ritirato dall'attività o è uscito di scena da iscritto lascia l'edizione, col
+rimborso, dalla verifica del 15 ottobre 2026; poi un'edizione sotto il minimo si annulla con i rimborsi,
+risposta 19; le altre si dividono
 in sedi parallele, ciascuna un torneo col suo seme, e ogni iscritto, tranne i convocati al mondiale,
 aggiorna la data del ritmo. Gli incontri dei tuoi tesserati si giocano col motore vero, con le
 fotografie per riascoltarli; tutti gli altri con l'esito rapido. Chi non può giocare non si presenta
@@ -466,7 +468,11 @@ class Calendario:
                     sfide.qualifica_coppa(mondo, self, ed, rapporto)
 
     def sorteggi(self, mondo, data, rapporto):
-        """Le edizioni che cominciano oggi chiudono le iscrizioni: sotto il minimo si annullano, le altre si dividono in sedi."""
+        """
+        Le edizioni che cominciano oggi chiudono le iscrizioni: sotto il minimo si annullano, le altre si dividono in sedi.
+        Prima, al mondiale gli infortunati e chi ha lasciato l'attività cedono il posto ai sostituti, alla coppa le chiuse
+        alle escluse, e dalla verifica del 15 ottobre 2026 negli altri tornei chi ha lasciato l'attività esce, col rimborso.
+        """
         oggi = _giorno(data)
         for ed in [ed for ed in self.edizioni if ed.data_inizio <= oggi]:
             self.edizioni.remove(ed)
@@ -476,6 +482,8 @@ class Calendario:
                 iscrizioni.sostituisci_gli_infortunati(mondo, self, ed, rapporto)
             elif ed.qualificazione == modelli_torneo.GLORIA:
                 sfide.rimpiazza_le_chiuse(mondo, self, ed, rapporto)
+            elif ed.individuale:
+                iscrizioni.togli_chi_ha_lasciato(mondo, ed)
             if len(ed.iscritti) < ed.minimo:
                 self._annulla(mondo, ed, rapporto)
                 continue

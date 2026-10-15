@@ -30,6 +30,9 @@ annulla col rimborso, perché il mondiale ha la precedenza. Dalla revisione del 
 può giocarlo lo dice modelli_torneo.idoneo, come per le iscrizioni, e il sostituto di un convocato,
 al sorteggio o quando lo togli, segue le stesse regole dei convocati: niente impegni che non si
 annullano negli stessi giorni, le iscrizioni sovrapposte annullate col rimborso, il diario per i tuoi.
+Dalla verifica del 15 ottobre 2026, lettura 13 delle decisioni finali di Gabriele, al sorteggio di un
+torneo individuale chi si è ritirato dall'attività o è uscito di scena da iscritto lascia l'edizione, e
+la quota torna al club che l'ha pagata, come al mondiale; l'infortunato resta, a suo rischio.
 """
 
 import datetime
@@ -471,6 +474,40 @@ def convoca_mondiale(mondo, calendario, ed, rapporto):
         if _sovrapposti(ed.data_inizio, ed.data_fine, fissi.get(g.id, ())):
             continue
         convoca(mondo, calendario, ed, g, rapporto)
+
+
+def togli_chi_ha_lasciato(mondo, ed):
+    """
+    Al sorteggio di un torneo individuale chi si è ritirato dall'attività o è uscito di scena da iscritto
+    lascia l'edizione, e la quota torna al club che l'ha pagata, se esiste ancora; se il club è dell'utente,
+    lo dice il suo diario. Restituisce quanti ne ha tolti. È la lettura 13 delle decisioni finali di
+    Gabriele del 14 ottobre 2026, dalla verifica del 15 ottobre: prima restavano nel tabellone e perdevano
+    a tavolino tutti gli incontri, e nel mondo a regime, dove ci si ritira e si muore molto più che nei
+    mondi giovani, facevano più di un incontro non regolare su dieci. Il mondiale li toglie già, col
+    sostituto, in sostituisci_gli_infortunati. Chi è soltanto infortunato resta, a suo rischio, come vuole
+    il punto 5.4 del progetto, e perde a tavolino se il giorno dell'incontro è ancora fermo.
+    """
+    morti = mondo._ids_morti_processati_sessione
+    tolti = 0
+    for iscritto in list(ed.iscritti):
+        gid = iscritto["id"]
+        g = mondo.giocatori.get(gid)
+        if g is not None and gid not in morti and not g.ritirato:
+            continue
+        ed.togli(gid)
+        euro = rimborsa(mondo, iscritto)
+        tolti += 1
+        poli = polisportiva_del_club(mondo, iscritto["club"])
+        if poli is None or poli.is_cpu_controlled:
+            continue
+        if g is None:
+            testo = f"Il giocatore numero {gid} non gioca {ed.nome}: è uscito di scena prima del sorteggio"
+        elif gid in morti:
+            testo = f"{nome_completo(g)} non gioca {ed.nome}: è {accorda(g.sesso, 'uscito')} di scena prima del sorteggio"
+        else:
+            testo = f"{nome_completo(g)} non gioca {ed.nome}: si è {accorda(g.sesso, 'ritirato')} dall'attività prima del sorteggio"
+        mondo.annota(poli, testo + (f", e la quota di {scritta_in_euro(euro)} torna." if euro else "."))
+    return tolti
 
 
 def sostituisci_gli_infortunati(mondo, calendario, ed, rapporto=None):
