@@ -103,7 +103,8 @@ def test_gloria_richiesta_cala_con_l_eta():
 
 
 def test_gloria_richiesta_ai_bordi():
-    assert _giocatore_neutro(60, 0).gloria_richiesta == max(GLORIA_RICHIESTA_MINIMA_ASSOLUTA, GLORIA_RICHIESTA_FISSA)
+    # Dalla ritaratura del 15 ottobre 2026 la parte fissa può avere i decimali, e la gloria richiesta è intera.
+    assert _giocatore_neutro(60, 0).gloria_richiesta == max(GLORIA_RICHIESTA_MINIMA_ASSOLUTA, int(GLORIA_RICHIESTA_FISSA))
     assert _giocatore_neutro(17, 10000).gloria_richiesta == MAX_GLORIA_RICHIESTA
 
 

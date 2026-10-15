@@ -1,21 +1,21 @@
 {
- "nota": "Ritaratura del 15 ottobre 2026, decisioni 6 e 7 di Gabriele del 14 ottobre: la somma della carriera perfetta e le ancore della classe ricalcolate una volta coi pesi nuovi, da 363,5 a 366,2 e con l'ancora del novantanovesimo percentile da 0,404 a 0,406, e i fattori dei punti e le costanti dell'esperienza tarati sulla media di tutte le carriere perfette vedenti. Cambiano il mondo nato e quello a regime, perché la classe decide teste di serie, convocazioni e squadre delle sfide, e i punti e l'esperienza cambiano la crescita dei giocatori; l'impronta del motore resta.",
+ "nota": "Ritaratura del 15 ottobre 2026, l'economia con le decisioni 1 e 3 di Gabriele del 14 ottobre: la scala del valore da -38,33 e 1,0295 a -39,58 e 1,0410, lo sponsor per gloria da 7,8 a 8,4, i coefficienti del palmarès da 3,36 e 9,79 a 3,92 e 9,13, il fattore della gloria richiesta da 1,9 a 1,76, cioè 1,584 e 21,1; la soglia e i mesi della cassa piena restano 10.000 euro e 8. Cambiano il mondo nato e quello a regime, perché valore, stipendi, sponsor, gloria e gloria richiesta decidono mercato, tesseramenti e conti; l'impronta del motore resta.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "dc792e375666d22ae771035bcd45298bdf631da027e6f22c89cddc2569286c5a",
-  "vivi": 729,
-  "attivi": 729,
-  "tesserati": 642,
-  "polisportive": 44
+  "sha256": "134b7aec697f1411fcdcbca0f231147c0ae7f230eda4527ec70cd37255c74d06",
+  "vivi": 719,
+  "attivi": 719,
+  "tesserati": 636,
+  "polisportive": 43
  },
  "mondo_a_regime": {
-  "sha256": "65427733b39e5a372840cfae751aa4f5cccf8d5aec56a9751ad03029a418de0d",
-  "vivi": 1656,
-  "attivi": 1256,
-  "tesserati": 1082,
-  "polisportive": 76
+  "sha256": "426c452ffa83362bb428bf30555d533b7c0a700497a9eb78f8ffdf3e8ac6c3aa",
+  "vivi": 1666,
+  "attivi": 1266,
+  "tesserati": 1074,
+  "polisportive": 77
  }
 }

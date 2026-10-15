@@ -151,12 +151,18 @@ SEDI_INFORTUNIO = (
 # la gloria del computer cresce mentre si riempie la finestra del palmarès: con un fattore solo i due
 # anni non stanno tutti e due sul rapporto della 1.60.11. Il fattore scelto, 1,9, li mette attorno al 7
 # per cento sopra e sotto, dentro il 10 del progetto: 1,706 e 23.
-K_ICV_GLORIA_RICHIESTA = 1.706
+# La ritaratura del 15 ottobre 2026: la forma chiusa dell'anno 20 dà 1,945, che col mondo nuovo mette il
+# rapporto a 0,88-0,92 all'anno 20, sullo 0,91 della 1.60.11, ma a 1,15-1,18 all'anno 10, il 17 per cento
+# sopra lo 0,99 della 1.60.11. Come nella taratura di prima il fattore si sceglie fra i due anni: con 1,8
+# il rapporto dell'anno 10 è da 1,08 a 1,10 e quello dell'anno 20 da 0,88 a 0,89; con 1,76, cioè 1,584 e
+# 21,1, nella prova di sessant'anni sui quattro semi è da 1,01 a 1,12 all'anno 10 e da 0,85 a 0,91 all'anno
+# 20: un seme un soffio oltre il 10 per cento all'anno 10. Da confermare con Gabriele, come l'1,9 di prima.
+K_ICV_GLORIA_RICHIESTA = 1.584
 ETA_PICCO_RICHIESTA_GLORIA_ANNI = 17.0
 ETA_MINIMO_RICHIESTA_GLORIA_ANNI = 55.0
 MAX_FATTORE_ETA_GLORIA = 2.7
 MIN_FATTORE_ETA_GLORIA = 0.1
-GLORIA_RICHIESTA_FISSA = 23
+GLORIA_RICHIESTA_FISSA = 21.1
 GLORIA_RICHIESTA_MINIMA_ASSOLUTA = 8
 MAX_GLORIA_RICHIESTA = 1500
 FATTORE_GLORIA_RICHIESTA_AMBIDESTRO = 1.35
@@ -229,7 +235,12 @@ CAPITALE_INIZIALE = 20_000
 # sui semi 2026, 7, 13 e 21. Con la scala nuova e la gloria nuova la bisezione dà 7,8, con la cassa
 # mediana del computer all'anno 10 fra 4.870 e 5.050 euro; all'anno 20 sale fra 5.880 e 6.160, perché
 # la gloria cresce mentre si riempie la finestra di cinque anni del palmarès.
-SPONSOR_PER_GLORIA = 7.8
+# La ritaratura del 15 ottobre 2026, col computer che spende secondo la cassa: le polisportive appena
+# nate, coi 20.000 euro del capitale sopra la soglia della cassa piena, spendono un poco di più nei primi
+# mesi. Con la scala nuova, all'anno 10 sui quattro semi, 7,8 dà una cassa mediana di 4.644 euro in media,
+# 8,2 di 4.885 e 8,4 di 4.984, da 4.885 a 5.053: 8,4. Con la soglia a 7.500 euro e 4 mesi la bisezione
+# dava 8,7, vedi MESI_CASSA_PIENA_CPU.
+SPONSOR_PER_GLORIA = 8.4
 QUOTA_SPONSOR_SUL_VALORE = 0.09
 STIPENDIO_DI_RIFERIMENTO = 200
 VALORE_DI_RIFERIMENTO = 140
@@ -272,6 +283,27 @@ SCARTI_MASSIMI_CPU = 30
 # partenza viene dal mondo del seme 2026 all'anno 50, dove la cassa mediana del computer è di 27.300
 # euro e 45 dei primi 100 per valore sono liberi: con 8 mesi 34 di loro stanno nei conti di almeno una
 # polisportiva del computer, con 12 mesi 22, con le regole di prima nessuno.
+# La ritaratura del 15 ottobre 2026. Con 10.000 euro e 8 mesi, in un mondo nato col seme 2026 e fatto
+# vivere sessant'anni, la cassa mediana del computer smette di crescere a 12.000-12.400 euro dall'anno 45,
+# contro i 44.000-50.000 di prima all'anno 60, ma i primi 100 del mondo per valore tesserati scendono
+# sotto l'80 per cento dall'anno 22 al 58, fino al 33: fra l'anno 20 e il 40 la cassa mediana sta fra
+# 5.400 e 10.000 euro, quasi nessuna polisportiva passa la soglia, e i campioni restano liberi. Le sonde
+# sui mondi salvati agli anni 20 e 30, fatti avanzare qualche anno, dicono che con la soglia a una volta e
+# mezzo la cassa dell'anno 10, 7.500 euro, e la cassa in più spesa in 4 mesi, i primi 100 tesserati
+# salgono dall'86 al 96-98 per cento all'anno 21-24 e dal 62 all'86 all'anno 31-33, con la cassa mediana
+# quasi ferma; con 5.000 euro e 2 mesi al 98, ma una polisportiva appena nata, coi 20.000 euro del
+# capitale, si permetterebbe 7.500 euro al mese di stipendi in più. Con 7.500 euro e 4 mesi, però, le
+# polisportive appena nate spendono il capitale più in fretta, la ricerca dell'economia alza lo sponsor
+# per gloria da 7,8 a 8,7 per tenere la cassa mediana dell'anno 10 a 5.000 euro, e nella prova di
+# sessant'anni sui semi 2026 e 7 i primi 100 tesserati restano al 98-100 per cento in tutti gli anni, ma
+# la cassa mediana passa i 15.000 euro dall'anno 39 e arriva a 54.000-59.000 all'anno 60: tre quarti delle
+# polisportive del computer hanno un avanzo di 800-1.200 euro al mese e niente da comprare, perché i
+# campioni li hanno già presi le altre. Qui restano i valori di partenza, 10.000 euro e 8 mesi, con lo
+# sponsor per gloria a 8,4, che la cassa dell'anno 10 chiede coi fattori e la classe nuovi: nella prova
+# di sessant'anni sui quattro semi i primi 100 tesserati non scendono mai sotto l'83 per cento, ma la
+# cassa mediana passa i 15.000 euro fra l'anno 40 e il 43 e arriva a 38.500-48.300 all'anno 60, perché la
+# gloria mediana cresce di un terzo fra l'anno 20 e il 60 e chi ha la cassa piena non ha niente da comprare.
+# Nessuna coppia di soglia e mesi tiene insieme la cassa e i campioni: la scelta è di Gabriele.
 SOGLIA_CASSA_PIENA_CPU = 10_000
 MESI_CASSA_PIENA_CPU = 8
 # Un'offerta d'acquisto per un tesserato del computer, decisione D23: la polisportiva vuole il suo
@@ -686,6 +718,10 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # pagato a 100, 200 e da 450 a 470 euro al decimo, cinquantesimo e novantesimo percentile, tesserati al
 # 91 per cento. All'anno 20 la mediana del valore sale a 144, lo stipendio mediano a 240 e quello del
 # decimo percentile a 110 o 120. La carta è strumenti/economia_tappa_12.txt.
+# La ritaratura del 15 ottobre 2026, con la classe ricalcolata, i fattori nuovi della carriera perfetta e
+# il computer che spende secondo la cassa: strumenti/simulazione_lunga.py --cerca-economia, tre giri della
+# forma chiusa all'anno 10, dà A -39,58 e B 1,0410, con la mediana del valore da 135,2 a 136,3, lo
+# stipendio pagato a 100, 210 e da 470 a 490 euro, tesserati al 91 per cento.
 CARATTERISTICHE_VALORE = (*COLPI_DELLO_SCAMBIO, *COLPI_DI_BATTUTA, "chiusura_dritto", "chiusura_rovescio", "blocco_dritto", "blocco_rovescio",
                           "difesa", "tenutapaletta", "controllopalla", "attacco", "precisione", "forza", "resistenza")
 PESI_VALORE = {
@@ -695,8 +731,8 @@ PESI_VALORE = {
     "tenutapaletta": 1.26, "controllopalla": 0.80, "attacco": 1.41, "precisione": 10.55, "forza": 5.78, "resistenza": 3.80,
 }
 PESI_TRATTI = {"mancino": 3.0, "ambidestro": 4.5, "giocorapido": 0.9, "cambiovelocita": 4.8}
-SCALA_VALORE_A = -38.33
-SCALA_VALORE_B = 1.0295
+SCALA_VALORE_A = -39.58
+SCALA_VALORE_B = 1.0410
 SOGLIA_PESO_INERTE = 0.25
 # La tappa 12, il mondo che gioca, decisione D32 e progetto definitivo del 13 ottobre 2026. Le
 # costanti nascono man mano che nascono le parti del mondo che le usano, ciascuna col suo racconto.
@@ -759,8 +795,11 @@ MESI_PALMARES_GLORIA = 60
 # trovati dopo, il palmarès fa all'anno 20 il 51 per cento della gloria della polisportiva mediana del
 # computer e dal 65 al 66 del primo decimo, dentro i bersagli dal 45 al 55 e dal 60 al 70; all'anno 10,
 # con la finestra ancora a metà, il 44 e il 59.
-K_GLORIA_MEDAGLIE = 3.36
-K_GLORIA_COPPE = 9.79
+# La ritaratura del 15 ottobre 2026, con la coppa d'argento delle sfide a un decimo dell'oro, decisione 3
+# di Gabriele: due giri della forma chiusa all'anno 20 danno 3,92 per le medaglie e 9,13 per le coppe, col
+# palmarès al 49-50 per cento della gloria della polisportiva mediana e al 64-65 del primo decimo.
+K_GLORIA_MEDAGLIE = 3.92
+K_GLORIA_COPPE = 9.13
 # Una coppa d'oro di una sfida vale 2 punti, una della Coppa delle polisportive 300: cinque anni di
 # sfide valgono quanto una Coppa vinta.
 IMPORTANZA_COPPA_SFIDA = 0.02
