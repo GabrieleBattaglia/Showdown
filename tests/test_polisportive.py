@@ -362,6 +362,29 @@ def test_il_computer_conta_soltanto_i_giocatori_in_attivita(mondo):
     assert not mondo._serve_una_polisportiva_cpu(_attivi(mondo))
 
 
+def test_il_giorno_conta_gli_attivi_senza_ritirati_ne_morti(mondo, monkeypatch):
+    # Le due prove qui sopra si contano gli attivi da sé; il numero che il giorno passa al computer lo
+    # conta _fai_invecchiare, dalla decisione 4 di Gabriele del 14 ottobre 2026, e la verifica del 15
+    # ottobre ha visto che tornando a contare i ritirati, come prima della issue 1, quelle prove passavano
+    # lo stesso. Qui si guarda il conto del mondo: dieci in attività, trenta ritirati, uno dei dieci che
+    # muore prima e uno che si ritira proprio oggi.
+    monkeypatch.setattr(modulo_mondo, "PROB_USCITA_PREMATURA_GIORNALIERA", 0)
+    giocatori = list(mondo.giocatori.values())
+    for g in giocatori:
+        g.etaritiro = g.etamorte = g.eta + 1000
+    for g in giocatori[10:]:
+        g.ritirato = True
+    mondo._uscita(giocatori[0], "morte", INIZIO, giocatori[0].eta)
+    giocatori[1].etaritiro = giocatori[1].eta + 1
+    domani = INIZIO + datetime.timedelta(days=1)
+    _declinanti, attivi = mondo._fai_invecchiare(domani, Mondo.rapporto_vuoto(domani))
+    assert attivi == 8 == _attivi(mondo) and giocatori[1].ritirato
+    # Con otto attivi il computer fonda una polisportiva, non due; con i quaranta vivi ne avrebbe fondate tre.
+    assert mondo._serve_una_polisportiva_cpu(attivi)
+    mondo.crea_polisportiva_cpu(INIZIO)
+    assert not mondo._serve_una_polisportiva_cpu(attivi)
+
+
 def test_le_polisportive_dell_utente_non_entrano_nel_conto(mondo):
     for g in list(mondo.giocatori.values())[17:]:
         g.ritirato = True

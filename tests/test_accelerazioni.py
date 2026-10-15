@@ -40,17 +40,17 @@ INIZIO_UTC = datetime.datetime(2026, 3, 1, 8, 30, tzinfo=datetime.UTC)
 
 # Il mercato del computer.
 
-def _scelta_di_prima(righe, poli, spendibile, massimo, debole, premio=0.0):
+def _scelta_di_prima(righe, poli, spendibile, massimo, debole):
     """
     La scelta di _compra_dal_mercato prima della tappa 12: tutte le righe, la più forte e, a pari forza, la
-    prima; dalla decisione 1 di Gabriele del 14 ottobre 2026 il prezzo più alto che il computer paga ha in
-    più il premio della cassa piena.
+    prima. Il prezzo più alto che il computer paga è quello della riga: il premio della cassa piena della
+    decisione 1 di Gabriele del 14 ottobre 2026 vale negli stipendi, non nel prezzo, verifica del 15 ottobre.
     """
     scelta = None
     for g, venditore, prezzo, prezzo_massimo, chiesto in righe:
         if venditore is poli or venditore.in_vendita.get(g.id) != prezzo:
             continue
-        if prezzo > spendibile or prezzo > prezzo_massimo + premio or chiesto > massimo:
+        if prezzo > spendibile or prezzo > prezzo_massimo or chiesto > massimo:
             continue
         if debole is not None and g.indice_collettivo_valore <= debole.indice_collettivo_valore:
             continue
@@ -90,9 +90,6 @@ def test_il_mercato_sceglie_come_prima():
             massimo = rng.uniform(-200, 3500)
             debole = None if rng.random() < 0.5 else types.SimpleNamespace(indice_collettivo_valore=rng.choice((70.0, 95.5, 140.0)))
             assert mercato.scelta(poli, spendibile, massimo, debole) == _scelta_di_prima(righe, poli, spendibile, massimo, debole)
-            # Col premio della cassa piena, decisione 1 di Gabriele del 14 ottobre 2026.
-            premio = rng.choice((0.0, 0.0, 250.0, 1000.0, rng.uniform(0, 3000)))
-            assert mercato.scelta(poli, spendibile, massimo, debole, premio) == _scelta_di_prima(righe, poli, spendibile, massimo, debole, premio)
 
 
 # Le iscrizioni automatiche.

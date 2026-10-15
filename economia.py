@@ -14,7 +14,9 @@ scende negli ultimi tre mesi di contratto, fino al 40 per cento alla scadenza, p
 rinnovato.
 Dalla tappa 12, decisione 1 di Gabriele del 14 ottobre 2026, il computer spende secondo la cassa:
 oltre una soglia la cassa in più si conta spesa in qualche mese, e un mese di quella spesa si aggiunge
-agli stipendi che si permette e al prezzo più alto che paga per un giocatore in vendita.
+agli stipendi che si permette. Non al prezzo che paga per un giocatore in vendita, che resta entro il
+valore di mercato col rialzo del computer: la verifica del 15 ottobre 2026 lo ha tolto, perché faceva
+comprare a più volte il loro valore i giocatori che l'utente metteva in vendita a un prezzo gonfiato.
 """
 
 import math
@@ -139,7 +141,7 @@ def premio_cassa_piena(cassa):
     Quanto in più al mese si permette una polisportiva del computer con la cassa piena, decisione 1 di
     Gabriele del 14 ottobre 2026: la cassa oltre SOGLIA_CASSA_PIENA_CPU divisa per i mesi in cui conta di
     spenderla, MESI_CASSA_PIENA_CPU; zero sotto la soglia. Si aggiunge agli stipendi che il computer si
-    permette e al prezzo più alto che paga per un giocatore in vendita.
+    permette nei tesseramenti, negli scambi, negli acquisti e nei rinnovi, non al prezzo.
     """
     return max(0.0, cassa - SOGLIA_CASSA_PIENA_CPU) / MESI_CASSA_PIENA_CPU
 

@@ -215,9 +215,9 @@ def test_il_computer_compra_chi_e_in_vendita(mondo):
         if gid != 1:
             altro.ritirato = True
     cpu = _cpu(mondo, ())
-    # Dalla decisione 1 di Gabriele del 14 ottobre 2026 una cassa oltre la soglia alza il prezzo che il
-    # computer paga: con la cassa alla soglia il tetto è quello di sempre.
-    cpu.cassa = SOGLIA_CASSA_PIENA_CPU
+    # Una cassa ricchissima, ben oltre la soglia della cassa piena: il prezzo che il computer paga resta
+    # entro il valore di mercato col suo rialzo, verifica del 15 ottobre 2026.
+    cpu.cassa = 1_000_000
     troppo = round(economia.valore_di_mercato(g) * 1.5)
     mondo.metti_in_vendita(mia, g, troppo)
     assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
@@ -286,22 +286,32 @@ def test_il_premio_della_cassa_piena():
     assert economia.spesa_mensile_cpu(1000, cassa) == pytest.approx(1000 + cassa / PARTI_DI_CASSA_PER_STIPENDI + 24_000 / MESI_CASSA_PIENA_CPU)
 
 
-def test_con_la_cassa_piena_il_computer_paga_oltre_il_tetto(mondo):
+def test_il_computer_ricco_non_compra_a_tre_volte_il_valore(mondo):
+    # La verifica del 15 ottobre 2026: il premio della cassa piena alzava anche il prezzo che il computer
+    # paga, una somma in euro staccata dal valore, e con 45.000 euro in cassa il computer comprava a tre
+    # volte il valore chi l'utente metteva in vendita a un prezzo gonfiato. Ora il premio vale negli
+    # stipendi, e il prezzo resta entro il valore di mercato col rialzo del computer, con qualunque cassa:
+    # quella mediana e quella al novantesimo percentile del computer all'anno 60 della prova di
+    # sessant'anni, e una cassa ricchissima.
     mia = _club(mondo, 1)
     g = mondo.giocatori[1]
     for gid, altro in mondo.giocatori.items():
         if gid != 1:
             altro.ritirato = True
     cpu = _cpu(mondo, ())
-    tetto = economia.valore_di_mercato(g, INIZIO) * RIALZO_CPU
-    prezzo = math.ceil(tetto) + 500
-    mondo.metti_in_vendita(mia, g, prezzo)
-    cpu.cassa = SOGLIA_CASSA_PIENA_CPU
-    assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
-    # Il premio di un mese copre i 500 euro oltre il tetto, e il giocatore si compra.
-    cpu.cassa = SOGLIA_CASSA_PIENA_CPU + MESI_CASSA_PIENA_CPU * 501
+    valore = economia.valore_di_mercato(g, INIZIO)
+    tetto = valore * RIALZO_CPU
+    for cassa in (45_061, 92_556, 1_000_000):
+        cpu.cassa = cassa
+        # Con la regola del primo passo il tetto più il premio copriva tre volte il valore.
+        assert tetto + economia.premio_cassa_piena(cassa) >= 3 * valore
+        for prezzo in (3 * valore, math.floor(tetto) + 1):
+            mondo.metti_in_vendita(mia, g, prezzo)
+            assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
+            assert g.appartenenza == mia.nome and mia.cassa == CAPITALE_INIZIALE
+    mondo.metti_in_vendita(mia, g, math.floor(tetto))
     assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 1)
-    assert g.appartenenza == cpu.nome and cpu.conti_del_mese["acquisti"] == prezzo
+    assert g.appartenenza == cpu.nome and cpu.conti_del_mese["acquisti"] == math.floor(tetto)
 
 
 def test_con_la_cassa_piena_il_computer_tessera_chi_chiede_di_piu(mondo, monkeypatch):

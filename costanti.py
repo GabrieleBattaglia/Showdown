@@ -277,8 +277,10 @@ SCARTI_MASSIMI_CPU = 30
 # quanto lo sponsor e un ventiquattresimo della cassa lasciassero spendere a chiunque. Oltre
 # SOGLIA_CASSA_PIENA_CPU, il doppio della cassa mediana che la taratura dell'economia cerca all'anno 10,
 # la cassa in più si conta spesa in MESI_CASSA_PIENA_CPU mesi: un mese di quella spesa si aggiunge agli
-# stipendi che il computer si permette, nei tesseramenti, negli acquisti e nei rinnovi, e al prezzo più
-# alto che paga per un giocatore in vendita. Sotto la soglia non cambia niente. I mesi sono il parametro
+# stipendi che il computer si permette, nei tesseramenti, negli acquisti e nei rinnovi. Il primo passo lo
+# aggiungeva anche al prezzo più alto che paga per un giocatore in vendita, ma una somma in euro staccata
+# dal valore faceva comprare a più volte il loro valore i giocatori che l'utente metteva in vendita a un
+# prezzo gonfiato: la verifica del 15 ottobre 2026 l'ha tolto. Sotto la soglia non cambia niente. I mesi sono il parametro
 # che la taratura dell'economia del passo seguente fissa con la prova di sessant'anni; il valore di
 # partenza viene dal mondo del seme 2026 all'anno 50, dove la cassa mediana del computer è di 27.300
 # euro e 45 dei primi 100 per valore sono liberi: con 8 mesi 34 di loro stanno nei conti di almeno una
@@ -303,7 +305,11 @@ SCARTI_MASSIMI_CPU = 30
 # di sessant'anni sui quattro semi i primi 100 tesserati non scendono mai sotto l'83 per cento, ma la
 # cassa mediana passa i 15.000 euro fra l'anno 40 e il 43 e arriva a 38.500-48.300 all'anno 60, perché la
 # gloria mediana cresce di un terzo fra l'anno 20 e il 60 e chi ha la cassa piena non ha niente da comprare.
-# Nessuna coppia di soglia e mesi tiene insieme la cassa e i campioni: la scelta è di Gabriele.
+# Nessuna coppia di soglia e mesi tiene insieme la cassa e i campioni: la scelta è di Gabriele. Quindi,
+# dice la verifica del 15 ottobre 2026, la decisione 1 è fatta soltanto a metà: chi ha la cassa piena può
+# spendere di più, ma ha già la rosa piena e niente da comprare, e la cassa mediana del computer cresce
+# ogni anno dall'anno 45 al 60 in tutti i semi. La leva che la ferma, per esempio un'offerta più alta ai
+# rinnovi con un freno sul monte stipendi, si sceglie con Gabriele, e poi si rifà la prova di sessant'anni.
 SOGLIA_CASSA_PIENA_CPU = 10_000
 MESI_CASSA_PIENA_CPU = 8
 # Un'offerta d'acquisto per un tesserato del computer, decisione D23: la polisportiva vuole il suo
