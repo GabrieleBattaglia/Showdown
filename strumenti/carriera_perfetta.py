@@ -47,8 +47,22 @@ fa premiazioni.chiudi, passano la soglia del trentaduesimo convocato del mondo a
 PUNTI_PER_IL_MONDIALE; prima bastava il punteggio di classe del trentaduesimo del mondo sintetico, e la
 carriera giocava sei mondiali sempre, dal primo a 32 anni e mezzo. Gli avversari del mondiale restano
 i primi 31 per classe del mondo sintetico a regime, che per forza somigliano ai convocati del mondo.
+La decisione 7 di Gabriele del 14 ottobre 2026: i pesi della classe sono diventati una copia di quelli
+del valore, con le battute da 0,71 a 0,47, e la somma congelata e le ancore, misurate coi pesi di prima,
+si ricalcolano una volta, con --ricalcola-classe, prima della ricerca dei fattori; poi tornano congelate,
+e lo strumento rifiuta un secondo ricalcolo. Il ricalcolo converte, non ridefinisce: la somma non torna a
+essere quella di una carriera, perché allora i fattori, che si cercano proprio perché le carriere
+arrivino alla somma congelata, non avrebbero più un bersaglio. Con i fattori in vigore si giocano tutte
+le carriere vedenti, e la somma nuova è quella della tappa 11 per il rapporto medio, a 50 anni, fra la
+somma coi pesi nuovi e quella coi pesi di prima, arrotondato per difetto al decimo: le carriere restano
+dove erano, e cambia soltanto quanto pesa ogni caratteristica. Le ancore dei nati del primo e del
+novantanovesimo percentile si rifanno per definizione, coi pesi nuovi e la somma nuova; quella del bravo
+dell'utente a 35 anni si converte come la somma, sulla parte del valore del suo caso tipico, perché il
+caso tipico cambia coi fattori che la ricerca sta per cercare. Poi la ricerca gira con la classe nuova, e
+il blocco da copiare in costanti.py ha anche la somma e le ancore, con i punteggi esatti per le prove.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/carriera_perfetta.py --processi 8 --rapporto carriera.txt
+    python strumenti/carriera_perfetta.py --ricalcola-classe --processi 8 --rapporto carriera.txt
     python strumenti/carriera_perfetta.py --veloce
 """
 
@@ -131,8 +145,21 @@ QUALIFICATI_MONDIALE = 32
 # I punti attesi per amichevole dei casi dell'utente, grezzi: il mediano 3,1 e il bravo 3,5.
 PUNTI_AMICHEVOLE_MEDIANO = 3.1
 PUNTI_AMICHEVOLE_BRAVO = 3.5
+# L'ancora del bravo dell'utente: il livello, D0, e l'età a cui ci arriva.
 ANCORA_DEL_BRAVO = (30, 35)
 _FISICHE = ("precisione", "resistenza", "forza")
+# La classe congelata dalla revisione della tappa 11, prima della decisione 7 di Gabriele del 14 ottobre
+# 2026: i pesi, la somma della carriera perfetta e le ancore. --ricalcola-classe parte da qui per
+# convertire una volta la somma e l'ancora del bravo ai pesi nuovi della classe, quelli del valore.
+PESI_CLASSE_PRIMA = {
+    "lungolineasx": 0.46, "lungolineadx": 0.46, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.46, "singolaspondadx": 0.46,
+    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.41, "triplaspondadx": 0.41, "bomba": 0.50, "battutasx": 0.71,
+    "battutadx": 0.71, "chiusura_dritto": 2.20, "chiusura_rovescio": 2.73, "blocco_dritto": 1.29, "blocco_rovescio": 1.55, "difesa": 3.33,
+    "tenutapaletta": 1.25, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.25, "forza": 5.59, "resistenza": 3.63,
+}
+PESI_TRATTI_CLASSE_PRIMA = {"mancino": 2.7, "ambidestro": 3.9, "giocorapido": 0.9, "cambiovelocita": 4.5}
+SOMMA_CARRIERA_PERFETTA_PRIMA = 363.5
+ANCORE_CLASSE_PRIMA = ((100, 0.0), (89, 0.204), (50, 0.404), (30, 0.609), (1, 1.0))
 
 
 def numero(valore_numerico, decimali=1):
@@ -195,6 +222,30 @@ def imposta_fonti(fattori, esperienze):
                                    esperienza.SFIDA: esperienze["sfide"]})
 
 
+# La classe: la somma e le ancore nei moduli del processo, e la somma coi pesi di prima della decisione 7.
+
+def classe_in_vigore():
+    """La somma della carriera perfetta e le ancore della classe di adesso, in questo processo."""
+    return costanti.SOMMA_CARRIERA_PERFETTA, tuple(tuple(ancora) for ancora in costanti.ANCORE_CLASSE)
+
+
+def imposta_classe(somma, ancore):
+    """
+    Mette la somma e le ancore della classe nei moduli di questo processo, soltanto per la misura:
+    costanti.py, e classe.py con le sue soglie, come faceva la carriera perfetta della tappa 11.
+    """
+    ancore = tuple(tuple(ancora) for ancora in ancore)
+    costanti.SOMMA_CARRIERA_PERFETTA = classe.SOMMA_CARRIERA_PERFETTA = somma
+    costanti.ANCORE_CLASSE = ancore
+    classe.SOGLIE_CLASSE = classe._soglie(ancore)
+    classe._SOGLIE_CRESCENTI = tuple(-s for s in classe.SOGLIE_CLASSE)
+
+
+def somma_classe_prima(g):
+    """Il valore pesato della classe coi pesi congelati della tappa 11, quelli di prima della decisione 7."""
+    return valore.somma_pesata(g, pesi=PESI_CLASSE_PRIMA) + valore.bonus_tratti(g, PESI_TRATTI_CLASSE_PRIMA)
+
+
 # Il calendario predefinito della carriera.
 
 def calendario_predefinito(giorni=GIORNI_CARRIERA):
@@ -248,8 +299,13 @@ _CONTESTO = {}
 
 
 def prepara_contesto(dati):
-    """Il contesto di un processo, dai dizionari: gli avversari delle amichevoli, quelli dei tornei per sesso, i primi per il mondiale e le soglie, le edizioni."""
+    """
+    Il contesto di un processo, dai dizionari: la classe in vigore, gli avversari delle amichevoli, quelli
+    dei tornei per sesso, i primi per il mondiale e le soglie, le edizioni.
+    """
     _CONTESTO.clear()
+    if "classe" in dati:
+        imposta_classe(*dati["classe"])
     _CONTESTO["amichevoli"] = [Giocatore.da_dizionario(d) for d in dati["amichevoli"]]
     regime = [Giocatore.da_dizionario(d) for d in dati["regime"]]
     for g in regime:
@@ -263,14 +319,17 @@ def prepara_contesto(dati):
 
 
 def contesto_in_dizionari(mondo_10, regime, predefinito):
-    """Il contesto da mandare ai processi, in dizionari: i primi 31 di ogni sesso per punteggio di classe, e la soglia del trentaduesimo."""
+    """
+    Il contesto da mandare ai processi, in dizionari: la classe in vigore, che dopo --ricalcola-classe è
+    quella nuova, i primi 31 di ogni sesso per punteggio di classe, e la soglia del trentaduesimo.
+    """
     primi, soglie = {}, {}
     for sesso in ("m", "f"):
         ordinati = sorted((g for g in regime if g.sesso == sesso), key=lambda g: (-classe.punteggio(g), g.id))
         primi[sesso] = [g.id for g in ordinati[:QUALIFICATI_MONDIALE - 1]]
         soglie[sesso] = classe.punteggio(ordinati[QUALIFICATI_MONDIALE - 1]) if len(ordinati) >= QUALIFICATI_MONDIALE else 0.0
-    return {"amichevoli": [g.a_dizionario() for g in mondo_10], "regime": [g.a_dizionario() for g in regime], "primi": primi, "soglie": soglie,
-            "calendario": predefinito}
+    return {"classe": classe_in_vigore(), "amichevoli": [g.a_dizionario() for g in mondo_10], "regime": [g.a_dizionario() for g in regime], "primi": primi,
+            "soglie": soglie, "calendario": predefinito}
 
 
 # La carriera.
@@ -573,7 +632,7 @@ class Carriera:
     def riassunto(self):
         return {"grezzi": dict(self.grezzi), "grezzi_mondiale": self.grezzi_mondiale, "conteggi": dict(self.conteggi), "esperienza_libera": self.esperienza_libera,
                 "seduta": self.seduta, "eta_a1": self.eta_di_a1() if self.coda else None, "tappe": self.registro, "storia": self.storia,
-                "somma_50": classe.somma_classe(self.g), "id": self.g.id, "fattori": dict(self.fattori),
+                "somma_50": classe.somma_classe(self.g), "somma_50_prima": somma_classe_prima(self.g), "id": self.g.id, "fattori": dict(self.fattori),
                 "punti_totali": self.seduta + sum(self.grezzi[f] * self.fattori[f] for f in self.grezzi)}
 
 
@@ -653,6 +712,98 @@ def costruisci_contesto(fattori, esperienze, quanti, attivi, predefinito, stampa
     return contesto_in_dizionari(mondo_10, regime, predefinito), mondo_10, regime
 
 
+# Il ricalcolo della classe, decisione 7 di Gabriele del 14 ottobre 2026.
+
+def classe_da_ricalcolare():
+    """Vero finché costanti.py ha la somma e le ancore della tappa 11: il ricalcolo della decisione 7 si fa una volta sola."""
+    somma, ancore = classe_in_vigore()
+    return somma == SOMMA_CARRIERA_PERFETTA_PRIMA and ancore == ANCORE_CLASSE_PRIMA
+
+
+def casi_dei_nati():
+    """I 4.000 nati del seme 11 dei casi tipici, e fra quelli senza tratti il mediano e il bravo, al settantacinquesimo percentile."""
+    nati_11 = nati(4000, 11)
+    puliti = [g for g in nati_11 if senza_tratti(g)]
+    return nati_11, al_percentile(puliti, 0.5), al_percentile(puliti, 0.75)
+
+
+def bravo_dell_utente(bravo, fattori, anni):
+    """Il caso tipico del bravo dell'utente all'età data: dai 15 anni, con un'amichevole ogni due giorni e le gare del mondo."""
+    amichevole_bravo = 0.5 * PUNTI_AMICHEVOLE_BRAVO * fattori[esperienza.AMICHEVOLE]
+    return allena_a_passi(pronto(bravo, 15), 15, anni, 1.0 + amichevole_bravo, "completa", amichevoli_al_giorno=0.5, gare=1.0)
+
+
+def somma_convertita(carriere):
+    """
+    La somma della carriera perfetta coi pesi nuovi: quella congelata della tappa 11 per il rapporto medio,
+    sulle carriere date, fra la somma a 50 anni coi pesi nuovi e quella coi pesi di prima, arrotondata per
+    difetto al decimo come nella tappa 11. Restituisce la somma e i rapporti di tutte le carriere.
+    """
+    rapporti = [c["somma_50"] / c["somma_50_prima"] for c in carriere if c["somma_50_prima"] > 0]
+    return math.floor(SOMMA_CARRIERA_PERFETTA_PRIMA * statistics.fmean(rapporti) * 10) / 10, rapporti
+
+
+def ancore_ricalcolate(somma, nati_del_seme, bravo_a_35):
+    """
+    Le ancore della classe coi pesi nuovi e con la somma nuova, arrotondate per difetto al millesimo come
+    nella tappa 11, perché chi fa da ancora stia nel suo livello. I nati del primo e del novantanovesimo
+    percentile per somma della classe, senza esperienza, si rifanno per definizione. Il bravo dell'utente a
+    35 anni si converte: l'ancora di prima più la differenza della sua parte del valore, il 70 per cento
+    del valore pesato sulla somma, fra i pesi nuovi con la somma nuova e i pesi di prima con la somma di
+    prima; la parte dell'esperienza non cambia. Restituisce le ancore e i punteggi esatti, per le prove.
+    """
+    somme = sorted(classe.somma_classe(g) for g in nati_del_seme)
+    primo = punteggio(somme[len(somme) // 100], 0.0, somma)
+    novantanovesimo = punteggio(somme[len(somme) * 99 // 100], 0.0, somma)
+    livello_bravo = ANCORA_DEL_BRAVO[0]
+    bravo = dict(ANCORE_CLASSE_PRIMA)[livello_bravo] + costanti.PESO_VALORE_CLASSE * (
+        classe.somma_classe(bravo_a_35) / somma - somma_classe_prima(bravo_a_35) / SOMMA_CARRIERA_PERFETTA_PRIMA)
+    esatti = {89: primo, 50: novantanovesimo, livello_bravo: bravo}
+    ancore = ((100, 0.0), *((n, math.floor(p * 1000) / 1000) for n, p in sorted(esatti.items(), reverse=True)), (1, 1.0))
+    return ancore, esatti
+
+
+def passi_dei_livelli(ancore):
+    """Quanto vale un livello nei tre tratti fra le ancore di mezzo: fra I9 e F0, fra F0 e D0, fra D0 e A1."""
+    (_n0, _s0), (n1, s1), (n2, s2), (n3, s3), (n4, s4) = ancore
+    return (s2 - s1) / (n1 - n2), (s3 - s2) / (n2 - n3), (s4 - s3) / (n3 - n4)
+
+
+def ricalcola_classe(argomenti, stampa):
+    """
+    Il ricalcolo una tantum della decisione 7: con i fattori e le esperienze in vigore gioca tutte le
+    carriere vedenti, converte la somma e l'ancora del bravo ai pesi nuovi della classe, rifà le ancore dei
+    nati e mette la classe nuova in questo processo, così la ricerca che segue gira con lei. Restituisce la
+    somma, le ancore e i punteggi esatti. Se costanti.py ha già una classe ricalcolata, si ferma.
+    """
+    if not classe_da_ricalcolare():
+        raise SystemExit("La classe è già stata ricalcolata una volta, decisione 7 di Gabriele del 14 ottobre 2026: la somma e le ancore di costanti.py "
+                         "restano congelate.")
+    fattori, esperienze = fonti_in_vigore()
+    predefinito = calendario_predefinito(argomenti.giorni)
+    contesto, _mondo_10, _regime = costruisci_contesto(fattori, esperienze, argomenti.giocatori, argomenti.attivi, predefinito, stampa)
+    with concurrent.futures.ProcessPoolExecutor(max_workers=argomenti.processi, initializer=prepara_contesto, initargs=(contesto,)) as esecutore:
+        carriere = gioca_le_carriere(esecutore, argomenti.semi, False, fattori, esperienze, argomenti.giorni, argomenti.estrazioni)
+    eta_prima = statistics.fmean(c["eta_a1"] for c in carriere)
+    somma, rapporti = somma_convertita(carriere)
+    nati_11, _mediano, bravo = casi_dei_nati()
+    bravo_a_35 = bravo_dell_utente(bravo, fattori, ANCORA_DEL_BRAVO[1])
+    ancore, esatti = ancore_ricalcolate(somma, nati_11, bravo_a_35)
+    imposta_classe(somma, ancore)
+    passi = passi_dei_livelli(ancore)
+    stampa(f"Il ricalcolo della classe, decisione 7: {len(carriere)} carriere vedenti coi fattori in vigore; il rapporto fra la somma a 50 anni coi pesi "
+           f"nuovi e quella coi pesi della tappa 11 va da {numero(min(rapporti), 4)} a {numero(max(rapporti), 4)}, in media {numero(statistics.fmean(rapporti), 4)}; "
+           f"la somma congelata passa da {numero(SOMMA_CARRIERA_PERFETTA_PRIMA)} a {numero(somma)}. Coi pesi nuovi e la somma di prima le carriere arrivavano "
+           f"ad A1 in media a {numero(eta_prima, 2)} anni.")
+    stampa(f"Le ancore nuove, punteggi esatti: nato del primo percentile {numero(esatti[89], 6)}, del novantanovesimo {numero(esatti[50], 6)}, il bravo "
+           f"dell'utente a {ANCORA_DEL_BRAVO[1]} anni, convertito, {numero(esatti[ANCORA_DEL_BRAVO[0]], 6)}; per confronto, il suo punteggio per definizione "
+           f"col caso tipico di adesso sarebbe {numero(classe.punteggio(bravo_a_35), 6)}. Arrotondate per difetto al millesimo: {ancore!r}. Un livello vale "
+           f"{numero(passi[0], 4)} di punteggio fra I9 e F0, {numero(passi[1], 4)} fra F0 e D0, {numero(passi[2], 4)} fra D0 e A1"
+           + ("; i livelli si allargano dal basso verso l'alto, come vuole D31." if passi[0] < passi[1] < passi[2] else
+              "; ATTENZIONE, i livelli NON si allargano dal basso verso l'alto, come vorrebbe D31."))
+    return somma, ancore, esatti
+
+
 def esegui(argomenti, stampa):
     """
     La ricerca dei fattori e delle esperienze, giro per giro, sulla media del nato più lento; alla fine i
@@ -724,20 +875,30 @@ def lettere(giocatori):
     return ", ".join(f"{lettera} {numero(100 * quanti / len(giocatori))}" for lettera, quanti in sorted(conta.items()))
 
 
-def blocco_costanti(fattori, esperienze):
-    return ["Il blocco da copiare in costanti.py:",
-            f"PA_FATTORE_AMICHEVOLE = {fattori[esperienza.AMICHEVOLE]:.3f}", f"PA_FATTORE_TORNEO = {fattori[esperienza.TORNEO]:.3f}",
-            f"PA_FATTORE_SFIDA = {fattori[esperienza.SFIDA]:.3f}", f"ESPERIENZA_PER_AMICHEVOLE = {esperienze['amichevoli']:.6f}",
-            f"ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = {esperienze['club']:.6f}", f"ESPERIENZA_PER_SFIDA = {esperienze['sfide']:.5f}",
-            f"ESPERIENZA_PER_PARTITA_TORNEO = {esperienze['incontri_torneo']:.5f}", f"ESPERIENZA_PER_FASE_SUPERATA = {esperienze['fasi']:.5f}",
-            f"ESPERIENZA_PIAZZAMENTO_BASE = {esperienze['piazzamenti']:.5f}"]
+def blocco_costanti(fattori, esperienze, ricalcolo=None):
+    """
+    Le righe da copiare in costanti.py; dopo --ricalcola-classe anche la somma e le ancore della classe, e
+    i punteggi esatti di chi fa da ancora per ANCORE_ESATTE di tests/test_classe.py.
+    """
+    righe = ["Il blocco da copiare in costanti.py:",
+             f"PA_FATTORE_AMICHEVOLE = {fattori[esperienza.AMICHEVOLE]:.3f}", f"PA_FATTORE_TORNEO = {fattori[esperienza.TORNEO]:.3f}",
+             f"PA_FATTORE_SFIDA = {fattori[esperienza.SFIDA]:.3f}", f"ESPERIENZA_PER_AMICHEVOLE = {esperienze['amichevoli']:.6f}",
+             f"ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = {esperienze['club']:.6f}", f"ESPERIENZA_PER_SFIDA = {esperienze['sfide']:.5f}",
+             f"ESPERIENZA_PER_PARTITA_TORNEO = {esperienze['incontri_torneo']:.5f}", f"ESPERIENZA_PER_FASE_SUPERATA = {esperienze['fasi']:.5f}",
+             f"ESPERIENZA_PIAZZAMENTO_BASE = {esperienze['piazzamenti']:.5f}"]
+    if ricalcolo is not None:
+        somma, ancore, esatti = ricalcolo
+        righe += [f"SOMMA_CARRIERA_PERFETTA = {somma}", f"ANCORE_CLASSE = {ancore!r}",
+                  "E in tests/test_classe.py: ANCORE_ESATTE = (" + ", ".join(f"({n}, {p:.6f})" for n, p in sorted(esatti.items(), reverse=True)) + ")"]
+    return righe
 
 
-def racconta(fattori, esperienze, vedenti, ipovedenti, mondo_10, regime, storia, argomenti, scrivi):
+def racconta(fattori, esperienze, vedenti, ipovedenti, mondo_10, regime, storia, argomenti, scrivi, ricalcolo=None):
     """
     Le righe del racconto, sulla verifica coi mondi rifatti: le quote, le età per nato con le loro
     estrazioni, l'esperienza, la classe, il mondiale, i casi tipici e le lettere. I numeri dei bersagli
     sono le medie del nato più lento; la storia e le tappe sono della sua carriera più vicina alla media.
+    Dopo --ricalcola-classe il blocco finale ha anche la somma e le ancore nuove.
     """
     imposta_fonti(fattori, esperienze)
     media = max(vedenti, key=lambda m: m["eta_a1"])
@@ -793,12 +954,8 @@ def racconta(fattori, esperienze, vedenti, ipovedenti, mondo_10, regime, storia,
            f"carriera su dieci dopo i 50: {'dentro' if 49.5 <= media['eta_a1'] <= 50.0 and dopo_i_50 <= QUOTA_DOPO_I_50 * len(tutte) else 'FUORI'}; l'esperienza media a "
            f"50 anni senza tetto fra 19,9 e 20,1: {'dentro' if 19.9 <= media['esperienza_libera'] <= 20.1 else 'FUORI'}.")
     # I casi tipici, con le gare del mondo, e le lettere dei mondi sintetici.
-    nati_11 = nati(4000, 11)
-    puliti = [g for g in nati_11 if senza_tratti(g)]
-    mediano = al_percentile(puliti, 0.5)
-    bravo = al_percentile(puliti, 0.75)
+    _nati_11, mediano, bravo = casi_dei_nati()
     amichevole_mediano = 0.5 * PUNTI_AMICHEVOLE_MEDIANO * fattori[esperienza.AMICHEVOLE]
-    amichevole_bravo = 0.5 * PUNTI_AMICHEVOLE_BRAVO * fattori[esperienza.AMICHEVOLE]
     casi = []
     for anni in (35, 50):
         casi.append((f"mediano del computer, in polisportiva dai 20 anni, a {anni}", allena_a_passi(pronto(mediano, 20), 20, anni, 1.0, mediano.indole, gare=1.0)))
@@ -807,8 +964,7 @@ def racconta(fattori, esperienze, vedenti, ipovedenti, mondo_10, regime, storia,
         casi.append((f"mediano dell'utente dai 20 anni, con un'amichevole ogni due giorni e i tornei, a {anni}",
                      allena_a_passi(pronto(mediano, 20), 20, anni, 1.0 + amichevole_mediano, "completa", amichevoli_al_giorno=0.5, gare=1.0)))
     for anni in (30, 40, 50):
-        casi.append((f"bravo dell'utente dai 15 anni, con un'amichevole ogni due giorni e i tornei, a {anni}",
-                     allena_a_passi(pronto(bravo, 15), 15, anni, 1.0 + amichevole_bravo, "completa", amichevoli_al_giorno=0.5, gare=1.0)))
+        casi.append((f"bravo dell'utente dai 15 anni, con un'amichevole ogni due giorni e i tornei, a {anni}", bravo_dell_utente(bravo, fattori, anni)))
     for nome, g in casi:
         scrivi(f"Caso, {nome}: classe {classe.classe(g).codice}, valore {numero(g.indice_collettivo_valore)}, esperienza {numero(g.esperienza, 2)}, stipendio {economia.stipendio(g)} euro.")
     mondi = {"all'anno 10": mondo_10, "a regime": regime}
@@ -817,7 +973,7 @@ def racconta(fattori, esperienze, vedenti, ipovedenti, mondo_10, regime, storia,
             mondi[f"all'anno {anni}"] = mondo_sintetico(argomenti.giocatori, anni, 2026)
     for nome, giocatori in mondi.items():
         scrivi(f"Mondo sintetico {nome}: lettere {lettere(giocatori)}; valore mediano {numero(statistics.median(g.indice_collettivo_valore for g in giocatori))}.")
-    for riga in blocco_costanti(fattori, esperienze):
+    for riga in blocco_costanti(fattori, esperienze, ricalcolo):
         scrivi(riga)
 
 
@@ -832,6 +988,8 @@ def main():
     parser.add_argument("--estrazioni", type=int, default=ESTRAZIONI, help="le estrazioni del caso di ogni nato, 5 se non indicato")
     parser.add_argument("--nati", type=int, default=len(SEMI_RIFERIMENTO), help="quanti nati di riferimento, i primi di SEMI_RIFERIMENTO, 10 se non indicato")
     parser.add_argument("--veloce", action="store_true", help="per provare lo strumento: mondi piccoli, un giro e due passi")
+    parser.add_argument("--ricalcola-classe", action="store_true",
+                        help="una volta sola, decisione 7: converte ai pesi nuovi della classe la somma e le ancore, prima della ricerca")
     parser.add_argument("--rapporto", type=Path, default=None, help="salva il racconto anche in questo file")
     argomenti = parser.parse_args()
     if argomenti.veloce:
@@ -850,8 +1008,9 @@ def main():
     try:
         scrivi(f"Carriera perfetta col calendario vero, tappa 12: somma congelata {numero(costanti.SOMMA_CARRIERA_PERFETTA)}, sfide della polisportiva "
                f"{numero(costanti.SFIDE_GIOCATE_AL_MESE, 2)} al mese, carriere di {argomenti.giorni} giorni.")
+        ricalcolo = ricalcola_classe(argomenti, scrivi) if argomenti.ricalcola_classe else None
         fattori, esperienze, carriere, ipovedenti, mondo_10, regime, storia = esegui(argomenti, scrivi)
-        racconta(fattori, esperienze, carriere, ipovedenti, mondo_10, regime, storia, argomenti, scrivi)
+        racconta(fattori, esperienze, carriere, ipovedenti, mondo_10, regime, storia, argomenti, scrivi, ricalcolo)
     finally:
         percorsi.cartella = cartella_vera
         shutil.rmtree(cartella, ignore_errors=True)

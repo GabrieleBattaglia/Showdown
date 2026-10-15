@@ -335,6 +335,49 @@ def test_l_ordine_delle_fonti_d_esperienza():
     assert sum(fonti) == pytest.approx(costanti.ESPERIENZA_MASSIMA, abs=0.1)
 
 
+@pytest.fixture
+def classe_ripristinata(monkeypatch):
+    """La somma, le ancore e le soglie della classe tornano quelle di prima alla fine della prova, anche se lo strumento le cambia."""
+    import classe
+
+    for modulo, nome in ((costanti, "SOMMA_CARRIERA_PERFETTA"), (costanti, "ANCORE_CLASSE"), (classe, "SOMMA_CARRIERA_PERFETTA"), (classe, "SOGLIE_CLASSE"),
+                         (classe, "_SOGLIE_CRESCENTI")):
+        monkeypatch.setattr(modulo, nome, getattr(modulo, nome))
+    return classe
+
+
+def test_il_ricalcolo_della_classe_si_fa_una_volta_e_converte(classe_ripristinata, monkeypatch):
+    # La decisione 7 di Gabriele del 14 ottobre 2026: la somma e le ancore della tappa 11 si convertono
+    # ai pesi nuovi della classe una volta sola, poi tornano congelate.
+    classe = classe_ripristinata
+    assert set(cp.PESI_CLASSE_PRIMA) == set(costanti.PESI_CLASSE) and set(cp.PESI_TRATTI_CLASSE_PRIMA) == set(costanti.PESI_TRATTI_CLASSE)
+    assert cp.PESI_CLASSE_PRIMA["battutasx"] == 0.71 and cp.classe_da_ricalcolare()
+    # La somma: quella di prima per il rapporto medio, per difetto al decimo.
+    carriere = [{"somma_50": 330.0, "somma_50_prima": 300.0}, {"somma_50": 230.0, "somma_50_prima": 200.0}]
+    somma, rapporti = cp.somma_convertita(carriere)
+    assert rapporti == pytest.approx([1.1, 1.15]) and somma == math.floor(cp.SOMMA_CARRIERA_PERFETTA_PRIMA * 1.125 * 10) / 10
+    # Le ancore: i nati per definizione, il bravo convertito sulla sua parte del valore.
+    nati = cp.nati(300, 11)
+    bravo = giocatore(5, valore=12.0, anni=35, esperienza=9.0)
+    ancore, esatti = cp.ancore_ricalcolate(somma, nati, bravo)
+    somme = sorted(classe.somma_classe(g) for g in nati)
+    assert esatti[89] == pytest.approx(costanti.PESO_VALORE_CLASSE * somme[3] / somma)
+    assert esatti[50] == pytest.approx(costanti.PESO_VALORE_CLASSE * somme[297] / somma)
+    assert esatti[30] == pytest.approx(0.609 + costanti.PESO_VALORE_CLASSE * (classe.somma_classe(bravo) / somma
+                                                                            - cp.somma_classe_prima(bravo) / cp.SOMMA_CARRIERA_PERFETTA_PRIMA))
+    assert [n for n, _p in ancore] == [100, 89, 50, 30, 1] and all(p == math.floor(esatti[n] * 1000) / 1000 for n, p in ancore[1:4])
+    # Messa la classe nuova nel processo, chi fa da ancora sta nel suo livello, il contesto la porta ai
+    # processi, e un secondo ricalcolo si rifiuta.
+    cp.imposta_classe(somma, ancore)
+    assert all(classe.livello(esatti[n]) == n for n in (89, 50, 30)) and classe.soglia(30) == ancore[3][1]
+    assert cp.classe_in_vigore() == (somma, ancore) and not cp.classe_da_ricalcolare()
+    with pytest.raises(SystemExit, match="già stata ricalcolata"):
+        cp.ricalcola_classe(types.SimpleNamespace(), print)
+    assert cp.blocco_costanti(*cp.fonti_in_vigore(), (somma, ancore, esatti))[-3:] == [
+        f"SOMMA_CARRIERA_PERFETTA = {somma}", f"ANCORE_CLASSE = {ancore!r}",
+        f"E in tests/test_classe.py: ANCORE_ESATTE = ((89, {esatti[89]:.6f}), (50, {esatti[50]:.6f}), (30, {esatti[30]:.6f}))"]
+
+
 def test_la_carriera_perfetta_gioca_il_calendario():
     # Tappa 12, punto 10.4: una carriera corta, coi mondi sintetici piccoli, gioca tornei, sfide e
     # amichevoli; il totale è la seduta più i punti grezzi per i fattori, e il blocco si stampa.
@@ -349,6 +392,8 @@ def test_la_carriera_perfetta_gioca_il_calendario():
     assert r["seduta"] == 150 and r["punti_totali"] == pytest.approx(150 + sum(r["grezzi"][f] * fattori[f] for f in fattori))
     assert r["conteggi"]["giorni"] == pytest.approx(150 * cp.FATTORE_GRUPPO) and r["eta_a1"] > cp.ETA_INGRESSO
     assert cp.blocco_costanti(fattori, esperienze)[1].startswith("PA_FATTORE_AMICHEVOLE = ")
+    # La decisione 7: la carriera dice la somma a fine carriera anche coi pesi di prima, per il ricalcolo della classe.
+    assert r["somma_50_prima"] > cp.somma_classe_prima(nato) > 0 and 0.8 < r["somma_50"] / r["somma_50_prima"] < 1.2
 
 
 def test_la_carriera_perfetta_va_al_mondiale_coi_punti_e_si_misura_in_media():

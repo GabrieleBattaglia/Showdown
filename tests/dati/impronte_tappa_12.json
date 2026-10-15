@@ -1,18 +1,18 @@
 {
- "nota": "Decisione 8 di Gabriele del 14 ottobre 2026: le fonti d'esperienza nell'ordine delle parole di D32, età, amichevoli, sfide, club e tornei, con i valori di partenza per 2, 2,5, 3, 4,5 e 8: la sfida 0,01132, il giorno in polisportiva 0,000968, gli incontri, le fasi e i piazzamenti dei tornei 0,00658, 0,00393 e 0,03044. Cambiano il mondo nato e quello a regime, perché l'esperienza entra nella classe e nello stipendio.",
+ "nota": "Decisione 7 di Gabriele del 14 ottobre 2026: i pesi della classe diventano una copia di quelli del valore della tappa 12, con le battute a 0,47 invece di 0,71; la somma e le ancore restano quelle della tappa 11 fino al ricalcolo del passo seguente. Cambiano il mondo nato e quello a regime, perché la classe decide le teste di serie, le convocazioni e le squadre delle sfide.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "958b9c3710ba2a166d2cf5fc9eca6994faf06cefc9fb3ba4b9fbe762a5dc0c45",
-  "vivi": 731,
-  "attivi": 731,
-  "tesserati": 654,
-  "polisportive": 44
+  "sha256": "d7a28970594cc11750ca0248a5bfedd84fbf22decf18fe5a30748ab730a29736",
+  "vivi": 760,
+  "attivi": 760,
+  "tesserati": 670,
+  "polisportive": 46
  },
  "mondo_a_regime": {
-  "sha256": "46c388f17942fb6bf623f02df61d37c97234dfa8bc19e3f2f16b79377c444df3",
+  "sha256": "bb1f0f058526be87580e846594daf5f87854138b15b593b5e39f5c2130046a60",
   "vivi": 1664,
   "attivi": 1264,
   "tesserati": 1077,

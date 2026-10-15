@@ -76,6 +76,16 @@ def test_cambiare_i_pesi_del_valore_non_cambia_la_classe(monkeypatch):
     assert costanti.PESI_CLASSE is not costanti.PESI_VALORE
 
 
+def test_i_pesi_della_classe_sono_quelli_del_valore_della_tappa_12():
+    # La decisione 7 di Gabriele del 14 ottobre 2026: la classe pesa le caratteristiche come il valore
+    # della taratura della tappa 12, con le battute a 0,47 invece di 0,71, e i tratti come lui. Restano
+    # una copia congelata: se una taratura futura del valore cambierà PESI_VALORE, la classe non si
+    # muoverà, e questa prova andrà riscritta coi numeri di oggi.
+    assert costanti.PESI_CLASSE == costanti.PESI_VALORE and costanti.PESI_TRATTI_CLASSE == costanti.PESI_TRATTI
+    assert costanti.PESI_CLASSE is not costanti.PESI_VALORE and costanti.PESI_TRATTI_CLASSE is not costanti.PESI_TRATTI
+    assert costanti.PESI_CLASSE["battutasx"] == costanti.PESI_CLASSE["battutadx"] == 0.47
+
+
 def test_mille_nati_fra_la_j_e_la_e():
     random.seed(17)
     nati = [Giocatore(i, datetime.datetime(2026, 1, 1)) for i in range(1, 1001)]

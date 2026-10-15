@@ -379,16 +379,25 @@ SCALA_PIAZZAMENTI = (1.0, 0.8, 0.65, 0.55, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0
 # arrivano da 363,5 a 366,6 di somma. Ancora del bravo e dotazione della carriera di riferimento
 # sono da confermare con Gabriele. La taratura fine aveva 365,0 col nato numero 1229 e le ancore
 # 0,204, 0,403 e, a E0, 0,549; la prima taratura grezza 368,5 e 0,202, 0,401 e 0,546.
+# La decisione 7 di Gabriele del 14 ottobre 2026: i pesi della classe diventano una copia dei pesi del
+# valore della taratura della tappa 12, punto 13.2, con le battute da 0,71 a 0,47, così la classe non
+# premia più le battute più del valore; i tratti salgono anche loro, il mancino da 2,7 a 3,0,
+# l'ambidestro da 3,9 a 4,5, il cambio di velocità da 4,5 a 4,8. Poi tornano congelati: una taratura
+# futura del valore non li tocca. La somma della carriera perfetta e le ancore, misurate coi pesi di
+# prima, si ricalcolano una volta, nella taratura dell'economia del passo seguente, con
+# strumenti/carriera_perfetta.py --ricalcola-classe, e poi tornano congelate anche loro: lo strumento
+# tiene i pesi, la somma e le ancore della tappa 11, da cui converte. Fino al ricalcolo restano quelle
+# della tappa 11, e coi pesi nuovi la classe di tutti si sposta di poco.
 PESO_VALORE_CLASSE = 0.7
 PESO_ESPERIENZA_CLASSE = 0.3
 SOMMA_CARRIERA_PERFETTA = 363.5
 PESI_CLASSE = {
-    "lungolineasx": 0.46, "lungolineadx": 0.46, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.46, "singolaspondadx": 0.46,
-    "doppiaspondasx": 0.48, "doppiaspondadx": 0.48, "triplaspondasx": 0.41, "triplaspondadx": 0.41, "bomba": 0.50, "battutasx": 0.71,
-    "battutadx": 0.71, "chiusura_dritto": 2.20, "chiusura_rovescio": 2.73, "blocco_dritto": 1.29, "blocco_rovescio": 1.55, "difesa": 3.33,
-    "tenutapaletta": 1.25, "controllopalla": 0.75, "attacco": 1.36, "precisione": 10.25, "forza": 5.59, "resistenza": 3.63,
+    "lungolineasx": 0.47, "lungolineadx": 0.47, "diagonalesx": 0.50, "diagonaledx": 0.50, "singolaspondasx": 0.49, "singolaspondadx": 0.49,
+    "doppiaspondasx": 0.49, "doppiaspondadx": 0.49, "triplaspondasx": 0.42, "triplaspondadx": 0.42, "bomba": 0.52, "battutasx": 0.47,
+    "battutadx": 0.47, "chiusura_dritto": 2.27, "chiusura_rovescio": 2.80, "blocco_dritto": 1.31, "blocco_rovescio": 1.57, "difesa": 3.41,
+    "tenutapaletta": 1.26, "controllopalla": 0.80, "attacco": 1.41, "precisione": 10.55, "forza": 5.78, "resistenza": 3.80,
 }
-PESI_TRATTI_CLASSE = {"mancino": 2.7, "ambidestro": 3.9, "giocorapido": 0.9, "cambiovelocita": 4.5}
+PESI_TRATTI_CLASSE = {"mancino": 3.0, "ambidestro": 4.5, "giocorapido": 0.9, "cambiovelocita": 4.8}
 ANCORE_CLASSE = ((100, 0.0), (89, 0.204), (50, 0.404), (30, 0.609), (1, 1.0))
 NUM_GIOCATORI_INIZIALI = 50
 # Quanti giocatori nuovi entrano nel mondo ogni giorno simulato, estremi compresi. Fino alla tappa 11
@@ -643,8 +652,9 @@ MAPPA_FLAG_SOMMARIO = {'mancino': 'M', 'ambidestro': 'A', 'infortunato': 'I', 'i
 # salgono, il mancino da 2,7 a 3,0, l'ambidestro da 3,9 a 4,5, il cambio di velocità da 4,5 a 4,8. La
 # verifica a coppie è concorde: un punto di precisione vale 12,1 punti di valore e il valore gliene dà
 # 11,8, uno di resistenza 3,9 e 4,2, il mancino 2,6 e 3,4, dentro la banda da 2 a 6 di Gabriele. I pesi
-# della classe, PESI_CLASSE e PESI_TRATTI_CLASSE, restano quelli congelati della tappa 11, con le
-# battute a 0,71: la classe premia le battute più del valore, ed è una decisione per Gabriele.
+# della classe, PESI_CLASSE e PESI_TRATTI_CLASSE, erano rimasti quelli congelati della tappa 11, con le
+# battute a 0,71, e la classe premiava le battute più del valore; dalla decisione 7 di Gabriele del 14
+# ottobre 2026 sono una copia congelata di questi.
 # La scala della tappa 12, punto 13.4: coi pesi nuovi e col mondo che gioca, i giocatori del computer
 # prendono dai tornei e dalle sfide quasi quanto dalla seduta e il mondo è più forte; la forma chiusa
 # all'anno 10, in tre giri, dà A -38,33 e B 1,0295, con la mediana del valore a 135 e lo stipendio
