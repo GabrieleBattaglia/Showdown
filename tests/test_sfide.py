@@ -21,15 +21,21 @@ from aiuti_calendario import OGGI, apri, giorno, mondo_di_prova, polisportiva, s
 
 import classe
 import esito_rapido
+import esperienza
 import iscrizioni
 import modelli_torneo
 import palmares
+import premiazioni
 import sfide
 import testi
 import tornei
 from costanti import (
+    ESPERIENZA_MASSIMA,
+    ESPERIENZA_PER_FASE_SUPERATA,
     ESPERIENZA_PER_SFIDA,
     ESPERIENZA_RISERVA_QUOTA,
+    FEDELTA_MASSIMA,
+    FEDELTA_PER_MEDAGLIA,
     IMPORTANZA_COPPA_SFIDA,
     PA_FATTORE_SFIDA,
     PA_PARTITA_BASE,
@@ -377,3 +383,22 @@ def test_la_coppa_si_gioca_e_da_le_coppe():
     assert rapporto["tuoi_tornei_conclusi"] == 1 and any(v.get("testo", "").startswith("Chiude Coppa delle polisportive, sede 1") for v in c.diario)
     # I titolari hanno le gare a squadre e i punti allenamento per l'importanza 3.
     assert sum(mondo.giocatori[gid].gare_squadre_vinte + mondo.giocatori[gid].gare_squadre_perse for gid in range(1, 41)) > 0
+    # La decisione 9 di Gabriele del 14 ottobre 2026: la coppa dà alla rosa la fedeltà della coppa, come una
+    # medaglia, a chi è ancora tesserato, e a tutti l'esperienza delle fasi superate e del piazzamento, per
+    # l'importanza. Si rifà la chiusura, e si guarda soltanto quanto cambia.
+    fasi = torneo.fasi_superate()
+    prima = {gid: (g.fedelta, g.esperienza) for gid, g in mondo.giocatori.items()}
+    premiazioni.chiudi_squadre(mondo, mondo.calendario, torneo, data, Mondo.rapporto_vuoto(data))
+    importanza = torneo.modello["importanza"]
+    nelle_rose = set()
+    for posto, cid in enumerate(torneo.classifica_finale, start=1):
+        poli, coppa = mondo.polisportive[cid], premiazioni.MEDAGLIE[posto - 1]
+        assert fasi.get(cid, 0) > 0 or posto > 2
+        for gid in torneo.info[cid]["rosa"]:
+            nelle_rose.add(gid)
+            g = mondo.giocatori[gid]
+            fedelta, esp = prima[gid]
+            assert g.fedelta == pytest.approx(min(FEDELTA_MASSIMA, fedelta + (FEDELTA_PER_MEDAGLIA[coppa] if g.appartenenza == poli.nome else 0)))
+            guadagno = (ESPERIENZA_PER_FASE_SUPERATA * fasi.get(cid, 0) + esperienza.premio_piazzamento(posto)) * importanza
+            assert g.esperienza == pytest.approx(min(ESPERIENZA_MASSIMA, esp + guadagno))
+    assert all(prima[gid] == (g.fedelta, g.esperienza) for gid, g in mondo.giocatori.items() if gid not in nelle_rose)

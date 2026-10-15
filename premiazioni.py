@@ -15,6 +15,9 @@ più importanti. I diari: i tuoi tesserati e le tue polisportive hanno una voce 
 torneo, tutti gli altri la voce aggregata dell'anno, e i podi più importanti anche una voce a sé.
 L'albo d'oro conserva tutto, per sempre, risposta 13: una voce corta per sede, con i nomi una volta
 sola nelle sue tabelle.
+Dalla decisione 9 di Gabriele del 14 ottobre 2026 la Coppa delle polisportive fa come i tornei: dà alla
+rosa iscritta la fedeltà della coppa vinta, come una medaglia, e l'esperienza delle fasi superate e del
+piazzamento.
 """
 
 import datetime
@@ -136,23 +139,27 @@ def chiudi_squadre(mondo, calendario, torneo, data, rapporto):
     """
     La chiusura della Coppa delle polisportive, punto 8.8: le coppe ai primi quattro, oro, argento,
     bronzo e legno, con l'importanza del modello, nei contatori per sempre e nel palmarès recente della
-    gloria, a chi esiste ancora; nessun premio in euro. Le tue polisportive hanno la voce col
-    riassunto, e i giocatori della loro rosa ancora tesserati una voce loro; quelle del computer la
-    voce aggregata dell'anno, e i podi una voce a sé. Restituisce le polisportive che hanno vinto una coppa.
+    gloria, a chi esiste ancora; nessun premio in euro. Dalla decisione 9 di Gabriele del 14 ottobre
+    2026 la coppa dà anche alla rosa iscritta quello che un torneo individuale dà ai suoi giocatori: vedi
+    _alla_rosa. Le tue polisportive hanno la voce col riassunto, e i giocatori della loro rosa ancora
+    tesserati una voce loro; quelle del computer la voce aggregata dell'anno, e i podi una voce a sé.
+    Restituisce le polisportive che hanno vinto una coppa.
     """
     modello = torneo.modello
     importanza = modello["importanza"]
     nome = modello["nome"]
     classifica = torneo.classifica_finale
+    fasi = torneo.fasi_superate()
     toccate = set()
     tue = set()
     rapporto["tornei_conclusi"] += 1
     for posto, cid in enumerate(classifica, start=1):
         info = torneo.info[cid]
         poli = iscrizioni.polisportiva_del_club(mondo, info.get("club"))
+        coppa = MEDAGLIE[posto - 1] if posto <= len(MEDAGLIE) else None
+        _alla_rosa(mondo, info.get("rosa", ()), poli, posto, coppa, fasi.get(cid, 0), importanza, data, rapporto)
         if poli is None:
             continue
-        coppa = MEDAGLIE[posto - 1] if posto <= len(MEDAGLIE) else None
         if coppa:
             campo = CAMPI_DELLE_COPPE[coppa]
             setattr(poli, campo, getattr(poli, campo) + 1)
@@ -184,6 +191,26 @@ def chiudi_squadre(mondo, calendario, torneo, data, rapporto):
         calendario.conserva_differite(torneo, tue)
     calendario.albo.registra(mondo, torneo, calendario.numero_di(torneo))
     return toccate
+
+
+def _alla_rosa(mondo, rosa, poli, posto, coppa, fasi, importanza, data, rapporto):
+    """
+    Quello che la Coppa delle polisportive dà alla rosa iscritta, decisione 9 di Gabriele del 14 ottobre
+    2026, come un torneo individuale ai suoi giocatori. A chi è ancora tesserato col club la fedeltà della
+    coppa vinta, come per una medaglia: 4 per l'oro, 3 per l'argento, 2 per il bronzo, 1 per il legno. A
+    tutti, anche a chi ha cambiato club o a chi ha giocato soltanto da riserva, l'esperienza delle fasi
+    superate dal club e del suo piazzamento, per l'importanza della coppa; ai ritirati no, come nei tornei.
+    Prima la rosa prendeva soltanto i punti e l'esperienza degli incontri.
+    """
+    for gid in rosa:
+        g = mondo.giocatori.get(gid)
+        if g is None:
+            continue
+        if coppa and poli is not None and g.appartenenza == poli.nome:
+            mondo._aggiungi_fedelta(g, poli, FEDELTA_PER_MEDAGLIA[coppa], data, rapporto)
+        if not g.ritirato:
+            esperienza.da_fasi(g, fasi, importanza)
+            esperienza.da_piazzamento(g, posto, importanza)
 
 
 def _medaglia_a_parole(medaglia):
