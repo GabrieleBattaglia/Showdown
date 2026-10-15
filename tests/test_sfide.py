@@ -23,16 +23,19 @@ import classe
 import esito_rapido
 import iscrizioni
 import modelli_torneo
+import palmares
 import sfide
 import testi
 import tornei
 from costanti import (
     ESPERIENZA_PER_SFIDA,
     ESPERIENZA_RISERVA_QUOTA,
+    IMPORTANZA_COPPA_SFIDA,
     PA_FATTORE_SFIDA,
     PA_PARTITA_BASE,
     PA_PER_SET_VINTO,
     PA_VITTORIA,
+    QUOTA_GLORIA_ARGENTO_SFIDA,
 )
 from mondo import Mondo
 from motore import Squadra
@@ -217,7 +220,10 @@ def test_le_coppe_la_fedelta_e_la_sfida_consumata(larga):
     sfide.giorno(mondo, OGGI, rapporto)
     vincitrice, perdente = (a, b) if s.risultato["vince"] == "sfidante" else (b, a)
     assert (vincitrice.coppe_oro, perdente.coppe_argento, vincitrice.sfide_vinte, perdente.sfide_perse) == (1, 1, 1, 1)
-    assert vincitrice.palmares_recente == {"2026-10": [0.0, 2.0]} and perdente.palmares_recente == {"2026-10": [0.0, 1.0]}
+    # La decisione 3 di Gabriele del 14 ottobre 2026: nella gloria l'argento vale una piccola parte dell'oro.
+    oro = palmares.punti_coppa("oro", IMPORTANZA_COPPA_SFIDA)
+    assert vincitrice.palmares_recente == {"2026-10": [0.0, oro]} and perdente.palmares_recente == {"2026-10": [0.0, oro * QUOTA_GLORIA_ARGENTO_SFIDA]}
+    assert oro == 2.0 and 0 < QUOTA_GLORIA_ARGENTO_SFIDA <= 0.25
     assert a.ultima_sfida == b.ultima_sfida == OGGI and a.sfide_da_lanciare == 1 and b.sfide_da_lanciare == 2
     assert s.risultato["motore"] == "rapido" and not mondo.sfide.storico and rapporto["sfide_giocate"] == 1
     for gid in s.convocati["sfidante" if vincitrice is a else "sfidata"]:

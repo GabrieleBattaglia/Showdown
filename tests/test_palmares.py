@@ -24,6 +24,7 @@ from costanti import (
     K_GLORIA_MEDAGLIE,
     K_GLORIA_TESSERATI,
     MASSIMO_VOCI_RICERCA_AGGREGATA,
+    QUOTA_GLORIA_ARGENTO_SFIDA,
 )
 from modelli import CAMPI_AGGREGATA_GIOCATORE, CAMPI_AGGREGATA_POLISPORTIVA, VOCI_CONTI, Giocatore, Polisportiva, annota_aggregata, conti_vuoti
 from mondo import DECESSO, Mondo
@@ -57,6 +58,21 @@ def test_l_importanza_e_la_coppa_della_sfida():
     assert palmares.punti_medaglia("oro") == 30 and palmares.punti_medaglia("oro", 4) == 120 and palmares.punti_medaglia("legno", 2) == 2
     assert palmares.punti_coppa("oro", IMPORTANZA_COPPA_SFIDA) * 50 == pytest.approx(palmares.punti_coppa("oro"))
     assert palmares.punti_coppa("oro", 3) == 300
+
+
+def test_perdere_tante_sfide_non_conviene():
+    # La decisione 3 di Gabriele del 14 ottobre 2026: la coppa d'argento di una sfida vale nella gloria una
+    # piccola parte di quella d'oro. Novanta sfide in cinque anni, tutte vinte, tutte perse o nessuna.
+    oro = palmares.punti_coppa("oro", IMPORTANZA_COPPA_SFIDA)
+    vince, perde, nessuna = _poli(), _poli(), _poli()
+    for numero in range(90):
+        data = OGGI - datetime.timedelta(days=20 * numero)
+        palmares.aggiungi(vince, data, punti_coppe=oro)
+        palmares.aggiungi(perde, data, punti_coppe=oro * QUOTA_GLORIA_ARGENTO_SFIDA)
+    for poli in (vince, perde, nessuna):
+        poli.aggiorna_gloria({}, set(), OGGI)
+    assert vince.gloria == int(GLORIA_BASE + math.sqrt(90 * oro) * K_GLORIA_COPPE)
+    assert nessuna.gloria < perde.gloria and perde.gloria - nessuna.gloria < (vince.gloria - nessuna.gloria) / 2
 
 
 def test_la_gloria_conta_i_60_mesi():

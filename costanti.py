@@ -719,6 +719,15 @@ K_GLORIA_COPPE = 9.79
 # Una coppa d'oro di una sfida vale 2 punti, una della Coppa delle polisportive 300: cinque anni di
 # sfide valgono quanto una Coppa vinta.
 IMPORTANZA_COPPA_SFIDA = 0.02
+# La coppa d'argento di una sfida persa giocando, decisione 3 di Gabriele del 14 ottobre 2026: resta,
+# come vuole D32, ma nella gloria vale una piccola parte della coppa d'oro, così perdere tante sfide non
+# conviene. Prima valeva la metà, come tutte le coppe d'argento: con la revisione del 14 ottobre 2026,
+# novanta sfide perse in cinque anni davano 93 punti di gloria, circa 725 euro di sponsor al mese, e
+# nella polisportiva mediana del computer le coppe delle sfide facevano tre quarti della gloria del
+# palmarès. Con un decimo, perderle tutte vale nella gloria meno di un terzo di vincerle tutte, perché
+# la gloria prende la radice dei punti. È il coefficiente che la taratura del passo seguente fissa
+# insieme alla gloria; le coppe d'argento della Coppa delle polisportive restano a metà dell'oro.
+QUOTA_GLORIA_ARGENTO_SFIDA = 0.1
 # I punti della classifica mondiale per sempre, D32 e punto 5.9: per posto, fino al posto indicato,
 # per l'importanza del torneo; None vale per tutti gli altri. Quelli dell'ultimo anno servono alla
 # qualificazione al mondiale.

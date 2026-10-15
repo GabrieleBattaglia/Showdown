@@ -26,7 +26,9 @@ fotografie dei giocatori permettono di riascoltarle. Il giorno della sfida la fo
 riconvoca: chi non c'è più lascia il posto alle riserve, e chi non ha più una squadra valida perde a
 tavolino, 31 a 0.
 La posta: una coppa d'oro a chi vince e una d'argento a chi perde, nei contatori per sempre e nel
-palmarès recente della gloria, con l'importanza piccola delle sfide; nessun euro; un punto di
+palmarès recente della gloria, con l'importanza piccola delle sfide; dalla decisione 3 di Gabriele
+del 14 ottobre 2026 la coppa d'argento vale nella gloria soltanto una piccola parte di quella d'oro,
+QUOTA_GLORIA_ARGENTO_SFIDA, così perdere tante sfide non conviene; nessun euro; un punto di
 fedeltà a ogni convocato di chi vince. Le sfide delle tue polisportive restano nello storico, le
 ultime dieci con la differita; quelle fra polisportive del computer restano nei contatori, nelle voci
 aggregate dei diari e nel riepilogo del giorno.
@@ -54,6 +56,7 @@ from costanti import (
     GIORNI_RISPOSTA_SFIDA,
     IMPORTANZA_COPPA_SFIDA,
     PROB_LANCIO_SFIDA_CPU,
+    QUOTA_GLORIA_ARGENTO_SFIDA,
     RIPOSO_SFIDA_GIORNI,
     TENTATIVI_SFIDA_CPU,
 )
@@ -516,7 +519,8 @@ def _gioca(mondo, s, data, rapporto, memoria):
 def _posta(mondo, s, club, risultato, data, rapporto):
     """
     La posta della sfida, D32: la coppa d'oro a chi vince e quella d'argento a chi perde giocando, nei
-    contatori e nel palmarès recente; le sfide vinte e perse, l'ultima sfida di tutte e due, la sfida
+    contatori e nel palmarès recente, dove l'argento vale una piccola parte dell'oro, decisione 3 di
+    Gabriele del 14 ottobre 2026; le sfide vinte e perse, l'ultima sfida di tutte e due, la sfida
     consumata dalla sfidante, un punto di fedeltà a ogni convocato di chi vince; i diari e il riepilogo.
     """
     vince = s.risultato["vince"]
@@ -528,8 +532,10 @@ def _posta(mondo, s, club, risultato, data, rapporto):
     palmares.aggiungi(vincitrice, data, punti_coppe=palmares.punti_coppa("oro", IMPORTANZA_COPPA_SFIDA))
     toccate = {vincitrice.nome}
     if not tavolino:
+        # La coppa d'argento resta nei contatori, ma nella gloria vale soltanto una piccola parte di
+        # quella d'oro, decisione 3 di Gabriele del 14 ottobre 2026.
         perdente.coppe_argento += 1
-        palmares.aggiungi(perdente, data, punti_coppe=palmares.punti_coppa("argento", IMPORTANZA_COPPA_SFIDA))
+        palmares.aggiungi(perdente, data, punti_coppe=palmares.punti_coppa("oro", IMPORTANZA_COPPA_SFIDA) * QUOTA_GLORIA_ARGENTO_SFIDA)
         toccate.add(perdente.nome)
     vincitrice.sfide_vinte += 1
     perdente.sfide_perse += 1

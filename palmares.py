@@ -9,7 +9,9 @@ contatori di sempre e si legge nella scheda. Ogni polisportiva tiene il suo palm
 un dizionario dal mese, AAAA-MM, a una coppia di punti, medaglie e coppe, già pesati per l'importanza:
 30 per un oro, 15 per un argento, 5 per un bronzo, 1 per un legno; 100, 50, 20 e 5 per le coppe, che
 nelle sfide hanno l'importanza IMPORTANZA_COPPA_SFIDA, un cinquantesimo di quella della Coppa delle
-polisportive. I mesi più vecchi della finestra si tolgono il primo del mese.
+polisportive. Dalla decisione 3 di Gabriele del 14 ottobre 2026 la coppa d'argento di una sfida vale
+soltanto QUOTA_GLORIA_ARGENTO_SFIDA di quella d'oro: la conta sfide._posta. I mesi più vecchi della
+finestra si tolgono il primo del mese.
 La classifica mondiale è per sempre, come un medagliere storico, scelta di Gabriele: a ogni chiusura
 ogni partecipante prende l'importanza del torneo per i punti del suo posto, che vanno nei punti
 mondiali, per sempre, e nei punti recenti, una lista di coppie di giorno e punti dell'ultimo anno,
