@@ -65,6 +65,32 @@ def test_la_gara_a_squadre_a_31():
         assert r.statistiche[donne[3].id].azioni == 0 and r.statistiche[uomini[0].id].azioni > 0
 
 
+def test_la_fatica_della_giornata_nella_gara_a_squadre():
+    # La lettura 12 delle decisioni di Gabriele del 14 ottobre 2026: la gara a squadre dell'esito rapido
+    # conosce la fatica della giornata. Senza azioni iniziali è quella di prima, con le azioni iniziali dei
+    # titolari di A li fa rendere meno, e le statistiche contano soltanto le azioni dell'incontro.
+    uomini = [giocatore(n, valore=15.0, anni=60, fisico=1.0) for n in range(1, 5)]
+    donne = [giocatore(n, valore=15.0, anni=60, sesso="f", fisico=1.0) for n in range(5, 9)]
+    a = Squadra("A", (uomini[0], uomini[1], donne[0], donne[3]))
+    b = Squadra("B", (uomini[2], donne[1], uomini[3]))
+    stanchi = {g.id: 120 for g in a.titolari}
+    rng = random.Random(12)
+    vinte_fresche = vinte_stanche = 0
+    for _ in range(400):
+        seme = rng.getrandbits(63)
+        fresca = esito_rapido.gioca_squadre(a, b, seme)
+        # Le azioni iniziali di una riserva, che non va al tavolo, non cambiano niente.
+        con_la_riserva = esito_rapido.gioca_squadre(a, b, seme, azioni_iniziali={donne[3].id: 500})
+        assert con_la_riserva.set == fresca.set and con_la_riserva.statistiche[1].azioni == fresca.statistiche[1].azioni
+        stanca = esito_rapido.gioca_squadre(a, b, seme, azioni_iniziali=stanchi)
+        vinte_fresche += fresca.vincitore == "A"
+        vinte_stanche += stanca.vincitore == "A"
+    assert vinte_stanche < vinte_fresche - 20
+    # Le statistiche, e con loro il carico d'infortunio, partono da zero anche per chi comincia stanco.
+    sfinito = esito_rapido.gioca_squadre(a, b, 5, azioni_iniziali={uomini[0].id: 10_000})
+    assert 0 < sfinito.statistiche[uomini[0].id].azioni < 1000
+
+
 def test_piu_forza_piu_vittorie():
     forte, debole = giocatore(1, valore=24.0), giocatore(2, valore=12.0)
     rng = random.Random(5)

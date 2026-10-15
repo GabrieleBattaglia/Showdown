@@ -18,7 +18,8 @@ scambio diventa una penalità, due punti. Due servizi a testa, chi apre si alter
 giornata parte dalle azioni iniziali. Gli infortuni seguono le regole del motore, a fine set quelli
 che fermano e il ritiro, dopo l'ultimo set gli acciacchi, con le stesse probabilità, un generatore a
 parte e le azioni stimate. La gara a squadre si gioca con la rotazione fissa del motore, tre servizi
-a testa e un set a 31.
+a testa e un set a 31, e dalla lettura 12 delle decisioni di Gabriele del 14 ottobre 2026 anche lei
+conosce la fatica della giornata, per la Coppa delle polisportive.
 I numeri stanno in TaraturaRapida, sul modello di motore/taratura.py, e li trova
 strumenti/taratura_esito_rapido.py con una regressione sugli scambi di migliaia di incontri del
 motore; i nomi non ripetono quelli della taratura del motore né di costanti.py.
@@ -328,11 +329,15 @@ def _risultato(formato, seme, parti, vincitore, set_giocati, reali, gara, ritira
                            nomi_squadre=nomi_squadre, set_giocati=reali, infortuni=list(gara.infortuni), acciacchi=list(gara.acciacchi), ritirato=tuple(ritirati))
 
 
-def gioca_squadre(squadra_a, squadra_b, seme, basi_infortunio=None, cali=None, taratura=TARATURA_RAPIDA, memoria=None):
+def gioca_squadre(squadra_a, squadra_b, seme, basi_infortunio=None, cali=None, taratura=TARATURA_RAPIDA, memoria=None, azioni_iniziali=None):
     """
     Una gara a squadre con l'esito rapido: la rotazione fissa del motore, tre servizi a testa, un set a
     31 con 2 di scarto; ogni scambio fra i due al tavolo con la loro forza e la loro fatica. Alla fine
     gli infortuni che fermano e gli acciacchi dei titolari, come nel motore; il ritiro non c'è.
+    Dalla lettura 12 delle decisioni di Gabriele del 14 ottobre 2026 vale anche qui la fatica della
+    giornata: azioni_iniziali, come nel singolare, dà le azioni con cui ciascuno comincia, che la sua
+    fatica conta prima di quelle dell'incontro; le statistiche e il carico d'infortunio partono da zero.
+    Senza azioni iniziali la gara è quella di prima fino all'ultimo bit.
     """
     for squadra in (squadra_a, squadra_b):
         problema = problema_squadra(squadra)
@@ -344,10 +349,11 @@ def gioca_squadre(squadra_a, squadra_b, seme, basi_infortunio=None, cali=None, t
     titolari = {"A": squadra_a.titolari, "B": squadra_b.titolari}
     al_tavolo = (*titolari["A"], *titolari["B"])
     ids_a = frozenset(g.id for g in titolari["A"])
-    gara = _Gara((*squadra_a.giocatori, *squadra_b.giocatori), rng, basi_infortunio, cali, None)
+    gara = _Gara((*squadra_a.giocatori, *squadra_b.giocatori), rng, basi_infortunio, cali, azioni_iniziali)
     forze = {g.id: forza(g, t, memoria) for g in al_tavolo}
     ritmi = {g.id: ritmo_della_fatica(g, tm) / tm.FATICA_SCALA for g in al_tavolo}
     rese = {g.id: 1.0 - gara.cali.get(g.id, 0.0) for g in al_tavolo}
+    iniziali = {g.id: gara.iniziali.get(g.id, 0) for g in al_tavolo}
     scambi_al_tavolo = dict.fromkeys(forze, 0)
     p_goal = _logistica(t.GOAL_SQUADRE)
     punteggio = [0, 0]
@@ -364,8 +370,10 @@ def gioca_squadre(squadra_a, squadra_b, seme, basi_infortunio=None, cali=None, t
         battitore, ricevitore = titolari[parte_b][posto_b], titolari[parte_r][posto_r]
         if servizi == 0:
             # La coppia al tavolo cambia a ogni turno di battuta: la sua fatica si calcola lì.
-            eff_b = _efficienza(t.AZIONI_PER_SCAMBIO * scambi_al_tavolo[battitore.id], ritmi[battitore.id], forma, fatica_max) * rese[battitore.id]
-            eff_r = _efficienza(t.AZIONI_PER_SCAMBIO * scambi_al_tavolo[ricevitore.id], ritmi[ricevitore.id], forma, fatica_max) * rese[ricevitore.id]
+            eff_b = _efficienza(iniziali[battitore.id] + t.AZIONI_PER_SCAMBIO * scambi_al_tavolo[battitore.id], ritmi[battitore.id], forma, fatica_max) \
+                * rese[battitore.id]
+            eff_r = _efficienza(iniziali[ricevitore.id] + t.AZIONI_PER_SCAMBIO * scambi_al_tavolo[ricevitore.id], ritmi[ricevitore.id], forma, fatica_max) \
+                * rese[ricevitore.id]
             x = t.PENDENZA_SQUADRE * (forze[battitore.id] - forze[ricevitore.id]) + t.K_FATICA_SQUADRE * (eff_b - eff_r) + t.VANTAGGIO_BATTUTA_SQUADRE
             p_vince_chi_batte = _logistica(x)
         vince, perde = (battitore, ricevitore) if rng.random() < p_vince_chi_batte else (ricevitore, battitore)

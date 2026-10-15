@@ -86,6 +86,17 @@ def test_il_gemello_della_gara_a_squadre():
         gemello = gemello_da_differita(differita, seme)
         assert [g.id for g in gemello.parti["A"].giocatori] == [g.id for g in a.giocatori]
         _uguali(gemello.gioca(), vero)
+        # Una differita registrata prima della fatica della giornata nelle gare a squadre non ha le azioni iniziali.
+        del differita["azioni_iniziali"]
+        _uguali(gemello_da_differita(differita, seme).gioca(), vero)
+    # La lettura 12 delle decisioni di Gabriele del 14 ottobre 2026: la differita porta le azioni iniziali
+    # della fatica della giornata, e il gemello ripete l'incontro stanco.
+    iniziali = {uomini[0].id: 90, donne[2].id: 40}
+    for seme in (4, 10):
+        vero = Incontro(a, b, SQUADRE, seme=seme, dettaglio=ESSENZIALE, basi_infortunio=basi, cali=cali, azioni_iniziali=iniziali).gioca()
+        differita = _per_json(differita_squadre(a, b, basi, cali, iniziali))
+        assert differita["azioni_iniziali"] == [[90, 0, 0, 0], [0, 40, 0, 0]]
+        _uguali(gemello_da_differita(differita, seme).gioca(), vero)
 
 
 def test_la_fotografia_ha_soltanto_quello_che_serve():

@@ -34,6 +34,7 @@ from costanti import (
     ESPERIENZA_PER_FASE_SUPERATA,
     ESPERIENZA_PER_SFIDA,
     ESPERIENZA_RISERVA_QUOTA,
+    FATICA_RESIDUA_GIORNATA,
     FEDELTA_MASSIMA,
     FEDELTA_PER_MEDAGLIA,
     IMPORTANZA_COPPA_SFIDA,
@@ -347,6 +348,41 @@ def test_la_coppa_qualifica_per_gloria_con_la_rosa():
     assert ed.iscritto(c.nome)["rosa"] == [25, 9, 10, 26]
 
 
+def test_la_fatica_della_giornata_nella_coppa(monkeypatch):
+    # La lettura 12 delle decisioni di Gabriele del 14 ottobre 2026, risposta 5: nella coppa, fra
+    # polisportive del computer con l'esito rapido, ogni incontro dopo il primo del giorno parte con un
+    # quarto delle azioni che ciascuno ha già giocato quel giorno.
+    mondo = mondo_di_prova(20, 20)
+    for numero, ids in enumerate(((1, 2, 3, 21, 22), (5, 6, 7, 23, 24), (9, 10, 11, 25, 26), (12, 13, 14, 28, 29)), start=1):
+        polisportiva(mondo, f"PoliTeam0{numero} Prova", ids=ids)
+    apertura = datetime.datetime(2027, 5, 26, 9, 0)
+    mondo.datetime_corrente_simulazione = apertura
+    _coppa(mondo, apertura)
+    visti = []
+    vero = esito_rapido.gioca_squadre
+
+    def spia(*argomenti, **opzioni):
+        risultato = vero(*argomenti, **opzioni)
+        visti.append((mondo.datetime_corrente_simulazione, opzioni.get("azioni_iniziali"), {gid: s.azioni for gid, s in risultato.statistiche.items()}))
+        return risultato
+
+    monkeypatch.setattr(esito_rapido, "gioca_squadre", spia)
+    data = datetime.datetime(2027, 6, 15, 9, 0)
+    while True:
+        giorno(mondo, data)
+        if not mondo.calendario.tornei:
+            break
+        data += datetime.timedelta(days=1)
+    fatte = {}
+    for quando, iniziali, azioni in visti:
+        del_giorno = fatte.setdefault(quando, {})
+        for gid, quante in (iniziali or {}).items():
+            assert quante == round(FATICA_RESIDUA_GIORNATA * del_giorno[gid])
+        for gid, quante in azioni.items():
+            del_giorno[gid] = del_giorno.get(gid, 0) + quante
+    assert visti[0][1] is None and sum(1 for _q, iniziali, _a in visti if iniziali) >= 2
+
+
 def test_la_coppa_si_gioca_e_da_le_coppe():
     mondo, a, b, c = _mondo()
     d = polisportiva(mondo, "PoliTeam03 Prova", ids=(12, 13, 14, 28, 29))
@@ -376,8 +412,12 @@ def test_la_coppa_si_gioca_e_da_le_coppe():
     tuoi = [i for i in torneo.incontri() if c.nome in (i.a, i.b) and i.esito == "regolare"]
     assert tuoi and all(i.motore == "vero" and i.differita for i in tuoi)
     assert all(i.motore == "rapido" for i in torneo.incontri() if c.nome not in (i.a, i.b) and i.esito == "regolare")
-    gemello = gemello_da_differita(tuoi[0].differita, tuoi[0].seme).gioca()
-    assert [list(s) for s in gemello.set] == [list(s) for s in tuoi[0].set]
+    for incontro in tuoi:
+        gemello = gemello_da_differita(incontro.differita, incontro.seme).gioca()
+        assert [list(s) for s in gemello.set] == [list(s) for s in incontro.set]
+    # La lettura 12 delle decisioni di Gabriele del 14 ottobre 2026: anche nella coppa vale la fatica della
+    # giornata, e la differita la porta, perché il gemello ripeta l'incontro.
+    assert any(n for incontro in tuoi for lato in incontro.differita["azioni_iniziali"] for n in lato)
     voce = mondo.calendario.albo.voci[-1]
     assert voce[1] == modelli_torneo.SQUADRE and len(voce[8]) == 4 and mondo.calendario.albo.club[voce[8][0]][0] == podio[0].nome
     assert rapporto["tuoi_tornei_conclusi"] == 1 and any(v.get("testo", "").startswith("Chiude Coppa delle polisportive, sede 1") for v in c.diario)

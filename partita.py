@@ -125,15 +125,20 @@ def differita_singolare(ga, gb, basi, cali, azioni_iniziali, set_al_meglio):
             "azioni_iniziali": [iniziali.get(ga.id, 0), iniziali.get(gb.id, 0)], "formato": set_al_meglio}
 
 
-def differita_squadre(squadra_a, squadra_b, basi, cali):
+def differita_squadre(squadra_a, squadra_b, basi, cali, azioni_iniziali=None):
     """
     I dati per riascoltare una gara a squadre: le fotografie dei giocatori di ciascuna, titolari e
     riserve nell'ordine della formazione, i nomi, le basi e i cali, in liste parallele, e il formato.
+    Dalla lettura 12 delle decisioni di Gabriele del 14 ottobre 2026 anche le azioni iniziali della
+    fatica della giornata, nella coppa; le differite di prima non le hanno, e valgono zero.
     """
     cali = cali or {}
-    fotografie = [[fotografa(g) for g in squadra.giocatori] for squadra in (squadra_a, squadra_b)]
-    return {"fotografie": fotografie, "nomi": [squadra_a.nome, squadra_b.nome], "basi": [[basi.get(g.id) for g in s.giocatori] for s in (squadra_a, squadra_b)],
-            "cali": [[cali.get(g.id, 0.0) for g in s.giocatori] for s in (squadra_a, squadra_b)], "formato": FORMATO_SQUADRE}
+    iniziali = azioni_iniziali or {}
+    squadre = (squadra_a, squadra_b)
+    fotografie = [[fotografa(g) for g in squadra.giocatori] for squadra in squadre]
+    return {"fotografie": fotografie, "nomi": [squadra_a.nome, squadra_b.nome], "basi": [[basi.get(g.id) for g in s.giocatori] for s in squadre],
+            "cali": [[cali.get(g.id, 0.0) for g in s.giocatori] for s in squadre],
+            "azioni_iniziali": [[iniziali.get(g.id, 0) for g in s.giocatori] for s in squadre], "formato": FORMATO_SQUADRE}
 
 
 def gemello_da_differita(differita, seme, velocita=1.0):
@@ -144,16 +149,22 @@ def gemello_da_differita(differita, seme, velocita=1.0):
     gli stessi acciacchi.
     """
     if differita["formato"] == FORMATO_SQUADRE:
-        squadre, basi, cali = [], {}, {}
-        for nome, fotografie, basi_squadra, cali_squadra in zip(differita["nomi"], differita["fotografie"], differita["basi"], differita["cali"], strict=True):
+        squadre, basi, cali, iniziali = [], {}, {}, {}
+        # Le differite delle gare a squadre registrate prima della fatica della giornata non hanno le azioni iniziali.
+        azioni_iniziali = differita.get("azioni_iniziali") or [[0] * len(f) for f in differita["fotografie"]]
+        for nome, fotografie, basi_squadra, cali_squadra, iniziali_squadra in zip(differita["nomi"], differita["fotografie"], differita["basi"],
+                                                                                    differita["cali"], azioni_iniziali, strict=True):
             giocatori = tuple(da_fotografia(f) for f in fotografie)
             squadre.append(Squadra(nome, giocatori))
-            for g, base, calo in zip(giocatori, basi_squadra, cali_squadra, strict=True):
+            for g, base, calo, n in zip(giocatori, basi_squadra, cali_squadra, iniziali_squadra, strict=True):
                 if base is not None:
                     basi[g.id] = base
                 if calo:
                     cali[g.id] = calo
-        return Incontro(squadre[0], squadre[1], SQUADRE, seme=seme, dettaglio=COMPLETO, basi_infortunio=basi or None, cali=cali or None, velocita=velocita)
+                if n:
+                    iniziali[g.id] = n
+        return Incontro(squadre[0], squadre[1], SQUADRE, seme=seme, dettaglio=COMPLETO, basi_infortunio=basi or None, cali=cali or None,
+                        azioni_iniziali=iniziali or None, velocita=velocita)
     fa, fb = (da_fotografia(f) for f in differita["fotografie"])
     basi = {g.id: base for g, base in zip((fa, fb), differita["basi"], strict=True) if base is not None}
     cali = {g.id: calo for g, calo in zip((fa, fb), differita["cali"], strict=True) if calo}

@@ -492,7 +492,10 @@ class Torneo:
         giorno. Per ogni incontro chiama gioca(incontro, azioni_del_giorno), dove azioni_del_giorno
         dice per ciascuno dei due quante azioni ha già giocato oggi nel torneo, e riceve un dizionario
         con esito, vince, set, set_giocati e, se ci sono, motore, differita e azioni, le azioni giocate
-        per id. I riposi si chiudono da soli. Restituisce gli incontri giocati e se il torneo è finito.
+        per id. Nella coppa a squadre, dalla lettura 12 delle decisioni di Gabriele del 14 ottobre 2026,
+        azioni_del_giorno dice le azioni di ogni giocatore della rosa dei due club, perché anche lì valga
+        la fatica della giornata. I riposi si chiudono da soli. Restituisce gli incontri giocati e se il
+        torneo è finito.
         """
         if self.stato != IN_CORSO:
             return [], True
@@ -500,11 +503,15 @@ class Torneo:
         giocati = []
         azioni = {}
         turni_oggi = 0
+        squadre = self.squadre
         while turni_oggi < self.modello["incontri_al_giorno"] and not fase.finita:
             for incontro in fase.del_turno(fase.turno_corrente):
                 if incontro.giocato:
                     continue
-                risultato = gioca(incontro, {gid: azioni.get(gid, 0) for gid in (incontro.a, incontro.b)})
+                ids = (incontro.a, incontro.b)
+                if squadre:
+                    ids = tuple(gid for cid in ids for gid in self.info[cid].get("rosa", ()))
+                risultato = gioca(incontro, {gid: azioni.get(gid, 0) for gid in ids})
                 self._registra(incontro, risultato, data)
                 for gid, quante in (risultato.get("azioni") or {}).items():
                     azioni[gid] = azioni.get(gid, 0) + quante

@@ -573,7 +573,7 @@ class Calendario:
         della coppa li gioca _gioca_squadre.
         """
         if torneo.squadre:
-            return self._gioca_squadre(mondo, motore, torneo, incontro, rapporto)
+            return self._gioca_squadre(mondo, motore, torneo, incontro, azioni_del_giorno, rapporto)
         importanza = torneo.modello["importanza"]
         ga, gb = self._presente(mondo, incontro.a), self._presente(mondo, incontro.b)
         if ga is None and gb is None:
@@ -630,14 +630,17 @@ class Calendario:
             motore.segna_impegno(presente)
         return {"esito": tornei.TAVOLINO, "vince": vince, "set": [[punti, 0] if vince == "A" else [0, punti] for _ in range(necessari)], "set_giocati": 0}
 
-    def _gioca_squadre(self, mondo, motore, torneo, incontro, rapporto):
+    def _gioca_squadre(self, mondo, motore, torneo, incontro, azioni_del_giorno, rapporto):
         """
         Un incontro della coppa, punto 8.8: ogni polisportiva schiera i tre migliori sani della sua rosa,
         e chi non ha più una squadra valida, o ha chiuso, perde a tavolino, 31 a 0. Il motore vero se
         gioca una tua polisportiva, con le fotografie per la differita; l'esito rapido fra quelle del
         computer. Punti allenamento ed esperienza dei titolari come una sfida, per l'importanza; chi della
-        rosa resta fuori conta da riserva, risposta 15. La fatica della giornata qui non c'è: l'esito
-        rapido della gara a squadre non la conosce.
+        rosa resta fuori conta da riserva, risposta 15. Dalla lettura 12 delle decisioni di Gabriele del
+        14 ottobre 2026 vale anche qui la fatica della giornata, risposta 5: chi gioca un incontro dopo il
+        primo del giorno parte con un quarto delle azioni che ha già giocato, nel motore, nell'esito rapido
+        e nella differita; azioni_del_giorno le dice per ogni giocatore delle due rose, e il risultato
+        restituisce quelle di questo incontro.
         """
         importanza = torneo.modello["importanza"]
         gara = f"l'incontro di {torneo.modello['nome']}"
@@ -672,17 +675,19 @@ class Calendario:
         giocatori = (*sq_a.giocatori, *sq_b.giocatori)
         basi = {g.id: infortuni.probabilita_base(g) for g in giocatori}
         cali = {g.id: calo for g in giocatori if (calo := infortuni.calo_acciacco(g, mondo.datetime_corrente_simulazione))} or None
+        iniziali = {gid: round(FATICA_RESIDUA_GIORNATA * n) for gid, n in azioni_del_giorno.items() if n} or None
         tue = any(sfide.tua(p) for p in club.values())
         differita = None
         if tue:
-            differita = differita_squadre(sq_a, sq_b, basi, cali)
-            risultato = Incontro(sq_a, sq_b, SQUADRE, seme=incontro.seme, dettaglio=ESSENZIALE, basi_infortunio=basi, cali=cali).gioca()
+            differita = differita_squadre(sq_a, sq_b, basi, cali, iniziali)
+            risultato = Incontro(sq_a, sq_b, SQUADRE, seme=incontro.seme, dettaglio=ESSENZIALE, basi_infortunio=basi, cali=cali, azioni_iniziali=iniziali).gioca()
         else:
-            risultato = esito_rapido.gioca_squadre(sq_a, sq_b, incontro.seme, basi_infortunio=basi, cali=cali, memoria=self._memoria_forza)
+            risultato = esito_rapido.gioca_squadre(sq_a, sq_b, incontro.seme, basi_infortunio=basi, cali=cali, memoria=self._memoria_forza, azioni_iniziali=iniziali)
         motore.registra_squadre(risultato, esperienza.SFIDA, importanza, diario=True, solo_tuoi=True, gara=gara, aggrega="incontri")
         self._conta(mondo, risultato, [g for g in giocatori if iscrizioni.tuo(mondo, g)], rapporto)
         return {"esito": risultato.esito, "vince": risultato.vincitore, "set": [list(s) for s in risultato.set], "set_giocati": risultato.set_giocati,
-                "motore": "vero" if tue else "rapido", "differita": differita}
+                "motore": "vero" if tue else "rapido", "differita": differita,
+                "azioni": {gid: s.azioni for gid, s in risultato.statistiche.items() if s.azioni}}
 
     def sfoltisci(self, data):
         """Le sedi concluse da più di due settimane lasciano il pannello: l'albo tiene il podio, le differite gli incontri dei tuoi."""
