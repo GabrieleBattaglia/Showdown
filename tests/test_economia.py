@@ -20,6 +20,7 @@ import testi
 from costanti import (
     CAPITALE_INIZIALE,
     FILE_MONDO,
+    FRENO_MONTE_SU_SPONSOR_CPU,
     MESI_CASSA_PIENA_CPU,
     PARTI_DI_CASSA_PER_STIPENDI,
     QUOTA_SPONSOR_SUL_VALORE,
@@ -284,6 +285,25 @@ def test_il_premio_della_cassa_piena():
         assert economia.spesa_mensile_cpu(sponsor, cassa) == sponsor + cassa / PARTI_DI_CASSA_PER_STIPENDI
     cassa = SOGLIA_CASSA_PIENA_CPU + 24_000
     assert economia.spesa_mensile_cpu(1000, cassa) == pytest.approx(1000 + cassa / PARTI_DI_CASSA_PER_STIPENDI + 24_000 / MESI_CASSA_PIENA_CPU)
+
+
+def test_l_offerta_al_rinnovo_con_la_cassa_piena_e_il_freno():
+    # La decisione 17 di Gabriele del 16 ottobre 2026. Un'offerta di sempre da 400 euro, gli altri della rosa
+    # a 1.600, quindi un monte di 2.000: la parte del giocatore è un quinto del premio.
+    assert FRENO_MONTE_SU_SPONSOR_CPU == 1.10
+    offerta, altri = 400, 1600
+    # Sotto la soglia della cassa piena, o alla soglia, l'offerta resta quella di sempre, con qualunque sponsor.
+    for cassa in (-300, 0, 5_017, SOGLIA_CASSA_PIENA_CPU):
+        for sponsor in (0, 1900, 4000, 100_000):
+            assert economia.offerta_rinnovo_cpu(offerta, altri, sponsor, cassa) == offerta
+    # Con la cassa piena e il freno lontano, un premio di 800 euro al mese ne dà 160 in più al giocatore.
+    cassa = SOGLIA_CASSA_PIENA_CPU + MESI_CASSA_PIENA_CPU * 800
+    assert economia.offerta_rinnovo_cpu(offerta, altri, 4000, cassa) == 560
+    # Con lo sponsor a 1.900 il freno è a 2.090: l'offerta in più si ferma a 90 euro, dove il monte lo tocca.
+    frenata = economia.offerta_rinnovo_cpu(offerta, altri, 1900, cassa)
+    assert frenata == 490 and altri + frenata <= FRENO_MONTE_SU_SPONSOR_CPU * 1900
+    # Con lo sponsor a 1.800 il monte di 2.000 è già oltre il freno di 1.980: niente in più.
+    assert economia.offerta_rinnovo_cpu(offerta, altri, 1800, cassa) == offerta
 
 
 def test_il_computer_ricco_non_compra_a_tre_volte_il_valore(mondo):
