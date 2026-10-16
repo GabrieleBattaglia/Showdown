@@ -106,6 +106,16 @@ CALMA_PER_ANNO = 0.25
 FASCE_TEMPERAMENTO = ((25.0, "molto calmo", False), (42.0, "calmo", True), (58.0, "equilibrato", True), (75.0, "focoso", True), (None, "impetuoso", True))
 # Infortuni. Dalla tappa 9 crescono col carico della partita, e l'ambidestro ha una probabilità un
 # po' più bassa al posto di quella divisa per cinque.
+# La lettura 13 delle decisioni finali di Gabriele del 14 ottobre 2026 chiede gli incontri non regolari a
+# regime verso uno ogni 45, senza toccare i mondi giovani; la risposta 6.2 vuole la regola degli infortuni
+# com'è. La verifica del 15 ottobre ha tolto al sorteggio chi ha lasciato l'attività da iscritto,
+# iscrizioni.togli_chi_ha_lasciato, senza toccare la regola: nella prova di sessant'anni del 16 ottobre gli
+# incontri non regolari sono uno ogni 43,8-46,0 all'anno 40, 39,6-41,8 al 50 e 38,6-39,8 al 60, contro
+# 40-42, 36-37 e 34-35 di prima. Per arrivare a 45 anche dall'anno 50 resta soltanto la crescita del
+# rischio con l'età qui sotto, che la risposta 6.2 non vuole toccare: la scelta è di Gabriele. Sul mondo
+# del seme 2026 all'anno 50, prima del sorteggio nuovo, PROB_INFORTUNIO_AUMENTO_MAX_PERC a 7,5 dava uno
+# ogni 45,7 invece di 35,5, ma all'anno 20 da uno ogni 65 a uno ogni 82, e i ritiri in campo dallo 0,54
+# allo 0,41 per cento.
 PROB_INFORTUNIO_BASE_PER_PARTITA = 0.015
 ETA_INIZIO_AUMENTO_PROB_INFORTUNIO_ANNI = 30.0
 ETA_MAX_PROB_INFORTUNIO_ANNI = 75.0
@@ -310,6 +320,12 @@ SCARTI_MASSIMI_CPU = 30
 # spendere di più, ma ha già la rosa piena e niente da comprare, e la cassa mediana del computer cresce
 # ogni anno dall'anno 45 al 60 in tutti i semi. La leva che la ferma, per esempio un'offerta più alta ai
 # rinnovi con un freno sul monte stipendi, si sceglie con Gabriele, e poi si rifà la prova di sessant'anni.
+# Nella prova di sessant'anni del 16 ottobre, senza più il premio nel prezzo e coi fattori nuovi della
+# carriera, la cassa mediana del computer è 14.400-15.300 euro all'anno 40, 25.100-28.400 al 50 e
+# 53.000-56.100 al 60, e sale da 2.256 a 2.477 euro l'anno dal 45 al 60. Una sonda sul mondo del seme 2026
+# all'anno 60 della ritaratura, mai nel progetto, con l'offerta più alta ai rinnovi entro un monte stipendi
+# pari allo sponsor: in sei anni la cassa mediana scende da 45.100 a 32.800 euro, lo stipendio pagato
+# mediano sale da 320 a 370-420, i tesserati restano al 90 per cento e i primi 10 del mondo tutti tesserati.
 SOGLIA_CASSA_PIENA_CPU = 10_000
 MESI_CASSA_PIENA_CPU = 8
 # Un'offerta d'acquisto per un tesserato del computer, decisione D23: la polisportiva vuole il suo
@@ -386,7 +402,8 @@ ESPERIENZA_PER_ANNO_DI_VITA = 0.05
 # l'età 2,05, le amichevoli 2,50, le sfide 3,00, il club 4,50, i tornei 8,05, cioè 4,01 dagli incontri,
 # 1,61 dalle fasi superate e 2,43 dai piazzamenti. L'amichevole passa da 0,000691 a 0,000693, la sfida
 # da 0,01130 a 0,01132, il club resta; gli incontri, le fasi e i piazzamenti dei tornei scendono da
-# 0,00688, 0,00415 e 0,03247 a 0,00622, 0,00377 e 0,02931.
+# 0,00688, 0,00415 e 0,03247 a 0,00622, 0,00377 e 0,02931. Con la soglia del mondiale rimisurata a 546
+# punti la ricerca di controllo non li sposta, e l'esperienza media a 50 anni è 20,08.
 ESPERIENZA_PER_AMICHEVOLE = 0.000693
 ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA = 0.000968
 K_GRUPPO_ESPERIENZA = 0.2
@@ -451,7 +468,7 @@ SCALA_PIAZZAMENTI = (1.0, 0.8, 0.65, 0.55, 0.45, 0.40, 0.35, 0.30, 0.25, 0.20, 0
 # La verifica del 15 ottobre 2026: la decisione 7 chiede di ricalcolare le ancore, e quella del bravo
 # convertita non era più il bravo a 35 anni, che coi fattori nuovi stava a D7. Si rifà per definizione,
 # una volta, coi fattori della ricerca del 16 ottobre: il caso tipico del bravo dell'utente a 35 anni ha
-# 0,535616 di punteggio, l'ancora del livello 30 passa da 0,609 a 0,535. I livelli si allargano ancora
+# 0,535662 di punteggio, l'ancora del livello 30 passa da 0,609 a 0,535. I livelli si allargano ancora
 # dal basso verso l'alto: 0,0052 fra I9 e F0, 0,0065 fra F0 e D0, 0,0160 fra D0 e A1. La carriera
 # perfetta non cambia, perché A1 resta la somma congelata; cambia la classe di chi sta in mezzo, che a
 # parità di punteggio sale fino a sette livelli intorno a D0. Da qui le ancore restano congelate.
@@ -568,7 +585,11 @@ DISTACCO_PIU_DEBOLE = 25.0
 # il 54 per cento dopo i 50, il nato più lento in media a 50,41. Giocano da 4 a 10 mondiali, in media
 # 7,2, il primo fra 18,9 e 39,2 anni. Prendono in media 20.522 punti, 139 al mese: la seduta il 21,6 per
 # cento, i tornei il 40,3, le amichevoli il 34,1, le sfide il 4,0, cioè 40,1, 34,0 e 4,0 sulla parte
-# delle partite. Gli ipovedenti arrivano ad A1 in media fra 46,8 e 48,5 anni.
+# delle partite. Gli ipovedenti arrivano ad A1 in media fra 46,8 e 48,5 anni. Poi la prova di sessant'anni
+# coi fattori nuovi ha misurato la soglia del mondo dall'anno 40 al 60, 546 punti per tutti e due i sessi, e
+# con quella la ricerca di controllo trova i fattori già nel bersaglio al primo passo e non li sposta: le
+# carriere arrivano ad A1 in media a 49,97 anni, mediana 50,12, errore della media 0,15, con 20,08 di
+# esperienza e 7 mondiali in media; gli ipovedenti fra 46,7 e 48,8 anni.
 PA_FATTORE_AMICHEVOLE = 0.494
 PA_FATTORE_TORNEO = 3.172
 PA_FATTORE_SFIDA = 0.986
@@ -927,9 +948,14 @@ CONTEGGI_GARE_MONDO = (
 # all'anno 60 ha da 512 a 550 punti, sui quattro mondi finali della ritaratura e su due di semi nuovi,
 # e con 605 e 610 la carriera perfetta andava al mondiale molto meno di quanto ci andrebbe nel mondo:
 # con la soglia vera arrivava ad A1 a 47,8 anni invece che a 50. Le medie di quei sei mondi, 527 per
-# gli uomini e 539 per le donne, sono la soglia della ricerca dei fattori che segue; la prova di
-# sessant'anni dopo la controlla dall'anno 40 al 60.
-PUNTI_PER_IL_MONDIALE = {"m": 527.0, "f": 539.0}
+# gli uomini e 539 per le donne, sono state la soglia della prima ricerca dei fattori del 16 ottobre.
+# Poi la prova di sessant'anni coi fattori di quella ricerca, sui semi 2026, 7, 13 e 21, misura la soglia
+# del mondo a ogni fine d'anno, come la misura di prima, dall'anno 40 al 60: in media 546,5 per gli uomini
+# e 546,5 per le donne, da 541,9 a 551,5 e da 539,5 a 553,5 secondo il seme; all'anno 60 soltanto, da 520
+# a 550 e da 528 a 548. All'anno 60 il mondo sta un poco sotto la sua media a regime, e i sei mondi della
+# verifica, misurati soltanto lì, la davano più bassa. Con la media dall'anno 40 al 60 la ricerca dei
+# fattori si è rifatta, e la prova lunga controlla che la soglia resti entro 15 punti.
+PUNTI_PER_IL_MONDIALE = {"m": 546.0, "f": 546.0}
 
 
 def discrepanze_raggruppamenti():
