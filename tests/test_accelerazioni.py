@@ -8,8 +8,11 @@ del mercato del computer con lo scorrere di tutte le righe, la scelta delle iscr
 iscrizioni.scegli, e il salvataggio, che scrive i giocatori una volta sola, con il documento, la firma
 e la rilettura del modo di prima, anche quando il segnaposto compare altrove e la scrittura torna al
 modo di prima. Un file scritto nel modo di prima si legge uguale.
+Dal 16 ottobre 2026 la raccolta della memoria spenta mentre passano i giorni e mentre si carica il mondo,
+riaccesa sempre alla fine, anche dopo un'eccezione, con lo stesso mondo di quando restava accesa.
 """
 
+import contextlib
 import copy
 import datetime
 import gc
@@ -29,6 +32,7 @@ import modelli_torneo
 import mondo as modulo_mondo
 import palmares
 import tratti
+import utilita
 import valore
 from costanti import FILE_MONDO
 from modelli import Giocatore, Polisportiva
@@ -329,3 +333,121 @@ def test_le_date_in_testo_sono_quelle_di_isoformat():
     for _ in range(2):
         for data in date:
             assert modelli.data_in_testo(data) == data.isoformat()
+
+
+# La raccolta della memoria spenta mentre passano i giorni e mentre si carica il mondo, dal 16 ottobre 2026.
+
+@pytest.fixture
+def raccolta_accesa():
+    """La raccolta accesa e niente di congelato all'inizio, e alla fine com'era prima."""
+    prima = gc.isenabled()
+    gc.enable()
+    gc.unfreeze()
+    yield
+    gc.unfreeze()
+    if prima:
+        gc.enable()
+    else:
+        gc.disable()
+
+
+def test_senza_raccolta_si_riaccende_anche_dopo_un_eccezione(raccolta_accesa):
+    with pytest.raises(RuntimeError, match="di prova"), utilita.senza_raccolta():
+        assert not gc.isenabled()
+        raise RuntimeError("di prova")
+    assert gc.isenabled()
+    # Spenta prima, resta spenta.
+    gc.disable()
+    with utilita.senza_raccolta():
+        assert not gc.isenabled()
+    assert not gc.isenabled()
+
+
+def test_i_giorni_passano_con_la_raccolta_spenta(raccolta_accesa, monkeypatch):
+    m = _mondo_popolato()
+    stati = []
+    vero = m._un_giorno
+
+    def giorno(data, rapporto):
+        stati.append(gc.isenabled())
+        vero(data, rapporto)
+
+    monkeypatch.setattr(m, "_un_giorno", giorno)
+    rapporto = m.processa_tempo_trascorso(INIZIO_UTC + 2 * modulo_mondo.DURATA_TICK)
+    assert rapporto["giorni"] == 2 and stati == [False, False]
+    assert gc.isenabled()
+    # Se era spenta prima dell'avanzamento, resta spenta.
+    gc.disable()
+    m.processa_tempo_trascorso(INIZIO_UTC + 3 * modulo_mondo.DURATA_TICK)
+    assert stati == [False, False, False] and not gc.isenabled()
+
+
+def test_se_un_giorno_solleva_la_raccolta_si_riaccende(raccolta_accesa, monkeypatch):
+    m = _mondo_popolato()
+
+    def guasto(data, rapporto):
+        raise RuntimeError("giorno guasto")
+
+    monkeypatch.setattr(m, "_un_giorno", guasto)
+    with pytest.raises(RuntimeError, match="giorno guasto"):
+        m.processa_tempo_trascorso(INIZIO_UTC + 3 * modulo_mondo.DURATA_TICK)
+    assert gc.isenabled()
+
+
+def test_i_giorni_con_la_raccolta_spenta_danno_lo_stesso_mondo(raccolta_accesa, monkeypatch):
+    # Lo stesso mondo e lo stesso caso, dieci giorni con la raccolta spenta e dieci con la raccolta sempre
+    # accesa, il modo di prima: lo stesso documento e lo stesso caso alla fine. Gli istanti del mondo reale
+    # si fermano, perché i due mondi nascono in due momenti diversi, e la password non conta, perché il
+    # sale dell'impronta è nuovo ogni volta.
+    for modulo in (modulo_mondo, modelli):
+        monkeypatch.setattr(modulo, "adesso", lambda: datetime.datetime(2031, 4, 5, 9, 0))
+
+    def dieci_giorni():
+        m = _mondo_popolato()
+        random.seed(2026)
+        for giorno in range(1, 11):
+            m.processa_tempo_trascorso(INIZIO_UTC + giorno * modulo_mondo.DURATA_TICK)
+        documento = archivio.componi(m) | {"salvato": None}
+        for p in documento["mondo"]["polisportive"].values():
+            p.pop("impronta_password")
+        return documento, random.getstate()
+
+    con_la_raccolta_spenta = dieci_giorni()
+    monkeypatch.setattr(modulo_mondo, "senza_raccolta", contextlib.nullcontext)
+    assert dieci_giorni() == con_la_raccolta_spenta
+
+
+def test_il_caricamento_spegne_la_raccolta_e_la_riaccende(raccolta_accesa, cartella_di_prova, monkeypatch):
+    originale = _mondo_popolato()
+    assert archivio.salva(originale)
+    stati = []
+    vera = archivio.costruisci
+
+    def costruisci(documento, mondo):
+        stati.append(gc.isenabled())
+        vera(documento, mondo)
+
+    monkeypatch.setattr(archivio, "costruisci", costruisci)
+    gc.unfreeze()
+    m = Mondo()
+    assert archivio.carica(m) == archivio.CARICATO
+    assert stati == [False] and gc.isenabled() and gc.get_freeze_count() > 0
+    assert archivio.componi(m) | {"salvato": None} == archivio.componi(originale) | {"salvato": None}
+
+
+def test_se_il_caricamento_non_riesce_la_raccolta_si_riaccende(raccolta_accesa, cartella_di_prova, monkeypatch):
+    (cartella_di_prova / FILE_MONDO).write_text("{ rotto", encoding="utf-8")
+    (cartella_di_prova / costanti.FILE_MONDO_COPIA).write_text("[]", encoding="utf-8")
+    with pytest.raises(archivio.SalvataggioIllegibile):
+        archivio.carica(Mondo())
+    assert gc.isenabled()
+    # Anche un errore che il caricamento non si aspetta.
+    assert archivio.salva(_mondo_popolato())
+
+    def guasto(documento, mondo):
+        raise RuntimeError("costruzione guasta")
+
+    monkeypatch.setattr(archivio, "costruisci", guasto)
+    with pytest.raises(RuntimeError, match="costruzione guasta"):
+        archivio.carica(Mondo())
+    assert gc.isenabled()

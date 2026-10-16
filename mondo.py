@@ -126,7 +126,7 @@ from economia import (
 )
 from modelli import Giocatore, Polisportiva, conti_vuoti, normalizza_nome, probabilita_accettazione
 from nomi import genera_nome_casuale
-from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale
+from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale, senza_raccolta
 
 ORE_PER_TICK = 8
 DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
@@ -1478,6 +1478,12 @@ class Mondo:
         avanzamento, un giorno alla volta, e sposta l'ancora di 8 ore per ogni giorno: il resto
         resta per la volta dopo. Oltre ai messaggi per notifica restituisce il riepilogo in numeri,
         un dizionario con le chiavi di CHIAVI_RAPPORTO e l'ora locale dell'avanzamento.
+        Dal 16 ottobre 2026, decisione 4 di Gabriele, accelerare senza cambiare gli esiti: mentre passano
+        i giorni la raccolta dei cicli di Python resta spenta, utilita.senza_raccolta, e si riaccende alla
+        fine anche se un giorno solleva un'eccezione. Il giorno fa pochissimi cicli da buttare, e la
+        raccolta che riparte dopo li trova tutti in un giro solo, invece di ripassare a ogni gruppo di
+        oggetti nuovi quelli nati nei giorni prima; il salvataggio, che segue l'avanzamento, raccoglie e
+        congela la memoria, archivio.congela_la_memoria.
         """
         ora = ora or adesso_utc()
         ticks = self.ticks_maturati(ora)
@@ -1491,10 +1497,11 @@ class Mondo:
         inizio = self.datetime_corrente_simulazione
         self.notifica(f"Avanzamento sim: +{ticks} giorni -> {inizio + datetime.timedelta(days=ticks):%Y-%m-%d %H:%M}")
         rapporto["ticks"] = rapporto["giorni"] = ticks
-        for giorno in range(1, ticks + 1):
-            data = inizio + datetime.timedelta(days=giorno)
-            self.datetime_corrente_simulazione = data
-            self._un_giorno(data, rapporto)
+        with senza_raccolta():
+            for giorno in range(1, ticks + 1):
+                data = inizio + datetime.timedelta(days=giorno)
+                self.datetime_corrente_simulazione = data
+                self._un_giorno(data, rapporto)
         self.datetime_ultimo_run_reale += DURATA_TICK * ticks
         self._notifica_rapporto(rapporto)
         return rapporto

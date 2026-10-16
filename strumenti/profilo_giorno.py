@@ -58,6 +58,7 @@ import popolazione_di_prova as pp  # noqa: E402
 
 import archivio  # noqa: E402
 import percorsi  # noqa: E402
+import utilita  # noqa: E402
 from motore import ESSENZIALE, SQUADRE, Squadra, formato_singolare, simula_incontro  # noqa: E402
 from motore.squadre import composizione_valida  # noqa: E402
 from version import __version__  # noqa: E402
@@ -248,7 +249,7 @@ def _tempi_del_salvataggio(documento_fn):
     del 14 ottobre 2026 il testo e la firma sono una fase sola, archivio._testo_firmato, e la raccolta
     della memoria resta spenta come in archivio.scrivi.
     """
-    with archivio._senza_raccolta():
+    with utilita.senza_raccolta():
         inizio = time.perf_counter()
         contenuto = documento_fn()
         composto = time.perf_counter()

@@ -49,6 +49,8 @@ Il formato 7, della tappa 12, del 2026-10-13, decisione D32, il mondo che gioca.
 salvato della tappa, l'acciacco del giocatore, e ogni passo seguente della tappa allarga la stessa
 migrazione, finché la tappa non esce: un formato solo. La migrazione aggiunge soltanto, e rinomina
 un campo: non tocca caratteristiche, valori, contratti, stipendi, casse, fedeltà né esperienza.
+Dal 2026-10-16, decisione 4 di Gabriele, accelerare senza cambiare niente: il caricamento lavora con la
+raccolta della memoria spenta, e il mondo caricato resta lo stesso.
 """
 
 import contextlib
@@ -103,7 +105,7 @@ from modelli import (
 )
 from mondo import CONSERVAZIONE_PREDEFINITA
 from sfide import RegistroSfide
-from utilita import adesso, adesso_utc
+from utilita import adesso, adesso_utc, senza_raccolta
 
 APPLICAZIONE = "MESS"
 FORMATO = 7
@@ -188,24 +190,6 @@ def _testo_firmato(contenuto):
     return [json.dumps({**contenuto, "firma": firma(contenuto)}, ensure_ascii=False, separators=(",", ":")).encode("utf-8")]
 
 
-@contextlib.contextmanager
-def _senza_raccolta():
-    """
-    La raccolta dei cicli di Python spenta mentre si compone e si scrive il documento, e riaccesa dopo
-    se lo era. Il documento è fatto di milioni di dizionari ed elenchi senza cicli, che se ne vanno da
-    soli appena non servono più; la raccolta, che a ogni gruppo di oggetti nuovi ripassa anche quelli
-    vecchi del mondo, raddoppiava il tempo del comporre. Dalla tappa 12, decisione 4 di Gabriele del 14
-    ottobre 2026: il salvataggio non cambia.
-    """
-    accesa = gc.isenabled()
-    gc.disable()
-    try:
-        yield
-    finally:
-        if accesa:
-            gc.enable()
-
-
 def congela_la_memoria():
     """
     Mette da parte la memoria del mondo per la raccolta dei cicli di Python, dopo il caricamento e dopo
@@ -264,7 +248,7 @@ def scrivi(mondo, percorso, percorso_copia):
     Scrive il mondo nel file indicato con la scrittura sicura, e il salvataggio precedente nella
     copia. Restituisce il documento scritto e gli avvisi, cioè le cose andate storte senza danno.
     """
-    with _senza_raccolta():
+    with senza_raccolta():
         contenuto = componi(mondo)
         # Con l'ora di compressione a zero, gli stessi dati danno sempre gli stessi byte.
         dati = _comprimi(_testo_firmato(contenuto))
@@ -669,9 +653,17 @@ def carica(mondo):
     mondo: NATO, CARICATO o DALLA_COPIA. Se i file ci sono ma nessuno dei due si legge, blocca i
     salvataggi del mondo e solleva SalvataggioIllegibile. Dalla verifica del 15 ottobre 2026, a mondo
     pronto la memoria si congela, congela_la_memoria.
+    Dal 16 ottobre 2026, decisione 4 di Gabriele, mentre si legge e si costruisce il mondo la raccolta dei
+    cicli resta spenta, senza_raccolta: il mondo sono milioni di oggetti che nascono tutti insieme e
+    vivono a lungo, e la raccolta li ripassava più volte, anche per intero, mentre crescevano. Alla fine
+    congela_la_memoria fa una raccolta sola, come prima, e mette da parte il mondo, ancora con la raccolta
+    spenta: riaccesa prima, ripasserebbe tutto il mondo appena caricato come oggetti giovani, un terzo di
+    secondo nel mondo di sessant'anni, subito prima della raccolta completa. Se il caricamento non
+    riesce, la raccolta si riaccende lo stesso. Il mondo caricato non cambia.
     """
-    origine = _carica(mondo)
-    congela_la_memoria()
+    with senza_raccolta():
+        origine = _carica(mondo)
+        congela_la_memoria()
     return origine
 
 
