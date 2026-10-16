@@ -16,3 +16,9 @@ Letture e scelte tecniche di ClaudIA sugli altri punti lasciati aperti, da appli
 14. Il guadagno delle accelerazioni si misura a processore libero, e ogni accelerazione resta identica al bit (impronte di tests/dati/impronte_tappa_12.json).
 15. GBUtils V205 si pubblica alla chiusura, insieme a Showdown; i tasti nuovi e i 69 suoni della finestra (con i 5 aggiunti e i 3 riusati) si confermano al collaudo e all'ascolto di Gabriele.
 16. Le altre scelte tecniche degli agenti elencate in rapporti/da_decidere.txt restano come sono.
+Decisioni del 16 ottobre 2026 sui punti aperti dall'ultimo giro, tutte le consigliate.
+17. La leva della decisione 1: con la cassa piena il computer offre di più ai rinnovi, finché il monte stipendi resta entro il 110 per cento dello sponsor; si rifanno prova di sessant'anni, soglia del mondiale e carriera perfetta.
+18. La gloria a regime, dal 30 al 33 per cento sopra l'anno 20: si lascia, la regola del palmarès che pesa la metà resta.
+19. Gli incontri non regolari a regime, uno ogni 39-42: si lasciano.
+20. La partenza dell'utente, da 20.000 a 7.500-13.100 euro nel primo anno: si lascia.
+21. Il tempo del giorno, circa 0,63 secondi in media e 1,1 nel peggiore, salvataggio 6: si accetta; sul Gigante si rimisura soltanto la compressione in un filo.
