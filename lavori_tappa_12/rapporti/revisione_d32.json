@@ -1,0 +1,85 @@
+{
+ "problemi": [
+  {
+   "file": "gui/tornei.py",
+   "riga": 176,
+   "gravita": "alta",
+   "problema": "Nel calendario Iscrivi è il pulsante predefinito: Invio su qualsiasi elenco (Edizioni, Iscrivibili, Iscritti) o sulla scelta Mostra iscrive e paga la quota. Il punto 12.3 vuole il contrario: «Iscrizioni e rimborsi si fanno soltanto con i pulsanti, mai con Invio o spazio sugli elenchi».",
+   "prova": "self.pulsanti((wx.ID_ANY, \"Iscri&vi\"), (wx.ID_ANY, \"&Togli\"), ...) è chiamato senza predefinito=False, e _Dialogo.pulsanti (gui/dialoghi.py:108-109) fa creati[0].SetDefault(). In un dialogo di Windows, Invio su un ListBox o su un Choice preme il pulsante predefinito. Il progetto lo sa e lo usa: il Caffe ha il commento «Invio chiude» (gui/dialoghi.py:1550-1551) con la prova test_caffe_invio_chiude, e lo stesso PannelloTornei conta su questo meccanismo per «Invio sull'incontro lo ascolta». CalendarioTornei.iscrivi (riga 355) legge sempre la selezione di Iscrivibili, che all'apertura è il primo tesserato. Così chi scorre le Edizioni e preme Invio paga 10 euro per un atleta che non ha scelto. Lo stesso succede premendo Invio sull'elenco Iscritti: si iscrive l'atleta scelto nell'altro elenco. La guida F1 (testi.py:1885-1886) promette invece «si iscrive e si toglie soltanto coi pulsanti». Nessuna prova controlla GetDefaultItem del calendario.",
+   "correzione": "Passare predefinito=False alla riga dei pulsanti del calendario, così il dialogo non ha un predefinito e Invio sugli elenchi non fa niente. Aggiungere in test_dialoghi_tornei una prova sul modello di test_caffe_invio_chiude: GetDefaultItem() non deve essere né Iscrivi né Togli, anche quando Iscrivi diventa Rosa per la coppa."
+  },
+  {
+   "file": "gui/editor_tornei.py",
+   "riga": 259,
+   "gravita": "media",
+   "problema": "Negli altri dialoghi nuovi il pulsante predefinito fa sì che Invio sull'elemento scelto faccia un'altra cosa, per chi usa la tastiera con NVDA. Nell'editor dei modelli Invio crea un modello nuovo invece di modificare quello scelto; nell'editor delle formule Invio crea una formula nuova; nell'albo Invio chiude; nel pannello Invio su un elenco che non è quello degli incontri avvia un ascolto.",
+   "prova": "EditorModelli: il primo pulsante, Nuovo, è il predefinito (riga 259), e Modifica è legato soltanto al doppio clic del mouse (EVT_LISTBOX_DCLICK, riga 265). Quindi Invio su un modello apre «Nuovo modello di torneo».\nEditorFormule: il predefinito è «Nuova formula» (riga 447). Il campo Nome (riga 440) è un TextCtrl senza TE_PROCESS_ENTER: chi scrive il nome e preme Invio crea una formula nuova, si ritrova su quella e il dialogo risulta modificato. Lo stesso fa Invio sull'elenco Fasi, che si modifica solo col doppio clic (riga 460).\nAlboDOro: l'unico pulsante, Chiudi, è il predefinito (gui/tornei.py:717). Invio su un'edizione o su un podio chiude l'albo.\nPannelloTornei: Ascolta è il predefinito (gui/tornei.py:475), quindi Invio su Tornei, Parti, Classifica o Mostra avvia ascolta(). ascolta() prende l'incontro scelto nell'elenco Incontri, che l'utente in quel momento non sta guardando.",
+   "correzione": "EditorModelli: rendere predefinito Modifica, mettendolo per primo nella riga, oppure togliere il predefinito. EditorFormule e AlboDOro: predefinito=False. PannelloTornei: togliere il predefinito e legare Invio al solo elenco Incontri, con EVT_KEY_DOWN e WXK_RETURN su elenco_incontri, così vale la frase del 12.2 «Invio su un incontro tuo lo ascolta» e Invio negli altri elenchi non fa niente."
+  },
+  {
+   "file": "suoni.py",
+   "riga": 306,
+   "gravita": "media",
+   "problema": "Sei coppie di eventi nuovi hanno preset quasi uguali: stessa onda, stesso inviluppo, stesso ritmo e stessi intervalli, solo trasposti. Questo viola D24, «né due preset di contenuto uguale o quasi uguale», e la regola dei suoni distinti. Il rapporto del passo 3 dice il contrario: «nessuno ha la stessa sequenza di note di un altro preset usato da MESS».",
+   "prova": "Dati letti da E:\\git\\mine\\GBUtils\\Acu_Collection.json con lo script in sola lettura scratchpad\\t12revisione_d32\\suoni_trasposti.py.\n1) dialogo_calendario_tornei (riga 306), mess_calendario_tornei: onda triangolare, inviluppo 5/20/60/30, do5, mi5 e sol5 da 45 ms, do6 da 90 ms. dialogo_formazione (riga 355), mess_formazione: stesse note e stesso inviluppo, solo una pausa di 40 ms e il do6 da 70 ms. La formazione si apre dal calendario (Rosa per la coppa), quindi i due suonano uno dopo l'altro.\n2) albo_d_oro (riga 324) e tua_medaglia_oro (riga 361): stessa sinusoide, stesso inviluppo 2/55/25/40, stesso ritmo 60, 60, 60 e 250 ms, stesso arpeggio maggiore, trasposto di una terza.\n3) modello_salvato (riga 330) e formula_salvata (riga 335): la5, mi6 e la6 contro re5, la5 e re6, durate 40, 40 e 90 ms identiche, stessa onda e stesso inviluppo.\n4) dialogo_editor_modelli (riga 328) e dialogo_editor_formule (riga 333): dente di sega, scivolata di quinta più ottava, 100 e 50 ms contro 90 e 60 ms.\n5) iscrizione_automatica_accesa e spenta (righe 279-280) contro fase_aggiunta e fase_tolta (righe 340 e 342): la stessa quinta che sale o scende, 30 e 50 ms contro 35 e 55 ms, sinusoide con lo stesso inviluppo.\n6) tue_iscrizioni_saltate (riga 377) ed edizione_annullata (riga 383): triade minore discendente, triangolare, 60, 60 e 140 ms contro 60, 60 e 160 ms.",
+   "correzione": "Rifare in Acu_Collection.json, con la V205 non ancora pubblicata, un preset per coppia, cambiando timbro, ritmo o profilo e non soltanto l'altezza: per esempio mess_formazione, mess_medaglia_oro, mess_formula_salvata, mess_editor_formule, mess_fase_aggiunta e mess_fase_tolta, mess_edizione_annullata. Allargare preset_t12.py e la prova dell'unicità dei suoni perché confrontino anche la figura trasposta (onda, inviluppo, durate e intervalli), non soltanto la sequenza delle note."
+  },
+  {
+   "file": "gui/tornei.py",
+   "riga": 104,
+   "gravita": "media",
+   "problema": "Esc durante l'ascolto in differita suona \"annullato\", il suono generico di ogni Annulla e di ogni «no». D30 vuole che l'uscita con Esc abbia «un suono suo, che non svela il risultato», e D24 vieta lo stesso preset per due eventi. Il rapporto del passo 3 lo lascia «da confermare».",
+   "prova": "ascolta_e_ricorda: alla riga 104, con uscita CON_ESC, chiama suoni.suona(\"annullato\"). \"annullato\" è meteora_annullamento (suoni.py:78), e la sua azione è «un'operazione annullata, con Esc o con Annulla in un dialogo» (suoni.py:406). Lo usano anche _Dialogo._conferma al no (gui/dialoghi.py:139) e ogni dialogo annullato, comprese le due righe successive dello stesso file (420) e gui/editor_tornei.py:297 e 588. Per l'amichevole lo stesso caso ha invece un evento suo, amichevole_registrata (gui/finestra.py:828-832).",
+   "correzione": "Creare un evento nuovo, per esempio differita_interrotta, con un preset mess_ nuovo e distinto, nella V205 insieme agli altri. Dargli la sua AZIONE, suonarlo alla riga 104 al posto di \"annullato\", e rigenerare suoni_di_mess.txt."
+  },
+  {
+   "file": "testi.py",
+   "riga": 1668,
+   "gravita": "media",
+   "problema": "I testi dicono a Gabriele due scadenze diverse per rispondere a una sfida, e quella scritta con la data è sbagliata. Chi legge «rispondi entro il 15 ottobre» e apre le sfide il 15 ottobre trova la sfida già decaduta.",
+   "prova": "_proponi fissa scadenza = oggi + 1 (sfide.py:617). All'avanzamento seguente processa_tempo_trascorso porta la data a quel giorno (mondo.py:1342-1345), e sfide.giorno fa decadere per prima cosa le sfide con oggi >= s.scadenza (sfide.py:419). Quindi si può rispondere soltanto mentre il mondo è al giorno D della proposta.\nDicono la data sbagliata: la riga del dialogo «rispondi entro il {scadenza}» (testi.py:1668), la notizia e il diario «si risponde entro il {scadenza}» (sfide.py:623-624), il riepilogo «la tua risposta entro domani» (testi.py:1012) e la guida «entro il giorno dopo» (testi.py:1896).\nDicono giusto: la barra «rispondi oggi» (suoni.py:782) e la testata del dialogo «decade all'avanzamento di domani» (gui/sfide.py:264-265).",
+   "correzione": "Una frase sola, giusta, ovunque: «rispondi oggi, prima dell'avanzamento del 15 ottobre» oppure «entro oggi, 14 ottobre». Correggere riga_sfida_in_arrivo, le due frasi di _proponi, _fatti_avanzamento, GUIDA_DELLE_SFIDE e le AZIONI di dialogo_sfide_in_arrivo e sfida_ricevuta (suoni.py:599 e 617). Aggiungere una prova che faccia avanzare di un giorno e controlli che la data scritta sia l'ultimo giorno in cui la sfida è ancora in arrivo."
+  },
+  {
+   "file": "gui/tornei.py",
+   "riga": 506,
+   "gravita": "media",
+   "problema": "D32 vuole che dal pannello si ascoltino in differita o si leggano come cronaca gli incontri «per il torneo in corso e l'ultimo concluso». Il pannello invece mostra soltanto le sedi in corso e quelle concluse da meno di 14 giorni. Poi l'ultima edizione conclusa non si ascolta più, anche se le sue differite restano salvate nel mondo.",
+   "prova": "_tornei_da_mostrare (righe 503-509) legge soltanto cal.tornei e cal.conclusi. Calendario.sfoltisci (calendario.py:614-625) toglie i conclusi dopo CONSERVAZIONE_TORNEI_CONCLUSI_GIORNI = 14 (costanti.py:728). calendario.differite, riempito da conserva_differite (calendario.py:335-346) e salvato con le fotografie (riga 634), non viene mai letto per ascoltare: l'unica lettura è il controllo dell'edizione a gui/tornei.py:601.\nCon il ritmo automatico, un torneo ogni 61 giorni, l'ultimo concluso di un modello si ascolta per 14 giorni e poi per circa 47 no. Il mondiale e la Coppa delle polisportive restano ascoltabili 14 giorni su 365.",
+   "correzione": "Aggiungere a Mostra una scelta, per esempio «Ultime edizioni concluse con i tuoi», che costruisca gli incontri da calendario.differite con IncontroDelTorneo.da_dizionario, con Ascolta, Leggi e Mostra il risultato. Il flag svelato va scritto anche nella copia dentro differite, perché oggi la copia fatta alla chiusura non lo aggiorna più. Aggiungere una prova che a 20 giorni dalla chiusura l'incontro si ascolti ancora."
+  },
+  {
+   "file": "calendario.py",
+   "riga": 503,
+   "gravita": "bassa",
+   "problema": "Nella Coppa delle polisportive, quattro turni al giorno, la fatica della giornata della risposta 5 non c'è. La risposta 5 dice: «ogni incontro dopo il primo del giorno parte con un quarto delle azioni già giocate, nel motore e nell'esito rapido».",
+   "prova": "Per torneo.squadre _gioca_incontro chiama _gioca_squadre(mondo, motore, torneo, incontro, rapporto) senza azioni_del_giorno (righe 502-503). Il motore vero non riceve azioni_iniziali, anche se Incontro le accetta (motore/incontro.py:253). esito_rapido.gioca_squadre non ha il parametro (esito_rapido.py:306). Il risultato restituito (righe 611-612) non ha la chiave \"azioni\", quindi la giornata non accumula niente. Il passo 2 lo scrive fra le cose da decidere. Va detto che anche il progetto, ai punti 5.5 e 6.3, parlava soltanto del singolare.",
+   "correzione": "Portare a Gabriele la scelta, perché il progetto e la risposta 5 qui non coincidono. Se la regola vale anche per la coppa: passare azioni_del_giorno a _gioca_squadre, dare azioni_iniziali a Incontro e a esito_rapido.gioca_squadre (ritarando K_FATICA_SQUADRE) e restituire le azioni per id."
+  },
+  {
+   "file": "gui/editor_tornei.py",
+   "riga": 106,
+   "gravita": "bassa",
+   "problema": "Nel dialogo del modello di torneo sette campi hanno l'etichetta senza la lettera, contro la regola delle etichette con & e il punto 12.5 («etichette con la lettera»). Fra questi c'è il Riepilogo, l'informazione che cambia a ogni modifica: si raggiunge soltanto con molti Tab.",
+   "prova": "Sono senza & le etichette di Percentuale del montepremi al primo (riga 106), Qualificazione (111), Classe minima (113), Classe massima (115), Età minima (117), Età massima (119) e Riepilogo (121). Le lettere usate sono N, O, A, T, S, F, R, G, E, I, C, B, L, D, U, P, Q, Z, M, H e V; restano libere J, K, W, X e Y, più le cifre.",
+   "correzione": "Dare una lettera libera a ciascuna etichetta, prima di tutto al Riepilogo e alla Qualificazione, e usare le cifre per le altre. Aggiungere una prova che controlli che in ogni dialogo nuovo ogni etichetta abbia una & e che non ci siano doppioni."
+  },
+  {
+   "file": "suoni.py",
+   "riga": 798,
+   "gravita": "bassa",
+   "problema": "L'ordine delle notizie nella barra non segue la sua docstring, che dice «le medaglie e le coppe dalla più preziosa, prima le medaglie e poi le coppe a pari metallo». Una medaglia di legno passa davanti a una coppa d'argento della Coppa delle polisportive.",
+   "prova": "La tupla tuoi (righe 796-803) mette nell'ordine: medaglia d'oro, coppa d'oro, medaglia d'argento, di bronzo e di legno, e solo dopo coppa d'argento, di bronzo e di legno. La docstring (righe 760-761) dice «a pari metallo». Così, se nello stesso avanzamento la tua polisportiva vince l'argento della Coppa (importanza 3) e un tuo atleta il legno in un open (importanza 1), la barra e il suono dicono «medaglia di legno per i tuoi».",
+   "correzione": "Mettere nella tupla, dopo le due d'oro, l'ordine argento medaglia, argento coppa, bronzo medaglia, bronzo coppa, legno medaglia, legno coppa, come dice la docstring. Allineare il test dell'ordine delle notizie, o in alternativa correggere la docstring e confermare con Gabriele."
+  },
+  {
+   "file": "iscrizioni.py",
+   "riga": 282,
+   "gravita": "bassa",
+   "problema": "Il rifiuto per sovrapposizione dice sempre «due tornei negli stessi giorni non si giocano», anche quando l'altro impegno è una sfida accettata. Chi ascolta con NVDA riceve un motivo sbagliato.",
+   "prova": "impegni_descritti (calendario.py:300-302) restituisce anche «una sfida fra X e Y, il 15 ottobre». problema_iscrizione forma «{nome} negli stessi giorni ha già una sfida fra X e Y, il 15 ottobre: due tornei negli stessi giorni non si giocano.»",
+   "correzione": "Fare dire a impegni_descritti anche il tipo d'impegno, e chiudere la frase con «un torneo e un altro impegno negli stessi giorni non si giocano» oppure con «due tornei...» soltanto quando l'impegno è un torneo."
+  }
+ ],
+ "note": "Revisione in sola lettura del ramo mondo-che-gioca (5dab380) nel worktree C:\\Users\\Gabriele\\AppData\\Local\\Temp\\claude\\E--git\\27fed563-c373-4641-9680-74975b271914\\scratchpad\\showdown-tappa12, con la lente di D32, delle risposte di Gabriele e di NVDA. Non ho modificato nessun file del worktree, né GBUtils, né Terminal_Beast.\nHo controllato e trovato a posto:\n- Lettere e tasti: nei menu Tornei e Partite e in tutti i dialoghi nuovi le lettere sono uniche; i tasti Ctrl non hanno doppioni.\n- Controlli: niente Notebook, soltanto controlli nativi a selezione singola.\n- Risultati nascosti: «tuo, giocato, da ascoltare» e Mostra tutti i risultati, con la domanda col no già scelto, il conteggio e l'avviso quando non c'è niente.\n- Ascolto in differita: Esc prima della fine non svela il risultato.\n- Partita dal vivo: il ritiro ha la sua fermata prima del triplice fischio; il cambio al tavolo ha il suo suono e la riga «Al tavolo X contro Y».\n- Barra di stato: tutte le righe stanno nei 40 caratteri; la sfida in attesa ha la forma corta; il calendario illeggibile si dice una volta per sessione.\n- Iscrizione automatica: accesa per chi si tessera; la casella della sala ha Alt+U.\n- Suoni: nessuna onda quadra fra i 71 preset nuovi, e nessun preset usato per due eventi.\nLe prove dei suoni stanno negli script in sola lettura della cartella scratchpad\\t12revisione_d32: suoni_nuovi.py, suoni_trasposti.py e mostra_preset.py, lanciati con python -B.\nUna violazione mia, da dire: all'inizio ho lanciato una volta python -c \"print(1)\", per sbaglio dentro un comando di controllo. È finito subito.\nSul computer restano accesi soltanto processi python di altri agenti (lunga.py, carriere.py, verifica_rapida.py), avviati prima e fuori dalla mia cartella; non li ho toccati.\nHo trovato due problemi che non sono di questa lente: il commit V205 di GBUtils è soltanto in locale, e lo storico delle sfide mostra subito il risultato. Il secondo è coerente col progetto, che non estende alle sfide la regola della risposta 18; lo segnalo soltanto perché Gabriele può volerla anche lì."
+}
