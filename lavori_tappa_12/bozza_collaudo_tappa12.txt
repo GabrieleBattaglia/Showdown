@@ -1,0 +1,70 @@
+Collaudo della tappa 12 di MESS con NVDA, versione [VERSIONE]: i tornei, le sfide e la differita.
+Prima: nella cartella E:\git\tmp\mess-collaudo-t11 lancia python Showdown.py. È una copia del programma con il tuo mondo, aggiornata alla versione nuova con git pull, e il tuo mondo vero non si tocca.
+Prima: al primo avvio il mondo passa al formato 7, e avanza dei giorni passati da quando l'hai aperto l'ultima volta: nel frattempo il mondo avrà già giocato qualche torneo.
+Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
+PROVA 1, l'avvio.
+Passo 1: lancia il programma e aspetta la vista principale.
+Domanda 1: il mondo si apre senza errori, e la barra dice che cosa è successo mentre eri via?
+Passo 2: con Ctrl+G apri la scheda di un tuo tesserato.
+Domanda 2: la scheda dice il palmarès e l'iscrizione automatica, in modo chiaro?
+Esito:
+PROVA 2, il calendario e le iscrizioni.
+Passo 1: premi Ctrl+U, poi Alt+M e scorri le tre scelte.
+Domanda 1: il dialogo si apre bene, e le edizioni cambiano con la scelta?
+Passo 2: Alt+E sulle edizioni, poi Alt+I sui tuoi tesserati iscrivibili.
+Domanda 2: ogni riga dice lo stato del tesserato e la data della sua prossima iscrizione automatica?
+Passo 3: premi Invio sull'elenco dei tesserati.
+Domanda 3: Invio non iscrive nessuno?
+Passo 4: iscrivi un tesserato con Alt+V, poi toglilo con Alt+T.
+Domanda 4: la quota si paga e si rimborsa, ciascuna col suo suono, e l'avviso dice il perché quando qualcosa non si può?
+Passo 5: chiudi, poi premi Ctrl+J.
+Domanda 5: il dialogo si apre col fuoco già sui tuoi tesserati?
+Esito:
+PROVA 3, l'iscrizione automatica.
+Passo 1: apri la sala allenamento con Ctrl+Maiusc+L e cerca la scelta dell'iscrizione automatica di un tesserato.
+Domanda 1: la scelta si trova, si legge accanto all'intensità, e si cambia con il suo suono?
+Esito:
+PROVA 4, il pannello dei tornei e la differita.
+Passo 1: premi Ctrl+Y, poi Alt+S e scegli i tornei con i tuoi atleti, o i conclusi di recente con i tuoi.
+Domanda 1: il pannello si apre bene, con Tornei Alt+T, Parti Alt+P, Classifica Alt+C e Incontri Alt+I?
+Passo 2: scorri le parti, la classifica generale, i tuoi incontri, i gironi e il tabellone.
+Domanda 2: le classifiche e gli incontri si leggono bene, e un incontro dei tuoi non ancora sentito dice soltanto che è da ascoltare?
+Passo 3: su un incontro dei tuoi premi Alt+A, ascolta un poco e poi premi Esc.
+Domanda 3: la differita suona come le partite dal vivo, ed Esc interrompe senza svelare il risultato, col suo suono?
+Passo 4: premi Alt+L sullo stesso incontro, poi Alt+M.
+Domanda 4: la cronaca si legge, e Mostra il risultato lo svela?
+Passo 5: premi Alt+U e rispondi No, poi di nuovo Alt+U e rispondi Sì.
+Domanda 5: la conferma ha il No già scelto, e dopo il Sì tutti i risultati compaiono?
+Esito:
+PROVA 5, l'albo d'oro e la classifica mondiale.
+Passo 1: premi Ctrl+Maiusc+B e scorri modello, anno, edizioni e podi.
+Domanda 1: l'albo si legge bene, e la scelta Mostra filtra le sedi con i tuoi sul podio?
+Passo 2: premi Ctrl+Maiusc+W.
+Domanda 2: la classifica mondiale si legge bene?
+Esito:
+PROVA 6, gli editor.
+Passo 1: premi Ctrl+Maiusc+J, scorri i modelli, apri un modello con Alt+O e chiudi senza salvare.
+Domanda 1: l'editor dei modelli si legge bene, e ogni campo ha la sua lettera?
+Passo 2: premi Ctrl+Maiusc+Y, scorri le formule e le loro fasi, e chiudi senza salvare.
+Domanda 2: l'editor delle formule si legge bene, e alla chiusura senza salvare la domanda ha il No già scelto?
+Esito:
+PROVA 7, le sfide.
+Passo 1: guarda la seconda riga della barra di stato.
+Domanda 1: dice quante sfide ti restano da lanciare?
+Passo 2: premi Ctrl+W, scegli una polisportiva con Alt+P, poi leggi la formazione con Alt+1, Alt+2, Alt+3 e le riserve con Alt+4, Alt+5 e Alt+6, e lo stato con Alt+N.
+Domanda 2: la formazione proposta si capisce a orecchio, e lo stato dice se è valida?
+Passo 3: premi Invio sull'elenco delle polisportive.
+Domanda 3: Invio non lancia la sfida?
+Passo 4: lancia la sfida con Alt+L.
+Domanda 4: la risposta del computer arriva subito, col suo suono?
+Passo 5: premi Ctrl+Maiusc+F, poi Ctrl+Maiusc+H.
+Domanda 5: le sfide in arrivo e lo storico si leggono bene, e dallo storico si può ascoltare una gara in differita?
+Passo 6: esci con Alt+F4.
+Domanda 6: tutto si è chiuso senza intoppi?
+Esito:
+PROVA 8, i suoni nuovi.
+Prima: questa prova si fa quando vuoi, con le cuffie o con le casse.
+Passo 1: nella copia lancia python ascolta_suoni.py Tornei, poi python ascolta_suoni.py Partite.
+Domanda 1: i suoni dei tornei, delle sfide e della differita si distinguono fra loro e da quelli che conosci già?
+Domanda 2: c'è un suono che non ti piace o che stanca?
+Esito:
