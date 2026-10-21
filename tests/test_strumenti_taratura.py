@@ -235,6 +235,25 @@ def test_i_controlli_della_verifica_nella_prova_lunga():
     assert sl.fuori_dai_controlli_della_verifica([{"numero_anno": 50, "primi_100": 90.0, "casse": (0, 5000, 0)}]) == []
 
 
+def test_i_bersagli_dello_staff_nella_prova_lunga():
+    # La tappa 13, progetto 6.3: il capo dall'anno 5 al 95 per cento, i liberi almeno quanti i club senza
+    # capo, lo staff entro un quinto del monte; i numeri per decennio stanno in una riga a parte.
+    annuali = [{"numero_anno": n, "con_capo": 90.0 if n < 8 else 97.0, "senza_capo": 3, "staff_pieno": 20.0, "qualita_staff": (0.3, 0.5, 0.7),
+                "staff_sul_monte": 25.0 if n == 30 else 6.0, "allenatori": 900, "allenatori_liberi": 2 if n == 12 else 40,
+                "liberi_per_lettera": {"C": 3, "H": 37}} for n in range(1, 41)]
+    righe = sl.controlli_della_tappa_13(40, [7], {7: annuali})
+    assert righe[0].startswith("Seme 7, lo staff per decennio: anno 10, con un capo 97,0 per cento, staff pieno 20,0, qualità 0,30, 0,50 e 0,70, ")
+    assert "allenatori 900, liberi 40 (C 3, H 37)" in righe[0]
+    assert righe[1] == ("Seme 7, i bersagli dello staff della tappa 13: FUORI polisportive con un capo sotto il 95 per cento in 3 anni, dall'anno 5 "
+                        "all'anno 7, al più basso 90,0; allenatori liberi meno delle polisportive senza capo in 1 anni, dall'anno 12 all'anno 12; "
+                        "staff oltre il 20 per cento del monte in 1 anni, dall'anno 30 all'anno 30.")
+    for m in annuali:
+        m["con_capo"], m["allenatori_liberi"], m["staff_sul_monte"] = 96.0, 40, 6.0
+    assert sl.controlli_della_tappa_13(40, [7], {7: annuali})[1].endswith("tutti dentro.")
+    # Le misure di prima, senza lo staff, non danno righe.
+    assert sl.controlli_della_tappa_13(40, [7], {7: [{"numero_anno": 10}]}) == []
+
+
 def test_lo_scenario_dell_utente_spende_con_la_regola_della_1_60_11():
     # La verifica del 15 ottobre 2026: la polisportiva dell'utente nasce coi 20.000 euro del capitale,
     # sopra la soglia della cassa piena, e la regola del computer della decisione 1 le avrebbe dato il

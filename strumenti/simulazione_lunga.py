@@ -60,6 +60,9 @@ libero senza rifare la simulazione. Dalla verifica del 15 ottobre 2026 la prova 
 anche i primi 10 e i primi 20 del mondo tesserati, la soglia del mondiale del mondo contro quella della
 carriera perfetta e la cassa mediana del computer ferma a regime; la memoria si congela a fine anno,
 come fa il programma dopo ogni salvataggio, e lo scenario dell'utente spende con la regola della 1.60.11.
+Dalla tappa 13, il 2026-10-21, progetto 6.1 e 6.3, misura anche lo staff del computer: le polisportive con
+un capo e con lo staff pieno, la qualità, la parte dello staff nel monte e gli allenatori liberi per
+lettera, coi bersagli dello staff in controlli_della_tappa_13.
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/simulazione_lunga.py
     python strumenti/simulazione_lunga.py --giorni 1095 --seme 2026 --rapporto calendario.txt
@@ -104,6 +107,7 @@ import modelli  # noqa: E402
 import palmares  # noqa: E402
 import percorsi  # noqa: E402
 import sfide  # noqa: E402
+import staff  # noqa: E402
 import valore  # noqa: E402
 from mondo import DURATA_TICK, Mondo  # noqa: E402
 from motore import ESSENZIALE, SINGOLARE_3, simula_incontro  # noqa: E402
@@ -213,7 +217,18 @@ def misure(mondo, dell_anno=None):
     glorie = [p.gloria for p in cpu]
     richieste = [g.gloria_richiesta for g in attivi if g.appartenenza == "*"]
     gloria_mediana = statistics.median(glorie) if glorie else 0.0
+    # Dalla tappa 13, progetto 6.1: lo staff del computer, la qualità, la parte sul monte e gli allenatori liberi.
+    qualita = [staff.qualita_della_polisportiva(p, mondo.allenatori) for p in cpu]
+    liberi = [a for a in mondo.allenatori.values() if a.libero]
+    liberi_per_lettera = {}
+    for a in liberi:
+        liberi_per_lettera[a.codice[0]] = liberi_per_lettera.get(a.codice[0], 0) + 1
     return {
+        "con_capo": 100.0 * sum(1 for p in cpu if p.staff[0]) / max(1, len(cpu)), "senza_capo": sum(1 for p in cpu if not p.staff[0]),
+        "staff_pieno": 100.0 * sum(1 for p in cpu if all(p.staff)) / max(1, len(cpu)),
+        "qualita_staff": (percentile(qualita, 0.1), percentile(qualita, 0.5), percentile(qualita, 0.9)) if qualita else (0.0, 0.0, 0.0),
+        "staff_sul_monte": 100.0 * sum(mondo.monte_dello_staff(p) for p in cpu) / max(1, monte),
+        "allenatori": len(mondo.allenatori), "allenatori_liberi": len(liberi), "liberi_per_lettera": liberi_per_lettera,
         "attivi": len(attivi), "tesserati": len(tesserati), "polisportive": len(cpu),
         "primi_100": 100.0 * sum(1 for g in primi if g.appartenenza != "*") / max(1, len(primi)),
         "primi_10": sum(1 for g in primi[:10] if g.appartenenza != "*"), "primi_20": sum(1 for g in primi[:20] if g.appartenenza != "*"),
@@ -960,6 +975,47 @@ def controlli_della_tappa_12(anni, semi, risultati):
     return righe
 
 
+# I bersagli dello staff della tappa 13, progetto 6.3: almeno il 95 per cento delle polisportive del computer
+# con un capo dall'anno 5; gli allenatori liberi sempre almeno quanti le polisportive senza capo; lo staff
+# non oltre un quinto del monte stipendi del computer.
+CON_CAPO_MINIMO = 95.0
+ANNO_DEL_CAPO = 5
+STAFF_SUL_MONTE_MASSIMO = 20.0
+
+
+def controlli_della_tappa_13(anni, semi, risultati):
+    """Le righe dello staff della prova lunga: per decennio i numeri, poi i bersagli del progetto 6.3."""
+    righe = []
+    for seme in semi:
+        annuali = [m for m in risultati[seme] if "con_capo" in m]
+        if not annuali:
+            continue
+        voci = []
+        for decennio in range(10, anni + 1, 10):
+            m = next((x for x in annuali if x["numero_anno"] == decennio), None)
+            if m is None:
+                continue
+            q10, q50, q90 = m["qualita_staff"]
+            lettere = ", ".join(f"{lettera} {quanti}" for lettera, quanti in sorted(m["liberi_per_lettera"].items())) or "nessuno"
+            voci.append(f"anno {decennio}, con un capo {numero(m['con_capo'], 1)} per cento, staff pieno {numero(m['staff_pieno'], 1)}, qualità "
+                        f"{numero(q10, 2)}, {numero(q50, 2)} e {numero(q90, 2)}, staff sul monte {numero(m['staff_sul_monte'], 1)} per cento, "
+                        f"allenatori {m['allenatori']}, liberi {m['allenatori_liberi']} ({lettere})")
+        righe.append(f"Seme {seme}, lo staff per decennio: " + "; ".join(voci) + ".")
+        fuori = []
+        pochi = [m["numero_anno"] for m in annuali if m["numero_anno"] >= ANNO_DEL_CAPO and m["con_capo"] < CON_CAPO_MINIMO]
+        if pochi:
+            fuori.append(f"polisportive con un capo sotto il {numero(CON_CAPO_MINIMO)} per cento in {len(pochi)} anni, dall'anno {pochi[0]} all'anno {pochi[-1]}, "
+                         f"al più basso {numero(min(m['con_capo'] for m in annuali if m['numero_anno'] >= ANNO_DEL_CAPO), 1)}")
+        scarsi = [m["numero_anno"] for m in annuali if m["allenatori_liberi"] < m["senza_capo"]]
+        if scarsi:
+            fuori.append(f"allenatori liberi meno delle polisportive senza capo in {len(scarsi)} anni, dall'anno {scarsi[0]} all'anno {scarsi[-1]}")
+        cari = [m["numero_anno"] for m in annuali if m["staff_sul_monte"] > STAFF_SUL_MONTE_MASSIMO]
+        if cari:
+            fuori.append(f"staff oltre il {numero(STAFF_SUL_MONTE_MASSIMO)} per cento del monte in {len(cari)} anni, dall'anno {cari[0]} all'anno {cari[-1]}")
+        righe.append(f"Seme {seme}, i bersagli dello staff della tappa 13: " + ("tutti dentro." if not fuori else "FUORI " + "; ".join(fuori) + "."))
+    return righe
+
+
 def fuori_dai_controlli_della_verifica(annuali):
     """
     I controlli della verifica del 15 ottobre 2026, sulle misure di ogni anno che li hanno: i primi 10 e
@@ -1031,6 +1087,7 @@ def prova_lunga(anni, semi, processi, stampa=print, gloria=None, salva_mondi=Non
             righe.append(f"Seme {seme}: per tutti i {anni} anni tesserati almeno all'{numero(TESSERATI_MINIMI_PROVA_LUNGA)} per cento e cassa mediana fra "
                          f"{numero(CASSA_MEDIANA_PROVA_LUNGA[0])} e {numero(CASSA_MEDIANA_PROVA_LUNGA[1])} euro, dentro.")
     righe.extend(controlli_della_tappa_12(anni, semi, completi))
+    righe.extend(controlli_della_tappa_13(anni, semi, risultati))
     for riga in righe:
         if stampa:
             stampa(riga)
