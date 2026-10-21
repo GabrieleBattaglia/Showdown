@@ -155,7 +155,9 @@ CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", 
                    "mondiali_conclusi",
                    # La revisione della tappa 12: tutti i premi pagati dalle sedi concluse, non soltanto quelli del podio
                    # che l'albo conserva, per la misura del calendario nella simulazione lunga.
-                   "premi_tornei")
+                   "premi_tornei",
+                   # La tappa 13, progetto 4.5: le notizie dello staff dell'utente.
+                   "tuo_staff_partito", "tuo_staff_scaduto", "tuo_staff_uscito", "tue_prelazioni", "tuo_staff_in_scadenza")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
@@ -533,7 +535,7 @@ class Mondo:
         self.allenatori[a.numero] = a
         return a
 
-    def _ex_giocatore_allenatore(self, g, club, data, fedelta=0.0, rng=random):
+    def _ex_giocatore_allenatore(self, g, club, data, fedelta=0.0, rng=random, rapporto=None):
         """
         Il giocatore g, che si ritira con una classe migliore di almeno H0, diventa un allenatore libero,
         D33 risposta 7; club è la polisportiva che ha lasciato, o None, con la fedeltà che aveva. Se si
@@ -548,19 +550,26 @@ class Mondo:
             a.prelazione = club.nome
             a.prelazione_fino = data + datetime.timedelta(days=GIORNI_PRELAZIONE)
             self.annota(club, f"{nome_completo(g)} si ritira e può allenare, di classe {a.codice}: per {GIORNI_PRELAZIONE} giorni puoi assumerlo prima degli altri.", data)
+            if rapporto is not None:
+                rapporto["tue_prelazioni"] += 1
         return a
 
-    def _fine_allenatore(self, a, data, testo_allenatore, testo_club):
-        """L'allenatore esce di scena: lascia il posto nello staff, se ne aveva uno, coi diari, ed esce dal mondo degli allenatori."""
+    def _fine_allenatore(self, a, data, testo_allenatore, testo_club, rapporto=None):
+        """
+        L'allenatore esce di scena: lascia il posto nello staff, se ne aveva uno, coi diari, ed esce dal
+        mondo degli allenatori. Se era nello staff dell'utente, è una notizia dell'avanzamento.
+        """
         poli = self.polisportive.get(a.polisportiva) if a.polisportiva is not None else None
         if poli is not None:
+            if rapporto is not None and not poli.is_cpu_controlled:
+                rapporto["tuo_staff_uscito"] += 1
             poli.staff = [0 if numero == a.numero else numero for numero in poli.staff]
             self.annota(poli, testo_club, data)
             self.aggiorna_fattori_staff(poli)
         a.annota(data, testo_allenatore)
         self.allenatori.pop(a.numero, None)
 
-    def _invecchia_lo_staff(self, data):
+    def _invecchia_lo_staff(self, data, rapporto=None):
         """
         Ogni giorno, per gli allenatori: chi è nato allenatore muore alla sua età di morte, come i
         giocatori; chi arriva all'età in cui smette smette, D33 risposta 11; e la prelazione scade.
@@ -570,9 +579,9 @@ class Mondo:
             eta = a.eta(data)
             chi = f"{nome_completo(a)}, {'allenatrice' if a.sesso == 'f' else 'allenatore'} dello staff,"
             if a.tipo == modulo_staff.NATO and eta >= a.etamorte:
-                self._fine_allenatore(a, data, f"Muore, a {int(eta / ANNO_SIMULAZIONE_GIORNI)} anni.", f"{chi} muore.")
+                self._fine_allenatore(a, data, f"Muore, a {int(eta / ANNO_SIMULAZIONE_GIORNI)} anni.", f"{chi} muore.", rapporto)
             elif eta >= a.eta_fine:
-                self._fine_allenatore(a, data, f"Smette di allenare, a {int(eta / ANNO_SIMULAZIONE_GIORNI)} anni.", f"{chi} smette di allenare.")
+                self._fine_allenatore(a, data, f"Smette di allenare, a {int(eta / ANNO_SIMULAZIONE_GIORNI)} anni.", f"{chi} smette di allenare.", rapporto)
             elif a.prelazione_fino is not None and data >= a.prelazione_fino:
                 a.prelazione = a.prelazione_fino = None
 
@@ -622,17 +631,121 @@ class Mondo:
         self.annota(poli, f"Assume {nome_completo(a)} da {nome_ruolo}, di classe {a.codice}{con_ingaggio}.", oggi)
         self.aggiorna_fattori_staff(poli)
 
+    # Lo staff dell'utente: l'offerta d'ingaggio, il licenziamento e il rinnovo, come per i giocatori,
+    # D33 risposta 13. Lettura di ClaudIA da confermare al collaudo: l'offerta e il licenziamento usano
+    # una mossa di mercato, come l'ingaggio e lo svincolo di un giocatore; il rinnovo no.
+
+    def problema_offerta_allenatore(self, poli, a, posto, ingaggio=None):
+        """Perché la polisportiva non può offrire all'allenatore il posto con quell'ingaggio, oppure None se può."""
+        if ingaggio is not None and ingaggio > poli.cassa:
+            return f"La cassa di {poli.nome} ha {scritta_in_euro(poli.cassa)}: non bastano per offrirne {scritta_in_euro(ingaggio)}."
+        if self.mosse_rimaste(poli) <= 0:
+            return self._senza_mosse(poli)
+        if a.numero not in self.allenatori:
+            return f"{nome_completo(a)} non allena più."
+        problema = self.problema_assunzione(poli, a, posto, 0)
+        return f"{problema[0].upper()}{problema[1:]}." if problema else None
+
+    def offerta_allenatore(self, poli, a, posto, ingaggio):
+        """
+        L'offerta dell'utente a un allenatore libero per il posto, con un premio d'ingaggio: usa una mossa,
+        e l'allenatore accetta con la probabilità dell'ingaggio dei giocatori. Se accetta, firma come in
+        assumi_allenatore. Restituisce l'esito e la probabilità; ValueError se l'offerta non si può fare.
+        """
+        ingaggio = int(ingaggio)
+        problema = self.problema_offerta_allenatore(poli, a, posto, ingaggio)
+        if problema:
+            raise ValueError(problema)
+        self._usa_mossa(poli)
+        ruolo = modulo_staff.CAPO if posto == 0 else modulo_staff.ASSISTENTE
+        probabilita = probabilita_accettazione(ingaggio, modulo_staff.ingaggio_richiesto(a, ruolo, poli))
+        accetta = caso(probabilita)
+        if accetta:
+            self.assumi_allenatore(poli, a, posto, ingaggio=ingaggio)
+        else:
+            a.annota(self.datetime_corrente_simulazione, f"Rifiuta l'offerta di {poli.nome}, un ingaggio di {scritta_in_euro(ingaggio)}.")
+            self.annota(poli, f"{nome_completo(a)} rifiuta l'ingaggio di {scritta_in_euro(ingaggio)}.")
+        return accetta, probabilita
+
+    def problema_licenziamento(self, poli, a):
+        """Perché la polisportiva non può licenziare l'allenatore, oppure None: le mosse e la cassa per la buonuscita."""
+        if a.polisportiva != poli.nome:
+            return f"{nome_completo(a)} non è nello staff di {poli.nome}."
+        if self.mosse_rimaste(poli) <= 0:
+            return self._senza_mosse(poli)
+        buonuscita = contratti.buonuscita(a, self.datetime_corrente_simulazione)
+        if buonuscita > poli.cassa:
+            return f"Licenziare {nome_completo(a)} costa una buonuscita di {scritta_in_euro(buonuscita)}, e la cassa di {poli.nome} ne ha {scritta_in_euro(poli.cassa)}."
+        return None
+
     def licenzia_allenatore(self, poli, a, data=None):
         """
-        La polisportiva licenzia l'allenatore a contratto in corso: paga la buonuscita, metà degli stipendi
-        che restano, come per i giocatori, e l'allenatore torna libero. Restituisce la buonuscita.
+        La polisportiva licenzia l'allenatore a contratto in corso: usa una mossa, paga la buonuscita, metà
+        degli stipendi che restano, come per i giocatori, e l'allenatore torna libero. Restituisce la
+        buonuscita; ValueError se non si può.
         """
+        problema = self.problema_licenziamento(poli, a)
+        if problema:
+            raise ValueError(problema)
+        self._usa_mossa(poli)
         oggi = data or self.datetime_corrente_simulazione
         buonuscita = self._paga_buonuscita(poli, a, oggi)
         nome_ruolo = modulo_staff.nome_del_ruolo(a)
         self._lascia_lo_staff(poli, a, oggi, f"Licenziato da {poli.nome}, con una buonuscita di {scritta_in_euro(buonuscita)}.",
                               f"Licenzia {nome_completo(a)}, {nome_ruolo}, con una buonuscita di {scritta_in_euro(buonuscita)}.")
         return buonuscita
+
+    def problema_rinnovo_allenatore(self, poli, a, stipendio_offerto=None, mesi=None):
+        """Perché la polisportiva non può proporre oggi il rinnovo all'allenatore, con quello stipendio e quella durata; None se può."""
+        oggi = self.datetime_corrente_simulazione
+        if a.polisportiva != poli.nome or not contratti.ha_contratto(a):
+            return f"{nome_completo(a)} non è nello staff di {poli.nome}."
+        if contratti.ha_rinnovo(a):
+            return (f"{nome_completo(a)} ha già rinnovato: dal {data_breve(a.contratto_scadenza)} prenderà {scritta_in_euro(a.rinnovo_stipendio)} al mese, "
+                    f"fino al {data_breve(a.rinnovo_scadenza)}.")
+        if not contratti.in_finestra(a, oggi):
+            return (f"Il contratto di {nome_completo(a)} scade il {data_breve(a.contratto_scadenza)}: il rinnovo si può proporre "
+                    f"dal {data_breve(contratti.inizio_finestra(a))}.")
+        if not contratti.puo_trattare(a):
+            return f"{nome_completo(a)} ha già rifiutato tre proposte e non tratta più: il contratto finirà il {data_breve(a.contratto_scadenza)}."
+        if a.ultima_trattativa is not None and a.ultima_trattativa.date() == oggi.date():
+            return f"Oggi hai già fatto una proposta a {nome_completo(a)}: se ne fa al massimo una al giorno."
+        if stipendio_offerto is not None and stipendio_offerto < 1:
+            return "Lo stipendio deve essere di almeno 1 euro al mese."
+        if mesi is not None and not MESI_CONTRATTO_MIN <= mesi <= MESI_CONTRATTO_MAX:
+            return f"La durata va da {MESI_CONTRATTO_MIN} a {MESI_CONTRATTO_MAX} mesi."
+        return None
+
+    def rinnova_allenatore(self, poli, a, stipendio_offerto, mesi):
+        """
+        La proposta di rinnovo dell'utente a un allenatore del suo staff, come ai giocatori: negli ultimi
+        tre mesi, una al giorno, tre in tutto, senza mosse. Se accetta, il contratto nuovo parte alla
+        scadenza. Restituisce l'esito, la probabilità e la richiesta per quei mesi; ValueError se non si può.
+        """
+        stipendio_offerto, mesi = int(stipendio_offerto), int(mesi)
+        problema = self.problema_rinnovo_allenatore(poli, a, stipendio_offerto, mesi)
+        if problema:
+            raise ValueError(problema)
+        oggi = self.datetime_corrente_simulazione
+        richiesta = modulo_staff.richiesta_rinnovo(a, poli, mesi, oggi)
+        probabilita = probabilita_accettazione(stipendio_offerto, richiesta)
+        a.proposte_rinnovo += 1
+        a.ultima_trattativa = oggi
+        accetta = caso(probabilita)
+        if accetta:
+            contratti.concorda_rinnovo(a, stipendio_offerto, mesi)
+            cifra = f"{scritta_in_euro(a.rinnovo_stipendio)} al mese, dal {data_breve(a.contratto_scadenza)} al {data_breve(a.rinnovo_scadenza)}"
+            a.annota(oggi, f"Rinnova con {poli.nome}: {cifra}.")
+            self.annota(poli, f"{nome_completo(a)}, {modulo_staff.nome_del_ruolo(a)}, rinnova: {cifra}.")
+        else:
+            cifra = f"{scritta_in_euro(stipendio_offerto)} al mese per {mesi} mesi"
+            a.annota(oggi, f"Rifiuta il rinnovo con {poli.nome} a {cifra}.")
+            self.annota(poli, f"{nome_completo(a)} rifiuta il rinnovo a {cifra}.")
+            if not contratti.puo_trattare(a):
+                testo = f"Non vuole più trattare: il contratto con {poli.nome} finirà il {data_breve(a.contratto_scadenza)}."
+                a.annota(oggi, testo)
+                self.annota(poli, f"{nome_completo(a)}. {testo}")
+        return accetta, probabilita, richiesta
 
     def _lascia_lo_staff(self, poli, a, data, testo_allenatore, testo_club):
         """L'allenatore lascia lo staff della polisportiva e torna libero, coi due diari e i fattori rifatti."""
@@ -642,7 +755,7 @@ class Mondo:
         self.annota(poli, testo_club, data)
         self.aggiorna_fattori_staff(poli)
 
-    def _paga_lo_staff(self, poli, data):
+    def _paga_lo_staff(self, poli, data, rapporto=None):
         """Il primo del mese, dopo i tesserati, lo stipendio dello staff: chi non è pagato lascia lo staff, progetto 3.2."""
         for numero in list(poli.staff):
             a = self.allenatori.get(numero) if numero else None
@@ -654,12 +767,15 @@ class Mondo:
             else:
                 self._lascia_lo_staff(poli, a, data, f"Lascia {poli.nome}: lo stipendio non è arrivato.",
                                       f"{nome_completo(a)} lascia lo staff: lo stipendio non è arrivato.")
+                if rapporto is not None and not poli.is_cpu_controlled:
+                    rapporto["tuo_staff_partito"] += 1
 
-    def _contratti_dello_staff(self, data):
+    def _contratti_dello_staff(self, data, rapporto=None):
         """
         Il primo del mese, per lo staff di ogni polisportiva: il contratto scaduto lascia il posto al
         rinnovo concordato, oppure l'allenatore torna libero; il computer decide nella finestra se
-        rinnovare o cambiare, progetto 3.4.
+        rinnovare o cambiare, progetto 3.4. Per l'utente, come per i tesserati, il promemoria all'ingresso
+        nella finestra del rinnovo e all'ultimo mese, e le notizie dell'avanzamento.
         """
         for poli in list(self.polisportive.values()):
             for numero in list(poli.staff):
@@ -673,8 +789,22 @@ class Mondo:
                     else:
                         self._lascia_lo_staff(poli, a, data, f"Il contratto con {poli.nome} è scaduto: torna {'libera' if a.sesso == 'f' else 'libero'}.",
                                               f"Il contratto di {nome_completo(a)}, {modulo_staff.nome_del_ruolo(a)}, è scaduto.")
+                        if rapporto is not None and not poli.is_cpu_controlled:
+                            rapporto["tuo_staff_scaduto"] += 1
                 elif poli.is_cpu_controlled and not contratti.ha_rinnovo(a) and contratti.in_finestra(a, data):
                     self._rinnovo_dello_staff_cpu(poli, a, data)
+                elif not poli.is_cpu_controlled and not contratti.ha_rinnovo(a):
+                    mesi = contratti.mesi_interi(data, a.contratto_scadenza)
+                    if mesi == MESI_FINESTRA_RINNOVO:
+                        testo = f"Il contratto scade il {data_breve(a.contratto_scadenza)}: da oggi si può rinnovare."
+                    elif mesi == 1:
+                        testo = f"Ultimo mese di contratto: se non rinnovi, il {data_breve(a.contratto_scadenza)} torna {'libera' if a.sesso == 'f' else 'libero'}."
+                    else:
+                        continue
+                    a.annota(data, testo)
+                    self.annota(poli, f"{nome_completo(a)}, {modulo_staff.nome_del_ruolo(a)}. {testo}", data)
+                    if rapporto is not None:
+                        rapporto["tuo_staff_in_scadenza"] += 1
 
     def _spazio_negli_stipendi(self, poli):
         """Quanto stipendio in più la polisportiva del computer si permette oggi, con le regole di spesa di sempre."""
@@ -1441,7 +1571,7 @@ class Mondo:
                 if poli.is_cpu_controlled:
                     self._vende_il_piu_caro(poli, data)
             # Dalla tappa 13 lo stipendio dello staff, dopo quello dei tesserati.
-            self._paga_lo_staff(poli, data)
+            self._paga_lo_staff(poli, data, rapporto)
             poli.bilanci.insert(0, {"data": data, "cassa": poli.cassa, **poli.conti_del_mese})
             del poli.bilanci[BILANCI_CONSERVATI:]
             poli.conti_del_mese = conti_vuoti()
@@ -1451,7 +1581,7 @@ class Mondo:
             poli.sfide_da_lanciare = min(SFIDE_ACCUMULABILI, poli.sfide_da_lanciare + SFIDE_AL_MESE)
         self._contratti_del_mese(data, rapporto)
         # Dalla tappa 13 i contratti dello staff, dopo quelli dei tesserati.
-        self._contratti_dello_staff(data)
+        self._contratti_dello_staff(data, rapporto)
 
     # I contratti del mese, dopo gli stipendi: il mese appena finito si paga anche a chi scade oggi.
 
@@ -1701,7 +1831,7 @@ class Mondo:
         except OSError as e:
             self.notifica(f"ERR scrittura log uscita GID {g.id}: {e}")
 
-    def _uscita(self, g, motivo, data, eta_pre):
+    def _uscita(self, g, motivo, data, eta_pre, rapporto=None):
         """Un giocatore esce di scena: per un'uscita prematura o per morte naturale."""
         gid = g.id
         club = g.appartenenza
@@ -1733,7 +1863,7 @@ class Mondo:
         for a in [a for a in self.allenatori.values() if a.giocatore_id == gid]:
             ruolo = "allenatrice" if a.sesso == "f" else "allenatore"
             verbo = "muore" if motivo == DECESSO else "lascia il mondo dello showdown"
-            self._fine_allenatore(a, data, f"Esce di scena: {verbo}.", f"{nome_completo(a)}, {ruolo} dello staff, {verbo}.")
+            self._fine_allenatore(a, data, f"Esce di scena: {verbo}.", f"{nome_completo(a)}, {ruolo} dello staff, {verbo}.", rapporto)
         self._registra_uscita(g, motivo, data, club)
 
     def _fai_invecchiare(self, data, rapporto):
@@ -1772,12 +1902,12 @@ class Mondo:
             club = polisportive.get(g.appartenenza)
             tuo = club is not None and not club.is_cpu_controlled
             if PROB_USCITA_PREMATURA_GIORNALIERA > 0 and caso(PROB_USCITA_PREMATURA_GIORNALIERA):
-                self._uscita(g, USCITA_PREMATURA, data, eta_pre)
+                self._uscita(g, USCITA_PREMATURA, data, eta_pre, rapporto)
                 rapporto["usciti"] += 1
                 rapporto["tuoi_usciti"] += tuo
                 continue
             if g.eta >= g.etamorte:
-                self._uscita(g, DECESSO, data, eta_pre)
+                self._uscita(g, DECESSO, data, eta_pre, rapporto)
                 rapporto["morti"] += 1
                 rapporto["tuoi_usciti"] += tuo
                 continue
@@ -1800,7 +1930,7 @@ class Mondo:
                     g.appartenenza = "*"
                     self.annota(g, f"Si ritira dall'attività, a {int(g.eta_anni)} anni.", data)
                 if allena:
-                    self._ex_giocatore_allenatore(g, club, data, fedelta_al_ritiro)
+                    self._ex_giocatore_allenatore(g, club, data, fedelta_al_ritiro, rapporto=rapporto)
                 rapporto["ritirati"] += 1
             if not g.ritirato:
                 attivi += 1
@@ -1887,7 +2017,7 @@ class Mondo:
         # Dalla tappa 13 i fattori dello staff si rinfrescano a ogni giorno, e gli allenatori invecchiano.
         self.aggiorna_fattori_staff()
         declinanti, attivi = self._fai_invecchiare(data, rapporto)
-        self._invecchia_lo_staff(data)
+        self._invecchia_lo_staff(data, rapporto)
         if data.day == 1:
             self._primo_del_mese(data, rapporto)
             self._mantenimento_del_mese(data)

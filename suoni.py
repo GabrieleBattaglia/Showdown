@@ -41,6 +41,10 @@ entrati nella collezione con la V205, ciascuno per un evento solo: le medaglie e
 metallo a testa, e gli esiti opposti si distinguono a orecchio. Quando il mondo avanza, la notizia più
 importante sceglie ancora il suono e la riga della barra, nell'ordine del punto 12.8. Le parti della
 tappa 12 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
+Con la tappa 13, il 2026-10-21, decisione D33 e punto 4.6 del progetto, arriva il gruppo dello staff:
+il dialogo dello staff, il mercato degli allenatori, le offerte, i rinnovi, il licenziamento, le schede
+e i filtri, e le notizie dello staff, ventitré suoni nuovi, tutti mess_, entrati nella collezione con la V215. Le parti della
+tappa 13 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -304,6 +308,38 @@ GRUPPI = (
         "tuoi_contratti_scaduti": "mess_contratto_scaduto",
         "tuo_tesserato_infortunato_in_seduta": "mess_infortunio_in_allenamento",
     }),
+    # La tappa 13, lo staff, progetto 4.6: un preset nuovo per evento, tutti mess_. Il tic della probabilità
+    # del rinnovo e dell'ingaggio, e i perché di un rinnovo che non si può proporre, sono quelli dei tesserati.
+    ("Staff, gli allenatori", {
+        "dialogo_staff": "mess_staff_aperto",
+        "dialogo_mercato_allenatori": "mess_mercato_allenatori",
+        "dialogo_cifra_ingaggio_allenatore": "mess_cifra_ingaggio_allenatore",
+        # Il fischietto che chiama in campo e il suo gemello che si spegne; il fischio finale del licenziamento.
+        "allenatore_assunto": "mess_allenatore_assunto",
+        "allenatore_rifiuta": "mess_allenatore_rifiuta",
+        "allenatore_licenziato": "mess_allenatore_licenziato",
+        "staff_rinnovo_concordato": "mess_staff_rinnovo_concordato",
+        "staff_rinnovo_rifiutato": "mess_staff_rinnovo_rifiutato",
+        "staff_rinnovo_chiuso": "mess_staff_rinnovo_chiuso",
+        "staff_posto_occupato": "mess_staff_posto_occupato",
+        "scheda_allenatore": "mess_scheda_allenatore",
+        "diario_allenatore": "mess_diario_allenatore",
+        # Scattano a ogni freccia sui campi del mercato: tocchi minimi; l'età quando ci si ferma.
+        "staff_posto_scelto": "mess_staff_posto_scelto",
+        "filtro_classe_allenatori": "mess_filtro_classe_allenatori",
+        "filtro_eta_allenatori": "mess_filtro_eta_allenatori",
+        "filtro_tipo_allenatori": "mess_filtro_tipo_allenatori",
+        "filtro_sesso_allenatori": "mess_filtro_sesso_allenatori",
+    }),
+    ("Staff, le notizie", {
+        "tuo_staff_partito": "mess_staff_partito",
+        "tuo_staff_scaduto": "mess_staff_scaduto",
+        "tuo_staff_uscito": "mess_staff_uscito",
+        "tua_prelazione": "mess_prelazione",
+        "tuo_staff_in_scadenza": "mess_staff_in_scadenza",
+        # All'apertura col mondo aggiornato al formato 8: lo staff nasce, e il mercato degli allenatori è aperto.
+        "staff_appena_nato": "mess_staff_appena_nato",
+    }),
     # La tappa 12, il mondo che gioca, punto 12.9 del progetto: un preset nuovo per evento, tutti mess_.
     ("Tornei, il calendario e le iscrizioni", {
         "dialogo_calendario_tornei": "mess_calendario_tornei",
@@ -410,7 +446,7 @@ AZIONI = {
     "fuoco_vista": "F5, il fuoco va nella vista principale",
     "fuoco_barra": "F7, il fuoco va nella barra di stato",
     "annullato": "un'operazione annullata, con Esc o con Annulla in un dialogo",
-    "lavoro_concluso": "la chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, del calendario o degli editor dopo averci lavorato",
+    "lavoro_concluso": "la chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del mercato degli allenatori, del calendario o degli editor dopo averci lavorato",
     "nessuna_selezione": "un pulsante premuto senza niente di scelto su cui lavorare",
     "campo_da_correggere": "un valore da correggere in un campo, e il dialogo resta aperto",
     "elenco_svuotato": "un elenco che si restringe mentre si scrive, e resta vuoto",
@@ -567,6 +603,29 @@ AZIONI = {
     "tuoi_contratti_in_scadenza": "nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo",
     "tuoi_contratti_scaduti": "nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero",
     "tuo_tesserato_infortunato_in_seduta": "nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento",
+    "dialogo_staff": "si apre il dialogo dello staff della polisportiva, con Ctrl+H",
+    "dialogo_mercato_allenatori": "si apre il mercato degli allenatori, con Ctrl+Shift+G o con Assumi nel dialogo dello staff",
+    "dialogo_cifra_ingaggio_allenatore": "si apre il dialogo della cifra d'ingaggio di un allenatore",
+    "allenatore_assunto": "l'allenatore accetta l'ingaggio ed entra nello staff",
+    "allenatore_rifiuta": "l'allenatore rifiuta l'ingaggio",
+    "allenatore_licenziato": "l'allenatore licenziato lascia lo staff",
+    "staff_rinnovo_concordato": "l'allenatore accetta il rinnovo del contratto",
+    "staff_rinnovo_rifiutato": "l'allenatore rifiuta il rinnovo, e si può riprovare un altro giorno",
+    "staff_rinnovo_chiuso": "il terzo rifiuto del rinnovo, e l'allenatore non tratta più",
+    "staff_posto_occupato": "si vuole assumere per un posto dello staff già occupato",
+    "scheda_allenatore": "si apre la scheda di un allenatore",
+    "diario_allenatore": "si apre il diario di un allenatore",
+    "staff_posto_scelto": "nel mercato degli allenatori cambia il posto da offrire",
+    "filtro_classe_allenatori": "nel mercato degli allenatori cambia la classe minima",
+    "filtro_eta_allenatori": "nel mercato degli allenatori cambia l'età massima, quando ci si ferma",
+    "filtro_tipo_allenatori": "nel mercato degli allenatori cambia il tipo, ex giocatori o nati allenatori",
+    "filtro_sesso_allenatori": "nel mercato degli allenatori cambia il sesso",
+    "tuo_staff_partito": "nell'avanzamento un allenatore del tuo staff se ne va per lo stipendio non pagato",
+    "tuo_staff_scaduto": "nell'avanzamento il contratto di un allenatore del tuo staff scade senza rinnovo, e lui torna libero",
+    "tuo_staff_uscito": "nell'avanzamento un allenatore del tuo staff smette di allenare, muore o lascia il mondo dello showdown",
+    "tua_prelazione": "nell'avanzamento un tuo tesserato si ritira e può allenare, e per qualche giorno puoi assumerlo prima degli altri",
+    "tuo_staff_in_scadenza": "nell'avanzamento il contratto di un allenatore del tuo staff entra nella finestra del rinnovo, o all'ultimo mese",
+    "staff_appena_nato": "all'apertura col mondo appena aggiornato, la notizia dello staff e del mercato degli allenatori aperto",
     "dialogo_calendario_tornei": "si apre il calendario dei tornei e delle iscrizioni, con Ctrl+U",
     "dialogo_iscrizioni_tornei": "si aprono le iscrizioni dei tuoi atleti alla prima edizione aperta, con Ctrl+J",
     "iscrizione_fatta": "nel calendario un tuo atleta iscritto a un torneo con la quota pagata, o la rosa della tua polisportiva per la coppa",
@@ -764,13 +823,15 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
     Il suono di un avanzamento del mondo e il testo della quarta riga della barra di stato, scelti
     insieme perché non dicano cose diverse: al massimo un suono per avanzamento, quello della notizia
     più importante. Prima il salvataggio che non riesce; poi i tesserati andati via, quelli tornati
-    liberi a fine contratto e gli stipendi non pagati; dalla tappa 12, punto 12.8 del progetto, il
+    liberi a fine contratto e gli stipendi non pagati, e dalla tappa 13 gli allenatori del tuo staff
+    andati via, tornati liberi o usciti; dalla tappa 12, punto 12.8 del progetto, il
     calendario dei tornei con problemi, la sfida che aspetta la tua risposta, con il nome di chi sfida
     se ci sta, sfidante, il titolo mondiale, le medaglie e le coppe dalla più preziosa, prima le
     medaglie e poi le coppe a pari metallo, le sfide vinte, perse e perse a tavolino, le convocazioni
     al mondiale e alla coppa, le iscrizioni saltate per la cassa; poi le altre notizie dei tuoi,
-    venduti, usciti di scena, infortunati in seduta, infortunati e a tavolino in gara, ritirati,
-    contratti in scadenza e bandiere; poi gli acciacchi in gara, il torneo finito senza medaglie, le
+    venduti, usciti di scena, infortunati in seduta, infortunati e a tavolino in gara, la prelazione
+    su un tuo ritirato, i ritirati, i contratti in scadenza, quelli dello staff e le bandiere; poi gli
+    acciacchi in gara, il torneo finito senza medaglie, le
     iscrizioni automatiche, la sfida decaduta e il torneo annullato; poi il primo del mese, se hai una
     polisportiva. Un avanzamento di più giorni ha il suo suono, che copre le notizie del mondo: dopo
     un'assenza ce ne sono quasi sempre, e le racconta il riepilogo. Per il giorno singolo le notizie del
@@ -799,6 +860,10 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
         ("tuoi_partiti", "tuoi_tesserati_partiti", lambda n: f"{conta(n, 'tesserato andato via', 'tesserati andati via')}, non pagati"),
         ("tuoi_scaduti", "tuoi_contratti_scaduti", lambda n: conta(n, "tesserato libero a fine contratto", "tesserati liberi a fine contratto")),
         ("tuoi_non_pagati", "stipendi_non_pagati", lambda _n: "stipendi non pagati, vedi il bilancio"),
+        # Dalla tappa 13 lo staff: chi se ne va, chi torna libero e chi esce dallo staff, subito dopo i tesserati.
+        ("tuo_staff_partito", "tuo_staff_partito", lambda n: "allenatore andato via, non pagato" if n == 1 else f"{n} allenatori andati via, non pagati"),
+        ("tuo_staff_scaduto", "tuo_staff_scaduto", lambda n: conta(n, "allenatore libero a fine contratto", "allenatori liberi a fine contratto")),
+        ("tuo_staff_uscito", "tuo_staff_uscito", lambda n: conta(n, "allenatore uscito dal tuo staff", "allenatori usciti dal tuo staff")),
         ("calendario_con_problemi", "calendario_illeggibile", lambda _n: "calendario dei tornei con problemi"),
         ("sfide_in_attesa", "sfida_ricevuta", sfida_in_attesa),
         ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", lambda n: "tuo atleta campione del mondo" if n == 1 else f"{n} tuoi atleti campioni del mondo"),
@@ -825,8 +890,11 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
          lambda n: "tuo tesserato infortunato in seduta" if n == 1 else f"{n} tuoi tesserati infortunati in seduta"),
         ("tuoi_infortuni_in_gara", "tuo_infortunio_in_gara", lambda n: conta(n, "tuo atleta infortunato in gara", "tuoi atleti infortunati in gara")),
         ("tuoi_tavolini", "tuo_tavolino", lambda n: conta(n, "tuo atleta perde a tavolino", "tuoi atleti perdono a tavolino")),
+        # La prelazione su un tuo ritirato viene prima del ritiro, che racconta: è l'occasione da cogliere.
+        ("tue_prelazioni", "tua_prelazione", lambda n: "tuo ritirato può allenare, prelazione" if n == 1 else f"{n} tuoi ritirati possono allenare"),
         ("tuoi_ritirati", "tuo_tesserato_ritirato", lambda n: conta(n, "tuo tesserato ritirato", "tuoi tesserati ritirati")),
         ("tuoi_in_scadenza", "tuoi_contratti_in_scadenza", lambda n: "1 contratto in scadenza, rinnovalo" if n == 1 else f"{n} contratti in scadenza, rinnovali"),
+        ("tuo_staff_in_scadenza", "tuo_staff_in_scadenza", lambda n: conta(n, "contratto di staff in scadenza", "contratti di staff in scadenza")),
         ("tue_bandiere", "tuo_tesserato_bandiera", lambda n: conta(n, "tuo tesserato diventa bandiera", "tuoi tesserati diventano bandiere")),
         ("tuoi_acciacchi", "tuo_acciacco", lambda n: conta(n, "tuo atleta acciaccato in gara", "tuoi atleti acciaccati in gara")),
         ("tuoi_tornei_conclusi", "tuo_torneo_concluso", lambda n: conta(n, "torneo dei tuoi concluso", "tornei dei tuoi conclusi")),

@@ -20,6 +20,7 @@ import contratti
 import economia
 import infortuni
 import staff
+import suoni
 import testi
 from costanti import (
     FATTORI_ALLENAMENTO_STAFF,
@@ -143,6 +144,7 @@ def _ritira(mondo, g, data=INIZIO):
     rapporto = Mondo.rapporto_vuoto(data)
     mondo._fai_invecchiare(data, rapporto)
     assert g.ritirato
+    return rapporto
 
 
 def test_chi_si_ritira_da_h0_in_su_puo_allenare(mondo):
@@ -165,7 +167,8 @@ def test_la_prelazione_sul_tuo_ritirato(mondo):
     mondo._tessera(poli, g)
     g.fedelta = 40.0
     g.classe_migliore = classe.soglia(30)
-    _ritira(mondo, g)
+    rapporto = _ritira(mondo, g)
+    assert rapporto["tue_prelazioni"] == 1
     a = next(a for a in mondo.allenatori.values() if a.giocatore_id == g.id)
     assert a.prelazione == poli.nome and a.prelazione_fino == INIZIO + datetime.timedelta(days=GIORNI_PRELAZIONE)
     assert a.club_di_provenienza == poli.nome and a.fedelta_di_provenienza == 40.0
@@ -524,3 +527,64 @@ def test_la_notizia_dello_staff_all_aggiornamento(mondo):
     assert "il mercato degli allenatori è aperto, con 1 allenatore libero" in testo and "per un'ora sono riservati a te" in testo
     mondo.staff_appena_nato = False
     assert "mercato degli allenatori" not in testi.apertura(mondo, "caricato", [], None, adesso_utc(), adesso_utc())
+
+
+# Le notizie dello staff dell'utente nell'avanzamento, progetto 4.5.
+
+def _un_giorno_di(rapporto):
+    rapporto["ticks"] = rapporto["giorni"] = 1
+    return rapporto
+
+
+def test_le_notizie_dei_contratti_del_tuo_staff(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    a, b, c = _allenatore(mondo, 10), _allenatore(mondo, 30), _allenatore(mondo, 40)
+    for posto, x in enumerate((a, b, c)):
+        mondo.assumi_allenatore(poli, x, posto, INIZIO)
+    a.contratto_scadenza = datetime.datetime(2026, 9, 1)
+    b.contratto_scadenza = datetime.datetime(2026, 7, 1)
+    c.contratto_scadenza = datetime.datetime(2026, 6, 1)
+    rapporto = _un_giorno_di(Mondo.rapporto_vuoto(INIZIO))
+    mondo._contratti_dello_staff(datetime.datetime(2026, 6, 1, 12, 0), rapporto)
+    # Come per i tesserati: il promemoria all'ingresso nella finestra e all'ultimo mese, e la notizia di chi torna libero.
+    assert c.libero and rapporto["tuo_staff_scaduto"] == 1 and rapporto["tuo_staff_in_scadenza"] == 2
+    assert "da oggi si può rinnovare" in a.diario[0]["testo"] and "Ultimo mese di contratto" in b.diario[0]["testo"]
+    assert suoni.evento_avanzamento(rapporto) == ("tuo_staff_scaduto", "1 allenatore libero a fine contratto")
+    frasi = testi._fatti_dello_staff(rapporto)
+    assert frasi == ["1 allenatore del tuo staff è tornato libero a fine contratto: lo staff si guarda con Ctrl+H.",
+                     "2 contratti del tuo staff stanno per scadere: si rinnovano con Ctrl+H."]
+    assert all(f in testi._fatti_avanzamento(rapporto) for f in frasi)
+    rapporto["tuo_staff_scaduto"] = 0
+    assert suoni.evento_avanzamento(rapporto) == ("tuo_staff_in_scadenza", "2 contratti di staff in scadenza")
+
+
+def test_le_notizie_di_chi_lascia_il_tuo_staff(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    a, b = _allenatore(mondo, 10), _allenatore(mondo, 30)
+    mondo.assumi_allenatore(poli, a, 0, INIZIO)
+    mondo.assumi_allenatore(poli, b, 1, INIZIO)
+    poli.cassa = -100_000
+    primo = datetime.datetime(2026, 6, 1, 12, 0)
+    rapporto = _un_giorno_di(Mondo.rapporto_vuoto(primo))
+    mondo._primo_del_mese(primo, rapporto)
+    assert rapporto["tuo_staff_partito"] == 2 and suoni.evento_avanzamento(rapporto, ha_polisportive=True)[0] == "tuo_staff_partito"
+    # Chi smette o muore nello staff di un club del computer non è una notizia tua.
+    cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
+    vecchio, giovane = _allenatore(mondo, 20), _allenatore(mondo, 25)
+    _nello_staff(mondo, poli, vecchio, 0)
+    _nello_staff(mondo, cpu, giovane, 0)
+    oggi = vecchio.nascita + datetime.timedelta(days=vecchio.eta_fine)
+    giovane.eta_fine = giovane.eta(oggi)
+    rapporto = _un_giorno_di(Mondo.rapporto_vuoto(oggi))
+    mondo._invecchia_lo_staff(oggi, rapporto)
+    assert rapporto["tuo_staff_uscito"] == 1 and vecchio.numero not in mondo.allenatori and giovane.numero not in mondo.allenatori
+    assert suoni.evento_avanzamento(rapporto) == ("tuo_staff_uscito", "1 allenatore uscito dal tuo staff")
+
+
+@pytest.mark.parametrize("n", [1, 12])
+def test_le_notizie_dello_staff_stanno_nella_barra(n):
+    for chiave in ("tuo_staff_partito", "tuo_staff_scaduto", "tuo_staff_uscito", "tue_prelazioni", "tuo_staff_in_scadenza"):
+        rapporto = _un_giorno_di(Mondo.rapporto_vuoto(INIZIO))
+        rapporto[chiave] = n
+        evento, testo = suoni.evento_avanzamento(rapporto)
+        assert evento in suoni.EVENTI and len(testo) <= 40, testo

@@ -42,11 +42,12 @@ from costanti import (
     QUALITA_MINIMA_ALLENATORE,
     QUOTA_STIPENDIO_ASSISTENTE,
     QUOTA_VEDENTI_ALLENATORI,
+    RINCARO_DURATA_RINNOVO,
     SCONTO_FEDELTA_RINNOVO,
     STIPENDIO_STAFF_MASSIMO,
     STIPENDIO_STAFF_MINIMO,
 )
-from modelli import DATA, DATA_O_NULLA, DIARIO, TESTO_O_NULLA, _campi_da_dizionario, annota_diario, conversione_a_json
+from modelli import DATA, DATA_O_NULLA, DIARIO, TESTO_O_NULLA, _campi_da_dizionario, annota_diario, conversione_a_json, probabilita_accettazione
 from nomi import genera_identita
 
 EX = "ex"
@@ -68,7 +69,7 @@ CAMPI_ALLENATORE = (
     ("nascita", DATA), ("eta_fine", int), ("etamorte", int), ("giocatore_id", int),
     ("club_di_provenienza", TESTO_O_NULLA), ("fedelta_di_provenienza", float),
     ("polisportiva", TESTO_O_NULLA), ("ruolo", TESTO_O_NULLA), ("contratto_stipendio", int), ("contratto_scadenza", DATA_O_NULLA),
-    ("rinnovo_stipendio", int), ("rinnovo_scadenza", DATA_O_NULLA), ("proposte_rinnovo", int),
+    ("rinnovo_stipendio", int), ("rinnovo_scadenza", DATA_O_NULLA), ("proposte_rinnovo", int), ("ultima_trattativa", DATA_O_NULLA),
     ("prelazione", TESTO_O_NULLA), ("prelazione_fino", DATA_O_NULLA), ("riservato_fino", DATA_O_NULLA), ("diario", DIARIO),
 )
 _CONVERSIONI_ALLENATORE = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_ALLENATORE)
@@ -102,6 +103,7 @@ class Allenatore:
         self.rinnovo_stipendio = 0
         self.rinnovo_scadenza = None
         self.proposte_rinnovo = 0
+        self.ultima_trattativa = None
         self.prelazione = None
         self.prelazione_fino = None
         # L'istante vero fino a cui è riservato all'utente, MINUTI_RISERVA_UTENTE, o None: il computer non lo vede.
@@ -112,9 +114,9 @@ class Allenatore:
         annota_diario(self.diario, data, testo)
 
     def annulla_contratto(self):
-        """Toglie contratto, rinnovo e proposte, come per i giocatori: lo usano anche le funzioni di contratti.py."""
+        """Toglie contratto, rinnovo, proposte e trattativa, come per i giocatori: lo usano anche le funzioni di contratti.py."""
         self.contratto_stipendio = self.rinnovo_stipendio = self.proposte_rinnovo = 0
-        self.contratto_scadenza = self.rinnovo_scadenza = None
+        self.contratto_scadenza = self.rinnovo_scadenza = self.ultima_trattativa = None
 
     def eta(self, oggi):
         """L'età in giorni simulati, il giorno dato."""
@@ -253,16 +255,35 @@ def ingaggio_richiesto(a, ruolo, poli=None):
     Alla polisportiva in cui ha chiuso la carriera da giocatore chiede meno, come i giocatori fedeli ai
     rinnovi, fino a un quarto in meno alla fedeltà piena: D33 risposta 15.
     """
-    euro = stipendio_richiesto(a, ruolo) * MESI_DI_INGAGGIO
-    if poli is not None and poli.nome == a.club_di_provenienza:
-        euro *= 1.0 - SCONTO_FEDELTA_RINNOVO * a.fedelta_di_provenienza / 100.0
-    return economia.arrotonda(euro)
+    return economia.arrotonda(stipendio_richiesto(a, ruolo) * MESI_DI_INGAGGIO * sconto_di_provenienza(a, poli))
 
 
 def durata_proposta(a, oggi):
     """I mesi di contratto che l'allenatore propone, dalla tabella dell'età dei giocatori, da 4 a 24."""
     mesi = math.floor(contratti.durata_base(a.eta_anni(oggi)) + 0.5)
     return max(MESI_CONTRATTO_MIN, min(MESI_CONTRATTO_MAX, mesi))
+
+
+def sconto_di_provenienza(a, poli):
+    """Lo sconto della polisportiva dove l'ex giocatore ha chiuso la carriera: fino a un quarto alla fedeltà piena, D33 risposta 15."""
+    if poli is not None and poli.nome == a.club_di_provenienza:
+        return 1.0 - SCONTO_FEDELTA_RINNOVO * a.fedelta_di_provenienza / 100.0
+    return 1.0
+
+
+def richiesta_rinnovo(a, poli, mesi, oggi):
+    """
+    Lo stipendio che l'allenatore chiede per rinnovare nel suo ruolo per tanti mesi: quello che chiede
+    oggi, il 2 per cento in più per ogni mese di differenza dalla durata che propone, come i giocatori, e
+    meno alla polisportiva dove ha chiuso la carriera.
+    """
+    euro = stipendio_richiesto(a, a.ruolo) * (1.0 + RINCARO_DURATA_RINNOVO * abs(mesi - durata_proposta(a, oggi))) * sconto_di_provenienza(a, poli)
+    return max(1, economia.arrotonda(euro))
+
+
+def probabilita_rinnovo(a, poli, stipendio, mesi, oggi):
+    """La probabilità, in percentuale, che l'allenatore accetti il rinnovo: la curva dell'ingaggio, come i giocatori."""
+    return probabilita_accettazione(stipendio, richiesta_rinnovo(a, poli, mesi, oggi))
 
 
 # Per la migrazione dal formato 7: le nascite medie di un giorno, da CREA_NUOVI_PER_TICK_RANGE, e

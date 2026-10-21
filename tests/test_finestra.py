@@ -76,8 +76,8 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
                    # Dalla tappa 12 i dialoghi dei tornei e delle sfide; il ripristino del calendario chiede prima.
                    finestra.lancia_sfida, finestra.sfide_in_arrivo, finestra.storico_sfide, finestra.calendario_tornei, finestra.iscrizioni_tornei,
                    finestra.tornei_in_corso, finestra.albo_d_oro, finestra.editor_modelli, finestra.editor_formule, finestra.ripristina_calendario,
-                   # Dalla 1.79.0 gli annunci della cronaca.
-                   finestra.cambia_annunci}
+                   # Dalla 1.79.0 gli annunci della cronaca; dalla tappa 13 lo staff e il mercato degli allenatori.
+                   finestra.cambia_annunci, finestra.staff, finestra.mercato_allenatori}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):

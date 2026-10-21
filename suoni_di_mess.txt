@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 264 suoni, 239 della finestra e 25 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 287 suoni, 262 della finestra e 25 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 6 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -17,7 +17,7 @@ Finestra, applicazione, il fuoco, i dialoghi e gli elenchi, 9 suoni.
 F5, il fuoco va nella vista principale: spostamento_f5.
 F7, il fuoco va nella barra di stato: spostamento_f7.
 Un'operazione annullata, con Esc o con Annulla in un dialogo: meteora_annullamento.
-La chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, del calendario o degli editor dopo averci lavorato: terminata.
+La chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del mercato degli allenatori, del calendario o degli editor dopo averci lavorato: terminata.
 Un pulsante premuto senza niente di scelto su cui lavorare: mess_tasto_a_vuoto.
 Un valore da correggere in un campo, e il dialogo resta aperto: mess_campo_da_correggere.
 Un elenco che si restringe mentre si scrive, e resta vuoto: espelli.
@@ -191,6 +191,31 @@ Finestra, contratti e allenamento, le notizie, 3 suoni.
 Nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo: mess_contratti_in_scadenza.
 Nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero: mess_contratto_scaduto.
 Nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento: mess_infortunio_in_allenamento.
+Finestra, staff, gli allenatori, 17 suoni.
+Si apre il dialogo dello staff della polisportiva, con Ctrl+H: mess_staff_aperto.
+Si apre il mercato degli allenatori, con Ctrl+Shift+G o con Assumi nel dialogo dello staff: mess_mercato_allenatori.
+Si apre il dialogo della cifra d'ingaggio di un allenatore: mess_cifra_ingaggio_allenatore.
+L'allenatore accetta l'ingaggio ed entra nello staff: mess_allenatore_assunto.
+L'allenatore rifiuta l'ingaggio: mess_allenatore_rifiuta.
+L'allenatore licenziato lascia lo staff: mess_allenatore_licenziato.
+L'allenatore accetta il rinnovo del contratto: mess_staff_rinnovo_concordato.
+L'allenatore rifiuta il rinnovo, e si può riprovare un altro giorno: mess_staff_rinnovo_rifiutato.
+Il terzo rifiuto del rinnovo, e l'allenatore non tratta più: mess_staff_rinnovo_chiuso.
+Si vuole assumere per un posto dello staff già occupato: mess_staff_posto_occupato.
+Si apre la scheda di un allenatore: mess_scheda_allenatore.
+Si apre il diario di un allenatore: mess_diario_allenatore.
+Nel mercato degli allenatori cambia il posto da offrire: mess_staff_posto_scelto.
+Nel mercato degli allenatori cambia la classe minima: mess_filtro_classe_allenatori.
+Nel mercato degli allenatori cambia l'età massima, quando ci si ferma: mess_filtro_eta_allenatori.
+Nel mercato degli allenatori cambia il tipo, ex giocatori o nati allenatori: mess_filtro_tipo_allenatori.
+Nel mercato degli allenatori cambia il sesso: mess_filtro_sesso_allenatori.
+Finestra, staff, le notizie, 6 suoni.
+Nell'avanzamento un allenatore del tuo staff se ne va per lo stipendio non pagato: mess_staff_partito.
+Nell'avanzamento il contratto di un allenatore del tuo staff scade senza rinnovo, e lui torna libero: mess_staff_scaduto.
+Nell'avanzamento un allenatore del tuo staff smette di allenare, muore o lascia il mondo dello showdown: mess_staff_uscito.
+Nell'avanzamento un tuo tesserato si ritira e può allenare, e per qualche giorno puoi assumerlo prima degli altri: mess_prelazione.
+Nell'avanzamento il contratto di un allenatore del tuo staff entra nella finestra del rinnovo, o all'ultimo mese: mess_staff_in_scadenza.
+All'apertura col mondo appena aggiornato, la notizia dello staff e del mercato degli allenatori aperto: mess_staff_appena_nato.
 Finestra, tornei, il calendario e le iscrizioni, 7 suoni.
 Si apre il calendario dei tornei e delle iscrizioni, con Ctrl+U: mess_calendario_tornei.
 Si aprono le iscrizioni dei tuoi atleti alla prima edizione aperta, con Ctrl+J: mess_iscrizioni_tornei.

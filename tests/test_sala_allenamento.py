@@ -106,7 +106,9 @@ def _scegli(dialogo, g, caratteristica=None):
 def test_la_sala_si_apre_con_gli_allenandi(sala, mondo):
     poli = mondo.miapolisportiva_attiva
     assert sala.GetTitle() == "Sala allenamento di Club Della Sala"
-    assert sala.info.GetLabel() == "Club Della Sala: 3 allenandi, 451,5 punti allenamento da spendere in tutto."
+    # Dalla tappa 13 la seconda riga dice chi allena e la qualità dello staff.
+    assert sala.info.GetLabel().split("\n") == ["Club Della Sala: 3 allenandi, 451,5 punti allenamento da spendere in tutto.", testi.chi_allena(poli, mondo)]
+    assert testi.chi_allena(poli, mondo) == "Nessuno staff: i tesserati si allenano senza allenatore. " + testi.qualita_dello_staff(poli, mondo)
     nomi = [_nome(g) for g in sala.allenandi]
     assert nomi == sorted(nomi, key=str.casefold) and {g.id for g in sala.allenandi} == set(poli.tesserati)
     assert [sala.elenco.GetString(i) for i in range(3)] == [testi.riga_allenando(g, mondo) for g in sala.allenandi]
@@ -166,7 +168,7 @@ def test_la_spesa_a_mano_con_la_conferma(sala, mondo, messaggi, suonati):
     # La sala tiene il posto: lo stesso allenando, la stessa caratteristica, e i punti entro il portafoglio nuovo.
     assert sala.elenco.GetSelection() == 1 and sala.caratteristiche.GetSelection() == allenamento.CARATTERISTICHE.index("chiusurasx")
     assert sala.punti.GetMax() == 30 and sala.punti.GetValue() == 30
-    assert sala.info.GetLabel() == "Club Della Sala: 3 allenandi, 331,5 punti allenamento da spendere in tutto."
+    assert sala.info.GetLabel().startswith("Club Della Sala: 3 allenandi, 331,5 punti allenamento da spendere in tutto.\n")
     assert mondo.miapolisportiva_attiva.indicecollettivotesserati == pytest.approx(sum(x.indice_collettivo_valore for x in sala.allenandi))
 
 
