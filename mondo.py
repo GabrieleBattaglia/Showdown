@@ -474,21 +474,26 @@ class Mondo:
         D33 risposta 4. Si chiama al caricamento, all'inizio di ogni giorno simulato e quando cambia uno
         staff; i fattori non si salvano. Lo staff medio, scelta di Gabriele del 21 ottobre 2026, risposta
         30, è la qualità media dello staff del mondo: si misura con tutte le polisportive, e resta quella
-        del giorno quando cambia lo staff di una sola.
+        del giorno quando cambia lo staff di una sola. Sui giocatori il ciclo è uno solo, coi fattori senza
+        staff calcolati una volta: una chiamata per giocatore costava al giorno a regime il 9 per cento del
+        giorno, misurato il 21 ottobre 2026 sera; i numeri sono gli stessi di _fattori_del_giocatore.
         """
         if poli is None:
             self._qualita_media = modulo_staff.qualita_media(self.polisportive.values(), self.allenatori)
         club = [poli] if poli is not None else list(self.polisportive.values())
         for p in club:
             self._fattori_staff[p.nome] = modulo_staff.fattori(modulo_staff.qualita_della_polisportiva(p, self.allenatori), self._qualita_media)
+        senza_staff = modulo_staff.fattori(0.0, self._qualita_media)
+        fattori = self._fattori_staff
         if poli is None:
-            for g in self.giocatori.values():
-                self._fattori_del_giocatore(g)
+            giocatori = self.giocatori.values()
         else:
-            for gid in poli.tesserati:
-                g = self.giocatori.get(gid)
-                if g is not None:
-                    self._fattori_del_giocatore(g)
+            giocatori = [g for gid in poli.tesserati if (g := self.giocatori.get(gid)) is not None]
+        for g in giocatori:
+            club_del_giocatore = g.appartenenza
+            allenamento, rischio, _fedelta = senza_staff if club_del_giocatore == "*" else fattori.get(club_del_giocatore, senza_staff)
+            g.fattore_staff = allenamento
+            g.fattore_rischio_staff = rischio
 
     @property
     def qualita_media_dello_staff(self):

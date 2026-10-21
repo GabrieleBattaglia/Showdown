@@ -1132,7 +1132,8 @@ class ScenarioUtente:
     def _anno_vuoto():
         return {"sponsor": 0, "sponsor_valore": 0.0, "stipendi": 0, "giorni": 0, "cassa_minima": None, "tesserati": 0, "andati_via": 0, "rinnovi": 0, "rinnovi_rifiutati": 0,
                 "rinnovi_mancati": 0, "amichevoli": 0, "spese": 0, "iscrizioni": 0, "premi": 0, "rimborsi": 0, "tornei": 0, "giorni_di_tesserati": 0,
-                "giorni_acciaccati": 0, "giorni_infortunati": 0, "medaglie": [0, 0, 0, 0], "reputazione": [], "rinnovo_su_richiesta": []}
+                "giorni_acciaccati": 0, "giorni_infortunati": 0, "medaglie": [0, 0, 0, 0], "reputazione": [], "rinnovo_su_richiesta": [],
+                "staff_assunti": 0, "staff_rifiuti": 0, "staff_rinnovi": 0, "staff_mancati": 0, "giorni_con_capo": 0, "qualita_staff": 0.0}
 
     def __call__(self, mondo, giorno, rapporto):
         if giorno < self.primo_giorno:
@@ -1151,12 +1152,15 @@ class ScenarioUtente:
         self._amichevoli(mondo, giorno)
         self._allena(mondo, oggi)
         self._rinnovi(mondo, oggi)
+        self._staff(mondo, oggi)
         rosa = mondo._rosa(poli)
         self.anno["sponsor"] += mondo.sponsor(poli)
         self.anno["sponsor_valore"] += costanti.QUOTA_SPONSOR_SUL_VALORE * sum(economia.valore_di_mercato_pieno(g) for g in rosa if not g.ritirato)
         self.anno["stipendi"] += mondo.monte_stipendi(poli)
         self.anno["giorni"] += 1
         self.anno["cassa_minima"] = poli.cassa if self.anno["cassa_minima"] is None else min(self.anno["cassa_minima"], poli.cassa)
+        self.anno["giorni_con_capo"] += bool(poli.staff[0])
+        self.anno["qualita_staff"] += staff.qualita_della_polisportiva(poli, mondo.allenatori)
         self._conta_i_tornei(mondo, poli, rosa, oggi)
         self.ieri = set(poli.tesserati)
         if (giorno - self.primo_giorno + 1) % GIORNI_PER_ANNO == 0:
@@ -1167,7 +1171,8 @@ class ScenarioUtente:
                               "valore_medio": statistics.fmean(g.indice_collettivo_valore for g in rosa) if rosa else 0.0,
                               "stipendio_medio": statistics.fmean(economia.stipendio_pagato(g) for g in rosa) if rosa else 0.0,
                               "richiesto_medio": statistics.fmean(economia.stipendio(g) for g in rosa) if rosa else 0.0,
-                              "classe_migliore": min((classe.classe(g).livello for g in rosa), default=100), "primi_100": primi, "gloria": poli.gloria})
+                              "classe_migliore": min((classe.classe(g).livello for g in rosa), default=100), "primi_100": primi, "gloria": poli.gloria,
+                              "qualita_media_del_mondo": mondo.qualita_media_dello_staff, "staff_sul_monte": 100.0 * mondo.monte_dello_staff(poli) / max(1, mondo.monte_stipendi(poli))})
             self.anno = self._anno_vuoto()
 
     def _conta_i_tornei(self, mondo, poli, rosa, oggi):
@@ -1261,6 +1266,42 @@ class ScenarioUtente:
             self.anno["rinnovi" if accetta else "rinnovi_rifiutati"] += 1
 
 
+    def _staff(self, mondo, oggi):
+        """
+        Dalla tappa 13, progetto 6.3: l'utente tiene uno staff medio. Per ogni posto vuoto, dal capo, offre
+        l'ingaggio chiesto più il rialzo dei tesserati all'allenatore libero con la qualità più vicina allo
+        staff medio del mondo, se lo stipendio sta nella regola di spesa dell'utente e l'ingaggio nella
+        cassa; nella finestra rinnova alla richiesta, con la stessa regola. Nella simulazione non c'è l'ora
+        riservata: l'utente sceglie a fine giorno, dopo il computer, fra chi è rimasto libero, cioè i nati e
+        i ritirati del giorno e chi il computer non si può permettere.
+        """
+        poli = self.poli
+        for a in [mondo.allenatori[n] for n in poli.staff if n and n in mondo.allenatori]:
+            if mondo.problema_rinnovo_allenatore(poli, a) is not None:
+                continue
+            mesi = staff.durata_proposta(a, oggi)
+            richiesta = staff.richiesta_rinnovo(a, poli, mesi, oggi)
+            monte = mondo.monte_stipendi(poli) - a.contratto_stipendio + richiesta
+            if monte > spesa_mensile_utente(mondo.sponsor(poli), poli.cassa):
+                self.anno["staff_mancati"] += 1
+                continue
+            accetta, _probabilita, _richiesta = mondo.rinnova_allenatore(poli, a, richiesta, mesi)
+            self.anno["staff_rinnovi"] += accetta
+        media = mondo.qualita_media_dello_staff
+        for posto in range(staff.POSTI):
+            if poli.staff[posto] or mondo.mosse_rimaste(poli) <= 0:
+                continue
+            ruolo = staff.CAPO if posto == 0 else staff.ASSISTENTE
+            for a in sorted((a for a in mondo.allenatori.values() if a.libero and a.prelazione in (None, poli.nome)), key=lambda a: (abs(a.qualita - media), a.numero)):
+                ingaggio = economia.arrotonda(staff.ingaggio_richiesto(a, ruolo, poli) * RIALZO_INGAGGIO_UTENTE)
+                monte = mondo.monte_stipendi(poli) + staff.stipendio_richiesto(a, ruolo)
+                if ingaggio + monte > poli.cassa or monte > spesa_mensile_utente(mondo.sponsor(poli), poli.cassa - ingaggio):
+                    continue
+                accetta, _probabilita = mondo.offerta_allenatore(poli, a, posto, ingaggio)
+                self.anno["staff_assunti" if accetta else "staff_rifiuti"] += 1
+                break
+
+
 def _scenario_di_un_seme(seme, anni_prima, anni_utente):
     """Lo scenario dell'utente su un seme, in un processo a parte: gli anni dell'utente e le misure del mondo di ogni anno."""
     scenario = ScenarioUtente(anni_prima * GIORNI_PER_ANNO + 1, seme)
@@ -1277,7 +1318,8 @@ def scenario_utente(semi, processi, anni_prima=ANNI_PRIMA_DELL_UTENTE, anni_uten
     righe = [f"Scenario dell'utente che allena e rinnova: la sua polisportiva nasce all'anno {anni_prima} e vive {anni_utente} anni, sui semi "
              f"{', '.join(str(s) for s in semi)}. Tiene {TESSERATI_UTENTE} tesserati, scelti fra i liberi più forti fino a {numero(ETA_MASSIMA_UTENTE)} anni con "
              f"l'ingaggio chiesto più il {numero(100 * (RIALZO_INGAGGIO_UTENTE - 1))} per cento; ognuno gioca un'amichevole ogni due giorni contro un compagno; "
-             "ogni giorno Allena tutti; i rinnovi alla richiesta, se il monte stipendi sta nella regola del computer."]
+             "ogni giorno Allena tutti; i rinnovi alla richiesta, se il monte stipendi sta nella regola del computer. Dalla tappa 13 tiene uno staff "
+             "medio: per ogni posto vuoto l'allenatore libero con la qualità più vicina allo staff medio del mondo, se lo paga."]
     esiti = {"sponsor": True, "primi": True, "partenza": True}
     tornei_per_atleta = []
     for seme, anni, annuali in risultati:
@@ -1302,7 +1344,11 @@ def scenario_utente(semi, processi, anni_prima=ANNI_PRIMA_DELL_UTENTE, anni_uten
                          f"quote {numero(a['iscrizioni'])} euro, premi {numero(a['premi'])}, rimborsi {numero(a['rimborsi'])}; medaglie della polisportiva "
                          f"{a['medaglie'][0]} ori, {a['medaglie'][1]} argenti, {a['medaglie'][2]} bronzi e {a['medaglie'][3]} legni; i tesserati passano acciaccati il "
                          f"{numero(100.0 * a['giorni_acciaccati'] / max(1, a['giorni_di_tesserati']), 1)} per cento dei giorni e infortunati il "
-                         f"{numero(100.0 * a['giorni_infortunati'] / max(1, a['giorni_di_tesserati']), 1)}; dei primi 100 del mondo è tesserato il {numero(a['primi_100'])} per cento.")
+                         f"{numero(100.0 * a['giorni_infortunati'] / max(1, a['giorni_di_tesserati']), 1)}; dei primi 100 del mondo è tesserato il {numero(a['primi_100'])} per cento; "
+                         f"lo staff: con un capo il {numero(100.0 * a['giorni_con_capo'] / max(1, a['giorni']))} per cento dei giorni, qualità media "
+                         f"{numero(a['qualita_staff'] / max(1, a['giorni']), 2)} contro {numero(a['qualita_media_del_mondo'], 2)} del mondo a fine anno, "
+                         f"assunti {a['staff_assunti']}, rifiuti {a['staff_rifiuti']}, rinnovi {a['staff_rinnovi']}, mancati per i soldi {a['staff_mancati']}, "
+                         f"staff sul monte il {numero(a['staff_sul_monte'], 1)} per cento.")
         for m in (x for x in annuali if x["numero_anno"] in (anni_prima, anni_prima + anni_utente)):
             s10, s50, s90 = m["stipendi"]
             righe.append(f"Seme {seme}, il mondo all'anno {m['numero_anno']}: {m['attivi']} giocatori in attività, tesserati al {numero(100 * m['tesserati'] / max(1, m['attivi']))} "
