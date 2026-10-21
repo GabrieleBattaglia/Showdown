@@ -184,7 +184,7 @@ CONTI = "conti"
 # Dalla tappa 12, D32 e punto 9.1 del progetto, le iscrizioni ai tornei, che escono all'iscrizione, i
 # premi, che entrano alla chiusura, e i rimborsi delle iscrizioni, che entrano nel mese in cui arrivano:
 # così nessuna voce va mai sotto zero, anche quando l'iscrizione era del mese prima.
-VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti", "buonuscite", "iscrizioni", "premi", "rimborsi")
+VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti", "buonuscite", "iscrizioni", "premi", "rimborsi", "staff")
 # Dalla tappa 12, formato 7: i punti della classifica dell'ultimo anno, coppie di giorno ordinale e
 # punti; i titoli, i podi dei tornei più importanti; il palmarès recente di una polisportiva, dal mese
 # AAAA-MM alla coppia di punti delle medaglie e delle coppe.

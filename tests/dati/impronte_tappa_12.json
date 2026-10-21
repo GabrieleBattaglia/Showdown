@@ -1,18 +1,18 @@
 {
- "nota": "Rigenerate il 21 ottobre 2026 sul ramo allenatore, passo 1 della tappa 13: lo staff cambia il mondo per scelta, D33. Nascono gli allenatori, uno ogni venti nascite; senza staff i liberi e le polisportive si allenano più piano, rischiano un poco di più e la fedeltà cresce più piano; i giocatori hanno la classe migliore della carriera. Il motore non cambia.",
+ "nota": "Rigenerate il 21 ottobre 2026 sul ramo allenatore, passo 2 della tappa 13: il computer assume lo staff e lo paga, prima i capi per tutte le polisportive e poi gli assistenti; i contratti dello staff scadono e si rinnovano, e lo stipendio dello staff entra nel monte stipendi e nei conti del mese, D33. Il motore non cambia.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "10ed3a8dafbfffed05215d4fe2211a56816949d7fbeac5e2b2736fca1105965c",
-  "vivi": 730,
-  "attivi": 730,
-  "tesserati": 652,
-  "polisportive": 44
+  "sha256": "5463336e6fe3b1de6d04fd8abeebfb8b244fcced3c00a839dd366cdc10806950",
+  "vivi": 704,
+  "attivi": 704,
+  "tesserati": 629,
+  "polisportive": 43
  },
  "mondo_a_regime": {
-  "sha256": "6ddb5e26b6dfb0472cf3beac7536236da76c42f8d40ecff4016ab7a1ecf9be2b",
+  "sha256": "075eb0c44f8d4ba1d03467b6d63b06117c09875370181c58c07c9274ff78d6a2",
   "vivi": 1659,
   "attivi": 1259,
   "tesserati": 1077,

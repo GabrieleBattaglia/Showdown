@@ -542,6 +542,10 @@ def _dal_formato_7(documento):
         g.setdefault("classe_migliore", CLASSE_MIGLIORE_DA_CALCOLARE)
     for p in dati["polisportive"].values():
         p.setdefault("staff", [0, 0, 0])
+        # La voce nuova dei conti, a zero, nel mese in corso e in ogni bilancio: gli stipendi dello staff.
+        p["conti_del_mese"].setdefault("staff", 0)
+        for bilancio in p["bilanci"]:
+            bilancio.setdefault("staff", 0)
     dati.setdefault("allenatori", None)
     dati.setdefault("prossimo_allenatore", 1)
     documento["formato"] = 8

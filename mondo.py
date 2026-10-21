@@ -54,6 +54,7 @@ i giocatori in attività e soltanto le sue polisportive, e i giocatori nuovi son
 giorno, idea di Gabriele, così al mercato restano sempre dei liberi da cercare e tesserare.
 """
 
+import bisect
 import datetime
 import math
 import random
@@ -88,6 +89,7 @@ from costanti import (
     INTENSITA,
     INTENSITA_PREDEFINITA,
     LIMITE_MOVIMENTI_PER_TICK,
+    MARGINE_CAMBIO_STAFF_CPU,
     MAX_PROB_CHIUSURA_GIORNALIERA,
     MESI_CONTRATTO_MAX,
     MESI_CONTRATTO_MIN,
@@ -550,6 +552,160 @@ class Mondo:
                 a.annota(data, f"Torna {'libera' if a.sesso == 'f' else 'libero'}: {poli.nome} ha chiuso.")
         poli.staff = [0, 0, 0]
 
+    def problema_assunzione(self, poli, a, posto, ingaggio):
+        """Perché la polisportiva non può assumere l'allenatore nel posto con quell'ingaggio, o None se può."""
+        if not 0 <= posto < modulo_staff.POSTI:
+            return "quel posto dello staff non esiste"
+        if poli.staff[posto]:
+            return "quel posto dello staff è già occupato"
+        if not a.libero:
+            return f"{nome_completo(a)} allena già {a.polisportiva}"
+        if a.prelazione is not None and a.prelazione != poli.nome:
+            return f"fino al {data_breve(a.prelazione_fino)} {nome_completo(a)} può assumerlo soltanto {a.prelazione}"
+        if ingaggio > poli.cassa:
+            return f"l'ingaggio di {scritta_in_euro(ingaggio)} supera la cassa, {scritta_in_euro(poli.cassa)}"
+        return None
+
+    def assumi_allenatore(self, poli, a, posto, data=None, ingaggio=0):
+        """
+        La polisportiva assume l'allenatore nel posto, 0 il capo, 1 e 2 gli assistenti, D33 risposta 13:
+        paga l'ingaggio, e l'allenatore firma un contratto, con lo stipendio che chiede per il ruolo e la
+        durata che propone. Chi chiama controlla prima con problema_assunzione; ValueError se non si può.
+        """
+        problema = self.problema_assunzione(poli, a, posto, ingaggio)
+        if problema:
+            raise ValueError(problema)
+        oggi = data or self.datetime_corrente_simulazione
+        ruolo = modulo_staff.CAPO if posto == 0 else modulo_staff.ASSISTENTE
+        if ingaggio:
+            self._paga_ingaggio(poli, ingaggio)
+        a.polisportiva, a.ruolo = poli.nome, ruolo
+        a.prelazione = a.prelazione_fino = None
+        contratti.stipula(a, oggi, modulo_staff.stipendio_richiesto(a, ruolo), modulo_staff.durata_proposta(a, oggi))
+        poli.staff[posto] = a.numero
+        nome_ruolo = modulo_staff.nome_del_ruolo(a)
+        con_ingaggio = f", con un ingaggio di {scritta_in_euro(ingaggio)}" if ingaggio else ""
+        a.annota(oggi, f"Firma con {poli.nome} da {nome_ruolo}: {scritta_in_euro(a.contratto_stipendio)} al mese fino al {data_breve(a.contratto_scadenza)}{con_ingaggio}.")
+        self.annota(poli, f"Assume {nome_completo(a)} da {nome_ruolo}, di classe {a.codice}{con_ingaggio}.", oggi)
+        self.aggiorna_fattori_staff(poli)
+
+    def licenzia_allenatore(self, poli, a, data=None):
+        """
+        La polisportiva licenzia l'allenatore a contratto in corso: paga la buonuscita, metà degli stipendi
+        che restano, come per i giocatori, e l'allenatore torna libero. Restituisce la buonuscita.
+        """
+        oggi = data or self.datetime_corrente_simulazione
+        buonuscita = self._paga_buonuscita(poli, a, oggi)
+        nome_ruolo = modulo_staff.nome_del_ruolo(a)
+        self._lascia_lo_staff(poli, a, oggi, f"Licenziato da {poli.nome}, con una buonuscita di {scritta_in_euro(buonuscita)}.",
+                              f"Licenzia {nome_completo(a)}, {nome_ruolo}, con una buonuscita di {scritta_in_euro(buonuscita)}.")
+        return buonuscita
+
+    def _lascia_lo_staff(self, poli, a, data, testo_allenatore, testo_club):
+        """L'allenatore lascia lo staff della polisportiva e torna libero, coi due diari e i fattori rifatti."""
+        poli.staff = [0 if numero == a.numero else numero for numero in poli.staff]
+        modulo_staff.libera(a)
+        a.annota(data, testo_allenatore)
+        self.annota(poli, testo_club, data)
+        self.aggiorna_fattori_staff(poli)
+
+    def _paga_lo_staff(self, poli, data):
+        """Il primo del mese, dopo i tesserati, lo stipendio dello staff: chi non è pagato lascia lo staff, progetto 3.2."""
+        for numero in list(poli.staff):
+            a = self.allenatori.get(numero) if numero else None
+            if a is None:
+                continue
+            if a.contratto_stipendio <= poli.cassa:
+                poli.cassa -= a.contratto_stipendio
+                poli.conti_del_mese["staff"] += a.contratto_stipendio
+            else:
+                self._lascia_lo_staff(poli, a, data, f"Lascia {poli.nome}: lo stipendio non è arrivato.",
+                                      f"{nome_completo(a)} lascia lo staff: lo stipendio non è arrivato.")
+
+    def _contratti_dello_staff(self, data):
+        """
+        Il primo del mese, per lo staff di ogni polisportiva: il contratto scaduto lascia il posto al
+        rinnovo concordato, oppure l'allenatore torna libero; il computer decide nella finestra se
+        rinnovare o cambiare, progetto 3.4.
+        """
+        for poli in list(self.polisportive.values()):
+            for numero in list(poli.staff):
+                a = self.allenatori.get(numero) if numero else None
+                if a is None or a.contratto_scadenza is None:
+                    continue
+                if a.contratto_scadenza.date() <= data.date():
+                    if contratti.ha_rinnovo(a):
+                        contratti.subentra_il_rinnovo(a)
+                        a.annota(data, f"Comincia il contratto rinnovato con {poli.nome}: {scritta_in_euro(a.contratto_stipendio)} al mese fino al {data_breve(a.contratto_scadenza)}.")
+                    else:
+                        self._lascia_lo_staff(poli, a, data, f"Il contratto con {poli.nome} è scaduto: torna {'libera' if a.sesso == 'f' else 'libero'}.",
+                                              f"Il contratto di {nome_completo(a)}, {modulo_staff.nome_del_ruolo(a)}, è scaduto.")
+                elif poli.is_cpu_controlled and not contratti.ha_rinnovo(a) and contratti.in_finestra(a, data):
+                    self._rinnovo_dello_staff_cpu(poli, a, data)
+
+    def _spazio_negli_stipendi(self, poli):
+        """Quanto stipendio in più la polisportiva del computer si permette oggi, con le regole di spesa di sempre."""
+        return spesa_mensile_cpu(self._sponsor_memorizzato(poli), poli.cassa) - self._monte_memorizzato(poli)
+
+    def _rinnovo_dello_staff_cpu(self, poli, a, data):
+        """
+        Il computer, nella finestra del rinnovo, tiene il suo allenatore, salvo che un libero che si può
+        permettere sia migliore di almeno MARGINE_CAMBIO_STAFF_CPU livelli: allora lo lascia scadere e
+        assumerà l'altro, progetto 3.4. Il rinnovo è allo stipendio che l'allenatore chiede oggi.
+        """
+        stipendio = modulo_staff.stipendio_richiesto(a, a.ruolo)
+        spazio = self._spazio_negli_stipendi(poli) + a.contratto_stipendio
+        migliore = any(b.libero and b.prelazione is None and b.livello <= a.livello - MARGINE_CAMBIO_STAFF_CPU
+                       and modulo_staff.stipendio_richiesto(b, a.ruolo) <= spazio for b in self.allenatori.values())
+        if migliore:
+            return
+        contratti.concorda_rinnovo(a, stipendio, modulo_staff.durata_proposta(a, data))
+        a.annota(data, f"Rinnova con {poli.nome}: {scritta_in_euro(stipendio)} al mese fino al {data_breve(a.rinnovo_scadenza)}.")
+
+    def _staff_del_computer(self, cpu, data):
+        """
+        Le polisportive del computer con un posto vuoto nello staff cercano l'allenatore migliore che
+        possono pagare, prima il capo e poi gli assistenti, uno al giorno, D33 risposta 14: lo stipendio
+        deve stare nelle regole di spesa e l'ingaggio, col rialzo del computer, nella cassa tenendo da
+        parte un mese di stipendi. Non vedono gli allenatori in prelazione. I liberi si ordinano una
+        volta, dal migliore: lo stipendio scende con la classe, e la ricerca è binaria. Restituisce
+        quanti ne hanno assunti.
+        """
+        liberi = sorted((a for a in self.allenatori.values() if a.libero and a.prelazione is None), key=lambda a: (a.livello, a.numero))
+        if not liberi:
+            return 0
+        stipendi = {ruolo: [-modulo_staff.stipendio_richiesto(a, ruolo) for a in liberi] for ruolo in modulo_staff.RUOLI}
+        presi = set()
+        assunti = 0
+        # Prima i capi, per tutte: un assistente si assume soltanto coi liberi che restano, perché nei mondi
+        # giovani gli allenatori sono pochi, e un club con tre allenatori ne lascerebbe due senza capo.
+        senza_capo = [poli for poli in cpu if not poli.staff[0]]
+        con_posti = [poli for poli in cpu if poli.staff[0] and not all(poli.staff)]
+        for poli in senza_capo + con_posti:
+            if len(presi) >= len(liberi):
+                break
+            posto = poli.staff.index(0)
+            ruolo = modulo_staff.CAPO if posto == 0 else modulo_staff.ASSISTENTE
+            monte = self._monte_memorizzato(poli)
+            spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU
+            spazio = self._spazio_negli_stipendi(poli)
+            # Il primo libero con lo stipendio alla portata: prima di lui costano tutti di più.
+            indice = bisect.bisect_left(stipendi[ruolo], -spazio)
+            while indice < len(liberi) and liberi[indice].numero in presi:
+                indice += 1
+            if indice >= len(liberi):
+                continue
+            a = liberi[indice]
+            richiesta = modulo_staff.ingaggio_richiesto(a, ruolo, poli)
+            offerta = arrotonda(richiesta * RIALZO_CPU)
+            if offerta > spendibile:
+                continue
+            if caso(probabilita_accettazione(offerta, richiesta)):
+                self.assumi_allenatore(poli, a, posto, data, offerta)
+                presi.add(a.numero)
+                assunti += 1
+        return assunti
+
     def fai_nascere_lo_staff(self):
         """
         Lo staff di un mondo che arriva dal formato 7, D33 risposta 16: un allenatore libero per ogni
@@ -575,10 +731,19 @@ class Mondo:
     # Arretrati, vendite e acquisti.
 
     def monte_stipendi(self, poli):
-        """Quanto la polisportiva paga ogni mese di stipendi, a chi ha oggi: dalla tappa 11 lo stipendio del contratto."""
+        """
+        Quanto la polisportiva paga ogni mese di stipendi, a chi ha oggi: dalla tappa 11 lo stipendio del
+        contratto. Dalla tappa 13 anche lo staff, così le regole di spesa del computer, la solvibilità e il
+        bilancio lo contano, progetto 3.3.
+        """
         giocatori = self.giocatori
         morti = self._ids_morti_processati_sessione
-        return sum(stipendio_pagato(g) for gid in poli.tesserati if (g := giocatori.get(gid)) is not None and gid not in morti)
+        tesserati = sum(stipendio_pagato(g) for gid in poli.tesserati if (g := giocatori.get(gid)) is not None and gid not in morti)
+        return tesserati + self.monte_dello_staff(poli)
+
+    def monte_dello_staff(self, poli):
+        """Quanto la polisportiva paga ogni mese allo staff, tappa 13."""
+        return sum(a.contratto_stipendio for numero in poli.staff if numero and (a := self.allenatori.get(numero)) is not None)
 
     def sponsor(self, poli):
         """Lo sponsor del mese della polisportiva, con la sua rosa di oggi."""
@@ -602,7 +767,8 @@ class Mondo:
         memoria = self._conti_del_giorno
         if memoria is None:
             return calcolo(poli)
-        chiave = (poli.nome, tuple(poli.tesserati), poli.gloria)
+        # Dalla tappa 13 anche lo staff, che il computer assume mentre muove e che entra nel monte stipendi.
+        chiave = (poli.nome, tuple(poli.tesserati), poli.gloria, tuple(poli.staff))
         conti = memoria.get(chiave)
         if conti is None:
             conti = memoria[chiave] = [None, None]
@@ -1059,6 +1225,8 @@ class Mondo:
                 if self._scambio(poli, liberi, vetrina, prossimo, monte, data):
                     tesserati += 1
                     svincolati += 1
+        # Dalla tappa 13 lo staff, prima del mercato delle vendite: un posto vuoto si riempie col migliore alla portata.
+        self._staff_del_computer(cpu, data or self.datetime_corrente_simulazione)
         mercato = _Mercato(self._vendibili(data or self.datetime_corrente_simulazione))
         for poli in cpu:
             if self._compra_dal_mercato(poli, data, mercato):
@@ -1235,6 +1403,8 @@ class Mondo:
                         self._se_ne_va(poli, g, data, rapporto)
                 if poli.is_cpu_controlled:
                     self._vende_il_piu_caro(poli, data)
+            # Dalla tappa 13 lo stipendio dello staff, dopo quello dei tesserati.
+            self._paga_lo_staff(poli, data)
             poli.bilanci.insert(0, {"data": data, "cassa": poli.cassa, **poli.conti_del_mese})
             del poli.bilanci[BILANCI_CONSERVATI:]
             poli.conti_del_mese = conti_vuoti()
@@ -1243,6 +1413,8 @@ class Mondo:
             palmares.sfoltisci(poli, data)
             poli.sfide_da_lanciare = min(SFIDE_ACCUMULABILI, poli.sfide_da_lanciare + SFIDE_AL_MESE)
         self._contratti_del_mese(data, rapporto)
+        # Dalla tappa 13 i contratti dello staff, dopo quelli dei tesserati.
+        self._contratti_dello_staff(data)
 
     # I contratti del mese, dopo gli stipendi: il mese appena finito si paga anche a chi scade oggi.
 

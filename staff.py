@@ -14,9 +14,12 @@ Non conosce wx né il mondo: il mondo tiene gli allenatori in mondo.allenatori e
 """
 
 import datetime
+import math
 
 import classe as modulo_classe
+import contratti
 import descrizioni
+import economia
 from costanti import (
     ANNI_MINIMI_DA_ALLENATORE,
     ANNO_SIMULAZIONE_GIORNI,
@@ -30,12 +33,19 @@ from costanti import (
     FATTORI_RISCHIO_STAFF,
     LIVELLO_MINIMO_ALLENATORE,
     MEDIA_CLASSE_NATI_ALLENATORI,
+    MESI_CONTRATTO_MAX,
+    MESI_CONTRATTO_MIN,
+    MESI_DI_INGAGGIO,
     PESI_STAFF,
     PROBABILITA_ALLENATORE_PER_NASCITA,
     PROBABILITA_IPOVEDENTE_CREAZIONE,
     QUALITA_MEDIA_DELLO_STAFF,
     QUALITA_MINIMA_ALLENATORE,
+    QUOTA_STIPENDIO_ASSISTENTE,
     QUOTA_VEDENTI_ALLENATORI,
+    SCONTO_FEDELTA_RINNOVO,
+    STIPENDIO_STAFF_MASSIMO,
+    STIPENDIO_STAFF_MINIMO,
 )
 from modelli import DATA, DATA_O_NULLA, DIARIO, TESTO_O_NULLA, _campi_da_dizionario, annota_diario, conversione_a_json
 from nomi import genera_identita
@@ -99,6 +109,11 @@ class Allenatore:
 
     def annota(self, data, testo):
         annota_diario(self.diario, data, testo)
+
+    def annulla_contratto(self):
+        """Toglie contratto, rinnovo e proposte, come per i giocatori: lo usano anche le funzioni di contratti.py."""
+        self.contratto_stipendio = self.rinnovo_stipendio = self.proposte_rinnovo = 0
+        self.contratto_scadenza = self.rinnovo_scadenza = None
 
     def eta(self, oggi):
         """L'età in giorni simulati, il giorno dato."""
@@ -206,11 +221,47 @@ def nato(numero, oggi, rng, eta_giorni=None):
                       eta_di_fine(eta_giorni, rng), etamorte=etamorte, tratti=descrizioni.genera_tratti(sesso, rng))
 
 
+def nome_del_ruolo(a):
+    """Il ruolo a parole, al femminile per le allenatrici: capo allenatore, capo allenatrice, assistente."""
+    if a.ruolo == CAPO:
+        return "capo allenatrice" if a.sesso == "f" else "capo allenatore"
+    return "assistente"
+
+
 def libera(a):
     """L'allenatore torna libero: niente polisportiva, ruolo, contratto né rinnovo."""
     a.polisportiva = a.ruolo = None
-    a.contratto_stipendio = a.rinnovo_stipendio = a.proposte_rinnovo = 0
-    a.contratto_scadenza = a.rinnovo_scadenza = None
+    a.annulla_contratto()
+
+
+# L'economia dello staff, D33 risposta 13: i contratti sono quelli dei giocatori, e le funzioni di
+# contratti.py valgono anche per l'allenatore, che ha gli stessi campi del contratto.
+
+def stipendio_richiesto(a, ruolo):
+    """Lo stipendio mensile che l'allenatore chiede per il ruolo: in linea retta sulla qualità, la metà da assistente."""
+    quota = (a.qualita - QUALITA_MINIMA_ALLENATORE) / (1.0 - QUALITA_MINIMA_ALLENATORE)
+    euro = STIPENDIO_STAFF_MINIMO + (STIPENDIO_STAFF_MASSIMO - STIPENDIO_STAFF_MINIMO) * quota
+    if ruolo == ASSISTENTE:
+        euro *= QUOTA_STIPENDIO_ASSISTENTE
+    return economia.arrotonda(euro)
+
+
+def ingaggio_richiesto(a, ruolo, poli=None):
+    """
+    Il premio d'ingaggio che l'allenatore chiede per firmare, come i giocatori: MESI_DI_INGAGGIO stipendi.
+    Alla polisportiva in cui ha chiuso la carriera da giocatore chiede meno, come i giocatori fedeli ai
+    rinnovi, fino a un quarto in meno alla fedeltà piena: D33 risposta 15.
+    """
+    euro = stipendio_richiesto(a, ruolo) * MESI_DI_INGAGGIO
+    if poli is not None and poli.nome == a.club_di_provenienza:
+        euro *= 1.0 - SCONTO_FEDELTA_RINNOVO * a.fedelta_di_provenienza / 100.0
+    return economia.arrotonda(euro)
+
+
+def durata_proposta(a, oggi):
+    """I mesi di contratto che l'allenatore propone, dalla tabella dell'età dei giocatori, da 4 a 24."""
+    mesi = math.floor(contratti.durata_base(a.eta_anni(oggi)) + 0.5)
+    return max(MESI_CONTRATTO_MIN, min(MESI_CONTRATTO_MAX, mesi))
 
 
 # Per la migrazione dal formato 7: le nascite medie di un giorno, da CREA_NUOVI_PER_TICK_RANGE, e

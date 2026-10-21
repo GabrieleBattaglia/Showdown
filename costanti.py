@@ -646,6 +646,18 @@ QUOTA_VEDENTI_ALLENATORI = 75.0
 MEDIA_CLASSE_NATI_ALLENATORI = 12.0
 # La prelazione dell'utente su un suo tesserato che si ritira e può allenare, risposta 21.
 GIORNI_PRELAZIONE = 10
+# L'economia dello staff, D33 risposta 13 e progetto 3.1: lo stipendio che un capo chiede va in linea
+# retta sulla sua qualità, da STIPENDIO_STAFF_MINIMO per H0 a STIPENDIO_STAFF_MASSIMO per A1, e non in
+# esponenziale come quello dei giocatori, perché un A1 deve restare alla portata delle polisportive più
+# ricche, a differenza dei campioni della tappa 12; un assistente chiede QUOTA_STIPENDIO_ASSISTENTE di un
+# capo della sua classe. Il premio d'ingaggio, la durata, il rinnovo e la buonuscita sono quelli dei
+# giocatori. Le cifre sono una stima: le fissa la taratura della tappa.
+STIPENDIO_STAFF_MINIMO = 120
+STIPENDIO_STAFF_MASSIMO = 900
+QUOTA_STIPENDIO_ASSISTENTE = 0.5
+# Il computer cambia il suo allenatore a fine contratto soltanto per uno libero che può pagare e che è
+# migliore di almeno tanti livelli, progetto 3.4; altrimenti lo rinnova.
+MARGINE_CAMBIO_STAFF_CPU = 5
 # La classe migliore della carriera si ricorda il primo del mese soltanto dai 40 anni, e al ritiro:
 # prima la classe sale quasi sempre, e il primo del mese è già il giorno più lento.
 ETA_CLASSE_MIGLIORE_GIORNI = giorni_da_anni(40.0)

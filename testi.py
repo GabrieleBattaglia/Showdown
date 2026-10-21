@@ -737,7 +737,7 @@ def _voci_di_un_mese(conti):
     """Le voci diverse da zero dei conti di un mese, a parole."""
     nomi = (("sponsor", "sponsor"), ("vendite", "vendite"), ("stipendi", "stipendi"), ("arretrati", "arretrati pagati"),
             ("ingaggi", "ingaggi"), ("acquisti", "acquisti"), ("buonuscite", "buonuscite"), ("iscrizioni", "iscrizioni ai tornei"),
-            ("premi", "premi dei tornei"), ("rimborsi", "rimborsi delle iscrizioni"))
+            ("premi", "premi dei tornei"), ("rimborsi", "rimborsi delle iscrizioni"), ("staff", "stipendi dello staff"))
     return unisci([f"{nome} {euro(conti[voce])}" for voce, nome in nomi if conti[voce]]) or "nessun movimento"
 
 

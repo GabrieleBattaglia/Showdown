@@ -16,6 +16,8 @@ import pytest
 import allenamento
 import archivio
 import classe
+import contratti
+import economia
 import infortuni
 import staff
 from costanti import (
@@ -25,9 +27,14 @@ from costanti import (
     FEDELTA_PER_MESE,
     GIORNI_PRELAZIONE,
     LIVELLO_MINIMO_ALLENATORE,
+    MARGINE_CAMBIO_STAFF_CPU,
+    MESI_DI_INGAGGIO,
     PESI_STAFF,
     QUALITA_MEDIA_DELLO_STAFF,
     QUALITA_MINIMA_ALLENATORE,
+    QUOTA_STIPENDIO_ASSISTENTE,
+    STIPENDIO_STAFF_MASSIMO,
+    STIPENDIO_STAFF_MINIMO,
 )
 from mondo import Mondo
 
@@ -291,3 +298,119 @@ def test_l_aggiornamento_dal_formato_7(mondo):
     assert [a.giocatore_id for a in ex] == [gid for gid, g in sorted(nuovo.giocatori.items()) if g.ritirato and classe.livello(g.classe_migliore) <= 70]
     assert all(g.classe_migliore == pytest.approx(classe.punteggio(g)) for g in nuovo.giocatori.values())
     assert nuovo.prossimo_allenatore == max(nuovo.allenatori, default=0) + 1
+
+
+# Il passo 2: lo stipendio, l'ingaggio, i contratti, la paga e le mosse del computer.
+
+def test_lo_stipendio_va_in_linea_retta_sulla_qualita(mondo):
+    a1, h0 = _allenatore(mondo, 1), _allenatore(mondo, LIVELLO_MINIMO_ALLENATORE)
+    assert staff.stipendio_richiesto(a1, staff.CAPO) == STIPENDIO_STAFF_MASSIMO and staff.stipendio_richiesto(h0, staff.CAPO) == STIPENDIO_STAFF_MINIMO
+    assert staff.stipendio_richiesto(a1, staff.ASSISTENTE) == STIPENDIO_STAFF_MASSIMO * QUOTA_STIPENDIO_ASSISTENTE
+    medio = _allenatore(mondo, 35)
+    assert STIPENDIO_STAFF_MINIMO < staff.stipendio_richiesto(medio, staff.CAPO) < STIPENDIO_STAFF_MASSIMO
+    assert staff.ingaggio_richiesto(a1, staff.CAPO) == STIPENDIO_STAFF_MASSIMO * MESI_DI_INGAGGIO
+    assert 4 <= staff.durata_proposta(a1, INIZIO) <= 24
+
+
+def test_la_fedelta_al_vecchio_club_fa_chiedere_meno(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    a = _allenatore(mondo, 20)
+    a.club_di_provenienza, a.fedelta_di_provenienza = poli.nome, 100.0
+    altro = mondo.fonda_polisportiva("Altro club")
+    assert staff.ingaggio_richiesto(a, staff.CAPO, poli) == economia.arrotonda(staff.ingaggio_richiesto(a, staff.CAPO, altro) * 0.75)
+
+
+def test_assumere_e_licenziare(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    a, b = _allenatore(mondo, 10), _allenatore(mondo, 40)
+    cassa = poli.cassa
+    mondo.assumi_allenatore(poli, a, 0, INIZIO, 1000)
+    assert poli.staff == [a.numero, 0, 0] and a.polisportiva == poli.nome and a.ruolo == staff.CAPO
+    assert poli.cassa == cassa - 1000 and poli.conti_del_mese["ingaggi"] == 1000
+    assert a.contratto_stipendio == staff.stipendio_richiesto(a, staff.CAPO) and a.contratto_scadenza.day == 1
+    assert mondo.monte_stipendi(poli) == a.contratto_stipendio and mondo.monte_dello_staff(poli) == a.contratto_stipendio
+    assert "Assume" in poli.diario[0]["testo"] and "Firma con Club di prova" in a.diario[0]["testo"]
+    # I problemi: il posto occupato, chi allena già, la prelazione di un altro, la cassa che non basta.
+    assert "occupato" in mondo.problema_assunzione(poli, b, 0, 0)
+    altro = mondo.fonda_polisportiva("Altro club")
+    assert "allena già" in mondo.problema_assunzione(altro, a, 0, 0)
+    b.prelazione, b.prelazione_fino = "Altro club", INIZIO + datetime.timedelta(days=5)
+    assert "soltanto Altro club" in mondo.problema_assunzione(poli, b, 1, 0)
+    b.prelazione = b.prelazione_fino = None
+    assert "supera la cassa" in mondo.problema_assunzione(poli, b, 1, poli.cassa + 1)
+    with pytest.raises(ValueError):
+        mondo.assumi_allenatore(poli, b, 0, INIZIO)
+    # Il licenziamento paga metà degli stipendi che restano.
+    attesa = contratti.buonuscita(a, INIZIO)
+    assert attesa > 0 and mondo.licenzia_allenatore(poli, a, INIZIO) == attesa
+    assert poli.staff == [0, 0, 0] and a.libero and a.contratto_stipendio == 0 and poli.conti_del_mese["buonuscite"] == attesa
+
+
+def test_lo_staff_si_paga_il_primo_del_mese(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    a, b = _allenatore(mondo, 10), _allenatore(mondo, 30)
+    mondo.assumi_allenatore(poli, a, 0, INIZIO)
+    mondo.assumi_allenatore(poli, b, 1, INIZIO)
+    primo = datetime.datetime(2026, 6, 1, 12, 0)
+    mondo._primo_del_mese(primo, Mondo.rapporto_vuoto(primo))
+    assert poli.bilanci[0]["staff"] == a.contratto_stipendio + b.contratto_stipendio
+    # Senza soldi per lo stipendio, nemmeno con lo sponsor appena arrivato, l'allenatore se ne va.
+    poli.cassa = -100_000
+    secondo = datetime.datetime(2026, 7, 1, 12, 0)
+    mondo._primo_del_mese(secondo, Mondo.rapporto_vuoto(secondo))
+    assert a.libero and b.libero and poli.staff == [0, 0, 0] and "lo stipendio non è arrivato" in a.diario[0]["testo"]
+
+
+def test_il_contratto_scade_o_si_rinnova(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    a, b = _allenatore(mondo, 10), _allenatore(mondo, 30)
+    mondo.assumi_allenatore(poli, a, 0, INIZIO)
+    mondo.assumi_allenatore(poli, b, 1, INIZIO)
+    contratti.concorda_rinnovo(b, 300, 12)
+    for x in (a, b):
+        x.contratto_scadenza = datetime.datetime(2026, 6, 1)
+    b.rinnovo_scadenza = datetime.datetime(2027, 6, 1)
+    mondo._contratti_dello_staff(datetime.datetime(2026, 6, 1, 12, 0))
+    assert a.libero and poli.staff == [0, b.numero, 0] and "è scaduto" in a.diario[0]["testo"]
+    assert b.contratto_stipendio == 300 and b.contratto_scadenza == datetime.datetime(2027, 6, 1) and not contratti.ha_rinnovo(b)
+
+
+def test_il_computer_assume_il_migliore_che_puo_pagare(mondo):
+    cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
+    cpu.cassa = 100_000
+    for gid in range(1, 6):
+        mondo._tessera(cpu, mondo.giocatori[gid])
+    for a in list(mondo.allenatori.values()):
+        del mondo.allenatori[a.numero]
+    scarso, bravo, carissimo = _allenatore(mondo, 60), _allenatore(mondo, 20), _allenatore(mondo, 1)
+    in_prelazione = _allenatore(mondo, 2)
+    in_prelazione.prelazione, in_prelazione.prelazione_fino = "Club di Gabriele", INIZIO + datetime.timedelta(days=5)
+    random.seed(4)
+    spazio = mondo._spazio_negli_stipendi(cpu)
+    assunti = 0
+    for _ in range(40):
+        assunti += mondo._staff_del_computer([cpu], INIZIO)
+        if all(cpu.staff):
+            break
+    assert assunti == 3 and all(cpu.staff) and in_prelazione.libero
+    capo = mondo.allenatori[cpu.staff[0]]
+    # Il capo è il migliore con lo stipendio alla portata, prima che arrivassero gli assistenti.
+    alla_portata = [x for x in (scarso, bravo, carissimo) if staff.stipendio_richiesto(x, staff.CAPO) <= spazio]
+    assert capo is min(alla_portata, key=lambda x: x.livello)
+    assert cpu.staff[0] != in_prelazione.numero
+
+
+def test_il_computer_rinnova_o_aspetta_uno_migliore(mondo):
+    cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
+    cpu.cassa = 100_000
+    for a in list(mondo.allenatori.values()):
+        del mondo.allenatori[a.numero]
+    mio = _allenatore(mondo, 40)
+    mondo.assumi_allenatore(cpu, mio, 0, INIZIO)
+    finestra = mio.contratto_scadenza - datetime.timedelta(days=40)
+    mondo._rinnovo_dello_staff_cpu(cpu, mio, finestra)
+    assert contratti.ha_rinnovo(mio)
+    mio.rinnovo_stipendio, mio.rinnovo_scadenza = 0, None
+    _allenatore(mondo, 40 - MARGINE_CAMBIO_STAFF_CPU)
+    mondo._rinnovo_dello_staff_cpu(cpu, mio, finestra)
+    assert not contratti.ha_rinnovo(mio)
