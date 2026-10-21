@@ -116,7 +116,6 @@ from economia import (
     bandiera_attiva,
     ingaggio_richiesto,
     mesi_di_pazienza,
-    offerta_rinnovo_cpu,
     pazienza_per_euro,
     scritta_in_euro,
     spesa_mensile_cpu,
@@ -1174,23 +1173,19 @@ class Mondo:
         con lo stipendio nuovo al posto del vecchio, non sta nello sponsor più una parte della
         cassa, e con la cassa piena il suo premio, decisione 1 di Gabriele del 14 ottobre 2026, non
         rinnova: mette il giocatore in vendita al valore di mercato e lo lascia scadere.
-        Altrimenti, con la cassa piena, offre di più, entro il freno sul monte stipendi rispetto allo
-        sponsor: decisione 17 del 16 ottobre 2026, economia.offerta_rinnovo_cpu.
         Restituisce vero se il giocatore ha accettato.
         """
         mesi = contratti.durata_proposta(g)
         richiesta = contratti.richiesta_rinnovo(g, poli, mesi)
         offerta = arrotonda(richiesta * RIALZO_RINNOVO_CPU)
-        altri = self.monte_stipendi(poli) - stipendio_pagato(g)
-        sponsor = self._sponsor_del_mese(poli)
-        if altri + offerta > spesa_mensile_cpu(sponsor, poli.cassa):
+        monte = self.monte_stipendi(poli) - stipendio_pagato(g) + offerta
+        if monte > spesa_mensile_cpu(self._sponsor_del_mese(poli), poli.cassa):
             if g.id not in poli.in_vendita:
                 prezzo = max(1, valore_di_mercato(g, data))
                 poli.in_vendita[g.id] = prezzo
                 self.annota(poli, f"Mette in vendita {nome_completo(g)} a {scritta_in_euro(prezzo)}: il rinnovo costerebbe troppo.", data)
                 self.annota(g, f"{accorda(g.sesso, 'Messo')} in vendita da {poli.nome} a {scritta_in_euro(prezzo)}.", data)
             return False
-        offerta = offerta_rinnovo_cpu(offerta, altri, sponsor, poli.cassa)
         g.proposte_rinnovo += 1
         g.ultima_trattativa = data
         # La richiesta è quella di sopra: proposte e trattativa non la cambiano.

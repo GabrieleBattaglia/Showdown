@@ -11,7 +11,6 @@ import pytest
 from aiuti_motore import giocatore
 
 import contratti
-import costanti
 import economia
 import mondo as modulo_mondo
 import testi
@@ -325,9 +324,6 @@ def test_il_computer_rinnova_se_puo_al_massimo_tre_volte(mondo, monkeypatch):
     mondo._contratti_del_mese(scadenza.replace(hour=12), rapporto)
     assert g.appartenenza == "*" and rapporto["contratti_scaduti"] == 1 and rapporto["tuoi_scaduti"] == 0
     altro_cpu = _cpu(mondo, (6,))
-    # Alla soglia della cassa piena l'offerta è quella di sempre; con la cassa piena, decisione 17, cresce:
-    # la prova è più sotto.
-    altro_cpu.cassa = economia.SOGLIA_CASSA_PIENA_CPU
     altro = mondo.giocatori[6]
     monkeypatch.setattr(modulo_mondo, "caso", lambda _p: True)
     rapporto = Mondo.rapporto_vuoto(INIZIO)
@@ -368,57 +364,6 @@ def test_con_la_cassa_piena_il_computer_rinnova_chi_costa_di_piu(mondo, monkeypa
         mondo._contratti_del_mese(contratti.inizio_finestra(g).replace(hour=12), Mondo.rapporto_vuoto(INIZIO))
         esiti.append((contratti.ha_rinnovo(g), g.id in cpu.in_vendita))
     assert esiti == [(False, True), (True, False)]
-
-
-def _offerta_di_sempre(g, poli):
-    """L'offerta del computer al rinnovo senza la cassa piena: la richiesta per la durata proposta, col rialzo."""
-    return economia.arrotonda(contratti.richiesta_rinnovo(g, poli, contratti.durata_proposta(g)) * 1.15)
-
-
-def _rinnova_col_computer(mondo, monkeypatch, casi):
-    """
-    Per ogni caso, il giocatore, la cassa e lo sponsor in multipli dell'offerta di sempre: una polisportiva
-    del computer con lui solo in rosa prova a rinnovarlo, e lui accetta sempre. Restituisce, per ogni caso,
-    l'offerta di sempre, lo stipendio del rinnovo e lo sponsor.
-    """
-    monkeypatch.setattr(modulo_mondo, "caso", lambda _p: True)
-    sponsor = {}
-    monkeypatch.setattr(modulo_mondo, "sponsor_mensile", lambda poli, _rosa: sponsor.get(id(poli), 0))
-    esiti = []
-    for gid, cassa, sponsor_su_offerta in casi:
-        cpu = _cpu(mondo, (gid,))
-        g = mondo.giocatori[gid]
-        base = _offerta_di_sempre(g, cpu)
-        sponsor[id(cpu)] = round(sponsor_su_offerta * base)
-        cpu.cassa = cassa(base)
-        mondo._contratti_del_mese(contratti.inizio_finestra(g).replace(hour=12), Mondo.rapporto_vuoto(INIZIO))
-        assert contratti.ha_rinnovo(g)
-        esiti.append((base, g.rinnovo_stipendio, sponsor[id(cpu)]))
-    return esiti
-
-
-def test_con_la_cassa_piena_il_computer_offre_di_piu_ai_rinnovi(mondo, monkeypatch):
-    # La decisione 17 di Gabriele del 16 ottobre 2026: con la cassa piena il computer aggiunge all'offerta di
-    # sempre la parte del giocatore del premio della cassa piena. Qui il giocatore è solo in rosa, quindi la
-    # sua parte è tutto il premio, 240 euro al mese, e lo sponsor a dieci volte l'offerta tiene lontano il
-    # freno. Alla soglia, sotto e con la cassa vuota non cambia niente.
-    soglia, mesi = economia.SOGLIA_CASSA_PIENA_CPU, economia.MESI_CASSA_PIENA_CPU
-    casi = ((11, lambda _b: soglia + mesi * 240, 10), (12, lambda _b: soglia, 10), (13, lambda _b: soglia - 1, 10), (14, lambda _b: 0, 10))
-    esiti = _rinnova_col_computer(mondo, monkeypatch, casi)
-    assert [rinnovo - base for base, rinnovo, _sponsor in esiti] == [240, 0, 0, 0]
-
-
-def test_il_freno_ferma_l_offerta_in_piu_al_centodieci_per_cento_dello_sponsor(mondo, monkeypatch):
-    # Un premio di cento volte l'offerta di sempre: la parte del giocatore supererebbe il freno. Con lo sponsor
-    # pari all'offerta, il monte, che è il suo stipendio, si ferma al 110 per cento dello sponsor, entro
-    # l'arrotondamento alla decina; con lo sponsor a nove decimi dell'offerta il monte è già oltre il freno, e
-    # l'offerta resta quella di sempre, anche se la cassa la pagherebbe.
-    soglia, mesi = economia.SOGLIA_CASSA_PIENA_CPU, economia.MESI_CASSA_PIENA_CPU
-    casi = ((15, lambda b: soglia + mesi * 100 * b, 1.0), (16, lambda b: soglia + mesi * 100 * b, 0.9))
-    (base, frenato, sponsor), (base_oltre, oltre, _sponsor) = _rinnova_col_computer(mondo, monkeypatch, casi)
-    assert costanti.FRENO_MONTE_SU_SPONSOR_CPU == 1.10
-    assert base < frenato < base + 100 * base and abs(frenato - 1.10 * sponsor) <= 5
-    assert oltre == base_oltre
 
 
 def test_il_valore_di_mercato_scende_soltanto_nella_finestra(mondo):

@@ -316,32 +316,25 @@ SCARTI_MASSIMI_CPU = 30
 # cassa mediana passa i 15.000 euro fra l'anno 40 e il 43 e arriva a 38.500-48.300 all'anno 60, perché la
 # gloria mediana cresce di un terzo fra l'anno 20 e il 60 e chi ha la cassa piena non ha niente da comprare.
 # Nessuna coppia di soglia e mesi tiene insieme la cassa e i campioni: la scelta è di Gabriele. Quindi,
-# diceva la verifica del 15 ottobre 2026, la decisione 1 era fatta soltanto a metà: chi ha la cassa piena può
-# spendere di più, ma ha già la rosa piena e niente da comprare, e la cassa mediana del computer cresceva
+# dice la verifica del 15 ottobre 2026, la decisione 1 è fatta soltanto a metà: chi ha la cassa piena può
+# spendere di più, ma ha già la rosa piena e niente da comprare, e la cassa mediana del computer cresce
 # ogni anno dall'anno 45 al 60 in tutti i semi. La leva che la ferma, per esempio un'offerta più alta ai
-# rinnovi con un freno sul monte stipendi, andava scelta con Gabriele, rifacendo poi la prova di sessant'anni.
+# rinnovi con un freno sul monte stipendi, si sceglie con Gabriele, e poi si rifà la prova di sessant'anni.
 # Nella prova di sessant'anni del 16 ottobre, senza più il premio nel prezzo e coi fattori nuovi della
 # carriera, la cassa mediana del computer è 14.400-15.300 euro all'anno 40, 25.100-28.400 al 50 e
 # 53.000-56.100 al 60, e sale da 2.256 a 2.477 euro l'anno dal 45 al 60. Una sonda sul mondo del seme 2026
 # all'anno 60 della ritaratura, mai nel progetto, con l'offerta più alta ai rinnovi entro un monte stipendi
 # pari allo sponsor: in sei anni la cassa mediana scende da 45.100 a 32.800 euro, lo stipendio pagato
 # mediano sale da 320 a 370-420, i tesserati restano al 90 per cento e i primi 10 del mondo tutti tesserati.
-# La leva l'ha scelta Gabriele il 16 ottobre 2026, decisione 17: è quella di FRENO_MONTE_SU_SPONSOR_CPU,
-# qui sotto, e la prova di sessant'anni con la soglia del mondiale e la carriera perfetta si rifanno.
+# Gabriele ha scelto quella leva il 16 ottobre 2026, decisione 17, col freno al 110 per cento dello sponsor,
+# e la prova di sessant'anni del 21 ottobre sul PC fisso l'ha bocciata: la cassa mediana si fermava a
+# 18.700-19.600 euro all'anno 60, ma i più forti chiedono da 10.000 a 20.000 euro al mese e li paga soltanto
+# la cassa accumulata delle polisportive più ricche, così dei primi 10 del mondo ne restavano tesserati in
+# media da 1,3 a 4,5 dall'anno 40 al 60, e col freno al 100 per cento da 3,9 a 5,9. Lo stesso giorno
+# Gabriele ha scelto di tornare a prima: la cassa del computer cresce a regime, e la prova di sessant'anni
+# la controlla con la banda allargata di PENDENZA_CASSA_MASSIMA, in strumenti/simulazione_lunga.py.
 SOGLIA_CASSA_PIENA_CPU = 10_000
 MESI_CASSA_PIENA_CPU = 8
-# La leva della decisione 1, decisione 17 di Gabriele del 16 ottobre 2026: con la cassa piena il computer
-# offre di più ai rinnovi dei suoi tesserati. Oltre all'offerta di sempre, la richiesta col suo rialzo,
-# aggiunge la parte del giocatore del premio della cassa piena, cioè il premio diviso fra i tesserati in
-# proporzione al loro stipendio, ma soltanto finché il monte stipendi resta entro questo multiplo dello
-# sponsor del mese: se lo supererebbe, l'offerta in più si ferma dove il monte lo tocca, e se lo ha già
-# toccato non c'è. Prima il premio valeva soltanto negli stipendi dei nuovi arrivi, e il computer con la
-# rosa piena non lo spendeva: la cassa mediana arrivava a 53.000-56.000 euro all'anno 60. La sonda della
-# correzione del 16 ottobre, sul mondo del seme 2026 all'anno 60 fatto avanzare sei anni: col freno a una
-# volta lo sponsor la cassa mediana scendeva da 45.100 a 32.800 euro; con 1,10 fino a 23.700, con lo
-# stipendio pagato mediano da 320 a 330-440 euro, i tesserati al 90 per cento e 8-10 dei primi 10 del
-# mondo tesserati. Sotto la soglia della cassa piena il premio è zero e il rinnovo resta quello di prima.
-FRENO_MONTE_SU_SPONSOR_CPU = 1.10
 # Un'offerta d'acquisto per un tesserato del computer, decisione D23: la polisportiva vuole il suo
 # valore di mercato, e fino a metà in più per il più forte della rosa.
 IMPORTANZA_MASSIMA = 0.5

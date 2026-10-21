@@ -219,16 +219,17 @@ def test_la_prova_lunga_controlla_i_primi_100_tesserati():
 
 def test_i_controlli_della_verifica_nella_prova_lunga():
     # La verifica del 15 ottobre 2026: i primi 10 e 20 tesserati, la soglia del mondiale del mondo
-    # contro quella della carriera perfetta, la cassa mediana del computer ferma a regime.
+    # contro quella della carriera perfetta, la cassa mediana del computer che non corre a regime: dal 21
+    # ottobre 2026 la banda è di 3.000 euro l'anno, scelta di Gabriele che lascia crescere la cassa.
     soglia = costanti.PUNTI_PER_IL_MONDIALE
     annuali = [{"numero_anno": n, "primi_10": 9 if n < 30 else 6, "primi_20": 18, "soglia_mondiale": {"m": soglia["m"] + 40, "f": soglia["f"] - 5},
-                "casse": (0, 10_000 + 1_000 * max(0, n - 45), 0)} for n in range(1, 61)]
+                "casse": (0, 10_000 + 4_000 * max(0, n - 45), 0)} for n in range(1, 61)]
     fuori = sl.fuori_dai_controlli_della_verifica(annuali)
     assert fuori[0] == "dei primi 10 tesserati meno di 8 in 31 anni, dall'anno 30 all'anno 60, al più basso 6"
     assert fuori[1].startswith("soglia del mondiale per gli uomini dall'anno 40 al 60 in media ") and len(fuori) == 3
-    assert fuori[2].startswith("cassa mediana del computer che cresce di 1000 euro l'anno dall'anno 45 al 60")
+    assert fuori[2].startswith("cassa mediana del computer che cresce di 4000 euro l'anno dall'anno 45 al 60")
     for m in annuali:
-        m["primi_10"], m["soglia_mondiale"], m["casse"] = 8, dict(soglia), (0, 9_000 + 200 * max(0, m["numero_anno"] - 45), 0)
+        m["primi_10"], m["soglia_mondiale"], m["casse"] = 8, dict(soglia), (0, 9_000 + 2_500 * max(0, m["numero_anno"] - 45), 0)
     assert sl.fuori_dai_controlli_della_verifica(annuali) == []
     # Le misure di prima, senza le chiavi nuove, passano senza i controlli nuovi.
     assert sl.fuori_dai_controlli_della_verifica([{"numero_anno": 50, "primi_100": 90.0, "casse": (0, 5000, 0)}]) == []

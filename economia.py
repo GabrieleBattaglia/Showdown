@@ -17,8 +17,6 @@ oltre una soglia la cassa in più si conta spesa in qualche mese, e un mese di q
 agli stipendi che si permette. Non al prezzo che paga per un giocatore in vendita, che resta entro il
 valore di mercato col rialzo del computer: la verifica del 15 ottobre 2026 lo ha tolto, perché faceva
 comprare a più volte il loro valore i giocatori che l'utente metteva in vendita a un prezzo gonfiato.
-Dalla decisione 17 di Gabriele del 16 ottobre 2026 la cassa piena alza anche l'offerta ai rinnovi dei
-tesserati del computer, con un freno sul monte stipendi rispetto allo sponsor: offerta_rinnovo_cpu.
 """
 
 import math
@@ -31,7 +29,6 @@ from costanti import (
     FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO,
     FEDELTA_BANDIERA,
     FEDELTA_PER_MESE_DI_PAZIENZA,
-    FRENO_MONTE_SU_SPONSOR_CPU,
     MESI_CASSA_PIENA_CPU,
     MESI_DI_INGAGGIO,
     MESI_DI_VALORE,
@@ -144,8 +141,7 @@ def premio_cassa_piena(cassa):
     Quanto in più al mese si permette una polisportiva del computer con la cassa piena, decisione 1 di
     Gabriele del 14 ottobre 2026: la cassa oltre SOGLIA_CASSA_PIENA_CPU divisa per i mesi in cui conta di
     spenderla, MESI_CASSA_PIENA_CPU; zero sotto la soglia. Si aggiunge agli stipendi che il computer si
-    permette nei tesseramenti, negli scambi, negli acquisti e nei rinnovi, non al prezzo. Dalla decisione
-    17 del 16 ottobre 2026 alza anche l'offerta ai rinnovi, vedi offerta_rinnovo_cpu.
+    permette nei tesseramenti, negli scambi, negli acquisti e nei rinnovi, non al prezzo.
     """
     return max(0.0, cassa - SOGLIA_CASSA_PIENA_CPU) / MESI_CASSA_PIENA_CPU
 
@@ -157,26 +153,6 @@ def spesa_mensile_cpu(sponsor, cassa):
     e il conto è quello di prima fino all'ultimo bit.
     """
     return sponsor + cassa / PARTI_DI_CASSA_PER_STIPENDI + premio_cassa_piena(cassa)
-
-
-def offerta_rinnovo_cpu(offerta, altri, sponsor, cassa):
-    """
-    L'offerta del computer al rinnovo di un tesserato, decisione 17 di Gabriele del 16 ottobre 2026.
-    offerta è quella di sempre, la richiesta col rialzo del computer; altri è il monte stipendi della
-    rosa senza il giocatore; sponsor quello del mese. Con la cassa piena la polisportiva aggiunge la parte
-    del giocatore del premio della cassa piena, in proporzione al suo stipendio nel monte, ma soltanto
-    finché il monte resta entro FRENO_MONTE_SU_SPONSOR_CPU volte lo sponsor: oltre, l'offerta in più si
-    ferma dove il monte tocca il freno. Sotto la soglia della cassa piena, o col monte già al freno,
-    l'offerta resta quella di sempre, fino all'ultimo bit.
-    """
-    premio = premio_cassa_piena(cassa)
-    if premio <= 0:
-        return offerta
-    monte = altri + offerta
-    parte = premio * offerta / max(1, monte)
-    margine = FRENO_MONTE_SU_SPONSOR_CPU * sponsor - monte
-    in_piu = min(parte, margine)
-    return arrotonda(offerta + in_piu) if in_piu > 0 else offerta
 
 
 def mesi_di_pazienza(g):

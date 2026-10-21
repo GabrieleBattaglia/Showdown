@@ -883,16 +883,19 @@ SCOSTAMENTO_GLORIA = 20.0
 # e 16 dei primi 20, in tutti gli anni. La soglia del mondiale del mondo, il trentaduesimo per punti
 # dell'ultimo anno di ogni sesso, in media dall'anno 40 al 60, non più lontana di 15 punti da
 # costanti.PUNTI_PER_IL_MONDIALE, che la carriera perfetta usa al posto del mondo: 15 punti spostano
-# l'età media di A1 di circa mezzo anno. E la cassa mediana del computer ferma a regime, decisione 1 di
-# Gabriele del 14 ottobre 2026: dall'anno 45 al 60 la retta dei minimi quadrati non sale più di 250 euro
-# l'anno, non soltanto la cassa dentro la banda.
+# l'età media di A1 di circa mezzo anno. E la cassa mediana del computer a regime: dall'anno 45 al 60 la
+# retta dei minimi quadrati non sale più di PENDENZA_CASSA_MASSIMA euro l'anno, non soltanto la cassa
+# dentro la banda. Il bersaglio della decisione 1 di Gabriele del 14 ottobre 2026 era la cassa ferma, 250
+# euro l'anno; il 21 ottobre, tolta la decisione 17 che la fermava ma lasciava liberi i campioni, Gabriele
+# ha scelto di lasciarla crescere e di allargare la banda: 3.000 euro l'anno, contro i 2.256-2.477 misurati
+# il 16 ottobre, così la prova segnala ancora una cassa che corre più del solito.
 PRIMI_10_TESSERATI_MINIMI = 8
 PRIMI_20_TESSERATI_MINIMI = 16
 QUALIFICATI_MONDIALE = 32
 SCARTO_SOGLIA_MONDIALE = 15.0
 ANNI_SOGLIA_MONDIALE = (40, 60)
 ANNI_CASSA_FERMA = (45, 60)
-PENDENZA_CASSA_MASSIMA = 250.0
+PENDENZA_CASSA_MASSIMA = 3000.0
 GIORNO_MEDIO_MASSIMO = 450.0
 GIORNO_PEGGIORE_MASSIMO = 650.0
 
