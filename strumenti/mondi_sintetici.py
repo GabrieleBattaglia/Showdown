@@ -282,6 +282,10 @@ def documento_senza_istanti_reali(mondo):
     for p in documento["mondo"]["polisportive"].values():
         for campo in CAMPI_REALI_POLISPORTIVA:
             p.pop(campo, None)
+    # Anche le vecchie glorie scrivono la versione con cui il giocatore era nato: si vedeva soltanto al primo
+    # cambio di versione dopo le impronte, il 21 ottobre 2026. Le voci sono quelle del mondo: si copiano.
+    documento["mondo"]["vecchie_glorie"] = [{chiave: valore for chiave, valore in voce.items() if chiave not in CAMPI_REALI_GIOCATORE}
+                                            for voce in documento["mondo"]["vecchie_glorie"]]
     return documento
 
 

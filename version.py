@@ -6,9 +6,9 @@ avanza come 1.y.z, e la GUI completa uscirà come 2.0.0.
 """
 
 __app_name__ = "MESS"
-__version__ = "1.60.11"
-__date__ = "2026-10-13"
-__author__ = "Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto)"
+__version__ = "1.78.12"
+__date__ = "2026-10-21"
+__author__ = "Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode)"
 
 
 def get_header():
