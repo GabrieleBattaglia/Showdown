@@ -258,6 +258,11 @@ def ingaggio_richiesto(a, ruolo, poli=None):
     return economia.arrotonda(stipendio_richiesto(a, ruolo) * MESI_DI_INGAGGIO * sconto_di_provenienza(a, poli))
 
 
+def ingaggio_minimo(stipendio):
+    """Il premio d'ingaggio più basso che un allenatore con quello stipendio può chiedere: con lo sconto pieno della provenienza, prima dell'arrotondamento."""
+    return stipendio * MESI_DI_INGAGGIO * (1.0 - SCONTO_FEDELTA_RINNOVO)
+
+
 def durata_proposta(a, oggi):
     """I mesi di contratto che l'allenatore propone, dalla tabella dell'età dei giocatori, da 4 a 24."""
     mesi = math.floor(contratti.durata_base(a.eta_anni(oggi)) + 0.5)
@@ -366,5 +371,9 @@ def qualita_media(polisportive, allenatori):
     Lo staff medio del mondo, risposta 30: la media della qualità dello staff fra le polisportive con
     almeno un tesserato, quelle senza staff comprese, a zero; zero se non ce n'è nessuna.
     """
-    qualita_di_ognuna = [qualita_della_polisportiva(p, allenatori) for p in polisportive if p.tesserati]
+    return media([qualita_della_polisportiva(p, allenatori) for p in polisportive if p.tesserati])
+
+
+def media(qualita_di_ognuna):
+    """La media delle qualità date, zero se non ce n'è nessuna: la usa anche il mondo, che le ha già calcolate."""
     return sum(qualita_di_ognuna) / len(qualita_di_ognuna) if qualita_di_ognuna else 0.0

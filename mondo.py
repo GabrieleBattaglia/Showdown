@@ -474,15 +474,18 @@ class Mondo:
         D33 risposta 4. Si chiama al caricamento, all'inizio di ogni giorno simulato e quando cambia uno
         staff; i fattori non si salvano. Lo staff medio, scelta di Gabriele del 21 ottobre 2026, risposta
         30, è la qualità media dello staff del mondo: si misura con tutte le polisportive, e resta quella
-        del giorno quando cambia lo staff di una sola. Sui giocatori il ciclo è uno solo, coi fattori senza
-        staff calcolati una volta: una chiamata per giocatore costava al giorno a regime il 9 per cento del
-        giorno, misurato il 21 ottobre 2026 sera; i numeri sono gli stessi di _fattori_del_giocatore.
+        del giorno quando cambia lo staff di una sola. La qualità di ogni polisportiva si calcola una volta,
+        per la media e per i fattori; sui giocatori il ciclo è uno solo, coi fattori senza staff calcolati
+        una volta, e salta i ritirati, che non si allenano e non giocano: una chiamata per giocatore
+        costava al giorno a regime il 9 per cento del giorno, misurato il 21 ottobre 2026 sera. I numeri
+        sono gli stessi di _fattori_del_giocatore e di staff.qualita_media.
         """
-        if poli is None:
-            self._qualita_media = modulo_staff.qualita_media(self.polisportive.values(), self.allenatori)
         club = [poli] if poli is not None else list(self.polisportive.values())
-        for p in club:
-            self._fattori_staff[p.nome] = modulo_staff.fattori(modulo_staff.qualita_della_polisportiva(p, self.allenatori), self._qualita_media)
+        qualita = [modulo_staff.qualita_della_polisportiva(p, self.allenatori) for p in club]
+        if poli is None:
+            self._qualita_media = modulo_staff.media([q for p, q in zip(club, qualita, strict=True) if p.tesserati])
+        for p, q in zip(club, qualita, strict=True):
+            self._fattori_staff[p.nome] = modulo_staff.fattori(q, self._qualita_media)
         senza_staff = modulo_staff.fattori(0.0, self._qualita_media)
         fattori = self._fattori_staff
         if poli is None:
@@ -490,6 +493,8 @@ class Mondo:
         else:
             giocatori = [g for gid in poli.tesserati if (g := self.giocatori.get(gid)) is not None]
         for g in giocatori:
+            if g.ritirato:
+                continue
             club_del_giocatore = g.appartenenza
             allenamento, rischio, _fedelta = senza_staff if club_del_giocatore == "*" else fattori.get(club_del_giocatore, senza_staff)
             g.fattore_staff = allenamento
@@ -843,6 +848,12 @@ class Mondo:
         if not liberi:
             return 0
         stipendi = {ruolo: [-modulo_staff.stipendio_richiesto(a, ruolo) for a in liberi] for ruolo in modulo_staff.RUOLI}
+        # L'offerta più bassa che il computer potrebbe fare per ruolo, per difetto: il libero meno caro, lo
+        # sconto pieno della provenienza e gli arrotondamenti alla decina. Chi non ha in cassa nemmeno
+        # questa salta subito, senza calcolare lo sponsor: l'esito è lo stesso, e il caso non si tocca. Nei
+        # giorni con un libero che nessuno si può permettere, il conto dello sponsor di tutte le polisportive
+        # costava al giorno a regime quasi il 2 per cento, misurato il 21 ottobre 2026 sera.
+        offerta_minima = {ruolo: (modulo_staff.ingaggio_minimo(min(-s for s in stipendi[ruolo])) - 5) * RIALZO_CPU - 5 for ruolo in modulo_staff.RUOLI}
         presi = set()
         assunti = 0
         # Prima i capi, per tutte: un assistente si assume soltanto coi liberi che restano, perché nei mondi
@@ -856,6 +867,8 @@ class Mondo:
             ruolo = modulo_staff.CAPO if posto == 0 else modulo_staff.ASSISTENTE
             monte = self._monte_memorizzato(poli)
             spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU
+            if spendibile < offerta_minima[ruolo]:
+                continue
             spazio = self._spazio_negli_stipendi(poli)
             # Il primo libero con lo stipendio alla portata: prima di lui costano tutti di più.
             indice = bisect.bisect_left(stipendi[ruolo], -spazio)

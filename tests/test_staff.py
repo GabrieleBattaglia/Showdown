@@ -588,3 +588,18 @@ def test_le_notizie_dello_staff_stanno_nella_barra(n):
         rapporto[chiave] = n
         evento, testo = suoni.evento_avanzamento(rapporto)
         assert evento in suoni.EVENTI and len(testo) <= 40, testo
+
+
+def test_l_offerta_minima_del_computer_sta_sotto_ogni_offerta(mondo):
+    # Il computer salta chi non ha in cassa l'offerta minima senza calcolare lo sponsor: il limite deve stare
+    # sotto ogni offerta vera, anche con lo sconto pieno della polisportiva dove l'allenatore ha chiuso la carriera.
+    from costanti import RIALZO_CPU
+
+    poli = mondo.fonda_polisportiva("Club di prova")
+    for livello in range(1, LIVELLO_MINIMO_ALLENATORE + 1):
+        a = _allenatore(mondo, livello)
+        a.club_di_provenienza, a.fedelta_di_provenienza = poli.nome, 100.0
+        for ruolo in staff.RUOLI:
+            minima = (staff.ingaggio_minimo(staff.stipendio_richiesto(a, ruolo)) - 5) * RIALZO_CPU - 5
+            assert minima <= economia.arrotonda(staff.ingaggio_richiesto(a, ruolo, poli) * RIALZO_CPU)
+            assert minima <= economia.arrotonda(staff.ingaggio_richiesto(a, ruolo) * RIALZO_CPU)
