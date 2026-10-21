@@ -96,6 +96,7 @@ from costanti import (
     MESI_DI_INGAGGIO,
     MESI_DI_RISERVA_CPU,
     MESI_FINESTRA_RINNOVO,
+    MINUTI_RISERVA_UTENTE,
     NOME_FILE_LOG_USCITE,
     NOME_POLISPORTIVA_MAX,
     NOME_POLISPORTIVA_MIN,
@@ -310,7 +311,11 @@ class Mondo:
         self.allenatori = {}
         self.prossimo_allenatore = 1
         self._fattori_staff = {}
+        # Lo staff medio del mondo, risposta 30: lo misura aggiorna_fattori_staff, e zero vuol dire nessuno staff.
+        self._qualita_media = 0.0
         self.staff_appena_nato = False
+        # L'ora vera dell'ultimo avanzamento, per la riserva dei nuovi allenatori all'utente; None fuori dal programma.
+        self._ora_reale = None
 
     # Probabilità, ricerche, diari.
 
@@ -465,11 +470,15 @@ class Mondo:
         qualità del suo staff; sui giocatori, fattore_staff per l'allenamento e fattore_rischio_staff per
         gli infortuni, quelli della loro polisportiva per i tesserati e quelli senza staff per i liberi,
         D33 risposta 4. Si chiama al caricamento, all'inizio di ogni giorno simulato e quando cambia uno
-        staff; i fattori non si salvano.
+        staff; i fattori non si salvano. Lo staff medio, scelta di Gabriele del 21 ottobre 2026, risposta
+        30, è la qualità media dello staff del mondo: si misura con tutte le polisportive, e resta quella
+        del giorno quando cambia lo staff di una sola.
         """
+        if poli is None:
+            self._qualita_media = modulo_staff.qualita_media(self.polisportive.values(), self.allenatori)
         club = [poli] if poli is not None else list(self.polisportive.values())
         for p in club:
-            self._fattori_staff[p.nome] = modulo_staff.fattori_della_polisportiva(p, self.allenatori)
+            self._fattori_staff[p.nome] = modulo_staff.fattori(modulo_staff.qualita_della_polisportiva(p, self.allenatori), self._qualita_media)
         if poli is None:
             for g in self.giocatori.values():
                 self._fattori_del_giocatore(g)
@@ -479,25 +488,48 @@ class Mondo:
                 if g is not None:
                     self._fattori_del_giocatore(g)
 
+    @property
+    def qualita_media_dello_staff(self):
+        """Lo staff medio del mondo di oggi, risposta 30."""
+        return self._qualita_media
+
     def fattori_staff(self, poli):
         """I tre fattori dello staff della polisportiva: allenamento, rischio d'infortunio, crescita della fedeltà."""
         fattori = self._fattori_staff.get(poli.nome)
         if fattori is None:
-            fattori = self._fattori_staff[poli.nome] = modulo_staff.fattori_della_polisportiva(poli, self.allenatori)
+            fattori = self._fattori_staff[poli.nome] = modulo_staff.fattori(modulo_staff.qualita_della_polisportiva(poli, self.allenatori), self._qualita_media)
         return fattori
 
     def _fattori_del_giocatore(self, g):
         """I fattori dello staff sul giocatore: quelli della sua polisportiva, o quelli senza staff per un libero."""
         poli = self.polisportive.get(g.appartenenza) if g.appartenenza != "*" else None
-        allenamento, rischio, _fedelta = self.fattori_staff(poli) if poli is not None else modulo_staff.FATTORI_SENZA_STAFF
+        allenamento, rischio, _fedelta = self.fattori_staff(poli) if poli is not None else modulo_staff.fattori(0.0, self._qualita_media)
         g.fattore_staff = allenamento
         g.fattore_rischio_staff = rischio
+
+    def _riserva(self, a, ora=None):
+        """
+        La riserva all'utente di chi diventa allenatore, regola di Gabriele, risposta 29: per
+        MINUTI_RISERVA_UTENTE minuti veri dall'avanzamento che lo fa nascere, o dall'ora data. Fuori dal
+        programma, nelle prove e negli strumenti che fanno avanzare i giorni a mano, non c'è ora vera e non
+        c'è riserva.
+        """
+        ora = ora or self._ora_reale
+        if ora is not None:
+            a.riservato_fino = ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE)
+
+    def _visibile_al_computer(self, a):
+        """Vero se il computer può assumere l'allenatore: libero, senza prelazione e senza riserva per l'utente."""
+        if not a.libero or a.prelazione is not None:
+            return False
+        return a.riservato_fino is None or a.riservato_fino <= (self._ora_reale or adesso_utc())
 
     def _nasce_un_allenatore(self, data, rng=random, eta_giorni=None):
         """Un allenatore nato, libero, D33 risposta 8: entra nel mondo e nel suo diario."""
         a = modulo_staff.nato(self.nuovo_numero_allenatore(), data, rng, eta_giorni)
         ruolo = "allenatrice" if a.sesso == "f" else "allenatore"
         a.annota(data, f"Entra nel mondo dello showdown da {ruolo}, a {int(a.eta_anni(data))} anni, di classe {a.codice}.")
+        self._riserva(a)
         self.allenatori[a.numero] = a
         return a
 
@@ -509,6 +541,7 @@ class Mondo:
         15 e 21, e la sua polisportiva lo legge nel diario.
         """
         a = modulo_staff.ex_giocatore(self.nuovo_numero_allenatore(), g, data, rng, club.nome if club is not None else None, fedelta)
+        self._riserva(a)
         self.allenatori[a.numero] = a
         a.annota(data, f"Si ritira da giocatore e può allenare: è di classe {a.codice} da allenatore, la sua classe migliore.")
         if club is not None and not club.is_cpu_controlled:
@@ -580,7 +613,7 @@ class Mondo:
         if ingaggio:
             self._paga_ingaggio(poli, ingaggio)
         a.polisportiva, a.ruolo = poli.nome, ruolo
-        a.prelazione = a.prelazione_fino = None
+        a.prelazione = a.prelazione_fino = a.riservato_fino = None
         contratti.stipula(a, oggi, modulo_staff.stipendio_richiesto(a, ruolo), modulo_staff.durata_proposta(a, oggi))
         poli.staff[posto] = a.numero
         nome_ruolo = modulo_staff.nome_del_ruolo(a)
@@ -655,7 +688,7 @@ class Mondo:
         """
         stipendio = modulo_staff.stipendio_richiesto(a, a.ruolo)
         spazio = self._spazio_negli_stipendi(poli) + a.contratto_stipendio
-        migliore = any(b.libero and b.prelazione is None and b.livello <= a.livello - MARGINE_CAMBIO_STAFF_CPU
+        migliore = any(self._visibile_al_computer(b) and b.livello <= a.livello - MARGINE_CAMBIO_STAFF_CPU
                        and modulo_staff.stipendio_richiesto(b, a.ruolo) <= spazio for b in self.allenatori.values())
         if migliore:
             return
@@ -671,7 +704,7 @@ class Mondo:
         volta, dal migliore: lo stipendio scende con la classe, e la ricerca è binaria. Restituisce
         quanti ne hanno assunti.
         """
-        liberi = sorted((a for a in self.allenatori.values() if a.libero and a.prelazione is None), key=lambda a: (a.livello, a.numero))
+        liberi = sorted((a for a in self.allenatori.values() if self._visibile_al_computer(a)), key=lambda a: (a.livello, a.numero))
         if not liberi:
             return 0
         stipendi = {ruolo: [-modulo_staff.stipendio_richiesto(a, ruolo) for a in liberi] for ruolo in modulo_staff.RUOLI}
@@ -726,6 +759,10 @@ class Mondo:
         quanti = modulo_staff.nati_di_un_mondo(giorni)
         for _ in range(quanti):
             self._nasce_un_allenatore(oggi, rng, modulo_staff.eta_sparsa(giorni, rng))
+        # Tutti diventano allenatori adesso, all'apertura: per un'ora sono dell'utente, risposta 29.
+        ora = adesso_utc()
+        for a in self.allenatori.values():
+            self._riserva(a, ora)
         self.staff_appena_nato = True
 
     # Arretrati, vendite e acquisti.
@@ -1826,6 +1863,8 @@ class Mondo:
         inizio = self.datetime_corrente_simulazione
         self.notifica(f"Avanzamento sim: +{ticks} giorni -> {inizio + datetime.timedelta(days=ticks):%Y-%m-%d %H:%M}")
         rapporto["ticks"] = rapporto["giorni"] = ticks
+        # Dalla tappa 13 l'ora vera dell'avanzamento, per la riserva dei nuovi allenatori all'utente, risposta 29.
+        self._ora_reale = ora
         with senza_raccolta():
             for giorno in range(1, ticks + 1):
                 data = inizio + datetime.timedelta(days=giorno)

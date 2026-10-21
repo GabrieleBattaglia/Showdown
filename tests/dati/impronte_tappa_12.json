@@ -1,21 +1,21 @@
 {
- "nota": "Rigenerate il 21 ottobre 2026 sul ramo allenatore, passo 2 della tappa 13: il computer assume lo staff e lo paga, prima i capi per tutte le polisportive e poi gli assistenti; i contratti dello staff scadono e si rinnovano, e lo stipendio dello staff entra nel monte stipendi e nei conti del mese, D33. Il motore non cambia.",
+ "nota": "Rigenerate il 21 ottobre 2026 sul ramo allenatore, passo 2 della tappa 13: il computer assume lo staff, prima i capi e poi gli assistenti, e lo paga; lo staff medio è la qualità media del mondo del giorno, risposta 30 di Gabriele; un'ora di riserva per l'utente sui nuovi allenatori, risposta 29, che nelle prove non scatta. Il motore non cambia.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "5463336e6fe3b1de6d04fd8abeebfb8b244fcced3c00a839dd366cdc10806950",
-  "vivi": 704,
-  "attivi": 704,
-  "tesserati": 629,
-  "polisportive": 43
+  "sha256": "35dce47757e54276ee018755861328c1ace37722f16f30f7b84f184fbbb49d01",
+  "vivi": 716,
+  "attivi": 716,
+  "tesserati": 645,
+  "polisportive": 44
  },
  "mondo_a_regime": {
-  "sha256": "075eb0c44f8d4ba1d03467b6d63b06117c09875370181c58c07c9274ff78d6a2",
+  "sha256": "20eb0783de280e49d8bae57f108ba36cbd665904f3a2b62388f16f051b3b0499",
   "vivi": 1659,
   "attivi": 1259,
-  "tesserati": 1077,
+  "tesserati": 1078,
   "polisportive": 76
  }
 }

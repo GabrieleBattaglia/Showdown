@@ -622,12 +622,13 @@ CURVA_ETA_SPOSTAMENTO = 37.0
 # più del secondo; senza nessuno vale 0. Ogni effetto ha tre ancore, senza staff, staff medio e staff
 # migliore, e fra un'ancora e l'altra va in linea retta sulla qualità: l'allenamento, risposta 3, il
 # rischio d'infortunio in allenamento e in partita, risposte 6 e 23, la crescita della fedeltà, risposte
-# 12 e 26. Lo staff medio è QUALITA_MEDIA_DELLO_STAFF, la media della qualità fra le polisportive del
-# computer a regime: la misura la taratura della tappa, e fino ad allora vale una stima.
+# 12 e 26. Lo staff medio è la media della qualità dello staff fra le polisportive del mondo di quel
+# giorno, scelta di Gabriele del 21 ottobre 2026, risposta 30, dopo la prova breve dei mondi giovani, che
+# per decenni hanno pochi allenatori: così il mondo nel suo insieme si allena sempre come prima dello
+# staff, e lo staff fa andare più in fretta o più piano rispetto alla media; non c'è una costante da tarare.
 LIVELLO_MINIMO_ALLENATORE = 70
 QUALITA_MINIMA_ALLENATORE = 0.2
 PESI_STAFF = (0.7, 0.2, 0.1)
-QUALITA_MEDIA_DELLO_STAFF = 0.5
 FATTORI_ALLENAMENTO_STAFF = (0.85, 1.0, 1.20)
 FATTORI_RISCHIO_STAFF = (1.15, 1.0, 0.85)
 FATTORI_FEDELTA_STAFF = (0.85, 1.0, 1.25)
@@ -646,6 +647,11 @@ QUOTA_VEDENTI_ALLENATORI = 75.0
 MEDIA_CLASSE_NATI_ALLENATORI = 12.0
 # La prelazione dell'utente su un suo tesserato che si ritira e può allenare, risposta 21.
 GIORNI_PRELAZIONE = 10
+# Regola di Gabriele del 21 ottobre 2026, risposta 29: quando qualcuno diventa allenatore, perché nasce
+# o perché si ritira dal gioco, resta riservato all'utente per tanti minuti veri, poi il computer lo
+# può assumere. I minuti contano dal momento in cui il mondo lo fa nascere, recupero dei giorni
+# arretrati compreso: chi nasce mentre il gioco è chiuso resta dell'utente per un'ora dopo l'apertura.
+MINUTI_RISERVA_UTENTE = 60
 # L'economia dello staff, D33 risposta 13 e progetto 3.1: lo stipendio che un capo chiede va in linea
 # retta sulla sua qualità, da STIPENDIO_STAFF_MINIMO per H0 a STIPENDIO_STAFF_MASSIMO per A1, e non in
 # esponenziale come quello dei giocatori, perché un A1 deve restare alla portata delle polisportive più

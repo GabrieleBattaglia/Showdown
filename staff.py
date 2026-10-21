@@ -39,7 +39,6 @@ from costanti import (
     PESI_STAFF,
     PROBABILITA_ALLENATORE_PER_NASCITA,
     PROBABILITA_IPOVEDENTE_CREAZIONE,
-    QUALITA_MEDIA_DELLO_STAFF,
     QUALITA_MINIMA_ALLENATORE,
     QUOTA_STIPENDIO_ASSISTENTE,
     QUOTA_VEDENTI_ALLENATORI,
@@ -70,7 +69,7 @@ CAMPI_ALLENATORE = (
     ("club_di_provenienza", TESTO_O_NULLA), ("fedelta_di_provenienza", float),
     ("polisportiva", TESTO_O_NULLA), ("ruolo", TESTO_O_NULLA), ("contratto_stipendio", int), ("contratto_scadenza", DATA_O_NULLA),
     ("rinnovo_stipendio", int), ("rinnovo_scadenza", DATA_O_NULLA), ("proposte_rinnovo", int),
-    ("prelazione", TESTO_O_NULLA), ("prelazione_fino", DATA_O_NULLA), ("diario", DIARIO),
+    ("prelazione", TESTO_O_NULLA), ("prelazione_fino", DATA_O_NULLA), ("riservato_fino", DATA_O_NULLA), ("diario", DIARIO),
 )
 _CONVERSIONI_ALLENATORE = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_ALLENATORE)
 
@@ -105,6 +104,8 @@ class Allenatore:
         self.proposte_rinnovo = 0
         self.prelazione = None
         self.prelazione_fino = None
+        # L'istante vero fino a cui è riservato all'utente, MINUTI_RISERVA_UTENTE, o None: il computer non lo vede.
+        self.riservato_fino = None
         self.diario = []
 
     def annota(self, data, testo):
@@ -299,25 +300,32 @@ def qualita_dello_staff(capo, assistenti):
     return q
 
 
-def fattore(q, ancore, media=None):
+def fattore(q, ancore, media):
     """
     Il fattore di un effetto per la qualità q: le ancore sono senza staff, staff medio e staff migliore,
-    e fra l'una e l'altra il fattore va in linea retta; lo staff medio è la media data, o quella di costanti.py.
+    e fra l'una e l'altra il fattore va in linea retta. Lo staff medio è media, la qualità media dello
+    staff del mondo di oggi, scelta di Gabriele del 21 ottobre 2026, risposta 30: il mondo nel suo insieme
+    si allena sempre come prima dello staff. In un mondo senza nessun allenatore, media zero, tutti
+    valgono lo staff medio.
     """
     senza, medio, migliore = ancore
-    media = QUALITA_MEDIA_DELLO_STAFF if media is None else media
     q = min(1.0, max(0.0, q))
+    if media <= 0.0:
+        return medio
     if q <= media:
         return senza + (medio - senza) * q / media
+    if media >= 1.0:
+        return migliore
     return medio + (migliore - medio) * (q - media) / (1.0 - media)
 
 
-def fattori(q):
-    """I tre fattori dello staff di qualità q: allenamento, rischio d'infortunio, crescita della fedeltà."""
-    return fattore(q, FATTORI_ALLENAMENTO_STAFF), fattore(q, FATTORI_RISCHIO_STAFF), fattore(q, FATTORI_FEDELTA_STAFF)
+def fattori(q, media):
+    """I tre fattori dello staff di qualità q, con lo staff medio del mondo: allenamento, rischio d'infortunio, crescita della fedeltà."""
+    return fattore(q, FATTORI_ALLENAMENTO_STAFF, media), fattore(q, FATTORI_RISCHIO_STAFF, media), fattore(q, FATTORI_FEDELTA_STAFF, media)
 
 
-FATTORI_SENZA_STAFF = fattori(0.0)
+# I fattori senza staff in un mondo dove qualcuno ha uno staff: le prime ancore.
+FATTORI_SENZA_STAFF = (FATTORI_ALLENAMENTO_STAFF[0], FATTORI_RISCHIO_STAFF[0], FATTORI_FEDELTA_STAFF[0])
 
 
 def livelli_dello_staff(posti, allenatori):
@@ -326,7 +334,16 @@ def livelli_dello_staff(posti, allenatori):
     return livelli[0], livelli[1:]
 
 
-def fattori_della_polisportiva(poli, allenatori):
-    """I tre fattori dello staff di una polisportiva."""
+def qualita_della_polisportiva(poli, allenatori):
+    """La qualità dello staff di una polisportiva, da 0 a 1."""
     capo, assistenti = livelli_dello_staff(poli.staff, allenatori)
-    return fattori(qualita_dello_staff(capo, assistenti))
+    return qualita_dello_staff(capo, assistenti)
+
+
+def qualita_media(polisportive, allenatori):
+    """
+    Lo staff medio del mondo, risposta 30: la media della qualità dello staff fra le polisportive con
+    almeno un tesserato, quelle senza staff comprese, a zero; zero se non ce n'è nessuna.
+    """
+    qualita_di_ognuna = [qualita_della_polisportiva(p, allenatori) for p in polisportive if p.tesserati]
+    return sum(qualita_di_ognuna) / len(qualita_di_ognuna) if qualita_di_ognuna else 0.0

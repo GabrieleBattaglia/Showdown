@@ -22,7 +22,6 @@ import tornei
 from calendario import Calendario
 from costanti import ESPERIENZA_PER_FASE_SUPERATA
 from mondo import Mondo
-from staff import FATTORI_SENZA_STAFF
 
 # L'ordine di forza: 1 del computer, 5 di un club chiuso, 3 dell'utente, 4 libero, 2 del computer, gli altri liberi.
 ORDINE = (1, 5, 3, 4, 2, 6, 7, 8)
@@ -99,8 +98,8 @@ def test_esperienza_fedelta_e_bandiera(chiusa):
     atteso = fasi[1] * ESPERIENZA_PER_FASE_SUPERATA + esperienza.premio_piazzamento(1)
     assert g1.esperienza == pytest.approx(atteso)
     assert mondo.giocatori[8].esperienza == pytest.approx(esperienza.premio_piazzamento(8))
-    assert g1.fedelta == pytest.approx(81.0 - 4 + 4 * FATTORI_SENZA_STAFF[2]) and any("Diventa una bandiera" in v.get("testo", "") for v in g1.diario)
-    assert mondo.giocatori[3].fedelta == pytest.approx(2.0 * FATTORI_SENZA_STAFF[2]) and mondo.giocatori[2].fedelta == 0.0
+    assert g1.fedelta == 81.0 and any("Diventa una bandiera" in v.get("testo", "") for v in g1.diario)
+    assert mondo.giocatori[3].fedelta == 2.0 and mondo.giocatori[2].fedelta == 0.0
 
 
 def test_i_punti_della_classifica_e_i_tornei_giocati(chiusa):

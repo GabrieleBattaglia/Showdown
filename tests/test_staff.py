@@ -29,14 +29,15 @@ from costanti import (
     LIVELLO_MINIMO_ALLENATORE,
     MARGINE_CAMBIO_STAFF_CPU,
     MESI_DI_INGAGGIO,
+    MINUTI_RISERVA_UTENTE,
     PESI_STAFF,
-    QUALITA_MEDIA_DELLO_STAFF,
     QUALITA_MINIMA_ALLENATORE,
     QUOTA_STIPENDIO_ASSISTENTE,
     STIPENDIO_STAFF_MASSIMO,
     STIPENDIO_STAFF_MINIMO,
 )
 from mondo import Mondo
+from utilita import adesso_utc
 
 INIZIO = datetime.datetime(2026, 5, 15, 12, 0)
 
@@ -106,11 +107,15 @@ def test_la_qualita_va_da_h0_ad_a1():
 
 @pytest.mark.parametrize("ancore", [FATTORI_ALLENAMENTO_STAFF, FATTORI_RISCHIO_STAFF, FATTORI_FEDELTA_STAFF])
 def test_le_tre_ancore(ancore):
+    # Lo staff medio è la qualità media del mondo di oggi, risposta 30: qui 0,4.
     senza, medio, migliore = ancore
-    assert staff.fattore(0.0, ancore) == pytest.approx(senza)
-    assert staff.fattore(QUALITA_MEDIA_DELLO_STAFF, ancore) == pytest.approx(medio) == 1.0
-    assert staff.fattore(1.0, ancore) == pytest.approx(migliore)
-    assert staff.fattore(QUALITA_MEDIA_DELLO_STAFF / 2, ancore) == pytest.approx((senza + medio) / 2)
+    media = 0.4
+    assert staff.fattore(0.0, ancore, media) == pytest.approx(senza)
+    assert staff.fattore(media, ancore, media) == pytest.approx(medio) == 1.0
+    assert staff.fattore(1.0, ancore, media) == pytest.approx(migliore)
+    assert staff.fattore(media / 2, ancore, media) == pytest.approx((senza + medio) / 2)
+    # In un mondo senza nessun allenatore tutti valgono lo staff medio.
+    assert staff.fattore(0.0, ancore, 0.0) == medio
 
 
 def test_le_ancore_di_gabriele():
@@ -216,16 +221,22 @@ def test_un_mondo_che_avanza_fa_nascere_allenatori(mondo):
 # I fattori e i loro effetti.
 
 def test_i_fattori_sui_giocatori(mondo):
-    poli = mondo.fonda_polisportiva("Club di prova")
-    tesserato, libero = mondo.giocatori[5], mondo.giocatori[6]
+    poli, altro = mondo.fonda_polisportiva("Club di prova"), mondo.fonda_polisportiva("Altro club")
+    tesserato, dell_altro, libero = mondo.giocatori[5], mondo.giocatori[9], mondo.giocatori[6]
     mondo._tessera(poli, tesserato)
+    mondo._tessera(altro, dell_altro)
+    # Senza nessuno staff nel mondo, tutti valgono lo staff medio, risposta 30.
     mondo.aggiorna_fattori_staff()
-    assert tesserato.fattore_staff == libero.fattore_staff == 0.85 and tesserato.fattore_rischio_staff == 1.15
-    a = _allenatore(mondo, 1)
-    _nello_staff(mondo, poli, a, 0)
-    atteso = staff.fattori(staff.qualita_dello_staff(1, [None, None]))
+    assert tesserato.fattore_staff == libero.fattore_staff == 1.0 and mondo.qualita_media_dello_staff == 0.0
+    _nello_staff(mondo, poli, _allenatore(mondo, 1), 0)
+    mondo.aggiorna_fattori_staff()
+    # Lo staff medio è la media dei due club, uno col capo A1 e uno senza.
+    q = staff.qualita_dello_staff(1, [None, None])
+    assert mondo.qualita_media_dello_staff == pytest.approx(q / 2)
+    atteso = staff.fattori(q, q / 2)
     assert tesserato.fattore_staff == pytest.approx(atteso[0]) and tesserato.fattore_rischio_staff == pytest.approx(atteso[1])
-    assert libero.fattore_staff == 0.85
+    assert atteso[0] > 1.0 > atteso[1]
+    assert dell_altro.fattore_staff == libero.fattore_staff == 0.85 and libero.fattore_rischio_staff == 1.15
     # Chi lascia il club torna senza staff.
     mondo._lascia(poli, tesserato)
     assert tesserato.fattore_staff == 0.85
@@ -240,16 +251,21 @@ def test_l_allenamento_e_gli_infortuni_seguono_lo_staff(mondo):
 
 
 def test_la_fedelta_segue_lo_staff(mondo):
-    poli = mondo.fonda_polisportiva("Club di prova")
-    g = mondo.giocatori[8]
+    poli, altro = mondo.fonda_polisportiva("Club di prova"), mondo.fonda_polisportiva("Altro club")
+    g, h = mondo.giocatori[8], mondo.giocatori[10]
     mondo._tessera(poli, g)
+    mondo._tessera(altro, h)
+    # Senza nessuno staff nel mondo, la fedeltà cresce come prima.
     mondo._aggiungi_fedelta(g, poli, FEDELTA_PER_MESE, INIZIO)
-    assert g.fedelta == pytest.approx(FEDELTA_PER_MESE * 0.85)
+    assert g.fedelta == FEDELTA_PER_MESE
     for posto, livello in enumerate((1, 1, 1)):
         _nello_staff(mondo, poli, _allenatore(mondo, livello), posto)
-    g.fedelta = 0.0
+    mondo.aggiorna_fattori_staff()
+    # Lo staff migliore cresce del 25 per cento, chi non ne ha cala all'85 per cento.
+    g.fedelta = h.fedelta = 0.0
     mondo._aggiungi_fedelta(g, poli, FEDELTA_PER_MESE, INIZIO)
-    assert g.fedelta == pytest.approx(FEDELTA_PER_MESE * 1.25)
+    mondo._aggiungi_fedelta(h, altro, FEDELTA_PER_MESE, INIZIO)
+    assert g.fedelta == pytest.approx(FEDELTA_PER_MESE * 1.25) and h.fedelta == pytest.approx(FEDELTA_PER_MESE * 0.85)
 
 
 # Il formato 8 e l'aggiornamento dal 7.
@@ -414,3 +430,48 @@ def test_il_computer_rinnova_o_aspetta_uno_migliore(mondo):
     _allenatore(mondo, 40 - MARGINE_CAMBIO_STAFF_CPU)
     mondo._rinnovo_dello_staff_cpu(cpu, mio, finestra)
     assert not contratti.ha_rinnovo(mio)
+
+
+def test_un_ora_di_riserva_per_l_utente(mondo):
+    # Regola di Gabriele del 21 ottobre 2026, risposta 29: chi diventa allenatore resta dell'utente per un'ora vera.
+    cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
+    cpu.cassa = 100_000
+    for a in list(mondo.allenatori.values()):
+        del mondo.allenatori[a.numero]
+    ora = datetime.datetime(2026, 10, 21, 20, 0, tzinfo=datetime.UTC)
+    mondo._ora_reale = ora
+    a = mondo._nasce_un_allenatore(INIZIO)
+    assert a.riservato_fino == ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE) == ora + datetime.timedelta(hours=1)
+    random.seed(4)
+    for _ in range(30):
+        mondo._staff_del_computer([cpu], INIZIO)
+    assert a.libero
+    # Passata l'ora, il computer lo vede.
+    mondo._ora_reale = ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE)
+    for _ in range(30):
+        mondo._staff_del_computer([cpu], INIZIO)
+        if not a.libero:
+            break
+    assert cpu.staff[0] == a.numero and a.riservato_fino is None
+    # Fuori dal programma, senza un'ora vera, nessuna riserva.
+    mondo._ora_reale = None
+    assert mondo._nasce_un_allenatore(INIZIO).riservato_fino is None
+
+
+def test_all_aggiornamento_gli_allenatori_sono_dell_utente_per_un_ora(mondo):
+    mondo.giocatori[11].ritirato = True
+    mondo.giocatori[11].classe_migliore = classe.soglia(10)
+    contenuto = archivio.componi(mondo)
+    contenuto["formato"] = 7
+    dati = contenuto["mondo"]
+    for g in dati["giocatori"]:
+        del g["classe_migliore"]
+    for p in dati["polisportive"].values():
+        del p["staff"]
+    del dati["allenatori"], dati["prossimo_allenatore"]
+    archivio.MIGRAZIONI[7](contenuto)
+    nuovo = Mondo()
+    prima = adesso_utc()
+    archivio.costruisci(contenuto, nuovo)
+    assert nuovo.allenatori and all(prima + datetime.timedelta(minutes=59) < a.riservato_fino <= adesso_utc() + datetime.timedelta(minutes=60)
+                                    for a in nuovo.allenatori.values())

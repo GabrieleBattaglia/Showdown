@@ -31,7 +31,6 @@ from costanti import (
 )
 from modelli import Giocatore
 from mondo import Mondo
-from staff import FATTORI_SENZA_STAFF
 
 INIZIO = datetime.datetime(2026, 5, 15, 12, 0)
 PRIMO = datetime.datetime(2026, 6, 1, 12, 0)
@@ -142,7 +141,7 @@ def test_il_primo_del_mese_con_la_cassa_che_basta(mondo):
     for gid in poli.tesserati:
         g = mondo.giocatori[gid]
         # Dalla tappa 11 l'esperienza non cresce più il primo del mese ma ogni giorno, in _allenamento_del_giorno.
-        assert g.fedelta == pytest.approx(2. * FATTORI_SENZA_STAFF[2]) and g.esperienza == 0.0 and g.arretrati == 0 and g.pazienza == 100
+        assert g.fedelta == 2. and g.esperienza == 0.0 and g.arretrati == 0 and g.pazienza == 100
     assert rapporto["tuoi_non_pagati"] == 0
 
 
