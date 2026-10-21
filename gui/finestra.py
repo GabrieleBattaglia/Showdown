@@ -66,6 +66,7 @@ from gui import aspetto
 from gui.dal_vivo import ALLA_FINE, CON_ESC, FinestraDalVivo
 from gui.dialoghi import (
     ASSISTI,
+    AnnunciDellaCronaca,
     Aspetto,
     Caffe,
     CambiaPolisportiva,
@@ -230,6 +231,7 @@ class FinestraPrincipale(wx.Frame):
                 ("&Conservazione dei diari...", None, self.cambia_conservazione),
                 ("&Effetti sonori...", None, self.cambia_effetti),
                 ("&Velocità di gioco...", None, self.cambia_velocita),
+                ("A&nnunci della cronaca...", None, self.cambia_annunci),
             )),
             ("&Aiuto", (
                 ("&Guida ai comandi", "F1", lambda: self.mostra(testi.guida(self.voci_guida()), "guida ai comandi", "guida")),
@@ -1082,6 +1084,22 @@ class FinestraPrincipale(wx.Frame):
                 self.impostazioni = modulo_impostazioni.valide({**self.impostazioni, "velocita_gioco": dialogo.risultato})
                 salvate = self._salva_impostazioni("velocita_di_gioco_salvata")
                 self.ultimo_evento = f"velocità di gioco {self.impostazioni['velocita_gioco']}" if salvate else "velocità di gioco non salvata"
+                self.aggiorna_barra()
+            else:
+                suoni.suona("annullato")
+        finally:
+            dialogo.Destroy()
+
+    def cambia_annunci(self):
+        """Gli annunci della cronaca della partita dal vivo e della differita, 1.79.0: valgono dalla riga seguente, e anche dopo la chiusura."""
+        dialogo = AnnunciDellaCronaca(self, self.impostazioni)
+        try:
+            suoni.suona("dialogo_annunci_cronaca")
+            if self._modale(dialogo) == wx.ID_OK and dialogo.risultato is not None:
+                self.impostazioni = modulo_impostazioni.valide({**self.impostazioni, **dialogo.risultato})
+                salvate = self._salva_impostazioni("annunci_cronaca_salvati")
+                stato = "accesi" if self.impostazioni["annunci_cronaca"] else "spenti"
+                self.ultimo_evento = f"annunci della cronaca {stato}" if salvate else "annunci della cronaca non salvati"
                 self.aggiorna_barra()
             else:
                 suoni.suona("annullato")

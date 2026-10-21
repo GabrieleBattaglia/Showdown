@@ -109,6 +109,41 @@ def suonati(monkeypatch):
     return registrati
 
 
+@pytest.fixture(autouse=True)
+def voce_finta(monkeypatch):
+    """
+    Dalla 1.79.0 nessuna prova parla né scrive sul display braille: le uscite di GBsintesi sono finte,
+    con NVDA attivo, e quello che avrebbero detto finisce in detti e in braille, come (uscita, testo).
+    Gli annunci della sessione della finestra dal vivo si rifanno a ogni prova.
+    """
+    import types
+
+    import GBsintesi
+
+    stato = types.SimpleNamespace(detti=[], braille=[])
+
+    class Finta:
+        def __init__(self, chiave):
+            self.chiave = chiave
+
+        def is_active(self):
+            return self.chiave == "nvda"
+
+        def speak(self, testo, interrupt=False):
+            stato.detti.append((self.chiave, testo))
+
+        def braille(self, testo):
+            # Come in accessible_output2: la voce di Windows il braille non ce l'ha.
+            if self.chiave != "sapi5":
+                stato.braille.append((self.chiave, testo))
+
+    monkeypatch.setattr(GBsintesi, "_crea", Finta)
+    vivo = sys.modules.get("gui.dal_vivo")
+    if vivo is not None:
+        vivo.annunci_condivisi.cache_clear()
+    return stato
+
+
 @pytest.fixture(scope="session")
 def app_wx():
     """L'applicazione wx delle prove con le finestre, una per tutta la sessione, sul desktop nascosto."""

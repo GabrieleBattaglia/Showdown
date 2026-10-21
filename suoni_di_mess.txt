@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 262 suoni, 237 della finestra e 25 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 264 suoni, 239 della finestra e 25 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 6 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -30,7 +30,7 @@ F2, quando il file delle novità non si legge: mess_novita_illeggibile.
 F3, le informazioni con la versione e gli autori: mess_informazioni.
 Offrimi un caffè, nel menu Aiuto: donazione.
 Dona con PayPal, nell'invito al caffè: carillon_dolce.
-Finestra, applicazione, le impostazioni, 12 suoni.
+Finestra, applicazione, le impostazioni, 14 suoni.
 Si apre il dialogo dell'aspetto, colori e caratteri, con Ctrl+P: scintillio_di_ghiaccio.
 Nel dialogo dell'aspetto, i valori tornano ai predefiniti: meteora_bande_azzerate.
 L'aspetto confermato e applicato: meteora_impostazione_cambiata.
@@ -43,6 +43,8 @@ La prova del volume della partita dal vivo, mentre lo si cambia: mess_prova_volu
 I volumi degli effetti e della partita confermati: conferma.
 Si apre il dialogo della velocità di gioco: mess_velocita_di_gioco.
 La velocità di gioco confermata e salvata: mess_velocita_salvata.
+Si apre il dialogo degli annunci della cronaca: mess_annunci_della_cronaca.
+Gli annunci della cronaca confermati e salvati: mess_annunci_salvati.
 Finestra, mondo, i giocatori, 8 suoni.
 Si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G: pokermachine_raddoppio_carta.
 La scheda di un giocatore: meteora_tag_letti.

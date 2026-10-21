@@ -1,13 +1,29 @@
-Collaudo della 1.78.13 di MESS con NVDA: la cronaca della partita dal vivo che cresce riga per riga.
-Prima: nella cartella E:\git\tmp\mess-collaudo-t11 lancia python Showdown.py. È la copia del programma col tuo mondo, aggiornata alla 1.78.13 con git pull, e il tuo mondo vero non si tocca.
+Collaudo della 1.79.0 di MESS con NVDA: la cronaca che cresce riga per riga e i suoi annunci automatici.
+Prima: nella cartella E:\git\tmp\mess-collaudo-t11 lancia python Showdown.py. È la copia del programma col tuo mondo, aggiornata alla 1.79.0 con git pull, e il tuo mondo vero non si tocca.
 Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
-PROVA 1, la cronaca mentre suona.
-Passo 1: con Ctrl+O organizza un'amichevole di un tuo tesserato e scegli Assisti.
-Passo 2: salta il riscaldamento, premi Alt+F per ascoltare fino a fine set, e dopo qualche punto premi Tab.
-Domanda 1: nel campo trovi le righe dei punti già giocati, anche se il set non è finito?
-Passo 3: resta nel campo e scorri con le frecce mentre la partita continua.
-Domanda 2: le righe nuove arrivano in fondo, NVDA non le legge da solo e il cursore resta dove l'hai lasciato?
-Domanda 3: la barra braille segue bene la riga su cui sei?
-Passo 4: torna al pulsante con Maiusc+Tab, lascia finire il set, poi esci con Esc.
-Domanda 4: a fine set il campo dice tutto il set, e la finestra si chiude senza intoppi?
+PROVA 1, il dialogo degli annunci.
+Passo 1: dal menu Impostazioni scegli Annunci della cronaca.
+Domanda 1: il dialogo si apre col suo suono, e il fuoco è su Leggi la cronaca in automatico, già spuntata?
+Domanda 2: Alt+D, Alt+I, Alt+C e Alt+T portano a Dove vanno le righe, alla Sintesi, alle Celle, 40, e al Tempo minimo, 2.000, e ogni campo si legge chiaro?
+Passo 2: lascia tutto com'è e premi Alt+S.
+Domanda 3: il salvataggio ha il suo suono, diverso da quello dell'apertura, e la barra dice annunci della cronaca accesi?
+Esito:
+PROVA 2, la cronaca letta mentre suona.
+Passo 1: con Ctrl+O organizza un'amichevole di un tuo tesserato e scegli Assisti, poi salta il riscaldamento e premi Alt+F per ascoltare fino a fine set.
+Domanda 1: ogni riga della cronaca arriva da sola alla voce e al display, mentre il fuoco resta sul pulsante?
+Domanda 2: al display le righe lunghe arrivano a blocchi di 40 celle, spezzati fra le parole, e c'è il tempo di leggerli?
+Domanda 3: la voce resta al passo con il gioco, o rimane indietro troppo?
+Passo 2: dopo qualche punto premi Tab, resta nel campo e scorri con le frecce mentre la partita continua.
+Domanda 4: nel campo trovi le righe dei punti già giocati, le nuove arrivano in fondo, e il cursore resta dove l'hai lasciato?
+Passo 3: torna al pulsante con Maiusc+Tab e premi Esc.
+Domanda 5: la finestra si chiude senza intoppi, e il display smette di mostrare le righe rimaste in fila?
+Esito:
+PROVA 3, le altre scelte.
+Passo 1: negli Annunci della cronaca scegli solo al braille, Celle 0, e salva; poi ascolta qualche punto di un'amichevole.
+Domanda 1: la voce tace, e al display arriva ogni riga intera?
+Passo 2: scegli solo alla sintesi e come sintesi la voce di Windows, SAPI5, e salva; poi ascolta qualche punto.
+Domanda 2: le righe le legge la voce di Windows, e NVDA tace?
+Passo 3: togli la spunta da Leggi la cronaca in automatico e salva; poi ascolta qualche punto.
+Domanda 3: niente si legge da solo, e la cronaca resta nel campo, da raggiungere con Tab?
+Passo 4: rimetti le scelte di partenza, alla sintesi e al braille, sintesi automatica, 40 celle, lettura accesa, e salva.
 Esito:

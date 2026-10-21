@@ -1951,7 +1951,8 @@ GUIDA_DELLA_PARTITA_DAL_VIVO = (
     "dell'altro giocatore, Alt+V va alla fine e mostra il risultato, Esc esce senza svelarlo, e a incontro finito porta al risultato; "
     "più e meno cambiano la velocità di gioco; "
     "F1 rimette la guida dei tasti nel campo della cronaca, che si raggiunge con Tab. Time-out, cambio campo e inizio del set non si "
-    "sentono: si leggono nella cronaca, e il suono riprende dalla ripresa del gioco.")
+    "sentono: si leggono nella cronaca, e il suono riprende dalla ripresa del gioco. Le righe della cronaca si leggono anche da sole, "
+    "alla sintesi e al display braille, come dice Annunci della cronaca nel menu Impostazioni.")
 
 
 def informazioni():
@@ -2062,6 +2063,14 @@ def titolo_dal_vivo(nomi, velocita, differita=False):
 
 SPIEGAZIONE_VELOCITA = ("La velocità di gioco vale per tutte le partite dal vivo: a 1 le pause fra i punti e la procedura dell'arbitro durano come nella realtà, "
                         "a 2 la metà, a 4, la predefinita, un quarto. L'azione resta sempre a tempo reale. Durante la partita più e meno la cambiano al volo.")
+# Il dialogo degli annunci della cronaca, 1.79.0: le parole delle scelte, con le chiavi di GBsintesi.
+SPIEGAZIONE_ANNUNCI = ("Nella partita dal vivo e nell'ascolto in differita la cronaca cresce riga per riga nel suo campo. Con la lettura automatica "
+                       "ogni riga nuova arriva da sé alla sintesi, al display braille o a tutti e due. Alla sintesi le righe si leggono una dopo "
+                       "l'altra. Al display ogni riga si divide in blocchi grandi quanto le sue celle, e ogni blocco resta almeno per il tempo minimo "
+                       "di lettura; con 0 celle la riga arriva intera. Il braille arriva da NVDA o da JAWS.")
+DESTINAZIONI_DEGLI_ANNUNCI = {"entrambi": "alla sintesi e al braille", "sintesi": "solo alla sintesi", "braille": "solo al braille"}
+SINTESI_DEGLI_ANNUNCI = {"automatica": "automatica, il primo screen reader attivo o la voce di Windows", "nvda": "NVDA", "jaws": "JAWS",
+                         "sapi5": "la voce di Windows, SAPI5"}
 # Il dialogo degli effetti sonori, con il volume della partita della decisione D30.
 SPIEGAZIONE_VOLUMI = ("Il volume degli effetti sonori, da 0 a 100: a 50 i suoni sono come sono stati pensati, a zero tacciono. "
                       "Il volume della partita dal vivo, da 0 a 100, vale soltanto per i suoni della partita: a 95 suona come è stata pensata, "

@@ -1551,6 +1551,47 @@ class VelocitaDiGioco(_Dialogo):
         self.chiudi(wx.ID_OK)
 
 
+class AnnunciDellaCronaca(_Dialogo):
+    """
+    Gli annunci della cronaca, 1.79.0, chiesti da Gabriele: se la cronaca della partita dal vivo e della
+    differita si legge in automatico, dove va, con quale sintesi, quante celle ha il display braille, 0
+    se non importa, e il tempo minimo di lettura di ogni blocco. In risultato restano le scelte, con le
+    chiavi delle impostazioni.
+    """
+
+    def __init__(self, genitore, impostazioni):
+        super().__init__(genitore, "Annunci della cronaca")
+        valide = modulo_impostazioni.valide(impostazioni)
+        self.risultato = None
+        self.sizer.Add(wx.StaticText(self.pannello, label=testi.SPIEGAZIONE_ANNUNCI), 0, wx.ALL, 8)
+        self.leggi = self.aggiungi(wx.CheckBox(self.pannello, label="&Leggi la cronaca in automatico"))
+        self.leggi.SetValue(valide["annunci_cronaca"])
+        self.etichetta("&Dove vanno le righe")
+        self._dove = list(testi.DESTINAZIONI_DEGLI_ANNUNCI)
+        self.dove = self.aggiungi(wx.Choice(self.pannello, choices=list(testi.DESTINAZIONI_DEGLI_ANNUNCI.values())))
+        self.dove.SetSelection(self._dove.index(valide["annunci_dove"]))
+        self.etichetta("S&intesi")
+        self._sintesi = list(testi.SINTESI_DEGLI_ANNUNCI)
+        self.sintesi = self.aggiungi(wx.Choice(self.pannello, choices=list(testi.SINTESI_DEGLI_ANNUNCI.values())))
+        self.sintesi.SetSelection(self._sintesi.index(valide["annunci_sintesi"]))
+        self.etichetta(f"&Celle del display braille, da 0, che vuol dire non importa, a {modulo_impostazioni.CELLE_MASSIME}")
+        self.celle = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=modulo_impostazioni.CELLE_MASSIME, initial=valide["annunci_celle"]))
+        self.etichetta(f"&Tempo minimo di lettura di ogni blocco in braille, in millesimi, da {modulo_impostazioni.LETTURA_MINIMA} "
+                       f"a {modulo_impostazioni.LETTURA_MASSIMA}")
+        self.lettura = self.aggiungi(wx.SpinCtrl(self.pannello, min=modulo_impostazioni.LETTURA_MINIMA, max=modulo_impostazioni.LETTURA_MASSIMA,
+                                                 initial=valide["annunci_lettura_minima"]))
+        salva, _annulla = self.pulsanti((wx.ID_OK, "&Salva"), (wx.ID_CANCEL, "Annulla"))
+        salva.Bind(wx.EVT_BUTTON, self.conferma)
+        self.completa((520, 440))
+        self.leggi.SetFocus()
+
+    def conferma(self, event=None):
+        self.risultato = {"annunci_cronaca": self.leggi.GetValue(), "annunci_dove": self._dove[self.dove.GetSelection()],
+                          "annunci_sintesi": self._sintesi[self.sintesi.GetSelection()], "annunci_celle": self.celle.GetValue(),
+                          "annunci_lettura_minima": self.lettura.GetValue()}
+        self.chiudi(wx.ID_OK)
+
+
 class Lettura(_Dialogo):
     """Un testo da leggere in un'area in sola lettura, con i pulsanti dati: la fine sessione e l'invito al caffè."""
 

@@ -109,6 +109,9 @@ GRUPPI = (
         # La velocità di gioco della partita dal vivo: il tic tac di un metronomo, e tre note che scendono e si posano.
         "dialogo_velocita_di_gioco": "mess_velocita_di_gioco",
         "velocita_di_gioco_salvata": "mess_velocita_salvata",
+        # Gli annunci della cronaca, 1.79.0: il din don degli annunci di una stazione, e lo stesso rovesciato quando si salvano.
+        "dialogo_annunci_cronaca": "mess_annunci_della_cronaca",
+        "annunci_cronaca_salvati": "mess_annunci_salvati",
     }),
     ("Mondo, i giocatori", {
         "dialogo_scheda_giocatore": "pokermachine_raddoppio_carta",
@@ -431,6 +434,8 @@ AZIONI = {
     "effetti_sonori_applicati": "i volumi degli effetti e della partita confermati",
     "dialogo_velocita_di_gioco": "si apre il dialogo della velocità di gioco",
     "velocita_di_gioco_salvata": "la velocità di gioco confermata e salvata",
+    "dialogo_annunci_cronaca": "si apre il dialogo degli annunci della cronaca",
+    "annunci_cronaca_salvati": "gli annunci della cronaca confermati e salvati",
     "dialogo_scheda_giocatore": "si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G",
     "scheda_giocatore": "la scheda di un giocatore",
     "dialogo_diario_giocatore": "si apre la scelta del giocatore di cui leggere il diario, con Ctrl+Shift+D",

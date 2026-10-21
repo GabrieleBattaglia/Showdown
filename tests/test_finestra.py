@@ -75,7 +75,9 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
                    finestra.cambia_effetti, finestra.cambia_velocita, finestra.amichevole, finestra.sala_allenamento, finestra.contratti,
                    # Dalla tappa 12 i dialoghi dei tornei e delle sfide; il ripristino del calendario chiede prima.
                    finestra.lancia_sfida, finestra.sfide_in_arrivo, finestra.storico_sfide, finestra.calendario_tornei, finestra.iscrizioni_tornei,
-                   finestra.tornei_in_corso, finestra.albo_d_oro, finestra.editor_modelli, finestra.editor_formule, finestra.ripristina_calendario}
+                   finestra.tornei_in_corso, finestra.albo_d_oro, finestra.editor_modelli, finestra.editor_formule, finestra.ripristina_calendario,
+                   # Dalla 1.79.0 gli annunci della cronaca.
+                   finestra.cambia_annunci}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -570,8 +572,50 @@ def test_annullare_un_dialogo_suona(finestra, suonati):
     finestra.cambia_aspetto()
     finestra.cambia_effetti()
     finestra.cambia_velocita()
+    finestra.cambia_annunci()
     assert suonati == ["dialogo_scheda_giocatore", "annullato", "dialogo_ricerca", "annullato", "dialogo_aspetto", "annullato", "dialogo_effetti_sonori", "annullato",
-                       "dialogo_velocita_di_gioco", "annullato"]
+                       "dialogo_velocita_di_gioco", "annullato", "dialogo_annunci_cronaca", "annullato"]
+
+
+def test_gli_annunci_della_cronaca(finestra, suonati, monkeypatch, cartella_di_prova):
+    # 1.79.0, coi predefiniti di Gabriele: lettura automatica accesa, alla sintesi automatica e al braille, display di 40 celle.
+    voci = {voce[0]: voce for _t, elenco in finestra.voci_menu() for voce in filter(None, elenco)}
+    assert voci["A&nnunci della cronaca..."][1] is None
+    predefinite = impostazioni.carica()
+    assert (predefinite["annunci_cronaca"], predefinite["annunci_dove"], predefinite["annunci_sintesi"], predefinite["annunci_celle"],
+            predefinite["annunci_lettura_minima"]) == (True, "entrambi", "automatica", 40, 2000)
+
+    def mostra(self):
+        assert self.leggi.GetValue() and self.dove.GetStringSelection() == "alla sintesi e al braille"
+        assert self.sintesi.GetStringSelection().startswith("automatica") and self.celle.GetValue() == 40 and self.lettura.GetValue() == 2000
+        assert (self.celle.GetMin(), self.celle.GetMax()) == (0, impostazioni.CELLE_MASSIME)
+        self.leggi.SetValue(False)
+        self.dove.SetSelection(2)
+        self.sintesi.SetSelection(2)
+        self.celle.SetValue(20)
+        self.lettura.SetValue(1500)
+        self.conferma()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.AnnunciDellaCronaca, "ShowModal", mostra)
+    finestra.cambia_annunci()
+    assert suonati == ["dialogo_annunci_cronaca", "annunci_cronaca_salvati"]
+    salvate = impostazioni.carica()
+    assert (salvate["annunci_cronaca"], salvate["annunci_dove"], salvate["annunci_sintesi"], salvate["annunci_celle"], salvate["annunci_lettura_minima"]) == (
+        False, "braille", "jaws", 20, 1500)
+    assert finestra.ultimo_evento == "annunci della cronaca spenti"
+
+
+def test_le_impostazioni_degli_annunci_si_controllano():
+    # Valori fuori dalle scelte o dai limiti tornano ai predefiniti.
+    valide = impostazioni.valide({"annunci_cronaca": "sì", "annunci_dove": "altrove", "annunci_sintesi": "festival", "annunci_celle": 161,
+                                  "annunci_lettura_minima": 50})
+    assert (valide["annunci_cronaca"], valide["annunci_dove"], valide["annunci_sintesi"], valide["annunci_celle"], valide["annunci_lettura_minima"]) == (
+        True, "entrambi", "automatica", 40, 2000)
+    valide = impostazioni.valide({"annunci_cronaca": False, "annunci_dove": "sintesi", "annunci_sintesi": "sapi5", "annunci_celle": 0,
+                                  "annunci_lettura_minima": 60_000})
+    assert (valide["annunci_cronaca"], valide["annunci_dove"], valide["annunci_sintesi"], valide["annunci_celle"], valide["annunci_lettura_minima"]) == (
+        False, "sintesi", "sapi5", 0, 60_000)
 
 
 def test_la_velocita_di_gioco(finestra, suonati, monkeypatch, cartella_di_prova):

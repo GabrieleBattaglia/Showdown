@@ -12,11 +12,18 @@ Dal 2026-10-08, con la decisione D29, c'è la velocità di gioco della partita d
 modi di seguire l'amichevole diventano Assisti e Vai alla fine, con i valori di prima migrati.
 Con la decisione D30, lo stesso giorno, la velocità di gioco parte da 4, e chi l'ha già salvata la
 ritrova com'era; e la partita ha un volume suo, da 0 a 100, accanto a quello degli effetti.
+Dal 2026-10-21, con la 1.79.0, gli annunci della cronaca, chiesti da Gabriele prima del collaudo della
+1.78.13: la cronaca della partita dal vivo e della differita si legge in automatico, alla sintesi, al
+braille o a tutti e due, con la sintesi scelta fra l'automatica, NVDA, JAWS e la voce di Windows, le
+celle del display braille e il tempo minimo di lettura di ogni blocco. Le chiavi delle uscite e delle
+destinazioni sono quelle di GBsintesi, di GBUtils.
 """
 
 import contextlib
 import json
 import os
+
+from GBsintesi import AUTOMATICA, DESTINAZIONI, USCITE
 
 import percorsi
 
@@ -46,9 +53,17 @@ VELOCITA_PREDEFINITA = 4
 # Gabriele ha approvato; si parte da 50, la metà, scelta di Gabriele dell'8 ottobre 2026, così il
 # cursore ha strada nei due sensi.
 VOLUME_PARTITA_PREDEFINITO = 50
+# Gli annunci della cronaca, 1.79.0, coi predefiniti di Gabriele: lettura automatica accesa, alla sintesi
+# automatica e al braille, display di 40 celle. Le celle vanno da 0, che vuol dire non importa e manda
+# ogni riga intera, a 160; il tempo minimo di lettura di ogni blocco del display, in millesimi, da 100 a
+# 60.000 e 2.000 di partenza, come in MeTeOra, da cui viene la barra a blocchi.
+CELLE_MASSIME = 160
+LETTURA_MINIMA, LETTURA_MASSIMA = 100, 60_000
 PREDEFINITE = {"dimensione": 12, "colore_testo": [0, 100, 0], "colore_sfondo": [0, 0, 0], "volume_effetti": 50,
                "amichevole_set": 3, "amichevole_modo": "assisti", "amichevole_livello": "normale", "velocita_gioco": VELOCITA_PREDEFINITA,
-               "volume_partita": VOLUME_PARTITA_PREDEFINITO}
+               "volume_partita": VOLUME_PARTITA_PREDEFINITO,
+               "annunci_cronaca": True, "annunci_dove": "entrambi", "annunci_sintesi": AUTOMATICA, "annunci_celle": 40,
+               "annunci_lettura_minima": 2000}
 
 
 def _colore_valido(valore):
@@ -67,17 +82,21 @@ def valide(dati):
         if _colore_valido(dati.get(chiave)):
             risultato[chiave] = list(dati[chiave])
     for chiave, minimo, massimo in (("volume_effetti", VOLUME_MINIMO, VOLUME_MASSIMO), ("volume_partita", VOLUME_MINIMO, VOLUME_MASSIMO),
-                                    ("velocita_gioco", VELOCITA_MINIMA, VELOCITA_MASSIMA)):
+                                    ("velocita_gioco", VELOCITA_MINIMA, VELOCITA_MASSIMA), ("annunci_celle", 0, CELLE_MASSIME),
+                                    ("annunci_lettura_minima", LETTURA_MINIMA, LETTURA_MASSIMA)):
         valore = dati.get(chiave)
         if isinstance(valore, int) and not isinstance(valore, bool) and minimo <= valore <= massimo:
             risultato[chiave] = valore
     modo = dati.get("amichevole_modo")
     if isinstance(modo, str):
         dati = {**dati, "amichevole_modo": MODI_DI_PRIMA.get(modo, modo)}
-    for chiave, ammessi in (("amichevole_set", SET_DELL_AMICHEVOLE), ("amichevole_modo", MODI_DELL_AMICHEVOLE), ("amichevole_livello", LIVELLI_DELL_AMICHEVOLE)):
+    for chiave, ammessi in (("amichevole_set", SET_DELL_AMICHEVOLE), ("amichevole_modo", MODI_DELL_AMICHEVOLE), ("amichevole_livello", LIVELLI_DELL_AMICHEVOLE),
+                            ("annunci_dove", DESTINAZIONI), ("annunci_sintesi", (AUTOMATICA, *USCITE))):
         valore = dati.get(chiave)
         if not isinstance(valore, bool) and valore in ammessi:
             risultato[chiave] = valore
+    if isinstance(dati.get("annunci_cronaca"), bool):
+        risultato["annunci_cronaca"] = dati["annunci_cronaca"]
     return risultato
 
 

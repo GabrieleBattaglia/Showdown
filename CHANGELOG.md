@@ -3,6 +3,14 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.79.0] - 2026-10-21
+
+### Gli annunci della cronaca
+
+Nella partita dal vivo e nell'ascolto in differita la cronaca si legge da sola: ogni riga nuova, appena l'azione la fa sentire, arriva alla sintesi, al display braille o a tutti e due, senza toglierti il fuoco dal pulsante. Si sceglie dal menu Impostazioni, Annunci della cronaca: Leggi la cronaca in automatico, Alt+L, acceso all'inizio; Dove vanno le righe, Alt+D, alla sintesi e al braille, solo alla sintesi o solo al braille; la Sintesi, Alt+I, automatica, cioè il primo screen reader attivo o la voce di Windows, oppure NVDA, JAWS o la voce di Windows, SAPI5; le Celle del display braille, Alt+C, 40 all'inizio, 0 se non importa; e il Tempo minimo di lettura di ogni blocco in braille, Alt+T, 2.000 millesimi all'inizio. Alla sintesi le righe si leggono una dopo l'altra. Al display ogni riga si divide in blocchi grandi quanto le celle, spezzati fra le parole, e ogni blocco resta almeno per il tempo minimo; il braille arriva da NVDA o da JAWS, anche quando la sintesi è la voce di Windows. Spenta la lettura automatica, la cronaca resta da leggere nel suo campo, con Tab. Il dialogo ha due suoni nuovi, all'apertura e al salvataggio.
+
+La voce e il display vengono da GBsintesi, un modulo nuovo di GBUtils, V214, nato dalla sintesi dei sottotitoli di MeTeOra: per usarlo da sorgente servono accessible_output2 e pywin32.
+
 ## [1.78.13] - 2026-10-21
 
 Nella partita dal vivo e nell'ascolto in differita la cronaca cresce riga per riga mentre l'azione suona, e non più soltanto a fine punto o in pausa: anche con Ascolta fino a fine set, con Tab trovi nel campo quello che hai appena sentito. Le righe nuove arrivano in fondo senza spostarti il cursore, il fuoco resta sul pulsante, e NVDA non le legge da solo, così non copre i suoni.

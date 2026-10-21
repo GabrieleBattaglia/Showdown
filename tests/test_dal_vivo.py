@@ -191,6 +191,59 @@ def test_la_cronaca_che_cresce_non_sposta_chi_legge(vivo, monkeypatch):
     assert f.cronaca.GetInsertionPoint() == 3
 
 
+class AnnunciFinti:
+    """Gli annunci della cronaca della finestra, 1.79.0: si annotano le righe annunciate e le volte che si svuota il display."""
+
+    def __init__(self):
+        self.righe = []
+        self.svuotati = 0
+
+    def annuncia(self, righe, impostazioni):
+        assert impostazioni["annunci_cronaca"] in (True, False)
+        self.righe.extend(righe)
+
+    def svuota(self):
+        self.svuotati += 1
+
+
+def test_le_righe_nuove_si_annunciano_una_volta_mentre_suona(vivo):
+    f = vivo.finestra
+    f.annunci = finti = AnnunciFinti()
+    _salta_il_riscaldamento(vivo)
+    assert finti.righe[-1] == "Fine del riscaldamento."
+    finti.righe.clear()
+    f.al_prosegui()
+    durante = []
+    while f.stato == dal_vivo.SUONA:
+        vivo.orologio.adesso += 0.05
+        f.al_battito()
+        durante.append(len(finti.righe))
+    finale = vivo.testo().splitlines()
+    # Ogni riga della tranche una volta sola e nell'ordine, e le prime già mentre l'azione suonava.
+    assert finti.righe == finale
+    assert any(0 < quante < len(finale) for quante in durante)
+    f.esci(dal_vivo.CON_ESC)
+    assert finti.svuotati == 1
+
+
+def test_con_le_impostazioni_annunciano_gli_annunci_della_sessione(app_wx, voce_finta):
+    v = Vivo(impostazioni=impostazioni.valide({"annunci_dove": "sintesi"}))
+    try:
+        f = v.finestra
+        assert f.annunci is dal_vivo.annunci_condivisi()
+        _salta_il_riscaldamento(v)
+        assert ("nvda", "Fine del riscaldamento.") in voce_finta.detti and voce_finta.braille == []
+    finally:
+        v.finestra.timer.Stop()
+        v.finestra.Destroy()
+    # Senza impostazioni, come nelle altre prove, nessun annuncio.
+    senza = Vivo().finestra
+    try:
+        assert senza.annunci is None
+    finally:
+        senza.Destroy()
+
+
 def test_la_pausa_e_la_ripresa_dalla_stessa_posizione(vivo, suonati):
     f = vivo.finestra
     _salta_il_riscaldamento(vivo)

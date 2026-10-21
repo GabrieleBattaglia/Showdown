@@ -21,7 +21,9 @@ Con Tab e Maiusc+Tab si va nel campo della cronaca, dove si legge la tranche al 
 campo cambia mentre il fuoco resta sul pulsante, perciò NVDA non lo legge da solo e non copre i
 suoni. Dal 2026-10-21, scelta di Gabriele al collaudo della 1.50.0, il campo cresce riga per riga
 mentre l'azione suona, e non soltanto a fine tranche o in pausa: chi ci legge dentro trova le righe
-nuove in fondo, e il cursore resta dove l'ha lasciato. Prima della prima tranche il campo tiene la guida dei tasti, che dice il lato e
+nuove in fondo, e il cursore resta dove l'ha lasciato. Dalla 1.79.0 le righe nuove si annunciano
+anche, alla sintesi, al display braille o a tutti e due, secondo gli annunci della cronaca delle
+impostazioni: annunci.py, con GBsintesi di GBUtils. Prima della prima tranche il campo tiene la guida dei tasti, che dice il lato e
 la velocità di adesso anche dopo Alt+L, più e meno; F1 la rimette nel campo in ogni momento. Il suono
 della partita si ferma sempre con la maniglia del suo ciclo, mai con Acusticator.stop, che
 zittirebbe anche gli effetti della finestra.
@@ -44,10 +46,12 @@ gli acciacchi si leggono nel campo, senza un suono loro. Le parti della tappa 12
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 """
 
+import functools
 import time
 
 import wx
 
+import annunci as modulo_annunci
 import impostazioni as modulo_impostazioni
 import partita_sonora as ps
 import suoni
@@ -72,15 +76,27 @@ ALLA_FINE = "fine"
 AL_RISULTATO = "risultato"
 
 
+@functools.cache
+def annunci_condivisi():
+    """
+    Gli annunci della cronaca della sessione, 1.79.0: uno solo per tutte le finestre dal vivo e in
+    differita, così la sintesi resta aperta fra una partita e l'altra; le attese del display sono di wx.
+    """
+    return modulo_annunci.Annunci(lambda secondi, funzione: wx.CallLater(max(1, round(secondi * 1000)), funzione))
+
+
 class FinestraDalVivo(_Dialogo):
     """
     La partita dal vivo: gemello è l'incontro ancora da giocare, con lo stesso seme di quello
     registrato; nomi e livello sono quelli della cronaca, velocita quella di gioco delle impostazioni,
     da cui viene anche il volume della partita; senza impostazioni vale il volume predefinito.
-    Alla chiusura uscita dice come si è chiusa, e velocita la velocità a cui si è arrivati.
+    Alla chiusura uscita dice come si è chiusa, e velocita la velocità a cui si è arrivati. Dalla 1.79.0
+    le righe nuove della cronaca si annunciano con annunci, quelli della sessione se non se ne danno e
+    ci sono le impostazioni; senza impostazioni, come nelle prove, nessun annuncio.
     """
 
-    def __init__(self, genitore, gemello, nomi, livello, velocita, impostazioni=None, cassa=None, orologio=None, ascoltatore="A", differita=False):
+    def __init__(self, genitore, gemello, nomi, livello, velocita, impostazioni=None, cassa=None, orologio=None, ascoltatore="A", differita=False,
+                 annunci=None):
         super().__init__(genitore, testi.titolo_dal_vivo(nomi, velocita, differita))
         self.nomi = nomi
         self.livello = livello
@@ -109,6 +125,9 @@ class FinestraDalVivo(_Dialogo):
         self.tranche = []
         # Quante voci della tranche il campo mostra già: mentre suona, il campo si riscrive soltanto quando ne arriva una nuova.
         self._voci_nel_campo = 0
+        # Gli annunci della cronaca, 1.79.0, e quante righe della tranche hanno già letto.
+        self.annunci = annunci if annunci is not None or impostazioni is None else annunci_condivisi()
+        self._righe_annunciate = 0
         self.uscita = None
         self.prosegui = wx.Button(self.pannello, label="&Prosegui")
         self.sizer.Add(self.prosegui, 0, wx.ALL, 8)
@@ -182,6 +201,14 @@ class FinestraDalVivo(_Dialogo):
         self._scrivi("\n".join(righe) or "In questo tratto la cronaca, a questo livello, non ha frasi.", tieni_il_cursore=True)
         self._guida_in_vista = False
         self._voci_nel_campo = len(voci)
+        self._annuncia(righe)
+
+    def _annuncia(self, righe):
+        """Le righe della tranche non ancora annunciate, con gli annunci della cronaca, 1.79.0."""
+        nuove = righe[self._righe_annunciate:]
+        self._righe_annunciate = max(self._righe_annunciate, len(righe))
+        if nuove and self.annunci is not None:
+            self.annunci.annuncia(nuove, modulo_impostazioni.valide(self.impostazioni))
 
     def _sentite(self, posizione=None):
         """Le voci della tranche fin dove il suono è arrivato: al secondo dato, o a quello della pausa."""
@@ -205,6 +232,7 @@ class FinestraDalVivo(_Dialogo):
         if righe:
             self._scrivi("\n".join(righe), tieni_il_cursore=True)
             self._guida_in_vista = False
+            self._annuncia(righe)
 
     # Il suono.
 
@@ -268,6 +296,7 @@ class FinestraDalVivo(_Dialogo):
         self.modo = modo
         self.tranche = list(segmento.voci)
         self._voci_nel_campo = 0
+        self._righe_annunciate = 0
         self._suona_segmento(segmento, fresco=True, anticipo=anticipo)
         self.stato = SUONA
         self._aggiorna_prosegui()
@@ -445,6 +474,9 @@ class FinestraDalVivo(_Dialogo):
         self.uscita = uscita
         self.timer.Stop()
         self.riproduttore.ferma()
+        # Le righe ancora in fila per il display non servono più.
+        if self.annunci is not None:
+            self.annunci.svuota()
         self.chiudi(wx.ID_CANCEL if uscita == CON_ESC else wx.ID_OK)
 
     def _tasto(self, event):
