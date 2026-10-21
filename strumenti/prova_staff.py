@@ -21,6 +21,7 @@ def main():
     for cartella in (argomenti.codice, argomenti.codice / "strumenti"):
         sys.path.insert(0, str(cartella))
     import simulazione_lunga as sl
+
     import staff
 
     def misura(mondo, numero_anno):
