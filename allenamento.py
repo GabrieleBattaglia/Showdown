@@ -35,7 +35,6 @@ from costanti import (
     CALO_MASSIMO_ANNUO,
     COSTO_PER_PUNTO_PESATO,
     CRESCITA_DEL_COSTO,
-    FATTORE_ALLENATORE,
     INDOLE_PREDEFINITA,
     INDOLI,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
@@ -105,12 +104,14 @@ def sconto(g, caratteristica):
 def efficacia(g, caratteristica=None):
     """
     Quanto rende l'allenamento, oggi: la curva d'età di Hattrick per la maturazione, per il
-    talento e l'apprendista rapido se ci sono, per l'allenatore. Uguale per tutte le
-    caratteristiche: l'argomento c'è perché chi chiama ragiona per caratteristica.
+    talento e l'apprendista rapido se ci sono, per lo staff. Uguale per tutte le
+    caratteristiche: l'argomento c'è perché chi chiama ragiona per caratteristica. Dalla tappa 13 il
+    fattore dello staff lo scrive il mondo sul giocatore, fattore_staff, D33: chi non ce l'ha, come i
+    giocatori dei mondi sintetici e della carriera perfetta, vale lo staff medio, 1.
     """
     del caratteristica
     anni = g.eta / ANNO_SIMULAZIONE_GIORNI
-    return tratti.curva_eta(anni) * tratti.fattore_maturazione(g) * tratti.efficacia_dei_tratti(g) * FATTORE_ALLENATORE
+    return tratti.curva_eta(anni) * tratti.fattore_maturazione(g) * tratti.efficacia_dei_tratti(g) * getattr(g, "fattore_staff", 1.0)
 
 
 def _coefficiente(g, c, efficacia_del_giorno=None):

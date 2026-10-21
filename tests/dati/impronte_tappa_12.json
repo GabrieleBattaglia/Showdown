@@ -1,21 +1,21 @@
 {
- "nota": "Rigenerate il 21 ottobre 2026 con la 1.78.12: l'impronta del mondo toglie anche la versione scritta nelle vecchie glorie, che cambiava l'impronta a ogni versione nuova; il mondo non cambia, e le impronte sono le stesse con la 1.60.11 e con la 1.78.12.",
+ "nota": "Rigenerate il 21 ottobre 2026 sul ramo allenatore, passo 1 della tappa 13: lo staff cambia il mondo per scelta, D33. Nascono gli allenatori, uno ogni venti nascite; senza staff i liberi e le polisportive si allenano più piano, rischiano un poco di più e la fedeltà cresce più piano; i giocatori hanno la classe migliore della carriera. Il motore non cambia.",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "4eed67b70da0d49fd722bb66486763a851f82d3fec324785323b3f743c2d179d",
-  "vivi": 672,
-  "attivi": 672,
-  "tesserati": 602,
-  "polisportive": 41
+  "sha256": "10ed3a8dafbfffed05215d4fe2211a56816949d7fbeac5e2b2736fca1105965c",
+  "vivi": 730,
+  "attivi": 730,
+  "tesserati": 652,
+  "polisportive": 44
  },
  "mondo_a_regime": {
-  "sha256": "2b1f96862a3e6e3e17d5faf5d507e091c2a8f75ee7bbf8af8824d05edf82f812",
-  "vivi": 1658,
-  "attivi": 1258,
-  "tesserati": 1080,
-  "polisportive": 77
+  "sha256": "6ddb5e26b6dfb0472cf3beac7536236da76c42f8d40ecff4016ab7a1ecf9be2b",
+  "vivi": 1659,
+  "attivi": 1259,
+  "tesserati": 1077,
+  "polisportive": 76
  }
 }

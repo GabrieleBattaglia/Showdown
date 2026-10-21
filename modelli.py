@@ -224,6 +224,8 @@ CAMPI_GIOCATORE = (
     ("prossimo_torneo", DATA_O_NULLA), ("iscrizione_automatica", bool),
     # Le gare a squadre vinte e perse da titolare, nelle sfide e nella coppa.
     ("gare_squadre_vinte", int), ("gare_squadre_perse", int),
+    # Dalla tappa 13, formato 8: il punteggio di classe più alto della carriera, D33 risposta 9.
+    ("classe_migliore", float),
 )
 
 
@@ -260,6 +262,8 @@ CAMPI_POLISPORTIVA = (
     ("palmares_recente", PALMARES),
     # Le sfide: quante se ne possono lanciare, il giorno dell'ultima giocata, le vinte e le perse.
     ("sfide_da_lanciare", int), ("ultima_sfida", DATA_O_NULLA), ("sfide_vinte", int), ("sfide_perse", int),
+    # Dalla tappa 13, formato 8: lo staff, i numeri del capo e dei due assistenti, 0 per un posto vuoto.
+    ("staff", LISTA_INTERI),
 )
 # I campi delle sfide di una polisportiva, con il valore di chi nasce: due sfide da lanciare, come il primo del mese.
 CAMPI_SFIDE_VUOTO = {"sfide_da_lanciare": SFIDE_AL_MESE, "ultima_sfida": None, "sfide_vinte": 0, "sfide_perse": 0}
@@ -716,10 +720,21 @@ class Giocatore:
         self.arretrati = 0
         self.bandiera = caso(PROBABILITA_BANDIERA_CREAZIONE)
         self.annota(self.datetime_creazione_sim, f"Entra nel mondo dello showdown, a {int(self.eta_anni)} anni: comincia a giocare, e la sua esperienza parte da zero.")
+        # Dalla tappa 13 la classe migliore della carriera, D33: alla nascita è quella di oggi.
+        self.classe_migliore = classe.punteggio(self)
 
     def annota(self, data, testo):
         """Una voce nuova nel diario del giocatore, con la data simulata."""
         annota_diario(self.diario, data, testo)
+
+    def aggiorna_classe_migliore(self):
+        """La classe migliore della carriera, tappa 13: il punteggio di oggi se è più alto di quello ricordato. Lo restituisce."""
+        self.classe_migliore = max(self.classe_migliore, classe.punteggio(self))
+        return self.classe_migliore
+
+    def livello_migliore(self):
+        """Il livello della classe migliore della carriera, contando anche quella di oggi: prima dei 40 anni si ricorda solo al ritiro."""
+        return classe.livello(max(self.classe_migliore, classe.punteggio(self)))
 
     def annulla_contratto(self):
         """Toglie contratto, rinnovo, proposte e trattativa: è lo stato di chi è libero."""
@@ -1095,6 +1110,8 @@ class Polisportiva:
         self.palmares_recente = {}
         for campo, vuoto in CAMPI_SFIDE_VUOTO.items():
             setattr(self, campo, vuoto)
+        # Dalla tappa 13 lo staff, D33: il capo e due assistenti, tutti da assumere.
+        self.staff = [0, 0, 0]
         self.annota(datetime_creazione_sim, "Fondata.")
 
     def annota(self, data, testo):
@@ -1134,6 +1151,10 @@ class Polisportiva:
                              ("sfide_perse", p.sfide_perse >= 0)):
             if not buono:
                 raise ValueError(f"{chi}: il campo {campo} non è valido: {getattr(p, campo)!r}")
+        # Dalla tappa 13 lo staff: tre posti, numeri positivi o 0, e nessun allenatore in due posti.
+        occupati = [n for n in p.staff if n]
+        if len(p.staff) != 3 or any(n < 0 for n in p.staff) or len(occupati) != len(set(occupati)):
+            raise ValueError(f"{chi}: il campo staff non è valido: {p.staff!r}")
         p.indicecollettivotesserati = 0.0
         return p
 

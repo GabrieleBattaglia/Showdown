@@ -59,12 +59,14 @@ import math
 import random
 
 import calendario
+import classe as modulo_classe
 import contratti
 import esperienza
 import infortuni
 import palmares
 import percorsi
 import sfide
+import staff as modulo_staff
 import tratti
 from allenamento import allena_secondo_programma, mantenimento_del_mese
 from costanti import (
@@ -73,6 +75,7 @@ from costanti import (
     COSTANZA_LIBERI,
     CREA_NUOVI_PER_TICK_RANGE,
     DECADIMENTO_COSTANZA,
+    ETA_CLASSE_MIGLIORE_GIORNI,
     ETA_MINIMA_CHIUSURA_CPU_ANNI,
     FATTORE_PROB_GLORIA,
     FATTORE_PROB_TESSERATI,
@@ -80,6 +83,7 @@ from costanti import (
     FEDELTA_MASSIMA,
     FEDELTA_PER_MESE,
     GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET,
+    GIORNI_PRELAZIONE,
     IMPORTANZA_MASSIMA,
     INTENSITA,
     INTENSITA_PREDEFINITA,
@@ -98,6 +102,7 @@ from costanti import (
     PROB_CREAZIONE_POLI_CPU_PER_TICK,
     PROB_SCAMBIO_CPU_GIORNALIERA,
     PROB_USCITA_PREMATURA_GIORNALIERA,
+    PROBABILITA_ALLENATORE_PER_NASCITA,
     PROBABILITA_IPOVEDENTE_CREAZIONE,
     QUOTA_SEDUTA_LIBERI,
     REPUTAZIONE_MINIMA,
@@ -297,6 +302,13 @@ class Mondo:
         # Dalla tappa 12 il calendario dei tornei e le sfide fra polisportive, salvati col mondo nel formato 7.
         self.calendario = calendario.Calendario()
         self.sfide = sfide.RegistroSfide()
+        # Dalla tappa 13 gli allenatori del mondo, per numero, e il numero del prossimo, salvati nel
+        # formato 8; i fattori dello staff di ogni polisportiva, che non si salvano: li ricava
+        # aggiorna_fattori_staff. Vero se lo staff è appena nato dall'aggiornamento al formato 8.
+        self.allenatori = {}
+        self.prossimo_allenatore = 1
+        self._fattori_staff = {}
+        self.staff_appena_nato = False
 
     # Probabilità, ricerche, diari.
 
@@ -403,6 +415,7 @@ class Mondo:
         """
         g.appartenenza = poli.nome
         poli.aggiungi_tesserato(g.id, g.indice_collettivo_valore)
+        self._fattori_del_giocatore(g)
         g.fedelta = 0.
         g.pazienza = 100.
         g.arretrati = 0
@@ -428,12 +441,136 @@ class Mondo:
         poli.rimuovi_tesserato(g.id, g.indice_collettivo_valore)
         poli.in_vendita.pop(g.id, None)
         g.appartenenza = "*"
+        self._fattori_del_giocatore(g)
         g.fedelta = 0.
         g.pazienza = 100.
         g.arretrati = 0
         g.annulla_contratto()
         g.programma = g.indole
         g.intensita = INTENSITA_PREDEFINITA
+
+    # Lo staff, tappa 13, decisione D33.
+
+    def nuovo_numero_allenatore(self):
+        """Il numero di un allenatore nuovo: il contatore sale soltanto, e si salva col mondo."""
+        numero = self.prossimo_allenatore
+        self.prossimo_allenatore += 1
+        return numero
+
+    def aggiorna_fattori_staff(self, poli=None):
+        """
+        I fattori dello staff: per ogni polisportiva, o soltanto per quella data, i tre fattori dalla
+        qualità del suo staff; sui giocatori, fattore_staff per l'allenamento e fattore_rischio_staff per
+        gli infortuni, quelli della loro polisportiva per i tesserati e quelli senza staff per i liberi,
+        D33 risposta 4. Si chiama al caricamento, all'inizio di ogni giorno simulato e quando cambia uno
+        staff; i fattori non si salvano.
+        """
+        club = [poli] if poli is not None else list(self.polisportive.values())
+        for p in club:
+            self._fattori_staff[p.nome] = modulo_staff.fattori_della_polisportiva(p, self.allenatori)
+        if poli is None:
+            for g in self.giocatori.values():
+                self._fattori_del_giocatore(g)
+        else:
+            for gid in poli.tesserati:
+                g = self.giocatori.get(gid)
+                if g is not None:
+                    self._fattori_del_giocatore(g)
+
+    def fattori_staff(self, poli):
+        """I tre fattori dello staff della polisportiva: allenamento, rischio d'infortunio, crescita della fedeltà."""
+        fattori = self._fattori_staff.get(poli.nome)
+        if fattori is None:
+            fattori = self._fattori_staff[poli.nome] = modulo_staff.fattori_della_polisportiva(poli, self.allenatori)
+        return fattori
+
+    def _fattori_del_giocatore(self, g):
+        """I fattori dello staff sul giocatore: quelli della sua polisportiva, o quelli senza staff per un libero."""
+        poli = self.polisportive.get(g.appartenenza) if g.appartenenza != "*" else None
+        allenamento, rischio, _fedelta = self.fattori_staff(poli) if poli is not None else modulo_staff.FATTORI_SENZA_STAFF
+        g.fattore_staff = allenamento
+        g.fattore_rischio_staff = rischio
+
+    def _nasce_un_allenatore(self, data, rng=random, eta_giorni=None):
+        """Un allenatore nato, libero, D33 risposta 8: entra nel mondo e nel suo diario."""
+        a = modulo_staff.nato(self.nuovo_numero_allenatore(), data, rng, eta_giorni)
+        ruolo = "allenatrice" if a.sesso == "f" else "allenatore"
+        a.annota(data, f"Entra nel mondo dello showdown da {ruolo}, a {int(a.eta_anni(data))} anni, di classe {a.codice}.")
+        self.allenatori[a.numero] = a
+        return a
+
+    def _ex_giocatore_allenatore(self, g, club, data, fedelta=0.0, rng=random):
+        """
+        Il giocatore g, che si ritira con una classe migliore di almeno H0, diventa un allenatore libero,
+        D33 risposta 7; club è la polisportiva che ha lasciato, o None, con la fedeltà che aveva. Se si
+        ritira da tesserato dell'utente, l'utente ha la prelazione per GIORNI_PRELAZIONE giorni, risposte
+        15 e 21, e la sua polisportiva lo legge nel diario.
+        """
+        a = modulo_staff.ex_giocatore(self.nuovo_numero_allenatore(), g, data, rng, club.nome if club is not None else None, fedelta)
+        self.allenatori[a.numero] = a
+        a.annota(data, f"Si ritira da giocatore e può allenare: è di classe {a.codice} da allenatore, la sua classe migliore.")
+        if club is not None and not club.is_cpu_controlled:
+            a.prelazione = club.nome
+            a.prelazione_fino = data + datetime.timedelta(days=GIORNI_PRELAZIONE)
+            self.annota(club, f"{nome_completo(g)} si ritira e può allenare, di classe {a.codice}: per {GIORNI_PRELAZIONE} giorni puoi assumerlo prima degli altri.", data)
+        return a
+
+    def _fine_allenatore(self, a, data, testo_allenatore, testo_club):
+        """L'allenatore esce di scena: lascia il posto nello staff, se ne aveva uno, coi diari, ed esce dal mondo degli allenatori."""
+        poli = self.polisportive.get(a.polisportiva) if a.polisportiva is not None else None
+        if poli is not None:
+            poli.staff = [0 if numero == a.numero else numero for numero in poli.staff]
+            self.annota(poli, testo_club, data)
+            self.aggiorna_fattori_staff(poli)
+        a.annota(data, testo_allenatore)
+        self.allenatori.pop(a.numero, None)
+
+    def _invecchia_lo_staff(self, data):
+        """
+        Ogni giorno, per gli allenatori: chi è nato allenatore muore alla sua età di morte, come i
+        giocatori; chi arriva all'età in cui smette smette, D33 risposta 11; e la prelazione scade.
+        Gli ex giocatori muoiono col loro giocatore, in _uscita.
+        """
+        for a in list(self.allenatori.values()):
+            eta = a.eta(data)
+            chi = f"{nome_completo(a)}, {'allenatrice' if a.sesso == 'f' else 'allenatore'} dello staff,"
+            if a.tipo == modulo_staff.NATO and eta >= a.etamorte:
+                self._fine_allenatore(a, data, f"Muore, a {int(eta / ANNO_SIMULAZIONE_GIORNI)} anni.", f"{chi} muore.")
+            elif eta >= a.eta_fine:
+                self._fine_allenatore(a, data, f"Smette di allenare, a {int(eta / ANNO_SIMULAZIONE_GIORNI)} anni.", f"{chi} smette di allenare.")
+            elif a.prelazione_fino is not None and data >= a.prelazione_fino:
+                a.prelazione = a.prelazione_fino = None
+
+    def _congeda_lo_staff(self, poli, data):
+        """La polisportiva chiude: il suo staff torna libero, senza contratto."""
+        for numero in poli.staff:
+            a = self.allenatori.get(numero) if numero else None
+            if a is not None:
+                modulo_staff.libera(a)
+                a.annota(data, f"Torna {'libera' if a.sesso == 'f' else 'libero'}: {poli.nome} ha chiuso.")
+        poli.staff = [0, 0, 0]
+
+    def fai_nascere_lo_staff(self):
+        """
+        Lo staff di un mondo che arriva dal formato 7, D33 risposta 16: un allenatore libero per ogni
+        ritirato vivo che può allenare, e gli allenatori nati che un mondo della sua età avrebbe fatto,
+        uno ogni venti nascite, con età sparse. Il caso è suo, nato dalla data del mondo, e quello del
+        mondo non si tocca; i nomi vengono dalle collezioni, come sempre.
+        """
+        oggi = self.datetime_corrente_simulazione
+        rng = random.Random(f"MESS-staff-{oggi:%Y-%m-%d}")
+        morti = self._ids_morti_processati_sessione
+        for gid, g in sorted(self.giocatori.items()):
+            if gid not in morti and g.ritirato and modulo_staff.puo_allenare(modulo_classe.livello(g.classe_migliore)):
+                a = modulo_staff.ex_giocatore(self.nuovo_numero_allenatore(), g, oggi, rng)
+                a.annota(oggi, f"Può allenare dal ritiro: è di classe {a.codice} da allenatore, la sua classe migliore.")
+                self.allenatori[a.numero] = a
+        nascite = [g.datetime_creazione_sim for g in self.giocatori.values() if isinstance(g.datetime_creazione_sim, datetime.datetime)]
+        giorni = (oggi - min(nascite)).days if nascite else 0
+        quanti = modulo_staff.nati_di_un_mondo(giorni)
+        for _ in range(quanti):
+            self._nasce_un_allenatore(oggi, rng, modulo_staff.eta_sparsa(giorni, rng))
+        self.staff_appena_nato = True
 
     # Arretrati, vendite e acquisti.
 
@@ -730,6 +867,8 @@ class Mondo:
                 liberati += 1
         poli.tesserati.clear()
         poli.indicecollettivotesserati = 0.
+        self._congeda_lo_staff(poli, self.datetime_corrente_simulazione)
+        self._fattori_staff.pop(poli.nome, None)
         del self.polisportive[poli.nome]
         if self.miapolisportiva_attiva is poli:
             self.miapolisportiva_attiva = None
@@ -784,6 +923,7 @@ class Mondo:
             is_ipo = caso(PROBABILITA_IPOVEDENTE_CREAZIONE)
             self.giocatori[new_id] = Giocatore(id_giocatore=new_id, datetime_creazione_sim=dt_creaz, ipovedente=is_ipo)
             self.nuovi_giocatori_sessione.append(new_id)
+            self._fattori_del_giocatore(self.giocatori[new_id])
         if annuncia:
             self.notifica(f" -> Creati {quanti} nuovi giocatori.")
 
@@ -833,6 +973,8 @@ class Mondo:
                 n_lib += 1
             if gid in poli.tesserati:
                 poli.tesserati.remove(gid)
+        self._congeda_lo_staff(poli, dt_chiusura)
+        self._fattori_staff.pop(nome_p, None)
         del self.polisportive[nome_p]
         self.notifica(f" --> Chiusa. {n_lib} liberati.")
         return True
@@ -1211,7 +1353,8 @@ class Mondo:
         vinte col club e alle sfide vinte, D32.
         """
         prima = g.fedelta
-        g.fedelta = min(FEDELTA_MASSIMA, g.fedelta + punti)
+        # Dalla tappa 13 lo staff fa crescere la fedeltà più o meno in fretta, in tutte le crescite, D33 risposte 12 e 26.
+        g.fedelta = min(FEDELTA_MASSIMA, g.fedelta + punti * self.fattori_staff(poli)[2])
         if g.bandiera and prima < FEDELTA_BANDIERA <= g.fedelta:
             self.annota(g, f"Diventa una bandiera di {poli.nome}: giocherà per il club anche senza stipendio.", data)
             self.annota(poli, f"{nome_completo(g)} diventa una bandiera del club.", data)
@@ -1230,6 +1373,9 @@ class Mondo:
             if gid not in morti:
                 if not mantenimento_del_mese(g, giorni) and g.ritirato:
                     g.aggiorna_icv()
+                # Dalla tappa 13 la classe migliore della carriera, per chi è in attività dai 40 anni: prima sale quasi sempre.
+                if not g.ritirato and g.eta >= ETA_CLASSE_MIGLIORE_GIORNI:
+                    g.aggiorna_classe_migliore()
 
     def _allenamento_del_giorno(self, data, rapporto):
         """
@@ -1374,6 +1520,11 @@ class Mondo:
         g.annulla_contratto()
         g.programma = g.indole
         g.intensita = INTENSITA_PREDEFINITA
+        # Dalla tappa 13 il suo allenatore, se il giocatore allenava, esce di scena con lui.
+        for a in [a for a in self.allenatori.values() if a.giocatore_id == gid]:
+            ruolo = "allenatrice" if a.sesso == "f" else "allenatore"
+            verbo = "muore" if motivo == DECESSO else "lascia il mondo dello showdown"
+            self._fine_allenatore(a, data, f"Esce di scena: {verbo}.", f"{nome_completo(a)}, {ruolo} dello staff, {verbo}.")
         self._registra_uscita(g, motivo, data, club)
 
     def _fai_invecchiare(self, data, rapporto):
@@ -1425,6 +1576,10 @@ class Mondo:
                 g.ritirato = True
                 # Da qui il valore non si ricalcola più ogni giorno: parte da quello di oggi.
                 g.aggiorna_icv()
+                # Dalla tappa 13 la classe migliore della carriera si chiude, e chi ha raggiunto H0 può allenare, D33;
+                # la fedeltà al club si ricorda prima che il ritiro la azzeri, per la prelazione.
+                allena = modulo_staff.puo_allenare(modulo_classe.livello(g.aggiorna_classe_migliore()))
+                fedelta_al_ritiro = g.fedelta
                 self.giocatori_ritirati_sessione.append((gid, f"RITIRO: {nome_completo(g)}(ID:{gid}) a {formatta_eta_sim(g.eta)} sim."))
                 rapporto["tuoi_ritirati"] += tuo
                 if club is not None:
@@ -1435,6 +1590,8 @@ class Mondo:
                 else:
                     g.appartenenza = "*"
                     self.annota(g, f"Si ritira dall'attività, a {int(g.eta_anni)} anni.", data)
+                if allena:
+                    self._ex_giocatore_allenatore(g, club, data, fedelta_al_ritiro)
                 rapporto["ritirati"] += 1
             if not g.ritirato:
                 attivi += 1
@@ -1516,7 +1673,10 @@ class Mondo:
         """
         for p in self.polisportive.values():
             p.movimenti_oggi = 0
+        # Dalla tappa 13 i fattori dello staff si rinfrescano a ogni giorno, e gli allenatori invecchiano.
+        self.aggiorna_fattori_staff()
         declinanti, attivi = self._fai_invecchiare(data, rapporto)
+        self._invecchia_lo_staff(data)
         if data.day == 1:
             self._primo_del_mese(data, rapporto)
             self._mantenimento_del_mese(data)
@@ -1551,6 +1711,12 @@ class Mondo:
         nuovi = random.randint(*CREA_NUOVI_PER_TICK_RANGE)
         self.crea_giocatori_casuali(nuovi, data, annuncia=False)
         rapporto["nuovi"] += nuovi
+        # Dalla tappa 13, con un giocatore su venti nasce anche un allenatore adulto, D33 risposta 8. Si tira
+        # qui e non in crea_giocatori_casuali, che serve anche ai mondi in memoria degli ascolti della
+        # tappa 10: i loro giocatori, e i suoni che Gabriele ha ascoltato, restano quelli.
+        for _ in range(nuovi):
+            if caso(PROBABILITA_ALLENATORE_PER_NASCITA):
+                self._nasce_un_allenatore(data)
         self.aggiorna_stato_polisportive(annuncia=False)
 
     def _serve_una_polisportiva_cpu(self, attivi):

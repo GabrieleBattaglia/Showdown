@@ -47,6 +47,7 @@ from costanti import (
 from mondo import Mondo
 from motore import Squadra
 from partita import MotorePartita, gemello_da_differita
+from staff import FATTORI_SENZA_STAFF
 
 DOMANI = OGGI + datetime.timedelta(days=1)
 
@@ -234,7 +235,7 @@ def test_le_coppe_la_fedelta_e_la_sfida_consumata(larga):
     assert a.ultima_sfida == b.ultima_sfida == OGGI and a.sfide_da_lanciare == 1 and b.sfide_da_lanciare == 2
     assert s.risultato["motore"] == "rapido" and not mondo.sfide.storico and rapporto["sfide_giocate"] == 1
     for gid in s.convocati["sfidante" if vincitrice is a else "sfidata"]:
-        assert mondo.giocatori[gid].fedelta == fedelta[gid] + 1
+        assert mondo.giocatori[gid].fedelta == pytest.approx(fedelta[gid] + FATTORI_SENZA_STAFF[2])
     assert vincitrice.diario[0]["sfide_vinte"] == 1 and vincitrice.diario[0]["coppe_oro"] == 1 and perdente.diario[0]["coppe_argento"] == 1
 
 
@@ -438,7 +439,7 @@ def test_la_coppa_si_gioca_e_da_le_coppe():
             nelle_rose.add(gid)
             g = mondo.giocatori[gid]
             fedelta, esp = prima[gid]
-            assert g.fedelta == pytest.approx(min(FEDELTA_MASSIMA, fedelta + (FEDELTA_PER_MEDAGLIA[coppa] if g.appartenenza == poli.nome else 0)))
+            assert g.fedelta == pytest.approx(min(FEDELTA_MASSIMA, fedelta + (FEDELTA_PER_MEDAGLIA[coppa] * FATTORI_SENZA_STAFF[2] if g.appartenenza == poli.nome else 0)))
             guadagno = (ESPERIENZA_PER_FASE_SUPERATA * fasi.get(cid, 0) + esperienza.premio_piazzamento(posto)) * importanza
             assert g.esperienza == pytest.approx(min(ESPERIENZA_MASSIMA, esp + guadagno))
     assert all(prima[gid] == (g.fedelta, g.esperienza) for gid, g in mondo.giocatori.items() if gid not in nelle_rose)

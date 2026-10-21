@@ -613,8 +613,42 @@ SCONTO_IPOVEDENTI = 0.07
 # La curva d'età di Hattrick, 54 diviso gli anni più 37: 1,17 a 9 anni, 0,87 a 25, 0,62 a 50.
 CURVA_ETA_NUMERATORE = 54.0
 CURVA_ETA_SPOSTAMENTO = 37.0
-# L'aggancio dell'allenatore di una tappa futura: per ora non c'è, e vale 1.
-FATTORE_ALLENATORE = 1.0
+# Lo staff della tappa 13, decisione D33 di Gabriele del 21 ottobre 2026, al posto dell'aggancio
+# FATTORE_ALLENATORE della tappa 11: un capo allenatore e fino a due assistenti per polisportiva.
+# Può allenare chi da giocatore ha raggiunto almeno H0, il livello 70, regola di Gabriele; gli A1 sono i
+# migliori. La qualità di un allenatore va in linea retta da QUALITA_MINIMA_ALLENATORE per H0 a 1 per
+# A1: un H0 vale più di nessuno. La qualità dello staff somma quelle dei tre posti coi pesi di
+# PESI_STAFF, il capo, l'assistente migliore e l'altro, come in Hattrick, dove il primo assistente conta
+# più del secondo; senza nessuno vale 0. Ogni effetto ha tre ancore, senza staff, staff medio e staff
+# migliore, e fra un'ancora e l'altra va in linea retta sulla qualità: l'allenamento, risposta 3, il
+# rischio d'infortunio in allenamento e in partita, risposte 6 e 23, la crescita della fedeltà, risposte
+# 12 e 26. Lo staff medio è QUALITA_MEDIA_DELLO_STAFF, la media della qualità fra le polisportive del
+# computer a regime: la misura la taratura della tappa, e fino ad allora vale una stima.
+LIVELLO_MINIMO_ALLENATORE = 70
+QUALITA_MINIMA_ALLENATORE = 0.2
+PESI_STAFF = (0.7, 0.2, 0.1)
+QUALITA_MEDIA_DELLO_STAFF = 0.5
+FATTORI_ALLENAMENTO_STAFF = (0.85, 1.0, 1.20)
+FATTORI_RISCHIO_STAFF = (1.15, 1.0, 0.85)
+FATTORI_FEDELTA_STAFF = (0.85, 1.0, 1.25)
+# Un allenatore smette a un'età estratta fra questi anni, D33; un ex giocatore che si ritira dopo
+# l'età estratta la sposta più in là di ANNI_MINIMI_DA_ALLENATORE, così allena almeno un poco.
+ETA_FINE_ALLENATORE_ANNI = (75.0, 85.0)
+ANNI_MINIMI_DA_ALLENATORE = 5.0
+# Gli allenatori che il mondo genera, D33 risposte 8, 22 e 28: con ogni giocatore che nasce, uno su
+# venti in media, nasce anche un allenatore adulto, fra i 35 e i 60 anni, maschio o femmina alla
+# pari, vedente al 75 per cento, e il quarto che resta diviso fra non vedenti e ipovedenti come i
+# giocatori. La classe è 70, H0, meno la parte intera di una variabile esponenziale di media
+# MEDIA_CLASSE_NATI_ALLENATORI, tagliata a A1: più alta, più rara. Muore come i giocatori.
+PROBABILITA_ALLENATORE_PER_NASCITA = 5.0
+ETA_NATI_ALLENATORI_ANNI = (35.0, 60.0)
+QUOTA_VEDENTI_ALLENATORI = 75.0
+MEDIA_CLASSE_NATI_ALLENATORI = 12.0
+# La prelazione dell'utente su un suo tesserato che si ritira e può allenare, risposta 21.
+GIORNI_PRELAZIONE = 10
+# La classe migliore della carriera si ricorda il primo del mese soltanto dai 40 anni, e al ritiro:
+# prima la classe sale quasi sempre, e il primo del mese è già il giorno più lento.
+ETA_CLASSE_MIGLIORE_GIORNI = giorni_da_anni(40.0)
 # Il calo dei livelli alti, come la DropL di Hattrick: sopra il 70 per cento del tetto l'allenata
 # perde, ogni anno d'età, fino a CALO_MASSIMO_ANNUO del tetto al tetto pieno, con una curva cubica.
 SOGLIA_CALO_LIVELLI_ALTI = 0.7
