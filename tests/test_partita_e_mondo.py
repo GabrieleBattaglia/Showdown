@@ -12,6 +12,7 @@ import re
 import pytest
 
 import cli
+import esperienza
 import infortuni as modulo_infortuni
 import mondo as modulo_mondo
 import testi
@@ -24,8 +25,13 @@ from costanti import (
     ESPERIENZA_PER_AMICHEVOLE,
     ESPERIENZA_PER_ANNO_DI_VITA,
     ESPERIENZA_PER_GIORNO_IN_POLISPORTIVA,
+    ESPERIENZA_PER_PARTITA_TORNEO,
+    ESPERIENZA_PER_SFIDA,
     MODALITA_OUTPUT_CONSOLE,
     MODALITA_OUTPUT_FILE,
+    PA_FATTORE_AMICHEVOLE,
+    PA_FATTORE_SFIDA,
+    PA_FATTORE_TORNEO,
     SOGLIA_SPESA_AUTONOMI,
 )
 from mondo import Mondo
@@ -226,9 +232,9 @@ def test_un_amichevole_al_giorno(mondo):
         g.infortunato = False
     motore = MotorePartita(mondo)
     motore.gioca_amichevole(11, 12, seme=1)
-    assert mondo.giocatori[11].ultima_amichevole == mondo.giocatori[12].ultima_amichevole == INIZIO
+    assert mondo.giocatori[11].ultimo_impegno == mondo.giocatori[12].ultimo_impegno == INIZIO
     g11 = mondo.giocatori[11]
-    atteso = f"Oggi {g11.nome} {g11.cognome} ha già giocato un'amichevole: se ne gioca al massimo una per giorno simulato."
+    atteso = f"Oggi {g11.nome} {g11.cognome} ha già giocato un'amichevole: ognuno gioca al massimo un incontro per giorno simulato."
     assert motore.problema_amichevole(11, 13) == atteso
     assert "hanno già giocato" in motore.problema_amichevole(12, 11)
     with pytest.raises(ValueError, match="già giocato"):
@@ -236,24 +242,24 @@ def test_un_amichevole_al_giorno(mondo):
     assert motore.gioca_partita(13, 12, 3)["error"].startswith("Oggi ")
     disponibili = motore.disponibili(mondo.giocatori.values())
     assert [g.id for g in disponibili] == sorted(gid for gid in mondo.giocatori if gid not in (11, 12))
-    # Una partita non registrata, o di un torneo, non conta come amichevole e non la impedisce.
+    # Una partita non registrata non segna l'impegno del giorno; dalla tappa 12, D32, una di torneo sì.
     assert motore.gioca_partita(11, 13, 3, registra=False)["error"] is None
-    assert mondo.giocatori[13].ultima_amichevole is None
-    assert motore.gioca_partita(11, 13, 3, info_torneo={"nome": "Coppa"})["error"] is None
-    assert mondo.giocatori[13].ultima_amichevole is None
+    assert mondo.giocatori[13].ultimo_impegno is None
+    assert motore.gioca_partita(14, 13, 3, info_torneo={"nome": "Coppa"})["error"] is None
+    assert mondo.giocatori[13].ultimo_impegno == INIZIO and mondo.giocatori[13].ha_un_impegno(INIZIO)
     # Il giorno simulato dopo si gioca di nuovo; gli infortuni di queste partite non contano qui.
     for g in mondo.giocatori.values():
         g.infortunato, g.infortunio_sede = False, None
     mondo.datetime_corrente_simulazione = INIZIO + datetime.timedelta(days=1)
     assert motore.problema_amichevole(11, 12) is None
     assert motore.gioca_partita(11, 12, 3)["error"] is None
-    assert mondo.giocatori[11].ultima_amichevole == INIZIO + datetime.timedelta(days=1)
+    assert mondo.giocatori[11].ultimo_impegno == INIZIO + datetime.timedelta(days=1)
 
 
 def test_l_interfaccia_testuale_rifiuta_chi_ha_gia_giocato(mondo, monkeypatch, capsys):
     for g in mondo.giocatori.values():
         g.infortunato = False
-    mondo.giocatori[7].ultima_amichevole = INIZIO
+    mondo.giocatori[7].ultimo_impegno = INIZIO
     interfaccia = cli.InterfacciaTestuale(mondo)
     monkeypatch.setattr(cli, "dgt", lambda *a, **k: 7)
     assert interfaccia._giocatore_per_partita("ID Giocatore 1? ") is None
@@ -299,10 +305,11 @@ def test_il_premio_al_piu_debole_anche_quando_perde(mondo):
     vinti = max(sum(1 for a, b in risultato["punteggio_set"] if a > b), sum(1 for a, b in risultato["punteggio_set"] if b > a))
     persi = len(risultato["punteggio_set"]) - vinti
     pa_vinc, pa_perd = MotorePartita.punti_della_partita(vinti, persi)
+    # Dalla tappa 12 i punti dell'amichevole sono la formula, premio compreso, per il suo fattore.
     if risultato["vincitore_id"] == 1:
-        assert (forte.punti_allenamento, debole.punti_allenamento) == (pa_vinc, pa_perd + 1.0)
+        assert (forte.punti_allenamento, debole.punti_allenamento) == pytest.approx((pa_vinc * PA_FATTORE_AMICHEVOLE, (pa_perd + 1.0) * PA_FATTORE_AMICHEVOLE))
     else:
-        assert (debole.punti_allenamento, forte.punti_allenamento) == (pa_vinc + 1.0, pa_perd)
+        assert (debole.punti_allenamento, forte.punti_allenamento) == pytest.approx(((pa_vinc + 1.0) * PA_FATTORE_AMICHEVOLE, pa_perd * PA_FATTORE_AMICHEVOLE))
 
 
 def test_l_amichevole_porta_esperienza_e_costanza(mondo):
@@ -312,33 +319,45 @@ def test_l_amichevole_porta_esperienza_e_costanza(mondo):
     MotorePartita(mondo).gioca_partita(3, 4, 3)
     assert g.esperienza == pytest.approx(ESPERIENZA_PER_AMICHEVOLE)
     assert g.costanza == pytest.approx(0.5 + (1 - DECADIMENTO_COSTANZA) * COSTANZA_PER_PARTITA)
-    assert g.ultima_amichevole == mondo.datetime_corrente_simulazione
+    assert g.ultimo_impegno == mondo.datetime_corrente_simulazione
 
 
-def test_gli_agganci_di_torneo_e_sfida(mondo):
+def test_torneo_e_sfida_con_i_fattori_e_l_importanza(mondo):
+    # Dalla tappa 12, D32 e punti 10.2 e 10.3 del progetto: i punti per il fattore della fonte e per l'importanza, e l'esperienza anche.
     _alla_pari(mondo, 5, 6, 7, 8)
     motore = MotorePartita(mondo)
-    torneo = motore.gioca_partita(5, 6, 3, info_torneo={"nome": "prova"}, seme=3)["risultato"]
+    incontro = motore.gioca_partita(5, 6, 3, seme=3, registra=False)["risultato"]
     g5 = mondo.giocatori[5]
-    assert g5.ultima_amichevole is None and g5.esperienza == pytest.approx(0.01)
-    assert g5.punti_allenamento >= 2.0 + 3.0
-    assert mondo.giocatori[5].diario[0]["testo"].startswith(("Vince la partita del torneo", "Perde la partita del torneo"))
-    del torneo
+    motore.registra(incontro, esperienza.TORNEO, importanza=4.0)
+    assert g5.ultimo_impegno == INIZIO and g5.esperienza == pytest.approx(ESPERIENZA_PER_PARTITA_TORNEO * 4.0)
+    assert g5.punti_allenamento >= 2.0 * PA_FATTORE_TORNEO * 4.0
+    assert g5.diario[0]["testo"].startswith(("Vince la partita del torneo", "Perde la partita del torneo"))
     incontro = motore.gioca_partita(7, 8, 3, seme=4, registra=False)["risultato"]
-    frasi = motore.registra(incontro, sfida=True)
+    frasi = motore.registra(incontro, esperienza.SFIDA)
     assert frasi[0].startswith("Punti allenamento: ")
     g7 = mondo.giocatori[7]
-    assert g7.ultima_amichevole is None and g7.esperienza == pytest.approx(0.006)
-    assert g7.punti_allenamento >= 2.0 + 2.0 and g7.diario[0]["testo"].startswith(("Vince la sfida", "Perde la sfida"))
+    assert g7.ultimo_impegno == INIZIO and g7.esperienza == pytest.approx(ESPERIENZA_PER_SFIDA)
+    assert g7.punti_allenamento >= 2.0 * PA_FATTORE_SFIDA and g7.diario[0]["testo"].startswith(("Vince la sfida", "Perde la sfida"))
+
+
+def test_la_registrazione_leggera_non_scrive_i_diari(mondo):
+    _alla_pari(mondo, 9, 10)
+    motore = MotorePartita(mondo)
+    incontro = motore.gioca_partita(9, 10, 3, seme=7, registra=False)["risultato"]
+    prima = {gid: len(mondo.giocatori[gid].diario) for gid in (9, 10)}
+    motore.registra(incontro, esperienza.TORNEO, diario=False)
+    for gid in (9, 10):
+        g = mondo.giocatori[gid]
+        assert len(g.diario) == prima[gid] and g.partitevinte + g.partiteperse == 1 and g.punti_allenamento > 0 and g.ultimo_impegno == INIZIO
 
 
 def test_la_frase_dei_punti_con_la_virgola(mondo):
     from partita import _punti
-    assert (_punti(4.0), _punti(2.5), _punti(5.0)) == ("4", "2,5", "5")
+    assert (_punti(4.0), _punti(2.5), _punti(5.0), _punti(1.9200000001)) == ("4", "2,5", "5", "1,92")
     _alla_pari(mondo, 9, 10)
     incontro = MotorePartita(mondo).gioca_partita(9, 10, 3, registra=False)["risultato"]
     frase = MotorePartita(mondo).registra(incontro)[0]
-    assert re.fullmatch(r"Punti allenamento: \d+(,5)? a .+, \d+(,5)? a .+\.", frase)
+    assert re.fullmatch(r"Punti allenamento: \d+(,\d\d?)? a .+, \d+(,\d\d?)? a .+\.", frase)
 
 
 def _giorno(mondo):

@@ -20,7 +20,7 @@ import re
 from typing import NamedTuple
 
 import percorsi
-from costanti import CARTELLA_CRONACHE, NOME_ATTR_TO_DISPLAY_MAP
+from costanti import CARTELLA_CRONACHE, NOME_ATTR_TO_DISPLAY_MAP, SEDI_INFORTUNIO
 from motore import eventi as E
 from motore.eventi import CAUSE, CHIAMATE
 from motore.tavolo import lato_di
@@ -30,6 +30,9 @@ SINTETICA = "sintetica"
 NORMALE = "normale"
 TECNICA = "tecnica"
 LIVELLI = (SINTETICA, NORMALE, TECNICA)
+# Le sedi degli infortuni a parole, con l'articolo, e il braccio di ciascuna: per il ritiro e gli acciacchi della tappa 12.
+_FRASI_DELLE_SEDI = {codice: frase for codice, frase, _braccio, _peso, _durata in SEDI_INFORTUNIO}
+_BRACCI_DELLE_SEDI = {codice: braccio for codice, _frase, braccio, _peso, _durata in SEDI_INFORTUNIO}
 
 
 class Nome(NamedTuple):
@@ -154,13 +157,32 @@ def _dettagli_tecnici(evento):
     return " (" + "; ".join(parti) + ")"
 
 
+def _sede(sede):
+    """La sede di un infortunio con l'articolo, come la dice infortuni.frase_sede: alla caviglia; vuota se non si sa."""
+    return _FRASI_DELLE_SEDI.get(sede, "")
+
+
+def _con_sede(testo, sede):
+    dove = _sede(sede)
+    return f"{testo} {dove}" if dove else testo
+
+
+def _acciacchi_in_campo(coppie, nomi):
+    """Le frasi di chi gioca con un acciacco, tappa 12: Rossi gioca con un acciacco alla caviglia."""
+    return " ".join(_con_sede(f"{_n(nomi, gid)} gioca con un acciacco", sede) + "." for gid, sede in coppie)
+
+
 def _inizio_incontro(evento, nomi, livello):
     dati = evento.dati or {}
     formato = dati.get("formato", "")
     if formato == "gara a squadre":
-        return f"Inizio della gara a squadre: {_n(nomi, 'A')} contro {_n(nomi, 'B')}, un set a 31 punti."
-    set_al_meglio = "5" if "5" in formato else "3"
-    return f"Inizio dell'incontro: {_n(nomi, 'A')} contro {_n(nomi, 'B')}, al meglio dei {set_al_meglio} set."
+        testo = f"Inizio della gara a squadre: {_n(nomi, 'A')} contro {_n(nomi, 'B')}, un set a 31 punti."
+    else:
+        set_al_meglio = "5" if "5" in formato else "3"
+        testo = f"Inizio dell'incontro: {_n(nomi, 'A')} contro {_n(nomi, 'B')}, al meglio dei {set_al_meglio} set."
+    if dati.get("acciacchi"):
+        testo += " " + _acciacchi_in_campo(dati["acciacchi"], nomi)
+    return testo
 
 
 def _sorteggio(evento, nomi, livello):
@@ -303,7 +325,38 @@ def _fine_incontro(evento, nomi, livello):
     vince = "A" if sa > sb else "B"
     mio, suo = _punteggio_di((sa, sb), vince)
     parziali = ", ".join(f"{x} a {y}" for x, y in (_punteggio_di(tuple(s), vince) for s in d["set"]))
-    return f"Fine dell'incontro: vince {_n(nomi, vince)}, {mio} set a {suo}: {parziali}."
+    per_ritiro = " per ritiro" if d.get("ritirati") else ""
+    testo = f"Fine dell'incontro: vince {_n(nomi, vince)}{per_ritiro}, {mio} set a {suo}: {parziali}."
+    # La tappa 12: chi si è fatto male a fine incontro, e chi ne esce con un acciacco.
+    for gid, sede in d.get("infortuni", ()):
+        testo += " " + _con_sede(f"A fine incontro {_n(nomi, gid)} si fa male", sede) + "."
+    for gid, sede in d.get("acciacchi", ()):
+        testo += " " + _con_sede(f"A fine incontro {_n(nomi, gid)} risente di un colpo", sede) + "."
+    return testo
+
+
+def _ritiro(evento, nomi, livello):
+    """Il ritiro della tappa 12: Rossi si fa male alla schiena e non può continuare: si ritira. Vince Bianchi."""
+    d = evento.dati or {}
+    ritirati = list(d.get("ritirati", ()))
+    sedi = list(d.get("sedi", ())) + [None] * len(ritirati)
+    vince = d.get("vince", "A")
+    if len(ritirati) == 1:
+        chi = _n(nomi, ritirati[0])
+        testo = _con_sede(f"{chi} si fa male", sedi[0]) + f" e non può continuare: si ritira. Vince {_n(nomi, vince)}."
+    else:
+        parti = [_con_sede(f"{_n(nomi, gid)} si fa male", sede) for gid, sede in zip(ritirati, sedi, strict=False)]
+        testo = " e ".join(parti) + f": nessuno dei due può continuare, e si ritirano. Vince {_n(nomi, vince)}, che ha vinto più set."
+    return testo
+
+
+def _cambio_braccio(evento, nomi, livello):
+    """L'ambidestro che si fa male a un braccio e continua con l'altro, D25: Rossi si fa male al braccio destro e continua con il sinistro."""
+    sede = (evento.dati or {}).get("sede")
+    braccio = _BRACCI_DELLE_SEDI.get(sede)
+    ferito, sano = ("destro", "sinistro") if braccio == "dx" else ("sinistro", "destro")
+    dove = _sede(sede) or f"al braccio {ferito}"
+    return f"{_n(nomi, evento.chi)} si fa male {dove} e continua con il braccio {sano}."
 
 
 def _battuta(evento, nomi, livello):
@@ -494,7 +547,7 @@ _FRASI = {
     E.CONTROLLO: _controllo, E.COLPO: _colpo, E.GOAL: _goal, E.FALLO: _fallo, E.PALLA_MORTA: _palla_morta, E.ROTTURA: _rottura,
     E.SOSTITUZIONE_ATTREZZO: _sostituzione_attrezzo, E.RIPETIZIONE: _ripetizione, E.PUNTO: _punto, E.TIMEOUT_INIZIO: _timeout_inizio,
     E.TIMEOUT_FINE: _timeout_fine, E.CAMBIO_CAMPO_INIZIO: _cambio_campo_inizio, E.CAMBIO_CAMPO_FINE: _cambio_campo_fine, E.AMMONIZIONE: _ammonizione,
-    E.PENALITA: _penalita, E.CAMBIO_AL_TAVOLO: _cambio_al_tavolo,
+    E.PENALITA: _penalita, E.CAMBIO_AL_TAVOLO: _cambio_al_tavolo, E.RITIRO: _ritiro, E.CAMBIO_BRACCIO: _cambio_braccio,
 }
 
 

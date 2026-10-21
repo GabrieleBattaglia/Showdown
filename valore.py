@@ -87,6 +87,9 @@ def tratti(g):
 
 # I nomi delle parti delle caratteristiche semplici, per la somma in una passata.
 _NOMI_SEMPLICI = tuple((nome, nome + "_base", nome + "_allenata") for nome in _SEMPLICI)
+# I nomi di chiusure e blocchi, per ruolo: i due pesi e i due lati della parte innata e di quella allenata.
+_NOMI_DEI_RUOLI = tuple((ruolo + "_dritto", ruolo + "_rovescio", ruolo + "sx_base", ruolo + "dx_base", ruolo + "sx_allenata", ruolo + "dx_allenata")
+                        for ruolo in ("chiusura", "blocco"))
 
 
 def _somme(g, pesi):
@@ -94,7 +97,47 @@ def _somme(g, pesi):
     Le somme pesate della parte innata e di quella allenata, in una passata sola: è il conto di
     caratteristiche, con chiusure e blocchi per ruolo, fatto senza dizionari intermedi, perché dalla
     tappa 11 il valore si ricalcola a ogni spesa d'allenamento, centinaia di volte al giorno.
+    Dalla tappa 12, punto 1.3 del progetto, le caratteristiche si leggono direttamente dal
+    dizionario degli attributi del giocatore, ed è la via di tutti i giocatori veri; a un oggetto a
+    cui ne manca una, come la vista leggera che archivio.stipendio_della_1_50 costruisce dal formato
+    5, resta la via di prima, con getattr e lo zero per le parti che mancano. Gli stessi numeri fino
+    all'ultimo bit, nello stesso ordine di somma.
     """
+    try:
+        return _somme_dal_dizionario(g.__dict__, pesi)
+    except (AttributeError, KeyError):
+        return _somme_con_getattr(g, pesi)
+
+
+def _somme_dal_dizionario(attributi, pesi):
+    """Le somme di _somme lette dal dizionario degli attributi; KeyError se manca una parte."""
+    innata = allenata = 0.0
+    for nome, nome_base, nome_allenata in _NOMI_SEMPLICI:
+        peso = pesi[nome]
+        innata += peso * attributi[nome_base]
+        allenata += peso * attributi[nome_allenata]
+    ambidestro, mancino = attributi["ambidestro"], attributi["mancino"]
+    for chiave_dritto, chiave_rovescio, sx_base, dx_base, sx_allenata, dx_allenata in _NOMI_DEI_RUOLI:
+        dritto, rovescio = pesi[chiave_dritto], pesi[chiave_rovescio]
+        sx, dx = attributi[sx_base], attributi[dx_base]
+        if ambidestro:
+            innata += (dritto + rovescio) * (sx + dx) / 2.0
+        elif mancino:
+            innata += rovescio * dx + dritto * sx
+        else:
+            innata += rovescio * sx + dritto * dx
+        sx, dx = attributi[sx_allenata], attributi[dx_allenata]
+        if ambidestro:
+            allenata += (dritto + rovescio) * (sx + dx) / 2.0
+        elif mancino:
+            allenata += rovescio * dx + dritto * sx
+        else:
+            allenata += rovescio * sx + dritto * dx
+    return innata, allenata
+
+
+def _somme_con_getattr(g, pesi):
+    """Le somme di _somme per un oggetto qualunque, con lo zero per le parti che gli mancano: il conto della tappa 11."""
     innata = allenata = 0.0
     for nome, nome_base, nome_allenata in _NOMI_SEMPLICI:
         peso = pesi[nome]

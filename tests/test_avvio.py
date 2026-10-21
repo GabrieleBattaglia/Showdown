@@ -15,6 +15,7 @@ import archivio
 import cli
 import Showdown
 from costanti import FILE_MONDO, FILE_MONDO_COPIA
+from utilita import METODO_IMPRONTA, verifica_impronta
 
 
 class Copione:
@@ -64,7 +65,9 @@ def test_nascita_partita_salvataggio_e_ritorno(cartella_di_prova, recita, capsys
     assert "Mondo salvato:" in schermo
     documento = archivio.leggi(cartella_di_prova / FILE_MONDO)
     club = documento["mondo"]["polisportive"]["club di prova"]
-    assert club["impronta_password"] and "abc" not in club["impronta_password"]
+    # La password non è nel salvataggio, c'è la sua impronta. Prima la prova cercava le lettere abc
+    # nell'impronta, che è esadecimale e a volte le conteneva per caso, circa due volte su cento.
+    assert club["impronta_password"].startswith(f"{METODO_IMPRONTA}$") and verifica_impronta("abc", club["impronta_password"])
     assert documento["mondo"]["polisportiva_attiva"] == "club di prova"
     giocati = [g for g in documento["mondo"]["giocatori"] if g["partitevinte"] + g["partiteperse"] == 1]
     assert len(giocati) == 2

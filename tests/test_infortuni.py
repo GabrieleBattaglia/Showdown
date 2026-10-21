@@ -71,16 +71,16 @@ def test_le_frasi_del_diario():
 
 
 def test_l_infortunio_dopo_la_partita_e_la_guarigione(monkeypatch):
+    # Dalla tappa 12 l'infortunio lo estrae il motore, e la facciata lo applica con colpisci.
     mondo = Mondo()
     mondo.datetime_corrente_simulazione = OGGI
     g = giocatore(1)
     mondo.giocatori[g.id] = g
-    monkeypatch.setattr(infortuni, "probabilita", lambda _g, _azioni: 100.0)
-    frase = infortuni.infortuna(mondo, g, 150, random.Random(3))
-    assert g.infortunato and g.infortunio_sede in infortuni.SEDI_VALIDE and g.infortunio_fine_datetime > OGGI
-    assert frase.startswith(f"{g.nome} {g.cognome}: si infortuna ")
+    frase = infortuni.colpisci(mondo, g, "ginocchio", random.Random(3))
+    assert g.infortunato and g.infortunio_sede == "ginocchio" and g.infortunio_fine_datetime > OGGI
+    assert frase.startswith(f"{g.nome} {g.cognome}: si infortuna al ginocchio")
     assert g.diario[0]["testo"].startswith("Si infortuna ")
-    assert infortuni.infortuna(mondo, g, 150, random.Random(3)) is None
+    assert infortuni.colpisci(mondo, g, "ginocchio", random.Random(3)) is None
     rapporto = {"guariti": 0, "usciti": 0, "morti": 0, "ritirati": 0}
     g.etamorte = g.etaritiro = 10 ** 6
     monkeypatch.setattr("mondo.PROB_USCITA_PREMATURA_GIORNALIERA", 0)
@@ -95,6 +95,14 @@ def test_i_fattori_dell_intensita_in_partita():
     normale = infortuni.probabilita(giocatore(4, anni=40), 150)
     assert infortuni.probabilita(giocatore(4, anni=40, intensita="leggera"), 150) == pytest.approx(0.85 * normale)
     assert infortuni.probabilita(giocatore(4, anni=40, intensita="intensa"), 150) == pytest.approx(1.25 * normale)
+
+
+def test_la_probabilita_si_divide_in_base_e_carico():
+    # Tappa 12: la probabilità di un incontro è la base, senza il carico, per il fattore del carico, come prima.
+    for anni, azioni, ambidestro in ((25, 60, False), (40, 150, False), (55, 300, True), (75, 900, False)):
+        g = giocatore(9, anni=anni, ambidestro=ambidestro)
+        assert infortuni.probabilita(g, azioni) == pytest.approx(min(95.0, infortuni.probabilita_base(g) * infortuni.fattore_carico(azioni)))
+    assert infortuni.probabilita_base(giocatore(9, anni=30)) == pytest.approx(0.015)
 
 
 def test_il_rischio_in_seduta_soltanto_all_intensa():

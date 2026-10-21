@@ -150,19 +150,23 @@ def test_il_menu_partite_e_la_guida(finestra):
     lettere = [titolo[titolo.index("&") + 1].lower() for titolo in titoli]
     assert len(lettere) == len(set(lettere)), lettere
     partite = dict(finestra.voci_menu())["Pa&rtite"]
-    assert [(voce[0], voce[1]) for voce in partite if voce] == [("&Amichevole...", "Ctrl+O"), ("&Salva la cronaca", "Ctrl+Shift+O")]
+    # Dalla tappa 12 il menu Partite ha anche le sfide fra polisportive.
+    assert [(voce[0], voce[1]) for voce in partite if voce] == [("&Amichevole...", "Ctrl+O"), ("&Lancia una sfida...", "Ctrl+W"),
+                                                                ("Sfide in a&rrivo...", "Ctrl+Shift+F"), ("S&torico delle sfide...", "Ctrl+Shift+H"),
+                                                                ("&Salva la cronaca", "Ctrl+Shift+O")]
     # F8 e Ctrl+F8 tornano liberi: il punto per punto è diventato la partita dal vivo.
     tasti = [voce[1] for _t, elenco in finestra.voci_menu() for voce in filter(None, elenco)]
     assert "F8" not in tasti and "Ctrl+F8" not in tasti
     guida = testi.guida(finestra.voci_guida())
-    assert "Menu Partite: Amichevole, Ctrl+O; Salva la cronaca, Ctrl+Maiusc+O." in guida
+    assert ("Menu Partite: Amichevole, Ctrl+O; Lancia una sfida, Ctrl+W; Sfide in arrivo, Ctrl+Maiusc+F; Storico delle sfide, Ctrl+Maiusc+H; "
+            "Salva la cronaca, Ctrl+Maiusc+O.") in guida
     assert "F8" not in guida and "Punto successivo" not in guida
 
 
 def test_senza_un_amichevole_salva_la_cronaca_lo_dice(finestra, suonati):
     finestra.salva_cronaca()
     assert finestra.vista.GetValue() == testi.NESSUNA_AMICHEVOLE
-    assert suonati == ["nessun_incontro"] and finestra.ultimo_evento == "nessuna amichevole"
+    assert suonati == ["nessun_incontro"] and finestra.ultimo_evento == "nessun incontro"
 
 
 # Assisti: la finestra dal vivo.
@@ -188,7 +192,7 @@ def test_assisti_apre_la_finestra_dal_vivo_con_l_incontro_gia_registrato(finestr
     assert len(scelte.dal_vivo) == 1 and scelte.dal_vivo[0].uscita == dal_vivo.CON_ESC
     # La velocità di gioco predefinita, decisione D30, è 4.
     assert visto["partite"] == 1 and visto["velocita"] == 4
-    assert visto["salvati"][2]["ultima_amichevole"] == visto["salvati"][7]["ultima_amichevole"] == mondo.datetime_corrente_simulazione.isoformat()
+    assert visto["salvati"][2]["ultimo_impegno"] == visto["salvati"][7]["ultimo_impegno"] == mondo.datetime_corrente_simulazione.isoformat()
     # Il gemello rigioca lo stesso incontro registrato.
     assert scelte.dal_vivo[0].cronologia.incontro.seme == finestra.incontro.risultato.seme
     # Uscendo con Esc il risultato non si svela, né con il suono dell'esito né nella vista o nella barra:
@@ -296,7 +300,7 @@ def test_l_amichevole_da_assistere_nel_motore(mondo):
     motore = partita.MotorePartita(mondo)
     risultato, gemello = motore.amichevole_da_assistere(2, 7, 3, seme=99, velocita=5)
     assert risultato.seme == gemello.seme == 99 and gemello.regia.velocita == 5.0
-    assert risultato.registrazione and mondo.giocatori[7].ultima_amichevole == mondo.datetime_corrente_simulazione
+    assert risultato.registrazione and mondo.giocatori[7].ultimo_impegno == mondo.datetime_corrente_simulazione
     # Il gemello nasce prima della registrazione e rigioca gli stessi punti, a un'altra velocità.
     rigiocato = gemello.gioca()
     assert rigiocato.set == risultato.set and [p.esito for p in rigiocato.punti] == [p.esito for p in risultato.punti]
@@ -319,7 +323,7 @@ def test_vai_alla_fine_mostra_risultato_e_cronaca(finestra, suonati, monkeypatch
     assert testo.splitlines()[0] == testi.risultato_amichevole(finestra.incontro.risultato, mondo)
     assert "Battuta destra di " in testo or "Battuta sinistra di " in testo
     salvati = {g["id"]: g for g in archivio.leggi(cartella_di_prova / FILE_MONDO)["mondo"]["giocatori"]}
-    assert salvati[2]["ultima_amichevole"] == mondo.datetime_corrente_simulazione.isoformat()
+    assert salvati[2]["ultimo_impegno"] == mondo.datetime_corrente_simulazione.isoformat()
 
 
 def test_un_amichevole_al_giorno_nella_finestra(finestra, suonati, monkeypatch):
@@ -337,15 +341,15 @@ def test_un_amichevole_al_giorno_nella_finestra(finestra, suonati, monkeypatch):
     assert suonati[-2:] == ["dialogo_opzioni_amichevole", "annullato"]
     assert mondo.giocatori[2].partitevinte + mondo.giocatori[2].partiteperse == 0
     # Se oggi non può giocare nessuno dei tuoi, la vista lo dice.
-    mondo.giocatori[2].ultima_amichevole = mondo.datetime_corrente_simulazione
+    mondo.giocatori[2].ultimo_impegno = mondo.datetime_corrente_simulazione
     finestra.amichevole()
-    assert finestra.vista.GetValue().startswith("Oggi nessun tesserato di Club Di Prova può giocare un'amichevole: ognuno ne gioca al massimo una per giorno simulato")
+    assert finestra.vista.GetValue().startswith("Oggi nessun tesserato di Club Di Prova può giocare un'amichevole: ognuno gioca al massimo un incontro per giorno simulato")
     assert suonati[-1] == "nessun_giocatore_oggi"
     # Il giorno dopo si torna a giocare; ma se tutti gli altri sono fermi, manca l'avversario.
     mondo.datetime_corrente_simulazione += datetime.timedelta(days=1)
     for g in mondo.giocatori.values():
         if g.id != 2:
-            g.ultima_amichevole = mondo.datetime_corrente_simulazione
+            g.ultimo_impegno = mondo.datetime_corrente_simulazione
     scelte = Scelte(monkeypatch, 2, 3)
     finestra.amichevole()
     assert scelte.elenchi == [[2]]
@@ -411,7 +415,7 @@ def test_la_cronaca_salvata_dopo_un_avanzamento_dice_quando_si_e_giocata(finestr
     v = finestra.incontro
     giorno = mondo.datetime_corrente_simulazione
     assert prima <= v.istante <= dopo and v.data_simulata == giorno
-    assert mondo.giocatori[2].ultima_amichevole == mondo.giocatori[7].ultima_amichevole == giorno
+    assert mondo.giocatori[2].ultimo_impegno == mondo.giocatori[7].ultimo_impegno == giorno
     # Prima di salvare la cronaca il mondo passa al giorno dopo, e l'ora reale va avanti di nove ore.
     mondo.datetime_corrente_simulazione += datetime.timedelta(days=1)
     monkeypatch.setattr(partita, "adesso", lambda: dopo + datetime.timedelta(hours=9))

@@ -56,6 +56,10 @@ _FISICHE = frozenset(("precisione", "resistenza", "forza"))
 # caratteristica il nome della parte innata e di quella allenata, il tetto, e se è di gioco.
 _NOMI = {c: (c + "_base", c + "_allenata") for c in CARATTERISTICHE}
 _TETTI = {c: (MAX_TOTALE_PRECISIONE_RESISTENZA if c in _FISICHE else MAX_TOTALE_SKILL_GIOCO) for c in CARATTERISTICHE}
+# Il mantenimento del mese e il riempimento in una tabella sola: il nome, la parte innata, quella
+# allenata e il tetto, e per il riempimento se è fisica.
+_MANTENIMENTO = tuple((c, *_NOMI[c], _TETTI[c]) for c in CARATTERISTICHE)
+_RIEMPIMENTO = tuple((c, *_NOMI[c], _TETTI[c], c in _FISICHE) for c in CARATTERISTICHE)
 _K = CRESCITA_DEL_COSTO
 _EXP_K = math.exp(CRESCITA_DEL_COSTO)
 # Sotto questa soglia due numeri si considerano uguali: un totale al tetto, un portafoglio vuoto.
@@ -160,16 +164,37 @@ def puo_allenarsi(g):
 
 
 def _applica(g, spese):
-    """Porta le spese nelle parti allenate, entro il tetto del totale."""
+    """Porta le spese nelle parti allenate, entro il tetto del totale, nel dizionario del giocatore."""
+    attributi = g.__dict__
     for spesa in spese:
         nome_base, nome_allenata = _NOMI[spesa.caratteristica]
-        base = getattr(g, nome_base)
-        setattr(g, nome_allenata, max(0.0, min(_TETTI[spesa.caratteristica] - base, spesa.a - base)))
+        base = attributi[nome_base]
+        attributi[nome_allenata] = max(0.0, min(_TETTI[spesa.caratteristica] - base, spesa.a - base))
+
+
+_TABELLE_DEI_PESI = {}
 
 
 def _pesi_per_punto(g):
-    """I pesi per punto di tutte le caratteristiche per quel giocatore, in una volta, come valore.peso_per_punto."""
+    """
+    I pesi per punto di tutte le caratteristiche per quel giocatore, in una volta, come valore.peso_per_punto.
+    Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, la tabella dipende soltanto da ambidestro
+    e mancino e si fa una volta per ciascun caso, finché i pesi del valore restano quelli: è condivisa, e
+    chi la riceve la legge e basta. Nei giorni in cui migliaia di giocatori spendono insieme, rifarla per
+    ognuno era un decimo del riempimento.
+    """
     pesi = valore.PESI_VALORE
+    chiave = (bool(getattr(g, "ambidestro", False)), bool(getattr(g, "mancino", False)))
+    ricordata = _TABELLE_DEI_PESI.get(chiave)
+    if ricordata is not None and ricordata[0] is pesi:
+        return ricordata[1]
+    tabella = _tabella_dei_pesi(g, pesi)
+    _TABELLE_DEI_PESI[chiave] = (pesi, tabella)
+    return tabella
+
+
+def _tabella_dei_pesi(g, pesi):
+    """La tabella di _pesi_per_punto, fatta da capo."""
     tabella = {c: pesi[c] for c in CARATTERISTICHE if c[:-2] not in ("chiusura", "blocco")}
     for ruolo in ("chiusura", "blocco"):
         dritto, rovescio = pesi[ruolo + "_dritto"], pesi[ruolo + "_rovescio"]
@@ -239,14 +264,15 @@ def _riempimento(g, preferite, portafoglio):
     ritmo = COSTO_PER_PUNTO_PESATO / (efficacia(g) * _K)
     pesi = _pesi_per_punto(g)
     sconto_di_gioco = 1.0 - SCONTO_IPOVEDENTI if getattr(g, "ipovedente", False) else 1.0
+    # Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, le caratteristiche si leggono dal
+    # dizionario del giocatore, con la tabella dei nomi e dei tetti: gli stessi conti di prima.
+    attributi = g.__dict__
     voci = []
-    for c in CARATTERISTICHE:
-        nome_base, nome_allenata = _NOMI[c]
-        t = _TETTI[c]
-        attuale = getattr(g, nome_base) + getattr(g, nome_allenata)
+    for c, nome_base, nome_allenata, t, fisica in _RIEMPIMENTO:
+        attuale = attributi[nome_base] + attributi[nome_allenata]
         if attuale >= t - _QUASI_ZERO:
             continue
-        s = 1.0 if c in _FISICHE else sconto_di_gioco
+        s = 1.0 if fisica else sconto_di_gioco
         voci.append((c, ritmo * pesi[c] * s * t, math.exp(_K * attuale / t), preferite[c] / s, t, attuale))
     eventi = []
     for i, (_c, _coeff, e0, ps, _t, _attuale) in enumerate(voci):
@@ -311,17 +337,19 @@ def mantenimento_del_mese(g, giorni):
     cento del tetto perde un poco dall'allenata, mai sotto zero, sempre di più verso il tetto, come
     la DropL di Hattrick; l'apprendista rapido, in più, dimentica: ogni allenata si moltiplica per
     il suo oblio. Restituisce quanto si è perso in tutto; se si è perso qualcosa ricalcola il valore.
+    Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, le caratteristiche si leggono e si
+    scrivono direttamente nel dizionario del giocatore, come nel declino: il primo del mese passa per
+    tutti i giocatori vivi, e così costa meno. Gli stessi conti, nello stesso ordine.
     """
     perso = 0.0
     oblio = tratti.oblio_mensile(g)
     quota = giorni / ANNO_SIMULAZIONE_GIORNI
-    for c in CARATTERISTICHE:
-        nome_base, nome_allenata = _NOMI[c]
-        allenata = getattr(g, nome_allenata)
+    attributi = g.__dict__
+    for _c, nome_base, nome_allenata, t in _MANTENIMENTO:
+        allenata = attributi[nome_allenata]
         if allenata <= 0.0:
             continue
-        t = _TETTI[c]
-        relativo = (getattr(g, nome_base) + allenata) / t
+        relativo = (attributi[nome_base] + allenata) / t
         nuova = allenata
         if relativo > SOGLIA_CALO_LIVELLI_ALTI:
             eccesso = (relativo - SOGLIA_CALO_LIVELLI_ALTI) / (1.0 - SOGLIA_CALO_LIVELLI_ALTI)
@@ -329,7 +357,7 @@ def mantenimento_del_mese(g, giorni):
         nuova *= oblio
         if nuova != allenata:
             perso += allenata - nuova
-            setattr(g, nome_allenata, nuova)
+            attributi[nome_allenata] = nuova
     if perso > 0.0:
         g.aggiorna_icv()
     return perso

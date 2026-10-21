@@ -19,9 +19,11 @@ from costanti import (
     CARATTERISTICHE_VALORE,
     ETA_MAX_CREAZIONE_GIORNI,
     ETA_MIN_CREAZIONE_GIORNI,
+    GLORIA_RICHIESTA_FISSA,
     GLORIA_RICHIESTA_MINIMA_ASSOLUTA,
     INDOLI,
     INTENSITA,
+    K_ICV_GLORIA_RICHIESTA,
     MAX_GLORIA_RICHIESTA,
     MAX_PRECISIONE_RESISTENZA,
     MAX_SKILL_VALUE,
@@ -92,16 +94,17 @@ def _giocatore_neutro(eta_anni, icv):
 
 
 def test_gloria_richiesta_al_picco():
-    assert _giocatore_neutro(17, 100).gloria_richiesta == int(100 * 0.9 * 2.7 + 12)
+    assert _giocatore_neutro(17, 100).gloria_richiesta == int(100 * K_ICV_GLORIA_RICHIESTA * 2.7 + GLORIA_RICHIESTA_FISSA)
 
 
 def test_gloria_richiesta_cala_con_l_eta():
-    assert _giocatore_neutro(55, 100).gloria_richiesta == int(100 * 0.9 * 0.1 + 12)
+    assert _giocatore_neutro(55, 100).gloria_richiesta == int(100 * K_ICV_GLORIA_RICHIESTA * 0.1 + GLORIA_RICHIESTA_FISSA)
     assert _giocatore_neutro(30, 100).gloria_richiesta < _giocatore_neutro(20, 100).gloria_richiesta
 
 
 def test_gloria_richiesta_ai_bordi():
-    assert _giocatore_neutro(60, 0).gloria_richiesta == max(GLORIA_RICHIESTA_MINIMA_ASSOLUTA, 12)
+    # Dalla ritaratura del 15 ottobre 2026 la parte fissa può avere i decimali, e la gloria richiesta è intera.
+    assert _giocatore_neutro(60, 0).gloria_richiesta == max(GLORIA_RICHIESTA_MINIMA_ASSOLUTA, int(GLORIA_RICHIESTA_FISSA))
     assert _giocatore_neutro(17, 10000).gloria_richiesta == MAX_GLORIA_RICHIESTA
 
 

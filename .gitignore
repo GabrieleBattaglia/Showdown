@@ -11,3 +11,8 @@ strumenti/campioni_descrizioni.txt
 *.tmp
 # Le impostazioni d'aspetto descrivono la macchina, non il mondo
 mess_impostazioni.json
+# I modelli di torneo e le formule della tappa 12 stanno accanto al gioco e li cambia l'utente con gli
+# editor: nella cartella del programma, che in sviluppo è la radice, non si committano. Con la barra
+# davanti, perché dati/tornei, le copie predefinite che viaggiano col programma, resti nel repository.
+/formule.json
+/tornei/

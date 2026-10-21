@@ -1,0 +1,31 @@
+{
+ "id": "modello_9",
+ "nome": "Campionato mondiale femminile",
+ "note": "Il mondiale delle donne: le 32 migliori per i punti della classifica dell'ultimo anno, al meglio dei 5 dai quarti, con 3.000 euro della federazione.",
+ "attivo": true,
+ "tipo": "individuale",
+ "sesso": "f",
+ "formula": "gironi_32",
+ "ricorrenza": {
+  "tipo": "annuale",
+  "mese": 12,
+  "giorno": 12
+ },
+ "giorni_iscrizione": 10,
+ "minimo_iscritti": 8,
+ "set_al_meglio": 3,
+ "set_finali": 5,
+ "finali_da": 8,
+ "incontri_al_giorno": 3,
+ "importanza": 4.0,
+ "quota_iscrizione": 0,
+ "contributo_federazione": 0.0,
+ "montepremi_minimo": 3000,
+ "posti_premiati": 16,
+ "pendenza_premi": 1.466,
+ "qualificazione": "punti_anno",
+ "classe_minima": null,
+ "classe_massima": null,
+ "eta_minima": null,
+ "eta_massima": null
+}

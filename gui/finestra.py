@@ -37,6 +37,15 @@ dove si spendono i punti allenamento dei tesserati e se ne scelgono programma e 
 contratti, dove si propongono i rinnovi; lo svincolo dice la buonuscita, e alla chiusura di ciascun
 dialogo la vista mostra che cosa è cambiato e il mondo si salva. Anche queste parti sono di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2026-10-14, con la tappa 12 e la decisione D32, il mondo gioca. Il menu Tornei ha il calendario con
+le iscrizioni a mano, le iscrizioni dei tuoi atleti, il pannello dei tornei in corso, dove gli incontri
+dei tuoi si ascoltano in differita o si leggono, l'albo d'oro, la classifica mondiale, gli editor dei
+modelli e delle formule e il ripristino del calendario predefinito; il menu Partite ha le sfide fra
+polisportive, da lanciare, in arrivo e nello storico. Salva la cronaca salva l'ultimo incontro mostrato
+o ascoltato, amichevole, di torneo o di sfida. All'avvio un calendario che non si legge si dice in
+testa alla vista; quando il mondo avanza, la barra dice le notizie dei tornei e delle sfide, con un
+suono solo, quello della più importante. Le parti della tappa 12 sono di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, modalità auto).
 """
 
 import contextlib
@@ -47,8 +56,10 @@ from GBwx import dentro_area_utile
 
 import archivio
 import impostazioni as modulo_impostazioni
+import modelli_torneo
 import percorsi
 import ricerca
+import sfide
 import suoni
 import testi
 from gui import aspetto
@@ -74,33 +85,14 @@ from gui.dialoghi import (
     VelocitaDiGioco,
     Vendite,
 )
+from gui.editor_tornei import EditorFormule, EditorModelli
+from gui.sfide import LanciaSfida, SfideInArrivo, StoricoSfide
+from gui.tornei import AlboDOro, CalendarioTornei, PannelloTornei, UltimoIncontro, tuoi_del_mondo
 from partita import MotorePartita
 from utilita import adesso, adesso_utc
 
 TITOLO = "MESS, Manageriale e Simulatore Showdown"
 RIGHE_BARRA = 4
-
-
-class UltimaAmichevole:
-    """
-    L'ultima amichevole della sessione, già giocata e registrata: il risultato, i nomi della cronaca,
-    il livello scelto, che vale anche per il file, il suono dell'esito e le parole dell'esito per la
-    barra di stato. Ricorda anche quando si è giocata, l'istante reale e il giorno simulato: la
-    cronaca si salva più tardi, magari dopo un avanzamento del mondo, e il file deve dire il momento
-    dell'incontro, lo stesso dei diari dei due giocatori.
-    """
-
-    def __init__(self, risultato, nomi, livello, esito, istante, data_simulata):
-        self.risultato = risultato
-        self.nomi = nomi
-        self.livello = livello
-        self.esito = esito
-        self.istante = istante
-        self.data_simulata = data_simulata
-        vince = risultato.vincitore
-        sa, sb = risultato.set_vinti
-        mio, suo = (sa, sb) if vince == "A" else (sb, sa)
-        self.evento_esito = f"vince {nomi[vince].testo}, {mio} set a {suo}"
 
 
 class FinestraPrincipale(wx.Frame):
@@ -117,10 +109,14 @@ class FinestraPrincipale(wx.Frame):
         self.inizio = adesso()
         self.comandi = 0
         self.ultimo_evento = "mondo pronto"
+        # Dalla tappa 12, punto 12.10: un modello o una formula dei tornei che non si leggono si dicono in
+        # testa alla vista all'avvio, col loro suono, e nella barra una volta per sessione e a ogni cambio.
+        self.problemi_all_avvio = self._problemi_del_calendario()
+        self._problemi_detti = tuple(self.problemi_all_avvio) or None
         # Il mondo nato adesso avanza subito di un giorno, che non va annunciato: è appena nato.
         self.avanzamento_all_avvio = None
         if origine != archivio.NATO:
-            evento, testo = suoni.evento_avanzamento(rapporto, True, self._ha_polisportive())
+            evento, testo = self._evento_avanzamento(rapporto, True)
             if evento:
                 self.avanzamento_all_avvio = evento
                 self.ultimo_evento = testo
@@ -137,7 +133,10 @@ class FinestraPrincipale(wx.Frame):
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self._al_minuto, self.timer)
         self.timer.Start(60_000)
-        self.mostra(testi.apertura(mondo, origine, messaggi, rapporto, ultimo_prima, adesso_utc()))
+        apertura = testi.apertura(mondo, origine, messaggi, rapporto, ultimo_prima, adesso_utc())
+        if self.problemi_all_avvio:
+            apertura = f"{testi.calendario_illeggibile(self.problemi_all_avvio)}\n{apertura}"
+        self.mostra(apertura)
 
     # Costruzione.
 
@@ -201,7 +200,24 @@ class FinestraPrincipale(wx.Frame):
             ("Pa&rtite", (
                 ("&Amichevole...", "Ctrl+O", self.amichevole),
                 None,
+                ("&Lancia una sfida...", "Ctrl+W", self.lancia_sfida),
+                ("Sfide in a&rrivo...", "Ctrl+Shift+F", self.sfide_in_arrivo),
+                ("S&torico delle sfide...", "Ctrl+Shift+H", self.storico_sfide),
+                None,
                 ("&Salva la cronaca", "Ctrl+Shift+O", self.salva_cronaca),
+            )),
+            # Il menu dei tornei, tappa 12, punto 12.1 del progetto: i tasti sono una proposta da confermare con Gabriele al collaudo.
+            ("&Tornei", (
+                ("&Calendario e iscrizioni...", "Ctrl+U", self.calendario_tornei),
+                ("&Iscrizioni dei tuoi atleti...", "Ctrl+J", self.iscrizioni_tornei),
+                ("&Tornei in corso...", "Ctrl+Y", self.tornei_in_corso),
+                None,
+                ("&Albo d'oro...", "Ctrl+Shift+B", self.albo_d_oro),
+                ("Classifica &mondiale", "Ctrl+Shift+W", self.classifica_mondiale),
+                None,
+                ("&Editor dei modelli di torneo...", "Ctrl+Shift+J", self.editor_modelli),
+                ("Editor delle &formule...", "Ctrl+Shift+Y", self.editor_formule),
+                ("&Ripristina il calendario predefinito...", None, self.ripristina_calendario),
             )),
             ("&Mondo", (
                 ("&Data e prossimo avanzamento", "Ctrl+D", lambda: self.mostra(testi.data_e_avanzamento(self.mondo, adesso_utc()), "data simulata", "data_e_avanzamento")),
@@ -274,7 +290,9 @@ class FinestraPrincipale(wx.Frame):
         else:
             primo = "avvio"
         suoni.suona(primo)
-        if self.avanzamento_all_avvio:
+        if self.problemi_all_avvio:
+            suoni.in_coda("calendario_illeggibile")
+        elif self.avanzamento_all_avvio:
             suoni.in_coda(self.avanzamento_all_avvio)
 
     def errore_imprevisto(self, tipo, valore):
@@ -340,6 +358,35 @@ class FinestraPrincipale(wx.Frame):
     def _ha_polisportive(self):
         return any(not p.is_cpu_controlled for p in self.mondo.polisportive.values())
 
+    @staticmethod
+    def _problemi_del_calendario():
+        """I problemi del calendario dei tornei, modelli e formule che non si leggono, in frasi; una lista vuota se va tutto bene."""
+        try:
+            return modelli_torneo.GestoreModelli().problemi()
+        except OSError as errore:
+            return [f"La cartella dei tornei non si legge: {errore}"]
+
+    def _sfidante(self):
+        """Il nome della prima polisportiva che aspetta la risposta di una delle tue a una sfida, per la barra; None se nessuna."""
+        for p in self.mondo.polisportive.values():
+            if not p.is_cpu_controlled:
+                for s in self.mondo.sfide.proposte_per(p.nome):
+                    return s.sfidante["nome"]
+        return None
+
+    def _evento_avanzamento(self, rapporto, salvato):
+        """
+        Il suono e la riga della barra di un avanzamento, con suoni.evento_avanzamento: il calendario
+        con problemi si dice una volta per sessione e a ogni cambio, e la sfida in attesa col nome di chi sfida.
+        """
+        if rapporto and rapporto.get("calendario_con_problemi"):
+            problemi = tuple(self._problemi_del_calendario())
+            if problemi == self._problemi_detti:
+                rapporto = {**rapporto, "calendario_con_problemi": 0}
+            else:
+                self._problemi_detti = problemi or None
+        return suoni.evento_avanzamento(rapporto, salvato, self._ha_polisportive(), self._sfidante())
+
     def avanza(self):
         """
         Fa avanzare il mondo dei giorni maturati, salva e lo annuncia nella barra di stato, con un
@@ -352,7 +399,7 @@ class FinestraPrincipale(wx.Frame):
         self.rapporto = rapporto
         self.rapporto_sessione = testi.somma_rapporti(self.rapporto_sessione, rapporto) if self.rapporto_sessione else rapporto
         salvato, _messaggi, _avvisi = self._salva_raccogliendo()
-        evento, self.ultimo_evento = suoni.evento_avanzamento(rapporto, salvato, self._ha_polisportive())
+        evento, self.ultimo_evento = self._evento_avanzamento(rapporto, salvato)
         suoni.in_coda(evento)
 
     def _modale(self, dialogo):
@@ -774,7 +821,7 @@ class FinestraPrincipale(wx.Frame):
             esito = "amichevole_vinta"
         else:
             esito = "amichevole_persa"
-        self.incontro = v = UltimaAmichevole(risultato, motore.nomi(risultato), livello, esito, istante, data_simulata)
+        self.incontro = v = UltimoIncontro(risultato, motore.nomi(risultato), livello, esito, istante, data_simulata)
         # Il mondo si salva subito, anche prima della partita dal vivo: chi esce a metà la trova già registrata.
         riuscito, messaggi, _avvisi = self._salva_raccogliendo()
         uscita = self._dal_vivo(v, gemello) if gemello is not None else None
@@ -812,19 +859,174 @@ class FinestraPrincipale(wx.Frame):
 
     def salva_cronaca(self):
         """
-        La cronaca dell'ultima amichevole nel suo file, nella cartella delle cronache, al livello
-        scelto nelle opzioni; intestazione e nome del file dicono quando si è giocata, non quando si salva.
+        La cronaca dell'ultimo incontro mostrato o ascoltato, dalla tappa 12 anche di torneo o di sfida,
+        nel suo file, nella cartella delle cronache, al livello scelto; intestazione e nome del file
+        dicono quando si è giocato, non quando si salva.
         """
         v = self.incontro
         if v is None:
-            self.mostra(testi.NESSUNA_AMICHEVOLE, "nessuna amichevole", "nessun_incontro")
+            self.mostra(testi.NESSUNA_AMICHEVOLE, "nessun incontro", "nessun_incontro")
             return
         try:
-            percorso = MotorePartita(self.mondo).salva_cronaca(v.risultato, v.livello, istante=v.istante, data_simulata=v.data_simulata)
+            percorso = MotorePartita(self.mondo).salva_cronaca(v.risultato, v.livello, istante=v.istante, data_simulata=v.data_simulata, nomi=v.nomi)
         except OSError as errore:
-            self.mostra(testi.cronaca_non_salvata(errore), "cronaca non salvata", "cronaca_non_salvata")
+            self.mostra(testi.cronaca_non_salvata(errore, v.tipo), "cronaca non salvata", "cronaca_non_salvata")
             return
-        self.mostra(testi.cronaca_salvata(percorso, v.livello, v.nomi), "cronaca salvata", "cronaca_salvata")
+        self.mostra(testi.cronaca_salvata(percorso, v.livello, v.nomi, v.tipo), "cronaca salvata", "cronaca_salvata")
+
+    def _salva_velocita(self, velocita):
+        """La velocità di gioco a cui si è arrivati ascoltando dal vivo o in differita: vale anche per le partite che seguono."""
+        if velocita is not None and velocita != self.impostazioni["velocita_gioco"]:
+            self.impostazioni = modulo_impostazioni.valide({**self.impostazioni, "velocita_gioco": velocita})
+            modulo_impostazioni.salva(self.impostazioni)
+
+    # Le sfide, tappa 12, punto 12.6.
+
+    def lancia_sfida(self):
+        """Il lancio di una sfida a una polisportiva del computer, che risponde subito; alla chiusura la vista dice gli esiti e il mondo si salva."""
+        p = self._attiva()
+        if p is None:
+            return
+        if sfide.disponibili(self.mondo, p) <= 0:
+            self.mostra(f"{p.nome} non ha sfide da lanciare: il primo del mese ne arrivano due, fino a quattro.", "nessuna sfida da lanciare",
+                        "nessuna_sfida_da_lanciare")
+            return
+        suoni.suona("dialogo_lancia_sfida")
+        dialogo = LanciaSfida(self, self.mondo, p, self.impostazioni)
+        try:
+            self._modale(dialogo)
+            esiti = list(dialogo.esiti)
+        finally:
+            dialogo.Destroy()
+        testo = "\n".join([f"Sfide lanciate da {p.nome}: {len(esiti)}.", *esiti]) if esiti else f"{p.nome} non ha lanciato sfide."
+        self._concludi(testo, f"sfide: {testi.conta(len(esiti), 'lancio', 'lanci')}", "lavoro_concluso", bool(esiti))
+
+    def sfide_in_arrivo(self):
+        """Le sfide che aspettano la risposta della polisportiva attiva, entro oggi, prima dell'avanzamento seguente: accettare con la formazione o rifiutare."""
+        p = self._attiva()
+        if p is None:
+            return
+        suoni.suona("dialogo_sfide_in_arrivo")
+        dialogo = SfideInArrivo(self, self.mondo, p)
+        try:
+            self._modale(dialogo)
+            esiti = list(dialogo.esiti)
+        finally:
+            dialogo.Destroy()
+        testo = "\n".join([f"Risposte di {p.nome} alle sfide: {len(esiti)}.", *esiti]) if esiti else f"{p.nome} non ha risposto a nessuna sfida."
+        self._concludi(testo, f"sfide: {testi.conta(len(esiti), 'risposta', 'risposte')}", "lavoro_concluso", bool(esiti))
+
+    def storico_sfide(self):
+        """Lo storico delle sfide delle tue polisportive, con l'ascolto in differita e la cronaca delle ultime dieci."""
+        if not any(not p.is_cpu_controlled for p in self.mondo.polisportive.values()):
+            self.mostra("Non hai ancora nessuna polisportiva: fondane una con Ctrl+N.", "nessuna polisportiva", "nessuna_polisportiva_tua")
+            return
+        suoni.suona("storico_sfide")
+        dialogo = StoricoSfide(self, self.mondo, self.impostazioni)
+        try:
+            self._modale(dialogo)
+            ultimo, velocita = dialogo.ultimo, dialogo.velocita
+        finally:
+            dialogo.Destroy()
+        self._salva_velocita(velocita)
+        if ultimo is not None:
+            self.incontro = ultimo
+
+    # I tornei, tappa 12, punto 12.1.
+
+    def calendario_tornei(self, iscrizioni_subito=False):
+        """
+        Il calendario dei tornei e le iscrizioni a mano della polisportiva attiva: alla chiusura la vista
+        dice le iscrizioni fatte e tolte, e il mondo si salva; se si è chiesto il pannello di un'edizione
+        in corso, si apre subito dopo.
+        """
+        p = self._attiva()
+        if p is None:
+            return
+        suoni.suona("dialogo_iscrizioni_tornei" if iscrizioni_subito else "dialogo_calendario_tornei")
+        dialogo = CalendarioTornei(self, self.mondo, p, self.impostazioni, iscrizioni_subito)
+        try:
+            self._modale(dialogo)
+            fatte, pannello = list(dialogo.fatte), dialogo.pannello_chiesto
+        finally:
+            dialogo.Destroy()
+        self._concludi(testi.riepilogo_calendario(p, fatte), testi.evento_calendario(fatte) if fatte else "calendario", "lavoro_concluso", bool(fatte))
+        if pannello is not None:
+            self.tornei_in_corso(pannello)
+
+    def iscrizioni_tornei(self):
+        self.calendario_tornei(iscrizioni_subito=True)
+
+    def tornei_in_corso(self, torneo_scelto=None):
+        """
+        Il pannello dei tornei in corso e conclusi di recente: alla chiusura l'ultimo incontro ascoltato o
+        letto diventa quello di Salva la cronaca, e se si sono mostrati dei risultati il mondo si salva.
+        """
+        suoni.suona("dialogo_tornei_in_corso")
+        dialogo = PannelloTornei(self, self.mondo, self.impostazioni, torneo_scelto)
+        try:
+            self._modale(dialogo)
+            ultimo, velocita, svelati = dialogo.ultimo, dialogo.velocita, dialogo.svelati
+        finally:
+            dialogo.Destroy()
+        self._salva_velocita(velocita)
+        if ultimo is not None:
+            self.incontro = ultimo
+        righe = [f"Pannello dei tornei: {testi.conta(svelati, 'risultato mostrato', 'risultati mostrati')}."]
+        if ultimo is not None:
+            righe.append(f"L'ultimo incontro, {ultimo.nomi['A'].testo} contro {ultimo.nomi['B'].testo}, ha la cronaca da salvare con Ctrl+Maiusc+O.")
+        self._concludi("\n".join(righe), "pannello dei tornei", "lavoro_concluso", bool(svelati))
+
+    def albo_d_oro(self):
+        suoni.suona("albo_d_oro")
+        dialogo = AlboDOro(self, self.mondo)
+        try:
+            self._modale(dialogo)
+        finally:
+            dialogo.Destroy()
+
+    def classifica_mondiale(self):
+        self.mostra(testi.classifica_mondiale(self.mondo, tuoi=tuoi_del_mondo(self.mondo)), "classifica mondiale", "classifica_mondiale")
+
+    def editor_modelli(self):
+        """L'editor dei modelli di torneo: alla chiusura la vista dice che cosa è cambiato; il mondo non si tocca, perché i modelli stanno accanto al gioco."""
+        suoni.suona("dialogo_editor_modelli")
+        dialogo = EditorModelli(self)
+        try:
+            self._modale(dialogo)
+            esiti = list(dialogo.esiti)
+        finally:
+            dialogo.Destroy()
+        testo = "\n".join(["Modelli di torneo: le modifiche valgono per le edizioni future.", *esiti]) if esiti else "Nessun modello di torneo cambiato."
+        self._problemi_detti = None
+        self.mostra(testo, f"modelli: {testi.conta(len(esiti), 'modifica', 'modifiche')}", "lavoro_concluso")
+
+    def editor_formule(self):
+        """L'editor delle formule: alla chiusura la vista dice le formule salvate ed eliminate."""
+        suoni.suona("dialogo_editor_formule")
+        dialogo = EditorFormule(self)
+        try:
+            self._modale(dialogo)
+            esiti = list(dialogo.esiti)
+        finally:
+            dialogo.Destroy()
+        testo = "\n".join(["Formule dei tornei: le modifiche valgono per le edizioni future.", *esiti]) if esiti else "Nessuna formula cambiata."
+        self._problemi_detti = None
+        self.mostra(testo, f"formule: {testi.conta(len(esiti), 'modifica', 'modifiche')}", "lavoro_concluso")
+
+    def ripristina_calendario(self):
+        """Rimette il calendario predefinito, dopo la domanda col no già scelto: quello di prima va da parte, e cambiano soltanto le edizioni future."""
+        domanda = ("Rimettere il calendario predefinito dei tornei? I modelli e le formule di adesso vanno in una cartella a parte, dentro la cartella tornei, "
+                   "e cambiano soltanto le edizioni future.")
+        if self._domanda(domanda, "Ripristina il calendario") != wx.YES:
+            return
+        try:
+            da_parte = modelli_torneo.GestoreModelli().ripristina_predefiniti()
+        except OSError as errore:
+            self.mostra(f"Il calendario predefinito non si è potuto rimettere: {errore}.", "calendario non ripristinato", "calendario_illeggibile")
+            return
+        self._problemi_detti = None
+        self.mostra(f"Il calendario predefinito è tornato. Quello di prima è nella cartella {da_parte}.", "calendario predefinito", "calendario_ripristinato")
 
     # Le impostazioni.
 

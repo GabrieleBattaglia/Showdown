@@ -164,9 +164,13 @@ class Regia:
 
     # L'incontro e il sorteggio.
 
-    def inizio_incontro(self, ids):
+    def inizio_incontro(self, ids, acciacchi=None):
+        """L'inizio dell'incontro; dalla tappa 12, se qualcuno gioca con un acciacco, la presentazione lo dice, con la sede."""
         self.fase = E.PRELIMINARI
-        return [self._arbitro(E.INIZIO_INCONTRO, 0.0, dati={"formato": self.formato.nome, "al_tavolo": list(ids)})]
+        dati = {"formato": self.formato.nome, "al_tavolo": list(ids)}
+        if acciacchi:
+            dati["acciacchi"] = [list(coppia) for coppia in acciacchi]
+        return [self._arbitro(E.INIZIO_INCONTRO, 0.0, dati=dati)]
 
     def sorteggio(self, info):
         """
@@ -773,9 +777,35 @@ class Regia:
         eventi.append(self._arbitro(E.FINE_SET, 0.0, dati={"set": set_n, "punteggio": list(punteggio), "set_vinti": list(set_vinti), "ultimo": ultimo}))
         return eventi
 
-    def fine_incontro(self, set_vinti, set_giocati):
+    def fine_incontro(self, set_vinti, set_giocati, ritirati=(), infortuni=(), acciacchi=()):
+        """
+        La fine dell'incontro. Dalla tappa 12 dice anche chi si è ritirato, chi si è fatto male a fine
+        incontro e chi ne esce con un acciacco, con la sede: i campi ci sono soltanto quando servono.
+        """
         self.fase = E.CHIUSURA
-        return [self._arbitro(E.FINE_INCONTRO, 0.0, dati={"set_vinti": list(set_vinti), "set": [list(s) for s in set_giocati]})]
+        dati = {"set_vinti": list(set_vinti), "set": [list(s) for s in set_giocati]}
+        if ritirati:
+            dati["ritirati"] = list(ritirati)
+        if infortuni:
+            dati["infortuni"] = [list(coppia) for coppia in infortuni]
+        if acciacchi:
+            dati["acciacchi"] = [list(coppia) for coppia in acciacchi]
+        return [self._arbitro(E.FINE_INCONTRO, 0.0, dati=dati)]
+
+    def ritiro(self, ritirati, sedi, vince):
+        """
+        Il ritiro della tappa 12, D32: a fine set chi si è fatto male e non può continuare si ritira.
+        L'arbitro lo chiama a palla ferma, prima del triplice fischio che chiude l'incontro.
+        """
+        self.fase = E.CHIUSURA
+        evento = self._arbitro(E.RITIRO, self.tar.DURATA_CHIAMATA / self.velocita, dati={"ritirati": list(ritirati), "sedi": list(sedi), "vince": vince})
+        return [evento, self._fischio(E.TRIPLO)]
+
+    def cambio_braccio(self, giocatore, sede):
+        """L'ambidestro che si fa male a un braccio a fine set: continua con l'altro, D25. La mano nuova vale dal set che segue."""
+        self.mani[giocatore.id] = giocatore.mano
+        pos = locale_in_assoluto(giocatore.parte, CENTRO_X, 25.0)
+        return [self._evento(E.CAMBIO_BRACCIO, 0.0, giocatore.id, pos, mano=giocatore.mano, dati={"sede": sede})]
 
 
 def _arrotonda(prob):

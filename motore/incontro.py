@@ -17,6 +17,21 @@ tavolo. Il generatore della scena decide i dettagli che esistono soltanto in mod
 cioè coordinate, velocità e attese. Così la modalità essenziale, senza regia e senza eventi, dà
 con lo stesso seme gli stessi punti della completa, e una partita si rigioca identica: senza un
 seme, l'incontro ne preleva uno dal caso globale, un numero solo, e lo conserva nel risultato.
+Dalla tappa 12, decisione D32, risposte 6 e 7 di Gabriele e la sua regola sugli infortuni, il motore
+estrae gli infortuni dell'incontro, con un quarto generatore, nato anche lui dal seme: a ogni fine
+set quelli che fermano, per i giocatori di A e poi di B, e dopo l'ultimo set gli acciacchi, nello
+stesso ordine, uguali nelle due modalità. Chi riceve le basi d'infortunio le passa, una per
+giocatore; senza, come negli strumenti e nel banco, non si estrae niente. Gli infortuni che fermano
+sono un quinto della probabilità di oggi, ripartiti sui set in proporzione alle azioni giocate fino
+al riferimento, e gli acciacchi prendono il resto, così la probabilità che succeda qualcosa resta
+quella di prima. Chi si fa male a fine set e non può continuare si ritira: i set che servono
+all'altro si aggiungono 11 a 0. L'ambidestro che si fa male a un braccio continua con l'altro. Dopo
+il set che chiude l'incontro l'infortunio c'è, ma il risultato resta; la gara a squadre, che ha un
+set solo, non conosce il ritiro. L'incontro riceve anche i cali degli acciacchi del giorno e le
+azioni già giocate quel giorno in un torneo, per la fatica della giornata. Con le basi, i cali e le
+azioni iniziali assenti il motore fa esattamente quello che faceva, e lo provano le impronte.
+Qui nasce anche la sconfitta a tavolino, 11 a 0 in ogni set, o 31 a 0 nella gara a squadre, per
+chi non si presenta.
 """
 
 import dataclasses
@@ -28,6 +43,7 @@ from typing import NamedTuple
 from costanti import (
     AVVISI_RISCALDAMENTO_SINGOLARE,
     AVVISI_RISCALDAMENTO_SQUADRE,
+    AZIONI_RIFERIMENTO_INFORTUNIO,
     PUNTI_CAMBIO_CAMPO_SQUADRE,
     PUNTI_CAMBIO_CAMPO_ULTIMO_SET,
     PUNTI_PER_GOAL,
@@ -35,6 +51,7 @@ from costanti import (
     PUNTI_SET_SQUADRE,
     PUNTI_VANTAGGIO_NECESSARI,
     PUNTI_VITTORIA_SET_BASE,
+    QUOTA_INFORTUNI_CHE_FERMANO,
     RISCALDAMENTO_SINGOLARE,
     RISCALDAMENTO_SQUADRE,
     SERVIZI_CONSECUTIVI_PER_GIOCATORE,
@@ -43,7 +60,7 @@ from costanti import (
     TIMEOUT_PER_SET,
     TIMEOUT_SQUADRE,
 )
-from motore.campo import InCampo, StatisticheGiocatore, efficienza
+from motore.campo import InCampo, StatisticheGiocatore, braccio_della_sede, efficienza, estrai_sede, fattore_carico
 from motore.dado import Dado
 from motore.eventi import ErroreMotore
 from motore.regia import Regia
@@ -51,11 +68,17 @@ from motore.scambio import EsitoPunto, gioca_punto
 from motore.squadre import Squadra, ordine_di_battuta, problema_squadra
 from motore.taratura import TARATURA
 
-__all__ = ("COMPLETO", "ESSENZIALE", "SINGOLARE_3", "SINGOLARE_5", "SQUADRE", "EsitoPunto", "Formato", "Incontro", "Momento", "RisultatoIncontro",
-           "StatisticheGiocatore", "StatisticheIncontro", "StatoIncontro", "formato_singolare", "simula_incontro")
+__all__ = ("COMPLETO", "ESSENZIALE", "RITIRO", "SINGOLARE_3", "SINGOLARE_5", "SQUADRE", "TAVOLINO", "EsitoPunto", "Formato", "Incontro", "Momento",
+           "RisultatoIncontro", "StatisticheGiocatore", "StatisticheIncontro", "StatoIncontro", "a_tavolino", "formato_singolare", "simula_incontro")
 
 ESSENZIALE = "essenziale"
 COMPLETO = "completo"
+# Gli esiti di un incontro: regolare, per ritiro, a tavolino.
+REGOLARE = "regolare"
+RITIRO = "ritiro"
+TAVOLINO = "tavolino"
+# Il tetto della probabilità d'infortunio di un incontro, in percentuale, come in infortuni.py.
+PROBABILITA_MASSIMA = 95.0
 # I generi dei momenti dell'incontro.
 PRELIMINARI = "preliminari"
 PUNTO = "punto"
@@ -86,6 +109,33 @@ SQUADRE = Formato("gara a squadre", "squadre", 1, PUNTI_SET_SQUADRE, PUNTI_VANTA
                   "incontro", TIMEOUT_SQUADRE, RISCALDAMENTO_SQUADRE, AVVISI_RISCALDAMENTO_SQUADRE)
 
 
+def cumulata_infortunio(base, azioni, chiude):
+    """
+    La probabilità cumulata, in percentuale, che un giocatore si sia fatto male fino a una fine set,
+    tappa 12: a un quinto, QUOTA_INFORTUNI_CHE_FERMANO, della probabilità piena dell'incontro. Alla
+    fine del set che chiude l'incontro è un quinto della probabilità piena, con il carico di tutte le
+    azioni; prima, cresce in proporzione alle azioni giocate fino al riferimento, con il carico dove lo
+    supera: così il minimo del carico pesa sull'ultimo set, invece che sul primo. La usano il motore e
+    l'esito rapido.
+    """
+    if chiude or AZIONI_RIFERIMENTO_INFORTUNIO <= 0:
+        carico = fattore_carico(azioni)
+    else:
+        carico = min(fattore_carico(azioni), azioni / AZIONI_RIFERIMENTO_INFORTUNIO)
+    return QUOTA_INFORTUNI_CHE_FERMANO * min(PROBABILITA_MASSIMA, base * carico)
+
+
+def probabilita_acciacco(base, azioni):
+    """
+    La probabilità, in quota, che chi non si è fatto male nell'incontro ne esca con un acciacco: la
+    probabilità piena meno la parte degli infortuni che fermano, divisa per quello che resta, così la
+    probabilità che succeda qualcosa è quella di prima.
+    """
+    quota = QUOTA_INFORTUNI_CHE_FERMANO
+    piena = min(PROBABILITA_MASSIMA, base * fattore_carico(azioni)) / 100.0
+    return (piena - quota * piena) / (1.0 - quota * piena)
+
+
 def formato_singolare(set_al_meglio):
     """Il formato del singolare al meglio dei 3 o dei 5 set; ValueError per ogni altro numero."""
     if set_al_meglio not in SET_AMMESSI:
@@ -113,9 +163,12 @@ class StatisticheIncontro:
 class RisultatoIncontro:
     """
     Il risultato di un incontro: le parti con i loro identificativi, il vincitore A o B, i set
-    come coppie, l'esito regolare (ritiro e tavolino arriveranno con la tappa 12), la durata
-    simulata in secondi soltanto in modalità completa, le statistiche per giocatore e dell'incontro,
-    tutti i punti, e in modalità completa gli eventi e i momenti.
+    come coppie, l'esito, la durata simulata in secondi soltanto in modalità completa, le statistiche
+    per giocatore e dell'incontro, tutti i punti, e in modalità completa gli eventi e i momenti.
+    Dalla tappa 12 l'esito è regolare, ritiro o tavolino; set_giocati dice quanti set si sono giocati
+    davvero, perché col ritiro i set che servivano all'altro si aggiungono 11 a 0, e col tavolino
+    nessuno; infortuni sono le terne di identificativo, set e sede degli infortuni che fermano,
+    acciacchi le coppie di identificativo e sede, ritirato gli identificativi di chi si è ritirato.
     """
     formato: Formato
     seme: int
@@ -134,6 +187,15 @@ class RisultatoIncontro:
     registrazione: list | None = None
     # Nella gara a squadre, i nomi delle due squadre, per la cronaca.
     nomi_squadre: tuple | None = None
+    # La tappa 12: i set giocati davvero, gli infortuni, gli acciacchi e chi si è ritirato.
+    set_giocati: int | None = None
+    infortuni: list = dataclasses.field(default_factory=list)
+    acciacchi: list = dataclasses.field(default_factory=list)
+    ritirato: tuple = ()
+
+    def __post_init__(self):
+        if self.set_giocati is None:
+            self.set_giocati = len(self.set)
 
     @property
     def set_vinti(self):
@@ -180,10 +242,15 @@ class Incontro:
     la procedura dell'arbitro e mai l'azione; la partita dal vivo la cambia anche a metà incontro con
     imposta_velocita, e il cambio vale dal momento che segue. Non tocca né i punti né il loro ordine:
     con lo stesso seme l'incontro dà lo stesso risultato a ogni velocità.
+    Dalla tappa 12: basi_infortunio è un dizionario dall'identificativo alla probabilità d'infortunio
+    del giocatore senza il carico, in percentuale, oppure None, e allora nessun infortunio e nessun
+    acciacco; cali dà il calo dell'acciacco di oggi di ciascuno, azioni_iniziali le azioni con cui
+    ciascuno comincia, per la fatica della giornata. caso_infortuni sostituisce il generatore degli
+    infortuni, per le prove.
     """
 
     def __init__(self, parte_a, parte_b, formato, *, seme=None, dettaglio=COMPLETO, taratura=TARATURA, riscaldamento=True, timeout=True, dado=None,
-                 velocita=1.0):
+                 velocita=1.0, basi_infortunio=None, cali=None, azioni_iniziali=None, caso_infortuni=None):
         if dettaglio not in (ESSENZIALE, COMPLETO):
             raise ValueError(f"Dettaglio sconosciuto: {dettaglio}.")
         self.formato = formato
@@ -193,6 +260,8 @@ class Incontro:
         self.riscaldamento = riscaldamento
         self.timeout_attivo = timeout
         self.parti = {"A": parte_a, "B": parte_b}
+        cali = cali or {}
+        iniziali = azioni_iniziali or {}
         if self.squadre:
             for squadra in (parte_a, parte_b):
                 if not isinstance(squadra, Squadra):
@@ -205,13 +274,14 @@ class Incontro:
             self.campo = {}
             for parte, squadra in (("A", parte_a), ("B", parte_b)):
                 for g in squadra.giocatori:
-                    self.campo[g.id] = InCampo(g, parte, t)
+                    self.campo[g.id] = InCampo(g, parte, t, cali.get(g.id, 0.0), iniziali.get(g.id, 0))
             self.formazione = {"A": [g.id for g in parte_a.titolari], "B": [g.id for g in parte_b.titolari]}
             self.riserve = {"A": [g.id for g in parte_a.riserve], "B": [g.id for g in parte_b.riserve]}
         else:
             if parte_a.id == parte_b.id:
                 raise ValueError("I giocatori devono essere diversi.")
-            self.campo = {parte_a.id: InCampo(parte_a, "A", t), parte_b.id: InCampo(parte_b, "B", t)}
+            self.campo = {parte_a.id: InCampo(parte_a, "A", t, cali.get(parte_a.id, 0.0), iniziali.get(parte_a.id, 0)),
+                          parte_b.id: InCampo(parte_b, "B", t, cali.get(parte_b.id, 0.0), iniziali.get(parte_b.id, 0))}
             self.formazione = {"A": [parte_a.id], "B": [parte_b.id]}
             self.riserve = {"A": [], "B": []}
         # Il seme: senza, se ne preleva uno solo dal caso globale, e si conserva nel risultato.
@@ -219,6 +289,24 @@ class Incontro:
         self.rng_procedure = random.Random(f"procedure-{self.seme}")
         self.rng_scena = random.Random(f"scena-{self.seme}")
         self.dado = dado if dado is not None else Dado(random.Random(self.seme))
+        # Gli infortuni in gara della tappa 12: le basi, il generatore, e quello che è successo.
+        self.basi_infortunio = dict(basi_infortunio) if basi_infortunio is not None else None
+        self.rng_infortuni = None
+        if self.basi_infortunio is not None:
+            self.rng_infortuni = caso_infortuni if caso_infortuni is not None else random.Random(f"infortuni-{self.seme}")
+        # Chi gioca al tavolo, nell'ordine delle estrazioni: i giocatori di A e poi quelli di B. Come
+        # tutto il resto, si fotografa quando l'incontro nasce chi è già infortunato e chi ha un
+        # acciacco: il gemello della partita dal vivo si gioca dopo la registrazione, e deve ripetere
+        # le stesse estrazioni e la stessa presentazione.
+        self._in_gara = (*self.formazione["A"], *self.formazione["B"])
+        self._gia_infortunati = frozenset(gid for gid in self._in_gara if getattr(self.campo[gid].g, "infortunato", False))
+        self._acciacchi_in_campo = tuple((gid, getattr(self.campo[gid].g, "acciacco_sede", None)) for gid in self._in_gara if self.campo[gid].calo)
+        self.infortuni = []
+        self.acciacchi = []
+        self.ritirati = ()
+        self.set_reali = None
+        self._feriti = set()
+        self._cumulate = {}
         self.regia = None
         if self.completo:
             self.regia = Regia(self.rng_scena, t, formato, self.campo)
@@ -245,6 +333,8 @@ class Incontro:
         self.eventi = [] if self.completo else None
         self.momenti_giocati = [] if self.completo else None
         self.statistiche_incontro = StatisticheIncontro()
+        # Le fasce degli imprevisti, una volta per coppia al tavolo: vedi _fasce_imprevisti.
+        self._fasce_per_coppia = {}
         self.info_sorteggio = None
         self.finito = False
         self.risultato = None
@@ -288,29 +378,124 @@ class Incontro:
         self._iniziato = True
         da_vincere = math.ceil(self.formato.set_al_meglio / 2)
         yield self._momento(PRELIMINARI, self._preliminari(), None)
+        ritiro = None
         while True:
             yield from self._gioca_set()
             vincitore_set = "A" if self.punteggio[0] > self.punteggio[1] else "B"
             self.set_vinti[_INDICE[vincitore_set]] += 1
             self.set_giocati.append(tuple(self.punteggio))
-            if max(self.set_vinti) >= da_vincere:
+            chiude = max(self.set_vinti) >= da_vincere
+            nuovi = self._infortuni_a_fine_set(chiude)
+            if chiude:
                 break
+            fermi = [(gid, sede) for gid, sede in nuovi if not self._continua(gid, sede)]
             eventi = []
             if self.regia:
                 eventi = self.regia.fine_set(self.set_n, tuple(self.punteggio), tuple(self.set_vinti), False)
+            if fermi:
+                # Il ritiro: l'incontro finisce qui, e la chiusura la fa l'arbitro col ritiro.
+                ritiro = self._ritira(fermi, vincitore_set, da_vincere)
+                yield self._momento(PALLA_FERMA, eventi, None)
+                break
+            for gid, sede in nuovi:
+                c = self.campo[gid]
+                c.passa_all_altro_braccio(braccio_della_sede(sede))
+                if self.regia:
+                    eventi += self.regia.cambio_braccio(c, sede)
+            if self.regia:
                 eventi += self.regia.cambio_campo(fra_set=True)
             self.statistiche_incontro.cambi_campo.append((self.set_n, "fine set"))
             yield self._momento(PALLA_FERMA, eventi, None)
         self.finito = True
+        self._acciacchi_finali()
         eventi = []
         if self.regia:
-            eventi = self.regia.fine_set(self.set_n, tuple(self.punteggio), tuple(self.set_vinti), True)
-            eventi += self.regia.fine_incontro(tuple(self.set_vinti), list(self.set_giocati))
+            if ritiro is None:
+                eventi = self.regia.fine_set(self.set_n, tuple(self.punteggio), tuple(self.set_vinti), True)
+            else:
+                eventi = self.regia.ritiro(*ritiro)
+            finali = [(gid, sede) for gid, set_n, sede in self.infortuni if set_n == self.set_n and gid not in self.ritirati]
+            eventi += self.regia.fine_incontro(tuple(self.set_vinti), list(self.set_giocati), self.ritirati, finali, self.acciacchi)
         # Il risultato si compone prima di consegnare la chiusura: chi segue la partita un momento
         # alla volta e si ferma quando lo stato dice finito, come la live, lo trova già pronto.
         chiusura = self._momento(CHIUSURA, eventi, None)
         self.risultato = self._componi_risultato()
         yield chiusura
+
+    # Gli infortuni in gara, tappa 12.
+
+    def _cumulata(self, base, azioni, chiude):
+        return cumulata_infortunio(base, azioni, chiude)
+
+    def _estraibile(self, gid):
+        """Vero se per il giocatore si estrae: ha una base, non si è già fatto male nell'incontro e non era già infortunato, come l'ambidestro col braccio fermo."""
+        return self.basi_infortunio.get(gid) is not None and gid not in self._feriti and gid not in self._gia_infortunati
+
+    def _infortuni_a_fine_set(self, chiude):
+        """
+        Gli infortuni che fermano di una fine set, per i giocatori di A e poi di B: la probabilità di
+        questa fine set è l'aumento della cumulata, diviso quello che restava. Restituisce le coppie
+        di identificativo e sede di chi si è fatto male adesso.
+        """
+        if self.basi_infortunio is None:
+            return []
+        rng = self.rng_infortuni
+        nuovi = []
+        for gid in self._in_gara:
+            if not self._estraibile(gid):
+                continue
+            c = self.campo[gid]
+            prima = self._cumulate.get(gid, 0.0)
+            cumulata = max(prima, self._cumulata(self.basi_infortunio[gid], c.stats.azioni, chiude))
+            self._cumulate[gid] = cumulata
+            probabilita = (cumulata - prima) / (100.0 - prima) if prima < 100.0 else 0.0
+            if rng.random() < probabilita:
+                sede = estrai_sede(c.g, rng)
+                self._feriti.add(gid)
+                self.infortuni.append((gid, self.set_n, sede))
+                nuovi.append((gid, sede))
+        return nuovi
+
+    def _continua(self, gid, sede):
+        """Vero se l'infortunio lascia giocare: l'ambidestro che si fa male a un braccio continua con l'altro, D25."""
+        return bool(getattr(self.campo[gid].g, "ambidestro", False)) and braccio_della_sede(sede) is not None
+
+    def _ritira(self, fermi, vincitore_set, da_vincere):
+        """
+        Il ritiro a fine set: chi non può continuare perde i set che restano, che si aggiungono 11 a 0
+        all'altro. Se si ritirano tutti e due, risposta 7 di Gabriele, vince chi ha vinto più set e, a
+        parità, chi ha vinto il set appena finito. Restituisce i dati della chiamata dell'arbitro.
+        """
+        self.ritirati = tuple(gid for gid, _sede in fermi)
+        parti = {self.campo[gid].parte for gid in self.ritirati}
+        if len(parti) == 1:
+            vince = altra(parti.pop())
+        elif self.set_vinti[0] != self.set_vinti[1]:
+            vince = "A" if self.set_vinti[0] > self.set_vinti[1] else "B"
+        else:
+            vince = vincitore_set
+        self.set_reali = len(self.set_giocati)
+        punti = self.formato.punti_set
+        while self.set_vinti[_INDICE[vince]] < da_vincere:
+            self.set_vinti[_INDICE[vince]] += 1
+            self.set_giocati.append((punti, 0) if vince == "A" else (0, punti))
+        return self.ritirati, tuple(sede for _gid, sede in fermi), vince
+
+    def _acciacchi_finali(self):
+        """
+        Dopo l'ultimo set, chi nell'incontro non si è fatto male risente di un acciacco con la
+        probabilità piena meno la parte degli infortuni che fermano, divisa per quello che resta: così
+        la probabilità che succeda qualcosa è quella di prima, e un caso su cinque ferma.
+        """
+        if self.basi_infortunio is None:
+            return
+        rng = self.rng_infortuni
+        for gid in self._in_gara:
+            if not self._estraibile(gid):
+                continue
+            c = self.campo[gid]
+            if rng.random() < probabilita_acciacco(self.basi_infortunio[gid], c.stats.azioni):
+                self.acciacchi.append((gid, estrai_sede(c.g, rng)))
 
     def _momento(self, genere, eventi, esito):
         eventi = tuple(eventi)
@@ -349,7 +534,7 @@ class Incontro:
             self.info_sorteggio["riserve"] = {parte: list(self.riserve[parte]) for parte in ("A", "B")}
         eventi = []
         if self.regia:
-            eventi += self.regia.inizio_incontro(self._ids_al_tavolo_iniziali())
+            eventi += self.regia.inizio_incontro(self._ids_al_tavolo_iniziali(), self._acciacchi_in_campo)
             eventi += self.regia.sorteggio(self.info_sorteggio)
             if self.riscaldamento:
                 eventi += self.regia.riscaldamento(self._ids_al_tavolo_iniziali())
@@ -480,10 +665,18 @@ class Incontro:
     # Gli imprevisti e le sanzioni.
 
     def _fasce_imprevisti(self, battitore, ricevitore):
-        """Le fasce del tiro degli imprevisti: sanzione, mascherina e telefono di A e di B, rotture, niente."""
+        """
+        Le fasce del tiro degli imprevisti: sanzione, mascherina e telefono di A e di B, rotture,
+        niente. Dipendono soltanto dal temperamento e dalla lettura dei due al tavolo, che non
+        cambiano durante l'incontro: dalla tappa 12, punto 1.3 del progetto, si calcolano una volta
+        per coppia al tavolo e si riusano, con gli stessi numeri fino all'ultimo bit.
+        """
+        a, b = (battitore, ricevitore) if battitore.parte == "A" else (ricevitore, battitore)
+        chiave = (a.id, b.id)
+        fasce = self._fasce_per_coppia.get(chiave)
+        if fasce is not None:
+            return fasce
         t = self.taratura
-        per_parte = {battitore.parte: battitore, ricevitore.parte: ricevitore}
-        a, b = per_parte["A"], per_parte["B"]
 
         def sanzione(g):
             return t.P_SANZIONE * math.exp(t.K_TEMP_SANZIONI * g.tau) * max(0.0, 1.0 - t.K_ESP_SANZIONI * g.L)
@@ -493,6 +686,7 @@ class Incontro:
 
         fasce = [sanzione(a), sanzione(b), mascherina(a), mascherina(b), t.P_TELEFONO, t.P_TELEFONO, t.P_ROTTURA_PALETTA, t.P_ROTTURA_PALLINA]
         fasce.append(max(0.0, 1.0 - sum(fasce)))
+        self._fasce_per_coppia[chiave] = fasce = tuple(fasce)
         return fasce
 
     def _sanzione(self, banda):
@@ -601,12 +795,38 @@ class Incontro:
             parti = (self.parti["A"].id, self.parti["B"].id)
         vincitore = "A" if self.set_vinti[0] > self.set_vinti[1] else "B"
         return RisultatoIncontro(
-            formato=self.formato, seme=self.seme, parti=parti, vincitore=vincitore, set=list(self.set_giocati), esito="regolare",
+            formato=self.formato, seme=self.seme, parti=parti, vincitore=vincitore, set=list(self.set_giocati), esito=RITIRO if self.ritirati else REGOLARE,
             durata_simulata=self.regia.t if self.regia else None, statistiche={gid: c.stats for gid, c in self.campo.items()},
             incontro=self.statistiche_incontro, punti=self.punti, eventi=self.eventi, momenti=self.momenti_giocati, sorteggio=self.info_sorteggio,
-            nomi_squadre=nomi_squadre)
+            nomi_squadre=nomi_squadre, set_giocati=self.set_reali if self.set_reali is not None else len(self.set_giocati),
+            infortuni=list(self.infortuni), acciacchi=list(self.acciacchi), ritirato=tuple(self.ritirati))
 
 
 def simula_incontro(parte_a, parte_b, formato, **opzioni):
     """Gioca un incontro intero e ne restituisce il RisultatoIncontro."""
     return Incontro(parte_a, parte_b, formato, **opzioni).gioca()
+
+
+def a_tavolino(parte_a, parte_b, formato, assente, seme=0):
+    """
+    La sconfitta a tavolino della tappa 12, D32: chi non si presenta, la parte A o B indicata da
+    assente, perde 11 a 0 ogni set che serve all'altro, 31 a 0 nella gara a squadre; nessun set
+    giocato, statistiche a zero, nessun punto. Il tavolino doppio, con due assenti, lo conosce
+    soltanto il motore dei tornei, che non ha bisogno di un incontro.
+    """
+    if assente not in ("A", "B"):
+        raise ValueError("Chi non si presenta è la parte A o la parte B.")
+    vince = altra(assente)
+    punti = formato.punti_set
+    necessari = math.ceil(formato.set_al_meglio / 2)
+    if formato.tipo == "squadre":
+        parti = (tuple(g.id for g in parte_a.giocatori), tuple(g.id for g in parte_b.giocatori))
+        ids = (*parti[0], *parti[1])
+        nomi_squadre = (parte_a.nome, parte_b.nome)
+    else:
+        parti = (parte_a.id, parte_b.id)
+        ids = parti
+        nomi_squadre = None
+    return RisultatoIncontro(formato=formato, seme=seme, parti=parti, vincitore=vince, set=[(punti, 0) if vince == "A" else (0, punti)] * necessari,
+                             esito=TAVOLINO, durata_simulata=None, statistiche={gid: StatisticheGiocatore() for gid in ids}, incontro=StatisticheIncontro(),
+                             punti=[], eventi=None, nomi_squadre=nomi_squadre, set_giocati=0)

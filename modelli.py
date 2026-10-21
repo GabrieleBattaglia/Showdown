@@ -32,6 +32,9 @@ rari dell'allenamento e l'ambizione, nati dal suo numero; la costanza recente; i
 rinnovo concordato e le proposte della finestra. La parte allenata non ha più tetti suoi: c'è
 soltanto quello del totale. Il declino comincia secondo la maturazione, e il diario ha una voce sola
 per ogni spesa d'allenamento. Il salvataggio passa al formato 6.
+Dalla tappa 12, il 2026-10-13, decisione D32, il formato 7: il giocatore ha un acciacco, con la data
+in cui finisce, il calo del primo giorno, i giorni e la sede; la data dell'ultima amichevole diventa
+ultimo_impegno, perché la regola di un impegno al giorno vale per amichevoli, tornei e sfide.
 """
 
 import contextlib
@@ -41,6 +44,7 @@ import random
 
 import classe
 import descrizioni
+import palmares
 import tratti
 import valore
 from costanti import (
@@ -71,19 +75,28 @@ from costanti import (
     ETA_MIN_RITIRO_GIORNI,
     ETA_MINIMO_RICHIESTA_GLORIA_ANNI,
     ETA_PICCO_RICHIESTA_GLORIA_ANNI,
+    ETA_RIFERIMENTO_GLORIA,
     FATTORE_GLORIA_RICHIESTA_AMBIDESTRO,
     FATTORE_GLORIA_RICHIESTA_CAMBIO_VEL,
     FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO,
     FATTORE_GLORIA_RICHIESTA_IPOVEDENTE,
+    GIORNI_RITMO_INIZIALE,
+    GLORIA_BASE,
     GLORIA_RICHIESTA_FISSA,
     GLORIA_RICHIESTA_MINIMA_ASSOLUTA,
     INDOLE_PREDEFINITA,
     INDOLI,
     INTENSITA,
     INTENSITA_PREDEFINITA,
+    K_GLORIA_COPPE,
+    K_GLORIA_ETA,
+    K_GLORIA_ICV,
+    K_GLORIA_MEDAGLIE,
+    K_GLORIA_TESSERATI,
     K_ICV_GLORIA_RICHIESTA,
     LIMITE_MOVIMENTI_PER_TICK,
     MAPPA_FLAG_SOMMARIO,
+    MASSIMO_VOCI_RICERCA_AGGREGATA,
     MATURAZIONI,
     MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM,
     MAX_FATTORE_ETA_GLORIA,
@@ -100,6 +113,8 @@ from costanti import (
     PROPOSTE_RINNOVO_MASSIME,
     SEDE_NON_PRECISATA,
     SEDI_INFORTUNIO,
+    SFIDE_ACCUMULABILI,
+    SFIDE_AL_MESE,
     SOGLIA_INDOLE,
     TEMPERAMENTO_DEVIAZIONE,
     TEMPERAMENTO_MEDIA,
@@ -166,7 +181,16 @@ BILANCI = "bilanci"
 CONTI = "conti"
 # Le voci dei conti di un mese: entrate e uscite della polisportiva, in euro.
 # Dalla tappa 11 anche le buonuscite degli svincoli a contratto in corso.
-VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti", "buonuscite")
+# Dalla tappa 12, D32 e punto 9.1 del progetto, le iscrizioni ai tornei, che escono all'iscrizione, i
+# premi, che entrano alla chiusura, e i rimborsi delle iscrizioni, che entrano nel mese in cui arrivano:
+# così nessuna voce va mai sotto zero, anche quando l'iscrizione era del mese prima.
+VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti", "buonuscite", "iscrizioni", "premi", "rimborsi")
+# Dalla tappa 12, formato 7: i punti della classifica dell'ultimo anno, coppie di giorno ordinale e
+# punti; i titoli, i podi dei tornei più importanti; il palmarès recente di una polisportiva, dal mese
+# AAAA-MM alla coppia di punti delle medaglie e delle coppe.
+PUNTI_DATATI = "punti_datati"
+TITOLI = "titoli"
+PALMARES = "palmares"
 _CONTROLLI = {
     bool: lambda v: isinstance(v, bool),
     int: lambda v: isinstance(v, int) and not isinstance(v, bool),
@@ -185,14 +209,40 @@ CAMPI_GIOCATORE = (
     ("goalsfatti", int), ("goalssubiti", int), ("indole", str),
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int), ("diario", DIARIO),
     ("esperienza", float), ("fedelta", float), ("pazienza", float), ("arretrati", int), ("bandiera", bool),
-    ("temperamento", float), ("infortunio_sede", TESTO_O_NULLA), ("ultima_amichevole", DATA_O_NULLA),
+    ("temperamento", float), ("infortunio_sede", TESTO_O_NULLA), ("ultimo_impegno", DATA_O_NULLA),
     # Dalla tappa 11, formato 6: programma e intensità dell'allenamento, tratti rari, ambizione,
     # costanza recente, contratto e rinnovo.
     ("programma", str), ("intensita", str), ("talento", bool), ("apprendista_rapido", bool), ("maturazione", TESTO_O_NULLA),
     ("ambizione", float), ("costanza", float), ("contratto_stipendio", int), ("contratto_scadenza", DATA_O_NULLA),
     ("rinnovo_stipendio", int), ("rinnovo_scadenza", DATA_O_NULLA), ("proposte_rinnovo", int), ("ultima_trattativa", DATA_O_NULLA),
     *((nome, float) for nome in ATTRIBUTI_INVECCHIABILI),
+    # Dalla tappa 12, formato 7: l'acciacco, cioè la data in cui finisce, il calo del primo giorno, quanti giorni dura e la sede.
+    ("acciacco_fino", DATA_O_NULLA), ("acciacco_calo", float), ("acciacco_giorni", int), ("acciacco_sede", TESTO_O_NULLA),
+    # I tornei giocati, i punti della classifica mondiale, per sempre e dell'ultimo anno, e i titoli.
+    ("tornei_giocati", int), ("punti_mondiali", float), ("punti_recenti", PUNTI_DATATI), ("titoli", TITOLI),
+    # La data da cui l'iscrizione automatica può far cominciare il torneo seguente, e se è accesa per i tesserati dell'utente.
+    ("prossimo_torneo", DATA_O_NULLA), ("iscrizione_automatica", bool),
+    # Le gare a squadre vinte e perse da titolare, nelle sfide e nella coppa.
+    ("gare_squadre_vinte", int), ("gare_squadre_perse", int),
 )
+
+
+def ritmo_iniziale(id_giocatore, data):
+    """
+    La prima data del ritmo dei tornei di un giocatore, tappa 12: la data indicata più un numero di
+    giorni da 0 a GIORNI_RITMO_INIZIALE tirato da un generatore nato dal suo numero, così il mondo non
+    si iscrive tutto lo stesso giorno e il caso del mondo non si tocca. Serve alla nascita e alla migrazione.
+    """
+    return data + datetime.timedelta(days=random.Random(f"MESS-ritmo-{id_giocatore}").randint(0, GIORNI_RITMO_INIZIALE))
+# I campi dell'acciacco, con il loro valore per chi non ne ha.
+CAMPI_ACCIACCO_VUOTO = {"acciacco_fino": None, "acciacco_calo": 0.0, "acciacco_giorni": 0, "acciacco_sede": None}
+# I campi del palmarès di un giocatore della tappa 12, con il valore di chi non ha ancora giocato tornei; le liste nuove a ogni uso.
+CAMPI_PALMARES_VUOTO = {"tornei_giocati": 0, "punti_mondiali": 0.0, "punti_recenti": list, "titoli": list, "gare_squadre_vinte": 0, "gare_squadre_perse": 0}
+
+
+def palmares_vuoto():
+    """I campi del palmarès di un giocatore che non ha ancora giocato tornei, con liste nuove."""
+    return {campo: vuoto() if vuoto is list else vuoto for campo, vuoto in CAMPI_PALMARES_VUOTO.items()}
 # I campi del contratto, con il loro valore per chi non ne ha.
 CAMPI_CONTRATTO_VUOTO = {"contratto_stipendio": 0, "contratto_scadenza": None, "rinnovo_stipendio": 0, "rinnovo_scadenza": None,
                          "proposte_rinnovo": 0, "ultima_trattativa": None}
@@ -206,7 +256,13 @@ CAMPI_POLISPORTIVA = (
     ("ori", int), ("argenti", int), ("bronzi", int), ("legni", int),
     ("coppe_oro", int), ("coppe_argento", int), ("coppe_bronzo", int), ("coppe_legno", int), ("diario", DIARIO),
     ("cassa", int), ("in_vendita", VENDITE), ("bilanci", BILANCI), ("conti_del_mese", CONTI),
+    # Dalla tappa 12, formato 7: il palmarès recente, per la gloria a finestra di 5 anni.
+    ("palmares_recente", PALMARES),
+    # Le sfide: quante se ne possono lanciare, il giorno dell'ultima giocata, le vinte e le perse.
+    ("sfide_da_lanciare", int), ("ultima_sfida", DATA_O_NULLA), ("sfide_vinte", int), ("sfide_perse", int),
 )
+# I campi delle sfide di una polisportiva, con il valore di chi nasce: due sfide da lanciare, come il primo del mese.
+CAMPI_SFIDE_VUOTO = {"sfide_da_lanciare": SFIDE_AL_MESE, "ultima_sfida": None, "sfide_vinte": 0, "sfide_perse": 0}
 
 
 def conti_vuoti():
@@ -260,6 +316,37 @@ def _numero(valore):
     return isinstance(valore, (int, float)) and not isinstance(valore, bool)
 
 
+# La voce aggregata dell'anno, tappa 12, punto 5.11 del progetto: i giocatori che non sono dell'utente,
+# e le polisportive del computer, hanno una voce sola per anno di calendario con i loro tornei e le
+# loro sfide, invece di una voce per incontro, che a regime ne darebbe migliaia al giorno.
+CAMPI_AGGREGATA_GIOCATORE = ("tornei", "incontri", "vinti", "ori", "argenti", "bronzi", "legni", "sfide", "sfide_vinte")
+CAMPI_AGGREGATA_POLISPORTIVA = ("iscrizioni", "tornei", "ori", "argenti", "bronzi", "legni", "premi", "sfide", "sfide_vinte", "coppe_oro", "coppe_argento",
+                                "coppe_bronzo", "coppe_legno")
+_CHIAVI_AGGREGATE = (frozenset(("data", "da", "anno", *CAMPI_AGGREGATA_GIOCATORE)), frozenset(("data", "da", "anno", *CAMPI_AGGREGATA_POLISPORTIVA)))
+
+
+def annota_aggregata(diario, data, campi, **incrementi):
+    """
+    Aggiunge gli incrementi alla voce aggregata dell'anno della data: la cerca fra le prime
+    MASSIMO_VOCI_RICERCA_AGGREGATA voci del diario, la aggiorna e la riporta in cima con la data di
+    oggi; se non c'è, ne apre una nuova, dal giorno di oggi. campi sono i campi della voce, quelli del
+    giocatore o quelli della polisportiva. Restituisce la voce.
+    """
+    anno = data.year
+    for posto, voce in enumerate(diario[:MASSIMO_VOCI_RICERCA_AGGREGATA]):
+        if voce.get("anno") == anno and "da" in voce and all(campo in voce for campo in campi):
+            if posto:
+                diario.insert(0, diario.pop(posto))
+            break
+    else:
+        voce = {"data": data, "da": data, "anno": anno, **dict.fromkeys(campi, 0)}
+        diario.insert(0, voce)
+    for campo, quanto in incrementi.items():
+        voce[campo] += quanto
+    voce["data"] = data
+    return voce
+
+
 def _spesa_da_json(voce):
     """Vero se la voce di una spesa d'allenamento letta dal salvataggio è ben fatta."""
     spese = voce.get("spesa")
@@ -288,40 +375,109 @@ def _voce_da_json(voce, chi):
     if set(voce) == {"data", "spesa", "punti", "valore"} and _spesa_da_json(voce):
         return {"data": data, "spesa": [[s[0], float(s[1]), float(s[2])] for s in voce["spesa"]], "punti": float(voce["punti"]),
                 "valore": [float(v) for v in voce["valore"]]}
+    if frozenset(voce) in _CHIAVI_AGGREGATE and isinstance(voce["da"], str) and all(_intero(v) and v >= 0 for k, v in voce.items() if k not in ("data", "da")):
+        try:
+            da = datetime.datetime.fromisoformat(voce["da"])
+        except ValueError:
+            raise errore from None
+        return {**voce, "data": data, "da": da}
     raise errore
+
+
+# Le date già scritte in testo dai salvataggi, tappa 12, decisione 4 di Gabriele del 14 ottobre 2026: le
+# voci dei diari di un mondo maturo sono centinaia di migliaia, con poche migliaia di date diverse, e
+# scrivere ogni volta la data in testo era la spesa più grossa del comporre il salvataggio.
+_DATE_IN_TESTO = {}
+_DATE_IN_TESTO_MASSIMO = 200_000
+
+
+def data_in_testo(data):
+    """
+    La data in testo, come la scrive isoformat: per una data e ora senza fuso il testo si ricorda, perché
+    due date e ore senza fuso uguali hanno lo stesso testo. Le altre, come le date con il fuso, che
+    possono essere uguali con testi diversi, si scrivono ogni volta.
+    """
+    if type(data) is not datetime.datetime or data.tzinfo is not None:
+        return data.isoformat()
+    testo = _DATE_IN_TESTO.get(data)
+    if testo is None:
+        if len(_DATE_IN_TESTO) >= _DATE_IN_TESTO_MASSIMO:
+            _DATE_IN_TESTO.clear()
+        testo = _DATE_IN_TESTO[data] = data.isoformat()
+    return testo
 
 
 def _voce_a_json(voce):
     """Una voce di diario per il salvataggio: la data in testo, e gli elenchi copiati, perché il documento non li condivida col diario."""
-    copia = {**voce, "data": voce["data"].isoformat()}
+    copia = {**voce, "data": data_in_testo(voce["data"])}
+    if "da" in voce and "anno" in voce:
+        copia["da"] = data_in_testo(voce["da"])
     if "spesa" in voce:
         copia["spesa"] = [list(s) for s in voce["spesa"]]
         copia["valore"] = list(voce["valore"])
     return copia
 
 
+def _titolo_valido(voce):
+    return (isinstance(voce, dict) and set(voce) == {"data", "torneo", "posto", "mondiale"} and isinstance(voce["data"], str)
+            and isinstance(voce["torneo"], str) and _intero(voce["posto"]) and voce["posto"] >= 1 and isinstance(voce["mondiale"], bool))
+
+
+def _mese_valido(chiave):
+    anno, _trattino, mese = chiave.partition("-")
+    return len(chiave) == 7 and anno.isdigit() and mese.isdigit() and 1 <= int(mese) <= 12
+
+
+def _data_a_json(valore):
+    return None if valore is None else data_in_testo(valore)
+
+
+# Come si scrive nel salvataggio ogni tipo di campo che non è un tipo semplice: i tipi semplici, int,
+# float, str e bool, si scrivono convertendo il valore al tipo. Dalla tappa 12, decisione 4 di Gabriele
+# del 14 ottobre 2026, è una tabella, e i modelli ne prendono una volta sola la funzione di ogni campo:
+# prima ogni campo di ogni giocatore scorreva la catena dei confronti di a_json, e comporre il
+# salvataggio di un mondo maturo costava secondi. Le conversioni sono le stesse.
+_A_JSON = {
+    PUNTI_DATATI: lambda valore: [[int(giorno), float(punti)] for giorno, punti in valore],
+    TITOLI: lambda valore: [dict(voce) for voce in valore],
+    PALMARES: lambda valore: {chiave: [float(m), float(c)] for chiave, (m, c) in sorted(valore.items())},
+    VENDITE: lambda valore: {str(gid): int(prezzo) for gid, prezzo in sorted(valore.items())},
+    BILANCI: lambda valore: [{**voce, "data": data_in_testo(voce["data"])} for voce in valore],
+    CONTI: lambda valore: {voce: int(valore[voce]) for voce in VOCI_CONTI},
+    DIARIO: lambda valore: [_voce_a_json(voce) for voce in valore],
+    DATA: _data_a_json,
+    DATA_O_NULLA: _data_a_json,
+    TESTO_O_NULLA: lambda valore: None if valore is None else str(valore),
+    LISTA_INTERI: lambda valore: [int(v) for v in valore],
+}
+
+
+def conversione_a_json(tipo):
+    """La funzione che scrive un valore del tipo dato nella forma del salvataggio JSON: quella della tabella, o il tipo semplice stesso."""
+    return _A_JSON.get(tipo, tipo)
+
+
 def a_json(valore, tipo):
     """Un valore di un modello nella forma che il salvataggio JSON sa scrivere."""
-    if tipo == VENDITE:
-        return {str(gid): int(prezzo) for gid, prezzo in sorted(valore.items())}
-    if tipo == BILANCI:
-        return [{**voce, "data": voce["data"].isoformat()} for voce in valore]
-    if tipo == CONTI:
-        return {voce: int(valore[voce]) for voce in VOCI_CONTI}
-    if tipo == DIARIO:
-        return [_voce_a_json(voce) for voce in valore]
-    if tipo in (DATA, DATA_O_NULLA):
-        return None if valore is None else valore.isoformat()
-    if tipo == TESTO_O_NULLA:
-        return None if valore is None else str(valore)
-    if tipo == LISTA_INTERI:
-        return [int(v) for v in valore]
-    return tipo(valore)
+    return conversione_a_json(tipo)(valore)
 
 
 def da_json(valore, tipo, chi, campo):
     """Un valore letto dal salvataggio, controllato e riportato al tipo del modello; ValueError se non va."""
     errore = ValueError(f"{chi}: il campo {campo} non è valido: {valore!r}")
+    if tipo == PUNTI_DATATI:
+        if not isinstance(valore, list) or not all(isinstance(v, list) and len(v) == 2 and _intero(v[0]) and _numero(v[1]) and v[1] >= 0 for v in valore):
+            raise errore
+        return [[v[0], float(v[1])] for v in valore]
+    if tipo == TITOLI:
+        if not isinstance(valore, list) or not all(_titolo_valido(v) for v in valore):
+            raise errore
+        return [dict(v) for v in valore]
+    if tipo == PALMARES:
+        if not isinstance(valore, dict) or not all(isinstance(k, str) and _mese_valido(k) and isinstance(v, list) and len(v) == 2
+                                                   and all(_numero(x) and x >= 0 for x in v) for k, v in valore.items()):
+            raise errore
+        return {k: [float(v[0]), float(v[1])] for k, v in valore.items()}
     if tipo == VENDITE:
         if not isinstance(valore, dict) or not all(chiave.isdigit() and _intero(prezzo) and prezzo >= 0 for chiave, prezzo in valore.items()):
             raise errore
@@ -425,14 +581,59 @@ def _controlla_campi_della_tappa_11(g, chi):
         raise ValueError(f"{chi}: il campo {sbagliati[0]} non è valido: {getattr(g, sbagliati[0])!r}")
 
 
+def _controlla_campi_della_tappa_12(g, chi):
+    """I controlli dei campi del formato 7: l'acciacco ha calo fra 0 e 1, giorni non negativi e una sede valida, e senza data è vuoto; ValueError se uno non va."""
+    sbagliati = []
+    if not 0.0 <= g.acciacco_calo <= 1.0:
+        sbagliati.append("acciacco_calo")
+    if g.acciacco_giorni < 0:
+        sbagliati.append("acciacco_giorni")
+    if g.acciacco_sede is not None and g.acciacco_sede not in SEDI_AMMESSE:
+        sbagliati.append("acciacco_sede")
+    if g.acciacco_fino is None and (g.acciacco_calo or g.acciacco_giorni or g.acciacco_sede is not None):
+        sbagliati.append("acciacco_fino")
+    for campo in ("tornei_giocati", "punti_mondiali", "gare_squadre_vinte", "gare_squadre_perse"):
+        if getattr(g, campo) < 0:
+            sbagliati.append(campo)
+    if sbagliati:
+        raise ValueError(f"{chi}: il campo {sbagliati[0]} non è valido: {getattr(g, sbagliati[0])!r}")
+
+
+def _fattore_del_declino(prog_eta, giorni_passati):
+    """Per quanto si moltiplicano le caratteristiche dopo tanti giorni di declino, a prog_eta giorni dal suo inizio."""
+    range_decl = max(1, AGING_PEAK_AGE_GIORNI - AGING_START_AGE_GIORNI)
+    aging_f = min(1.0, prog_eta / range_decl)
+    reduc_ann = aging_f * MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM
+    manten_ann = max(0.0, 1.0 - reduc_ann)
+    manten_giorn = pow(manten_ann, 1.0 / ANNO_SIMULAZIONE_GIORNI)
+    return pow(manten_giorn, giorni_passati)
+
+
+# I fattori di un giorno di declino, per i giorni dall'inizio, dalla decisione 4 di Gabriele del 14
+# ottobre 2026: dipendono soltanto da quelli, con le costanti del modulo, che non cambiano.
+_FATTORI_DEL_DECLINO = {}
+
+
+# Le conversioni dei campi salvati, prese una volta sola dalla tabella di a_json.
+_CONVERSIONI_GIOCATORE = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_GIOCATORE)
+_CONVERSIONI_ASPETTO = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_ASPETTO)
+_CONVERSIONI_POLISPORTIVA = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_POLISPORTIVA)
+
+
 class Giocatore:
     def __init__(self, id_giocatore, datetime_creazione_sim, **kwargs):
         self.id = id_giocatore
         # Il temperamento nasce dal numero del giocatore, senza toccare il caso del mondo.
         self.temperamento = temperamento_innato(id_giocatore)
         self.infortunio_sede = None
-        # La data simulata dell'ultima amichevole: chi nasce non ne ha ancora giocate.
-        self.ultima_amichevole = None
+        # La data simulata dell'ultimo incontro, l'impegno del giorno della tappa 12: chi nasce non ne ha ancora giocati.
+        self.ultimo_impegno = None
+        # Dalla tappa 12 l'acciacco e il palmarès: chi nasce non ne ha. Il ritmo dei tornei parte da
+        # una data sparsa sui due mesi che seguono, e l'iscrizione automatica è accesa, risposta 17.
+        for campo, vuoto in (*CAMPI_ACCIACCO_VUOTO.items(), *palmares_vuoto().items()):
+            setattr(self, campo, vuoto)
+        self.prossimo_torneo = ritmo_iniziale(id_giocatore, datetime_creazione_sim) if isinstance(datetime_creazione_sim, datetime.datetime) else None
+        self.iscrizione_automatica = True
         self.nome = "*"
         self.cognome = "*"
         self.appartenenza = "*"
@@ -597,12 +798,12 @@ class Giocatore:
 
     def a_dizionario(self):
         """Il giocatore come dizionario per il salvataggio JSON."""
-        dati = {campo: a_json(getattr(self, campo), tipo) for campo, tipo in CAMPI_GIOCATORE}
+        dati = {campo: converti(getattr(self, campo)) for campo, converti in _CONVERSIONI_GIOCATORE}
         tratti = getattr(self, "tratti", None)
         if tratti:
             dati["tratti"] = tratti
         else:
-            dati.update({campo: a_json(getattr(self, campo), tipo) for campo, tipo in CAMPI_ASPETTO})
+            dati.update({campo: converti(getattr(self, campo)) for campo, converti in _CONVERSIONI_ASPETTO})
         return dati
 
     @classmethod
@@ -618,6 +819,7 @@ class Giocatore:
         if g.infortunio_sede is not None and g.infortunio_sede not in SEDI_AMMESSE:
             raise ValueError(f"{chi}: il campo infortunio_sede non è valido: {g.infortunio_sede!r}")
         _controlla_campi_della_tappa_11(g, chi)
+        _controlla_campi_della_tappa_12(g, chi)
         tratti = dati.get("tratti")
         if tratti is not None:
             if not isinstance(tratti, dict):
@@ -682,16 +884,19 @@ class Giocatore:
             return True
         return bool(self.ambidestro) and self.infortunio_sede in _SEDI_DI_BRACCIO
 
-    def ha_giocato_amichevole(self, oggi):
-        """Vero se il giocatore ha già giocato un'amichevole nel giorno simulato di oggi, che è una data con l'ora."""
-        return self.ultima_amichevole is not None and self.ultima_amichevole.date() == oggi.date()
+    def ha_un_impegno(self, oggi):
+        """
+        Vero se il giocatore ha già giocato un incontro nel giorno simulato di oggi, che è una data con
+        l'ora: un'amichevole, il torneo o una sfida. Dalla tappa 12 è la regola di un impegno al giorno, D32.
+        """
+        return self.ultimo_impegno is not None and self.ultimo_impegno.date() == oggi.date()
 
     def puo_giocare_amichevole(self, oggi):
         """
         Vero se il giocatore può giocare un'amichevole oggi: deve poter scendere in campo, e non
-        averne già giocata una nel giorno simulato, perché ognuno ne gioca al massimo una al giorno.
+        avere già un impegno nel giorno simulato, perché ognuno ne gioca al massimo uno al giorno.
         """
-        return self.puo_giocare and not self.ha_giocato_amichevole(oggi)
+        return self.puo_giocare and not self.ha_un_impegno(oggi)
 
     def _riga_caratteristica(self, nome_b):
         tot = self._get_valore_totale(nome_b)
@@ -822,23 +1027,33 @@ class Giocatore:
             return
         self.indole = indole_dalle_innate(self)
 
-    def _applica_declino_aggregato(self, giorni_passati):
+    def _applica_declino_aggregato(self, giorni_passati, inizio=None):
         """
         Il declino dovuto all'età per i giorni trascorsi: dai 50 anni, e dalla tappa 11 dai 44 per la
         maturazione precoce e dai 56 per la tardiva, con la stessa curva spostata.
+        Dalla tappa 12, punto 1.3 del progetto, le 48 caratteristiche si leggono e si scrivono
+        direttamente nel dizionario del giocatore, e il minimo a zero è un confronto: a regime il
+        declino era il 43 per cento del giorno simulato, e così costa la metà. I numeri sono gli
+        stessi fino all'ultimo bit, e lo provano le impronte di tests/test_identita_motore.py.
+        Dalla decisione 4 di Gabriele del 14 ottobre 2026 l'inizio del declino si può dare già
+        calcolato, e il fattore di un giorno si ricorda per i giorni dall'inizio, che sono gli stessi per
+        molti giocatori: è lo stesso conto, fatto una volta sola, _fattore_del_declino.
         """
-        inizio = tratti.giorni_inizio_declino(self)
+        if inizio is None:
+            inizio = tratti.giorni_inizio_declino(self)
         if giorni_passati <= 0 or self.eta < inizio or ANNO_SIMULAZIONE_GIORNI <= 0:
             return
         prog_eta = max(0, self.eta - inizio)
-        range_decl = max(1, AGING_PEAK_AGE_GIORNI - AGING_START_AGE_GIORNI)
-        aging_f = min(1.0, prog_eta / range_decl)
-        reduc_ann = aging_f * MAX_AGING_REDUCTION_FACTOR_PER_ANNO_SIM
-        manten_ann = max(0.0, 1.0 - reduc_ann)
-        manten_giorn = pow(manten_ann, 1.0 / ANNO_SIMULAZIONE_GIORNI)
-        manten_tot = pow(manten_giorn, giorni_passati)
+        if giorni_passati == 1:
+            manten_tot = _FATTORI_DEL_DECLINO.get(prog_eta)
+            if manten_tot is None:
+                manten_tot = _FATTORI_DEL_DECLINO[prog_eta] = _fattore_del_declino(prog_eta, 1)
+        else:
+            manten_tot = _fattore_del_declino(prog_eta, giorni_passati)
+        caratteristiche = self.__dict__
         for attr in ATTRIBUTI_INVECCHIABILI:
-            setattr(self, attr, max(0.0, getattr(self, attr, 0.0) * manten_tot))
+            invecchiata = caratteristiche[attr] * manten_tot
+            caratteristiche[attr] = invecchiata if invecchiata > 0.0 else 0.0
 
 
 def normalizza_nome(nome):
@@ -876,6 +1091,10 @@ class Polisportiva:
         self.in_vendita = {}
         self.bilanci = []
         self.conti_del_mese = conti_vuoti()
+        # Dalla tappa 12 il palmarès recente, dal mese ai punti delle medaglie e delle coppe, e le sfide.
+        self.palmares_recente = {}
+        for campo, vuoto in CAMPI_SFIDE_VUOTO.items():
+            setattr(self, campo, vuoto)
         self.annota(datetime_creazione_sim, "Fondata.")
 
     def annota(self, data, testo):
@@ -899,7 +1118,7 @@ class Polisportiva:
 
     def a_dizionario(self):
         """La polisportiva come dizionario per il salvataggio JSON."""
-        return {campo: a_json(getattr(self, campo), tipo) for campo, tipo in CAMPI_POLISPORTIVA}
+        return {campo: converti(getattr(self, campo)) for campo, converti in _CONVERSIONI_POLISPORTIVA}
 
     @classmethod
     def da_dizionario(cls, dati):
@@ -910,6 +1129,11 @@ class Polisportiva:
         p = cls.__new__(cls)
         chi = f"Polisportiva {dati.get('nome', '?') if isinstance(dati, dict) else '?'}"
         _campi_da_dizionario(p, dati, CAMPI_POLISPORTIVA, chi)
+        # Dalla tappa 12 le sfide: da lanciare fra zero e quattro, vinte e perse non negative.
+        for campo, buono in (("sfide_da_lanciare", 0 <= p.sfide_da_lanciare <= SFIDE_ACCUMULABILI), ("sfide_vinte", p.sfide_vinte >= 0),
+                             ("sfide_perse", p.sfide_perse >= 0)):
+            if not buono:
+                raise ValueError(f"{chi}: il campo {campo} non è valido: {getattr(p, campo)!r}")
         p.indicecollettivotesserati = 0.0
         return p
 
@@ -948,7 +1172,7 @@ class Polisportiva:
         numero, che è l'ordine dei giocatori nel mondo: la somma resta identica, fino all'ultimo
         decimale, a quando si scorreva il mondo intero per ogni polisportiva.
         """
-        self.indicecollettivotesserati = sum(giocatori[gid].indice_collettivo_valore for gid in sorted(set(self.tesserati)) if gid in giocatori and gid not in ids_morti)
+        self.indicecollettivotesserati = sum(g.indice_collettivo_valore for gid in sorted(set(self.tesserati)) if (g := giocatori.get(gid)) is not None and gid not in ids_morti)
 
     def aggiungi_tesserato(self, gid, icv):
         if gid not in self.tesserati:
@@ -960,16 +1184,21 @@ class Polisportiva:
             self.tesserati.remove(gid)
             self.indicecollettivotesserati = max(0., self.indicecollettivotesserati - icv)
 
-    def aggiorna_gloria(self, giocatori, ids_morti):
-        """Ricalcola la gloria da coppe, medaglie, valore, età e numero dei tesserati attivi."""
-        base = 60.
-        c_o, c_a, c_b, c_l = 100, 50, 20, 5
-        m_o, m_a, m_b, m_l = 30, 15, 5, 1
-        k_c, k_m, k_icv, eta_ref, k_eta, k_num = 12., 8., 0.4, 35., 1.5, 15.
-        p_c = self.coppe_oro * c_o + self.coppe_argento * c_a + self.coppe_bronzo * c_b + self.coppe_legno * c_l
-        v_c = math.sqrt(max(0., p_c)) * k_c
-        p_m = self.ori * m_o + self.argenti * m_a + self.bronzi * m_b + self.legni * m_l
-        v_m = math.sqrt(max(0., p_m)) * k_m
+    def aggiorna_gloria(self, giocatori, ids_morti, oggi=None):
+        """
+        Ricalcola la gloria da coppe, medaglie, valore, età e numero dei tesserati attivi. Dalla tappa
+        12, D32 e risposta 11 di Gabriele, le medaglie e le coppe sono quelle del palmarès recente, già
+        pesate per l'importanza, degli ultimi 5 anni del calendario fino a oggi; senza la data, tutte
+        quelle del palmarès recente. Le costanti stanno in costanti.py.
+        """
+        if oggi is None:
+            p_m = sum(m for m, _c in self.palmares_recente.values())
+            p_c = sum(c for _m, c in self.palmares_recente.values())
+        else:
+            p_m, p_c = palmares.somma_finestra(self, oggi)
+        v_c = math.sqrt(max(0., p_c)) * K_GLORIA_COPPE
+        v_m = math.sqrt(max(0., p_m)) * K_GLORIA_MEDAGLIE
+        base, k_icv, eta_ref, k_eta, k_num = GLORIA_BASE, K_GLORIA_ICV, ETA_RIFERIMENTO_GLORIA, K_GLORIA_ETA, K_GLORIA_TESSERATI
         v_icv = 0.
         v_eta = 0.
         v_num = 0.
@@ -977,10 +1206,11 @@ class Polisportiva:
         eta_gg = 0
         icv_tot = 0.
         for gid in self.tesserati:
-            if gid in giocatori and gid not in ids_morti and not giocatori[gid].ritirato:
+            g = giocatori.get(gid)
+            if g is not None and gid not in ids_morti and not g.ritirato:
                 n_val += 1
-                eta_gg += giocatori[gid].eta
-                icv_tot += giocatori[gid].indice_collettivo_valore
+                eta_gg += g.eta
+                icv_tot += g.indice_collettivo_valore
         if n_val > 0 and ANNO_SIMULAZIONE_GIORNI > 0:
             icv_m = icv_tot / n_val
             eta_m_a = eta_gg / n_val / ANNO_SIMULAZIONE_GIORNI

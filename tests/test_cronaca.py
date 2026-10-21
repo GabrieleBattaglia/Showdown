@@ -53,6 +53,8 @@ _DATI = {
     E.GOAL: {"zona": "dx", "battitore": 1, "ricevitore": 2},
     E.PENALITA: {"seconda_infrazione": True},
     E.VOLO: {"verso": 2},
+    E.RITIRO: {"ritirati": [1], "sedi": ["schiena"], "vince": "B"},
+    E.CAMBIO_BRACCIO: {"sede": "polso_dx"},
 }
 _CAMPI = {
     E.FISCHIO: {"fischio": E.DOPPIO},

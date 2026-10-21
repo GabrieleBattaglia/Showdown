@@ -72,7 +72,10 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
     con_dialogo = {finestra.scheda_giocatore, finestra.diario_giocatore, finestra.cerca, finestra.cambia_aspetto, finestra.cambia_conservazione,
                    finestra.caffe, finestra.esci, finestra.vai_alla_vista, finestra.vai_alla_barra, finestra.nuova_polisportiva,
                    finestra.cambia_polisportiva, finestra.mercato, finestra.svincola, finestra.password_polisportiva, finestra.chiudi_polisportiva,
-                   finestra.cambia_effetti, finestra.cambia_velocita, finestra.amichevole, finestra.sala_allenamento, finestra.contratti}
+                   finestra.cambia_effetti, finestra.cambia_velocita, finestra.amichevole, finestra.sala_allenamento, finestra.contratti,
+                   # Dalla tappa 12 i dialoghi dei tornei e delle sfide; il ripristino del calendario chiede prima.
+                   finestra.lancia_sfida, finestra.sfide_in_arrivo, finestra.storico_sfide, finestra.calendario_tornei, finestra.iscrizioni_tornei,
+                   finestra.tornei_in_corso, finestra.albo_d_oro, finestra.editor_modelli, finestra.editor_formule, finestra.ripristina_calendario}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -84,9 +87,9 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
             assert finestra.vista.GetValue(), testo
             assert "\n\n" not in finestra.vista.GetValue(), testo
             provate += 1
-    # Salva la cronaca, senza un'amichevole nella sessione, lo dice nella vista.
-    assert provate == 23
-    assert finestra.comandi == 23
+    # Salva la cronaca, senza un'amichevole nella sessione, lo dice nella vista; dalla tappa 12 c'è anche la classifica mondiale.
+    assert provate == 24
+    assert finestra.comandi == 24
 
 
 def test_i_menu_hanno_tasti_e_lettere_non_ripetuti(finestra):

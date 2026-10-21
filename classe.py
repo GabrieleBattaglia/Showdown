@@ -13,6 +13,9 @@ retta fra le ancore di costanti.py, più fitte dove stanno i giocatori veri: i n
 e F, i bravi a metà carriera fra E e D, le classi più alte per le carriere eccellenti. Dalla
 revisione della tappa 11 i livelli si allargano dal basso verso l'alto in tre tratti: fra I9 e F0,
 fra F0 e D0, fra D0 e A1.
+Dalla decisione 7 di Gabriele del 14 ottobre 2026 i pesi della classe sono una copia congelata dei
+pesi del valore della tappa 12, con le battute a 0,47 invece di 0,71; la somma e le ancore, misurate
+coi pesi di prima, si ricalcolano una volta con strumenti/carriera_perfetta.py --ricalcola-classe.
 La classe non si salva: si ricava.
 """
 

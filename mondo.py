@@ -49,16 +49,22 @@ e il mondo gli ricorda i contratti che entrano nella finestra e quelli all'ultim
 a contratto in corso costa una buonuscita, metà degli stipendi che restano, anche al computer.
 E il computer non tessera i liberi infortunati finché non guariscono, decisione 21 di Gabriele;
 l'utente invece può tesserarli subito.
+Dalla tappa 12, il 2026-10-13, con la issue 1 e D32: il computer fonda polisportive contando soltanto
+i giocatori in attività e soltanto le sue polisportive, e i giocatori nuovi sono da due a nove al
+giorno, idea di Gabriele, così al mercato restano sempre dei liberi da cercare e tesserare.
 """
 
 import datetime
 import math
 import random
 
+import calendario
 import contratti
 import esperienza
 import infortuni
+import palmares
 import percorsi
+import sfide
 import tratti
 from allenamento import allena_secondo_programma, mantenimento_del_mese
 from costanti import (
@@ -88,7 +94,6 @@ from costanti import (
     NOME_POLISPORTIVA_MAX,
     NOME_POLISPORTIVA_MIN,
     PA_SEDUTA,
-    PARTI_DI_CASSA_PER_STIPENDI,
     PROB_CHIUSURA_BASE_GIORNALIERA,
     PROB_CREAZIONE_POLI_CPU_PER_TICK,
     PROB_SCAMBIO_CPU_GIORNALIERA,
@@ -99,6 +104,8 @@ from costanti import (
     RIALZO_CPU,
     RIALZO_RINNOVO_CPU,
     SCARTI_MASSIMI_CPU,
+    SFIDE_ACCUMULABILI,
+    SFIDE_AL_MESE,
     SOGLIA_GLORIA_BASSA_CHIUSURA,
     SOGLIA_MINIMA_TESSERATI_CHIUSURA,
     SOGLIA_SPESA_AUTONOMI,
@@ -111,6 +118,7 @@ from economia import (
     mesi_di_pazienza,
     pazienza_per_euro,
     scritta_in_euro,
+    spesa_mensile_cpu,
     sponsor_mensile,
     stipendio,
     stipendio_pagato,
@@ -118,7 +126,7 @@ from economia import (
 )
 from modelli import Giocatore, Polisportiva, conti_vuoti, normalizza_nome, probabilita_accettazione
 from nomi import genera_nome_casuale
-from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale
+from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale, senza_raccolta
 
 ORE_PER_TICK = 8
 DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
@@ -126,7 +134,20 @@ DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
 CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
                    "tesserati_cpu", "svincolati_cpu", "poli_chiuse", "poli_create", "partiti", "vendite",
                    "tuoi_non_pagati", "tuoi_partiti", "tuoi_venduti", "mesi", "tuoi_ritirati", "tuoi_usciti", "tue_bandiere",
-                   "infortunati_in_seduta", "tuoi_infortunati_in_seduta", "contratti_scaduti", "rinnovi_cpu", "tuoi_scaduti", "tuoi_in_scadenza")
+                   "infortunati_in_seduta", "tuoi_infortunati_in_seduta", "contratti_scaduti", "rinnovi_cpu", "tuoi_scaduti", "tuoi_in_scadenza",
+                   # Dalla tappa 12, punto 12.8 del progetto: i tornei, le sfide e gli infortuni in gara, del mondo e dei tuoi.
+                   "tornei_conclusi", "incontri_torneo", "incontri_ritiro", "incontri_tavolino", "infortuni_in_gara", "acciacchi_in_gara",
+                   "sfide_giocate", "edizioni_annullate", "tue_edizioni_annullate", "tue_iscrizioni", "tue_iscrizioni_saltate",
+                   "tue_medaglie_oro", "tue_medaglie_argento", "tue_medaglie_bronzo", "tue_medaglie_legno", "tuoi_titoli_mondiali",
+                   "tue_coppe_oro", "tue_coppe_argento", "tue_coppe_bronzo", "tue_coppe_legno", "tuoi_premi", "tuoi_infortuni_in_gara",
+                   "tuoi_acciacchi", "tuoi_tavolini", "tuoi_qualificati", "tue_qualificazioni_coppa", "tuoi_tornei_conclusi",
+                   "sfide_ricevute", "sfide_in_attesa", "sfide_decadute", "tue_sfide_vinte", "tue_sfide_perse", "tue_sfide_a_tavolino",
+                   "calendario_con_problemi",
+                   # Il passo 3 della tappa 12: i campionati mondiali conclusi, notizia del mondo nella barra.
+                   "mondiali_conclusi",
+                   # La revisione della tappa 12: tutti i premi pagati dalle sedi concluse, non soltanto quelli del podio
+                   # che l'albo conserva, per la misura del calendario nella simulazione lunga.
+                   "premi_tornei")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
@@ -183,6 +204,68 @@ class _Vetrina:
         return trovato if trovato is not None else self._cerca(2 * nodo + 1, meta, fine, gloria, da)
 
 
+class _Mercato:
+    """
+    I giocatori in vendita del giorno per gli acquisti del computer, dalla tappa 12, decisione 4 di
+    Gabriele del 14 ottobre 2026: le righe di Mondo._vendibili dal valore più alto, a parità di valore
+    nel loro ordine, perché l'ordinamento è stabile, e soltanto quelle col prezzo entro il prezzo più
+    alto che il computer paga, che nessuna polisportiva può superare. Così la prima riga che va bene a
+    una polisportiva è proprio quella che prima trovava scorrendo tutte le righe, la più forte e, a pari
+    forza, la prima: la scelta resta la stessa. Le scorte dei prezzi e degli stipendi più bassi da ogni
+    riga in giù fermano la ricerca appena nessuna riga rimasta può stare nei conti. Prima ogni
+    polisportiva del computer scorreva tutti i giocatori in vendita: nel mondo a regime, con un mercato
+    affollato, più di mezzo secondo al giorno.
+    Il primo passo della decisione 1 di Gabriele del 14 ottobre 2026 alzava quel tetto col premio della
+    cassa piena di chi compra, una somma in euro staccata dal valore del giocatore: una polisportiva del
+    computer con 45.000 euro in cassa comprava a tre volte il suo valore chi l'utente metteva in vendita
+    a un prezzo gonfiato, e l'utente faceva soldi senza limite. La verifica del 15 ottobre 2026 lo ha
+    tolto: il premio della cassa piena vale negli stipendi, non nel prezzo.
+    """
+
+    def __init__(self, righe):
+        self.righe = sorted((riga for riga in righe if not riga[2] > riga[3]), key=lambda riga: riga[0].indice_collettivo_valore, reverse=True)
+        self.prezzi_minimi = [0] * len(self.righe)
+        self.stipendi_minimi = [0] * len(self.righe)
+        prezzo_minimo = stipendio_minimo = math.inf
+        for posto in range(len(self.righe) - 1, -1, -1):
+            _g, _venditore, prezzo, _massimo, chiesto = self.righe[posto]
+            prezzo_minimo = min(prezzo_minimo, prezzo)
+            stipendio_minimo = min(stipendio_minimo, chiesto)
+            self.prezzi_minimi[posto] = prezzo_minimo
+            self.stipendi_minimi[posto] = stipendio_minimo
+
+    def chiuso(self, spendibile, debole):
+        """
+        Vero se nessuna riga può andare bene con quella cassa da spendere e quel tesserato più debole,
+        qualunque sia lo stipendio che i conti permettono: è il primo controllo di scelta, che allora
+        non trova niente.
+        """
+        if not self.righe or self.prezzi_minimi[0] > spendibile:
+            return True
+        return debole is not None and self.righe[0][0].indice_collettivo_valore <= debole.indice_collettivo_valore
+
+    def scelta(self, poli, spendibile, massimo, debole):
+        """
+        Il giocatore che la polisportiva compra, con chi lo vende e il prezzo, oppure None: il più forte
+        ancora in vendita al prezzo di stamattina, non suo, col prezzo nella cassa da spendere, lo
+        stipendio nei conti e, a rosa piena, più forte del tesserato che vale meno.
+        """
+        soglia = None if debole is None else debole.indice_collettivo_valore
+        prezzi_minimi, stipendi_minimi = self.prezzi_minimi, self.stipendi_minimi
+        for posto, (g, venditore, prezzo, _massimo, chiesto) in enumerate(self.righe):
+            if prezzi_minimi[posto] > spendibile or stipendi_minimi[posto] > massimo:
+                return None
+            if soglia is not None and g.indice_collettivo_valore <= soglia:
+                return None
+            # Chi è già stato comprato oggi non è più in vendita.
+            if venditore is poli or venditore.in_vendita.get(g.id) != prezzo:
+                continue
+            if prezzo > spendibile or chiesto > massimo:
+                continue
+            return g, venditore, prezzo
+        return None
+
+
 class Mondo:
     def __init__(self, notifica=None):
         self.notifica = notifica or _silenzio
@@ -205,6 +288,15 @@ class Mondo:
         # Chi è uscito di scena, dal più recente: il registro delle vecchie glorie, salvato col mondo.
         self.vecchie_glorie = []
         self.conservazione_diari = dict(CONSERVAZIONE_PREDEFINITA)
+        # La memoria dei conti delle mosse del computer, che vive soltanto mentre il computer muove:
+        # None fuori da lì, punto 1.3 del progetto della tappa 12.
+        self._conti_del_giorno = None
+        # La memoria degli sponsor dei conti del primo del mese, dalla decisione 4 di Gabriele del 14
+        # ottobre 2026: None fuori da lì, vedi _sponsor_del_mese.
+        self._sponsor_ricordati = None
+        # Dalla tappa 12 il calendario dei tornei e le sfide fra polisportive, salvati col mondo nel formato 7.
+        self.calendario = calendario.Calendario()
+        self.sfide = sfide.RegistroSfide()
 
     # Probabilità, ricerche, diari.
 
@@ -317,6 +409,8 @@ class Mondo:
         contratti.stipula(g, data or self.datetime_corrente_simulazione, stipendio(g), contratti.durata_proposta(g))
         g.programma = g.indole
         g.intensita = INTENSITA_PREDEFINITA
+        # Dalla tappa 12 l'iscrizione automatica ai tornei è accesa per chi si tessera, risposta 17 di Gabriele.
+        g.iscrizione_automatica = True
 
     def _tessera(self, poli, g, data=None, ingaggio=None):
         self._entra(poli, g, data)
@@ -345,11 +439,47 @@ class Mondo:
 
     def monte_stipendi(self, poli):
         """Quanto la polisportiva paga ogni mese di stipendi, a chi ha oggi: dalla tappa 11 lo stipendio del contratto."""
-        return sum(stipendio_pagato(self.giocatori[gid]) for gid in poli.tesserati if gid in self.giocatori and gid not in self._ids_morti_processati_sessione)
+        giocatori = self.giocatori
+        morti = self._ids_morti_processati_sessione
+        return sum(stipendio_pagato(g) for gid in poli.tesserati if (g := giocatori.get(gid)) is not None and gid not in morti)
 
     def sponsor(self, poli):
         """Lo sponsor del mese della polisportiva, con la sua rosa di oggi."""
         return sponsor_mensile(poli, self._rosa(poli))
+
+    def _conto_memorizzato(self, poli, posto, calcolo):
+        """
+        Lo sponsor del mese, al posto 0, o il monte stipendi della polisportiva, al posto 1, durante le
+        mosse del computer: si calcolano una volta e si ricalcolano soltanto quando cambia la rosa, con
+        una memoria indicizzata dal nome, dai tesserati nel loro ordine e dalla gloria. Mentre il
+        computer muove nient'altro li cambia: la gloria si ricalcola a fine giorno, e uno stipendio
+        cambia soltanto con un contratto nuovo, cioè con un tesserato che entra. Prima ogni candidato
+        provato ricalcolava lo sponsor di tutta la rosa: a regime le mosse del computer erano il 18 per
+        cento del giorno, e questi conti più della metà. I numeri sono gli stessi, nello stesso ordine di
+        somma, punto 1.3 del progetto della tappa 12. Fuori dalle mosse del computer si calcolano ogni
+        volta. Dalla decisione 4 di Gabriele del 14 ottobre 2026 ciascuno dei due si calcola soltanto
+        quando serve: con la stessa chiave, niente nelle mosse li cambia, e calcolati prima o dopo sono
+        gli stessi. Lo sponsor, che passa per il valore di tutta la rosa, molte polisportive non lo
+        chiedono più.
+        """
+        memoria = self._conti_del_giorno
+        if memoria is None:
+            return calcolo(poli)
+        chiave = (poli.nome, tuple(poli.tesserati), poli.gloria)
+        conti = memoria.get(chiave)
+        if conti is None:
+            conti = memoria[chiave] = [None, None]
+        if conti[posto] is None:
+            conti[posto] = calcolo(poli)
+        return conti[posto]
+
+    def _sponsor_memorizzato(self, poli):
+        """Lo sponsor della memoria di _conto_memorizzato."""
+        return self._conto_memorizzato(poli, 0, self.sponsor)
+
+    def _monte_memorizzato(self, poli):
+        """Il monte stipendi della memoria di _conto_memorizzato."""
+        return self._conto_memorizzato(poli, 1, self.monte_stipendi)
 
     def paga(self, poli, g, importo):
         """
@@ -615,6 +745,14 @@ class Mondo:
         self.prossimo_id = nuovo + 1
         return nuovo
 
+    def descrivi_impegno(self, g):
+        """
+        Che cosa ha già giocato oggi il giocatore, a parole, per la regola di un impegno al giorno della
+        tappa 12, D32: il torneo, una sfida, oppure un'amichevole.
+        """
+        oggi = self.datetime_corrente_simulazione
+        return calendario.descrivi(self.calendario, g, oggi) or sfide.descrivi(self, g, oggi) or "un'amichevole"
+
     def annota(self, soggetto, testo, data=None):
         """Una voce nel diario di un giocatore o di una polisportiva, con la data simulata, di oggi se non è data."""
         soggetto.annota(data or self.datetime_corrente_simulazione, testo)
@@ -650,12 +788,22 @@ class Mondo:
             self.notifica(f" -> Creati {quanti} nuovi giocatori.")
 
     def crea_polisportiva_cpu(self, dt_creaz):
-        """Fonda una polisportiva del computer con un nome nuovo; ne restituisce il nome, o None."""
+        """
+        Fonda una polisportiva del computer con un nome nuovo; ne restituisce il nome, o None. Il
+        numero è il primo che nessun nome usa all'inizio, seguito da uno spazio, maiuscole a parte.
+        Dalla tappa 12 le prime parole dei nomi si raccolgono una volta sola: prima ogni numero
+        provato scorreva tutti i nomi, e con le 1.240 polisportive del mondo a regime una fondazione
+        costava più di mezzo secondo. Il numero scelto è lo stesso di prima.
+        """
         suff = 1
         base = "PoliTeam"
+        usati = set()
+        for n in self.polisportive:
+            testa, spazio, _resto = n.casefold().partition(" ")
+            if spazio:
+                usati.add(testa)
         while True:
-            prefisso = f"{base}{suff:02d} ".casefold()
-            if not any(n.casefold().startswith(prefisso) for n in self.polisportive):
+            if f"{base}{suff:02d}".casefold() not in usati:
                 break
             suff += 1
             if suff > 9999:
@@ -725,14 +873,24 @@ class Mondo:
         cerca un libero ne trova ancora qualcuno. Il filtro sta qui, sull'elenco da cui pescano sia
         le mosse a rosa incompleta sia lo scambio a rosa piena; gli acquisti dalle altre polisportive
         non c'entrano, perché non prendono liberi.
+        Dalla tappa 12, mentre il computer muove, sponsor e monte stipendi di ogni polisportiva vivono
+        in una memoria che si svuota alla fine: vedi _conto_memorizzato.
         """
+        self._conti_del_giorno = {}
+        try:
+            return self._mosse_del_computer(data)
+        finally:
+            self._conti_del_giorno = None
+
+    def _mosse_del_computer(self, data):
+        """Il corpo di _esegui_logica_cpu_polisportive, con la memoria dei conti già pronta."""
         liberi = [g for g in self.trova_giocatori_liberi_ordinati().values() if not g.infortunato]
         stipendi = [stipendio(g) for g in liberi]
         vetrina = _Vetrina(stipendi)
         tesserati = svincolati = comprati = 0
         cpu = sorted((p for p in self.polisportive.values() if p.is_cpu_controlled), key=lambda p: p.gloria, reverse=True)
         for poli in cpu:
-            monte = self.monte_stipendi(poli)
+            monte = self._monte_memorizzato(poli)
             # Il posto da cui riprende la ricerca: i liberi prima di lui sono già stati provati o sono troppo cari.
             prossimo = 0
             scartati = 0
@@ -759,23 +917,26 @@ class Mondo:
                 if self._scambio(poli, liberi, vetrina, prossimo, monte, data):
                     tesserati += 1
                     svincolati += 1
-        vendibili = self._vendibili(data or self.datetime_corrente_simulazione)
+        mercato = _Mercato(self._vendibili(data or self.datetime_corrente_simulazione))
         for poli in cpu:
-            if self._compra_dal_mercato(poli, data, vendibili):
+            if self._compra_dal_mercato(poli, data, mercato):
                 comprati += 1
         return tesserati, svincolati, comprati
 
     def _stipendio_massimo(self, poli, monte, spendibile):
         """
         Lo stipendio più alto che una polisportiva del computer può aggiungere: deve stare nello
-        sponsor più una parte della cassa, e l'ingaggio più basso possibile deve stare nella cassa.
+        sponsor più una parte della cassa, e con la cassa piena nel suo premio, decisione 1 di Gabriele
+        del 14 ottobre 2026; e l'ingaggio più basso possibile deve stare nella cassa.
         """
-        nei_conti = sponsor_mensile(poli, self._rosa(poli)) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
+        nei_conti = spesa_mensile_cpu(self._sponsor_memorizzato(poli), poli.cassa) - monte
         nella_cassa = spendibile / (MESI_DI_INGAGGIO * REPUTAZIONE_MINIMA * RIALZO_CPU)
         return min(nei_conti, nella_cassa)
 
     def _rosa(self, poli):
-        return [self.giocatori[gid] for gid in poli.tesserati if gid in self.giocatori and gid not in self._ids_morti_processati_sessione]
+        giocatori = self.giocatori
+        morti = self._ids_morti_processati_sessione
+        return [g for gid in poli.tesserati if (g := giocatori.get(gid)) is not None and gid not in morti]
 
     def _scambio(self, poli, liberi, vetrina, prossimo, monte, data):
         """Una polisportiva a rosa piena prova il libero più forte che si può permettere; vero se l'ha preso al posto del tesserato che vale meno."""
@@ -826,11 +987,15 @@ class Mondo:
                     righe.append((g, venditore, prezzo, valore_di_mercato(g, oggi) * RIALZO_CPU, stipendio(g)))
         return righe
 
-    def _compra_dal_mercato(self, poli, data, vendibili=None):
+    def _compra_dal_mercato(self, poli, data, mercato=None):
         """
         Una polisportiva del computer compra il più forte dei giocatori in vendita, se il prezzo non
         supera di molto il suo valore di mercato e se ci sta nei conti; a rosa piena solo se è più
-        forte del tesserato che vale meno, che lascia libero. Al massimo un acquisto al giorno.
+        forte del tesserato che vale meno, che lascia libero. Al massimo un acquisto al giorno. Dalla
+        tappa 12 la ricerca la fa il mercato del giorno, _Mercato, costruito una volta per tutte le
+        polisportive del computer; senza, se ne costruisce uno. Con la cassa piena, decisione 1 di
+        Gabriele del 14 ottobre 2026, il premio della cassa piena alza lo stipendio che si permette, non
+        il prezzo: quello resta entro il valore di mercato col rialzo del computer.
         """
         if self.mosse_rimaste(poli) <= 0:
             return False
@@ -840,21 +1005,16 @@ class Mondo:
             return False
         debole = min(rosa, key=lambda g: g.indice_collettivo_valore) if piena else None
         oggi = data or self.datetime_corrente_simulazione
-        monte = self.monte_stipendi(poli) - (stipendio_pagato(debole) if debole else 0)
+        if mercato is None:
+            mercato = _Mercato(self._vendibili(oggi))
+        monte = self._monte_memorizzato(poli) - (stipendio_pagato(debole) if debole else 0)
         buonuscita = contratti.buonuscita(debole, oggi) if debole else 0
         spendibile = poli.cassa - monte * MESI_DI_RISERVA_CPU - buonuscita
-        massimo = sponsor_mensile(poli, rosa) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI - monte
-        scelta = None
-        for g, venditore, prezzo, prezzo_massimo, chiesto in (self._vendibili(oggi) if vendibili is None else vendibili):
-            # Chi è già stato comprato oggi non è più in vendita.
-            if venditore is poli or venditore.in_vendita.get(g.id) != prezzo:
-                continue
-            if prezzo > spendibile or prezzo > prezzo_massimo or chiesto > massimo:
-                continue
-            if debole is not None and g.indice_collettivo_valore <= debole.indice_collettivo_valore:
-                continue
-            if scelta is None or g.indice_collettivo_valore > scelta[0].indice_collettivo_valore:
-                scelta = (g, venditore, prezzo)
+        # Lo sponsor, il conto più caro, serve soltanto se il mercato ha qualcosa alla portata della cassa.
+        if mercato.chiuso(spendibile, debole):
+            return False
+        massimo = spesa_mensile_cpu(self._sponsor_memorizzato(poli), poli.cassa) - monte
+        scelta = mercato.scelta(poli, spendibile, massimo, debole)
         if scelta is None:
             return False
         g, venditore, prezzo = scelta
@@ -876,12 +1036,40 @@ class Mondo:
         li aspetta perde un mese di pazienza. Per l'utente, che decide lui a chi dare i soldi che
         ci sono, il mondo non paga nessuno; il computer paga per primi i meno pazienti, e mette in
         vendita il suo giocatore più caro. Chi ha finito la pazienza se ne va, salvo le bandiere.
+        Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, lo sponsor di ogni polisportiva si
+        ricorda finché non cambia la rosa, fino alla fine dei contratti del mese: vedi _sponsor_del_mese.
         """
+        self._sponsor_ricordati = {}
+        try:
+            self._conti_del_primo(data, rapporto)
+        finally:
+            self._sponsor_ricordati = None
+
+    def _sponsor_del_mese(self, poli, rosa=None):
+        """
+        Lo sponsor del mese della polisportiva con la sua rosa, quella di _rosa, che si può dare già fatta.
+        Durante i conti del primo del mese si calcola una volta per polisportiva e si ricalcola soltanto
+        quando cambia la rosa, con una memoria indicizzata dal nome, dai tesserati nel loro ordine e dalla
+        gloria: lì niente cambia il valore dei giocatori, né la gloria, che si ricalcola a fine giorno.
+        Prima ogni rinnovo provato dal computer ricalcolava lo sponsor di tutta la rosa, e il primo del
+        mese era il giorno più lento. Fuori dai conti del primo del mese si calcola ogni volta.
+        """
+        memoria = self._sponsor_ricordati
+        if memoria is None:
+            return sponsor_mensile(poli, self._rosa(poli) if rosa is None else rosa)
+        chiave = (poli.nome, tuple(poli.tesserati), poli.gloria)
+        sponsor = memoria.get(chiave)
+        if sponsor is None:
+            sponsor = memoria[chiave] = sponsor_mensile(poli, self._rosa(poli) if rosa is None else rosa)
+        return sponsor
+
+    def _conti_del_primo(self, data, rapporto):
+        """Il corpo di _primo_del_mese, con la memoria degli sponsor già pronta."""
         rapporto["mesi"] += 1
         for poli in list(self.polisportive.values()):
             rosa = self._rosa(poli)
             self._fedelta(poli, rosa, data, rapporto)
-            sponsor = sponsor_mensile(poli, rosa)
+            sponsor = self._sponsor_del_mese(poli, rosa)
             poli.cassa += sponsor
             poli.conti_del_mese["sponsor"] += sponsor
             dovuti = {g.id: stipendio_pagato(g) for g in rosa}
@@ -908,6 +1096,10 @@ class Mondo:
             poli.bilanci.insert(0, {"data": data, "cassa": poli.cassa, **poli.conti_del_mese})
             del poli.bilanci[BILANCI_CONSERVATI:]
             poli.conti_del_mese = conti_vuoti()
+            # Dalla tappa 12 i mesi usciti dalla finestra della gloria lasciano il palmarès recente, e
+            # arrivano due sfide da lanciare, fino a quattro.
+            palmares.sfoltisci(poli, data)
+            poli.sfide_da_lanciare = min(SFIDE_ACCUMULABILI, poli.sfide_da_lanciare + SFIDE_AL_MESE)
         self._contratti_del_mese(data, rapporto)
 
     # I contratti del mese, dopo gli stipendi: il mese appena finito si paga anche a chi scade oggi.
@@ -919,12 +1111,17 @@ class Mondo:
         chi è nella finestra; all'utente il mondo ricorda chi entra nella finestra e chi entra
         nell'ultimo mese, con una voce nei due diari. Poi il computer riporta il prezzo dei suoi
         tesserati in vendita al valore di mercato del giorno, che con la scadenza scende.
+        Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, il giorno di oggi si prende una volta
+        sola, e l'inizio della finestra si ricorda per scadenza: le scadenze sono pochi primi del mese, e
+        la finestra di contratti.in_finestra si ricalcolava per ogni tesserato del computer.
         """
+        oggi = data.date()
+        inizi = {}
         for poli in list(self.polisportive.values()):
             for g in self._rosa(poli):
                 if g.contratto_scadenza is None:
                     continue
-                if g.contratto_scadenza.date() <= data.date():
+                if g.contratto_scadenza.date() <= oggi:
                     if contratti.ha_rinnovo(g):
                         contratti.subentra_il_rinnovo(g)
                         self.annota(g, f"Comincia il contratto rinnovato con {poli.nome}: {scritta_in_euro(g.contratto_stipendio)} al mese fino al {data_breve(g.contratto_scadenza)}.", data)
@@ -934,7 +1131,14 @@ class Mondo:
                 if contratti.ha_rinnovo(g) or not contratti.puo_trattare(g):
                     continue
                 if poli.is_cpu_controlled:
-                    if contratti.in_finestra(g, data):
+                    # contratti.in_finestra, con l'inizio della finestra ricordato per le scadenze senza fuso.
+                    scadenza = g.contratto_scadenza
+                    inizio = inizi.get(scadenza) if scadenza.tzinfo is None else None
+                    if inizio is None:
+                        inizio = contratti.inizio_finestra(g).date()
+                        if scadenza.tzinfo is None:
+                            inizi[scadenza] = inizio
+                    if inizio <= oggi < scadenza.date():
                         self._rinnovo_cpu(poli, g, data, rapporto)
                     continue
                 mesi = contratti.mesi_interi(data, g.contratto_scadenza)
@@ -967,14 +1171,15 @@ class Mondo:
         Il computer prova a rinnovare un tesserato nella finestra, una volta al mese: offre la
         richiesta per la durata che il giocatore propone, con il suo rialzo. Se il monte stipendi,
         con lo stipendio nuovo al posto del vecchio, non sta nello sponsor più una parte della
-        cassa, non rinnova: mette il giocatore in vendita al valore di mercato e lo lascia scadere.
+        cassa, e con la cassa piena il suo premio, decisione 1 di Gabriele del 14 ottobre 2026, non
+        rinnova: mette il giocatore in vendita al valore di mercato e lo lascia scadere.
         Restituisce vero se il giocatore ha accettato.
         """
         mesi = contratti.durata_proposta(g)
         richiesta = contratti.richiesta_rinnovo(g, poli, mesi)
         offerta = arrotonda(richiesta * RIALZO_RINNOVO_CPU)
         monte = self.monte_stipendi(poli) - stipendio_pagato(g) + offerta
-        if monte > sponsor_mensile(poli, self._rosa(poli)) + poli.cassa / PARTI_DI_CASSA_PER_STIPENDI:
+        if monte > spesa_mensile_cpu(self._sponsor_del_mese(poli), poli.cassa):
             if g.id not in poli.in_vendita:
                 prezzo = max(1, valore_di_mercato(g, data))
                 poli.in_vendita[g.id] = prezzo
@@ -983,7 +1188,8 @@ class Mondo:
             return False
         g.proposte_rinnovo += 1
         g.ultima_trattativa = data
-        if not caso(contratti.probabilita_rinnovo(g, poli, offerta, mesi)):
+        # La richiesta è quella di sopra: proposte e trattativa non la cambiano.
+        if not caso(contratti.probabilita_rinnovo(g, poli, offerta, mesi, richiesta)):
             return False
         contratti.concorda_rinnovo(g, offerta, mesi)
         self._annota_rinnovo(poli, g, data)
@@ -996,13 +1202,21 @@ class Mondo:
         soglia. Dalla tappa 11 l'esperienza cresce ogni giorno, in _allenamento_del_giorno.
         """
         for g in rosa:
-            prima = g.fedelta
-            g.fedelta = min(FEDELTA_MASSIMA, g.fedelta + FEDELTA_PER_MESE)
-            if g.bandiera and prima < FEDELTA_BANDIERA <= g.fedelta:
-                self.annota(g, f"Diventa una bandiera di {poli.nome}: giocherà per il club anche senza stipendio.", data)
-                self.annota(poli, f"{nome_completo(g)} diventa una bandiera del club.", data)
-                if rapporto is not None and not poli.is_cpu_controlled:
-                    rapporto["tue_bandiere"] += 1
+            self._aggiungi_fedelta(g, poli, FEDELTA_PER_MESE, data, rapporto)
+
+    def _aggiungi_fedelta(self, g, poli, punti, data, rapporto=None):
+        """
+        La fedeltà del giocatore verso il suo club cresce dei punti dati, fino al massimo; una bandiera
+        si accende quando arriva alla soglia. Serve al primo del mese e, dalla tappa 12, alle medaglie
+        vinte col club e alle sfide vinte, D32.
+        """
+        prima = g.fedelta
+        g.fedelta = min(FEDELTA_MASSIMA, g.fedelta + punti)
+        if g.bandiera and prima < FEDELTA_BANDIERA <= g.fedelta:
+            self.annota(g, f"Diventa una bandiera di {poli.nome}: giocherà per il club anche senza stipendio.", data)
+            self.annota(poli, f"{nome_completo(g)} diventa una bandiera del club.", data)
+            if rapporto is not None and not poli.is_cpu_controlled:
+                rapporto["tue_bandiere"] += 1
 
     def _mantenimento_del_mese(self, data):
         """
@@ -1027,11 +1241,18 @@ class Mondo:
         polisportiva. I liberi e i tesserati del computer spendono da soli, secondo la loro indole,
         quando il portafoglio arriva alla soglia; la spesa non va nel diario. Chi ha speso si conta
         alla voce autoallenati del riepilogo.
+        Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, i punti della seduta di ogni
+        intensità e l'esperienza del giorno di ogni polisportiva, che non cambiano nel giorno, si
+        calcolano una volta sola, prima del giro dei giocatori, con gli stessi conti di esperienza.del_giorno.
         """
         morti = self._ids_morti_processati_sessione
         gruppi = {}
         for nome_club, poli in self.polisportive.items():
-            gruppi[nome_club] = (poli, esperienza.fattore_gruppo([g for g in self._rosa(poli) if not g.ritirato]))
+            fattore = esperienza.fattore_gruppo([g for g in self._rosa(poli) if not g.ritirato])
+            gruppi[nome_club] = (poli, esperienza.quanto_del_giorno(True, fattore), poli.is_cpu_controlled)
+        dell_eta = esperienza.quanto_del_giorno(False)
+        massima = esperienza.ESPERIENZA_MASSIMA
+        sedute = {nome: (PA_SEDUTA * riga["punti"], riga["costanza"], riga["infortuni_seduta"] > 0.0) for nome, riga in INTENSITA.items()}
         resto = 1.0 - DECADIMENTO_COSTANZA
         seduta_liberi = PA_SEDUTA * QUOTA_SEDUTA_LIBERI
         for gid, g in self.giocatori.items():
@@ -1045,17 +1266,16 @@ class Mondo:
                     g.punti_allenamento += seduta_liberi
                     attivita = COSTANZA_LIBERI
                 else:
-                    riga = INTENSITA[g.intensita]
-                    g.punti_allenamento += PA_SEDUTA * riga["punti"]
-                    attivita = riga["costanza"]
-                    if riga["infortuni_seduta"] > 0.0 and infortuni.infortunio_in_seduta(self, g, data):
+                    punti, attivita, a_rischio = sedute[g.intensita]
+                    g.punti_allenamento += punti
+                    if a_rischio and infortuni.infortunio_in_seduta(self, g, data):
                         rapporto["infortunati_in_seduta"] += 1
-                        if not club[0].is_cpu_controlled:
+                        if not club[2]:
                             rapporto["tuoi_infortunati_in_seduta"] += 1
                             self.annota(club[0], f"{nome_completo(g)} si infortuna in allenamento.", data)
             g.costanza = g.costanza * DECADIMENTO_COSTANZA + resto * attivita
-            esperienza.del_giorno(g, club is not None, club[1] if club is not None else 1.0)
-            if g.punti_allenamento >= SOGLIA_SPESA_AUTONOMI and (club is None or club[0].is_cpu_controlled) and allena_secondo_programma(g, programma=g.indole):
+            g.esperienza = min(massima, g.esperienza + (dell_eta if club is None else club[1]))
+            if g.punti_allenamento >= SOGLIA_SPESA_AUTONOMI and (club is None or club[2]) and allena_secondo_programma(g, programma=g.indole):
                 rapporto["autoallenati"] += 1
 
     def _paga_i_meno_pazienti(self, poli, rosa):
@@ -1090,9 +1310,10 @@ class Mondo:
         """Ricalcola indice dei tesserati e gloria di tutte le polisportive."""
         if annuncia:
             self.notifica("Aggiornamento stato polisportive...")
+        oggi = self.datetime_corrente_simulazione
         for p in self.polisportive.values():
             p.aggiorna_ict(self.giocatori, self._ids_morti_processati_sessione)
-            p.aggiorna_gloria(self.giocatori, self._ids_morti_processati_sessione)
+            p.aggiorna_gloria(self.giocatori, self._ids_morti_processati_sessione, oggi)
         if annuncia and self.polisportive:
             self.notifica(f"-> Stato ricalcolato per {len(self.polisportive)} polisportive.")
 
@@ -1109,6 +1330,11 @@ class Mondo:
             "goal_fatti": g.goalsfatti, "goal_subiti": g.goalssubiti, "valore": round(g.indice_collettivo_valore, 2),
             "scoperto": g.datetime_creazione_sim.isoformat(), "versione": getattr(g, "versione", "N/D"),
         }
+        # Dalla tappa 12 le vecchie glorie conservano i punti della classifica mondiale per sempre e le
+        # medaglie, perché la classifica mondiale è un medagliere storico, D32.
+        if g.punti_mondiali or g.ori or g.argenti or g.bronzi or g.legni:
+            voce.update(punti_mondiali=round(g.punti_mondiali, 2), ori=g.ori, argenti=g.argenti, bronzi=g.bronzi, legni=g.legni,
+                        titoli_mondiali=sum(1 for t in g.titoli if t.get("mondiale") and t.get("posto") == 1))
         self.vecchie_glorie.insert(0, voce)
         come = f"{'muore' if voce['motivo'] == 'morte' else 'lascia il mondo dello showdown'} a {int(g.eta_anni)} anni"
         dove = f"da {accorda(g.sesso, 'tesserato')} con {club}" if club != "*" else f"da {accorda(g.sesso, 'libero')}"
@@ -1151,22 +1377,39 @@ class Mondo:
         self._registra_uscita(g, motivo, data, club)
 
     def _fai_invecchiare(self, data, rapporto):
-        """Un giorno per ogni giocatore vivo: guarigione, età, declino, uscita prematura, morte e ritiro."""
+        """
+        Un giorno per ogni giocatore vivo: guarigione, età, declino, uscita prematura, morte e ritiro.
+        Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, restituisce anche chi resta vivo e in
+        attività nel declino, a cui il giorno ricalcola il valore alla fine, e quanti restano in attività:
+        il resto del giorno non fa morire né ritirare nessuno, e prima per saperlo si scorreva il mondo
+        intero altre due volte. Il declino si chiama soltanto per chi è arrivato all'età del suo inizio,
+        lo stesso confronto che il declino faceva per primo.
+        """
         morti = self._ids_morti_processati_sessione
-        for gid in list(self.giocatori):
+        polisportive = self.polisportive
+        oggi = data.date()
+        inizio_declino = tratti.giorni_inizio_declino
+        declinanti = []
+        attivi = 0
+        for gid, g in list(self.giocatori.items()):
             if gid in morti:
                 continue
-            g = self.giocatori[gid]
             if g.infortunato and g.infortunio_fine_datetime and data >= g.infortunio_fine_datetime:
                 g.infortunato = False
                 g.infortunio_fine_datetime = None
                 g.infortunio_sede = None
                 rapporto["guariti"] += 1
                 self.annota(g, "Guarisce dall'infortunio.", data)
+            # Dalla tappa 12 l'acciacco finito se ne va, senza una voce: il calo era già arrivato a zero.
+            if g.acciacco_fino is not None and oggi >= g.acciacco_fino.date():
+                infortuni.guarisci_acciacco(g)
             eta_pre = g.eta
             g.eta += 1
-            g._applica_declino_aggregato(1)
-            club = self.polisportive.get(g.appartenenza)
+            inizio = inizio_declino(g)
+            nel_declino = g.eta >= inizio
+            if nel_declino:
+                g._applica_declino_aggregato(1, inizio)
+            club = polisportive.get(g.appartenenza)
             tuo = club is not None and not club.is_cpu_controlled
             if PROB_USCITA_PREMATURA_GIORNALIERA > 0 and caso(PROB_USCITA_PREMATURA_GIORNALIERA):
                 self._uscita(g, USCITA_PREMATURA, data, eta_pre)
@@ -1193,13 +1436,21 @@ class Mondo:
                     g.appartenenza = "*"
                     self.annota(g, f"Si ritira dall'attività, a {int(g.eta_anni)} anni.", data)
                 rapporto["ritirati"] += 1
+            if not g.ritirato:
+                attivi += 1
+                if nel_declino:
+                    declinanti.append(g)
+        return declinanti, attivi
 
     # Il tempo.
 
     @staticmethod
     def rapporto_vuoto(ora):
-        """Il riepilogo di un avanzamento in cui non è successo niente."""
-        return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora}
+        """
+        Il riepilogo di un avanzamento in cui non è successo niente. Dalla tappa 12 ha anche le notizie,
+        le frasi dei risultati dei tuoi, una lista nuova a ogni riepilogo.
+        """
+        return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora, "notizie": []}
 
     def prossimo_avanzamento(self):
         """L'istante, in UTC, in cui maturerà il prossimo giorno simulato."""
@@ -1227,6 +1478,12 @@ class Mondo:
         avanzamento, un giorno alla volta, e sposta l'ancora di 8 ore per ogni giorno: il resto
         resta per la volta dopo. Oltre ai messaggi per notifica restituisce il riepilogo in numeri,
         un dizionario con le chiavi di CHIAVI_RAPPORTO e l'ora locale dell'avanzamento.
+        Dal 16 ottobre 2026, decisione 4 di Gabriele, accelerare senza cambiare gli esiti: mentre passano
+        i giorni la raccolta dei cicli di Python resta spenta, utilita.senza_raccolta, e si riaccende alla
+        fine anche se un giorno solleva un'eccezione. Il giorno fa pochissimi cicli da buttare, e la
+        raccolta che riparte dopo li trova tutti in un giro solo, invece di ripassare a ogni gruppo di
+        oggetti nuovi quelli nati nei giorni prima; il salvataggio, che segue l'avanzamento, raccoglie e
+        congela la memoria, archivio.congela_la_memoria.
         """
         ora = ora or adesso_utc()
         ticks = self.ticks_maturati(ora)
@@ -1240,10 +1497,11 @@ class Mondo:
         inizio = self.datetime_corrente_simulazione
         self.notifica(f"Avanzamento sim: +{ticks} giorni -> {inizio + datetime.timedelta(days=ticks):%Y-%m-%d %H:%M}")
         rapporto["ticks"] = rapporto["giorni"] = ticks
-        for giorno in range(1, ticks + 1):
-            data = inizio + datetime.timedelta(days=giorno)
-            self.datetime_corrente_simulazione = data
-            self._un_giorno(data, rapporto)
+        with senza_raccolta():
+            for giorno in range(1, ticks + 1):
+                data = inizio + datetime.timedelta(days=giorno)
+                self.datetime_corrente_simulazione = data
+                self._un_giorno(data, rapporto)
         self.datetime_ultimo_run_reale += DURATA_TICK * ticks
         self._notifica_rapporto(rapporto)
         return rapporto
@@ -1258,12 +1516,19 @@ class Mondo:
         """
         for p in self.polisportive.values():
             p.movimenti_oggi = 0
-        self._fai_invecchiare(data, rapporto)
+        declinanti, attivi = self._fai_invecchiare(data, rapporto)
         if data.day == 1:
             self._primo_del_mese(data, rapporto)
             self._mantenimento_del_mese(data)
         self._allenamento_del_giorno(data, rapporto)
-        vivi = [g for gid, g in self.giocatori.items() if gid not in self._ids_morti_processati_sessione]
+        # Dalla tappa 12 il calendario dei tornei e poi le sfide, dopo l'allenamento e prima delle mosse
+        # del computer: chi ha vinto qualcosa ricalcola subito la gloria, così il mercato la vede.
+        toccate = self.calendario.giorno(self, data, rapporto)
+        toccate |= sfide.giorno(self, data, rapporto)
+        for nome in sorted(toccate):
+            poli = self.polisportive.get(nome)
+            if poli is not None:
+                poli.aggiorna_gloria(self.giocatori, self._ids_morti_processati_sessione, data)
         venduti_tuoi = sum(len(p.in_vendita) for p in self.polisportive.values() if not p.is_cpu_controlled)
         tesserati, svincolati, comprati = self._esegui_logica_cpu_polisportive(data)
         rapporto["tesserati_cpu"] += tesserati
@@ -1273,21 +1538,36 @@ class Mondo:
         for nome_p in list(self.polisportive.keys()):
             if nome_p in self.polisportive and self.polisportive[nome_p].is_cpu_controlled and self._controlla_chiusura_poli_cpu(self.polisportive[nome_p], data):
                 rapporto["poli_chiuse"] += 1
-        limite_poli = len(vivi) / GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET if vivi and GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET > 0 else 0.
-        if len(self.polisportive) < limite_poli and caso(PROB_CREAZIONE_POLI_CPU_PER_TICK) and self.crea_polisportiva_cpu(data):
+        if self._serve_una_polisportiva_cpu(attivi) and caso(PROB_CREAZIONE_POLI_CPU_PER_TICK) and self.crea_polisportiva_cpu(data):
             rapporto["poli_create"] += 1
         # Dalla tappa 11 il valore si ricalcola soltanto per chi è nel declino, che cambia ogni giorno:
         # la spesa d'allenamento e il calo del mese lo ricalcolano da sé, e rifarlo per tutti i
         # giocatori del mondo costava più di tutto il resto del giorno. I ritirati vivi, a regime
         # quasi seimila, non giocano e non firmano: il loro valore serve alla scheda, alla ricerca e
-        # alle vecchie glorie, e si ricalcola al ritiro, il primo del mese e all'uscita di scena.
-        for g in vivi:
-            if not g.ritirato and g.eta >= tratti.giorni_inizio_declino(g):
-                g.aggiorna_icv()
+        # alle vecchie glorie, e si ricalcola al ritiro, il primo del mese e all'uscita di scena. Dalla
+        # decisione 4 di Gabriele chi è nel declino lo dice già _fai_invecchiare, nello stesso ordine.
+        for g in declinanti:
+            g.aggiorna_icv()
         nuovi = random.randint(*CREA_NUOVI_PER_TICK_RANGE)
         self.crea_giocatori_casuali(nuovi, data, annuncia=False)
         rapporto["nuovi"] += nuovi
         self.aggiorna_stato_polisportive(annuncia=False)
+
+    def _serve_una_polisportiva_cpu(self, attivi):
+        """
+        Vero se il computer può fondare una polisportiva nuova: le sue polisportive sono meno di una
+        ogni GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET giocatori in attività. Dalla tappa 12, issue 1, si
+        contano soltanto i giocatori in attività, non i ritirati, e soltanto le polisportive del
+        computer, non quelle dell'utente: prima il limite contava tutti i vivi e tutte le polisportive,
+        e dall'anno 40 simulato il computer aveva più posti che giocatori in attività, così il mercato
+        dei liberi restava vuoto. A regime, con circa 20.600 attivi, il limite è di 1.248 polisportive,
+        18.727 posti, il 91 per cento degli attivi. Dalla decisione 4 di Gabriele del 14 ottobre 2026 i
+        giocatori in attività li conta _fai_invecchiare, e qui arriva il numero.
+        """
+        if GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET <= 0:
+            return False
+        poli_cpu = sum(1 for p in self.polisportive.values() if p.is_cpu_controlled)
+        return poli_cpu < attivi / GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET
 
     def _notifica_rapporto(self, rapporto):
         """Il riepilogo dell'avanzamento nella forma dell'interfaccia testuale."""
@@ -1299,7 +1579,14 @@ class Mondo:
         self.notifica("\n--- Riepilogo Avanzamento Tick ---")
         for numero, testo in ((rapporto["ritirati"], "* Ritirati (età)"), (rapporto["usciti"], "* Usciti Prematuramente"), (rapporto["morti"], "* Deceduti (età)"),
                               (rapporto["nuovi"], "* Nuovi giocatori"), (rapporto["poli_chiuse"], "* Poli CPU chiuse"), (rapporto["poli_create"], "* Poli CPU create"),
-                              (rapporto["tesserati_cpu"], "* CPU Tesserati"), (rapporto["svincolati_cpu"], "* CPU Svincolati")):
+                              (rapporto["tesserati_cpu"], "* CPU Tesserati"), (rapporto["svincolati_cpu"], "* CPU Svincolati"),
+                              (rapporto["tornei_conclusi"], "* Tornei conclusi"), (rapporto["incontri_torneo"], "* Incontri di torneo"),
+                              (rapporto["sfide_giocate"], "* Sfide giocate")):
             if numero > 0:
                 self.notifica(f"{testo}: {numero}")
+        # Dalla tappa 12 le notizie dei tuoi, una per riga, e le sfide che aspettano la tua risposta.
+        for notizia in rapporto["notizie"]:
+            self.notifica(notizia)
+        if rapporto["sfide_in_attesa"]:
+            self.notifica(f"Sfide che aspettano la tua risposta: {rapporto['sfide_in_attesa']}.")
         self.notifica("-" * 30)

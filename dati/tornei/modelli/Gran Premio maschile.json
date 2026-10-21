@@ -1,0 +1,30 @@
+{
+ "id": "modello_6",
+ "nome": "Gran Premio maschile",
+ "note": "Il Gran Premio mensile degli uomini: fino a 64 per sede, semifinali e finale al meglio dei 5, importanza una volta e mezza.",
+ "attivo": true,
+ "tipo": "individuale",
+ "sesso": "m",
+ "formula": "gironi_64",
+ "ricorrenza": {
+  "tipo": "mensile",
+  "giorno": 15
+ },
+ "giorni_iscrizione": 30,
+ "minimo_iscritti": 4,
+ "set_al_meglio": 3,
+ "set_finali": 5,
+ "finali_da": 4,
+ "incontri_al_giorno": 3,
+ "importanza": 1.5,
+ "quota_iscrizione": 10,
+ "contributo_federazione": 1.0,
+ "montepremi_minimo": 0,
+ "posti_premiati": 16,
+ "pendenza_premi": 1.466,
+ "qualificazione": "nessuna",
+ "classe_minima": null,
+ "classe_massima": null,
+ "eta_minima": null,
+ "eta_massima": null
+}

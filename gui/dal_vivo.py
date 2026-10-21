@@ -32,6 +32,14 @@ sentire nemmeno lui: dopo la pausa di sempre che segue il punto, il suono ripren
 gioco, e la pausa lunga si legge nella cronaca. La partita suona al suo volume, quello della partita
 nelle impostazioni, a parte da quello degli effetti, secondo D30.
 La cassa e l'orologio si possono sostituire, e le prove lo fanno: così nessuna prova suona.
+Dalla tappa 12, il 2026-10-14, punti 6.5, 7.4 e 8.9 del progetto: la stessa finestra fa ascoltare in
+differita gli incontri dei tuoi tesserati nei tornei e nelle sfide, giocati anche giorni prima, dal
+gemello ricostruito con le fotografie; il titolo lo dice, e si ascolta dalla parte del tuo giocatore o
+della tua squadra. La gara a squadre, un set a 31, si ascolta come il singolare: le formazioni e le
+pause si leggono nel campo, e il cambio al tavolo ha un suono breve, mentre il campo dice chi gioca. Il
+ritiro ferma l'azione col suo suono prima del triplice fischio; il cambio di braccio dell'ambidestro e
+gli acciacchi si leggono nel campo, senza un suono loro. Le parti della tappa 12 sono di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 """
 
 import time
@@ -44,6 +52,7 @@ import suoni
 import testi
 from gui import aspetto
 from gui.dialoghi import _Dialogo
+from partita import ascoltatore_della_differita, gemello_da_differita, nomi_dell_incontro
 
 # Ogni quanti millesimi la finestra guarda a che punto è il suono.
 BATTITO = 50
@@ -69,17 +78,20 @@ class FinestraDalVivo(_Dialogo):
     Alla chiusura uscita dice come si è chiusa, e velocita la velocità a cui si è arrivati.
     """
 
-    def __init__(self, genitore, gemello, nomi, livello, velocita, impostazioni=None, cassa=None, orologio=None):
-        super().__init__(genitore, testi.titolo_dal_vivo(nomi, velocita))
+    def __init__(self, genitore, gemello, nomi, livello, velocita, impostazioni=None, cassa=None, orologio=None, ascoltatore="A", differita=False):
+        super().__init__(genitore, testi.titolo_dal_vivo(nomi, velocita, differita))
         self.nomi = nomi
         self.livello = livello
         self.velocita = velocita
+        self.differita = differita
         self.impostazioni = impostazioni
         self.volume = modulo_impostazioni.valide(impostazioni)["volume_partita"]
         self.set_al_meglio = gemello.formato.set_al_meglio
         self.cronologia = ps.Cronologia(gemello)
         self.riproduttore = ps.Riproduttore(cassa, orologio or time.monotonic)
-        self.ascoltatore = "A"
+        # Dalla tappa 12 si ascolta dalla parte del tuo giocatore o della tua squadra, che in un torneo
+        # o in una sfida può essere B; Alt+L passa all'altra, come sempre.
+        self.ascoltatore = ascoltatore if ascoltatore in ("A", "B") else "A"
         self.stato = FERMO
         self.modo = UN_PUNTO
         self.segmento = None
@@ -148,7 +160,7 @@ class FinestraDalVivo(_Dialogo):
         self.cronaca.SetInsertionPoint(0)
 
     def _testo_della_guida(self):
-        return testi.guida_dal_vivo(self.nomi, self.ascoltatore, self.set_al_meglio, self.velocita)
+        return testi.guida_dal_vivo(self.nomi, self.ascoltatore, self.set_al_meglio, self.velocita, self.differita)
 
     def _mostra_guida(self):
         """La guida dei tasti nel campo, con il lato e la velocità di adesso."""
@@ -375,7 +387,7 @@ class FinestraDalVivo(_Dialogo):
             return
         self.velocita = nuova
         suoni.suona("dal_vivo_piu_veloce" if passo > 0 else "dal_vivo_piu_lenta")
-        self.SetTitle(testi.titolo_dal_vivo(self.nomi, nuova))
+        self.SetTitle(testi.titolo_dal_vivo(self.nomi, nuova, self.differita))
         if self._guida_in_vista:
             self._mostra_guida()
         if self.stato == SUONA:
@@ -420,3 +432,24 @@ class FinestraDalVivo(_Dialogo):
             self.cambia_velocita(-1)
         else:
             event.Skip()
+
+
+def ascolta_in_differita(genitore, differita, seme, impostazioni, tuoi, cassa=None, orologio=None):
+    """
+    L'ascolto in differita di un incontro dei tuoi, di torneo o di sfida, tappa 12: il gemello rifatto
+    dalle fotografie, con lo stesso seme, nella finestra dal vivo, dalla parte del tuo giocatore o della
+    tua squadra. Restituisce come se n'è usciti e la velocità a cui si è arrivati, che il chiamante
+    salva nelle impostazioni come fa l'amichevole.
+    """
+    impostazioni = modulo_impostazioni.valide(impostazioni)
+    velocita = impostazioni["velocita_gioco"]
+    gemello = gemello_da_differita(differita, seme, velocita)
+    nomi = nomi_dell_incontro(gemello)
+    dialogo = FinestraDalVivo(genitore, gemello, nomi, impostazioni["amichevole_livello"], velocita, impostazioni, cassa=cassa, orologio=orologio,
+                              ascoltatore=ascoltatore_della_differita(differita, tuoi), differita=True)
+    try:
+        suoni.suona("differita_al_via")
+        dialogo.ShowModal()
+        return dialogo.uscita, dialogo.velocita
+    finally:
+        dialogo.Destroy()

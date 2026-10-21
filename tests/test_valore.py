@@ -4,14 +4,20 @@ parti sommano al totale, i pesi non sono negativi, un mancino specchiato vale qu
 destrimano più il suo tratto, che sta fra 2 e 6 punti come vuole Gabriele, decisione D26, e con
 i pesi misurati dalla taratura un mondo appena nato ha la mediana attorno a 140
 e lo stesso monte stipendi di prima, perché l'economia della decisione D22 non cambi.
+Dalla tappa 12, punto 1.3 del progetto, le somme si leggono dal dizionario degli attributi, col
+ripiego sulla via di prima per chi ne ha uno incompleto: le due vie danno gli stessi numeri fino
+all'ultimo bit, e la vista leggera del formato 5 dà gli stessi stipendi della versione 1.60.11.
 """
 
 import datetime
+import hashlib
 import math
 import random
+import types
 
 import pytest
 
+import archivio
 import valore
 from costanti import (
     ATTRIBUTI_ALLENABILI,
@@ -129,3 +135,59 @@ def test_un_mondo_appena_nato_resta_sotto_la_scala_del_mondo_allenato():
         return sum(math.exp((i - VALORE_DI_RIFERIMENTO) / SCALA_STIPENDIO) for i in indici) / len(indici)
 
     assert 0.65 * fattore(vecchi) <= fattore(nuovi) <= 0.9 * fattore(vecchi)
+
+
+# Dalla tappa 12: le somme veloci, lette dal dizionario degli attributi, e la via di prima.
+
+# Gli stipendi e l'impronta dei valori delle viste del formato 5 di _viste_del_formato_5, calcolati
+# una volta dal codice della versione 1.60.11, prima delle somme veloci, il 13 ottobre 2026.
+STIPENDI_DELLE_VISTE = [2530, 2310, 3450, 5550, 2060, 240, 1320, 530, 4130, 9000, 8490, 1620, 490, 1860, 410, 2250, 7750, 2870, 2530, 17580, 5470, 2670, 11590, 1520,
+                        510, 22400, 11980, 1270, 77400, 4930, 2340, 1180, 1960, 4290, 530, 2100, 17520, 650, 3690, 27300, 5000, 2560, 5880, 2440, 10930, 2760,
+                        14780, 310, 1570, 1300, 2390, 1810, 7040, 34560, 460, 1260, 3260, 6220, 3230, 3520]
+IMPRONTA_DELLE_VISTE = "aeb5ee627f11c4138e540d136fdaed5021feb33b408d8b4a1fe37de469e91276"
+
+
+def _viste_del_formato_5():
+    """
+    Sessanta giocatori del formato 5 come li legge archivio.stipendio_della_1_50, costruiti con un
+    seme: tutte le parti delle caratteristiche, i tratti e l'esperienza; a uno su cinque mancano due
+    parti, come a un salvataggio vecchio, e la somma passa dalla via di prima.
+    """
+    rng = random.Random("viste-del-formato-5")
+    viste = []
+    for gid in range(1, 61):
+        dati = {"id": gid, "esperienza": round(rng.uniform(0.0, 15.0), 2), "mancino": rng.random() < 0.15, "ambidestro": rng.random() < 0.1,
+                "giocorapido": rng.random() < 0.12, "cambiovelocita": rng.random() < 0.15}
+        for nome in ATTRIBUTI_BASE_CON_ALLENABILI:
+            dati[nome] = rng.uniform(0.0, 3.0 if nome in ("precisione_base", "resistenza_base", "forza_base") else 12.0)
+        for nome in ATTRIBUTI_ALLENABILI:
+            dati[nome] = rng.uniform(0.0, 6.0) if rng.random() < 0.6 else 0.0
+        if gid % 5 == 0:
+            for nome in rng.sample(sorted(ATTRIBUTI_BASE_CON_ALLENABILI + ATTRIBUTI_ALLENABILI), 2):
+                del dati[nome]
+        viste.append(dati)
+    return viste
+
+
+def _stipendi_e_impronta(viste):
+    stipendi = [archivio.stipendio_della_1_50(v) for v in viste]
+    indici = [valore.indice(types.SimpleNamespace(**v), archivio.PESI_VALORE_FORMATO_5, archivio.PESI_TRATTI_FORMATO_5, archivio.SCALA_A_FORMATO_5,
+                            archivio.SCALA_B_FORMATO_5) for v in viste]
+    return stipendi, hashlib.sha256(repr(indici).encode("utf-8")).hexdigest()
+
+
+def test_la_vista_del_formato_5_da_gli_stipendi_di_prima():
+    stipendi, impronta = _stipendi_e_impronta(_viste_del_formato_5())
+    assert stipendi == STIPENDI_DELLE_VISTE
+    assert impronta == IMPRONTA_DELLE_VISTE
+
+
+def test_le_due_vie_della_somma_danno_gli_stessi_bit(giocatori):
+    giocatori[1].ambidestro, giocatori[1].mancino = True, False
+    giocatori[2].ambidestro, giocatori[2].mancino = False, True
+    for g in giocatori:
+        for pesi in (PESI_VALORE, PESI_TAPPA_8):
+            assert valore._somme_dal_dizionario(g.__dict__, pesi) == valore._somme_con_getattr(g, pesi)
+    incompleta = types.SimpleNamespace(**dict.fromkeys(ATTRIBUTI_BASE_CON_ALLENABILI, 1.0))
+    assert valore._somme(incompleta, PESI_VALORE) == valore._somme_con_getattr(incompleta, PESI_VALORE)
+    assert valore._somme(incompleta, PESI_VALORE)[1] == 0.0

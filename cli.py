@@ -26,6 +26,8 @@ from GBUtils import dgt, key, menu
 
 import archivio
 import contratti
+import formule
+import iscrizioni
 import testi
 from allenamento import allena_secondo_programma, anteprima, costo_del_prossimo_punto, puo_allenarsi, spendi, tetto, totale
 from costanti import ANNO_SIMULAZIONE_GIORNI as anno
@@ -56,7 +58,8 @@ from utilita import accorda, adesso, adesso_utc, converti_in_tempo, data_breve, 
 MAINMENU = {
     'AGT': 'Allena Giocatori Tesserati;', 'CEG': 'CErca Giocatori;', 'CLA': 'CLAssifica Globale Giocatori (per ICV);',
     'CTT': 'Copia Tesserati attuali nei Trovati;', 'MPO': 'Menu delle POlisportive;', 'OPA': 'Organizza Partita Amichevole;',
-    'SGG': 'Statistica Globale Giocatori;', 'TOP': 'TOP10 giocatori e Polisportive;', 'VLN': 'Vedi Lista Nuovi;',
+    'SGG': 'Statistica Globale Giocatori;', 'TOP': 'TOP10 giocatori e Polisportive;', 'TOR': 'TORnei: calendario, sedi in corso e albo d\'oro;',
+    'VLN': 'Vedi Lista Nuovi;',
     'VLM': 'Vedi Lista Morti;', 'VLT': 'Vedi Lista Trovati (risultati ricerca);', 'VLR': 'Vedi Lista Ritirati;',
     'VRG': 'Vedi Riepilogo Giocatori (per ID range);', 'VSG': 'Vedi Scheda Giocatore;', 'DTS': 'Visualizza Data/Ora Simulazione;',
     '?': 'visualizza questo MENu;', '': 'INVIO a vuoto per USCIRE e salvare.'
@@ -151,7 +154,7 @@ class InterfacciaTestuale:
                    "VLT": lambda: self.visualizza_lista(self.mondo.risultati_ultima_ricerca, "Risultati Ultima Ricerca", "giocatore"),
                    "MPO": self.menu_polisportive, "CEG": self.cerca_giocatori, "CTT": self._copia_tesserati_attivi_in_vlt,
                    "AGT": self.allenamento_giocatori_tesserati, "OPA": self.organizza_partita_amichevole, "SGG": self.statistica_globale,
-                   "TOP": self.visualizza_top_10, "DTS": lambda: print(f"\nData/Ora Sim: {self.data_sim:%Y-%m-%d %H:%M:%S}")}
+                   "TOP": self.visualizza_top_10, "TOR": self.menu_tornei, "DTS": lambda: print(f"\nData/Ora Sim: {self.data_sim:%Y-%m-%d %H:%M:%S}")}
         running = True
         while running:
             try:
@@ -641,8 +644,8 @@ class InterfacciaTestuale:
         if not g.puo_giocare:
             print(f"\tATTENZIONE: {g.nome} è {accorda(g.sesso, 'infortunato')}!")
             return None
-        if g.ha_giocato_amichevole(self.data_sim):
-            print(f"\tATTENZIONE: oggi {g.nome} ha già giocato un'amichevole, e se ne gioca al massimo una per giorno simulato.")
+        if g.ha_un_impegno(self.data_sim):
+            print(f"\tATTENZIONE: oggi {g.nome} ha già giocato {self.mondo.descrivi_impegno(g)}, e ognuno gioca al massimo un incontro per giorno simulato.")
             return None
         return gid
 
@@ -687,6 +690,92 @@ class InterfacciaTestuale:
         except EOFError:
             print("\nOperazione annullata (EOF).")
         input("\nPremi INVIO per tornare al menu...")
+
+    # I tornei, dalla tappa 12, punto 12.12 del progetto: il testo minimo, prima della finestra del passo 3.
+
+    def menu_tornei(self):
+        """
+        Il calendario delle edizioni aperte, le sedi in corso con le classifiche e gli incontri, l'albo
+        d'oro. I risultati dei tuoi incontri ancora da ascoltare restano nascosti, come nella finestra,
+        e Mostra tutti i risultati li svela in un colpo solo, dopo la conferma, risposta 18.
+        """
+        opzioni = {"C": "Calendario delle edizioni aperte;", "S": "Sedi in corso, con classifiche e incontri;", "A": "Albo d'oro, le ultime cinquanta voci;",
+                   "M": "Mostra tutti i risultati dei tuoi incontri ancora da ascoltare;", "": "Invio per tornare al menu principale."}
+        azioni = {"C": self._calendario_tornei, "S": self._sedi_in_corso, "A": self._albo_d_oro, "M": self._mostra_tutti_i_risultati}
+        while True:
+            try:
+                scelta = menu(d=opzioni, p="Tornei, quale vista? ", keyslist=True, show=True, ntf="Scelta non valida")
+            except EOFError:
+                return
+            if not scelta:
+                return
+            azioni[scelta]()
+
+    def _tuoi_nel_torneo(self, torneo):
+        """Quanti tuoi atleti gioca la sede; nella coppa, uno se c'è una tua polisportiva."""
+        if torneo.squadre:
+            return sum(1 for cid in torneo.iscritti if self.polisportive.get(cid) is not None and not self.polisportive[cid].is_cpu_controlled)
+        return sum(1 for gid in torneo.iscritti if gid in self.giocatori and iscrizioni.tuo(self.mondo, self.giocatori[gid]))
+
+    def _calendario_tornei(self):
+        edizioni = sorted(self.mondo.calendario.edizioni, key=lambda ed: (ed.data_inizio, ed.nome))
+        if not edizioni:
+            print("Non ci sono edizioni con le iscrizioni aperte.")
+            return
+        print(f"Edizioni con le iscrizioni aperte: {len(edizioni)}.")
+        for ed in edizioni:
+            if ed.individuale:
+                tuoi = sum(1 for gid in ed.ids() if gid in self.giocatori and iscrizioni.tuo(self.mondo, self.giocatori[gid]))
+            else:
+                tuoi = sum(1 for nome in ed.ids() if self.polisportive.get(nome) is not None and not self.polisportive[nome].is_cpu_controlled)
+            print(testi.edizione_in_calendario(ed, tuoi))
+
+    def _sedi_in_corso(self):
+        sedi = self.mondo.calendario.tornei
+        if not sedi:
+            print("Non ci sono tornei in corso.")
+            return
+        for numero, torneo in enumerate(sedi, start=1):
+            print(f"{numero}. {testi.torneo_in_elenco(torneo, self._tuoi_nel_torneo(torneo))}")
+        try:
+            scelta = dgt("Numero della sede da vedere, Invio per tornare: ", "i", imin=0, imax=len(sedi), default=0)
+        except EOFError:
+            return
+        if not scelta:
+            return
+        torneo = sedi[scelta - 1]
+        for fase in torneo.fasi:
+            if fase.tipo == formule.GIRONI:
+                for lettera in fase.gironi:
+                    print(f"Girone {lettera}, la classifica:")
+                    for riga in testi.classifica_del_girone(torneo, fase, lettera):
+                        print(riga + ".")
+            for incontro in fase.incontri:
+                print(testi.incontro_in_elenco(torneo, incontro))
+
+    def _albo_d_oro(self):
+        albo = self.mondo.calendario.albo
+        if not albo.voci:
+            print("L'albo d'oro è ancora vuoto.")
+            return
+        print(f"L'albo d'oro ha {len(albo.voci)} voci; ecco le ultime, dalla più recente.")
+        for voce in reversed(albo.voci[-50:]):
+            print(testi.voce_dell_albo(albo, voce))
+
+    def _mostra_tutti_i_risultati(self):
+        quanti = len(self.mondo.calendario.da_svelare())
+        if not quanti:
+            print("Non ci sono incontri dei tuoi ancora da ascoltare.")
+            return
+        try:
+            risposta = dgt(f"Mostrare i risultati dei {quanti} incontri dei tuoi ancora da ascoltare? Non si torna indietro, s o n, Invio per no: ",
+                           "s", default="n")
+        except EOFError:
+            return
+        if risposta.strip().lower() != "s":
+            print("I risultati restano nascosti.")
+            return
+        print(f"Mostrati i risultati di {self.mondo.calendario.svela_tutti()} incontri: si leggono nelle sedi in corso.")
 
     # Polisportive.
 

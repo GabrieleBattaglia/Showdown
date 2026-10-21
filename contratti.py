@@ -189,15 +189,16 @@ def richiesta_rinnovo(g, poli, mesi=None):
     return max(STIPENDIO_MINIMO, economia.arrotonda(euro))
 
 
-def probabilita_rinnovo(g, poli, stipendio, mesi):
+def probabilita_rinnovo(g, poli, stipendio, mesi, richiesta=None):
     """
     La probabilità, in percentuale, che il giocatore accetti il rinnovo: la curva dell'ingaggio, dal
     3 al 97 per cento fra il 30 per cento sotto e il 30 per cento sopra la richiesta. Una bandiera
-    attiva accetta al 97, perché gioca anche senza stipendio.
+    attiva accetta al 97, perché gioca anche senza stipendio. Dalla decisione 4 di Gabriele del 14
+    ottobre 2026 chi ha già la richiesta per quei mesi la può dare, e non si rifà il conto.
     """
     if economia.bandiera_attiva(g):
         return PROBABILITA_BANDIERA
-    return probabilita_accettazione(stipendio, richiesta_rinnovo(g, poli, mesi))
+    return probabilita_accettazione(stipendio, richiesta_rinnovo(g, poli, mesi) if richiesta is None else richiesta)
 
 
 def mesi_del_rinnovo(g, oggi):

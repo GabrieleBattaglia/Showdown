@@ -536,6 +536,79 @@ def sonda_temperamento(giocatori, quante, rng, opzioni, formato):
     return righe, bersagli
 
 
+# La sonda dell'acciacco della tappa 12, punto 13.1 del progetto: le scale provate sulle prime stime
+# del calo, 0,012 e 0,028, e il bersaglio, l'acciaccato al primo giorno che vince contro un pari fra il
+# 44 e il 46 per cento degli incontri al meglio dei 3, il 45 nel mezzo.
+SCALE_ACCIACCO = (0.5, 0.75, 1.0, 1.25, 1.5, 2.0)
+CALO_DI_PARTENZA = (0.012, 0.028)
+BERSAGLIO_ACCIACCO = (44.0, 46.0)
+
+
+def sonda_acciacco(giocatori, quante, forti, rng, opzioni):
+    """
+    Il calo dell'acciacco, punto 13.1 del progetto della tappa 12. Ogni giocatore gioca contro il suo
+    gemello, uguale a lui, così la coppia è pari per costruzione: lo stesso incontro, con lo stesso
+    seme, si gioca senza calo e poi col calo del primo giorno sul primo dei due, estratto fra il minimo
+    e il massimo come nel gioco, per ogni scala provata sulle prime stime, con lo stesso numero a caso.
+    Le coppie sono quante a caso e forti fra il quarto più forte, dove il calo pesa un poco di più.
+    La vittoria dell'acciaccato si legge come 50 più la differenza dall'incontro senza calo, che toglie
+    il rumore del sorteggio; la scala che porta al 45 per cento si trova in linea retta fra le due
+    scale provate che lo stringono, e il minimo e il massimo restano nella proporzione delle prime
+    stime. Restituisce le righe del rapporto e la coppia del minimo e del massimo trovati.
+    """
+    opzioni = {**opzioni, "dettaglio": ESSENZIALE}
+    per_forza = sorted(giocatori, key=lambda g: g.indice_collettivo_valore, reverse=True)
+    quarto = per_forza[: max(2, len(per_forza) // 4)]
+    scelti = [rng.choice(giocatori) for _ in range(quante)] + [rng.choice(quarto) for _ in range(forti)]
+    vinte = {"senza": [], **{s: [] for s in SCALE_ACCIACCO}}
+    for indice, g in enumerate(scelti):
+        gemello = copy.copy(g)
+        gemello.id = g.id + 10_000_000
+        seme = rng.getrandbits(63)
+        quota = rng.random()
+        base = simula_incontro(g, gemello, formato_singolare(3), seme=seme, **opzioni)
+        vinte["senza"].append((indice, base.vincitore == "A"))
+        for scala in SCALE_ACCIACCO:
+            calo = scala * (CALO_DI_PARTENZA[0] + quota * (CALO_DI_PARTENZA[1] - CALO_DI_PARTENZA[0]))
+            r = simula_incontro(g, gemello, formato_singolare(3), seme=seme, cali={g.id: calo}, **opzioni)
+            vinte[scala].append((indice, r.vincitore == "A"))
+
+    def quota_di(chiave, gruppo):
+        voci = [v for i, v in vinte[chiave] if gruppo(i)]
+        return 100.0 * sum(voci) / len(voci) if voci else 0.0
+
+    gruppi = (("tutte", lambda _i: True), ("a caso", lambda i: i < quante), ("forti alla pari", lambda i: i >= quante))
+    righe = [f"Sonda dell'acciacco: {quante} incontri al meglio dei 3 contro il proprio gemello fra giocatori a caso e {forti} fra il quarto più forte, "
+             "con gli stessi semi, senza calo e col calo del primo giorno sul primo dei due."]
+    misure = {}
+    for nome, gruppo in gruppi:
+        if nome != "tutte" and not (quante if nome == "a caso" else forti):
+            continue
+        senza = quota_di("senza", gruppo)
+        dati = []
+        for scala in SCALE_ACCIACCO:
+            con = quota_di(scala, gruppo)
+            dati.append((scala, 50.0 + con - senza))
+        misure[nome] = dati
+        righe.append(f"Sonda dell'acciacco, {nome}: senza calo il primo vince il {numero(senza)} per cento; col calo, letto come 50 più la differenza, "
+                     + "; ".join(f"scala {numero(s, 2)}, calo medio {numero(s * sum(CALO_DI_PARTENZA) / 2, 4)}, vince il {numero(v)}" for s, v in dati) + ".")
+    # Il motore è caotico anche con gli stessi semi, e fra due scale vicine la vittoria oscilla di
+    # qualche decimo: la scala si legge sulla retta dei minimi quadrati per tutte le scale provate, che
+    # il rumore lo media, invece che fra le due che stringono il bersaglio.
+    bersaglio = sum(BERSAGLIO_ACCIACCO) / 2
+    dati = misure["tutte"]
+    media_s = statistics.fmean(s for s, _v in dati)
+    media_v = statistics.fmean(v for _s, v in dati)
+    pendenza = sum((s - media_s) * (v - media_v) for s, v in dati) / sum((s - media_s) ** 2 for s, _v in dati)
+    scala_trovata = media_s + (bersaglio - media_v) / pendenza if pendenza else 1.0
+    alla_scala_uno = media_v + pendenza * (1.0 - media_s)
+    minimo, massimo = round(scala_trovata * CALO_DI_PARTENZA[0], 4), round(scala_trovata * CALO_DI_PARTENZA[1], 4)
+    righe.append(f"La retta dei minimi quadrati: ogni scala in più toglie {numero(-pendenza, 2)} punti di vittoria, e alla scala 1, le prime stime, l'acciaccato vince il "
+                 f"{numero(alla_scala_uno, 2)} per cento, {esito_bersaglio(alla_scala_uno, BERSAGLIO_ACCIACCO)}. La scala che lo porta al {numero(bersaglio)} per cento è "
+                 f"{numero(scala_trovata, 3)}: ACCIACCO_CALO_MINIMO = {minimo}, ACCIACCO_CALO_MASSIMO = {massimo}, calo medio {numero((minimo + massimo) / 2, 4)}.")
+    return righe, (minimo, massimo)
+
+
 def squadra_a_caso(giocatori, nome, rng, usati):
     """Una squadra valida di 3 a 6 giocatori presi a caso fra quelli non ancora usati."""
     liberi = [g for g in giocatori if g.id not in usati]
@@ -582,6 +655,7 @@ def main():
     parser.add_argument("--taratura", type=Path, default=None, help="un file JSON di sostituzioni della taratura")
     parser.add_argument("--allenati", type=float, default=0.6, help="la quota di allenati della popolazione di prova, 0,6 se non indicata")
     parser.add_argument("--esperienza", type=float, default=12.0, help="l'esperienza massima della popolazione di prova, 12 se non indicata")
+    parser.add_argument("--acciacco", type=int, default=0, help="la sonda dell'acciacco della tappa 12: tanti incontri contro il gemello, e un quarto fra i forti; salta il resto")
     argomenti = parser.parse_args()
     seme = argomenti.seme if argomenti.seme is not None else random.randrange(1_000_000)
     rng = random.Random(seme)
@@ -595,6 +669,16 @@ def main():
     disponibili = [g for g in giocatori if g.puo_giocare]
     if len(disponibili) < 2:
         sys.exit("Servono almeno due giocatori che possano giocare.")
+    if argomenti.acciacco:
+        inizio = time.perf_counter()
+        righe, _calo = sonda_acciacco(disponibili, argomenti.acciacco, max(1, argomenti.acciacco // 4), rng, {"taratura": taratura})
+        righe.insert(0, f"Banco di prova del motore, MESS versione {__version__}, {time.strftime('%Y-%m-%d %H:%M')}: {descrizione}, {len(disponibili)} disponibili, seme {seme}.")
+        righe.append(f"Sonda completata in {numero(time.perf_counter() - inizio)} secondi.")
+        testo = "\n".join(righe)
+        print(testo)
+        if argomenti.rapporto:
+            argomenti.rapporto.write_text(testo + "\n", encoding="utf-8")
+        return
     indici = sorted(g.indice_collettivo_valore for g in disponibili)
     formato = formato_singolare(argomenti.set)
     opzioni = {"dettaglio": argomenti.dettaglio, "taratura": taratura}

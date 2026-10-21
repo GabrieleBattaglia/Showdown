@@ -1,0 +1,62 @@
+{
+ "formule": [
+  {
+   "id": "gironi_32",
+   "nome": "Gironi da 4 e tabellone da 16",
+   "descrizione": "Otto gironi da quattro, dove passano i primi due, poi il tabellone da sedici a eliminazione diretta con la finalina per il terzo posto: 64 incontri, sette per chi arriva in fondo. È la formula degli open e dei campionati mondiali.",
+   "fasi": [
+    {"tipo": "gironi", "partecipanti": 32, "gironi": 8, "promossi": 2, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 16, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 8, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 4, "gironi": 0, "promossi": 0, "finalina": true},
+    {"tipo": "tabellone", "partecipanti": 2, "gironi": 0, "promossi": 0, "finalina": false}
+   ]
+  },
+  {
+   "id": "gironi_64",
+   "nome": "Gironi da 4 e tabellone da 32",
+   "descrizione": "Sedici gironi da quattro, dove passano i primi due, poi il tabellone da trentadue a eliminazione diretta con la finalina per il terzo posto. È la formula dei Gran Premi.",
+   "fasi": [
+    {"tipo": "gironi", "partecipanti": 64, "gironi": 16, "promossi": 2, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 32, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 16, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 8, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 4, "gironi": 0, "promossi": 0, "finalina": true},
+    {"tipo": "tabellone", "partecipanti": 2, "gironi": 0, "promossi": 0, "finalina": false}
+   ]
+  },
+  {
+   "id": "tabellone_32",
+   "nome": "Eliminazione diretta da 32",
+   "descrizione": "Un tabellone da trentadue a eliminazione diretta, con le teste di serie che si incontrano il più tardi possibile e la finalina per il terzo posto.",
+   "fasi": [
+    {"tipo": "tabellone", "partecipanti": 32, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 16, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 8, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 4, "gironi": 0, "promossi": 0, "finalina": true},
+    {"tipo": "tabellone", "partecipanti": 2, "gironi": 0, "promossi": 0, "finalina": false}
+   ]
+  },
+  {
+   "id": "girone_unico_8",
+   "nome": "Girone unico da 8",
+   "descrizione": "Un girone solo da otto, tutti contro tutti: vince chi è primo nella classifica del girone.",
+   "fasi": [
+    {"tipo": "gironi", "partecipanti": 8, "gironi": 1, "promossi": 1, "finalina": false}
+   ]
+  },
+  {
+   "id": "squadre_64",
+   "nome": "Coppa, gironi da 4 e tabellone da 32",
+   "descrizione": "Per la Coppa delle polisportive: sedici gironi da quattro squadre, dove passano le prime due, poi il tabellone da trentadue con la finalina per il terzo posto.",
+   "fasi": [
+    {"tipo": "gironi", "partecipanti": 64, "gironi": 16, "promossi": 2, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 32, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 16, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 8, "gironi": 0, "promossi": 0, "finalina": false},
+    {"tipo": "tabellone", "partecipanti": 4, "gironi": 0, "promossi": 0, "finalina": true},
+    {"tipo": "tabellone", "partecipanti": 2, "gironi": 0, "promossi": 0, "finalina": false}
+   ]
+  }
+ ]
+}

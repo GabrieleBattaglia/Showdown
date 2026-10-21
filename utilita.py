@@ -1,12 +1,14 @@
 """
-Piccoli strumenti di MESS: il tiro del caso, il calendario del simulatore, l'orologio e
-l'impronta delle password.
+Piccoli strumenti di MESS: il tiro del caso, il calendario del simulatore, l'orologio,
+l'impronta delle password e, dal 2026-10-16, la raccolta della memoria spenta per un blocco.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py. Nel simulatore un
 anno dura 108 giorni, divisi in 12 mesi da 9 giorni.
 """
 
+import contextlib
 import datetime
+import gc
 import hashlib
 import hmac
 import random
@@ -121,3 +123,26 @@ def formatta_eta_sim(giorni_totali, formato_breve=False):
         g_str = f"{giorni} giorn{'o' if giorni == 1 else 'i'}"
         return f"{a_str}, {m_str} e {g_str}"
     return f"{a_str} (compiuti)"
+
+
+@contextlib.contextmanager
+def senza_raccolta():
+    """
+    La raccolta dei cicli di Python spenta per il blocco che segue, e riaccesa dopo se lo era. Nasce in
+    archivio.py per il salvataggio, e dal 16 ottobre 2026 sta qui, perché la usa anche il mondo. Nel
+    salvataggio è spenta mentre si compone e si scrive il documento, fatto di milioni di dizionari ed
+    elenchi senza cicli, che se ne vanno da soli appena non servono più; la raccolta, che a ogni gruppo
+    di oggetti nuovi ripassa anche quelli vecchi del mondo, raddoppiava il tempo del comporre. Dalla
+    tappa 12, decisione 4 di Gabriele del 14 ottobre 2026: il salvataggio non cambia. Dal 16 ottobre la
+    raccolta resta spenta anche mentre si carica il mondo, in archivio.carica, per la stessa ragione:
+    milioni di oggetti nuovi che vivranno a lungo; e mentre passano i giorni simulati, in
+    Mondo.processa_tempo_trascorso. Si riaccende comunque, anche quando nel mezzo qualcosa solleva
+    un'eccezione.
+    """
+    accesa = gc.isenabled()
+    gc.disable()
+    try:
+        yield
+    finally:
+        if accesa:
+            gc.enable()

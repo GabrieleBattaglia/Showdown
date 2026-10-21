@@ -12,6 +12,11 @@ chiede resta la formula di prima, ma quello che una polisportiva paga è fisso f
 quindi chi migliora allenandosi non costa di più finché il contratto dura; il valore di mercato
 scende negli ultimi tre mesi di contratto, fino al 40 per cento alla scadenza, per chi non ha
 rinnovato.
+Dalla tappa 12, decisione 1 di Gabriele del 14 ottobre 2026, il computer spende secondo la cassa:
+oltre una soglia la cassa in più si conta spesa in qualche mese, e un mese di quella spesa si aggiunge
+agli stipendi che si permette. Non al prezzo che paga per un giocatore in vendita, che resta entro il
+valore di mercato col rialzo del computer: la verifica del 15 ottobre 2026 lo ha tolto, perché faceva
+comprare a più volte il loro valore i giocatori che l'utente metteva in vendita a un prezzo gonfiato.
 """
 
 import math
@@ -24,13 +29,16 @@ from costanti import (
     FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO,
     FEDELTA_BANDIERA,
     FEDELTA_PER_MESE_DI_PAZIENZA,
+    MESI_CASSA_PIENA_CPU,
     MESI_DI_INGAGGIO,
     MESI_DI_VALORE,
     MESI_VALORE_PIENO,
+    PARTI_DI_CASSA_PER_STIPENDI,
     QUOTA_SPONSOR_SUL_VALORE,
     REPUTAZIONE_MASSIMA,
     REPUTAZIONE_MINIMA,
     SCALA_STIPENDIO,
+    SOGLIA_CASSA_PIENA_CPU,
     SPONSOR_PER_GLORIA,
     STIPENDIO_DI_RIFERIMENTO,
     STIPENDIO_MINIMO,
@@ -126,6 +134,25 @@ def sponsor_mensile(poli, rosa):
     """
     valore_della_rosa = sum(valore_di_mercato_pieno(g) for g in rosa if not g.ritirato)
     return arrotonda(poli.gloria * SPONSOR_PER_GLORIA + QUOTA_SPONSOR_SUL_VALORE * valore_della_rosa)
+
+
+def premio_cassa_piena(cassa):
+    """
+    Quanto in più al mese si permette una polisportiva del computer con la cassa piena, decisione 1 di
+    Gabriele del 14 ottobre 2026: la cassa oltre SOGLIA_CASSA_PIENA_CPU divisa per i mesi in cui conta di
+    spenderla, MESI_CASSA_PIENA_CPU; zero sotto la soglia. Si aggiunge agli stipendi che il computer si
+    permette nei tesseramenti, negli scambi, negli acquisti e nei rinnovi, non al prezzo.
+    """
+    return max(0.0, cassa - SOGLIA_CASSA_PIENA_CPU) / MESI_CASSA_PIENA_CPU
+
+
+def spesa_mensile_cpu(sponsor, cassa):
+    """
+    Il monte stipendi che una polisportiva del computer si permette ogni mese: lo sponsor, un
+    ventiquattresimo della cassa e, con la cassa piena, il suo premio. Sotto la soglia il premio è zero,
+    e il conto è quello di prima fino all'ultimo bit.
+    """
+    return sponsor + cassa / PARTI_DI_CASSA_PER_STIPENDI + premio_cassa_piena(cassa)
 
 
 def mesi_di_pazienza(g):

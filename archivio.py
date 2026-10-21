@@ -45,16 +45,24 @@ valore non cambia lo stipendio a nessuno fino al rinnovo. Le caratteristiche non
 i tetti propri dell'allenata ogni valore di oggi resta valido così com'è. Alla lettura si controlla
 la coerenza fra contratti e appartenenza, e un salvataggio incoerente si rifiuta, con il ripiego
 sulla copia di sempre: il salvataggio non si ripara mai in silenzio.
+Il formato 7, della tappa 12, del 2026-10-13, decisione D32, il mondo che gioca. Nasce col primo campo
+salvato della tappa, l'acciacco del giocatore, e ogni passo seguente della tappa allarga la stessa
+migrazione, finché la tappa non esce: un formato solo. La migrazione aggiunge soltanto, e rinomina
+un campo: non tocca caratteristiche, valori, contratti, stipendi, casse, fedeltà né esperienza.
+Dal 2026-10-16, decisione 4 di Gabriele, accelerare senza cambiare niente: il caricamento lavora con la
+raccolta della memoria spenta, e il mondo caricato resta lo stesso.
 """
 
 import contextlib
 import datetime
+import gc
 import gzip
 import hashlib
 import hmac
 import json
 import os
 import shutil
+import struct
 import types
 import zlib
 
@@ -63,6 +71,7 @@ import economia
 import percorsi
 import tratti
 import valore
+from calendario import Calendario
 from costanti import (
     CAPITALE_INIZIALE,
     ESPERIENZA_MASSIMA,
@@ -80,14 +89,31 @@ from costanti import (
     SEDE_NON_PRECISATA,
     VERSIONE,
 )
-from modelli import DATA, VOCI_CONTI, Giocatore, Polisportiva, a_json, da_json, normalizza_nome, temperamento_innato
+from modelli import (
+    CAMPI_ACCIACCO_VUOTO,
+    CAMPI_SFIDE_VUOTO,
+    DATA,
+    VOCI_CONTI,
+    Giocatore,
+    Polisportiva,
+    a_json,
+    da_json,
+    normalizza_nome,
+    palmares_vuoto,
+    ritmo_iniziale,
+    temperamento_innato,
+)
 from mondo import CONSERVAZIONE_PREDEFINITA
-from utilita import adesso, adesso_utc
+from sfide import RegistroSfide
+from utilita import adesso, adesso_utc, senza_raccolta
 
 APPLICAZIONE = "MESS"
-FORMATO = 6
+FORMATO = 7
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
+# Il segnaposto dei giocatori mentre si scrive il resto del documento, _testo_firmato: due caratteri
+# d'uso privato che nessun nome e nessun diario contiene.
+_SEGNAPOSTO_GIOCATORI = "giocatori di MESS"
 # Da dove viene il mondo appena caricato.
 NATO = "nato"
 CARICATO = "caricato"
@@ -107,6 +133,8 @@ PESI_VALORE_FORMATO_5 = {
 PESI_TRATTI_FORMATO_5 = {"mancino": 2.9, "ambidestro": 3.4, "giocorapido": 1.2, "cambiovelocita": 4.5}
 SCALA_A_FORMATO_5 = -82.61
 SCALA_B_FORMATO_5 = 1.3878
+# Le voci dei conti che nascono col formato 7: le iscrizioni ai tornei, i premi e i rimborsi.
+VOCI_NUOVE_DEL_FORMATO_7 = ("iscrizioni", "premi", "rimborsi")
 
 
 class ErroreSalvataggio(Exception):
@@ -131,6 +159,66 @@ def firma(documento):
     return hmac.new(CHIAVE_FIRMA, canonico, hashlib.sha256).hexdigest()
 
 
+def _canonico(dato):
+    return json.dumps(dato, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def _testo_firmato(contenuto):
+    """
+    Il testo del file, in pezzi di byte da scrivere uno dopo l'altro: il documento con la sua firma.
+    Dalla tappa 12, decisione 4 di Gabriele del 14 ottobre 2026, i giocatori, quasi tutto il mondo, si
+    scrivono una volta sola, nella forma canonica della firma, coi campi in ordine alfabetico, e lo
+    stesso testo serve alla firma e al file: prima il mondo si scriveva due volte, una per la firma e una
+    per il file, e a regime erano secondi a ogni salvataggio. Al posto dei giocatori il resto del
+    documento ha un segnaposto, che si scrive due volte, nelle due forme, ed è piccolo; la firma si
+    calcola sui pezzi della forma canonica, senza rifare un testo unico. Il file resta un JSON del
+    formato 7: chi lo legge, anche una versione di prima, rifà la forma canonica e trova la stessa
+    firma, e i campi di un giocatore si leggono per nome, in qualunque ordine. Se il segnaposto
+    comparisse anche altrove, il testo si fa nel modo di prima.
+    """
+    segno = json.dumps(_SEGNAPOSTO_GIOCATORI, ensure_ascii=False)
+    guscio = {**contenuto, "mondo": {**contenuto["mondo"], "giocatori": _SEGNAPOSTO_GIOCATORI}}
+    canonico = _canonico(guscio).split(segno)
+    if len(canonico) == 2:
+        giocatori = _canonico(contenuto["mondo"]["giocatori"]).encode("utf-8")
+        calcolo = hmac.new(CHIAVE_FIRMA, canonico[0].encode("utf-8"), hashlib.sha256)
+        calcolo.update(giocatori)
+        calcolo.update(canonico[1].encode("utf-8"))
+        scritto = json.dumps({**guscio, "firma": calcolo.hexdigest()}, ensure_ascii=False, separators=(",", ":")).split(segno)
+        if len(scritto) == 2:
+            return [scritto[0].encode("utf-8"), giocatori, scritto[1].encode("utf-8")]
+    return [json.dumps({**contenuto, "firma": firma(contenuto)}, ensure_ascii=False, separators=(",", ":")).encode("utf-8")]
+
+
+def congela_la_memoria():
+    """
+    Mette da parte la memoria del mondo per la raccolta dei cicli di Python, dopo il caricamento e dopo
+    ogni salvataggio: decisione 4 di Gabriele del 14 ottobre 2026, accelerare senza cambiare gli esiti,
+    dalla verifica del 15 ottobre. Il mondo sono milioni di oggetti che vivono a lungo, e ogni tanto la
+    raccolta completa li ripassava tutti: nel mondo a regime circa un secondo, in un giorno qualunque,
+    che diventava il giorno peggiore dell'anno. Prima si raccolgono i cicli già da buttare, poi quello che
+    resta si mette da parte, e la raccolta ripassa soltanto gli oggetti nati dopo. Un ciclo di oggetti
+    messi da parte che diventa da buttare resta in memoria fino alla chiusura: il giorno ne fa pochissimi.
+    """
+    gc.collect()
+    gc.freeze()
+
+
+def _comprimi(pezzi):
+    """
+    I pezzi compressi in gzip col livello 6, uno dopo l'altro, senza rifare il testo intero: il file è
+    un gzip come quello di gzip.compress, che gzip.decompress legge per intero, e l'intestazione si
+    completa come la completa gzip.compress, con l'ora a zero e il sistema 255, così gli stessi dati
+    danno sempre gli stessi byte. I byte compressi non sono quelli che gzip.compress darebbe sul testo
+    intero, perché il compressore li fa anche secondo i pezzi che riceve: il testo che ne esce è lo stesso.
+    """
+    compressore = zlib.compressobj(6, zlib.DEFLATED, 31)
+    compressi = [compressore.compress(pezzo) for pezzo in pezzi]
+    compressi.append(compressore.flush())
+    dati = b"".join(compressi)
+    return struct.pack("<4sLBB", dati, 0, dati[8], 255) + dati[10:]
+
+
 def componi(mondo):
     """Il mondo come documento da salvare, senza firma. I giocatori usciti di scena nella sessione non ci sono più."""
     morti = mondo._ids_morti_processati_sessione
@@ -149,6 +237,8 @@ def componi(mondo):
             "polisportive": {chiave: p.a_dizionario() for chiave, p in mondo.polisportive.items()},
             "giocatori": [g.a_dizionario() for gid, g in sorted(mondo.giocatori.items()) if gid not in morti],
             "vecchie_glorie": list(mondo.vecchie_glorie),
+            "calendario": mondo.calendario.a_dizionario(),
+            "sfide": mondo.sfide.a_dizionario(),
         },
     }
 
@@ -158,10 +248,10 @@ def scrivi(mondo, percorso, percorso_copia):
     Scrive il mondo nel file indicato con la scrittura sicura, e il salvataggio precedente nella
     copia. Restituisce il documento scritto e gli avvisi, cioè le cose andate storte senza danno.
     """
-    contenuto = componi(mondo)
-    testo = json.dumps({**contenuto, "firma": firma(contenuto)}, ensure_ascii=False, separators=(",", ":"))
-    # Con l'ora di compressione a zero, gli stessi dati danno sempre gli stessi byte.
-    dati = gzip.compress(testo.encode("utf-8"), compresslevel=6, mtime=0)
+    with senza_raccolta():
+        contenuto = componi(mondo)
+        # Con l'ora di compressione a zero, gli stessi dati danno sempre gli stessi byte.
+        dati = _comprimi(_testo_firmato(contenuto))
     temporaneo = percorso + ".tmp"
     avvisi = []
     try:
@@ -213,12 +303,13 @@ def leggi(percorso):
         raise ErroreSalvataggio(f"il numero di formato non è valido: {formato!r}")
     if formato > FORMATO:
         raise ErroreSalvataggio(f"il file viene da una versione più recente del gioco, con il formato {formato}, mentre questa legge fino al {FORMATO}")
+    if formato == 5:
+        _completa_formato_5(documento)
     while documento["formato"] < FORMATO:
         try:
             MIGRAZIONI[documento["formato"]](documento)
         except (KeyError, TypeError, ValueError, AttributeError) as e:
             raise ErroreSalvataggio(f"il salvataggio del formato {documento['formato']} non si è potuto aggiornare: {e}") from e
-    _completa_formato_5(documento)
     return documento
 
 
@@ -392,7 +483,40 @@ def _dal_formato_5(documento):
     documento["formato"] = 6
 
 
-MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5}
+def _dal_formato_6(documento):
+    """
+    Dal formato 6 al 7, con la tappa 12, decisione D32. Ogni giocatore riceve l'acciacco vuoto: nessuno
+    ne ha, perché prima gli acciacchi non c'erano. La data dell'ultima amichevole diventa l'ultimo
+    impegno, col suo valore: la regola di un impegno al giorno è una sola, e una sola deve essere la fonte.
+    Poi il palmarès vuoto, la data del ritmo sparsa e l'iscrizione automatica accesa, il calendario e
+    le sfide vuoti, le voci nuove dei conti a zero, e a ogni polisportiva due sfide da lanciare.
+    """
+    dati = documento["mondo"]
+    oggi = datetime.datetime.fromisoformat(dati["data_simulata"])
+    for g in dati["giocatori"]:
+        for campo, vuoto in (*CAMPI_ACCIACCO_VUOTO.items(), *palmares_vuoto().items()):
+            g.setdefault(campo, vuoto)
+        if "ultimo_impegno" not in g:
+            g["ultimo_impegno"] = g.pop("ultima_amichevole", None)
+        # Il ritmo dei tornei parte sparso sui due mesi che vengono, e l'iscrizione automatica è accesa, risposta 17.
+        g.setdefault("prossimo_torneo", ritmo_iniziale(g["id"], oggi).isoformat())
+        g.setdefault("iscrizione_automatica", True)
+    dati.setdefault("calendario", Calendario().a_dizionario())
+    dati.setdefault("sfide", RegistroSfide().a_dizionario())
+    # Le voci nuove dei conti, a zero, nel mese in corso e in ogni bilancio; il palmarès recente vuoto;
+    # due sfide da lanciare, come il primo del mese, e nessuna giocata.
+    for p in dati["polisportive"].values():
+        for voce in VOCI_NUOVE_DEL_FORMATO_7:
+            p["conti_del_mese"].setdefault(voce, 0)
+            for bilancio in p["bilanci"]:
+                bilancio.setdefault(voce, 0)
+        p.setdefault("palmares_recente", {})
+        for campo, vuoto in CAMPI_SFIDE_VUOTO.items():
+            p.setdefault(campo, vuoto)
+    documento["formato"] = 7
+
+
+MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5, 6: _dal_formato_6}
 
 
 def _conservazione_da_json(valore):
@@ -444,6 +568,8 @@ def costruisci(documento, mondo):
             raise ValueError(f"Mondo: la polisportiva attiva {attiva!r} non esiste")
         for g in giocatori.values():
             controlla_contratto(g, polisportive)
+        calendario_del_mondo = Calendario.da_dizionario(dati["calendario"])
+        sfide_del_mondo = RegistroSfide.da_dizionario(dati["sfide"])
     except KeyError as e:
         raise ErroreSalvataggio(f"manca il dato {e}") from e
     except (TypeError, ValueError, AttributeError) as e:
@@ -456,6 +582,8 @@ def costruisci(documento, mondo):
     mondo.prossimo_id = max(prossimo_id, max(giocatori, default=0) + 1)
     mondo.conservazione_diari = conservazione
     mondo.vecchie_glorie = vecchie_glorie
+    mondo.calendario = calendario_del_mondo
+    mondo.sfide = sfide_del_mondo
 
 
 def controlla_contratto(g, polisportive):
@@ -523,8 +651,24 @@ def carica(mondo):
     Carica il mondo dal salvataggio, oppure dalla copia di sicurezza se il salvataggio non si
     può usare; se non c'è nessuno dei due, fa nascere un mondo nuovo. Restituisce da dove viene il
     mondo: NATO, CARICATO o DALLA_COPIA. Se i file ci sono ma nessuno dei due si legge, blocca i
-    salvataggi del mondo e solleva SalvataggioIllegibile.
+    salvataggi del mondo e solleva SalvataggioIllegibile. Dalla verifica del 15 ottobre 2026, a mondo
+    pronto la memoria si congela, congela_la_memoria.
+    Dal 16 ottobre 2026, decisione 4 di Gabriele, mentre si legge e si costruisce il mondo la raccolta dei
+    cicli resta spenta, senza_raccolta: il mondo sono milioni di oggetti che nascono tutti insieme e
+    vivono a lungo, e la raccolta li ripassava più volte, anche per intero, mentre crescevano. Alla fine
+    congela_la_memoria fa una raccolta sola, come prima, e mette da parte il mondo, ancora con la raccolta
+    spenta: riaccesa prima, ripasserebbe tutto il mondo appena caricato come oggetti giovani, un terzo di
+    secondo nel mondo di sessant'anni, subito prima della raccolta completa. Se il caricamento non
+    riesce, la raccolta si riaccende lo stesso. Il mondo caricato non cambia.
     """
+    with senza_raccolta():
+        origine = _carica(mondo)
+        congela_la_memoria()
+    return origine
+
+
+def _carica(mondo):
+    """Il caricamento di carica, senza la memoria congelata."""
     principale = percorsi.percorso(FILE_MONDO)
     copia = percorsi.percorso(FILE_MONDO_COPIA)
     if not os.path.exists(principale) and not os.path.exists(copia):
@@ -592,6 +736,8 @@ def salva_con_avvisi(mondo):
     except (OSError, TypeError, ValueError) as e:
         mondo.notifica(f"Salvataggio non riuscito: {e}. Il salvataggio precedente è rimasto com'era.")
         return False, []
+    # Dalla verifica del 15 ottobre 2026 la memoria si congela dopo ogni salvataggio riuscito.
+    congela_la_memoria()
     salvato = contenuto["mondo"]
     testo = f"Mondo salvato: {_quanti(len(salvato['giocatori']), len(salvato['polisportive']))}."
     usciti = len(mondo.giocatori) - len(salvato["giocatori"])

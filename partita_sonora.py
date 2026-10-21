@@ -55,6 +55,10 @@ mai: ogni segmento sa se prima della ripresa del gioco ne ha una, e la salta. I 
 suonano, e il suo tratto si piega quasi a zero; la pausa di sempre dopo il punto, che viene prima,
 resta nel buffer come fra due punti qualunque, e come le altre si ripiega, si ferma e si riprende.
 Le pause lunghe si leggono nella cronaca.
+Dalla tappa 12, il 2026-10-14, punti 7.4 e 8.9 del progetto: il ritiro di chi si fa male a fine set
+ha il suo suono, la chiamata dell'arbitro, e una fermata sua, così chi ascolta col fuoco su Prosegui
+lo sente prima del triplice fischio; la gara a squadre delle sfide e della coppa si ascolta come il
+singolare, e il cambio al tavolo della rotazione ha un suono breve suo, dalla parte di chi entra.
 """
 
 import collections
@@ -161,6 +165,10 @@ SUONI = {
     "recupero": "mess_partita_recupero",
     "fischio_lungo": "mess_partita_fischio_lungo",
     "fischio_triplo": "mess_partita_fischio_triplo",
+    # La tappa 12, punti 7.4 e 8.9 del progetto: la chiamata dell'arbitro per il ritiro, che ferma la
+    # partita dal vivo prima del triplice fischio, e il cambio al tavolo della gara a squadre, breve.
+    "ritiro": "mess_partita_ritiro",
+    "cambio_al_tavolo": "mess_partita_cambio_al_tavolo",
 }
 # Ogni ruolo detto a parole: l'azione che lo fa suonare. Le leggono l'ascolto dei timbri e l'elenco
 # dei suoni per Acu_Maker, suoni_di_mess.txt.
@@ -188,6 +196,8 @@ AZIONI = {
     "recupero": "l'arbitro che recupera la pallina prima di consegnarla a chi batte",
     "fischio_lungo": "il fischio lungo dell'arbitro, a fine set",
     "fischio_triplo": "il triplice fischio dell'arbitro, a fine partita",
+    "ritiro": "la chiamata dell'arbitro per il ritiro di chi si è fatto male a fine set, prima del triplice fischio",
+    "cambio_al_tavolo": "nella gara a squadre il cambio al tavolo della rotazione, quando chi ha battuto lascia il posto",
 }
 # I suoni dell'esito, che vengono dopo il fischio: per ognuno il fischio che lo precede.
 ESITI = {"fanfara": E.DOPPIO, "fallo": E.SINGOLO}
@@ -210,6 +220,11 @@ LANCI = frozenset((E.BATTUTA, E.COLPO, E.PARATA))
 # Le parate che non mettono la paletta sulla pallina: quella che non arriva, quella che prende il
 # corpo, che suona con la tappa del volo, e quella a cui cade la paletta, che suona col fallo.
 CAUSE_SENZA_PARATA = frozenset(("body_touch", "body_touch_pieno", "paletta_caduta"))
+# Gli eventi della tappa 12. Il ritiro ha il suo suono, mess_partita_ritiro, e una fermata sua, come i
+# punti e la fine set: chi ascolta col fuoco su Prosegui lo sente prima del triplice fischio. Il cambio
+# di braccio dell'ambidestro resta muto per scelta, perché non ferma il gioco, e si legge nel campo
+# dell'azione, come le frasi degli acciacchi.
+MUTI = frozenset((E.CAMBIO_BRACCIO,))
 
 
 # Lo spazio.
@@ -580,6 +595,10 @@ def suoni_fermi(e):
         return [("rottura", 0.0)]
     if tipo == E.RECUPERO:
         return [("recupero", 0.0)]
+    if tipo == E.RITIRO:
+        return [("ritiro", 0.0)]
+    if tipo == E.CAMBIO_AL_TAVOLO:
+        return [("cambio_al_tavolo", 0.0)]
     return []
 
 
@@ -885,7 +904,8 @@ class Riproduttore:
 # La cronologia dell'incontro dal vivo.
 
 # Le chiusure di un segmento: il punto, la ripetizione e le sanzioni, se non chiudono il set; la
-# fine del set, se non è l'ultimo; la fine dell'incontro; e l'ultimo evento dei preliminari.
+# fine del set, se non è l'ultimo; dalla tappa 12 il ritiro; la fine dell'incontro; e l'ultimo
+# evento dei preliminari.
 CHIUSURE_DEL_PUNTO = frozenset((E.PUNTO, E.RIPETIZIONE, E.AMMONIZIONE, E.PENALITA))
 SANZIONI = frozenset((E.AMMONIZIONE, E.PENALITA))
 # I tratti di pausa e di procedura, quelli che la velocità di gioco accorcia nella Regia del motore.
@@ -895,7 +915,7 @@ SANZIONI = frozenset((E.AMMONIZIONE, E.PENALITA))
 # chiamata dopo il fischio, e il time-out e il cambio campo, dal loro inizio alla fine, avviso
 # compreso. L'avviso del riscaldamento no: il riscaldamento è azione, a tempo reale.
 EVENTI_DI_PROCEDURA = frozenset((E.SORTEGGIO, E.FORMAZIONI, E.RECUPERO, E.ANNUNCIO, E.DOMANDA_PRONTO, E.CHIAMATA, E.SOSTITUZIONE_ATTREZZO,
-                                 E.AMMONIZIONE, E.PENALITA, E.CAMBIO_AL_TAVOLO))
+                                 E.AMMONIZIONE, E.PENALITA, E.CAMBIO_AL_TAVOLO, E.RITIRO))
 PAUSA_DOPO = frozenset((E.PUNTO, E.RIPETIZIONE, E.TIMEOUT_INIZIO, E.CAMBIO_CAMPO_INIZIO))
 RITARDO_PRIMA = frozenset((E.CHIAMATA, E.AMMONIZIONE, E.PENALITA))
 # Le pause lunghe della decisione D30, che non si sentono mai e si leggono nella cronaca: il
@@ -1012,7 +1032,8 @@ class Cronologia:
             return not (evento.punteggio is not None and evento.tipo != E.RIPETIZIONE and set_finito(evento.punteggio, self.incontro.formato))
         if evento.tipo == E.FINE_SET:
             return not (evento.dati or {}).get("ultimo")
-        if evento.tipo == E.FINE_INCONTRO:
+        # Il ritiro, tappa 12: una fermata sua, prima del triplice fischio.
+        if evento.tipo in (E.FINE_INCONTRO, E.RITIRO):
             return True
         return momento.genere == "preliminari" and evento is momento.eventi[-1]
 
