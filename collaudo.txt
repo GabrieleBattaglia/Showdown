@@ -1,4 +1,13 @@
-Collaudo della tappa 12 di MESS con NVDA, versione 1.78.12: i tornei, le sfide e la differita.
-Prima: nella cartella E:\git\tmp\mess-collaudo-t11 lancia python Showdown.py. È una copia del programma con il tuo mondo, aggiornata alla 1.78.12 con git pull sul Gigante, e il tuo mondo vero non si tocca.
-Prima: al primo avvio il mondo passa al formato 7, e avanza dei giorni passati da quando l'hai aperto l'ultima volta: nel frattempo il mondo avrà già giocato qualche torneo.
+Collaudo della 1.78.13 di MESS con NVDA: la cronaca della partita dal vivo che cresce riga per riga.
+Prima: nella cartella E:\git\tmp\mess-collaudo-t11 lancia python Showdown.py. È la copia del programma col tuo mondo, aggiornata alla 1.78.13 con git pull, e il tuo mondo vero non si tocca.
 Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
+PROVA 1, la cronaca mentre suona.
+Passo 1: con Ctrl+O organizza un'amichevole di un tuo tesserato e scegli Assisti.
+Passo 2: salta il riscaldamento, premi Alt+F per ascoltare fino a fine set, e dopo qualche punto premi Tab.
+Domanda 1: nel campo trovi le righe dei punti già giocati, anche se il set non è finito?
+Passo 3: resta nel campo e scorri con le frecce mentre la partita continua.
+Domanda 2: le righe nuove arrivano in fondo, NVDA non le legge da solo e il cursore resta dove l'hai lasciato?
+Domanda 3: la barra braille segue bene la riga su cui sei?
+Passo 4: torna al pulsante con Maiusc+Tab, lascia finire il set, poi esci con Esc.
+Domanda 4: a fine set il campo dice tutto il set, e la finestra si chiude senza intoppi?
+Esito:

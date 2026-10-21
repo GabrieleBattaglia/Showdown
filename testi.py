@@ -2051,7 +2051,7 @@ def guida_dal_vivo(nomi, ascoltatore, set_al_meglio, velocita, differita=False):
     ]
     if squadre:
         righe.append("Le formazioni si leggono nella cronaca, e a ogni cambio al tavolo un suono breve: il campo dice chi gioca adesso.")
-    righe.append("In questo campo, dopo ogni tranche, c'è la cronaca di quello che hai appena sentito, pause lunghe comprese; "
+    righe.append("In questo campo la cronaca cresce riga per riga mentre ascolti, pause lunghe comprese, senza toglierti il fuoco dal pulsante; "
                  "F1 ci rimette questa guida, Maiusc+Tab torna al pulsante.")
     return "\n".join(righe)
 

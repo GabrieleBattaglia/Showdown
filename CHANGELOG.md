@@ -3,6 +3,10 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.78.13] - 2026-10-21
+
+Nella partita dal vivo e nell'ascolto in differita la cronaca cresce riga per riga mentre l'azione suona, e non più soltanto a fine punto o in pausa: anche con Ascolta fino a fine set, con Tab trovi nel campo quello che hai appena sentito. Le righe nuove arrivano in fondo senza spostarti il cursore, il fuoco resta sul pulsante, e NVDA non le legge da solo, così non copre i suoni.
+
 ## [1.78.12] - 2026-10-21
 
 ### Il mondo che gioca

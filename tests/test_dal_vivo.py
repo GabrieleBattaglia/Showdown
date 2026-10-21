@@ -11,6 +11,8 @@ Dalla decisione D30: le pause lunghe, time-out, cambio campo e inizio del set, c
 l'ascolto fino a fine set fanno sentire, e il volume della partita, a parte da quello degli effetti.
 """
 
+import itertools
+
 import numpy as np
 import pytest
 import wx
@@ -130,7 +132,7 @@ def test_il_riscaldamento_e_il_primo_punto(vivo, suonati):
     f.al_prosegui()
     assert f.stato == dal_vivo.SUONA and vivo.etichetta() == "&Salta il riscaldamento"
     assert len(vivo.cassa.buffer) == 1
-    # Il campo non cambia mentre suona: la cronaca arriva a tranche finita.
+    # Prima del primo battito il campo tiene ancora la guida: le righe arrivano mentre suona.
     assert vivo.testo().startswith("Partita dal vivo")
     stati = vivo.fino_a_fermo()
     assert stati[-1] == dal_vivo.FERMO and vivo.etichetta() == "&Prosegui"
@@ -152,6 +154,41 @@ def test_saltare_il_riscaldamento(vivo, suonati):
     assert suonati == ["riscaldamento_saltato"]
     assert vivo.testo().endswith("Fine del riscaldamento.")
     assert vivo.cassa.accese == 0
+
+
+def test_la_cronaca_cresce_riga_per_riga_mentre_suona(vivo):
+    # La scelta di Gabriele del 21 ottobre 2026, al collaudo della 1.50.0: mentre l'azione suona il campo
+    # aggiunge le righe appena sentite, senza aspettare la fine della tranche, e alla fine dice tutta la
+    # tranche come prima.
+    f = vivo.finestra
+    _salta_il_riscaldamento(vivo)
+    f.al_prosegui()
+    durante = []
+    while f.stato == dal_vivo.SUONA:
+        vivo.orologio.adesso += 0.05
+        f.al_battito()
+        if f.stato == dal_vivo.SUONA:
+            durante.append(vivo.testo())
+    finale = vivo.testo()
+    della_tranche = [testo for testo in durante if testo.startswith("Set 1")]
+    assert della_tranche, "mentre suona il campo non mostra niente della tranche"
+    assert della_tranche[0] != finale
+    for prima, dopo in itertools.pairwise(della_tranche):
+        assert dopo.startswith(prima)
+    assert all(finale.startswith(testo) for testo in della_tranche)
+
+
+def test_la_cronaca_che_cresce_non_sposta_chi_legge(vivo, monkeypatch):
+    # Con il fuoco nel campo il cursore resta dove l'ha lasciato chi legge, anche quando arrivano righe nuove.
+    f = vivo.finestra
+    _salta_il_riscaldamento(vivo)
+    f.al_prosegui()
+    vivo.scorri_fino(lambda: vivo.testo().startswith("Set 1"))
+    monkeypatch.setattr(f.cronaca, "HasFocus", lambda: True)
+    f.cronaca.SetInsertionPoint(3)
+    prima = vivo.testo()
+    vivo.scorri_fino(lambda: vivo.testo() != prima)
+    assert f.cronaca.GetInsertionPoint() == 3
 
 
 def test_la_pausa_e_la_ripresa_dalla_stessa_posizione(vivo, suonati):

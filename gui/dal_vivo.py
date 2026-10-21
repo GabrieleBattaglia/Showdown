@@ -17,9 +17,11 @@ incontro finito, quando la cronaca l'ha già detto, porta al risultato come il p
 e meno cambiano al volo la velocità di gioco: il motore la usa dal momento seguente, e pause e
 procedura già composte, come la pausa dopo il punto, si ripiegano alla velocità nuova appena il
 suono tace, così il cambio non si sente. A fine incontro il pulsante lo dice e porta al risultato.
-Con Tab e Maiusc+Tab si va nel campo della cronaca, dove si legge la tranche appena ascoltata al
-livello scelto: il campo cambia mentre il fuoco resta sul pulsante, perciò NVDA non lo legge da solo
-e non copre i suoni. Prima della prima tranche il campo tiene la guida dei tasti, che dice il lato e
+Con Tab e Maiusc+Tab si va nel campo della cronaca, dove si legge la tranche al livello scelto: il
+campo cambia mentre il fuoco resta sul pulsante, perciò NVDA non lo legge da solo e non copre i
+suoni. Dal 2026-10-21, scelta di Gabriele al collaudo della 1.50.0, il campo cresce riga per riga
+mentre l'azione suona, e non soltanto a fine tranche o in pausa: chi ci legge dentro trova le righe
+nuove in fondo, e il cursore resta dove l'ha lasciato. Prima della prima tranche il campo tiene la guida dei tasti, che dice il lato e
 la velocità di adesso anche dopo Alt+L, più e meno; F1 la rimette nel campo in ogni momento. Il suono
 della partita si ferma sempre con la maniglia del suo ciclo, mai con Acusticator.stop, che
 zittirebbe anche gli effetti della finestra.
@@ -105,6 +107,8 @@ class FinestraDalVivo(_Dialogo):
         # Vero finché nel campo della cronaca c'è la guida dei tasti, che allora segue lato e velocità.
         self._guida_in_vista = True
         self.tranche = []
+        # Quante voci della tranche il campo mostra già: mentre suona, il campo si riscrive soltanto quando ne arriva una nuova.
+        self._voci_nel_campo = 0
         self.uscita = None
         self.prosegui = wx.Button(self.pannello, label="&Prosegui")
         self.sizer.Add(self.prosegui, 0, wx.ALL, 8)
@@ -152,12 +156,17 @@ class FinestraDalVivo(_Dialogo):
             self.prosegui.SetLabel(etichetta)
             self.pannello.Layout()
 
-    def _scrivi(self, testo):
-        """Il testo nel campo della cronaca, con lo stile scelto e il cursore in cima, senza spostare il fuoco dal pulsante."""
+    def _scrivi(self, testo, tieni_il_cursore=False):
+        """
+        Il testo nel campo della cronaca, con lo stile scelto e il cursore in cima, senza spostare il fuoco
+        dal pulsante. Con tieni_il_cursore, cioè per la cronaca che cresce mentre suona, a fine tranche e in
+        pausa, chi sta leggendo nel campo non perde il segno: il cursore resta dove l'ha lasciato.
+        """
+        punto = self.cronaca.GetInsertionPoint() if tieni_il_cursore and self.cronaca.HasFocus() else 0
         self.cronaca.ChangeValue(testo)
         if self.impostazioni:
             aspetto.ridai_stile(self.cronaca, self.impostazioni)
-        self.cronaca.SetInsertionPoint(0)
+        self.cronaca.SetInsertionPoint(min(punto, self.cronaca.GetLastPosition()))
 
     def _testo_della_guida(self):
         return testi.guida_dal_vivo(self.nomi, self.ascoltatore, self.set_al_meglio, self.velocita, self.differita)
@@ -170,13 +179,32 @@ class FinestraDalVivo(_Dialogo):
     def _mostra(self, voci):
         """La cronaca delle voci nel campo, al livello scelto, al posto della guida o della tranche di prima."""
         righe = testi.righe_degli_eventi(voci, self.nomi, self.livello)
-        self._scrivi("\n".join(righe) or "In questo tratto la cronaca, a questo livello, non ha frasi.")
+        self._scrivi("\n".join(righe) or "In questo tratto la cronaca, a questo livello, non ha frasi.", tieni_il_cursore=True)
         self._guida_in_vista = False
+        self._voci_nel_campo = len(voci)
 
-    def _sentite(self):
-        """Le voci della tranche fin dove il suono è arrivato."""
-        istante = self.resa.istante(self.posizione) if self.resa is not None else float("inf")
+    def _sentite(self, posizione=None):
+        """Le voci della tranche fin dove il suono è arrivato: al secondo dato, o a quello della pausa."""
+        secondo = self.posizione if posizione is None else posizione
+        istante = self.resa.istante(secondo) if self.resa is not None else float("inf")
         return [voce for voce in self.tranche if voce[0].t <= istante + ps.TOLLERANZA]
+
+    def _cronaca_al_volo(self, posizione):
+        """
+        Mentre l'azione suona, il campo aggiunge le righe delle voci appena sentite, scelta di Gabriele del
+        21 ottobre 2026: prima arrivavano tutte a fine tranche. Finché nella tranche non si è sentita
+        nessuna riga a questo livello, il campo tiene quello che aveva.
+        """
+        if posizione is None or self.resa is None or self.riproduttore.in_anticipo():
+            return
+        sentite = self._sentite(posizione)
+        if len(sentite) == self._voci_nel_campo:
+            return
+        self._voci_nel_campo = len(sentite)
+        righe = testi.righe_degli_eventi(sentite, self.nomi, self.livello)
+        if righe:
+            self._scrivi("\n".join(righe), tieni_il_cursore=True)
+            self._guida_in_vista = False
 
     # Il suono.
 
@@ -239,6 +267,7 @@ class FinestraDalVivo(_Dialogo):
             return
         self.modo = modo
         self.tranche = list(segmento.voci)
+        self._voci_nel_campo = 0
         self._suona_segmento(segmento, fresco=True, anticipo=anticipo)
         self.stato = SUONA
         self._aggiorna_prosegui()
@@ -275,7 +304,8 @@ class FinestraDalVivo(_Dialogo):
     def al_battito(self, event=None):
         """
         Il battito del timer: ferma le code finite, ripiega la procedura se la velocità è cambiata,
-        passa al segmento che segue fino a fine set, o chiude la tranche.
+        passa al segmento che segue fino a fine set, o chiude la tranche; mentre suona, la cronaca
+        cresce con le voci appena sentite.
         """
         if self.stato != SUONA:
             return
@@ -287,6 +317,8 @@ class FinestraDalVivo(_Dialogo):
             self._prosegui_di_seguito()
         elif finito:
             self._fine_tranche()
+        if self.stato == SUONA:
+            self._cronaca_al_volo(self.riproduttore.posizione())
 
     # I comandi.
 
