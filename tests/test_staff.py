@@ -20,6 +20,7 @@ import contratti
 import economia
 import infortuni
 import staff
+import testi
 from costanti import (
     FATTORI_ALLENAMENTO_STAFF,
     FATTORI_FEDELTA_STAFF,
@@ -36,7 +37,7 @@ from costanti import (
     STIPENDIO_STAFF_MASSIMO,
     STIPENDIO_STAFF_MINIMO,
 )
-from mondo import Mondo
+from mondo import Mondo, nome_completo
 from utilita import adesso_utc
 
 INIZIO = datetime.datetime(2026, 5, 15, 12, 0)
@@ -475,3 +476,51 @@ def test_all_aggiornamento_gli_allenatori_sono_dell_utente_per_un_ora(mondo):
     archivio.costruisci(contenuto, nuovo)
     assert nuovo.allenatori and all(prima + datetime.timedelta(minutes=59) < a.riservato_fino <= adesso_utc() + datetime.timedelta(minutes=60)
                                     for a in nuovo.allenatori.values())
+
+
+# Il passo 3: i testi.
+
+def test_i_testi_dello_staff(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    g = mondo.giocatori[12]
+    mondo._tessera(poli, g)
+    scheda = testi.scheda_polisportiva(poli, mondo)
+    assert "[STAFF]" in scheda and "Capo: nessuno." in scheda and "Assistente 2: nessuno." in scheda
+    a = _allenatore(mondo, 13)
+    mondo.assumi_allenatore(poli, a, 0, INIZIO)
+    mondo.aggiorna_fattori_staff()
+    # Con un club soltanto, il suo staff è lo staff medio del mondo.
+    assert "allenamento come lo staff medio" in testi.scheda_polisportiva(poli, mondo)
+    altro = mondo.fonda_polisportiva("Altro club")
+    mondo._tessera(altro, mondo.giocatori[14])
+    mondo.aggiorna_fattori_staff()
+    scheda = testi.scheda_polisportiva(poli, mondo)
+    assert f"Capo: {nome_completo(a)}, {a.codice}" in scheda and "Qualità dello staff" in scheda and "allenamento più" in scheda
+    assert "Classe migliore della carriera:" in testi.scheda_giocatore(g, mondo)
+    statistiche = testi.statistiche(mondo)
+    assert "Allenatori:" in statistiche and "Polisportive con un capo: 1 su 2" in statistiche
+    assert testi.scheda_allenatore(a, mondo).startswith("[ALLENATORE]" if a.sesso == "m" else "[ALLENATRICE]")
+    assert "di Club di prova" in testi.riga_allenatore(a, mondo)
+    libero = _allenatore(mondo, 40)
+    assert "chiede" in testi.riga_allenatore(libero, mondo) and ("nato allenatore" if libero.sesso == "m" else "nata allenatrice") in testi.riga_allenatore(libero, mondo)
+    # La riserva di un'ora si legge nell'elenco.
+    libero.riservato_fino = adesso_utc() + datetime.timedelta(minutes=30)
+    assert "riservato a te fino alle" in testi.riga_allenatore(libero, mondo)
+
+
+def test_la_scheda_dell_ex_giocatore(mondo):
+    g = mondo.giocatori[13]
+    g.classe_migliore = classe.soglia(8)
+    _ritira(mondo, g)
+    a = next(a for a in mondo.allenatori.values() if a.giocatore_id == g.id)
+    assert "Ex giocatore" in testi.scheda_allenatore(a, mondo)
+    assert f"Allena, classe da allenatore {a.codice}" in testi.scheda_giocatore(g, mondo)
+
+
+def test_la_notizia_dello_staff_all_aggiornamento(mondo):
+    _allenatore(mondo, 30)
+    mondo.staff_appena_nato = True
+    testo = testi.apertura(mondo, "caricato", [], None, adesso_utc(), adesso_utc())
+    assert "il mercato degli allenatori è aperto, con 1 allenatore libero" in testo and "per un'ora sono riservati a te" in testo
+    mondo.staff_appena_nato = False
+    assert "mercato degli allenatori" not in testi.apertura(mondo, "caricato", [], None, adesso_utc(), adesso_utc())

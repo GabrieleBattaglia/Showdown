@@ -46,6 +46,7 @@ import mercato
 import modelli_torneo
 import palmares
 import sfide
+import staff
 import tornei
 import version
 from archivio import NATO
@@ -69,7 +70,7 @@ from costanti import (
 )
 from motore import cronaca
 from motore.campo import costanza_relativa
-from utilita import MESI, converti_giorni_sim, data_breve, formatta_eta_sim, in_ora_locale
+from utilita import MESI, adesso_utc, converti_giorni_sim, data_breve, formatta_eta_sim, in_ora_locale
 from utilita import accorda as accorda_sesso
 
 # La scala degli aggettivi delle schede di Terminal Beast, da 0 a 20.
@@ -455,6 +456,8 @@ def scheda_giocatore(g, mondo):
     righe.append("[CARRIERA]")
     righe.append(f"Partite: {partite} (V:{g.partitevinte} - S:{g.partiteperse}) | Vittorie: {numero(g.partitevinte * 100 / partite if partite else 0)}%")
     righe.append(f"Set: {set_giocati} (V:{g.setsvinti} - S:{g.setspersi}) | Goal fatti: {g.goalsfatti} | Goal subiti: {g.goalssubiti}")
+    # Dalla tappa 13 la classe migliore della carriera, in tutte le schede, e lo staff per chi allena, D33.
+    righe.append(_classe_migliore_e_staff(g, mondo))
     righe.extend(_tornei_e_palmares(g, mondo))
     righe.extend(_classifiche(g, mondo))
     al_compleanno = ANNO_SIMULAZIONE_GIORNI - g.eta % ANNO_SIMULAZIONE_GIORNI
@@ -613,6 +616,8 @@ def statistiche(mondo):
         f"Valore medio {numero(sum(g.indice_collettivo_valore for g in gruppo) / n)}. Ipovedenti {ipovedenti} ({per_cento(ipovedenti)}%).",
         f"Nomi diversi {len({g.nome for g in gruppo})}, cognomi diversi {len({g.cognome for g in gruppo})}.",
         *_statistiche_delle_classi(gruppo, mondo),
+        # Dalla tappa 13 gli allenatori del mondo, D33.
+        *_statistiche_dello_staff(mondo),
         "[MIGLIORI PER CARATTERISTICA]",
     ]
     for nome_base in ATTRIBUTI_BASE_CON_ALLENABILI:
@@ -640,6 +645,122 @@ def _statistiche_delle_classi(gruppo, mondo):
                   and g.contratto_scadenza > oggi)
     return [f"Classi: {elenco}. Classe mediana {mediana}; la più alta è {classe.codice(livelli[migliore.id])}, di {nome_completo(migliore)} (ID {migliore.id}).",
             f"Contratti che scadono entro il primo del mese prossimo: {scadono}."]
+
+
+# Lo staff, tappa 13, decisione D33.
+
+def _rispetto_al_medio(fattore):
+    """Un fattore dello staff a parole, rispetto allo staff medio: più 6 per cento, meno 15 per cento, come lo staff medio."""
+    scarto = round((fattore - 1.0) * 100)
+    if scarto == 0:
+        return "come lo staff medio"
+    return f"{'più' if scarto > 0 else 'meno'} {abs(scarto)} per cento"
+
+
+def nome_allenatore(a):
+    """Il nome dell'allenatore con la classe da allenatore: Mario Rossi, C4."""
+    return f"{nome_completo(a)}, {a.codice}"
+
+
+def riga_allenatore(a, mondo):
+    """
+    Una riga per gli elenchi degli allenatori: nome, classe, età, tipo, e dove allena o quanto chiede da
+    capo; la prelazione e la riserva di un'ora, se ci sono.
+    """
+    oggi = mondo.datetime_corrente_simulazione
+    tipo = "ex giocatore" if a.tipo == staff.EX else ("nata allenatrice" if a.sesso == "f" else "nato allenatore")
+    riga = f"{nome_allenatore(a)}, {int(a.eta_anni(oggi))} anni, {tipo}, {a.visus}"
+    if a.polisportiva:
+        riga += f", {staff.nome_del_ruolo(a)} di {a.polisportiva}"
+    else:
+        riga += f", chiede {euro(staff.stipendio_richiesto(a, staff.CAPO))} al mese da capo e {euro(staff.stipendio_richiesto(a, staff.ASSISTENTE))} da assistente"
+    if a.prelazione:
+        riga += f", in prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}"
+    if a.riservato_fino is not None and a.riservato_fino > mondo_ora_reale(mondo):
+        riga += f", riservato a te fino alle {in_ora_locale(a.riservato_fino):%H:%M}"
+    return riga
+
+
+def mondo_ora_reale(mondo):
+    """L'ora vera di riferimento del mondo: quella dell'ultimo avanzamento, o adesso."""
+    return getattr(mondo, "_ora_reale", None) or adesso_utc()
+
+
+def scheda_allenatore(a, mondo):
+    """La scheda di un allenatore: chi è, la classe, il tipo, l'aspetto o la carriera da giocatore, l'impiego e il contratto."""
+    oggi = mondo.datetime_corrente_simulazione
+    ruolo = "ALLENATRICE" if a.sesso == "f" else "ALLENATORE"
+    righe = [f"[{ruolo}] {nome_completo(a)} | {'Uomo' if a.sesso == 'm' else 'Donna'}, {int(a.eta_anni(oggi))} anni | {a.visus.capitalize()} | "
+             f"Classe da allenatore: {a.codice}"]
+    if a.tipo == staff.EX:
+        g = mondo.giocatori.get(a.giocatore_id)
+        provenienza = f", ha chiuso la carriera con {a.club_di_provenienza}" if a.club_di_provenienza else ""
+        righe.append(f"Ex giocatore{provenienza}: la classe da allenatore è la sua classe migliore da giocatore.")
+        if g is not None:
+            righe.append(f"Da giocatore: {g.partitevinte + g.partiteperse} partite, {g.partitevinte} vinte; medaglie: oro {g.ori}, argento {g.argenti}, bronzo {g.bronzi}.")
+    else:
+        righe.append(f"{'Nata allenatrice' if a.sesso == 'f' else 'Nato allenatore'}, senza carriera da giocatore.")
+        descrizione = a.descrizione_fisica(oggi)
+        if descrizione:
+            righe.append(f"Descrizione: {descrizione}")
+    if a.polisportiva:
+        rinnovo = f", poi rinnovato a {euro(a.rinnovo_stipendio)} fino al {data_breve(a.rinnovo_scadenza)}" if contratti.ha_rinnovo(a) else ""
+        righe.append(f"{staff.nome_del_ruolo(a).capitalize()} di {a.polisportiva}: {euro(a.contratto_stipendio)} al mese fino al {data_breve(a.contratto_scadenza)}{rinnovo}.")
+    else:
+        righe.append(f"{accorda_sesso(a.sesso, 'Libero')}: chiede {euro(staff.stipendio_richiesto(a, staff.CAPO))} al mese da capo e "
+                     f"{euro(staff.stipendio_richiesto(a, staff.ASSISTENTE))} da assistente.")
+    if a.prelazione:
+        righe.append(f"In prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}.")
+    smette = (a.eta_fine - a.eta(oggi)) / ANNO_SIMULAZIONE_GIORNI
+    righe.append(f"Smetterà di allenare fra circa {conta(max(0, round(smette)), 'anno', 'anni')} simulati.")
+    return "\n".join(righe)
+
+
+def _classe_migliore_e_staff(g, mondo):
+    """La classe migliore della carriera, D33 risposta 25, e per chi allena la classe da allenatore e dove."""
+    livello = g.livello_migliore()
+    riga = f"Classe migliore della carriera: {classe.codice(livello)}"
+    a = next((a for a in mondo.allenatori.values() if a.giocatore_id == g.id), None)
+    if a is not None:
+        dove = f"{staff.nome_del_ruolo(a)} di {a.polisportiva}" if a.polisportiva else accorda_sesso(a.sesso, "libero")
+        riga += f" | Allena, classe da allenatore {a.codice}: {dove}"
+    elif g.ritirato and not staff.puo_allenare(livello):
+        riga += " | Non può allenare: la classe migliore è sotto H0"
+    return riga
+
+
+def righe_dello_staff(p, mondo):
+    """Lo staff della polisportiva nella sua scheda: i tre posti e la qualità, con gli effetti rispetto allo staff medio del mondo."""
+    righe = ["[STAFF]"]
+    for posto, numero_allenatore in enumerate(p.staff):
+        titolo = "Capo" if posto == 0 else f"Assistente {posto}"
+        a = mondo.allenatori.get(numero_allenatore) if numero_allenatore else None
+        if a is None:
+            righe.append(f"{titolo}: nessuno.")
+        else:
+            righe.append(f"{titolo}: {nome_allenatore(a)}, {euro(a.contratto_stipendio)} al mese fino al {data_breve(a.contratto_scadenza)}.")
+    q = staff.qualita_della_polisportiva(p, mondo.allenatori)
+    allenamento, rischio, fedelta = mondo.fattori_staff(p)
+    righe.append(f"Qualità dello staff {round(q * 100)} su 100, lo staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}: "
+                 f"allenamento {_rispetto_al_medio(allenamento)}, infortuni {_rispetto_al_medio(rischio)}, fedeltà {_rispetto_al_medio(fedelta)}.")
+    return righe
+
+
+def _statistiche_dello_staff(mondo):
+    """Gli allenatori del mondo, D33: quanti, ex giocatori e nati, liberi e impiegati, per lettera di classe; e le polisportive con un capo."""
+    allenatori = list(mondo.allenatori.values())
+    if not allenatori:
+        return ["Allenatori: nessuno, per ora."]
+    ex = sum(1 for a in allenatori if a.tipo == staff.EX)
+    liberi = sum(1 for a in allenatori if a.libero)
+    per_lettera = {}
+    for a in allenatori:
+        per_lettera[a.codice[0]] = per_lettera.get(a.codice[0], 0) + 1
+    con_tesserati = [p for p in mondo.polisportive.values() if p.tesserati]
+    con_capo = sum(1 for p in con_tesserati if p.staff[0])
+    return [f"Allenatori: {len(allenatori)}, di cui {ex} ex giocatori e {len(allenatori) - ex} nati allenatori; liberi {liberi}, nello staff {len(allenatori) - liberi}.",
+            f"Classi degli allenatori: {unisci([f'{lettera} {quanti}' for lettera, quanti in sorted(per_lettera.items())])}. "
+            f"Polisportive con un capo: {con_capo} su {len(con_tesserati)}; staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)} su 100."]
 
 
 # Le liste della sessione e la ricerca.
@@ -710,6 +831,8 @@ def scheda_polisportiva(p, mondo):
     if p.ultima_sfida is not None:
         sfide += f" | Ultima sfida il {data_breve(p.ultima_sfida)}"
     righe.append(sfide)
+    # Dalla tappa 13 lo staff, D33.
+    righe.extend(righe_dello_staff(p, mondo))
     righe.append("[TESSERATI]")
     presenti = [mondo.giocatori[gid] for gid in p.tesserati if gid in mondo.giocatori]
     if presenti:
@@ -1848,8 +1971,19 @@ def apertura(mondo, origine, messaggi, rapporto, ultimo_prima, ora):
         righe.append("Non hai ancora una polisportiva attiva.")
     else:
         righe.append(f"La tua polisportiva attiva è {p.nome}: gloria {p.gloria}, {len(p.tesserati)} tesserati su {p.maxtesserati}.")
+    # Dalla tappa 13, D33 risposta 16: all'aggiornamento al formato 8 nasce lo staff, e il mercato degli allenatori è aperto.
+    if getattr(mondo, "staff_appena_nato", False):
+        righe.append(staff_appena_nato(mondo))
     righe.append("Premi F1 per la guida ai comandi.")
     return "\n".join(righe)
+
+
+def staff_appena_nato(mondo):
+    """La notizia dell'aggiornamento al formato 8: lo staff, gli allenatori nati e la loro ora riservata all'utente."""
+    liberi = sum(1 for a in mondo.allenatori.values() if a.libero)
+    return (f"Novità: ogni polisportiva può avere uno staff, un capo allenatore e due assistenti, che allenano meglio, riducono gli infortuni "
+            f"e fanno crescere la fedeltà. Le tue polisportive partono senza: il mercato degli allenatori è aperto, con "
+            f"{conta(liberi, 'allenatore libero', 'allenatori liberi')}, e per un'ora sono riservati a te, prima del computer.")
 
 
 def salvataggio_illeggibile(errore):
