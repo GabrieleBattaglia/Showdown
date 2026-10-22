@@ -111,6 +111,8 @@ class Allenatore:
         self.prelazione_fino = None
         # L'istante vero fino a cui è riservato all'utente, MINUTI_RISERVA_UTENTE, o None: il computer non lo vede.
         self.riservato_fino = None
+        # Vero se la fine è il minimo oltre l'età estratta, per sparpaglia_la_fine: un dato di lavoro, non si salva.
+        self.fine_minima = False
         self.diario = []
 
     def annota(self, data, testo):
@@ -161,6 +163,7 @@ class Allenatore:
     def da_dizionario(cls, dati):
         """Ricostruisce un allenatore dal suo dizionario; ValueError se un campo non va."""
         a = cls.__new__(cls)
+        a.fine_minima = False
         chi = f"Allenatore {dati.get('numero', '?') if isinstance(dati, dict) else '?'}"
         _campi_da_dizionario(a, dati, CAMPI_ALLENATORE, chi)
         for campo, buono in (("tipo", a.tipo in TIPI), ("sesso", a.sesso in ("m", "f")), ("visus", a.visus in VISUS),
@@ -193,10 +196,15 @@ def eta_di_fine(eta_inizio_giorni, rng):
     al 22 ottobre 2026 i cinque anni si davano anche a chi cominciava prima dell'età estratta, e la
     carriera degli ex giocatori si allungava, contro la risposta 33; l'estrazione dal caso è la stessa.
     """
+    return fine_della_carriera(eta_inizio_giorni, rng)[0]
+
+
+def fine_della_carriera(eta_inizio_giorni, rng):
+    """La fine di eta_di_fine, e vero se è il minimo di ANNI_MINIMI_DA_ALLENATORE oltre l'età estratta: con le stesse estrazioni."""
     fine = round(rng.uniform(*ETA_FINE_ALLENATORE_ANNI) * ANNO_SIMULAZIONE_GIORNI)
     if fine > eta_inizio_giorni:
-        return fine
-    return eta_inizio_giorni + round(ANNI_MINIMI_DA_ALLENATORE * ANNO_SIMULAZIONE_GIORNI)
+        return fine, False
+    return eta_inizio_giorni + round(ANNI_MINIMI_DA_ALLENATORE * ANNO_SIMULAZIONE_GIORNI), True
 
 
 def sparpaglia_la_fine(a, oggi, rng):
@@ -204,12 +212,14 @@ def sparpaglia_la_fine(a, oggi, rng):
     All'aggiornamento dal formato 7: chi ha la fine spostata di ANNI_MINIMI_DA_ALLENATORE da oggi, perché
     nasce allenatore già oltre l'età estratta, smette in un giorno a caso di quegli anni, non tutti
     insieme. Lo ha visto la revisione del 22 ottobre 2026: quasi tutti gli ex giocatori della migrazione
-    smettevano lo stesso giorno, e gli staff si svuotavano in blocco.
+    smettevano lo stesso giorno, e gli staff si svuotavano in blocco. Chi lo è lo dice fine_minima, che si
+    scrive dove la fine si estrae: la seconda revisione ha visto che indovinarlo dopo prendeva anche chi
+    aveva estratto per caso proprio quel giorno.
     """
-    minimo = round(ANNI_MINIMI_DA_ALLENATORE * ANNO_SIMULAZIONE_GIORNI)
-    eta = a.eta(oggi)
-    if a.eta_fine == eta + minimo:
-        a.eta_fine = eta + rng.randint(1, minimo)
+    if a.fine_minima:
+        minimo = round(ANNI_MINIMI_DA_ALLENATORE * ANNO_SIMULAZIONE_GIORNI)
+        a.eta_fine = a.eta(oggi) + rng.randint(1, minimo)
+        a.fine_minima = False
 
 
 def ex_giocatore(numero, g, oggi, rng, club=None, fedelta=0.0):
@@ -218,8 +228,10 @@ def ex_giocatore(numero, g, oggi, rng, club=None, fedelta=0.0):
     club è il nome della polisportiva in cui ha chiuso, se ne aveva una, con la fedeltà che aveva.
     """
     visus = IPOVEDENTE if g.ipovedente else NON_VEDENTE
+    fine, minima = fine_della_carriera(g.eta, rng)
     a = Allenatore(numero, EX, livello_da_allenatore(g.classe_migliore), g.nome, g.cognome, g.sesso, visus,
-                   oggi - datetime.timedelta(days=g.eta), eta_di_fine(g.eta, rng), giocatore_id=g.id)
+                   oggi - datetime.timedelta(days=g.eta), fine, giocatore_id=g.id)
+    a.fine_minima = minima
     a.club_di_provenienza = club
     a.fedelta_di_provenienza = fedelta if club is not None else 0.0
     return a
@@ -245,8 +257,12 @@ def nato(numero, oggi, rng, eta_giorni=None):
         eta_giorni = round(rng.uniform(*ETA_NATI_ALLENATORI_ANNI) * ANNO_SIMULAZIONE_GIORNI)
     nome, cognome = genera_identita(sesso)
     etamorte = max(round(rng.uniform(ETA_MIN_MORTE_GIORNI, ETA_MAX_MORTE_GIORNI)), eta_giorni + 1)
-    return Allenatore(numero, NATO, livello_dei_nati(rng), nome, cognome, sesso, visus_dei_nati(rng), oggi - datetime.timedelta(days=eta_giorni),
-                      eta_di_fine(eta_giorni, rng), etamorte=etamorte, tratti=descrizioni.genera_tratti(sesso, rng))
+    livello, visus = livello_dei_nati(rng), visus_dei_nati(rng)
+    fine, minima = fine_della_carriera(eta_giorni, rng)
+    a = Allenatore(numero, NATO, livello, nome, cognome, sesso, visus, oggi - datetime.timedelta(days=eta_giorni),
+                   fine, etamorte=etamorte, tratti=descrizioni.genera_tratti(sesso, rng))
+    a.fine_minima = minima
+    return a
 
 
 def nome_del_ruolo(a):

@@ -564,7 +564,7 @@ def test_la_notizia_dello_staff_all_aggiornamento(mondo):
     _allenatore(mondo, 30)
     mondo.staff_appena_nato = True
     testo = testi.apertura(mondo, "caricato", [], None, adesso_utc(), adesso_utc())
-    assert "il mercato degli allenatori è aperto, con 1 allenatore libero" in testo and "per due ore sono riservati a te" in testo
+    assert "il mercato degli allenatori è aperto, con 1 allenatore libero, e per due ore è riservato a te" in testo
     mondo.staff_appena_nato = False
     assert "mercato degli allenatori" not in testi.apertura(mondo, "caricato", [], None, adesso_utc(), adesso_utc())
 
@@ -783,13 +783,34 @@ def test_la_notizia_degli_allenatori_riservati_soltanto_nel_riepilogo(mondo):
     a, b = _allenatore(mondo, 30), _allenatore(mondo, 12)
     for x in (a, b):
         x.riservato_fino = ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE)
+    # Un tuo ritirato in prelazione ha la sua notizia, e qui non si conta.
+    in_prelazione = _allenatore(mondo, 5)
+    in_prelazione.riservato_fino = ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE)
+    in_prelazione.prelazione, in_prelazione.prelazione_fino = "Club di prova", INIZIO + datetime.timedelta(days=10)
     rapporto = Mondo.rapporto_vuoto(INIZIO)
     mondo._notizia_dei_riservati(ora, rapporto)
     # Senza una polisportiva dell'utente non c'è niente da dire.
-    assert rapporto["notizie"] == []
+    assert rapporto["riservati"] == ""
     mondo.fonda_polisportiva("Club di prova")
     mondo._notizia_dei_riservati(ora, rapporto)
-    assert len(rapporto["notizie"]) == 1 and rapporto["notizie"][0].startswith("2 allenatori nuovi sono riservati a te fino alle ")
-    assert f"il migliore di classe {b.codice}" in rapporto["notizie"][0] and rapporto["notizie"][0] in testi._fatti_avanzamento(rapporto | {"ticks": 1, "giorni": 1})
+    notizia = rapporto["riservati"]
+    assert notizia.startswith("2 allenatori nuovi sono riservati a te fino alle ") and f"il migliore di classe {b.codice}" in notizia
+    assert notizia in testi._fatti_avanzamento(rapporto | {"ticks": 1, "giorni": 1}) and rapporto["notizie"] == []
     # Risposta 38: soltanto nel riepilogo, senza suono e senza la barra.
     assert sum(v for v in rapporto.values() if isinstance(v, int)) == 0
+    # Alla chiusura della sessione la riserva è quasi sempre scaduta: non si ripete.
+    sessione = rapporto | {"ticks": 1, "giorni": 1}
+    assert notizia not in testi.chiusura(datetime.timedelta(hours=3), 5, [], sessione)
+
+
+def test_la_fine_minima_si_sa_dove_si_estrae():
+    # La seconda revisione: chi estrae per caso proprio l'età più cinque anni non è una fine minima.
+    class Estrae:
+        def __init__(self, anni):
+            self.anni = anni
+
+        def uniform(self, _a, _b):
+            return self.anni
+
+    assert staff.fine_della_carriera(66 * 108, Estrae(71.0)) == (71 * 108, False) and 71 * 108 == 66 * 108 + 540
+    assert staff.fine_della_carriera(73 * 108, Estrae(70.0)) == (73 * 108 + 540, True)

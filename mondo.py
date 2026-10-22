@@ -969,7 +969,7 @@ class Mondo:
         for gid, g in sorted(self.giocatori.items()):
             if gid not in morti and g.ritirato and modulo_staff.puo_allenare(modulo_classe.livello(g.classe_migliore)):
                 a = modulo_staff.ex_giocatore(self.nuovo_numero_allenatore(), g, oggi, rng)
-                a.annota(oggi, f"Può allenare dal ritiro: è di classe {a.codice} da allenatore, la sua classe migliore.")
+                a.annota(oggi, f"Può allenare dal ritiro: è di classe {a.codice} da {'allenatrice' if a.sesso == 'f' else 'allenatore'}, la sua classe migliore.")
                 self.allenatori[a.numero] = a
         nascite = [g.datetime_creazione_sim for g in self.giocatori.values() if isinstance(g.datetime_creazione_sim, datetime.datetime)]
         giorni = (oggi - min(nascite)).days if nascite else 0
@@ -984,11 +984,16 @@ class Mondo:
             modulo_staff.sparpaglia_la_fine(a, oggi, rng)
             self._riserva(a, ora)
         # La notizia della partenza resta anche nel diario delle polisportive dell'utente, progetto 4.5.
-        quanti = "un allenatore libero" if len(self.allenatori) == 1 else f"{len(self.allenatori)} allenatori liberi"
+        n = len(self.allenatori)
+        if n == 0:
+            mercato = "per ora senza allenatori liberi"
+        elif n == 1:
+            mercato = "con un allenatore libero, riservato a te per due ore prima del computer"
+        else:
+            mercato = f"con {n} allenatori liberi, riservati a te per due ore prima del computer"
         for poli in self.polisportive.values():
             if not poli.is_cpu_controlled:
-                self.annota(poli, f"Arriva lo staff, un capo e due assistenti: la polisportiva parte senza, e il mercato degli allenatori è aperto, "
-                                  f"con {quanti}, riservati a te per due ore prima del computer.", oggi)
+                self.annota(poli, f"Arriva lo staff, un capo e due assistenti: la polisportiva parte senza, e il mercato degli allenatori è aperto, {mercato}.", oggi)
         self.staff_appena_nato = True
 
     # Arretrati, vendite e acquisti.
@@ -2046,7 +2051,7 @@ class Mondo:
         Il riepilogo di un avanzamento in cui non è successo niente. Dalla tappa 12 ha anche le notizie,
         le frasi dei risultati dei tuoi, una lista nuova a ogni riepilogo.
         """
-        return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora, "notizie": []}
+        return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora, "notizie": [], "riservati": ""}
 
     def prossimo_avanzamento(self):
         """L'istante, in UTC, in cui maturerà il prossimo giorno simulato."""
@@ -2114,7 +2119,8 @@ class Mondo:
         if not any(not p.is_cpu_controlled for p in self.polisportive.values()):
             return
         fine = ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE)
-        nuovi = [a for a in self.allenatori.values() if a.libero and a.riservato_fino == fine]
+        # I tuoi ritirati in prelazione hanno la loro notizia, con la loro scadenza: qui non si contano.
+        nuovi = [a for a in self.allenatori.values() if a.libero and a.prelazione is None and a.riservato_fino == fine]
         if not nuovi:
             return
         migliore = min(nuovi, key=lambda a: (a.livello, a.numero))
@@ -2128,7 +2134,8 @@ class Mondo:
         else:
             testo = (f"{len(nuovi)} allenatori nuovi sono riservati a te fino alle {quando}, il migliore di classe {migliore.codice}: "
                      "li trovi nel mercato degli allenatori, Ctrl+Maiusc+G.")
-        rapporto["notizie"].append(testo)
+        # Una chiave sua e non fra le notizie: alla chiusura della sessione la riserva è quasi sempre scaduta.
+        rapporto["riservati"] = testo
 
     def _un_giorno(self, data, rapporto):
         """
@@ -2220,6 +2227,8 @@ class Mondo:
         # Dalla tappa 12 le notizie dei tuoi, una per riga, e le sfide che aspettano la tua risposta.
         for notizia in rapporto["notizie"]:
             self.notifica(notizia)
+        if rapporto.get("riservati"):
+            self.notifica(rapporto["riservati"])
         if rapporto["sfide_in_attesa"]:
             self.notifica(f"Sfide che aspettano la tua risposta: {rapporto['sfide_in_attesa']}.")
         self.notifica("-" * 30)

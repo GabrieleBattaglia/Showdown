@@ -694,7 +694,7 @@ def scheda_allenatore(a, mondo):
     oggi = mondo.datetime_corrente_simulazione
     ruolo = "ALLENATRICE" if a.sesso == "f" else "ALLENATORE"
     righe = [f"[{ruolo}] {nome_completo(a)} | {'Uomo' if a.sesso == 'm' else 'Donna'}, {int(a.eta_anni(oggi))} anni | {a.visus.capitalize()} | "
-             f"Classe da allenatore: {a.codice}"]
+             f"Classe da {ruolo.lower()}: {a.codice}"]
     if a.tipo == staff.EX:
         g = mondo.giocatori.get(a.giocatore_id)
         provenienza = f", ha chiuso la carriera con {a.club_di_provenienza}" if a.club_di_provenienza else ""
@@ -749,9 +749,14 @@ def allenatore_del_posto(p, posto, mondo):
 
 
 def qualita_dello_staff(p, mondo):
-    """La qualità dello staff in una frase, con gli effetti rispetto allo staff medio del mondo."""
+    """
+    La qualità dello staff in una frase, con gli effetti rispetto allo staff medio del mondo. Dalla risposta
+    35 i fattori dei giocatori si dividono per la loro media, così il mondo si allena come prima; i rapporti
+    fra i club restano quelli delle ancore, e la frase li dice rispetto allo staff medio, coi fattori prima
+    della divisione: senza staff il 15 per cento meno, col migliore fino al 20 in più.
+    """
     q = staff.qualita_della_polisportiva(p, mondo.allenatori)
-    allenamento, rischio, fedelta = mondo.fattori_staff(p)
+    allenamento, rischio, fedelta = staff.fattori(q, mondo.qualita_media_dello_staff)
     return (f"Qualità dello staff {round(q * 100)} su 100, lo staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}: "
             f"allenamento {_rispetto_al_medio(allenamento)}, infortuni {_rispetto_al_medio(rischio)}, fedeltà {_rispetto_al_medio(fedelta)}.")
 
@@ -1277,6 +1282,9 @@ def _fatti_avanzamento(rapporto):
     frasi.extend(_fatti_dello_staff(rapporto))
     # Dalla tappa 12 i tornei e le sfide: le notizie dei tuoi, le sfide che aspettano e i numeri del mondo.
     frasi.extend(rapporto.get("notizie") or [])
+    # Dalla tappa 13, risposta 38, gli allenatori nuovi riservati a te, se ci sono.
+    if rapporto.get("riservati"):
+        frasi.append(rapporto["riservati"])
     if rapporto.get("sfide_decadute"):
         frasi.append(f"{conta(rapporto['sfide_decadute'], 'sfida alle tue polisportive è decaduta', 'sfide alle tue polisportive sono decadute')} senza risposta.")
     if rapporto.get("sfide_in_attesa"):
@@ -2153,9 +2161,14 @@ def apertura(mondo, origine, messaggi, rapporto, ultimo_prima, ora):
 def staff_appena_nato(mondo):
     """La notizia dell'aggiornamento al formato 8: lo staff, gli allenatori nati e la loro ora riservata all'utente."""
     liberi = sum(1 for a in mondo.allenatori.values() if a.libero)
+    if liberi == 0:
+        mercato = "per ora senza allenatori liberi"
+    elif liberi == 1:
+        mercato = "con 1 allenatore libero, e per due ore è riservato a te, prima del computer"
+    else:
+        mercato = f"con {liberi} allenatori liberi, e per due ore sono riservati a te, prima del computer"
     return (f"Novità: ogni polisportiva può avere uno staff, un capo allenatore e due assistenti, che allenano meglio, riducono gli infortuni "
-            f"e fanno crescere la fedeltà. Le tue polisportive partono senza: il mercato degli allenatori è aperto, con "
-            f"{conta(liberi, 'allenatore libero', 'allenatori liberi')}, e per due ore sono riservati a te, prima del computer. "
+            f"e fanno crescere la fedeltà. Le tue polisportive partono senza: il mercato degli allenatori è aperto, {mercato}. "
             "Lo staff è nel menu Polisportive, con Ctrl+H; il mercato degli allenatori con Ctrl+Maiusc+G.")
 
 
@@ -2173,7 +2186,7 @@ def somma_rapporti(primo, secondo):
     Due riepiloghi di avanzamento sommati, con l'ora del secondo: il totale di una sessione. Dalla
     tappa 12 le notizie si accodano, e le sfide in attesa sono quelle della fine del secondo.
     """
-    ultimi = ("ora", "sfide_in_attesa")
+    ultimi = ("ora", "sfide_in_attesa", "riservati")
     return {chiave: primo[chiave] + secondo[chiave] for chiave in primo if chiave not in ultimi} | {chiave: secondo[chiave] for chiave in ultimi}
 
 
@@ -2181,7 +2194,9 @@ def chiusura(durata_sessione, comandi, messaggi, rapporto_sessione=None):
     """Il riepilogo della fine sessione, con ciò che è successo nel mondo durante la sessione."""
     righe = [f"Sessione di {durata(durata_sessione)}, con {conta(comandi, 'comando', 'comandi')}."]
     if rapporto_sessione and rapporto_sessione["ticks"]:
-        righe.append(f"Nella sessione il mondo è andato avanti di {conta(rapporto_sessione['giorni'], 'giorno simulato', 'giorni simulati')}. {_fatti_avanzamento(rapporto_sessione)}")
+        # Dalla tappa 13 senza gli allenatori riservati: alla chiusura la riserva è quasi sempre scaduta.
+        fatti = _fatti_avanzamento(rapporto_sessione | {"riservati": ""})
+        righe.append(f"Nella sessione il mondo è andato avanti di {conta(rapporto_sessione['giorni'], 'giorno simulato', 'giorni simulati')}. {fatti}")
     righe.extend(messaggi)
     righe.append("Arrivederci!")
     return "\n".join(righe)
@@ -2232,8 +2247,9 @@ LEGENDA_CONTRATTI = (
 LEGENDA_STAFF = (
     "Dalla tappa 13 ogni polisportiva può avere uno staff, un capo allenatore e due assistenti, nel dialogo dello staff, Ctrl+H. Lo staff fa imparare "
     "più in fretta, abbassa il rischio d'infortunio in allenamento e in partita e fa crescere prima la fedeltà al club; conta la qualità dello staff, "
-    "il 70 per cento dal capo, il 20 dall'assistente migliore e il 10 dall'altro. Con lo staff medio del mondo di quel giorno ci si allena come sempre; "
-    "senza staff circa il 15 per cento più piano, col migliore fino al 20 per cento più in fretta; i liberi si allenano senza staff. Gli allenatori sono "
+    "il 70 per cento dal capo, il 20 dall'assistente migliore e il 10 dall'altro. Rispetto allo staff medio del mondo di quel giorno, senza staff si "
+    "impara circa il 15 per cento più piano, col migliore fino al 20 per cento più in fretta, e il mondo nel suo insieme si allena sempre come prima "
+    "dello staff; i liberi si allenano senza staff. Gli allenatori sono "
     "ex giocatori arrivati almeno ad H0, che allenano con la classe migliore della carriera, o nati allenatori, adulti con una classe a caso, più rara "
     "quanto più è alta. Il mercato degli allenatori, Ctrl+Maiusc+G, li mostra tutti, dal migliore, coi filtri di classe, età, tipo e sesso. Si assumono "
     "come i giocatori: un ingaggio alla firma, che costa una mossa, uno stipendio fisso, il rinnovo negli ultimi tre mesi e la buonuscita se li "

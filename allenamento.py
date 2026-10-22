@@ -107,7 +107,8 @@ def efficacia(g, caratteristica=None):
     talento e l'apprendista rapido se ci sono, per lo staff. Uguale per tutte le
     caratteristiche: l'argomento c'è perché chi chiama ragiona per caratteristica. Dalla tappa 13 il
     fattore dello staff lo scrive il mondo sul giocatore, fattore_staff, D33: chi non ce l'ha, come i
-    giocatori dei mondi sintetici e della carriera perfetta, vale lo staff medio, 1.
+    giocatori dei mondi sintetici e della carriera perfetta, vale 1: dalla risposta 35 i fattori si dividono
+    per la loro media sui tesserati, e 1 è il mondo che si allena come prima dello staff.
     """
     del caratteristica
     anni = g.eta / ANNO_SIMULAZIONE_GIORNI
