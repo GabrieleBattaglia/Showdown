@@ -817,8 +817,13 @@ class Mondo:
                         rapporto["tuo_staff_in_scadenza"] += 1
 
     def _spazio_negli_stipendi(self, poli):
-        """Quanto stipendio in più la polisportiva del computer si permette oggi, con le regole di spesa di sempre."""
-        return spesa_mensile_cpu(self._sponsor_memorizzato(poli), poli.cassa) - self._monte_memorizzato(poli)
+        """
+        Quanto stipendio in più la polisportiva del computer si permette oggi per lo staff: soltanto lo
+        sponsor, senza la cassa, risposta 31 di Gabriele del 22 ottobre 2026. Con le regole di spesa dei
+        tesserati lo staff si mangiava la cassa che pagava i campioni, e i primi 10 del mondo restavano
+        liberi; la prova lunga lo ha visto il 21 ottobre sera, coi quattro esperimenti della taratura.
+        """
+        return self._sponsor_memorizzato(poli) - self._monte_memorizzato(poli)
 
     def _rinnovo_dello_staff_cpu(self, poli, a, data):
         """
@@ -839,7 +844,7 @@ class Mondo:
         """
         Le polisportive del computer con un posto vuoto nello staff cercano l'allenatore migliore che
         possono pagare, prima il capo e poi gli assistenti, uno al giorno, D33 risposta 14: lo stipendio
-        deve stare nelle regole di spesa e l'ingaggio, col rialzo del computer, nella cassa tenendo da
+        deve stare nello sponsor, risposta 31, e l'ingaggio, col rialzo del computer, nella cassa tenendo da
         parte un mese di stipendi. Non vedono gli allenatori in prelazione. I liberi si ordinano una
         volta, dal migliore: lo stipendio scende con la classe, e la ricerca è binaria. Restituisce
         quanti ne hanno assunti.

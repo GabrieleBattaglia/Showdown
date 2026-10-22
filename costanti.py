@@ -633,8 +633,10 @@ FATTORI_ALLENAMENTO_STAFF = (0.85, 1.0, 1.20)
 FATTORI_RISCHIO_STAFF = (1.15, 1.0, 0.85)
 FATTORI_FEDELTA_STAFF = (0.85, 1.0, 1.25)
 # Un allenatore smette a un'età estratta fra questi anni, D33; un ex giocatore che si ritira dopo
-# l'età estratta la sposta più in là di ANNI_MINIMI_DA_ALLENATORE, così allena almeno un poco.
-ETA_FINE_ALLENATORE_ANNI = (75.0, 85.0)
+# l'età estratta la sposta più in là di ANNI_MINIMI_DA_ALLENATORE, così allena almeno un poco. Erano
+# 75 e 85: la risposta 33 di Gabriele del 22 ottobre 2026 accorcia la carriera, perché a regime gli
+# allenatori, quasi tutti ex giocatori, diventavano migliaia.
+ETA_FINE_ALLENATORE_ANNI = (65.0, 75.0)
 ANNI_MINIMI_DA_ALLENATORE = 5.0
 # Gli allenatori che il mondo genera, D33 risposte 8, 22 e 28: con ogni giocatore che nasce, uno su
 # venti in media, nasce anche un allenatore adulto, fra i 35 e i 60 anni, maschio o femmina alla

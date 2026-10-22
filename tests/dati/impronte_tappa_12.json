@@ -1,18 +1,18 @@
 {
- "nota": "Tappa 13, passo 3: l'allenatore salva anche l'ultima trattativa del rinnovo",
+ "nota": "Tappa 13, risposte 31-34: lo staff del computer pagato con lo sponsor e la carriera da allenatore fra 65 e 75 anni",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "e62917991bc5f470ac6c01fb97600ec2719c5d4d5ab5fdfff997edd8fd73cb75",
-  "vivi": 716,
-  "attivi": 716,
-  "tesserati": 645,
-  "polisportive": 44
+  "sha256": "a36ee6f8e80324782e2bd632ee7cedac61274bf9c4acb91fe326755641143702",
+  "vivi": 747,
+  "attivi": 747,
+  "tesserati": 670,
+  "polisportive": 45
  },
  "mondo_a_regime": {
-  "sha256": "acd990dd1f9bcf26e6327c5ddd3cd8720adb7c615de3d728273ad11a07f58107",
+  "sha256": "394e75c556de6c5690a1ecf6c6eeccef2990cef563ea99b683873c8bbfee4278",
   "vivi": 1659,
   "attivi": 1259,
   "tesserati": 1078,

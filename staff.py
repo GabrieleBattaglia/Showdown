@@ -294,7 +294,7 @@ def probabilita_rinnovo(a, poli, stipendio, mesi, oggi):
 # Per la migrazione dal formato 7: le nascite medie di un giorno, da CREA_NUOVI_PER_TICK_RANGE, e
 # quanto dura in media la vita da allenatore di un nato, dai 47 anni e mezzo agli 80.
 NASCITE_AL_GIORNO = sum(CREA_NUOVI_PER_TICK_RANGE) / 2
-CARRIERA_MEDIA_DEI_NATI = round((80.0 - sum(ETA_NATI_ALLENATORI_ANNI) / 2) * ANNO_SIMULAZIONE_GIORNI)
+CARRIERA_MEDIA_DEI_NATI = round((sum(ETA_FINE_ALLENATORE_ANNI) / 2 - sum(ETA_NATI_ALLENATORI_ANNI) / 2) * ANNO_SIMULAZIONE_GIORNI)
 
 
 def nati_di_un_mondo(giorni):

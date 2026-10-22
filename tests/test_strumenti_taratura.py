@@ -236,16 +236,17 @@ def test_i_controlli_della_verifica_nella_prova_lunga():
 
 
 def test_i_bersagli_dello_staff_nella_prova_lunga():
-    # La tappa 13, progetto 6.3: il capo dall'anno 5 al 95 per cento, i liberi almeno quanti i club senza
-    # capo, lo staff entro un quinto del monte; i numeri per decennio stanno in una riga a parte.
-    annuali = [{"numero_anno": n, "con_capo": 90.0 if n < 8 else 97.0, "senza_capo": 3, "staff_pieno": 20.0, "qualita_staff": (0.3, 0.5, 0.7),
-                "staff_sul_monte": 25.0 if n == 30 else 6.0, "allenatori": 900, "allenatori_liberi": 2 if n == 12 else 40,
+    # La tappa 13, progetto 6.3 e risposta 32: il capo al 95 per cento e i liberi almeno quanti i club senza
+    # capo dall'anno 20, lo staff entro un quinto del monte; i numeri per decennio stanno in una riga a parte.
+    # Prima dell'anno 20 il mondo giovane non conta.
+    annuali = [{"numero_anno": n, "con_capo": 90.0 if n < 23 else 97.0, "senza_capo": 3, "staff_pieno": 20.0, "qualita_staff": (0.3, 0.5, 0.7),
+                "staff_sul_monte": 25.0 if n == 30 else 6.0, "allenatori": 900, "allenatori_liberi": 2 if n in (12, 25) else 40,
                 "liberi_per_lettera": {"C": 3, "H": 37}} for n in range(1, 41)]
     righe = sl.controlli_della_tappa_13(40, [7], {7: annuali})
-    assert righe[0].startswith("Seme 7, lo staff per decennio: anno 10, con un capo 97,0 per cento, staff pieno 20,0, qualità 0,30, 0,50 e 0,70, ")
+    assert righe[0].startswith("Seme 7, lo staff per decennio: anno 10, con un capo 90,0 per cento, staff pieno 20,0, qualità 0,30, 0,50 e 0,70, ")
     assert "allenatori 900, liberi 40 (C 3, H 37)" in righe[0]
-    assert righe[1] == ("Seme 7, i bersagli dello staff della tappa 13: FUORI polisportive con un capo sotto il 95 per cento in 3 anni, dall'anno 5 "
-                        "all'anno 7, al più basso 90,0; allenatori liberi meno delle polisportive senza capo in 1 anni, dall'anno 12 all'anno 12; "
+    assert righe[1] == ("Seme 7, i bersagli dello staff della tappa 13: FUORI polisportive con un capo sotto il 95 per cento in 3 anni, dall'anno 20 "
+                        "all'anno 22, al più basso 90,0; allenatori liberi meno delle polisportive senza capo in 1 anni, dall'anno 25 all'anno 25; "
                         "staff oltre il 20 per cento del monte in 1 anni, dall'anno 30 all'anno 30.")
     for m in annuali:
         m["con_capo"], m["allenatori_liberi"], m["staff_sul_monte"] = 96.0, 40, 6.0

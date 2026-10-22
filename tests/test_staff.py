@@ -412,7 +412,9 @@ def test_il_computer_assume_il_migliore_che_puo_pagare(mondo):
         assunti += mondo._staff_del_computer([cpu], INIZIO)
         if all(cpu.staff):
             break
-    assert assunti == 3 and all(cpu.staff) and in_prelazione.libero
+    # Dalla risposta 31 lo staff si paga soltanto con lo sponsor: il computer assume finché lo stipendio ci sta.
+    assert assunti >= 2 and cpu.staff[0] and in_prelazione.libero
+    assert mondo.monte_stipendi(cpu) <= mondo.sponsor(cpu)
     capo = mondo.allenatori[cpu.staff[0]]
     # Il capo è il migliore con lo stipendio alla portata, prima che arrivassero gli assistenti.
     alla_portata = [x for x in (scarso, bravo, carissimo) if staff.stipendio_richiesto(x, staff.CAPO) <= spazio]
