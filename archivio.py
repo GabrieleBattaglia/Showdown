@@ -51,6 +51,12 @@ migrazione, finché la tappa non esce: un formato solo. La migrazione aggiunge s
 un campo: non tocca caratteristiche, valori, contratti, stipendi, casse, fedeltà né esperienza.
 Dal 2026-10-16, decisione 4 di Gabriele, accelerare senza cambiare niente: il caricamento lavora con la
 raccolta della memoria spenta, e il mondo caricato resta lo stesso.
+Il formato 8, della tappa 13, del 2026-10-21, decisione D33, l'allenatore: gli allenatori del mondo, con
+il contatore dei loro numeri; lo staff di ogni polisportiva; la classe migliore della carriera di ogni
+giocatore. La migrazione dal 7 lascia gli staff vuoti, D33 risposta 16, e segna gli allenatori da far
+nascere: li fa nascere il caricamento, quando ci sono i giocatori, un allenatore per ogni ritirato vivo
+che può allenare e gli allenatori nati di un mondo della sua età. La classe migliore parte da quella di
+oggi, l'unica che si conosce.
 """
 
 import contextlib
@@ -66,9 +72,12 @@ import struct
 import types
 import zlib
 
+import classe as modulo_classe
 import contratti
 import economia
+import luoghi
 import percorsi
+import staff
 import tratti
 import valore
 from calendario import Calendario
@@ -108,7 +117,7 @@ from sfide import RegistroSfide
 from utilita import adesso, adesso_utc, senza_raccolta
 
 APPLICAZIONE = "MESS"
-FORMATO = 7
+FORMATO = 8
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Il segnaposto dei giocatori mentre si scrive il resto del documento, _testo_firmato: due caratteri
@@ -239,6 +248,9 @@ def componi(mondo):
             "vecchie_glorie": list(mondo.vecchie_glorie),
             "calendario": mondo.calendario.a_dizionario(),
             "sfide": mondo.sfide.a_dizionario(),
+            # Dalla tappa 13, formato 8: gli allenatori, in ordine di numero, e il contatore.
+            "allenatori": [a.a_dizionario() for _numero, a in sorted(mondo.allenatori.items())],
+            "prossimo_allenatore": mondo.prossimo_allenatore,
         },
     }
 
@@ -516,7 +528,34 @@ def _dal_formato_6(documento):
     documento["formato"] = 7
 
 
-MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5, 6: _dal_formato_6}
+# La classe migliore che la migrazione non sa calcolare: la calcola il caricamento, coi giocatori costruiti.
+CLASSE_MIGLIORE_DA_CALCOLARE = -1.0
+
+
+def _dal_formato_7(documento):
+    """
+    Dal formato 7 all'8, con la tappa 13, decisione D33. Ogni giocatore riceve la classe migliore da
+    calcolare, perché serve il giocatore costruito; ogni polisportiva lo staff vuoto, risposta 16; il
+    mondo nessun allenatore, segnato come da far nascere, e il contatore che parte da 1.
+    """
+    dati = documento["mondo"]
+    for g in dati["giocatori"]:
+        g.setdefault("classe_migliore", CLASSE_MIGLIORE_DA_CALCOLARE)
+        # Il comune di provenienza, richiesta di Gabriele del 22 ottobre 2026: dal numero del giocatore, come alla nascita.
+        g.setdefault("luogo", luoghi.luogo_del_giocatore(g["id"]))
+    for p in dati["polisportive"].values():
+        p.setdefault("staff", [0, 0, 0])
+        # La voce nuova dei conti, a zero, nel mese in corso e in ogni bilancio: gli stipendi dello staff.
+        p["conti_del_mese"].setdefault("staff", 0)
+        for bilancio in p["bilanci"]:
+            bilancio.setdefault("staff", 0)
+    dati.setdefault("allenatori", None)
+    dati.setdefault("prossimo_allenatore", 1)
+    documento["formato"] = 8
+
+
+MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5, 6: _dal_formato_6,
+              7: _dal_formato_7}
 
 
 def _conservazione_da_json(valore):
@@ -570,6 +609,13 @@ def costruisci(documento, mondo):
             controlla_contratto(g, polisportive)
         calendario_del_mondo = Calendario.da_dizionario(dati["calendario"])
         sfide_del_mondo = RegistroSfide.da_dizionario(dati["sfide"])
+        # Dalla tappa 13 gli allenatori e lo staff; la classe migliore che la migrazione ha lasciato da calcolare.
+        allenatori, da_far_nascere = _allenatori_da_json(dati["allenatori"], giocatori)
+        prossimo_allenatore = da_json(dati["prossimo_allenatore"], int, "Mondo", "prossimo_allenatore")
+        controlla_staff(polisportive, allenatori)
+        for g in giocatori.values():
+            if g.classe_migliore == CLASSE_MIGLIORE_DA_CALCOLARE:
+                g.classe_migliore = modulo_classe.punteggio(g)
     except KeyError as e:
         raise ErroreSalvataggio(f"manca il dato {e}") from e
     except (TypeError, ValueError, AttributeError) as e:
@@ -584,6 +630,52 @@ def costruisci(documento, mondo):
     mondo.vecchie_glorie = vecchie_glorie
     mondo.calendario = calendario_del_mondo
     mondo.sfide = sfide_del_mondo
+    mondo.allenatori = allenatori
+    mondo.prossimo_allenatore = max(prossimo_allenatore, max(allenatori, default=0) + 1)
+    if da_far_nascere:
+        mondo.fai_nascere_lo_staff()
+    mondo.aggiorna_fattori_staff()
+
+
+def _allenatori_da_json(valore, giocatori):
+    """
+    Gli allenatori del salvataggio, per numero, e vero se sono da far nascere, cioè se il salvataggio
+    viene dal formato 7. Un ex giocatore deve avere il suo giocatore, vivo e ritirato.
+    """
+    if valore is None:
+        return {}, True
+    if not isinstance(valore, list):
+        raise ValueError("Mondo: il campo allenatori non è valido")
+    allenatori = {}
+    for voce in valore:
+        a = staff.Allenatore.da_dizionario(voce)
+        if a.numero in allenatori:
+            raise ValueError(f"Allenatore {a.numero}: numero ripetuto")
+        if a.tipo == staff.EX and (a.giocatore_id not in giocatori or not giocatori[a.giocatore_id].ritirato):
+            raise ValueError(f"Allenatore {a.numero}: il suo giocatore {a.giocatore_id} non è un ritirato del mondo")
+        allenatori[a.numero] = a
+    return allenatori, False
+
+
+def controlla_staff(polisportive, allenatori):
+    """
+    La coerenza fra lo staff delle polisportive e l'impiego degli allenatori, ValueError se non va: ogni
+    posto occupato ha un allenatore che dice quella polisportiva e il ruolo del posto, il capo nel primo e
+    gli assistenti negli altri due, e ogni allenatore impiegato sta nello staff della sua polisportiva.
+    """
+    impiegati = set()
+    for p in polisportive.values():
+        for posto, numero in enumerate(p.staff):
+            if not numero:
+                continue
+            a = allenatori.get(numero)
+            ruolo = staff.CAPO if posto == 0 else staff.ASSISTENTE
+            if a is None or a.polisportiva != p.nome or a.ruolo != ruolo:
+                raise ValueError(f"Polisportiva {p.nome}: il posto {posto + 1} dello staff non corrisponde all'allenatore {numero}")
+            impiegati.add(numero)
+    for a in allenatori.values():
+        if a.polisportiva is not None and a.numero not in impiegati:
+            raise ValueError(f"Allenatore {a.numero}: dice di allenare {a.polisportiva}, che non lo ha nello staff")
 
 
 def controlla_contratto(g, polisportive):

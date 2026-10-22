@@ -1,21 +1,21 @@
 {
- "nota": "Rigenerate il 21 ottobre 2026 con la 1.78.12: l'impronta del mondo toglie anche la versione scritta nelle vecchie glorie, che cambiava l'impronta a ogni versione nuova; il mondo non cambia, e le impronte sono le stesse con la 1.60.11 e con la 1.78.12.",
+ "nota": "Tappa 13: stipendi dello staff a un ottavo, da 15 a 112 euro, taratura della risposta 31",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "4eed67b70da0d49fd722bb66486763a851f82d3fec324785323b3f743c2d179d",
-  "vivi": 672,
-  "attivi": 672,
-  "tesserati": 602,
+  "sha256": "d450616e8e5e57877c953142c6ed1797969deca1ac9e3c8dde268972f474c9d8",
+  "vivi": 674,
+  "attivi": 674,
+  "tesserati": 603,
   "polisportive": 41
  },
  "mondo_a_regime": {
-  "sha256": "2b1f96862a3e6e3e17d5faf5d507e091c2a8f75ee7bbf8af8824d05edf82f812",
-  "vivi": 1658,
-  "attivi": 1258,
-  "tesserati": 1080,
-  "polisportive": 77
+  "sha256": "e6e0a9c9133933a3c9234a3a22321746e8b089f30c4e3c6cae13f5d33f7249b5",
+  "vivi": 1659,
+  "attivi": 1259,
+  "tesserati": 1078,
+  "polisportive": 76
  }
 }

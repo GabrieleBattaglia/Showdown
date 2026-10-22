@@ -136,7 +136,7 @@ def test_il_primo_del_mese_con_la_cassa_che_basta(mondo):
     monte = mondo.monte_stipendi(poli)
     assert poli.cassa == CAPITALE_INIZIALE + sponsor - monte
     assert poli.bilanci == [{"data": PRIMO, "cassa": poli.cassa, "sponsor": sponsor, "vendite": 0, "stipendi": monte, "arretrati": 0, "ingaggi": 0, "acquisti": 0,
-                             "buonuscite": 0, "iscrizioni": 0, "premi": 0, "rimborsi": 0}]
+                             "buonuscite": 0, "iscrizioni": 0, "premi": 0, "rimborsi": 0, "staff": 0}]
     assert set(poli.conti_del_mese.values()) == {0}
     for gid in poli.tesserati:
         g = mondo.giocatori[gid]
@@ -358,7 +358,7 @@ def test_un_salvataggio_del_formato_3_si_aggiorna(mondo, cartella_di_prova):
     assert ricaricato.giocatori[5].fedelta == 0. and ricaricato.giocatori[5].pazienza == 100.
     assert all(g.bandiera == (g.id % 100 == 0) for g in ricaricato.giocatori.values())
     assert archivio.salva(ricaricato)
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 7
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 8
 
 
 def test_i_testi_dell_economia(mondo):

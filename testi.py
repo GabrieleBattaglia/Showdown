@@ -42,10 +42,12 @@ import contratti
 import economia
 import formule
 import infortuni
+import luoghi
 import mercato
 import modelli_torneo
 import palmares
 import sfide
+import staff
 import tornei
 import version
 from archivio import NATO
@@ -69,7 +71,7 @@ from costanti import (
 )
 from motore import cronaca
 from motore.campo import costanza_relativa
-from utilita import MESI, converti_giorni_sim, data_breve, formatta_eta_sim, in_ora_locale
+from utilita import MESI, adesso_utc, converti_giorni_sim, data_breve, formatta_eta_sim, in_ora_locale
 from utilita import accorda as accorda_sesso
 
 # La scala degli aggettivi delle schede di Terminal Beast, da 0 a 20.
@@ -430,7 +432,8 @@ def scheda_giocatore(g, mondo):
         etichetta = g.appartenenza
     righe = [
         f"[{etichetta}] ID: {g.id} | {nome_completo(g)} | {'Uomo' if g.sesso == 'm' else 'Donna'}, {anni(g)} anni | Valore: {numero(g.indice_collettivo_valore)} | "
-        f"Classe: {classe_scheda(g)}",
+        f"Classe: {classe_scheda(g)} | Classe migliore della carriera: {classe.codice(g.livello_migliore())}",
+        *([f"Provenienza: {luoghi.descrivi(g.luogo)}"] if getattr(g, "luogo", "") else []),
         f"Descrizione: {g.descrizione_fisica}",
         f"Fisico: {g.altezza} cm e {g.peso} kg | Indole: {indole(g)} | Ambizione: {ambizione(g)} | Punti allenamento: {punti(g.punti_allenamento)} | "
         f"Gloria richiesta: {intero(g.gloria_richiesta)}",
@@ -455,6 +458,10 @@ def scheda_giocatore(g, mondo):
     righe.append("[CARRIERA]")
     righe.append(f"Partite: {partite} (V:{g.partitevinte} - S:{g.partiteperse}) | Vittorie: {numero(g.partitevinte * 100 / partite if partite else 0)}%")
     righe.append(f"Set: {set_giocati} (V:{g.setsvinti} - S:{g.setspersi}) | Goal fatti: {g.goalsfatti} | Goal subiti: {g.goalssubiti}")
+    # Dalla tappa 13, D33, chi allena e dove, o perché non può allenare; la classe migliore sta nella prima riga.
+    allena = _chi_allena_da_giocatore(g, mondo)
+    if allena:
+        righe.append(allena)
     righe.extend(_tornei_e_palmares(g, mondo))
     righe.extend(_classifiche(g, mondo))
     al_compleanno = ANNO_SIMULAZIONE_GIORNI - g.eta % ANNO_SIMULAZIONE_GIORNI
@@ -613,6 +620,8 @@ def statistiche(mondo):
         f"Valore medio {numero(sum(g.indice_collettivo_valore for g in gruppo) / n)}. Ipovedenti {ipovedenti} ({per_cento(ipovedenti)}%).",
         f"Nomi diversi {len({g.nome for g in gruppo})}, cognomi diversi {len({g.cognome for g in gruppo})}.",
         *_statistiche_delle_classi(gruppo, mondo),
+        # Dalla tappa 13 gli allenatori del mondo, D33.
+        *_statistiche_dello_staff(mondo),
         "[MIGLIORI PER CARATTERISTICA]",
     ]
     for nome_base in ATTRIBUTI_BASE_CON_ALLENABILI:
@@ -640,6 +649,270 @@ def _statistiche_delle_classi(gruppo, mondo):
                   and g.contratto_scadenza > oggi)
     return [f"Classi: {elenco}. Classe mediana {mediana}; la più alta è {classe.codice(livelli[migliore.id])}, di {nome_completo(migliore)} (ID {migliore.id}).",
             f"Contratti che scadono entro il primo del mese prossimo: {scadono}."]
+
+
+# Lo staff, tappa 13, decisione D33.
+
+def _rispetto_al_medio(fattore):
+    """Un fattore dello staff a parole, rispetto allo staff medio: più 6 per cento, meno 15 per cento, come lo staff medio."""
+    scarto = round((fattore - 1.0) * 100)
+    if scarto == 0:
+        return "come lo staff medio"
+    return f"{'più' if scarto > 0 else 'meno'} {abs(scarto)} per cento"
+
+
+def nome_allenatore(a):
+    """Il nome dell'allenatore con la classe da allenatore: Mario Rossi, C4."""
+    return f"{nome_completo(a)}, {a.codice}"
+
+
+def riga_allenatore(a, mondo):
+    """
+    Una riga per gli elenchi degli allenatori: nome, classe, età, tipo, e dove allena o quanto chiede da
+    capo; la prelazione e la riserva di due ore, se ci sono. La riserva si confronta con l'ora vera di adesso:
+    fino alla revisione del 22 ottobre 2026 si guardava l'ora dell'ultimo avanzamento, e la riga diceva
+    riservato a te fino a un'ora già passata.
+    """
+    oggi = mondo.datetime_corrente_simulazione
+    if a.tipo == staff.EX:
+        tipo = "ex giocatrice" if a.sesso == "f" else "ex giocatore"
+    else:
+        tipo = "nata allenatrice" if a.sesso == "f" else "nato allenatore"
+    riga = f"{nome_allenatore(a)}, {int(a.eta_anni(oggi))} anni, {tipo}, {a.visus}"
+    if a.polisportiva:
+        riga += f", {staff.nome_del_ruolo(a)} di {a.polisportiva}"
+    else:
+        riga += f", chiede {euro(staff.stipendio_richiesto(a, staff.CAPO))} al mese da capo e {euro(staff.stipendio_richiesto(a, staff.ASSISTENTE))} da assistente"
+    if a.prelazione:
+        riga += f", in prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}"
+    if a.riservato_fino is not None and a.riservato_fino > adesso_utc():
+        riga += f", {'riservata' if a.sesso == 'f' else 'riservato'} a te fino alle {in_ora_locale(a.riservato_fino):%H:%M}"
+    return riga
+
+
+def scheda_allenatore(a, mondo):
+    """La scheda di un allenatore: chi è, la classe, il tipo, l'aspetto o la carriera da giocatore, l'impiego e il contratto."""
+    oggi = mondo.datetime_corrente_simulazione
+    ruolo = "ALLENATRICE" if a.sesso == "f" else "ALLENATORE"
+    righe = [f"[{ruolo}] {nome_completo(a)} | {'Uomo' if a.sesso == 'm' else 'Donna'}, {int(a.eta_anni(oggi))} anni | {a.visus.capitalize()} | "
+             f"Classe da {ruolo.lower()}: {a.codice}"]
+    if a.luogo:
+        righe.append(f"Provenienza: {luoghi.descrivi(a.luogo)}")
+    if a.tipo == staff.EX:
+        g = mondo.giocatori.get(a.giocatore_id)
+        provenienza = f", ha chiuso la carriera con {a.club_di_provenienza}" if a.club_di_provenienza else ""
+        giocatore, allenatore = ("giocatrice", "allenatrice") if a.sesso == "f" else ("giocatore", "allenatore")
+        righe.append(f"Ex {giocatore}{provenienza}: la classe da {allenatore} è la sua classe migliore da {giocatore}.")
+        if g is not None:
+            righe.append(f"Da {giocatore}: {g.partitevinte + g.partiteperse} partite, {g.partitevinte} vinte; medaglie: oro {g.ori}, argento {g.argenti}, bronzo {g.bronzi}.")
+    else:
+        righe.append(f"{'Nata allenatrice' if a.sesso == 'f' else 'Nato allenatore'}, senza carriera da giocatore.")
+        descrizione = a.descrizione_fisica(oggi)
+        if descrizione:
+            righe.append(f"Descrizione: {descrizione}")
+    if a.polisportiva:
+        rinnovo = f", poi rinnovato a {euro(a.rinnovo_stipendio)} fino al {data_breve(a.rinnovo_scadenza)}" if contratti.ha_rinnovo(a) else ""
+        righe.append(f"{staff.nome_del_ruolo(a).capitalize()} di {a.polisportiva}: {euro(a.contratto_stipendio)} al mese fino al {data_breve(a.contratto_scadenza)}{rinnovo}.")
+    else:
+        righe.append(f"{accorda_sesso(a.sesso, 'Libero')}: chiede {euro(staff.stipendio_richiesto(a, staff.CAPO))} al mese da capo e "
+                     f"{euro(staff.stipendio_richiesto(a, staff.ASSISTENTE))} da assistente.")
+    if a.prelazione:
+        righe.append(f"In prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}.")
+    # Sotto l'anno si dice in giorni: fino alla revisione del 22 ottobre 2026 usciva "fra circa 1 anno simulati" o "0 anni".
+    resta = max(1, a.eta_fine - a.eta(oggi))
+    anni_che_restano = round(resta / ANNO_SIMULAZIONE_GIORNI)
+    quando = f"circa {conta(anni_che_restano, 'anno simulato', 'anni simulati')}" if anni_che_restano else conta(resta, "giorno simulato", "giorni simulati")
+    righe.append(f"Smetterà di allenare fra {quando}.")
+    return "\n".join(righe)
+
+
+def _chi_allena_da_giocatore(g, mondo):
+    """
+    Per un giocatore che allena, la classe da allenatore e dove; per un ritirato che non può, il perché;
+    altrimenti niente. La classe migliore della carriera sta accanto a quella di oggi, nella prima riga della
+    scheda, risposta 25: fino alla revisione del 22 ottobre 2026 stava venti righe più giù.
+    """
+    a = next((a for a in mondo.allenatori.values() if a.giocatore_id == g.id), None)
+    if a is not None:
+        dove = f"{staff.nome_del_ruolo(a)} di {a.polisportiva}" if a.polisportiva else accorda_sesso(a.sesso, "libero")
+        return f"Allena, classe da {'allenatrice' if a.sesso == 'f' else 'allenatore'} {a.codice}: {dove}"
+    if g.ritirato and not staff.puo_allenare(g.livello_migliore()):
+        return "Non può allenare: la classe migliore è sotto H0"
+    return ""
+
+
+# I nomi dei tre posti dello staff, nella scheda della polisportiva e nei dialoghi.
+NOMI_DEI_POSTI = ("Capo", "Assistente 1", "Assistente 2")
+
+
+def allenatore_del_posto(p, posto, mondo):
+    """L'allenatore che occupa il posto dello staff della polisportiva, o None per un posto vuoto."""
+    numero_allenatore = p.staff[posto]
+    return mondo.allenatori.get(numero_allenatore) if numero_allenatore else None
+
+
+def qualita_dello_staff(p, mondo):
+    """
+    La qualità dello staff in una frase, con gli effetti rispetto allo staff medio del mondo. Dalla risposta
+    35 i fattori dei giocatori si dividono per la loro media, così il mondo si allena come prima; i rapporti
+    fra i club restano quelli delle ancore, e la frase li dice rispetto allo staff medio, coi fattori prima
+    della divisione: senza staff il 15 per cento meno, col migliore fino al 20 in più.
+    """
+    q = staff.qualita_della_polisportiva(p, mondo.allenatori)
+    allenamento, rischio, fedelta = staff.fattori(q, mondo.qualita_media_dello_staff)
+    return (f"Qualità dello staff {round(q * 100)} su 100, lo staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}: "
+            f"allenamento {_rispetto_al_medio(allenamento)}, infortuni {_rispetto_al_medio(rischio)}, fedeltà {_rispetto_al_medio(fedelta)}.")
+
+
+def righe_dello_staff(p, mondo):
+    """Lo staff della polisportiva nella sua scheda: i tre posti e la qualità, con gli effetti rispetto allo staff medio del mondo."""
+    righe = ["[STAFF]"]
+    for posto, titolo in enumerate(NOMI_DEI_POSTI):
+        a = allenatore_del_posto(p, posto, mondo)
+        if a is None:
+            righe.append(f"{titolo}: nessuno.")
+        else:
+            righe.append(f"{titolo}: {nome_allenatore(a)}, {euro(a.contratto_stipendio)} al mese fino al {data_breve(a.contratto_scadenza)}.")
+    righe.append(qualita_dello_staff(p, mondo))
+    return righe
+
+
+# I dialoghi dello staff e del mercato degli allenatori, progetto 4.2 e 4.3.
+
+def testata_staff(p, mondo):
+    """In testa al dialogo dello staff: la cassa, gli stipendi dello staff, le mosse e la qualità."""
+    return (f"{p.nome}: cassa {euro(p.cassa)}, stipendi dello staff {euro(mondo.monte_dello_staff(p))} al mese, "
+            f"mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}.\n{qualita_dello_staff(p, mondo)}")
+
+
+def riga_posto_staff(p, posto, mondo):
+    """
+    Un posto nel dialogo dello staff, come un tesserato nei contratti: Capo: Mario Rossi, C4, 450 euro al
+    mese fino al 1 marzo 2030, rinnovabile da dicembre; oppure in scadenza, rinnovato, che non tratta più,
+    o il posto vuoto.
+    """
+    titolo = NOMI_DEI_POSTI[posto]
+    a = allenatore_del_posto(p, posto, mondo)
+    if a is None:
+        return f"{titolo}: posto vuoto"
+    oggi = mondo.datetime_corrente_simulazione
+    chi = f"{titolo}: {nome_allenatore(a)}"
+    if contratti.ha_rinnovo(a):
+        return f"{chi}, rinnovato dal {data_breve(a.contratto_scadenza)}: {euro(a.rinnovo_stipendio)} al mese fino al {data_breve(a.rinnovo_scadenza)}"
+    inizio = f"{chi}, {euro(a.contratto_stipendio)} al mese fino al {data_breve(a.contratto_scadenza)}"
+    if not contratti.in_finestra(a, oggi):
+        return f"{inizio}, rinnovabile da {MESI[contratti.inizio_finestra(a).month - 1]}"
+    if not contratti.puo_trattare(a):
+        return f"{chi}, non tratta più: {accorda_sesso(a.sesso, 'libero')} dal {data_breve(a.contratto_scadenza)}"
+    mesi = staff.durata_proposta(a, oggi)
+    return (f"{inizio}, in scadenza: chiede {euro(staff.richiesta_rinnovo(a, p, mesi, oggi))} al mese per {mesi} mesi, "
+            f"proposte rimaste {PROPOSTE_RINNOVO_MASSIME - a.proposte_rinnovo}")
+
+
+def esito_previsto_rinnovo_staff(a, p, stipendio, mesi, oggi):
+    """L'esito previsto di una proposta di rinnovo allo staff, come per i tesserati."""
+    probabilita = staff.probabilita_rinnovo(a, p, stipendio, mesi, oggi)
+    return (f"Accetterebbe al {numero(probabilita, 0)} per cento. Per {mesi} mesi chiede {euro(staff.richiesta_rinnovo(a, p, mesi, oggi))} al mese. "
+            f"Il contratto nuovo partirebbe il {data_breve(a.contratto_scadenza)}.")
+
+
+def domanda_rinnovo_staff(a, p, stipendio, mesi, oggi):
+    """La conferma della proposta di rinnovo a un allenatore, con la probabilità."""
+    probabilita = staff.probabilita_rinnovo(a, p, stipendio, mesi, oggi)
+    return (f"Proporre a {nome_completo(a)}, {staff.nome_del_ruolo(a)}, il rinnovo a {euro(stipendio)} al mese per {mesi} mesi, "
+            f"dal {data_breve(a.contratto_scadenza)}? Accetterebbe al {numero(probabilita, 0)} per cento.")
+
+
+def esito_rinnovo_staff(a, p, accettato, richiesta, mesi):
+    """L'esito della proposta allo staff: accettata, rifiutata con le proposte rimaste, o chiusa al terzo rifiuto."""
+    if accettato:
+        return (f"{nome_completo(a)} ha accettato: dal {data_breve(a.contratto_scadenza)} prenderà {euro(a.rinnovo_stipendio)} al mese, "
+                f"fino al {data_breve(a.rinnovo_scadenza)}.")
+    vorrebbe = f"{nome_completo(a)} ha rifiutato: per firmare vorrebbe circa {euro(richiesta)} al mese per {mesi} mesi."
+    rimaste = PROPOSTE_RINNOVO_MASSIME - a.proposte_rinnovo
+    if rimaste <= 0:
+        return f"{vorrebbe} Non vuole più trattare: il contratto con {p.nome} finirà il {data_breve(a.contratto_scadenza)}."
+    return f"{vorrebbe} {conta(rimaste, 'proposta rimasta', 'proposte rimaste').capitalize()}, una al giorno."
+
+
+def domanda_licenziamento(a, p, mondo):
+    """La domanda del licenziamento, con la buonuscita e la mossa."""
+    buonuscita = contratti.buonuscita(a, mondo.datetime_corrente_simulazione)
+    costo = f"la buonuscita è di {euro(buonuscita)}" if buonuscita else "non c'è buonuscita"
+    fine = f"Il contratto finirebbe il {data_breve(a.contratto_scadenza)}"
+    if contratti.ha_rinnovo(a):
+        fine += f", e il rinnovo già concordato il {data_breve(a.rinnovo_scadenza)}"
+    return (f"Licenziare {nome_completo(a)}, {staff.nome_del_ruolo(a)} di {p.nome}? {fine}: "
+            f"{costo}. Tornerà {accorda_sesso(a.sesso, 'libero')}, e userai {_mossa(p, mondo)}.")
+
+
+def esito_licenziamento(a, p, buonuscita):
+    con = f", con una buonuscita di {euro(buonuscita)}" if buonuscita else ""
+    return f"{nome_completo(a)} non è più nello staff di {p.nome}{con}: è {accorda_sesso(a.sesso, 'libero')}."
+
+
+def info_mercato_allenatori(p, mondo):
+    """In testa al mercato degli allenatori: la cassa, i posti vuoti dello staff e le mosse."""
+    vuoti = [NOMI_DEI_POSTI[posto].lower() for posto in range(staff.POSTI) if not p.staff[posto]]
+    posti = f"posti vuoti: {unisci(vuoti)}" if vuoti else "lo staff è al completo"
+    return f"{p.nome}: cassa {euro(p.cassa)}, {posti}, mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}."
+
+
+def voce_del_posto(p, posto, mondo):
+    """Un posto nella scelta del mercato: Capo, vuoto; Assistente 1, occupato da Mario Rossi, C4."""
+    a = allenatore_del_posto(p, posto, mondo)
+    return f"{NOMI_DEI_POSTI[posto]}, {'vuoto' if a is None else f'occupato da {nome_allenatore(a)}'}"
+
+
+def spiegazione_ingaggio_allenatore(a, p, posto, mondo):
+    """La spiegazione della cifra d'ingaggio: il contratto che l'allenatore propone e quanto chiede per firmare."""
+    oggi = mondo.datetime_corrente_simulazione
+    ruolo = staff.CAPO if posto == 0 else staff.ASSISTENTE
+    mesi = staff.durata_proposta(a, oggi)
+    nome_ruolo = ("capo allenatrice" if a.sesso == "f" else "capo allenatore") if ruolo == staff.CAPO else "assistente"
+    return (f"Da {nome_ruolo} {nome_completo(a)} propone un contratto di {mesi} mesi a {euro(staff.stipendio_richiesto(a, ruolo))} al mese fissi. "
+            f"Per firmare chiede {euro(staff.ingaggio_richiesto(a, ruolo, p))} d'ingaggio: più offri, più è probabile che accetti.")
+
+
+def domanda_offerta_allenatore(a, p, posto, importo, probabilita, mondo):
+    return (f"Offrire a {nome_completo(a)} il posto di {NOMI_DEI_POSTI[posto].lower()} dello staff di {p.nome}, con un ingaggio di {euro(importo)}? "
+            f"Accetta al {numero(probabilita, 0)}%. Userai {_mossa(p, mondo)}.")
+
+
+def esito_offerta_allenatore(a, p, accetta, importo, probabilita):
+    if accetta:
+        return (f"{nome_completo(a)} ha accettato l'ingaggio di {euro(importo)}: è {staff.nome_del_ruolo(a)} di {p.nome}, "
+                f"a {euro(a.contratto_stipendio)} al mese fino al {data_breve(a.contratto_scadenza)}.")
+    return f"{nome_completo(a)} ha rifiutato l'ingaggio di {euro(importo)}: accettava al {numero(probabilita, 0)}%."
+
+
+def riepilogo_staff(p, esiti, mondo):
+    """Il riepilogo dello staff e del mercato degli allenatori alla chiusura: quante operazioni, una riga ciascuna, e lo staff di adesso."""
+    if not esiti:
+        return "\n".join([f"Staff di {p.nome}: nessuna operazione.", *righe_dello_staff(p, mondo)[1:]])
+    return "\n".join([f"Staff di {p.nome}: {conta(len(esiti), 'operazione', 'operazioni')}.", *(testo for testo, _esito in esiti), *righe_dello_staff(p, mondo)[1:]])
+
+
+def evento_staff(esiti):
+    """Il fatto dello staff nella barra di stato: staff: 2 operazioni."""
+    return f"staff: {conta(len(esiti), 'operazione', 'operazioni')}"
+
+
+def _statistiche_dello_staff(mondo):
+    """Gli allenatori del mondo, D33: quanti, ex giocatori e nati, liberi e impiegati, per lettera di classe; e le polisportive con un capo."""
+    allenatori = list(mondo.allenatori.values())
+    if not allenatori:
+        return ["Allenatori: nessuno, per ora."]
+    ex = sum(1 for a in allenatori if a.tipo == staff.EX)
+    liberi = sum(1 for a in allenatori if a.libero)
+    per_lettera = {}
+    for a in allenatori:
+        per_lettera[a.codice[0]] = per_lettera.get(a.codice[0], 0) + 1
+    con_tesserati = [p for p in mondo.polisportive.values() if p.tesserati]
+    con_capo = sum(1 for p in con_tesserati if p.staff[0])
+    return [f"Allenatori: {len(allenatori)}, di cui {ex} ex giocatori e {len(allenatori) - ex} nati allenatori; liberi {liberi}, nello staff {len(allenatori) - liberi}.",
+            f"Classi degli allenatori: {unisci([f'{lettera} {quanti}' for lettera, quanti in sorted(per_lettera.items())])}. "
+            f"Polisportive con un capo: {con_capo} su {len(con_tesserati)}; staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)} su 100."]
 
 
 # Le liste della sessione e la ricerca.
@@ -710,6 +983,8 @@ def scheda_polisportiva(p, mondo):
     if p.ultima_sfida is not None:
         sfide += f" | Ultima sfida il {data_breve(p.ultima_sfida)}"
     righe.append(sfide)
+    # Dalla tappa 13 lo staff, D33.
+    righe.extend(righe_dello_staff(p, mondo))
     righe.append("[TESSERATI]")
     presenti = [mondo.giocatori[gid] for gid in p.tesserati if gid in mondo.giocatori]
     if presenti:
@@ -737,7 +1012,7 @@ def _voci_di_un_mese(conti):
     """Le voci diverse da zero dei conti di un mese, a parole."""
     nomi = (("sponsor", "sponsor"), ("vendite", "vendite"), ("stipendi", "stipendi"), ("arretrati", "arretrati pagati"),
             ("ingaggi", "ingaggi"), ("acquisti", "acquisti"), ("buonuscite", "buonuscite"), ("iscrizioni", "iscrizioni ai tornei"),
-            ("premi", "premi dei tornei"), ("rimborsi", "rimborsi delle iscrizioni"))
+            ("premi", "premi dei tornei"), ("rimborsi", "rimborsi delle iscrizioni"), ("staff", "stipendi dello staff"))
     return unisci([f"{nome} {euro(conti[voce])}" for voce, nome in nomi if conti[voce]]) or "nessun movimento"
 
 
@@ -1006,8 +1281,13 @@ def _fatti_avanzamento(rapporto):
         frasi.append(tuoi[0].upper() + tuoi[1:] + ".")
     if rapporto["tuoi_in_scadenza"]:
         frasi.append(f"{conta(rapporto['tuoi_in_scadenza'], 'tuo contratto sta', 'tuoi contratti stanno')} per scadere: si rinnovano con Ctrl+Maiusc+K.")
+    # Dalla tappa 13, progetto 4.5, lo staff delle tue polisportive.
+    frasi.extend(_fatti_dello_staff(rapporto))
     # Dalla tappa 12 i tornei e le sfide: le notizie dei tuoi, le sfide che aspettano e i numeri del mondo.
     frasi.extend(rapporto.get("notizie") or [])
+    # Dalla tappa 13, risposta 38, gli allenatori nuovi riservati a te, se ci sono.
+    if rapporto.get("riservati"):
+        frasi.append(rapporto["riservati"])
     if rapporto.get("sfide_decadute"):
         frasi.append(f"{conta(rapporto['sfide_decadute'], 'sfida alle tue polisportive è decaduta', 'sfide alle tue polisportive sono decadute')} senza risposta.")
     if rapporto.get("sfide_in_attesa"):
@@ -1031,6 +1311,31 @@ def _fatti_avanzamento(rapporto):
     if nascite:
         frasi.append(nascite[0].upper() + nascite[1:] + ".")
     return " ".join(frasi) or "Non è successo niente di particolare."
+
+
+def _fatti_dello_staff(rapporto):
+    """Le notizie dello staff dell'utente in un avanzamento: chi se n'è andato, chi è tornato libero, chi è uscito, la prelazione e le scadenze."""
+    frasi = []
+    usciti = unisci([
+        conta(rapporto["tuo_staff_partito"], "allenatore del tuo staff se n'è andato senza stipendio", "allenatori del tuo staff se ne sono andati senza stipendio")
+        if rapporto.get("tuo_staff_partito") else "",
+        conta(rapporto["tuo_staff_scaduto"], "allenatore del tuo staff è tornato libero a fine contratto", "allenatori del tuo staff sono tornati liberi a fine contratto")
+        if rapporto.get("tuo_staff_scaduto") else "",
+        conta(rapporto["tuo_staff_uscito"], "allenatore del tuo staff ha smesso o è uscito di scena", "allenatori del tuo staff hanno smesso o sono usciti di scena")
+        if rapporto.get("tuo_staff_uscito") else "",
+    ])
+    if usciti:
+        frasi.append(f"{usciti[0].upper()}{usciti[1:]}: lo staff si guarda con Ctrl+H.")
+    if rapporto.get("tue_prelazioni"):
+        n = rapporto["tue_prelazioni"]
+        # La scadenza vera, la prima se sono più d'uno: dopo un recupero lungo i dieci giorni possono essere già in parte passati.
+        fino = rapporto.get("prelazione_fino")
+        quando = f" {'almeno ' if n > 1 else ''}fino al {data_breve(fino)}" if fino else ""
+        frasi.append(f"{conta(n, 'tuo tesserato ritirato può', 'tuoi tesserati ritirati possono')} allenare: puoi {'assumerlo' if n == 1 else 'assumerli'} "
+                     f"prima degli altri{quando}, dal mercato degli allenatori con Ctrl+Maiusc+G.")
+    if rapporto.get("tuo_staff_in_scadenza"):
+        frasi.append(f"{conta(rapporto['tuo_staff_in_scadenza'], 'contratto del tuo staff sta', 'contratti del tuo staff stanno')} per scadere: si rinnovano con Ctrl+H.")
+    return frasi
 
 
 def riepilogo_avanzamento(rapporto):
@@ -1804,6 +2109,10 @@ def diario_polisportiva(p):
     return _diario(f"Diario di {p.nome}", p.diario)
 
 
+def diario_allenatore(a):
+    return _diario(f"Diario di {nome_completo(a)}, {'allenatrice' if a.sesso == 'f' else 'allenatore'}", a.diario)
+
+
 def vecchie_glorie(mondo):
     """Il registro di chi è uscito di scena, dal più recente: problema P11, risolto con la tappa 6."""
     if not mondo.vecchie_glorie:
@@ -1824,7 +2133,7 @@ def conservazione(mondo):
     def per(giorni):
         return "per sempre" if giorni <= 0 else f"per {conta(giorni, 'giorno simulato', 'giorni simulati')}"
     c = mondo.conservazione_diari
-    return f"Le voci dei diari dei giocatori si conservano {per(c['giocatori'])}, quelle delle polisportive {per(c['polisportive'])}."
+    return f"Le voci dei diari dei giocatori e degli allenatori si conservano {per(c['giocatori'])}, quelle delle polisportive {per(c['polisportive'])}."
 
 
 # Apertura, chiusura e aiuto.
@@ -1848,8 +2157,25 @@ def apertura(mondo, origine, messaggi, rapporto, ultimo_prima, ora):
         righe.append("Non hai ancora una polisportiva attiva.")
     else:
         righe.append(f"La tua polisportiva attiva è {p.nome}: gloria {p.gloria}, {len(p.tesserati)} tesserati su {p.maxtesserati}.")
+    # Dalla tappa 13, D33 risposta 16: all'aggiornamento al formato 8 nasce lo staff, e il mercato degli allenatori è aperto.
+    if getattr(mondo, "staff_appena_nato", False):
+        righe.append(staff_appena_nato(mondo))
     righe.append("Premi F1 per la guida ai comandi.")
     return "\n".join(righe)
+
+
+def staff_appena_nato(mondo):
+    """La notizia dell'aggiornamento al formato 8: lo staff, gli allenatori nati e la loro ora riservata all'utente."""
+    liberi = sum(1 for a in mondo.allenatori.values() if a.libero)
+    if liberi == 0:
+        mercato = "per ora senza allenatori liberi"
+    elif liberi == 1:
+        mercato = "con 1 allenatore libero, e per due ore è riservato a te, prima del computer"
+    else:
+        mercato = f"con {liberi} allenatori liberi, e per due ore sono riservati a te, prima del computer"
+    return (f"Novità: ogni polisportiva può avere uno staff, un capo allenatore e due assistenti, che allenano meglio, riducono gli infortuni "
+            f"e fanno crescere la fedeltà. Le tue polisportive partono senza: il mercato degli allenatori è aperto, {mercato}. "
+            "Lo staff è nel menu Polisportive, con Ctrl+H; il mercato degli allenatori con Ctrl+Maiusc+G.")
 
 
 def salvataggio_illeggibile(errore):
@@ -1866,7 +2192,7 @@ def somma_rapporti(primo, secondo):
     Due riepiloghi di avanzamento sommati, con l'ora del secondo: il totale di una sessione. Dalla
     tappa 12 le notizie si accodano, e le sfide in attesa sono quelle della fine del secondo.
     """
-    ultimi = ("ora", "sfide_in_attesa")
+    ultimi = ("ora", "sfide_in_attesa", "riservati", "prelazione_fino")
     return {chiave: primo[chiave] + secondo[chiave] for chiave in primo if chiave not in ultimi} | {chiave: secondo[chiave] for chiave in ultimi}
 
 
@@ -1874,7 +2200,9 @@ def chiusura(durata_sessione, comandi, messaggi, rapporto_sessione=None):
     """Il riepilogo della fine sessione, con ciò che è successo nel mondo durante la sessione."""
     righe = [f"Sessione di {durata(durata_sessione)}, con {conta(comandi, 'comando', 'comandi')}."]
     if rapporto_sessione and rapporto_sessione["ticks"]:
-        righe.append(f"Nella sessione il mondo è andato avanti di {conta(rapporto_sessione['giorni'], 'giorno simulato', 'giorni simulati')}. {_fatti_avanzamento(rapporto_sessione)}")
+        # Dalla tappa 13 senza gli allenatori riservati: alla chiusura la riserva è quasi sempre scaduta.
+        fatti = _fatti_avanzamento(rapporto_sessione | {"riservati": "", "prelazione_fino": None})
+        righe.append(f"Nella sessione il mondo è andato avanti di {conta(rapporto_sessione['giorni'], 'giorno simulato', 'giorni simulati')}. {fatti}")
     righe.extend(messaggi)
     righe.append("Arrivederci!")
     return "\n".join(righe)
@@ -1889,7 +2217,7 @@ def guida(voci):
     righe.append("Con Tab si passa dalla vista principale alla barra di stato e ritorno; F5 porta sulla vista principale, F7 sulla barra di stato.")
     righe.append(GUIDA_DELLA_PARTITA_DAL_VIVO)
     righe.extend((GUIDA_DEI_TORNEI, GUIDA_DELLE_SFIDE))
-    righe.extend((LEGENDA_CLASSE, LEGENDA_ALLENAMENTO, LEGENDA_CONTRATTI))
+    righe.extend((LEGENDA_CLASSE, LEGENDA_ALLENAMENTO, LEGENDA_CONTRATTI, LEGENDA_STAFF))
     righe.append(LEGENDA_BARRA)
     return "\n".join(righe)
 
@@ -1918,6 +2246,21 @@ LEGENDA_CONTRATTI = (
     "parte alla scadenza di quello in corso. Chi non rinnova torna libero, e nessuno incassa niente; nella finestra il suo valore di mercato scende, "
     "fino al 40 per cento alla scadenza. Lo svincolo a contratto in corso costa una buonuscita, metà degli stipendi che restano. "
     "Un mese di contratto è un mese del calendario simulato: circa 10 giorni veri."
+)
+
+
+# Lo staff nella guida ai comandi, tappa 13, progetto 4.7.
+LEGENDA_STAFF = (
+    "Dalla tappa 13 ogni polisportiva può avere uno staff, un capo allenatore e due assistenti, nel dialogo dello staff, Ctrl+H. Lo staff fa imparare "
+    "più in fretta, abbassa il rischio d'infortunio in allenamento e in partita e fa crescere prima la fedeltà al club; conta la qualità dello staff, "
+    "il 70 per cento dal capo, il 20 dall'assistente migliore e il 10 dall'altro. Rispetto allo staff medio del mondo di quel giorno, senza staff si "
+    "impara circa il 15 per cento più piano, col migliore fino al 20 per cento più in fretta, e il mondo nel suo insieme si allena sempre come prima "
+    "dello staff; i liberi si allenano senza staff. Gli allenatori sono "
+    "ex giocatori arrivati almeno ad H0, che allenano con la classe migliore della carriera, o nati allenatori, adulti con una classe a caso, più rara "
+    "quanto più è alta. Il mercato degli allenatori, Ctrl+Maiusc+G, li mostra tutti, dal migliore, coi filtri di classe, età, tipo e sesso. Si assumono "
+    "come i giocatori: un ingaggio alla firma, che costa una mossa, uno stipendio fisso, il rinnovo negli ultimi tre mesi e la buonuscita se li "
+    "licenzi, anche questo con una mossa. Chi diventa allenatore resta tuo per due ore vere prima che il computer lo veda, e un tuo tesserato che si "
+    "ritira e può allenare ti lascia la prelazione per dieci giorni simulati."
 )
 
 
@@ -2172,10 +2515,27 @@ def _nome_semplice(caratteristica):
     return nome_caratteristica(allenamento.nome(caratteristica) + "_base").lower()
 
 
-def intestazione_sala(p, allenandi):
-    """In testa alla sala: Pat-Bologna: 12 allenandi, 412,5 punti allenamento da spendere in tutto."""
+def intestazione_sala(p, allenandi, mondo=None):
+    """
+    In testa alla sala: Pat-Bologna: 12 allenandi, 412,5 punti allenamento da spendere in tutto. Dalla
+    tappa 13, progetto 4.4, col mondo anche chi allena e la qualità dello staff, su una riga sua.
+    """
     totale = sum(g.punti_allenamento for g in allenandi)
-    return f"{p.nome}: {conta(len(allenandi), 'allenando', 'allenandi')}, {quanti_punti(totale, True)} da spendere in tutto."
+    testo = f"{p.nome}: {conta(len(allenandi), 'allenando', 'allenandi')}, {quanti_punti(totale, True)} da spendere in tutto."
+    return testo if mondo is None else f"{testo}\n{chi_allena(p, mondo)}"
+
+
+def chi_allena(p, mondo):
+    """Chi allena la polisportiva e la qualità dello staff: Allena Mario Rossi, C4, con 2 assistenti. Qualità dello staff..."""
+    capo = allenatore_del_posto(p, 0, mondo)
+    assistenti = sum(1 for posto in range(1, staff.POSTI) if p.staff[posto])
+    if capo is not None:
+        inizio = f"Allena {nome_allenatore(capo)}, {'con ' + conta(assistenti, 'assistente', 'assistenti') if assistenti else 'senza assistenti'}."
+    elif assistenti:
+        inizio = f"Nessun capo allenatore, {conta(assistenti, 'assistente', 'assistenti')}."
+    else:
+        inizio = "Nessuno staff: i tesserati si allenano senza allenatore."
+    return f"{inizio} {qualita_dello_staff(p, mondo)}"
 
 
 def riga_allenando(g, mondo):

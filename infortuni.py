@@ -90,7 +90,8 @@ def probabilita_base(g):
     risultato = (PROB_INFORTUNIO_BASE_PER_PARTITA + aumento) * intensita_di(g)["infortuni_partita"]
     if getattr(g, "ambidestro", False):
         risultato *= FATTORE_INFORTUNIO_AMBIDESTRO
-    return max(0.0, risultato)
+    # Dalla tappa 13 lo staff, D33 risposte 6 e 23: il fattore lo scrive il mondo sul giocatore; senza, lo staff medio.
+    return max(0.0, risultato * getattr(g, "fattore_rischio_staff", 1.0))
 
 
 def probabilita(g, azioni):
@@ -241,7 +242,8 @@ def probabilita_in_seduta(g):
     risultato = base * (1.0 + AUMENTO_RISCHIO_SEDUTA * _quota_eta(g.eta_anni))
     if getattr(g, "ambidestro", False):
         risultato *= FATTORE_INFORTUNIO_AMBIDESTRO
-    return risultato
+    # Dalla tappa 13 lo staff, come per gli incontri.
+    return risultato * getattr(g, "fattore_rischio_staff", 1.0)
 
 
 def infortunio_in_seduta(mondo, g, data):

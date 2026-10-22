@@ -167,7 +167,7 @@ def test_andata_e_ritorno_del_formato_7(cartella_di_prova):
     assert ricaricato.sfide.storico[0].differita["cali"][0][0] == 0.02 and ricaricato.sfide.attive[0].stato == sfide.PROPOSTA
     rilette = ricaricato.polisportive["Brybox Showdown"]
     assert rilette.palmares_recente == {"2026-09": [30.0, 2.0]} and (rilette.sfide_vinte, rilette.ultima_sfida, rilette.sfide_da_lanciare) == (1, INIZIO, 3)
-    assert archivio.leggi(cartella_di_prova / FILE_MONDO)["formato"] == 7
+    assert archivio.leggi(cartella_di_prova / FILE_MONDO)["formato"] == archivio.FORMATO
 
 
 def test_un_calendario_incoerente_si_rifiuta():
@@ -194,10 +194,11 @@ def test_un_registro_delle_sfide_incoerente_si_rifiuta():
         archivio.costruisci(contenuto, Mondo())
 
 
-def test_un_formato_8_si_rifiuta(cartella_di_prova):
+def test_un_formato_piu_recente_si_rifiuta(cartella_di_prova):
+    # Dalla tappa 13 il formato è l'8: si rifiuta il 9.
     contenuto = archivio.componi(_mondo_come_quello_di_gabriele())
-    contenuto["formato"] = 8
+    contenuto["formato"] = archivio.FORMATO + 1
     percorso = cartella_di_prova / FILE_MONDO
     percorso.write_text(json.dumps({**contenuto, "firma": archivio.firma(contenuto)}), encoding="utf-8")
-    with pytest.raises(archivio.ErroreSalvataggio, match="formato 8"):
+    with pytest.raises(archivio.ErroreSalvataggio, match=f"formato {archivio.FORMATO + 1}"):
         archivio.leggi(percorso)

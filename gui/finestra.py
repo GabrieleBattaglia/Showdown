@@ -46,6 +46,10 @@ o ascoltato, amichevole, di torneo o di sfida. All'avvio un calendario che non s
 testa alla vista; quando il mondo avanza, la barra dice le notizie dei tornei e delle sfide, con un
 suono solo, quello della più importante. Le parti della tappa 12 sono di Gabriele Battaglia (IZ4APU) &
 ClaudIA (Claude Opus 5.5, modalità auto).
+Dal 2026-10-21, con la tappa 13 e la decisione D33, il menu Polisportive ha lo staff della polisportiva
+attiva e il mercato degli allenatori, che alla chiusura riepilogano le operazioni nella vista; all'avvio
+col mondo appena aggiornato, la notizia dello staff ha il suo suono. Le parti della tappa 13 sono di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -76,6 +80,7 @@ from gui.dialoghi import (
     EffettiSonori,
     Lettura,
     Mercato,
+    MercatoAllenatori,
     NuovaPolisportiva,
     OpzioniAmichevole,
     PagaArretrati,
@@ -83,6 +88,7 @@ from gui.dialoghi import (
     Ricerca,
     SalaAllenamento,
     SceltaGiocatore,
+    Staff,
     VelocitaDiGioco,
     Vendite,
 )
@@ -188,6 +194,9 @@ class FinestraPrincipale(wx.Frame):
                 ("Pa&ga gli arretrati...", "Ctrl+Shift+P", self.paga_arretrati),
                 ("Sala &allenamento...", "Ctrl+Shift+L", self.sala_allenamento),
                 ("Contratti e &rinnovi...", "Ctrl+Shift+K", self.contratti),
+                # Lo staff della tappa 13, progetto 4.1: i tasti sono una proposta da confermare con Gabriele al collaudo.
+                ("Staf&f della polisportiva attiva...", "Ctrl+H", self.staff),
+                ("Mercato degli a&llenatori...", "Ctrl+Shift+G", self.mercato_allenatori),
                 None,
                 ("&Scheda della polisportiva attiva", "Ctrl+M", self.scheda_polisportiva),
                 ("&Bilancio della polisportiva attiva", "Ctrl+B", self.bilancio),
@@ -294,6 +303,9 @@ class FinestraPrincipale(wx.Frame):
         suoni.suona(primo)
         if self.problemi_all_avvio:
             suoni.in_coda("calendario_illeggibile")
+        elif getattr(self.mondo, "staff_appena_nato", False):
+            # Dalla tappa 13: il mondo appena aggiornato al formato 8 ha lo staff, e la notizia vale più dell'avanzamento.
+            suoni.in_coda("staff_appena_nato")
         elif self.avanzamento_all_avvio:
             suoni.in_coda(self.avanzamento_all_avvio)
 
@@ -689,6 +701,35 @@ class FinestraPrincipale(wx.Frame):
         finally:
             dialogo.Destroy()
         self._concludi(testi.riepilogo_contratti(p, esiti), testi.evento_contratti(esiti), "lavoro_concluso", bool(esiti))
+
+    def staff(self):
+        """Lo staff della tappa 13: alla chiusura la vista mostra le operazioni e lo staff di adesso, e il mondo si salva se ce ne sono."""
+        p = self._attiva()
+        if p is None:
+            return
+        suoni.suona("dialogo_staff")
+        dialogo = Staff(self, self.mondo, p, self.impostazioni)
+        try:
+            self._modale(dialogo)
+            esiti = list(dialogo.esiti)
+        finally:
+            dialogo.Destroy()
+        self._concludi(testi.riepilogo_staff(p, esiti, self.mondo), testi.evento_staff(esiti), "lavoro_concluso", bool(esiti))
+
+    def mercato_allenatori(self):
+        """Il mercato degli allenatori della tappa 13, con lo stesso riepilogo dello staff alla chiusura."""
+        p = self._attiva()
+        if p is None:
+            return
+        # Il suono dell'apertura viene prima del dialogo, che se nasce con l'elenco vuoto lo dice subito dopo.
+        suoni.suona("dialogo_mercato_allenatori")
+        dialogo = MercatoAllenatori(self, self.mondo, p, self.impostazioni)
+        try:
+            self._modale(dialogo)
+            esiti = list(dialogo.esiti)
+        finally:
+            dialogo.Destroy()
+        self._concludi(testi.riepilogo_staff(p, esiti, self.mondo), testi.evento_staff(esiti), "lavoro_concluso", bool(esiti))
 
     def svincola(self):
         p = self._attiva()

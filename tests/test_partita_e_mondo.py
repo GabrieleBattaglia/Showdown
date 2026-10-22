@@ -168,7 +168,8 @@ def test_avanzamento_del_tempo(mondo):
         if gid not in mondo._ids_morti_processati_sessione:
             assert mondo.giocatori[gid].eta == eta + 2
     # I nuovi della sessione restano, quelli di prima compresi: si contano i nati nei due giorni.
-    assert 2 <= len([gid for gid in mondo.nuovi_giocatori_sessione if gid not in eta_prima]) <= 14
+    # Dalla tappa 12, issue 1, nascono da 2 a 9 giocatori al giorno: in due giorni da 4 a 18.
+    assert 4 <= len([gid for gid in mondo.nuovi_giocatori_sessione if gid not in eta_prima]) <= 18
     assert any("Processando 2 tick" in m for m in messaggi)
 
 

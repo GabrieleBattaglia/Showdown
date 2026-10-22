@@ -27,6 +27,8 @@ FILE_MONDO_COPIA_VECCHIO = FILE_MONDO_VECCHIO + ".bak"
 FILE_NOMI_M = "nomi_maschili.txt"
 FILE_NOMI_F = "nomi_femminili.txt"
 FILE_COGNOMI = "cognomi.txt"
+# I comuni italiani di provenienza, con provincia, regione e abitanti, nella cartella dati: tappa 13, richiesta di Gabriele.
+FILE_LUOGHI = "luoghi_italiani.json"
 ANNO_SIMULAZIONE_GIORNI = 108
 PROBABILITA_IPOVEDENTE_CREAZIONE = 65.0
 # Polisportive del computer.
@@ -613,8 +615,76 @@ SCONTO_IPOVEDENTI = 0.07
 # La curva d'età di Hattrick, 54 diviso gli anni più 37: 1,17 a 9 anni, 0,87 a 25, 0,62 a 50.
 CURVA_ETA_NUMERATORE = 54.0
 CURVA_ETA_SPOSTAMENTO = 37.0
-# L'aggancio dell'allenatore di una tappa futura: per ora non c'è, e vale 1.
-FATTORE_ALLENATORE = 1.0
+# Lo staff della tappa 13, decisione D33 di Gabriele del 21 ottobre 2026, al posto dell'aggancio
+# FATTORE_ALLENATORE della tappa 11: un capo allenatore e fino a due assistenti per polisportiva.
+# Può allenare chi da giocatore ha raggiunto almeno H0, il livello 70, regola di Gabriele; gli A1 sono i
+# migliori. La qualità di un allenatore va in linea retta da QUALITA_MINIMA_ALLENATORE per H0 a 1 per
+# A1: un H0 vale più di nessuno. La qualità dello staff somma quelle dei tre posti coi pesi di
+# PESI_STAFF, il capo, l'assistente migliore e l'altro, come in Hattrick, dove il primo assistente conta
+# più del secondo; senza nessuno vale 0. Ogni effetto ha tre ancore, senza staff, staff medio e staff
+# migliore, e fra un'ancora e l'altra va in linea retta sulla qualità: l'allenamento, risposta 3, il
+# rischio d'infortunio in allenamento e in partita, risposte 6 e 23, la crescita della fedeltà, risposte
+# 12 e 26. Lo staff medio è la media della qualità dello staff fra le polisportive del mondo di quel
+# giorno, scelta di Gabriele del 21 ottobre 2026, risposta 30, dopo la prova breve dei mondi giovani, che
+# per decenni hanno pochi allenatori: così il mondo nel suo insieme si allena sempre come prima dello
+# staff, e lo staff fa andare più in fretta o più piano rispetto alla media; non c'è una costante da tarare.
+LIVELLO_MINIMO_ALLENATORE = 70
+QUALITA_MINIMA_ALLENATORE = 0.2
+PESI_STAFF = (0.7, 0.2, 0.1)
+FATTORI_ALLENAMENTO_STAFF = (0.85, 1.0, 1.20)
+FATTORI_RISCHIO_STAFF = (1.15, 1.0, 0.85)
+FATTORI_FEDELTA_STAFF = (0.85, 1.0, 1.25)
+# Un allenatore smette a un'età estratta fra questi anni, D33; un ex giocatore che si ritira dopo
+# l'età estratta la sposta più in là di ANNI_MINIMI_DA_ALLENATORE, così allena almeno un poco. Erano
+# 75 e 85: la risposta 33 di Gabriele del 22 ottobre 2026 accorcia la carriera, perché a regime gli
+# allenatori, quasi tutti ex giocatori, diventavano migliaia.
+ETA_FINE_ALLENATORE_ANNI = (65.0, 75.0)
+ANNI_MINIMI_DA_ALLENATORE = 5.0
+# Gli allenatori che il mondo genera, D33 risposte 8, 22 e 28: con ogni giocatore che nasce, uno su
+# venti in media, nasce anche un allenatore adulto, fra i 35 e i 60 anni, maschio o femmina alla
+# pari, vedente al 75 per cento, e il quarto che resta diviso fra non vedenti e ipovedenti come i
+# giocatori. La classe è 70, H0, meno la parte intera di una variabile esponenziale di media
+# MEDIA_CLASSE_NATI_ALLENATORI, tagliata a A1: più alta, più rara. Muore come i giocatori.
+PROBABILITA_ALLENATORE_PER_NASCITA = 5.0
+ETA_NATI_ALLENATORI_ANNI = (35.0, 60.0)
+QUOTA_VEDENTI_ALLENATORI = 75.0
+MEDIA_CLASSE_NATI_ALLENATORI = 12.0
+# La prelazione dell'utente su un suo tesserato che si ritira e può allenare, risposta 21.
+GIORNI_PRELAZIONE = 10
+# Regola di Gabriele del 21 ottobre 2026, risposta 29: quando qualcuno diventa allenatore, perché nasce
+# o perché si ritira dal gioco, resta riservato all'utente per tanti minuti veri, poi il computer lo
+# può assumere. I minuti contano dal momento in cui il mondo lo fa nascere, recupero dei giorni
+# arretrati compreso: chi nasce mentre il gioco è chiuso resta dell'utente per tutta la riserva dopo l'apertura.
+# La risposta 37 di Gabriele del 22 ottobre 2026 la porta da un'ora a due.
+MINUTI_RISERVA_UTENTE = 120
+# L'economia dello staff, D33 risposta 13 e progetto 3.1: lo stipendio che un capo chiede va in linea
+# retta sulla sua qualità, da STIPENDIO_STAFF_MINIMO per H0 a STIPENDIO_STAFF_MASSIMO per A1, e non in
+# esponenziale come quello dei giocatori, perché un A1 deve restare alla portata delle polisportive più
+# ricche, a differenza dei campioni della tappa 12; un assistente chiede QUOTA_STIPENDIO_ASSISTENTE di un
+# capo della sua classe. Il premio d'ingaggio, la durata, il rinnovo e la buonuscita sono quelli dei
+# giocatori. Le cifre vengono dalla taratura della risposta 31, decisa da Gabriele il 22 ottobre 2026:
+# partite da 120 e 900, scese a un ottavo perché lo staff, pagato con lo sponsor, toglieva alla cassa del
+# computer i soldi dei campioni. Sulla prova lunga a otto semi, 60 anni ciascuno, gli anni con meno di 8
+# dei primi 10 tesserati sono 100 contro i 67 della tappa 12, quelli con meno di 16 dei primi 20 39 contro
+# 10; con un quarto 101 e 50. Gabriele tiene un ottavo: i campioni liberi arrivano a ondate, e una
+# polisportiva brava e fortunata li può prendere; le sbandate sono volute, se sulle grandi cifre si tiene.
+# Le cifre chieste si arrotondano alla decina: un capo H0 chiede 20 euro al mese, un A1 110.
+STIPENDIO_STAFF_MINIMO = 15
+STIPENDIO_STAFF_MASSIMO = 112
+QUOTA_STIPENDIO_ASSISTENTE = 0.5
+# La gloria che un allenatore chiede a una polisportiva, progetto 3.1: cresce con la classe come quella dei
+# giocatori, in linea retta sulla qualità, da H0 ad A1. Il premio d'ingaggio si moltiplica per il fattore di
+# reputazione dei giocatori, la radice della gloria richiesta sulla gloria del club, fra la metà e il
+# doppio. La gloria mediana del computer va da circa 230 all'anno 10 a 340 all'anno 60: un H0 chiede meno
+# a quasi tutti, un A1 il doppio a un club appena nato. Le cifre sono una stima della revisione del 22
+# ottobre 2026.
+GLORIA_RICHIESTA_ALLENATORE = (150.0, 600.0)
+# Il computer cambia il suo allenatore a fine contratto soltanto per uno libero che può pagare e che è
+# migliore di almeno tanti livelli, progetto 3.4; altrimenti lo rinnova.
+MARGINE_CAMBIO_STAFF_CPU = 5
+# La classe migliore della carriera si ricorda il primo del mese soltanto dai 40 anni, e al ritiro:
+# prima la classe sale quasi sempre, e il primo del mese è già il giorno più lento.
+ETA_CLASSE_MIGLIORE_GIORNI = giorni_da_anni(40.0)
 # Il calo dei livelli alti, come la DropL di Hattrick: sopra il 70 per cento del tetto l'allenata
 # perde, ogni anno d'età, fino a CALO_MASSIMO_ANNUO del tetto al tetto pieno, con una curva cubica.
 SOGLIA_CALO_LIVELLI_ALTI = 0.7

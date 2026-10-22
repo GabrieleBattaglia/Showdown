@@ -9,6 +9,7 @@ import pytest
 import allenamento
 import contratti
 import economia
+import luoghi
 import mercato
 import testi
 from archivio import CARICATO, NATO
@@ -201,9 +202,11 @@ def test_la_scheda_della_tappa_11(mondo):
     scheda = testi.scheda_giocatore(g, mondo)
     _accessibile(scheda)
     righe = scheda.splitlines()
-    assert re.search(r"\| Classe: [A-K]\d(, al \d+ per cento verso [A-K]\d|, la più alta)$", righe[0])
-    assert f"| Indole: {testi.indole(g)} | Ambizione: {testi.ambizione(g)} | Punti allenamento: 38,5 | " in righe[2]
-    assert righe[3] == f"Allenamento: programma secondo la sua indole, intensità normale, costanza recente {testi.costanza(g)}"
+    assert re.search(r"\| Classe: [A-K]\d(, al \d+ per cento verso [A-K]\d|, la più alta) \| Classe migliore della carriera: [A-K]\d$", righe[0])
+    # Dalla tappa 13 la seconda riga è la provenienza, richiesta di Gabriele del 22 ottobre 2026.
+    assert righe[1] == f"Provenienza: {luoghi.descrivi(g.luogo)}" and g.luogo
+    assert f"| Indole: {testi.indole(g)} | Ambizione: {testi.ambizione(g)} | Punti allenamento: 38,5 | " in righe[3]
+    assert righe[4] == f"Allenamento: programma secondo la sua indole, intensità normale, costanza recente {testi.costanza(g)}"
     assert "talento" in scheda and "maturazione tardiva" in scheda
     assert f"Contratto con Club Di Prova fino al {testi.data_breve(g.contratto_scadenza)}, si rinnova da " in scheda
     assert f"Stipendio: {testi.euro(g.contratto_stipendio)} al mese, fisso fino al {testi.data_breve(g.contratto_scadenza)}" in scheda
@@ -211,7 +214,7 @@ def test_la_scheda_della_tappa_11(mondo):
     g.intensita = "intensa"
     assert f"Allenamento: programma {testi.INDOLI[g.programma]['nome']}, intensità intensa" in testi.scheda_giocatore(g, mondo)
     libero = mondo.giocatori[1]
-    assert testi.scheda_giocatore(libero, mondo).splitlines()[3].startswith("Allenamento: costanza recente ")
+    assert testi.scheda_giocatore(libero, mondo).splitlines()[4].startswith("Allenamento: costanza recente ")
     assert "classe " in testi.riga_giocatore(g, mondo)
 
 
