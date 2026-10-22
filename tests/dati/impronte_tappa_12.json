@@ -1,13 +1,13 @@
 {
- "nota": "Tappa 13: il comune di provenienza di giocatori e allenatori, richiesta di Gabriele del 22 ottobre 2026",
+ "nota": "Tappa 13: stipendi dello staff a un ottavo, da 15 a 112 euro, taratura della risposta 31",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "b50ad6b30356bb8db398eeacf461312c85d8bf854a6fea6bc6acc6888da7ff1a",
-  "vivi": 682,
-  "attivi": 682,
+  "sha256": "d450616e8e5e57877c953142c6ed1797969deca1ac9e3c8dde268972f474c9d8",
+  "vivi": 674,
+  "attivi": 674,
   "tesserati": 603,
   "polisportive": 41
  },

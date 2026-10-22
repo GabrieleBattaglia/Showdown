@@ -360,11 +360,13 @@ def test_alla_migrazione_chi_e_oltre_l_eta_di_fine_non_smette_con_tutti(mondo):
 
 def test_lo_stipendio_va_in_linea_retta_sulla_qualita(mondo):
     a1, h0 = _allenatore(mondo, 1), _allenatore(mondo, LIVELLO_MINIMO_ALLENATORE)
-    assert staff.stipendio_richiesto(a1, staff.CAPO) == STIPENDIO_STAFF_MASSIMO and staff.stipendio_richiesto(h0, staff.CAPO) == STIPENDIO_STAFF_MINIMO
-    assert staff.stipendio_richiesto(a1, staff.ASSISTENTE) == STIPENDIO_STAFF_MASSIMO * QUOTA_STIPENDIO_ASSISTENTE
+    # Le cifre si arrotondano alla decina, come quelle dei giocatori: a un ottavo, 15 e 112 diventano 20 e 110.
+    massimo, minimo = economia.arrotonda(STIPENDIO_STAFF_MASSIMO), economia.arrotonda(STIPENDIO_STAFF_MINIMO)
+    assert staff.stipendio_richiesto(a1, staff.CAPO) == massimo and staff.stipendio_richiesto(h0, staff.CAPO) == minimo
+    assert staff.stipendio_richiesto(a1, staff.ASSISTENTE) == economia.arrotonda(STIPENDIO_STAFF_MASSIMO * QUOTA_STIPENDIO_ASSISTENTE)
     medio = _allenatore(mondo, 35)
-    assert STIPENDIO_STAFF_MINIMO < staff.stipendio_richiesto(medio, staff.CAPO) < STIPENDIO_STAFF_MASSIMO
-    assert staff.ingaggio_richiesto(a1, staff.CAPO) == STIPENDIO_STAFF_MASSIMO * MESI_DI_INGAGGIO
+    assert minimo < staff.stipendio_richiesto(medio, staff.CAPO) < massimo
+    assert staff.ingaggio_richiesto(a1, staff.CAPO) == massimo * MESI_DI_INGAGGIO
     assert 4 <= staff.durata_proposta(a1, INIZIO) <= 24
 
 

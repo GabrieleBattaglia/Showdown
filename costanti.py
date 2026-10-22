@@ -662,9 +662,15 @@ MINUTI_RISERVA_UTENTE = 120
 # esponenziale come quello dei giocatori, perché un A1 deve restare alla portata delle polisportive più
 # ricche, a differenza dei campioni della tappa 12; un assistente chiede QUOTA_STIPENDIO_ASSISTENTE di un
 # capo della sua classe. Il premio d'ingaggio, la durata, il rinnovo e la buonuscita sono quelli dei
-# giocatori. Le cifre sono una stima: le fissa la taratura della tappa.
-STIPENDIO_STAFF_MINIMO = 120
-STIPENDIO_STAFF_MASSIMO = 900
+# giocatori. Le cifre vengono dalla taratura della risposta 31, decisa da Gabriele il 22 ottobre 2026:
+# partite da 120 e 900, scese a un ottavo perché lo staff, pagato con lo sponsor, toglieva alla cassa del
+# computer i soldi dei campioni. Sulla prova lunga a otto semi, 60 anni ciascuno, gli anni con meno di 8
+# dei primi 10 tesserati sono 100 contro i 67 della tappa 12, quelli con meno di 16 dei primi 20 39 contro
+# 10; con un quarto 101 e 50. Gabriele tiene un ottavo: i campioni liberi arrivano a ondate, e una
+# polisportiva brava e fortunata li può prendere; le sbandate sono volute, se sulle grandi cifre si tiene.
+# Le cifre chieste si arrotondano alla decina: un capo H0 chiede 20 euro al mese, un A1 110.
+STIPENDIO_STAFF_MINIMO = 15
+STIPENDIO_STAFF_MASSIMO = 112
 QUOTA_STIPENDIO_ASSISTENTE = 0.5
 # La gloria che un allenatore chiede a una polisportiva, progetto 3.1: cresce con la classe come quella dei
 # giocatori, in linea retta sulla qualità, da H0 ad A1. Il premio d'ingaggio si moltiplica per il fattore di
