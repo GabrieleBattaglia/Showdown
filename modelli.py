@@ -44,6 +44,7 @@ import random
 
 import classe
 import descrizioni
+import luoghi
 import palmares
 import tratti
 import valore
@@ -224,8 +225,8 @@ CAMPI_GIOCATORE = (
     ("prossimo_torneo", DATA_O_NULLA), ("iscrizione_automatica", bool),
     # Le gare a squadre vinte e perse da titolare, nelle sfide e nella coppa.
     ("gare_squadre_vinte", int), ("gare_squadre_perse", int),
-    # Dalla tappa 13, formato 8: il punteggio di classe più alto della carriera, D33 risposta 9.
-    ("classe_migliore", float),
+    # Dalla tappa 13, formato 8: il punteggio di classe più alto della carriera, D33 risposta 9, e il comune di provenienza.
+    ("classe_migliore", float), ("luogo", str),
 )
 
 
@@ -627,8 +628,9 @@ _CONVERSIONI_POLISPORTIVA = tuple((campo, conversione_a_json(tipo)) for campo, t
 class Giocatore:
     def __init__(self, id_giocatore, datetime_creazione_sim, **kwargs):
         self.id = id_giocatore
-        # Il temperamento nasce dal numero del giocatore, senza toccare il caso del mondo.
+        # Il temperamento nasce dal numero del giocatore, senza toccare il caso del mondo; dalla tappa 13 anche il comune di provenienza.
         self.temperamento = temperamento_innato(id_giocatore)
+        self.luogo = luoghi.luogo_del_giocatore(id_giocatore)
         self.infortunio_sede = None
         # La data simulata dell'ultimo incontro, l'impegno del giorno della tappa 12: chi nasce non ne ha ancora giocati.
         self.ultimo_impegno = None

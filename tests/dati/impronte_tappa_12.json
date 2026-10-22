@@ -1,18 +1,18 @@
 {
- "nota": "Tappa 13, revisione e risposte 35-38: norma dei fattori, reputazione, stipendio maturato, ricerca del computer, riserva di due ore",
+ "nota": "Tappa 13: il comune di provenienza di giocatori e allenatori, richiesta di Gabriele del 22 ottobre 2026",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "b0c7027fc40e0752b000eaf60e1ad8bc320496d5a8778c8b08ee47b21d5201af",
+  "sha256": "b50ad6b30356bb8db398eeacf461312c85d8bf854a6fea6bc6acc6888da7ff1a",
   "vivi": 682,
   "attivi": 682,
   "tesserati": 603,
   "polisportive": 41
  },
  "mondo_a_regime": {
-  "sha256": "394e75c556de6c5690a1ecf6c6eeccef2990cef563ea99b683873c8bbfee4278",
+  "sha256": "e6e0a9c9133933a3c9234a3a22321746e8b089f30c4e3c6cae13f5d33f7249b5",
   "vivi": 1659,
   "attivi": 1259,
   "tesserati": 1078,

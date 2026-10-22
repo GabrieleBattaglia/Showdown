@@ -42,6 +42,7 @@ import contratti
 import economia
 import formule
 import infortuni
+import luoghi
 import mercato
 import modelli_torneo
 import palmares
@@ -432,6 +433,7 @@ def scheda_giocatore(g, mondo):
     righe = [
         f"[{etichetta}] ID: {g.id} | {nome_completo(g)} | {'Uomo' if g.sesso == 'm' else 'Donna'}, {anni(g)} anni | Valore: {numero(g.indice_collettivo_valore)} | "
         f"Classe: {classe_scheda(g)} | Classe migliore della carriera: {classe.codice(g.livello_migliore())}",
+        *([f"Provenienza: {luoghi.descrivi(g.luogo)}"] if getattr(g, "luogo", "") else []),
         f"Descrizione: {g.descrizione_fisica}",
         f"Fisico: {g.altezza} cm e {g.peso} kg | Indole: {indole(g)} | Ambizione: {ambizione(g)} | Punti allenamento: {punti(g.punti_allenamento)} | "
         f"Gloria richiesta: {intero(g.gloria_richiesta)}",
@@ -694,6 +696,8 @@ def scheda_allenatore(a, mondo):
     ruolo = "ALLENATRICE" if a.sesso == "f" else "ALLENATORE"
     righe = [f"[{ruolo}] {nome_completo(a)} | {'Uomo' if a.sesso == 'm' else 'Donna'}, {int(a.eta_anni(oggi))} anni | {a.visus.capitalize()} | "
              f"Classe da {ruolo.lower()}: {a.codice}"]
+    if a.luogo:
+        righe.append(f"Provenienza: {luoghi.descrivi(a.luogo)}")
     if a.tipo == staff.EX:
         g = mondo.giocatori.get(a.giocatore_id)
         provenienza = f", ha chiuso la carriera con {a.club_di_provenienza}" if a.club_di_provenienza else ""

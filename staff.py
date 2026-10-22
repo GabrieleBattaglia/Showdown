@@ -21,6 +21,7 @@ import classe as modulo_classe
 import contratti
 import descrizioni
 import economia
+import luoghi
 from costanti import (
     ANNI_MINIMI_DA_ALLENATORE,
     ANNO_SIMULAZIONE_GIORNI,
@@ -74,6 +75,7 @@ CAMPI_ALLENATORE = (
     ("polisportiva", TESTO_O_NULLA), ("ruolo", TESTO_O_NULLA), ("contratto_stipendio", int), ("contratto_scadenza", DATA_O_NULLA),
     ("rinnovo_stipendio", int), ("rinnovo_scadenza", DATA_O_NULLA), ("proposte_rinnovo", int), ("ultima_trattativa", DATA_O_NULLA),
     ("prelazione", TESTO_O_NULLA), ("prelazione_fino", DATA_O_NULLA), ("riservato_fino", DATA_O_NULLA), ("diario", DIARIO),
+    ("luogo", str),
 )
 _CONVERSIONI_ALLENATORE = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_ALLENATORE)
 
@@ -113,6 +115,8 @@ class Allenatore:
         self.riservato_fino = None
         # Vero se la fine è il minimo oltre l'età estratta, per sparpaglia_la_fine: un dato di lavoro, non si salva.
         self.fine_minima = False
+        # Il comune di provenienza: l'ex giocatore tiene il suo, il nato lo riceve dal suo numero.
+        self.luogo = ""
         self.diario = []
 
     def annota(self, data, testo):
@@ -232,6 +236,7 @@ def ex_giocatore(numero, g, oggi, rng, club=None, fedelta=0.0):
     a = Allenatore(numero, EX, livello_da_allenatore(g.classe_migliore), g.nome, g.cognome, g.sesso, visus,
                    oggi - datetime.timedelta(days=g.eta), fine, giocatore_id=g.id)
     a.fine_minima = minima
+    a.luogo = g.luogo
     a.club_di_provenienza = club
     a.fedelta_di_provenienza = fedelta if club is not None else 0.0
     return a
@@ -262,6 +267,7 @@ def nato(numero, oggi, rng, eta_giorni=None):
     a = Allenatore(numero, NATO, livello, nome, cognome, sesso, visus, oggi - datetime.timedelta(days=eta_giorni),
                    fine, etamorte=etamorte, tratti=descrizioni.genera_tratti(sesso, rng))
     a.fine_minima = minima
+    a.luogo = luoghi.luogo_dell_allenatore(numero)
     return a
 
 

@@ -75,6 +75,7 @@ import zlib
 import classe as modulo_classe
 import contratti
 import economia
+import luoghi
 import percorsi
 import staff
 import tratti
@@ -540,6 +541,8 @@ def _dal_formato_7(documento):
     dati = documento["mondo"]
     for g in dati["giocatori"]:
         g.setdefault("classe_migliore", CLASSE_MIGLIORE_DA_CALCOLARE)
+        # Il comune di provenienza, richiesta di Gabriele del 22 ottobre 2026: dal numero del giocatore, come alla nascita.
+        g.setdefault("luogo", luoghi.luogo_del_giocatore(g["id"]))
     for p in dati["polisportive"].values():
         p.setdefault("staff", [0, 0, 0])
         # La voce nuova dei conti, a zero, nel mese in corso e in ogni bilancio: gli stipendi dello staff.

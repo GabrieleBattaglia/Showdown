@@ -27,6 +27,8 @@ FILE_MONDO_COPIA_VECCHIO = FILE_MONDO_VECCHIO + ".bak"
 FILE_NOMI_M = "nomi_maschili.txt"
 FILE_NOMI_F = "nomi_femminili.txt"
 FILE_COGNOMI = "cognomi.txt"
+# I comuni italiani di provenienza, con provincia, regione e abitanti, nella cartella dati: tappa 13, richiesta di Gabriele.
+FILE_LUOGHI = "luoghi_italiani.json"
 ANNO_SIMULAZIONE_GIORNI = 108
 PROBABILITA_IPOVEDENTE_CREAZIONE = 65.0
 # Polisportive del computer.
