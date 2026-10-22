@@ -61,7 +61,6 @@ from costanti import (
     FASCE_AMBIZIONE,
     FASCE_COSTANZA,
     FASCE_TEMPERAMENTO,
-    GIORNI_PRELAZIONE,
     INDOLI,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
@@ -1325,8 +1324,11 @@ def _fatti_dello_staff(rapporto):
         frasi.append(f"{usciti[0].upper()}{usciti[1:]}: lo staff si guarda con Ctrl+H.")
     if rapporto.get("tue_prelazioni"):
         n = rapporto["tue_prelazioni"]
-        frasi.append(f"{conta(n, 'tuo tesserato ritirato può', 'tuoi tesserati ritirati possono')} allenare: per {GIORNI_PRELAZIONE} giorni "
-                     f"puoi {'assumerlo' if n == 1 else 'assumerli'} prima degli altri, dal mercato degli allenatori con Ctrl+Maiusc+G.")
+        # La scadenza vera, la prima se sono più d'uno: dopo un recupero lungo i dieci giorni possono essere già in parte passati.
+        fino = rapporto.get("prelazione_fino")
+        quando = f" {'almeno ' if n > 1 else ''}fino al {data_breve(fino)}" if fino else ""
+        frasi.append(f"{conta(n, 'tuo tesserato ritirato può', 'tuoi tesserati ritirati possono')} allenare: puoi {'assumerlo' if n == 1 else 'assumerli'} "
+                     f"prima degli altri{quando}, dal mercato degli allenatori con Ctrl+Maiusc+G.")
     if rapporto.get("tuo_staff_in_scadenza"):
         frasi.append(f"{conta(rapporto['tuo_staff_in_scadenza'], 'contratto del tuo staff sta', 'contratti del tuo staff stanno')} per scadere: si rinnovano con Ctrl+H.")
     return frasi
@@ -2186,7 +2188,7 @@ def somma_rapporti(primo, secondo):
     Due riepiloghi di avanzamento sommati, con l'ora del secondo: il totale di una sessione. Dalla
     tappa 12 le notizie si accodano, e le sfide in attesa sono quelle della fine del secondo.
     """
-    ultimi = ("ora", "sfide_in_attesa", "riservati")
+    ultimi = ("ora", "sfide_in_attesa", "riservati", "prelazione_fino")
     return {chiave: primo[chiave] + secondo[chiave] for chiave in primo if chiave not in ultimi} | {chiave: secondo[chiave] for chiave in ultimi}
 
 
@@ -2195,7 +2197,7 @@ def chiusura(durata_sessione, comandi, messaggi, rapporto_sessione=None):
     righe = [f"Sessione di {durata(durata_sessione)}, con {conta(comandi, 'comando', 'comandi')}."]
     if rapporto_sessione and rapporto_sessione["ticks"]:
         # Dalla tappa 13 senza gli allenatori riservati: alla chiusura la riserva è quasi sempre scaduta.
-        fatti = _fatti_avanzamento(rapporto_sessione | {"riservati": ""})
+        fatti = _fatti_avanzamento(rapporto_sessione | {"riservati": "", "prelazione_fino": None})
         righe.append(f"Nella sessione il mondo è andato avanti di {conta(rapporto_sessione['giorni'], 'giorno simulato', 'giorni simulati')}. {fatti}")
     righe.extend(messaggi)
     righe.append("Arrivederci!")

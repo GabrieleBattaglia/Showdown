@@ -2051,7 +2051,7 @@ class Mondo:
         Il riepilogo di un avanzamento in cui non è successo niente. Dalla tappa 12 ha anche le notizie,
         le frasi dei risultati dei tuoi, una lista nuova a ogni riepilogo.
         """
-        return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora, "notizie": [], "riservati": ""}
+        return dict.fromkeys(CHIAVI_RAPPORTO, 0) | {"ora": ora, "notizie": [], "riservati": "", "prelazione_fino": None}
 
     def prossimo_avanzamento(self):
         """L'istante, in UTC, in cui maturerà il prossimo giorno simulato."""
@@ -2113,12 +2113,17 @@ class Mondo:
     def _notizia_dei_riservati(self, ora, rapporto):
         """
         La notizia degli allenatori nuovi riservati all'utente da questo avanzamento, risposta 38 di Gabriele
-        del 22 ottobre 2026: soltanto nel riepilogo, fra le notizie, con quanti sono, fino a che ora e la
-        classe del migliore; soltanto se l'utente ha una polisportiva.
+        del 22 ottobre 2026: soltanto nel riepilogo, con quanti sono, fino a che ora e la classe del migliore;
+        soltanto se l'utente ha una polisportiva. Anche le prelazioni sui suoi ritirati si contano qui, a fine
+        avanzamento, con la prima scadenza: in un recupero lungo possono scadere prima dell'apertura, e la
+        notizia prometteva dieci giorni che non c'erano più, terza revisione del 22 ottobre 2026.
         """
+        fine = ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE)
+        tuoi = [a for a in self.allenatori.values() if a.libero and a.prelazione is not None and a.riservato_fino == fine]
+        rapporto["tue_prelazioni"] = len(tuoi)
+        rapporto["prelazione_fino"] = min((a.prelazione_fino for a in tuoi), default=None)
         if not any(not p.is_cpu_controlled for p in self.polisportive.values()):
             return
-        fine = ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE)
         # I tuoi ritirati in prelazione hanno la loro notizia, con la loro scadenza: qui non si contano.
         nuovi = [a for a in self.allenatori.values() if a.libero and a.prelazione is None and a.riservato_fino == fine]
         if not nuovi:

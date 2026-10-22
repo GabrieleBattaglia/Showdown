@@ -797,7 +797,7 @@ def test_la_notizia_degli_allenatori_riservati_soltanto_nel_riepilogo(mondo):
     assert notizia.startswith("2 allenatori nuovi sono riservati a te fino alle ") and f"il migliore di classe {b.codice}" in notizia
     assert notizia in testi._fatti_avanzamento(rapporto | {"ticks": 1, "giorni": 1}) and rapporto["notizie"] == []
     # Risposta 38: soltanto nel riepilogo, senza suono e senza la barra.
-    assert sum(v for v in rapporto.values() if isinstance(v, int)) == 0
+    assert sum(v for k, v in rapporto.items() if isinstance(v, int) and k != "tue_prelazioni") == 0 and rapporto["tue_prelazioni"] == 1
     # Alla chiusura della sessione la riserva è quasi sempre scaduta: non si ripete.
     sessione = rapporto | {"ticks": 1, "giorni": 1}
     assert notizia not in testi.chiusura(datetime.timedelta(hours=3), 5, [], sessione)
@@ -814,3 +814,23 @@ def test_la_fine_minima_si_sa_dove_si_estrae():
 
     assert staff.fine_della_carriera(66 * 108, Estrae(71.0)) == (71 * 108, False) and 71 * 108 == 66 * 108 + 540
     assert staff.fine_della_carriera(73 * 108, Estrae(70.0)) == (73 * 108 + 540, True)
+
+
+
+def test_la_prelazione_si_conta_a_fine_avanzamento(mondo):
+    # La terza revisione: dopo un recupero lungo la prelazione può essere già scaduta, e la notizia diceva comunque dieci giorni.
+    mondo.fonda_polisportiva("Club di prova")
+    ora = adesso_utc()
+    fine = ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE)
+    ancora, scaduto = _allenatore(mondo, 20), _allenatore(mondo, 25)
+    for x in (ancora, scaduto):
+        x.riservato_fino = fine
+    ancora.prelazione, ancora.prelazione_fino = "Club di prova", INIZIO + datetime.timedelta(days=7)
+    rapporto = Mondo.rapporto_vuoto(INIZIO)
+    rapporto["tue_prelazioni"] = 2
+    mondo._notizia_dei_riservati(ora, rapporto)
+    assert rapporto["tue_prelazioni"] == 1 and rapporto["prelazione_fino"] == ancora.prelazione_fino
+    frasi = " ".join(testi._fatti_dello_staff(rapporto))
+    assert f"puoi assumerlo prima degli altri fino al {testi.data_breve(ancora.prelazione_fino)}, dal mercato" in frasi
+    # Chi ha perso la prelazione nel recupero resta soltanto fra i riservati, con la sua scadenza di due ore.
+    assert " a te fino alle " in rapporto["riservati"] and testi.nome_completo(scaduto) in rapporto["riservati"]
