@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 287 suoni, 262 della finestra e 25 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 288 suoni, 263 della finestra e 25 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 6 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -191,7 +191,7 @@ Finestra, contratti e allenamento, le notizie, 3 suoni.
 Nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo: mess_contratti_in_scadenza.
 Nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero: mess_contratto_scaduto.
 Nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento: mess_infortunio_in_allenamento.
-Finestra, staff, gli allenatori, 17 suoni.
+Finestra, staff, gli allenatori, 18 suoni.
 Si apre il dialogo dello staff della polisportiva, con Ctrl+H: mess_staff_aperto.
 Si apre il mercato degli allenatori, con Ctrl+Shift+G o con Assumi nel dialogo dello staff: mess_mercato_allenatori.
 Si apre il dialogo della cifra d'ingaggio di un allenatore: mess_cifra_ingaggio_allenatore.
@@ -202,6 +202,7 @@ L'allenatore accetta il rinnovo del contratto: mess_staff_rinnovo_concordato.
 L'allenatore rifiuta il rinnovo, e si può riprovare un altro giorno: mess_staff_rinnovo_rifiutato.
 Il terzo rifiuto del rinnovo, e l'allenatore non tratta più: mess_staff_rinnovo_chiuso.
 Si vuole assumere per un posto dello staff già occupato: mess_staff_posto_occupato.
+Si vuole assumere un allenatore in prelazione per un'altra tua polisportiva: mess_allenatore_in_prelazione.
 Si apre la scheda di un allenatore: mess_scheda_allenatore.
 Si apre il diario di un allenatore: mess_diario_allenatore.
 Nel mercato degli allenatori cambia il posto da offrire: mess_staff_posto_scelto.

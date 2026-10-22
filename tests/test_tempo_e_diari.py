@@ -206,9 +206,9 @@ def test_i_testi_dei_diari_e_della_conservazione(mondo):
                      f"20 marzo 2026: Entra nel mondo dello showdown, a {int(g.eta_anni)} anni: comincia a giocare, e la sua esperienza parte da zero."]
     g.diario.clear()
     assert testi.diario_giocatore(g) == f"Diario di {g.nome} {g.cognome}, ID 1: nessuna voce."
-    assert testi.conservazione(mondo) == "Le voci dei diari dei giocatori si conservano per sempre, quelle delle polisportive per sempre."
+    assert testi.conservazione(mondo) == "Le voci dei diari dei giocatori e degli allenatori si conservano per sempre, quelle delle polisportive per sempre."
     mondo.conservazione_diari = {"giocatori": 1, "polisportive": 90}
-    assert testi.conservazione(mondo) == "Le voci dei diari dei giocatori si conservano per 1 giorno simulato, quelle delle polisportive per 90 giorni simulati."
+    assert testi.conservazione(mondo) == "Le voci dei diari dei giocatori e degli allenatori si conservano per 1 giorno simulato, quelle delle polisportive per 90 giorni simulati."
     assert testi.vecchie_glorie(mondo) == "Le vecchie glorie: ancora nessuno è uscito di scena."
 
 

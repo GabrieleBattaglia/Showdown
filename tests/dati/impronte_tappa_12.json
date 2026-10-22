@@ -1,15 +1,15 @@
 {
- "nota": "Tappa 13, risposte 31-34: lo staff del computer pagato con lo sponsor e la carriera da allenatore fra 65 e 75 anni",
+ "nota": "Tappa 13, revisione e risposte 35-38: norma dei fattori, reputazione, stipendio maturato, ricerca del computer, riserva di due ore",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "a36ee6f8e80324782e2bd632ee7cedac61274bf9c4acb91fe326755641143702",
-  "vivi": 747,
-  "attivi": 747,
-  "tesserati": 670,
-  "polisportive": 45
+  "sha256": "b0c7027fc40e0752b000eaf60e1ad8bc320496d5a8778c8b08ee47b21d5201af",
+  "vivi": 682,
+  "attivi": 682,
+  "tesserati": 603,
+  "polisportive": 41
  },
  "mondo_a_regime": {
   "sha256": "394e75c556de6c5690a1ecf6c6eeccef2990cef563ea99b683873c8bbfee4278",

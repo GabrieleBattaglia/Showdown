@@ -187,7 +187,7 @@ def test_cambia_conservazione(finestra, monkeypatch):
     monkeypatch.setattr(dialoghi.Conservazione, "ShowModal", scegli)
     finestra.cambia_conservazione()
     assert finestra.mondo.conservazione_diari == {"giocatori": 60, "polisportive": 0}
-    assert finestra.vista.GetValue().startswith("Le voci dei diari dei giocatori si conservano per 60 giorni simulati, quelle delle polisportive per sempre.")
+    assert finestra.vista.GetValue().startswith("Le voci dei diari dei giocatori e degli allenatori si conservano per 60 giorni simulati, quelle delle polisportive per sempre.")
 
 
 def test_scelta_del_giocatore(app_wx, mondo):

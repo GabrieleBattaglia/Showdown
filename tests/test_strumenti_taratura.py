@@ -245,8 +245,9 @@ def test_i_bersagli_dello_staff_nella_prova_lunga():
     righe = sl.controlli_della_tappa_13(40, [7], {7: annuali})
     assert righe[0].startswith("Seme 7, lo staff per decennio: anno 10, con un capo 90,0 per cento, staff pieno 20,0, qualità 0,30, 0,50 e 0,70, ")
     assert "allenatori 900, liberi 40 (C 3, H 37)" in righe[0]
+    # Dalla risposta 37 non c'è più il bersaglio dei liberi: l'anno 25 con due liberi non conta.
     assert righe[1] == ("Seme 7, i bersagli dello staff della tappa 13: FUORI polisportive con un capo sotto il 95 per cento in 3 anni, dall'anno 20 "
-                        "all'anno 22, al più basso 90,0; allenatori liberi meno delle polisportive senza capo in 1 anni, dall'anno 25 all'anno 25; "
+                        "all'anno 22, al più basso 90,0; "
                         "staff oltre il 20 per cento del monte in 1 anni, dall'anno 30 all'anno 30.")
     for m in annuali:
         m["con_capo"], m["allenatori_liberi"], m["staff_sul_monte"] = 96.0, 40, 6.0

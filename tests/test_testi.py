@@ -201,7 +201,7 @@ def test_la_scheda_della_tappa_11(mondo):
     scheda = testi.scheda_giocatore(g, mondo)
     _accessibile(scheda)
     righe = scheda.splitlines()
-    assert re.search(r"\| Classe: [A-K]\d(, al \d+ per cento verso [A-K]\d|, la più alta)$", righe[0])
+    assert re.search(r"\| Classe: [A-K]\d(, al \d+ per cento verso [A-K]\d|, la più alta) \| Classe migliore della carriera: [A-K]\d$", righe[0])
     assert f"| Indole: {testi.indole(g)} | Ambizione: {testi.ambizione(g)} | Punti allenamento: 38,5 | " in righe[2]
     assert righe[3] == f"Allenamento: programma secondo la sua indole, intensità normale, costanza recente {testi.costanza(g)}"
     assert "talento" in scheda and "maturazione tardiva" in scheda

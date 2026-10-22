@@ -436,7 +436,7 @@ class Conservazione(_Dialogo):
         super().__init__(genitore, "Conservazione dei diari")
         self.risultato = None
         self.sizer.Add(wx.StaticText(self.pannello, label="Per quanti giorni simulati si conservano le voci dei diari. Zero vuol dire per sempre."), 0, wx.ALL, 8)
-        self.etichetta("Giorni per i diari dei &giocatori")
+        self.etichetta("Giorni per i diari dei &giocatori e degli allenatori")
         self.giocatori = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=3650, initial=conservazione["giocatori"]))
         self.etichetta("Giorni per i diari delle &polisportive")
         self.polisportive = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=3650, initial=conservazione["polisportive"]))
@@ -1835,6 +1835,8 @@ class MercatoAllenatori(_DialogoDelloStaff):
             return "mosse_finite"
         if self.poli.staff[posto]:
             return "staff_posto_occupato"
+        if a.prelazione is not None and a.prelazione != self.poli.nome:
+            return "allenatore_in_prelazione"
         return "nessuna_selezione"
 
     def chiedi_la_cifra(self, a, posto):

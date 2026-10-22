@@ -173,7 +173,9 @@ def test_l_ingaggio_accettato(mercato_aperto, mondo, messaggi, suonati, cifra_ch
     monkeypatch.setattr(modulo_mondo, "caso", lambda _p: True)
     a = d.righe[0]
     richiesta = staff.ingaggio_richiesto(a, staff.CAPO, poli)
-    assert richiesta == staff.stipendio_richiesto(a, staff.CAPO) * MESI_DI_INGAGGIO
+    # Dal progetto 3.1 e dalla revisione l'ingaggio porta la reputazione del club, fra la metà e il doppio.
+    stipendi = staff.stipendio_richiesto(a, staff.CAPO) * MESI_DI_INGAGGIO
+    assert stipendi / 2 <= richiesta <= stipendi * 2
     cassa = poli.cassa
     domanda = testi.domanda_offerta_allenatore(a, poli, 0, richiesta, probabilita_accettazione(richiesta, richiesta), mondo)
     d.trovati.SetSelection(0)
@@ -372,3 +374,13 @@ def test_dopo_un_rifiuto_restano_le_cifre_scritte(staff_aperto, mondo, messaggi,
     d.stipendio.SetValue(offerta)
     d.rinnova()
     assert suonati[-1] == "staff_rinnovo_rifiutato" and d.stipendio.GetValue() == offerta
+
+
+
+def test_l_allenatore_in_prelazione_per_un_altra_tua_polisportiva(mercato_aperto, mondo, messaggi, suonati):
+    # La revisione del 22 ottobre 2026: il suo suono, non quello del tasto a vuoto.
+    a = mercato_aperto.righe[0]
+    a.prelazione, a.prelazione_fino = "Un altro tuo club", ORA + datetime.timedelta(days=5)
+    mercato_aperto.trovati.SetSelection(0)
+    mercato_aperto.ingaggia()
+    assert suonati == ["allenatore_in_prelazione"] and "soltanto Un altro tuo club" in messaggi[-1]

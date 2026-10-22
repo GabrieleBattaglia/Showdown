@@ -14,6 +14,7 @@ Non conosce wx né il mondo: il mondo tiene gli allenatori in mondo.allenatori e
 """
 
 import datetime
+import functools
 import math
 
 import classe as modulo_classe
@@ -31,6 +32,7 @@ from costanti import (
     FATTORI_ALLENAMENTO_STAFF,
     FATTORI_FEDELTA_STAFF,
     FATTORI_RISCHIO_STAFF,
+    GLORIA_RICHIESTA_ALLENATORE,
     LIVELLO_MINIMO_ALLENATORE,
     MEDIA_CLASSE_NATI_ALLENATORI,
     MESI_CONTRATTO_MAX,
@@ -42,6 +44,7 @@ from costanti import (
     QUALITA_MINIMA_ALLENATORE,
     QUOTA_STIPENDIO_ASSISTENTE,
     QUOTA_VEDENTI_ALLENATORI,
+    REPUTAZIONE_MINIMA,
     RINCARO_DURATA_RINNOVO,
     SCONTO_FEDELTA_RINNOVO,
     STIPENDIO_STAFF_MASSIMO,
@@ -135,6 +138,12 @@ class Allenatore:
         return qualita(self.livello)
 
     @property
+    def gloria_richiesta(self):
+        """La gloria che chiede a una polisportiva, progetto 3.1: in linea retta sulla qualità, da H0 ad A1. Non si salva."""
+        basso, alto = GLORIA_RICHIESTA_ALLENATORE
+        return basso + (alto - basso) * (self.qualita - QUALITA_MINIMA_ALLENATORE) / (1.0 - QUALITA_MINIMA_ALLENATORE)
+
+    @property
     def libero(self):
         return self.polisportiva is None
 
@@ -180,11 +189,27 @@ def livello_da_allenatore(classe_migliore):
 def eta_di_fine(eta_inizio_giorni, rng):
     """
     L'età in giorni a cui un allenatore smette, estratta fra ETA_FINE_ALLENATORE_ANNI; se l'allenatore
-    comincia dopo, la fine si sposta da lì di ANNI_MINIMI_DA_ALLENATORE.
+    comincia dopo, la fine si sposta da lì di ANNI_MINIMI_DA_ALLENATORE, progetto 1.4 e risposta 36. Fino
+    al 22 ottobre 2026 i cinque anni si davano anche a chi cominciava prima dell'età estratta, e la
+    carriera degli ex giocatori si allungava, contro la risposta 33; l'estrazione dal caso è la stessa.
     """
     fine = round(rng.uniform(*ETA_FINE_ALLENATORE_ANNI) * ANNO_SIMULAZIONE_GIORNI)
-    minima = eta_inizio_giorni + round(ANNI_MINIMI_DA_ALLENATORE * ANNO_SIMULAZIONE_GIORNI)
-    return max(fine, minima)
+    if fine > eta_inizio_giorni:
+        return fine
+    return eta_inizio_giorni + round(ANNI_MINIMI_DA_ALLENATORE * ANNO_SIMULAZIONE_GIORNI)
+
+
+def sparpaglia_la_fine(a, oggi, rng):
+    """
+    All'aggiornamento dal formato 7: chi ha la fine spostata di ANNI_MINIMI_DA_ALLENATORE da oggi, perché
+    nasce allenatore già oltre l'età estratta, smette in un giorno a caso di quegli anni, non tutti
+    insieme. Lo ha visto la revisione del 22 ottobre 2026: quasi tutti gli ex giocatori della migrazione
+    smettevano lo stesso giorno, e gli staff si svuotavano in blocco.
+    """
+    minimo = round(ANNI_MINIMI_DA_ALLENATORE * ANNO_SIMULAZIONE_GIORNI)
+    eta = a.eta(oggi)
+    if a.eta_fine == eta + minimo:
+        a.eta_fine = eta + rng.randint(1, minimo)
 
 
 def ex_giocatore(numero, g, oggi, rng, club=None, fedelta=0.0):
@@ -242,7 +267,16 @@ def libera(a):
 
 def stipendio_richiesto(a, ruolo):
     """Lo stipendio mensile che l'allenatore chiede per il ruolo: in linea retta sulla qualità, la metà da assistente."""
-    quota = (a.qualita - QUALITA_MINIMA_ALLENATORE) / (1.0 - QUALITA_MINIMA_ALLENATORE)
+    return stipendio_del_livello(a.livello, ruolo)
+
+
+@functools.cache
+def stipendio_del_livello(livello, ruolo):
+    """
+    Lo stipendio di stipendio_richiesto, che dipende soltanto dal livello e dal ruolo: si calcola una volta
+    per coppia, perché il computer lo chiede ogni giorno per tutti i liberi, revisione del 22 ottobre 2026.
+    """
+    quota = (qualita(livello) - QUALITA_MINIMA_ALLENATORE) / (1.0 - QUALITA_MINIMA_ALLENATORE)
     euro = STIPENDIO_STAFF_MINIMO + (STIPENDIO_STAFF_MASSIMO - STIPENDIO_STAFF_MINIMO) * quota
     if ruolo == ASSISTENTE:
         euro *= QUOTA_STIPENDIO_ASSISTENTE
@@ -251,16 +285,29 @@ def stipendio_richiesto(a, ruolo):
 
 def ingaggio_richiesto(a, ruolo, poli=None):
     """
-    Il premio d'ingaggio che l'allenatore chiede per firmare, come i giocatori: MESI_DI_INGAGGIO stipendi.
-    Alla polisportiva in cui ha chiuso la carriera da giocatore chiede meno, come i giocatori fedeli ai
-    rinnovi, fino a un quarto in meno alla fedeltà piena: D33 risposta 15.
+    Il premio d'ingaggio che l'allenatore chiede per firmare, come i giocatori: MESI_DI_INGAGGIO stipendi,
+    per il fattore di reputazione della polisportiva, progetto 3.1, che la revisione del 22 ottobre 2026 ha
+    visto mancare. Alla polisportiva in cui ha chiuso la carriera da giocatore chiede meno, come i giocatori
+    fedeli ai rinnovi, fino a un quarto in meno alla fedeltà piena: D33 risposta 15.
     """
-    return economia.arrotonda(stipendio_richiesto(a, ruolo) * MESI_DI_INGAGGIO * sconto_di_provenienza(a, poli))
+    reputazione = economia.fattore_reputazione(a, poli) if poli is not None else 1.0
+    return economia.arrotonda(stipendio_richiesto(a, ruolo) * MESI_DI_INGAGGIO * reputazione * sconto_di_provenienza(a, poli))
 
 
 def ingaggio_minimo(stipendio):
-    """Il premio d'ingaggio più basso che un allenatore con quello stipendio può chiedere: con lo sconto pieno della provenienza, prima dell'arrotondamento."""
-    return stipendio * MESI_DI_INGAGGIO * (1.0 - SCONTO_FEDELTA_RINNOVO)
+    """
+    Il premio d'ingaggio più basso che un allenatore con quello stipendio può chiedere: con la reputazione
+    più bassa e lo sconto pieno della provenienza, prima dell'arrotondamento.
+    """
+    return stipendio * MESI_DI_INGAGGIO * REPUTAZIONE_MINIMA * (1.0 - SCONTO_FEDELTA_RINNOVO)
+
+
+def stipendio_massimo_per_la_cassa(spendibile, rialzo):
+    """
+    Lo stipendio più alto di un allenatore la cui offerta d'ingaggio, col rialzo del computer, può stare
+    nello spendibile: l'inverso per eccesso di ingaggio_minimo e degli arrotondamenti alla decina.
+    """
+    return ((spendibile + 5) / rialzo + 5) / ingaggio_minimo(1.0)
 
 
 def durata_proposta(a, oggi):
@@ -377,3 +424,24 @@ def qualita_media(polisportive, allenatori):
 def media(qualita_di_ognuna):
     """La media delle qualità date, zero se non ce n'è nessuna: la usa anche il mondo, che le ha già calcolate."""
     return sum(qualita_di_ognuna) / len(qualita_di_ognuna) if qualita_di_ognuna else 0.0
+
+
+# La norma dei fattori, risposta 35 di Gabriele del 22 ottobre 2026: le ancore in linea retta sulla media
+# delle qualità non tengono il mondo come prima, perché la spezzata non è dritta e i club senza staff
+# stanno tutti all'ancora più bassa; e in un mondo senza allenatori, al primo assunto, tutti gli altri
+# scendevano di colpo a 0,85. Ogni giorno i fattori si dividono per la loro media sui tesserati, così la
+# media di tutti i tesserati vale 1 per ogni effetto, e restano veri i rapporti fra i club.
+NORMA_NEUTRA = (1.0, 1.0, 1.0)
+
+
+def norma(fattori_e_tesserati):
+    """La media dei tre fattori, pesata coi tesserati di ogni polisportiva: coppie di fattori e numero di tesserati. Neutra senza tesserati."""
+    totale = sum(quanti for _fattori, quanti in fattori_e_tesserati)
+    if totale <= 0:
+        return NORMA_NEUTRA
+    return tuple(sum(fattori[i] * quanti for fattori, quanti in fattori_e_tesserati) / totale for i in range(3))
+
+
+def normalizzati(fattori_grezzi, norma_del_giorno):
+    """I tre fattori divisi per la norma del giorno."""
+    return tuple(f / n for f, n in zip(fattori_grezzi, norma_del_giorno, strict=True))

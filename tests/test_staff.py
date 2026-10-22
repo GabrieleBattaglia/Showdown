@@ -237,13 +237,31 @@ def test_i_fattori_sui_giocatori(mondo):
     # Lo staff medio è la media dei due club, uno col capo A1 e uno senza.
     q = staff.qualita_dello_staff(1, [None, None])
     assert mondo.qualita_media_dello_staff == pytest.approx(q / 2)
-    atteso = staff.fattori(q, q / 2)
-    assert tesserato.fattore_staff == pytest.approx(atteso[0]) and tesserato.fattore_rischio_staff == pytest.approx(atteso[1])
-    assert atteso[0] > 1.0 > atteso[1]
-    assert dell_altro.fattore_staff == libero.fattore_staff == 0.85 and libero.fattore_rischio_staff == 1.15
-    # Chi lascia il club torna senza staff.
+    col_capo, senza = staff.fattori(q, q / 2), staff.fattori(0.0, q / 2)
+    assert col_capo[0] > 1.0 > col_capo[1] and senza == staff.FATTORI_SENZA_STAFF
+    # Dalla risposta 35 i fattori si dividono per la loro media sui tesserati: il mondo vale 1, e i rapporti
+    # fra i club restano quelli delle ancore.
+    norma = tuple((a + b) / 2 for a, b in zip(col_capo, senza, strict=True))
+    assert tesserato.fattore_staff == pytest.approx(col_capo[0] / norma[0]) and tesserato.fattore_rischio_staff == pytest.approx(col_capo[1] / norma[1])
+    assert (tesserato.fattore_staff + dell_altro.fattore_staff) / 2 == pytest.approx(1.0)
+    assert (tesserato.fattore_rischio_staff + dell_altro.fattore_rischio_staff) / 2 == pytest.approx(1.0)
+    assert tesserato.fattore_staff / dell_altro.fattore_staff == pytest.approx(col_capo[0] / senza[0])
+    assert dell_altro.fattore_staff == libero.fattore_staff == pytest.approx(0.85 / norma[0]) and libero.fattore_rischio_staff == pytest.approx(1.15 / norma[1])
+    # Chi lascia il club torna senza staff, con la norma del giorno.
     mondo._lascia(poli, tesserato)
-    assert tesserato.fattore_staff == 0.85
+    assert tesserato.fattore_staff == pytest.approx(0.85 / norma[0])
+
+
+def test_la_norma_toglie_lo_scalino_del_primo_allenatore(mondo):
+    # Prima della risposta 35, in un mondo senza allenatori, al primo assunto tutti gli altri scendevano di colpo a 0,85.
+    clubs = [mondo.fonda_polisportiva(f"Club {i}") for i in range(10)]
+    for club, gid in zip(clubs, range(1, 11), strict=True):
+        mondo._tessera(club, mondo.giocatori[gid])
+    _nello_staff(mondo, clubs[0], _allenatore(mondo, 60), 1)
+    mondo.aggiorna_fattori_staff()
+    fattori = [mondo.giocatori[gid].fattore_staff for gid in range(1, 11)]
+    assert sum(fattori) / len(fattori) == pytest.approx(1.0)
+    assert min(fattori) > 0.98
 
 
 def test_l_allenamento_e_gli_infortuni_seguono_lo_staff(mondo):
@@ -265,11 +283,13 @@ def test_la_fedelta_segue_lo_staff(mondo):
     for posto, livello in enumerate((1, 1, 1)):
         _nello_staff(mondo, poli, _allenatore(mondo, livello), posto)
     mondo.aggiorna_fattori_staff()
-    # Lo staff migliore cresce del 25 per cento, chi non ne ha cala all'85 per cento.
+    # Lo staff migliore cresce del 25 per cento rispetto allo staff medio, chi non ne ha cala all'85 per cento;
+    # dalla risposta 35 i due fattori si dividono per la loro media, e il mondo cresce come prima.
     g.fedelta = h.fedelta = 0.0
     mondo._aggiungi_fedelta(g, poli, FEDELTA_PER_MESE, INIZIO)
     mondo._aggiungi_fedelta(h, altro, FEDELTA_PER_MESE, INIZIO)
-    assert g.fedelta == pytest.approx(FEDELTA_PER_MESE * 1.25) and h.fedelta == pytest.approx(FEDELTA_PER_MESE * 0.85)
+    assert g.fedelta / h.fedelta == pytest.approx(1.25 / 0.85)
+    assert (g.fedelta + h.fedelta) / 2 == pytest.approx(FEDELTA_PER_MESE)
 
 
 # Il formato 8 e l'aggiornamento dal 7.
@@ -318,6 +338,22 @@ def test_l_aggiornamento_dal_formato_7(mondo):
     assert [a.giocatore_id for a in ex] == [gid for gid, g in sorted(nuovo.giocatori.items()) if g.ritirato and classe.livello(g.classe_migliore) <= 70]
     assert all(g.classe_migliore == pytest.approx(classe.punteggio(g)) for g in nuovo.giocatori.values())
     assert nuovo.prossimo_allenatore == max(nuovo.allenatori, default=0) + 1
+    # La revisione del 22 ottobre 2026: la notizia della partenza resta nel diario delle polisportive dell'utente.
+    assert nuovo.polisportive[poli.nome].diario[0]["testo"].startswith("Arriva lo staff, un capo e due assistenti")
+
+
+def test_alla_migrazione_chi_e_oltre_l_eta_di_fine_non_smette_con_tutti(mondo):
+    # La revisione del 22 ottobre 2026: gli ex giocatori della migrazione già oltre l'età estratta smettevano tutti lo stesso giorno.
+    anziani = list(mondo.giocatori.values())[:12]
+    for g in anziani:
+        g.ritirato = True
+        g.eta = 88 * 108
+        g.etamorte = g.eta + 10_000
+        g.classe_migliore = classe.soglia(30)
+    mondo.fai_nascere_lo_staff()
+    oggi = mondo.datetime_corrente_simulazione
+    resti = [a.eta_fine - a.eta(oggi) for a in mondo.allenatori.values() if a.tipo == staff.EX]
+    assert len(resti) == 12 and all(1 <= r <= 540 for r in resti) and len(set(resti)) > 6
 
 
 # Il passo 2: lo stipendio, l'ingaggio, i contratti, la paga e le mosse del computer.
@@ -438,8 +474,9 @@ def test_il_computer_rinnova_o_aspetta_uno_migliore(mondo):
     assert not contratti.ha_rinnovo(mio)
 
 
-def test_un_ora_di_riserva_per_l_utente(mondo):
-    # Regola di Gabriele del 21 ottobre 2026, risposta 29: chi diventa allenatore resta dell'utente per un'ora vera.
+def test_due_ore_di_riserva_per_l_utente(mondo):
+    # Regola di Gabriele del 21 ottobre 2026, risposta 29: chi diventa allenatore resta dell'utente per un tempo vero,
+    # un'ora e dalla risposta 37 due ore.
     cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
     cpu.cassa = 100_000
     for a in list(mondo.allenatori.values()):
@@ -447,7 +484,8 @@ def test_un_ora_di_riserva_per_l_utente(mondo):
     ora = datetime.datetime(2026, 10, 21, 20, 0, tzinfo=datetime.UTC)
     mondo._ora_reale = ora
     a = mondo._nasce_un_allenatore(INIZIO)
-    assert a.riservato_fino == ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE) == ora + datetime.timedelta(hours=1)
+    # Dalla risposta 37 la riserva è di due ore.
+    assert a.riservato_fino == ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE) == ora + datetime.timedelta(hours=2)
     random.seed(4)
     for _ in range(30):
         mondo._staff_del_computer([cpu], INIZIO)
@@ -479,7 +517,7 @@ def test_all_aggiornamento_gli_allenatori_sono_dell_utente_per_un_ora(mondo):
     nuovo = Mondo()
     prima = adesso_utc()
     archivio.costruisci(contenuto, nuovo)
-    assert nuovo.allenatori and all(prima + datetime.timedelta(minutes=59) < a.riservato_fino <= adesso_utc() + datetime.timedelta(minutes=60)
+    assert nuovo.allenatori and all(prima + datetime.timedelta(minutes=119) < a.riservato_fino <= adesso_utc() + datetime.timedelta(minutes=120)
                                     for a in nuovo.allenatori.values())
 
 
@@ -510,7 +548,7 @@ def test_i_testi_dello_staff(mondo):
     assert "chiede" in testi.riga_allenatore(libero, mondo) and ("nato allenatore" if libero.sesso == "m" else "nata allenatrice") in testi.riga_allenatore(libero, mondo)
     # La riserva di un'ora si legge nell'elenco.
     libero.riservato_fino = adesso_utc() + datetime.timedelta(minutes=30)
-    assert "riservato a te fino alle" in testi.riga_allenatore(libero, mondo)
+    assert "a te fino alle" in testi.riga_allenatore(libero, mondo)
 
 
 def test_la_scheda_dell_ex_giocatore(mondo):
@@ -526,7 +564,7 @@ def test_la_notizia_dello_staff_all_aggiornamento(mondo):
     _allenatore(mondo, 30)
     mondo.staff_appena_nato = True
     testo = testi.apertura(mondo, "caricato", [], None, adesso_utc(), adesso_utc())
-    assert "il mercato degli allenatori è aperto, con 1 allenatore libero" in testo and "per un'ora sono riservati a te" in testo
+    assert "il mercato degli allenatori è aperto, con 1 allenatore libero" in testo and "per due ore sono riservati a te" in testo
     mondo.staff_appena_nato = False
     assert "mercato degli allenatori" not in testi.apertura(mondo, "caricato", [], None, adesso_utc(), adesso_utc())
 
@@ -605,3 +643,153 @@ def test_l_offerta_minima_del_computer_sta_sotto_ogni_offerta(mondo):
             minima = (staff.ingaggio_minimo(staff.stipendio_richiesto(a, ruolo)) - 5) * RIALZO_CPU - 5
             assert minima <= economia.arrotonda(staff.ingaggio_richiesto(a, ruolo, poli) * RIALZO_CPU)
             assert minima <= economia.arrotonda(staff.ingaggio_richiesto(a, ruolo) * RIALZO_CPU)
+
+
+
+# La revisione del 22 ottobre 2026 e le risposte 35-38.
+
+class _Fisso:
+    """Un caso che estrae sempre lo stesso numero."""
+
+    def __init__(self, valore):
+        self.valore = valore
+
+    def uniform(self, _a, _b):
+        return self.valore
+
+
+def test_i_cinque_anni_minimi_soltanto_oltre_l_eta_estratta():
+    # Risposta 36 e progetto 1.4: chi comincia prima dell'età estratta smette a quella, chi comincia dopo allena cinque anni.
+    assert staff.eta_di_fine(66 * 108, _Fisso(68.0)) == 68 * 108
+    assert staff.eta_di_fine(73 * 108, _Fisso(70.0)) == 73 * 108 + 540
+
+
+def test_l_ingaggio_porta_la_reputazione(mondo):
+    povero, ricco = mondo.fonda_polisportiva("Club povero"), mondo.fonda_polisportiva("Club ricco")
+    povero.gloria, ricco.gloria = 20, 5_000
+    a = _allenatore(mondo, 1)
+    due_stipendi = staff.stipendio_richiesto(a, staff.CAPO) * MESI_DI_INGAGGIO
+    assert staff.ingaggio_richiesto(a, staff.CAPO, povero) == economia.arrotonda(due_stipendi * 2.0)
+    assert staff.ingaggio_richiesto(a, staff.CAPO, ricco) == economia.arrotonda(due_stipendi * 0.5)
+    assert staff.ingaggio_richiesto(a, staff.CAPO) == due_stipendi
+    assert 150.0 <= _allenatore(mondo, 70).gloria_richiesta < a.gloria_richiesta == 600.0
+
+
+def test_chi_smette_nello_staff_riceve_il_maturato(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    a, b = _allenatore(mondo, 10), _allenatore(mondo, 30)
+    mondo.assumi_allenatore(poli, a, 0, INIZIO)
+    mondo.assumi_allenatore(poli, b, 1, INIZIO)
+    cassa = poli.cassa
+    mondo._fine_allenatore(a, datetime.datetime(2026, 6, 15, 12, 0), "Smette.", "Il capo smette.")
+    pagato = round(a.contratto_stipendio * 14 / 30)
+    assert poli.cassa == cassa - pagato and poli.conti_del_mese["staff"] == pagato and "stipendio maturato" in poli.diario[0]["testo"]
+    # Il primo del mese si paga il mese intero appena finito.
+    cassa = poli.cassa
+    mondo._fine_allenatore(b, datetime.datetime(2026, 7, 1, 12, 0), "Smette.", "L'assistente smette.")
+    assert poli.cassa == cassa - b.contratto_stipendio
+
+
+def test_il_computer_prova_anche_gli_allenatori_piu_modesti(mondo, monkeypatch):
+    import mondo as modulo_mondo
+    from costanti import RIALZO_CPU
+
+    cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(INIZIO)]
+    for a in list(mondo.allenatori.values()):
+        del mondo.allenatori[a.numero]
+    bravo, modesto = _allenatore(mondo, 1), _allenatore(mondo, 65)
+    monkeypatch.setattr(mondo, "_spazio_negli_stipendi", lambda poli: 100_000)
+    monkeypatch.setattr(modulo_mondo, "caso", lambda _p: True)
+    offerta = economia.arrotonda(staff.ingaggio_richiesto(modesto, staff.CAPO, cpu) * RIALZO_CPU)
+    cpu.cassa = mondo.monte_stipendi(cpu) + offerta
+    assert economia.arrotonda(staff.ingaggio_richiesto(bravo, staff.CAPO, cpu) * RIALZO_CPU) > offerta
+    assert mondo._staff_del_computer([cpu], INIZIO) == 1 and cpu.staff[0] == modesto.numero and bravo.libero
+
+
+def test_le_allenatrici_e_le_frasi_dello_staff(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    g = next(g for g in mondo.giocatori.values() if g.sesso == "f")
+    mondo._tessera(poli, g)
+    g.classe_migliore = classe.soglia(30)
+    _ritira(mondo, g)
+    a = next(a for a in mondo.allenatori.values() if a.giocatore_id == g.id)
+    assert ", ex giocatrice, " in testi.riga_allenatore(a, mondo) and "Ex giocatrice, ha chiuso la carriera con Club di prova" in testi.scheda_allenatore(a, mondo)
+    assert "puoi assumerla prima degli altri" in poli.diario[0]["testo"] and a.diario[-1]["testo"].startswith("Si ritira da giocatrice")
+    assert a.diario[-1]["testo"].endswith("di classe " + a.codice + " da allenatrice, la sua classe migliore.")
+    mondo.assumi_allenatore(poli, a, 0, INIZIO)
+    contratti.concorda_rinnovo(a, 300, 12)
+    assert ", e il rinnovo già concordato il " in testi.domanda_licenziamento(a, poli, mondo)
+    mondo.licenzia_allenatore(poli, a, INIZIO)
+    assert a.diario[0]["testo"].startswith("Licenziata da Club di prova")
+
+
+def test_la_riserva_passata_non_si_mostra_e_la_fine_in_giorni(mondo):
+    a = _allenatore(mondo, 20)
+    a.riservato_fino = adesso_utc() - datetime.timedelta(hours=1)
+    mondo._ora_reale = adesso_utc() - datetime.timedelta(hours=3)
+    assert "a te fino" not in testi.riga_allenatore(a, mondo)
+    a.riservato_fino = adesso_utc() + datetime.timedelta(minutes=30)
+    assert "riservat" in testi.riga_allenatore(a, mondo)
+    mondo._ora_reale = None
+    oggi = mondo.datetime_corrente_simulazione
+    for giorni, frase in ((30, "fra 30 giorni simulati."), (100, "fra circa 1 anno simulato."), (400, "fra circa 4 anni simulati.")):
+        a.eta_fine = a.eta(oggi) + giorni
+        assert testi.scheda_allenatore(a, mondo).endswith("Smetterà di allenare " + frase)
+
+
+def test_la_prelazione_al_singolare_e_al_plurale():
+    assert "puoi assumerlo prima" in " ".join(testi._fatti_dello_staff({"tue_prelazioni": 1}))
+    assert "puoi assumerli prima" in " ".join(testi._fatti_dello_staff({"tue_prelazioni": 2}))
+
+
+def test_niente_promemoria_per_chi_non_tratta_piu(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    a = _allenatore(mondo, 10)
+    mondo.assumi_allenatore(poli, a, 0, INIZIO)
+    a.contratto_scadenza = datetime.datetime(2026, 7, 1)
+    a.proposte_rinnovo = 3
+    rapporto = Mondo.rapporto_vuoto(INIZIO)
+    mondo._contratti_dello_staff(datetime.datetime(2026, 6, 1, 12, 0), rapporto)
+    assert rapporto["tuo_staff_in_scadenza"] == 0 and not any("Ultimo mese" in v["testo"] for v in a.diario)
+
+
+def test_i_diari_degli_allenatori_si_sfoltiscono(mondo):
+    a = _allenatore(mondo, 20)
+    for giorni in (20, 10, 5):
+        a.annota(INIZIO - datetime.timedelta(days=giorni), f"Voce di {giorni} giorni fa.")
+    mondo.datetime_corrente_simulazione = INIZIO
+    mondo.conservazione_diari["giocatori"] = 10
+    limite = INIZIO - datetime.timedelta(days=10)
+    restano = [v for v in a.diario if v["data"] >= limite]
+    assert len(restano) < len(a.diario)
+    mondo.sfoltisci_diari()
+    assert a.diario == restano and not any("20 giorni" in v["testo"] for v in a.diario)
+
+
+def test_la_prelazione_decade_col_club_che_chiude(mondo):
+    poli = mondo.fonda_polisportiva("Club di prova")
+    g = mondo.giocatori[3]
+    mondo._tessera(poli, g)
+    g.classe_migliore = classe.soglia(30)
+    _ritira(mondo, g)
+    a = next(a for a in mondo.allenatori.values() if a.giocatore_id == g.id)
+    assert a.prelazione == poli.nome
+    mondo.chiudi_polisportiva(poli)
+    assert a.prelazione is None and a.prelazione_fino is None
+
+
+def test_la_notizia_degli_allenatori_riservati_soltanto_nel_riepilogo(mondo):
+    ora = adesso_utc()
+    a, b = _allenatore(mondo, 30), _allenatore(mondo, 12)
+    for x in (a, b):
+        x.riservato_fino = ora + datetime.timedelta(minutes=MINUTI_RISERVA_UTENTE)
+    rapporto = Mondo.rapporto_vuoto(INIZIO)
+    mondo._notizia_dei_riservati(ora, rapporto)
+    # Senza una polisportiva dell'utente non c'è niente da dire.
+    assert rapporto["notizie"] == []
+    mondo.fonda_polisportiva("Club di prova")
+    mondo._notizia_dei_riservati(ora, rapporto)
+    assert len(rapporto["notizie"]) == 1 and rapporto["notizie"][0].startswith("2 allenatori nuovi sono riservati a te fino alle ")
+    assert f"il migliore di classe {b.codice}" in rapporto["notizie"][0] and rapporto["notizie"][0] in testi._fatti_avanzamento(rapporto | {"ticks": 1, "giorni": 1})
+    # Risposta 38: soltanto nel riepilogo, senza suono e senza la barra.
+    assert sum(v for v in rapporto.values() if isinstance(v, int)) == 0

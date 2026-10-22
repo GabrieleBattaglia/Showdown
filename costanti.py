@@ -652,8 +652,9 @@ GIORNI_PRELAZIONE = 10
 # Regola di Gabriele del 21 ottobre 2026, risposta 29: quando qualcuno diventa allenatore, perché nasce
 # o perché si ritira dal gioco, resta riservato all'utente per tanti minuti veri, poi il computer lo
 # può assumere. I minuti contano dal momento in cui il mondo lo fa nascere, recupero dei giorni
-# arretrati compreso: chi nasce mentre il gioco è chiuso resta dell'utente per un'ora dopo l'apertura.
-MINUTI_RISERVA_UTENTE = 60
+# arretrati compreso: chi nasce mentre il gioco è chiuso resta dell'utente per tutta la riserva dopo l'apertura.
+# La risposta 37 di Gabriele del 22 ottobre 2026 la porta da un'ora a due.
+MINUTI_RISERVA_UTENTE = 120
 # L'economia dello staff, D33 risposta 13 e progetto 3.1: lo stipendio che un capo chiede va in linea
 # retta sulla sua qualità, da STIPENDIO_STAFF_MINIMO per H0 a STIPENDIO_STAFF_MASSIMO per A1, e non in
 # esponenziale come quello dei giocatori, perché un A1 deve restare alla portata delle polisportive più
@@ -663,6 +664,13 @@ MINUTI_RISERVA_UTENTE = 60
 STIPENDIO_STAFF_MINIMO = 120
 STIPENDIO_STAFF_MASSIMO = 900
 QUOTA_STIPENDIO_ASSISTENTE = 0.5
+# La gloria che un allenatore chiede a una polisportiva, progetto 3.1: cresce con la classe come quella dei
+# giocatori, in linea retta sulla qualità, da H0 ad A1. Il premio d'ingaggio si moltiplica per il fattore di
+# reputazione dei giocatori, la radice della gloria richiesta sulla gloria del club, fra la metà e il
+# doppio. La gloria mediana del computer va da circa 230 all'anno 10 a 340 all'anno 60: un H0 chiede meno
+# a quasi tutti, un A1 il doppio a un club appena nato. Le cifre sono una stima della revisione del 22
+# ottobre 2026.
+GLORIA_RICHIESTA_ALLENATORE = (150.0, 600.0)
 # Il computer cambia il suo allenatore a fine contratto soltanto per uno libero che può pagare e che è
 # migliore di almeno tanti livelli, progetto 3.4; altrimenti lo rinnova.
 MARGINE_CAMBIO_STAFF_CPU = 5

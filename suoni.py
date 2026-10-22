@@ -43,7 +43,8 @@ importante sceglie ancora il suono e la riga della barra, nell'ordine del punto 
 tappa 12 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Con la tappa 13, il 2026-10-21, decisione D33 e punto 4.6 del progetto, arriva il gruppo dello staff:
 il dialogo dello staff, il mercato degli allenatori, le offerte, i rinnovi, il licenziamento, le schede
-e i filtri, e le notizie dello staff, ventitré suoni nuovi, tutti mess_, entrati nella collezione con la V215. Le parti della
+e i filtri, e le notizie dello staff, ventitré suoni nuovi, tutti mess_, entrati nella collezione con la V215; con la
+revisione del 22 ottobre 2026 il ventiquattresimo, l'allenatore in prelazione per un altro club, nella V219. Le parti della
 tappa 13 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -322,6 +323,8 @@ GRUPPI = (
         "staff_rinnovo_rifiutato": "mess_staff_rinnovo_rifiutato",
         "staff_rinnovo_chiuso": "mess_staff_rinnovo_chiuso",
         "staff_posto_occupato": "mess_staff_posto_occupato",
+        # Dalla revisione del 22 ottobre 2026: l'allenatore in prelazione per un'altra tua polisportiva.
+        "allenatore_in_prelazione": "mess_allenatore_in_prelazione",
         "scheda_allenatore": "mess_scheda_allenatore",
         "diario_allenatore": "mess_diario_allenatore",
         # Scattano a ogni freccia sui campi del mercato: tocchi minimi; l'età quando ci si ferma.
@@ -613,6 +616,7 @@ AZIONI = {
     "staff_rinnovo_rifiutato": "l'allenatore rifiuta il rinnovo, e si può riprovare un altro giorno",
     "staff_rinnovo_chiuso": "il terzo rifiuto del rinnovo, e l'allenatore non tratta più",
     "staff_posto_occupato": "si vuole assumere per un posto dello staff già occupato",
+    "allenatore_in_prelazione": "si vuole assumere un allenatore in prelazione per un'altra tua polisportiva",
     "scheda_allenatore": "si apre la scheda di un allenatore",
     "diario_allenatore": "si apre il diario di un allenatore",
     "staff_posto_scelto": "nel mercato degli allenatori cambia il posto da offrire",

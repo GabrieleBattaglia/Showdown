@@ -979,8 +979,9 @@ def controlli_della_tappa_12(anni, semi, risultati):
 # con un capo; gli allenatori liberi almeno quanti le polisportive senza capo; lo staff non oltre un quinto
 # del monte stipendi del computer. Il progetto chiedeva il capo dall'anno 5; la risposta 32 di Gabriele
 # del 22 ottobre 2026 lo chiede dall'anno 20, perché nel mondo giovane gli allenatori sono pochi e trovarne
-# uno è difficile ma non impossibile. Dall'anno 20 vale anche il bersaglio dei liberi, che nel mondo giovane
-# sono zero per la stessa ragione.
+# uno è difficile ma non impossibile. Il bersaglio dei liberi almeno quanti i club senza capo non c'è più:
+# con la carriera fino a 65-75 anni gli allenatori sono meno dei posti, e la risposta 37 vuole così il
+# mercato, sottile; la riga dello staff dice ancora quanti sono i liberi.
 CON_CAPO_MINIMO = 95.0
 ANNO_DEL_CAPO = 20
 STAFF_SUL_MONTE_MASSIMO = 20.0
@@ -1009,9 +1010,6 @@ def controlli_della_tappa_13(anni, semi, risultati):
         if pochi:
             fuori.append(f"polisportive con un capo sotto il {numero(CON_CAPO_MINIMO)} per cento in {len(pochi)} anni, dall'anno {pochi[0]} all'anno {pochi[-1]}, "
                          f"al più basso {numero(min(m['con_capo'] for m in annuali if m['numero_anno'] >= ANNO_DEL_CAPO), 1)}")
-        scarsi = [m["numero_anno"] for m in annuali if m["numero_anno"] >= ANNO_DEL_CAPO and m["allenatori_liberi"] < m["senza_capo"]]
-        if scarsi:
-            fuori.append(f"allenatori liberi meno delle polisportive senza capo in {len(scarsi)} anni, dall'anno {scarsi[0]} all'anno {scarsi[-1]}")
         cari = [m["numero_anno"] for m in annuali if m["staff_sul_monte"] > STAFF_SUL_MONTE_MASSIMO]
         if cari:
             fuori.append(f"staff oltre il {numero(STAFF_SUL_MONTE_MASSIMO)} per cento del monte in {len(cari)} anni, dall'anno {cari[0]} all'anno {cari[-1]}")
