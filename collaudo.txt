@@ -1,5 +1,5 @@
 Collaudo della 1.79.0 di MESS con NVDA: la cronaca che cresce riga per riga e i suoi annunci automatici.
-Prima: nella cartella E:\git\tmp\mess-collaudo-t11 lancia python Showdown.py. È la copia del programma col tuo mondo, aggiornata alla 1.79.0 con git pull, e il tuo mondo vero non si tocca.
+Prima: nella cartella E:\git\tmp\mess-collaudo-t11 lancia python Showdown.py. È la copia del programma col tuo mondo, aggiornata alla 1.94.0 con git pull, e il tuo mondo vero non si tocca.
 Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
 PROVA 1, il dialogo degli annunci.
 Passo 1: dal menu Impostazioni scegli Annunci della cronaca.
@@ -26,4 +26,62 @@ Domanda 2: le righe le legge la voce di Windows, e NVDA tace?
 Passo 3: togli la spunta da Leggi la cronaca in automatico e salva; poi ascolta qualche punto.
 Domanda 3: niente si legge da solo, e la cronaca resta nel campo, da raggiungere con Tab?
 Passo 4: rimetti le scelte di partenza, alla sintesi e al braille, sintesi automatica, 40 celle, lettura accesa, e salva.
+Esito:
+Collaudo della 1.94.0 di MESS con NVDA, la tappa 13: lo staff delle polisportive, cioè gli allenatori.
+Prima: nella stessa copia, E:\git\tmp\mess-collaudo-t11. Al primo avvio il tuo mondo passa al formato 8: nasce lo staff, e il mondo vero non si tocca.
+Prima: la prova 4 guarda il primo avvio dopo l'aggiornamento, che è anche quello delle prove 1, 2 e 3: ascolta quell'apertura anche per la prova 4.
+Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
+PROVA 4, l'apertura col mondo aggiornato.
+Passo 1: lancia python Showdown.py e ascolta l'apertura.
+Domanda 1: dopo il suono dell'avvio si sente quello della notizia dello staff, una fanfara col fischietto, e la vista dice che il mercato degli allenatori è aperto, quanti sono i liberi e che per due ore sono riservati a te?
+Domanda 2: con Ctrl+Maiusc+M, il diario della polisportiva attiva, la prima voce dice che arriva lo staff?
+Esito:
+PROVA 5, lo staff della polisportiva.
+Passo 1: premi Ctrl+H, Staff della polisportiva attiva, nel menu Polisportive.
+Domanda 1: il dialogo si apre col suo suono, il fischietto, e il fuoco è sull'elenco dei Posti dello staff, con Capo, Assistente 1 e Assistente 2, tutti col posto vuoto?
+Domanda 2: in testa si leggono la cassa, gli stipendi dello staff, le mosse e la qualità dello staff con gli effetti rispetto allo staff medio, e i nomi dei posti, Capo, Assistente 1 e Assistente 2, ti vanno bene?
+Domanda 3: Alt+P, Alt+S, Alt+D e Alt+I portano ai posti, allo stipendio, alla durata e all'esito previsto, che per un posto vuoto dice come riempirlo?
+Domanda 4: Invio sull'elenco dei posti non fa niente, e i pulsanti si raggiungono con Alt+A, Alt+R, Alt+L, Alt+C, Alt+O e Alt+H?
+Esito:
+PROVA 6, il mercato degli allenatori e l'assunzione.
+Passo 1: sul Capo premi Assumi, Alt+A.
+Domanda 1: si apre il mercato degli allenatori col suo suono, il Posto da offrire è già Capo, vuoto, e l'elenco ha tutti i liberi dal migliore, ognuno con classe, età, tipo, visus, quanto chiede da capo e da assistente e riservato a te fino a che ora?
+Passo 2: prova i filtri: Classe minima con Alt+M, Età massima con Alt+E, Tipo con Alt+T, Sesso con Alt+S.
+Domanda 2: ogni filtro restringe subito l'elenco, ha il suo tocco breve, e quando l'elenco si svuota o torna pieno lo senti?
+Passo 3: togli i filtri, scegli un allenatore e premi Alt+I, Ingaggia.
+Domanda 3: il dialogo della cifra dice il contratto che propone, quanto chiede d'ingaggio, e mentre cambi la cifra senti il tic della probabilità?
+Passo 4: conferma col Sì.
+Domanda 4: la domanda dice che userai una mossa di mercato, e l'esito, accettato o rifiutato, ha il suo suono? Ti sta bene che l'offerta a un allenatore costi una mossa, come l'ingaggio di un giocatore?
+Domanda 5: Scheda, Alt+H, e Diario, Alt+D, di un allenatore si aprono coi loro suoni, e la scheda dice classe, visus, l'aspetto o la carriera da giocatore, quanto chiede e fra quanto smetterà?
+Passo 5: chiudi il mercato con Esc.
+Domanda 6: torni allo staff, e il posto del Capo dice chi hai assunto, con stipendio e scadenza?
+Esito:
+PROVA 7, i tasti del menu.
+Passo 1: chiudi lo staff con Esc, poi dalla vista principale premi Ctrl+Maiusc+G, e chiudi; poi dalla barra di stato, con F7, premi Ctrl+H.
+Domanda 1: Ctrl+Maiusc+G apre il mercato degli allenatori, e alla chiusura la vista riepiloga le operazioni e lo staff di adesso?
+Domanda 2: Ctrl+H apre lo staff anche dalla barra di stato, dove nei campi di testo di Windows è anche il tasto indietro? I due tasti ti vanno bene, e le lettere del menu, Staf&f e Mercato degli a&llenatori?
+Esito:
+PROVA 8, il rinnovo e il licenziamento.
+Passo 1: nello staff scegli il Capo che hai assunto.
+Domanda 1: l'esito previsto dice da quando si può proporre il rinnovo, e Rinnova, Alt+R, suona e lo dice anche lui?
+Passo 2: premi Licenzia, Alt+L, e rispondi No.
+Domanda 2: la domanda dice la buonuscita e la mossa, col No già scelto, e al No senti l'annullamento?
+Passo 3: premi di nuovo Licenzia e rispondi Sì.
+Domanda 3: il licenziamento ha il suo suono, il fischio finale, e il posto torna vuoto?
+Domanda 4: il rinnovo dello staff chiede lo stipendio di oggi per il suo ruolo, un po' di più se la durata si allontana da quella che propone, e meno alla polisportiva dove l'ex giocatore ha chiuso la carriera, ma non guarda la gloria del club, che invece conta per i giocatori: ti va bene?
+Esito:
+PROVA 9, la sala allenamento, le schede e le statistiche.
+Passo 1: apri la Sala allenamento con Ctrl+Maiusc+L, poi chiudila; apri la scheda della polisportiva con Ctrl+M; la scheda di un giocatore con Ctrl+G; le statistiche del mondo con Ctrl+I.
+Domanda 1: la sala dice in testa chi allena e la qualità dello staff?
+Domanda 2: la scheda della polisportiva ha il gruppo [STAFF] coi tre posti e la qualità?
+Domanda 3: la prima riga della scheda del giocatore ha la classe di oggi e, subito dopo, la classe migliore della carriera?
+Domanda 4: la seconda riga della scheda del giocatore, e di un allenatore, dice la provenienza: comune, provincia e regione, con l'articolo giusto, per esempio provincia dell'Aquila?
+Domanda 5: le statistiche contano gli allenatori, ex giocatori e nati, liberi e nello staff, per classe, e le polisportive con un capo?
+Esito:
+PROVA 10, l'avanzamento e i suoni.
+Passo 1: lascia il programma aperto fino a un avanzamento del mondo, o riaprilo dopo qualche ora; poi apri il riepilogo con Ctrl+Maiusc+A.
+Domanda 1: se sono nati allenatori nuovi, il riepilogo dice quanti, fino a che ora sono riservati a te e la classe del migliore, senza suono e senza la barra?
+Passo 2: dalla cartella del programma lancia python ascolta_suoni.py staff.
+Domanda 2: i suoni dei due gruppi dello staff, gli allenatori e le notizie, si distinguono tutti fra loro e da quelli che conosci, e ti piacciono?
+Domanda 3: quando un contratto dello staff sta per scadere, la vista te lo ricorda all'ingresso nella finestra e all'ultimo mese, come per i tesserati: ti va bene?
 Esito:

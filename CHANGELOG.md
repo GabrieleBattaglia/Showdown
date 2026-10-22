@@ -3,6 +3,36 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.94.0] - 2026-10-22
+
+### Lo staff delle polisportive
+
+Ogni polisportiva può avere uno staff: un capo allenatore e due assistenti. Lo staff fa imparare più in fretta, abbassa il rischio d'infortunio in allenamento e in partita e fa crescere prima la fedeltà al club. Conta la qualità dello staff, che viene per il 70 per cento dal capo, per il 20 dall'assistente migliore e per il 10 dall'altro. Rispetto allo staff medio del mondo di quel giorno, senza staff si impara circa il 15 per cento più piano, col migliore fino al 20 per cento più in fretta, e il rischio d'infortunio cambia del 15 per cento; la fedeltà cresce fino a un quarto più in fretta. Il mondo nel suo insieme si allena come prima: ogni giorno i fattori si dividono per la loro media sui tesserati. I liberi si allenano senza staff.
+
+Gli allenatori sono di due tipi. Gli ex giocatori: chi si ritira con una classe migliore di almeno H0 diventa allenatore, e la sua classe da allenatore è la classe migliore della carriera; il massimo è A1. I nati allenatori: il mondo genera adulti fra i 35 e i 60 anni, circa uno ogni venti nascite, uomini e donne, vedenti per tre quarti, con l'aspetto descritto a parole e una classe a caso da H0 in su, più rara quanto più è alta. Si smette di allenare fra i 65 e i 75 anni, o alla morte; chi diventa allenatore dopo quell'età allena comunque cinque anni.
+
+### Lo staff della polisportiva attiva e il mercato degli allenatori
+
+Nel menu Polisportive, Staff della polisportiva attiva, Ctrl+H, mostra i tre posti, Capo, Assistente 1 e Assistente 2, con l'allenatore, lo stipendio, la scadenza e il rinnovo; in testa la cassa, gli stipendi dello staff, le mosse e la qualità dello staff con i suoi effetti. Assumi, Alt+A, apre il mercato per un posto vuoto; Rinnova, Alt+R, propone il rinnovo come per i tesserati, negli ultimi tre mesi, una proposta al giorno e tre in tutto, con l'esito previsto e il tic della probabilità; Licenzia, Alt+L, chiede conferma con la buonuscita; Scheda e Diario dell'allenatore. Mercato degli allenatori, Ctrl+Maiusc+G, mostra tutti i liberi dal migliore, coi filtri di classe minima, età massima, tipo e sesso, il posto da offrire e l'ingaggio, col tic della probabilità. L'ingaggio porta la reputazione del club, come per i giocatori: un club giovane paga di più i migliori. L'offerta e il licenziamento usano una mossa di mercato. In nessuno dei due dialoghi Invio sugli elenchi fa qualcosa.
+
+Si assumono come i giocatori: un premio d'ingaggio alla firma, uno stipendio fisso fino alla scadenza, il rinnovo e la buonuscita. Lo stipendio cresce in linea retta con la classe, da 20 euro al mese per un capo H0 a 110 per un A1; un assistente chiede la metà. Chi smette o muore nello staff riceve lo stipendio maturato.
+
+Il computer assume il capo e gli assistenti migliori che può pagare con lo sponsor, senza toccare la cassa, che resta ai campioni, e a fine contratto cambia l'allenatore se ne trova uno libero di almeno cinque livelli migliore. Le cifre vengono dalla taratura su otto mondi di sessant'anni: dall'anno 20 il capo c'è in circa il 95 per cento delle polisportive del computer, e i campioni restano liberi un po' più spesso che nella 1.79.0, a ondate, come ha voluto Gabriele: chi ha cassa e gloria li può prendere.
+
+Chi diventa allenatore, perché nasce o si ritira, resta riservato a te per due ore vere, contate dall'avanzamento che lo fa nascere: chi nasce mentre il gioco è chiuso resta tuo per due ore dall'apertura. Quando un tuo tesserato si ritira e può allenare, hai la prelazione per dieci giorni simulati, e la sua fedeltà al club lo fa chiedere meno.
+
+### Le notizie, le schede e le statistiche
+
+Le notizie dell'avanzamento dicono quando un allenatore del tuo staff se ne va per lo stipendio non pagato, torna libero a fine contratto, smette o esce di scena, quando un tuo ritirato può allenare in prelazione e quando un contratto dello staff sta per scadere, ognuna col suo suono; gli allenatori nuovi riservati a te stanno soltanto nel riepilogo, Ctrl+Maiusc+A. La scheda della polisportiva ha lo staff, la sala allenamento dice chi allena, la scheda di ogni giocatore dice la classe migliore della carriera accanto a quella di oggi e, per chi allena, dove. Le statistiche del mondo, Ctrl+I, contano gli allenatori, ex giocatori e nati, liberi e nello staff, per classe, e le polisportive con un capo. La guida ai comandi ha il capitolo dello staff. Ventiquattro suoni nuovi, nella collezione di GBUtils dalla V215 alla V219, con due gruppi in ascolta_suoni.py: Staff, gli allenatori e Staff, le notizie.
+
+### La provenienza
+
+Ogni giocatore e ogni allenatore ha un comune di provenienza, che la scheda dice nella seconda riga: comune, provincia e regione. Il comune si estrae coi pesi della popolazione dalla collezione dei comuni italiani preparata da Gabriele, 1.291 comuni di 110 province e 20 regioni: più un comune è popoloso, più è probabile venire di lì. Nel gioco non pesa su niente; servirà ai tornei provinciali, regionali e nazionali.
+
+### L'aggiornamento del mondo
+
+Il salvataggio passa al formato 8. All'aggiornamento ogni ritirato vivo che può allenare diventa allenatore libero, il mondo riceve gli allenatori nati che avrebbe avuto, tutte le polisportive partono senza staff, tutti i giocatori ricevono un comune, e la vista e il diario delle tue polisportive dicono che il mercato degli allenatori è aperto, col suo suono.
+
 ## [1.79.0] - 2026-10-21
 
 ### Gli annunci della cronaca

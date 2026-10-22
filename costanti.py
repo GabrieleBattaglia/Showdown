@@ -666,7 +666,7 @@ MINUTI_RISERVA_UTENTE = 120
 # partite da 120 e 900, scese a un ottavo perché lo staff, pagato con lo sponsor, toglieva alla cassa del
 # computer i soldi dei campioni. Sulla prova lunga a otto semi, 60 anni ciascuno, gli anni con meno di 8
 # dei primi 10 tesserati sono 100 contro i 67 della tappa 12, quelli con meno di 16 dei primi 20 39 contro
-# 10; con un quarto 101 e 50. Gabriele tiene un ottavo: i campioni liberi arrivano a ondate, e una
+# 10; con un quarto 101 e 51. Gabriele tiene un ottavo: i campioni liberi arrivano a ondate, e una
 # polisportiva brava e fortunata li può prendere; le sbandate sono volute, se sulle grandi cifre si tiene.
 # Le cifre chieste si arrotondano alla decina: un capo H0 chiede 20 euro al mese, un A1 110.
 STIPENDIO_STAFF_MINIMO = 15

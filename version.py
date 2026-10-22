@@ -1,13 +1,13 @@
 """
 Versione di MESS, Manageriale e Simulatore Showdown, in un punto solo.
-Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
+Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Il vecchio sd.py conta come serie 1: durante i lavori del piano di sviluppo la versione
 avanza come 1.y.z, e la GUI completa uscirà come 2.0.0.
 """
 
 __app_name__ = "MESS"
-__version__ = "1.79.0"
-__date__ = "2026-10-21"
+__version__ = "1.94.0"
+__date__ = "2026-10-22"
 __author__ = "Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode)"
 
 
