@@ -390,7 +390,7 @@ def _tornei_e_palmares(g, mondo):
     righe.append(f"Tornei giocati: {g.tornei_giocati} | Medaglie: {_medagliere(g)} | Gare a squadre: {g.gare_squadre_vinte} vinte, {g.gare_squadre_perse} perse")
     posto = posto_mondiale(g, mondo)
     classifica = "maschile" if g.sesso == "m" else "femminile"
-    mondiale = f"Classifica mondiale {classifica}: {numero(g.punti_mondiali)} punti" + (f", {posto}° posto" if posto else ", non ancora in classifica")
+    mondiale = f"Classifica nazionale {classifica}: {numero(g.punti_mondiali)} punti" + (f", {posto}° posto" if posto else ", non ancora in classifica")
     righe.append(f"{mondiale} | Punti dell'ultimo anno: {numero(palmares.punti_dell_anno(g, mondo.datetime_corrente_simulazione.date()))}")
     if g.titoli:
         titoli = [f"{voce['torneo']} del {data_breve(datetime.date.fromisoformat(voce['data'][:10]))}, {_posto_del_titolo(voce['posto'])}" for voce in g.titoli]
@@ -591,7 +591,7 @@ def _economia_del_giocatore(g, mondo):
 def elenco_giocatori(mondo):
     giocatori = sorted(mondo.giocatori.values(), key=lambda g: g.id)
     if not giocatori:
-        return "Il mondo non ha ancora giocatori."
+        return "In Italia non ci sono ancora giocatori."
     righe = [f"Elenco dei giocatori: {len(giocatori)} in tutto, dal numero {giocatori[0].id} al {giocatori[-1].id}."]
     righe.extend(riga_giocatore(g, mondo) for g in giocatori)
     return "\n".join(righe)
@@ -795,7 +795,7 @@ def qualita_dello_staff(p, mondo):
     """
     q = staff.qualita_della_polisportiva(p, mondo.allenatori)
     allenamento, rischio, fedelta = staff.fattori(q, mondo.qualita_media_dello_staff)
-    return (f"Qualità dello staff {round(q * 100)}%, lo staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}%: "
+    return (f"Qualità dello staff {round(q * 100)}%, lo staff medio nazionale {round(mondo.qualita_media_dello_staff * 100)}%: "
             f"allenamento {_rispetto_al_medio(allenamento)}, infortuni {_rispetto_al_medio(rischio)}, fedeltà {_rispetto_al_medio(fedelta)}.")
 
 
@@ -947,7 +947,7 @@ def _statistiche_dello_staff(mondo):
     con_capo = sum(1 for p in con_tesserati if p.staff[0])
     return [f"Allenatori: {len(allenatori)}, di cui {ex} ex giocatori e {len(allenatori) - ex} nati allenatori; liberi {liberi}, nello staff {len(allenatori) - liberi}.",
             f"Classi degli allenatori: {unisci([f'{lettera} {quanti}' for lettera, quanti in sorted(per_lettera.items())])}. "
-            f"Polisportive con un capo: {con_capo} su {len(con_tesserati)}; staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}%."]
+            f"Polisportive con un capo: {con_capo} su {len(con_tesserati)}; staff medio nazionale {round(mondo.qualita_media_dello_staff * 100)}%."]
 
 
 # Le liste della sessione e la ricerca.
@@ -1075,7 +1075,7 @@ def bilancio(p, mondo):
 def elenco_polisportive(mondo):
     if not mondo.polisportive:
         return "Non esiste ancora nessuna polisportiva."
-    righe = [f"Polisportive del mondo: {len(mondo.polisportive)}."]
+    righe = [f"Polisportive in Italia: {len(mondo.polisportive)}."]
     for p in sorted(mondo.polisportive.values(), key=lambda x: x.nome.casefold()):
         chi = "del computer" if p.is_cpu_controlled else "tua"
         righe.append(f"{p.nome}, {chi}, {len(p.tesserati)} tesserati su {p.maxtesserati}, gloria {p.gloria}, valore {numero(p.indicecollettivotesserati)}, fondata da {eta_polisportiva(p, mondo)}")
@@ -1333,7 +1333,7 @@ def _fatti_avanzamento(rapporto):
         conta(rapporto["sfide_giocate"], "sfida fra polisportive", "sfide fra polisportive") if rapporto.get("sfide_giocate") else "",
     ])
     if gare:
-        frasi.append(f"Nel mondo: {gare}.")
+        frasi.append(f"In Italia: {gare}.")
     if persone:
         frasi.append(persone[0].upper() + persone[1:] + ".")
     if mercato:
@@ -1915,7 +1915,7 @@ def classifica_mondiale(mondo, quanti=100, tuoi=()):
     le donne, i primi cento con posto, nome, punti, ori, argenti, bronzi e titoli mondiali, e sotto i tuoi
     tesserati che stanno più in basso, col loro posto.
     """
-    righe = ["Classifica mondiale per sempre, come un medagliere storico: i punti di tutti i tornei giocati, vecchie glorie comprese."]
+    righe = ["Classifica nazionale per sempre, come un medagliere storico: i punti di tutti i tornei giocati, vecchie glorie comprese."]
     for sesso, titolo, singolare, plurale in (("m", "Uomini", "giocatore", "giocatori"), ("f", "Donne", "giocatrice", "giocatrici")):
         elenco = palmares.classifica_mondiale(mondo, sesso)
         if not elenco:
@@ -1936,7 +1936,7 @@ def classifica_mondiale(mondo, quanti=100, tuoi=()):
 
 def _riga_mondiale(posto, riga, tuo):
     testo = (f"{posto}. {riga['nome']}, {numero(riga['punti'])} punti, ori {riga['ori']}, argenti {riga['argenti']}, bronzi {riga['bronzi']}, "
-             f"titoli mondiali {riga['titoli']}")
+             f"titoli italiani {riga['titoli']}")
     if not riga["vivo"]:
         testo += ", vecchia gloria"
     if tuo:
@@ -2288,8 +2288,8 @@ LEGENDA_CONTRATTI = (
 LEGENDA_STAFF = (
     "Dalla tappa 13 ogni polisportiva può avere uno staff, un capo allenatore e due assistenti, nel dialogo dello staff, Ctrl+H. Lo staff fa imparare "
     "più in fretta, abbassa il rischio d'infortunio in allenamento e in partita e fa crescere prima la fedeltà al club; conta la qualità dello staff, "
-    "il 70% dal capo, il 20% dall'assistente migliore e il 10% dall'altro. Rispetto allo staff medio del mondo di quel giorno, senza staff si "
-    "impara circa il 15% più piano, col migliore fino al 20% più in fretta, e il mondo nel suo insieme si allena sempre come prima "
+    "il 70% dal capo, il 20% dall'assistente migliore e il 10% dall'altro. Rispetto allo staff medio nazionale di quel giorno, senza staff si "
+    "impara circa il 15% più piano, col migliore fino al 20% più in fretta, e l'Italia nel suo insieme si allena sempre come prima "
     "dello staff; i liberi si allenano senza staff. Gli allenatori sono "
     "ex giocatori arrivati almeno ad H0, che allenano con la classe migliore della carriera, o nati allenatori, adulti con una classe a caso, più rara "
     "quanto più è alta. Il mercato degli allenatori, Ctrl+Maiusc+G, li mostra tutti, dal migliore, coi filtri di classe, età, tipo e sesso. Si assumono "
@@ -2307,8 +2307,8 @@ GUIDA_DEI_TORNEI = (
     "soltanto coi pulsanti: la quota si paga subito e torna se togli l'iscrizione prima del sorteggio. Le partite dei tuoi si giocano col motore vero anche a "
     "programma chiuso: nel pannello dei tornei, Ctrl+Y, un incontro dei tuoi resta da ascoltare finché non lo ascolti in differita, Invio sull'incontro, non ne "
     "leggi la cronaca o non ne chiedi il risultato; Mostra tutti i risultati li svela tutti insieme, dopo una domanda. Le classifiche e le notizie dicono comunque "
-    "chi va avanti. Ogni anno c'è un campionato mondiale per sesso, a cui si è convocati per i punti dell'ultimo anno, e la Coppa delle polisportive a squadre, "
-    "per gloria. L'albo d'oro, Ctrl+Maiusc+B, conserva ogni podio per sempre, la classifica mondiale, Ctrl+Maiusc+W, i punti di tutta la carriera. Gli editor "
+    "chi va avanti. Ogni anno c'è un campionato italiano per sesso, a cui si è convocati per i punti dell'ultimo anno, e la Coppa delle polisportive a squadre, "
+    "per gloria. L'albo d'oro, Ctrl+Maiusc+B, conserva ogni podio per sempre, la classifica nazionale, Ctrl+Maiusc+W, i punti di tutta la carriera. Gli editor "
     "cambiano soltanto le edizioni future, e il calendario predefinito si rimette dal menu Tornei, senza perdere quello di prima."
 )
 GUIDA_DELLE_SFIDE = (

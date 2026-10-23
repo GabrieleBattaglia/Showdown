@@ -744,7 +744,7 @@ def test_la_scheda_ha_i_tornei_e_il_palmares(sfidanti):
     g.prossimo_torneo = datetime.datetime(2026, 12, 18, 9, 0)
     scheda = testi.scheda_giocatore(g, mondo)
     assert "[TORNEI E PALMARÈS]" in scheda and "Tornei giocati: 0 | Medaglie: nessuna | Gare a squadre: 0 vinte, 0 perse" in scheda
-    assert "Classifica mondiale maschile: 0,0 punti, non ancora in classifica" in scheda
+    assert "Classifica nazionale maschile: 0,0 punti, non ancora in classifica" in scheda
     assert "Iscrizione automatica ai tornei: accesa, dal 18 dicembre 2026." in scheda
     g.iscrizione_automatica = False
     assert "Iscrizione automatica ai tornei: spenta, si iscrive a mano dal calendario." in testi.scheda_giocatore(g, mondo)
@@ -769,7 +769,7 @@ def test_l_ordine_delle_notizie_dei_tornei_e_delle_sfide():
         ("tuoi_non_pagati", "stipendi_non_pagati", "stipendi non pagati, vedi il bilancio"),
         ("calendario_con_problemi", "calendario_illeggibile", "calendario dei tornei con problemi"),
         ("sfide_in_attesa", "sfida_ricevuta", "sfida da PoliTeam04, rispondi oggi"),
-        ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", "tuo atleta campione del mondo"),
+        ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", "tuo atleta campione d'Italia"),
         ("tue_medaglie_oro", "tua_medaglia_oro", "2 medaglie d'oro per i tuoi"),
         ("tue_coppe_oro", "tua_coppa_oro", "coppa d'oro per la tua polisportiva"),
         # A pari metallo la medaglia e poi la coppa, come per l'oro.
@@ -782,7 +782,7 @@ def test_l_ordine_delle_notizie_dei_tornei_e_delle_sfide():
         ("tue_sfide_vinte", "tua_sfida_vinta", "1 sfida vinta"),
         ("tue_sfide_perse", "tua_sfida_persa", "1 sfida persa"),
         ("tue_sfide_a_tavolino", "tua_sfida_a_tavolino", "1 sfida persa a tavolino"),
-        ("tuoi_qualificati", "tuoi_qualificati_mondiale", "3 tuoi atleti convocati al mondiale"),
+        ("tuoi_qualificati", "tuoi_qualificati_mondiale", "3 tuoi atleti al campionato italiano"),
         ("tue_qualificazioni_coppa", "tua_qualificazione_coppa", "tua polisportiva qualificata alla coppa"),
         ("tue_iscrizioni_saltate", "tue_iscrizioni_saltate", "2 iscrizioni saltate per la cassa"),
         ("tuoi_venduti", "tuo_tesserato_venduto", "1 tuo giocatore venduto"),
@@ -794,7 +794,7 @@ def test_l_ordine_delle_notizie_dei_tornei_e_delle_sfide():
         ("sfide_decadute", "sfida_decaduta", "1 sfida decaduta senza risposta"),
         ("tue_edizioni_annullate", "edizione_annullata", "1 torneo dei tuoi annullato"),
         ("mesi", "primo_del_mese", "primo del mese, stipendi pagati"),
-        ("mondiali_conclusi", "mondiale_concluso", "campionato mondiale concluso"),
+        ("mondiali_conclusi", "mondiale_concluso", "campionato italiano concluso"),
     ]
     for chiave, evento, testo in attesi:
         assert suoni.evento_avanzamento(tutto, True, True, "PoliTeam04") == (evento, testo), chiave

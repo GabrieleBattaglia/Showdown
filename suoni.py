@@ -482,7 +482,7 @@ AZIONI = {
     "elenco_giocatori": "l'elenco dei giocatori, con Ctrl+E",
     "classifica": "la classifica per valore, con Ctrl+L",
     "top_10": "la TOP 10 dei migliori giocatori, con Ctrl+T",
-    "statistiche_mondo": "le statistiche del mondo, con Ctrl+I",
+    "statistiche_mondo": "le statistiche nazionali, con Ctrl+I",
     "nuovi_arrivati": "i nuovi arrivati della sessione, con Ctrl+Shift+N",
     "ritirati_sessione": "i ritirati della sessione, con Ctrl+Shift+R",
     "usciti_sessione": "gli usciti di scena nella sessione, con Ctrl+Shift+U",
@@ -646,7 +646,7 @@ AZIONI = {
     "nessun_risultato_da_svelare": "Mostra tutti i risultati quando non c'è nessun incontro dei tuoi da svelare",
     "nessuna_differita": "un incontro che non si può ascoltare né leggere: non è dei tuoi, o la sua edizione è già stata sostituita",
     "albo_d_oro": "si apre l'albo d'oro dei tornei, con Ctrl+Shift+B",
-    "classifica_mondiale": "la classifica mondiale per sempre, uomini e donne, con Ctrl+Shift+W",
+    "classifica_mondiale": "la classifica nazionale per sempre, uomini e donne, con Ctrl+Shift+W",
     "dialogo_editor_modelli": "si apre l'editor dei modelli di torneo, con Ctrl+Shift+J",
     "dialogo_modello_torneo": "nell'editor si apre il dialogo di un modello di torneo, nuovo o da modificare",
     "modello_salvato": "un modello di torneo salvato",
@@ -678,7 +678,7 @@ AZIONI = {
     "tua_medaglia_argento": "nell'avanzamento un tuo atleta vince la medaglia d'argento",
     "tua_medaglia_bronzo": "nell'avanzamento un tuo atleta vince la medaglia di bronzo",
     "tua_medaglia_legno": "nell'avanzamento un tuo atleta arriva quarto, la medaglia di legno",
-    "tuo_titolo_mondiale": "nell'avanzamento un tuo atleta vince il campionato mondiale",
+    "tuo_titolo_mondiale": "nell'avanzamento un tuo atleta vince il campionato italiano e diventa campione o campionessa d'Italia",
     "tua_coppa_oro": "nell'avanzamento la tua polisportiva vince la coppa d'oro della Coppa delle polisportive",
     "tua_coppa_argento": "nell'avanzamento la tua polisportiva prende la coppa d'argento della Coppa delle polisportive",
     "tua_coppa_bronzo": "nell'avanzamento la tua polisportiva prende la coppa di bronzo della Coppa delle polisportive",
@@ -688,7 +688,7 @@ AZIONI = {
     "tua_sfida_a_tavolino": "nell'avanzamento la tua polisportiva perde una sfida a tavolino, senza una squadra valida",
     "sfida_ricevuta": "nell'avanzamento una polisportiva del computer sfida la tua, e aspetta la risposta entro oggi",
     "sfida_decaduta": "nell'avanzamento una sfida alla tua polisportiva decade, senza risposta",
-    "tuoi_qualificati_mondiale": "nell'avanzamento tuoi atleti convocati al campionato mondiale",
+    "tuoi_qualificati_mondiale": "nell'avanzamento tuoi atleti convocati al campionato italiano",
     "tua_qualificazione_coppa": "nell'avanzamento la tua polisportiva qualificata alla Coppa delle polisportive",
     "tue_iscrizioni_saltate": "nell'avanzamento l'iscrizione automatica di un tuo atleta salta, perché la cassa non ha la quota",
     "tuo_infortunio_in_gara": "nell'avanzamento un tuo atleta si fa male in gara e si ferma, anche col ritiro",
@@ -697,7 +697,7 @@ AZIONI = {
     "tuo_torneo_concluso": "nell'avanzamento finisce un torneo dei tuoi, senza medaglie",
     "tue_iscrizioni_automatiche": "nell'avanzamento l'iscrizione automatica iscrive tuoi atleti a un torneo",
     "edizione_annullata": "nell'avanzamento un torneo con tuoi iscritti si annulla per pochi iscritti, e la quota torna",
-    "mondiale_concluso": "nell'avanzamento finisce un campionato mondiale",
+    "mondiale_concluso": "nell'avanzamento finisce un campionato italiano",
 }
 
 # Il volume a cui ogni preset suona com'è stato pensato.
@@ -871,7 +871,7 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
         ("tuo_staff_uscito", "tuo_staff_uscito", lambda n: conta(n, "allenatore uscito dal tuo staff", "allenatori usciti dal tuo staff")),
         ("calendario_con_problemi", "calendario_illeggibile", lambda _n: "calendario dei tornei con problemi"),
         ("sfide_in_attesa", "sfida_ricevuta", sfida_in_attesa),
-        ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", lambda n: "tuo atleta campione del mondo" if n == 1 else f"{n} tuoi atleti campioni del mondo"),
+        ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", lambda n: "tuo atleta campione d'Italia" if n == 1 else f"{n} tuoi atleti campioni d'Italia"),
         ("tue_medaglie_oro", "tua_medaglia_oro", lambda n: conta(n, "medaglia d'oro per i tuoi", "medaglie d'oro per i tuoi")),
         ("tue_coppe_oro", "tua_coppa_oro", coppa("d'oro")),
         # A pari metallo prima la medaglia e poi la coppa, come per l'oro: la revisione del 14 ottobre 2026
@@ -885,7 +885,7 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
         ("tue_sfide_vinte", "tua_sfida_vinta", lambda n: conta(n, "sfida vinta", "sfide vinte")),
         ("tue_sfide_perse", "tua_sfida_persa", lambda n: conta(n, "sfida persa", "sfide perse")),
         ("tue_sfide_a_tavolino", "tua_sfida_a_tavolino", lambda n: conta(n, "sfida persa a tavolino", "sfide perse a tavolino")),
-        ("tuoi_qualificati", "tuoi_qualificati_mondiale", lambda n: conta(n, "tuo atleta convocato al mondiale", "tuoi atleti convocati al mondiale")),
+        ("tuoi_qualificati", "tuoi_qualificati_mondiale", lambda n: conta(n, "tuo atleta al campionato italiano", "tuoi atleti al campionato italiano")),
         ("tue_qualificazioni_coppa", "tua_qualificazione_coppa",
          lambda n: "tua polisportiva qualificata alla coppa" if n == 1 else f"{n} tue polisportive alla coppa"),
         ("tue_iscrizioni_saltate", "tue_iscrizioni_saltate", lambda n: conta(n, "iscrizione saltata per la cassa", "iscrizioni saltate per la cassa")),
@@ -916,7 +916,7 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
         return "mondo_avanzato_piu_giorni", f"mondo avanzato {di_giorni}"
     if rapporto.get("mondiali_conclusi"):
         n = rapporto["mondiali_conclusi"]
-        return "mondiale_concluso", "campionato mondiale concluso" if n == 1 else f"{n} campionati mondiali conclusi"
+        return "mondiale_concluso", "campionato italiano concluso" if n == 1 else f"{n} campionati italiani conclusi"
     notizie = (
         ("morti", "notizia_morte", "morto", "morti"),
         ("poli_chiuse", "polisportiva_cpu_chiusa", "polisportiva chiusa", "polisportive chiuse"),

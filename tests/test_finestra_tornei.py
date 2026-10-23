@@ -88,7 +88,7 @@ def test_il_menu_tornei_e_la_guida(finestra):
     assert len(lettere) == len(set(lettere))
     guida = testi.guida(finestra.voci_guida())
     assert ("Menu Tornei: Calendario e iscrizioni, Ctrl+U; Iscrizioni dei tuoi atleti, Ctrl+J; Tornei in corso, Ctrl+Y; Albo d'oro, Ctrl+Maiusc+B; "
-            "Classifica mondiale, Ctrl+Maiusc+W; Editor dei modelli di torneo, Ctrl+Maiusc+J; Editor delle formule, Ctrl+Maiusc+Y; "
+            "Classifica nazionale, Ctrl+Maiusc+W; Editor dei modelli di torneo, Ctrl+Maiusc+J; Editor delle formule, Ctrl+Maiusc+Y; "
             "Ripristina il calendario predefinito.") in guida
     assert testi.GUIDA_DEI_TORNEI in guida and testi.GUIDA_DELLE_SFIDE in guida and "\n\n" not in guida
 
@@ -162,10 +162,10 @@ def test_la_classifica_mondiale_nella_vista(finestra, suonati):
     mondo.giocatori[16].punti_mondiali = 70.0
     finestra.classifica_mondiale()
     righe = finestra.vista.GetValue().splitlines()
-    assert righe[0].startswith("Classifica mondiale per sempre") and righe[1] == "Uomini: 2 giocatori in classifica, ecco i primi 2."
+    assert righe[0].startswith("Classifica nazionale per sempre") and righe[1] == "Uomini: 2 giocatori in classifica, ecco i primi 2."
     assert righe[2].startswith("1. ") and ", 120,0 punti, ori 0, " in righe[2]
     assert righe[3].endswith(", tuo tesserato") and righe[4] == "Donne: 1 giocatrice in classifica, ecco i primi 1."
-    assert suonati[-1] == "classifica_mondiale" and finestra.ultimo_evento == "classifica mondiale"
+    assert suonati[-1] == "classifica_mondiale" and finestra.ultimo_evento == "classifica nazionale"
 
 
 def test_le_sfide_dalla_finestra_e_lo_storico(finestra, suonati, cartella_di_prova, monkeypatch, messaggi):
@@ -293,5 +293,5 @@ def test_la_sfida_in_attesa_e_le_notizie_nella_barra(finestra, suonati, monkeypa
     assert suonati == ["tua_medaglia_oro"] and finestra.ultimo_evento == "1 medaglia d'oro per i tuoi"
     finestra.riepilogo()
     assert "Mario Rossi vince la medaglia d'oro a Open maschile del martedì." in finestra.vista.GetValue()
-    assert "Nel mondo: 1 torneo concluso e 5 incontri di torneo." in finestra.vista.GetValue()
+    assert "In Italia: 1 torneo concluso e 5 incontri di torneo." in finestra.vista.GetValue()
     assert suoni.EVENTI["tua_medaglia_oro"] == "mess_medaglia_oro"

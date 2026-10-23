@@ -118,6 +118,26 @@ def test_i_diari(chiusa):
     assert a.diario[0]["anno"] == 2026 and a.diario[0]["ori"] == 1 and a.diario[0]["iscrizioni"] == 2
 
 
+@pytest.mark.parametrize(("nome", "uomini", "donne", "titolo"), [("Campionato italiano maschile", 8, 0, "campione"),
+                                                                 ("Campionato italiano femminile", 0, 8, "campionessa")])
+def test_il_tuo_campione_d_italia(nome, uomini, donne, titolo):
+    # Dalla tappa 14, D34: il mondiale è il campionato italiano, e il tuo che lo vince è campione o campionessa d'Italia.
+    mondo = mondo_di_prova(uomini, donne)
+    polisportiva(mondo, "Club Di Prova", cpu=False, ids=(1,))
+    info = {gid: {"nome": f"{g.nome} {g.cognome}", "sesso": g.sesso, "club": iscrizioni.club_di(mondo, g) if gid == 1 else None,
+                  "forza": 1.0 - gid / 10.0, "pagato": 0} for gid, g in mondo.giocatori.items()}
+    torneo = tornei.Torneo(1, 1, 1, modello(nome).a_dizionario(), formule.formula("gironi_32"), OGGI, 7, info)
+    _gioca_fino_alla_fine(torneo)
+    calendario = Calendario()
+    calendario.numeri_dei_tornei[torneo.id] = 1
+    rapporto = Mondo.rapporto_vuoto(OGGI)
+    premiazioni.chiudi(mondo, calendario, torneo, OGGI, rapporto)
+    g = mondo.giocatori[1]
+    assert torneo.classifica_finale[0] == 1 and rapporto["tuoi_titoli_mondiali"] == 1 and rapporto["mondiali_conclusi"] == 1
+    assert f"{g.nome} {g.cognome} è {titolo} d'Italia." in rapporto["notizie"]
+    assert [(t["torneo"], t["posto"], t["mondiale"]) for t in g.titoli] == [(nome, 1, True)]
+
+
 def test_l_albo_conserva_tutto_e_si_legge_dopo(chiusa):
     mondo, calendario, a = chiusa["mondo"], chiusa["calendario"], chiusa["a"]
     albo = calendario.albo

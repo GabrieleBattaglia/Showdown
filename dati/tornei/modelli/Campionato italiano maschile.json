@@ -1,15 +1,15 @@
 {
- "id": "modello_9",
- "nome": "Campionato mondiale femminile",
- "note": "Il mondiale delle donne: le 32 migliori per i punti della classifica dell'ultimo anno, al meglio dei 5 dai quarti, con 3.000 euro della federazione.",
+ "id": "modello_8",
+ "nome": "Campionato italiano maschile",
+ "note": "Il campionato italiano degli uomini: i 32 migliori per i punti della classifica dell'ultimo anno, al meglio dei 5 dai quarti, con 3.000 euro della federazione. Risposta 10 di Gabriele.",
  "attivo": true,
  "tipo": "individuale",
- "sesso": "f",
+ "sesso": "m",
  "formula": "gironi_32",
  "ricorrenza": {
   "tipo": "annuale",
   "mese": 12,
-  "giorno": 12
+  "giorno": 10
  },
  "giorni_iscrizione": 10,
  "minimo_iscritti": 8,

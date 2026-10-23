@@ -178,7 +178,7 @@ class FinestraPrincipale(wx.Frame):
                 ("&Elenco dei giocatori", "Ctrl+E", lambda: self.mostra(testi.elenco_giocatori(self.mondo), "elenco dei giocatori", "elenco_giocatori")),
                 ("&Classifica per valore", "Ctrl+L", lambda: self.mostra(testi.classifica(self.mondo), "classifica per valore", "classifica")),
                 ("&TOP 10", "Ctrl+T", lambda: self.mostra(testi.top_10(self.mondo), "TOP 10", "top_10")),
-                ("St&atistiche del mondo", "Ctrl+I", lambda: self.mostra(testi.statistiche(self.mondo), "statistiche del mondo", "statistiche_mondo")),
+                ("St&atistiche nazionali", "Ctrl+I", lambda: self.mostra(testi.statistiche(self.mondo), "statistiche nazionali", "statistiche_mondo")),
                 None,
                 ("Ce&rca giocatori...", "Ctrl+F", self.cerca),
                 ("R&isultati della ricerca", "Ctrl+R", self.risultati),
@@ -226,7 +226,7 @@ class FinestraPrincipale(wx.Frame):
                 ("&Tornei in corso...", "Ctrl+Y", self.tornei_in_corso),
                 None,
                 ("&Albo d'oro...", "Ctrl+Shift+B", self.albo_d_oro),
-                ("Classifica &mondiale", "Ctrl+Shift+W", self.classifica_mondiale),
+                ("Classifica &nazionale", "Ctrl+Shift+W", self.classifica_mondiale),
                 None,
                 ("&Editor dei modelli di torneo...", "Ctrl+Shift+J", self.editor_modelli),
                 ("Editor delle &formule...", "Ctrl+Shift+Y", self.editor_formule),
@@ -1032,7 +1032,7 @@ class FinestraPrincipale(wx.Frame):
             dialogo.Destroy()
 
     def classifica_mondiale(self):
-        self.mostra(testi.classifica_mondiale(self.mondo, tuoi=tuoi_del_mondo(self.mondo)), "classifica mondiale", "classifica_mondiale")
+        self.mostra(testi.classifica_mondiale(self.mondo, tuoi=tuoi_del_mondo(self.mondo)), "classifica nazionale", "classifica_mondiale")
 
     def editor_modelli(self):
         """L'editor dei modelli di torneo: alla chiusura la vista dice che cosa è cambiato; il mondo non si tocca, perché i modelli stanno accanto al gioco."""

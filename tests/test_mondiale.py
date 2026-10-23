@@ -21,7 +21,7 @@ import sfide
 from mondo import Mondo
 
 APERTURA = datetime.datetime(2026, 11, 30, 9, 0)
-MONDIALE = "Campionato mondiale maschile"
+MONDIALE = "Campionato italiano maschile"
 
 
 def _con_punti(uomini):

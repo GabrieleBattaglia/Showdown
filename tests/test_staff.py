@@ -543,7 +543,8 @@ def test_i_testi_dello_staff(mondo):
     assert f"Capo: {nome_completo(a)}, {a.codice}" in scheda and "Qualità dello staff" in scheda and "allenamento più" in scheda
     assert "Classe migliore della carriera:" in testi.scheda_giocatore(g, mondo)
     statistiche = testi.statistiche(mondo)
-    assert "Allenatori:" in statistiche and "Polisportive con un capo: 1 su 2" in statistiche
+    assert "Allenatori:" in statistiche and "Polisportive con un capo: 1 su 2" in statistiche and "; staff medio nazionale " in statistiche
+    assert ", lo staff medio nazionale " in testi.scheda_polisportiva(poli, mondo)
     assert testi.scheda_allenatore(a, mondo).startswith("[ALLENATORE]" if a.sesso == "m" else "[ALLENATRICE]")
     assert "di Club di prova" in testi.riga_allenatore(a, mondo)
     libero = _allenatore(mondo, 40)

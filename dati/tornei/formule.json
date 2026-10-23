@@ -3,7 +3,7 @@
   {
    "id": "gironi_32",
    "nome": "Gironi da 4 e tabellone da 16",
-   "descrizione": "Otto gironi da quattro, dove passano i primi due, poi il tabellone da sedici a eliminazione diretta con la finalina per il terzo posto: 64 incontri, sette per chi arriva in fondo. È la formula degli open e dei campionati mondiali.",
+   "descrizione": "Otto gironi da quattro, dove passano i primi due, poi il tabellone da sedici a eliminazione diretta con la finalina per il terzo posto: 64 incontri, sette per chi arriva in fondo. È la formula degli open e dei campionati italiani.",
    "fasi": [
     {"tipo": "gironi", "partecipanti": 32, "gironi": 8, "promossi": 2, "finalina": false},
     {"tipo": "tabellone", "partecipanti": 16, "gironi": 0, "promossi": 0, "finalina": false},

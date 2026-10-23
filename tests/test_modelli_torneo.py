@@ -46,7 +46,7 @@ def test_i_predefiniti_si_copiano_in_una_cartella_vuota(gestore, cartella_di_pro
     assert (cartella_di_prova / mt.CARTELLA / "Open maschile del sabato.json").exists()
     assert not gestore.crea_predefiniti()
     nomi = {m.nome: m for m in validi}
-    assert nomi["Campionato mondiale maschile"].qualificazione == mt.PUNTI_ANNO
+    assert nomi["Campionato italiano maschile"].qualificazione == mt.PUNTI_ANNO
     assert nomi["Coppa delle polisportive"].tipo == mt.SQUADRE and nomi["Coppa delle polisportive"].sesso is None
     assert sorted(m.id for m in validi) == sorted(f"modello_{n}" for n in range(1, 11))
 
@@ -56,7 +56,7 @@ def test_i_predefiniti_seguono_il_progetto(gestore):
     sabato = nomi["Open maschile del sabato"]
     assert (sabato.sesso, sabato.ricorrenza, sabato.giorni_iscrizione, sabato.formula, sabato.incontri_al_giorno) == ("m", {"tipo": "settimanale", "giorno": 5}, 14, "gironi_32", 4)
     assert (sabato.set_al_meglio, sabato.set_finali, sabato.finali_da, sabato.quota_iscrizione, sabato.contributo_federazione, sabato.posti_premiati) == (3, 5, 2, 10, 1.0, 8)
-    mondiale = nomi["Campionato mondiale femminile"]
+    mondiale = nomi["Campionato italiano femminile"]
     assert (mondiale.ricorrenza, mondiale.minimo_iscritti, mondiale.finali_da, mondiale.importanza, mondiale.montepremi_minimo) == ({"tipo": "annuale", "mese": 12, "giorno": 12}, 8, 8, 4.0, 3000)
     assert nomi["Open misto del mese"].sesso == "aperto"
 
@@ -163,7 +163,7 @@ def test_la_durata_prevista_conta_il_girone_da_5(gestore):
     assert mt.durata_prevista(dataclasses.replace(nomi["Open maschile del sabato"], minimo_iscritti=32), gironi_32) == 2
     # Il mondiale con i suoi 32 qualificati dura tre giorni, risposta 10 di Gabriele; al massimo
     # quattro, se è a metà, con un girone da 5 e il tabellone da 16.
-    mondiale = nomi["Campionato mondiale maschile"]
+    mondiale = nomi["Campionato italiano maschile"]
     assert mt.giorni_di_gioco(formule.struttura(gironi_32, 32), mondiale.incontri_al_giorno) == 3
     assert mt.durata_prevista(mondiale, gironi_32) == 4
     assert mt.durata_prevista(nomi["Gran Premio femminile"], formule.formula("gironi_64")) == 4

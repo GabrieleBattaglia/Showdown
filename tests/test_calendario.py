@@ -42,7 +42,7 @@ def test_l_apertura_secondo_la_ricorrenza_anche_due_insieme():
     assert [ed.data_inizio for ed in apri(mondo, domani, MARTEDI)][-1] == datetime.date(2026, 10, 20)
     mensile = apri(mondo, OGGI, "Gran Premio maschile")
     assert [ed.data_inizio for ed in mensile] == [datetime.date(2026, 10, 15)]
-    annuale = apri(mondo, datetime.datetime(2026, 11, 30, 9, 0), "Campionato mondiale maschile")
+    annuale = apri(mondo, datetime.datetime(2026, 11, 30, 9, 0), "Campionato italiano maschile")
     assert [ed.data_inizio for ed in annuale] == [datetime.date(2026, 12, 10)]
 
 

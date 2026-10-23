@@ -227,7 +227,7 @@ def _voce_del_tuo(mondo, g, torneo, posto, iscritti, giocati, vinti, medaglia, p
         notizia = f"{g.nome} {g.cognome} vince la {_medaglia_a_parole(medaglia)} a {nome}"
         if mondiale and medaglia == "oro":
             rapporto["tuoi_titoli_mondiali"] += 1
-            notizia = f"{g.nome} {g.cognome} è {'campione' if g.sesso == 'm' else 'campionessa'} del mondo"
+            notizia = f"{g.nome} {g.cognome} è {'campione' if g.sesso == 'm' else 'campionessa'} d'Italia"
         rapporto["notizie"].append(notizia + ".")
     if premio and poli is not None:
         testo += f"; premio di {scritta_in_euro(premio)} a {poli.nome}"

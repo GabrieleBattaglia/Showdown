@@ -139,7 +139,7 @@ def test_la_classifica_mondiale_per_sempre_con_le_vecchie_glorie():
     if not uomini or not donne:
         pytest.skip("Il seme non dà tutti e due i sessi.")
     uomini[0].punti_mondiali, uomini[0].ori = 300.0, 2
-    uomini[0].titoli = [{"data": "2031-06-01", "torneo": "Campionato mondiale maschile", "posto": 1, "mondiale": True}]
+    uomini[0].titoli = [{"data": "2031-06-01", "torneo": "Campionato italiano maschile", "posto": 1, "mondiale": True}]
     if len(uomini) > 1:
         uomini[1].punti_mondiali = 120.0
     donne[0].punti_mondiali = 50.0
@@ -151,7 +151,7 @@ def test_la_classifica_mondiale_per_sempre_con_le_vecchie_glorie():
     # La revisione del 14 ottobre 2026: fra i vivi, come fra le vecchie glorie, i titoli mondiali sono i
     # mondiali vinti; un argento al mondiale sta nei titoli del giocatore ma non è un titolo mondiale.
     if len(uomini) > 1:
-        uomini[1].titoli = [{"data": "2031-06-01", "torneo": "Campionato mondiale maschile", "posto": 2, "mondiale": True}]
+        uomini[1].titoli = [{"data": "2031-06-01", "torneo": "Campionato italiano maschile", "posto": 2, "mondiale": True}]
         assert next(r for r in palmares.classifica_mondiale(mondo, "m") if r["id"] == uomini[1].id)["titoli"] == 0
 
 

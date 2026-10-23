@@ -96,6 +96,9 @@ def test_elenchi_e_classifiche(mondo):
     assert len(testi.classifica(mondo).splitlines()) == 41
     assert testi.classifica(mondo).splitlines()[1].startswith("1. ")
     assert "[TESSERATI]" in testi.scheda_polisportiva(mondo.miapolisportiva_attiva, mondo)
+    # Dalla tappa 14, D34, il mondo come territorio è l'Italia.
+    assert testi.elenco_polisportive(mondo).startswith("Polisportive in Italia: ")
+    assert testi.elenco_giocatori(Mondo()) == "In Italia non ci sono ancora giocatori."
 
 
 def test_liste_della_sessione(mondo):
