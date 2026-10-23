@@ -4,6 +4,7 @@ controllati uno per uno, la ricorrenza ai bordi di mese e d'anno, la durata prev
 girone da 5, i predefiniti in una cartella vuota, il file rovinato in problemi(), i nomi rifiutati,
 l'identificativo che resta alla rinomina e cambia al duplicato, il ripristino che mette da parte i
 file di prima, e a_dizionario che non condivide niente col modello.
+Dal 2026-10-24, col collaudo di gioco, il ripristino fermo a metà, che porta nell'errore la cartella dei file già messi da parte, o non ne lascia una vuota.
 """
 
 import dataclasses
@@ -242,6 +243,39 @@ def test_il_ripristino_mette_da_parte_i_file_di_prima(gestore, cartella_di_prova
     assert "Il mio open.json" in salvati and formule.NOME_FILE in salvati and len(salvati) == 10
     assert (cartella_di_prova / formule.NOME_FILE).exists()
     assert gestore.ripristina_predefiniti() != da_parte
+
+
+def test_il_ripristino_fermo_a_meta_dice_dove_sono_i_file(gestore, cartella_di_prova, monkeypatch):
+    # Dal collaudo di gioco: se i predefiniti non si copiano dopo che i file di prima sono già da parte, l'errore porta la
+    # cartella dove sono, perché il messaggio la nomini, e i modelli si rileggono dai file.
+    formule.leggi()
+    assert len(gestore.modelli()[0]) == 10
+
+    def non_si_copia(_cartella):
+        raise PermissionError(13, "Accesso negato")
+
+    monkeypatch.setattr(mt, "_copia_predefiniti", non_si_copia)
+    with pytest.raises(PermissionError) as errore:
+        gestore.ripristina_predefiniti()
+    da_parte = errore.value.da_parte
+    assert da_parte.startswith(str(cartella_di_prova / mt.CARTELLA / mt.PREFISSO_RIPRISTINO))
+    salvati = sorted(p.name for p in (cartella_di_prova / mt.CARTELLA).glob(f"{mt.PREFISSO_RIPRISTINO}*/*"))
+    # I dieci modelli e il file delle formule.
+    assert len(salvati) == 11 and formule.NOME_FILE in salvati
+    assert gestore.modelli()[0] == []
+
+
+def test_il_ripristino_fermo_al_primo_file_non_lascia_cartelle(gestore, cartella_di_prova, monkeypatch):
+    # Se non si sposta nemmeno il primo file, la cartella vuota se ne va, e l'errore non nomina niente.
+    def non_si_sposta(*_argomenti):
+        raise PermissionError(13, "Accesso negato")
+
+    monkeypatch.setattr(mt.shutil, "move", non_si_sposta)
+    with pytest.raises(PermissionError) as errore:
+        gestore.ripristina_predefiniti()
+    assert not hasattr(errore.value, "da_parte")
+    assert not list((cartella_di_prova / mt.CARTELLA).glob(f"{mt.PREFISSO_RIPRISTINO}*"))
+    assert len(gestore.modelli()[0]) == 10
 
 
 def test_l_identificativo_di_un_modello_non_torna_mai(gestore, monkeypatch):

@@ -5,6 +5,7 @@ l'allenamento completo, Allena tutti, programma e intensità, gli avvisi con i l
 contratti, con il rinnovo dentro e fuori dalla finestra, accettato, rifiutato e chiuso; la
 buonuscita nello svincolo, la proposta di contratto nel dialogo dell'ingaggio e le voci del menu
 nella guida. I messaggi di wx sono sostituiti da un registratore, che risponde come gli si dice.
+Dal 2026-10-24, col collaudo di gioco, Allena tutti coi tesserati tutti infortunati e con tutto al massimo, ciascuno col suo perché e il suo suono.
 """
 
 import datetime
@@ -203,6 +204,40 @@ def test_allena_tutti_con_la_conferma(sala, mondo, messaggi, suonati):
     assert sala.elenco.GetString(0).endswith(", non si allena")
     sala.tutti()
     assert suonati[-1] == "punti_insufficienti" and messaggi[-1] == testi.nessuno_da_allenare(mondo.miapolisportiva_attiva)
+
+
+def test_allena_tutti_dice_il_suo_perche(sala, mondo, messaggi, suonati, monkeypatch):
+    # Dal collaudo di gioco: con i tesserati tutti infortunati Allena tutti lo dice col suo suono, e non che manca un punto da
+    # spendere; e quando a chi si allena non sale più niente dice che ha tutto al massimo.
+    for g in sala.allenandi:
+        g.infortunato = True
+        g.infortunio_fine_datetime = ORA + datetime.timedelta(days=10)
+        g.infortunio_sede = "caviglia"
+        g.ambidestro = False
+    sala.tutti()
+    p = mondo.miapolisportiva_attiva
+    assert suonati == ["allenandi_tutti_infortunati"] and messaggi == [testi.tutti_infortunati(p, sala.allenandi)]
+    assert messaggi[-1].startswith("Oggi nessuno di Club Della Sala si allena: ") and " tutt" in messaggi[-1]
+    assert all(g.punti_allenamento == 150.5 for g in sala.allenandi)
+    for g in sala.allenandi:
+        g.infortunato, g.infortunio_fine_datetime, g.infortunio_sede = False, None, None
+    monkeypatch.setattr(allenamento, "allena_secondo_programma", lambda *_argomenti, **_opzioni: [])
+    sala.tutti()
+    assert suonati[-2:] == ["domanda", "caratteristica_al_massimo"] and messaggi[-1] == testi.tutti_al_massimo(p)
+    assert messaggi[-1] == "I tesserati di Club Della Sala che oggi si allenano hanno già tutte le caratteristiche al massimo."
+    assert suonati.count("punti_insufficienti") == 0
+
+
+def test_i_tesserati_tutti_infortunati_a_parole():
+    p = Polisportiva("Club Della Sala", None, ORA)
+
+    def tesserati(*sessi):
+        return [type("Tesserato", (), {"sesso": sesso})() for sesso in sessi]
+
+    assert testi.tutti_infortunati(p, tesserati("m", "f")) == "Oggi nessuno di Club Della Sala si allena: i suoi tesserati sono tutti infortunati."
+    assert testi.tutti_infortunati(p, tesserati("f", "f")) == "Oggi nessuno di Club Della Sala si allena: le sue tesserate sono tutte infortunate."
+    assert testi.tutti_infortunati(p, tesserati("m")) == "Oggi nessuno di Club Della Sala si allena: il suo unico tesserato è infortunato."
+    assert testi.tutti_infortunati(p, tesserati("f")) == "Oggi nessuno di Club Della Sala si allena: la sua unica tesserata è infortunata."
 
 
 def test_la_classe_salita_suona_in_coda_e_va_nel_diario(sala, messaggi, suonati):

@@ -6,6 +6,7 @@ in un elenco che si restringe mentre scrive, con la percentuale della popolazion
 del più popoloso, Roma 100%. La scheda dice la sede, l'elenco delle polisportive il comune, e i mondi del
 formato 8 la ricevono nell'aggiornamento al 9. Il dialogo della fondazione nasce sul desktop nascosto del
 conftest, coi messaggi di wx sostituiti da un registratore che risponde come gli si dice.
+Dal 2026-10-24, col collaudo di gioco, la sede che non corrisponde a nessun comune suona come un campo da correggere.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 """
 
@@ -236,12 +237,13 @@ def test_l_elenco_si_restringe_mentre_si_scrive(fondazione, suonati, messaggi):
     assert d.elenco.GetCount() == 1291 and d.elenco.GetString(0) == "Roma 100%, provincia di Roma, Lazio"
     assert d.etichetta_comuni.GetLabel() == "&Comuni trovati: 1.291"
     assert suonati == ["elenco_svuotato", "elenco_ripopolato"]
-    # Con l'elenco vuoto Fonda non fonda, e dice perché col suono di chi non ha scelto.
+    # Con l'elenco vuoto Fonda non fonda, e dice perché; dal collaudo di gioco col suono del campo da correggere,
+    # la sede, e non più con quello di chi non ha scelto.
     d.nome.ChangeValue("Circolo nuovo")
     d.sede.SetValue("atlantide")
     d.conferma()
     assert d.risultato is None and messaggi[-1].startswith("Nessun comune corrisponde a quello che hai scritto nella sede")
-    assert suonati[-2:] == ["elenco_svuotato", "nessuna_selezione"]
+    assert suonati[-2:] == ["elenco_svuotato", "campo_da_correggere"]
     # Con un nome scritto a metà Fonda chiede prima, dalla revisione della tappa 14, e al sì fonda nel comune scelto.
     d.sede.SetValue("bol")
     d.elenco.SetSelection(1)

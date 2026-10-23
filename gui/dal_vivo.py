@@ -44,6 +44,10 @@ pause si leggono nel campo, e il cambio al tavolo ha un suono breve, mentre il c
 ritiro ferma l'azione col suo suono prima del triplice fischio; il cambio di braccio dell'ambidestro e
 gli acciacchi si leggono nel campo, senza un suono loro. Le parti della tappa 12 sono di Gabriele
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, per la regola di un suono per ogni evento: a
+incontro finito Alt+V, Vai alla fine, vale come il pulsante del risultato e come Esc, e la vista mostra
+l'esito senza i cinque guizzi del salto alla fine, che non c'è più. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import functools
@@ -69,8 +73,8 @@ PAUSA = "pausa"
 FINITO = "finito"
 UN_PUNTO = "punto"
 FINO_A_FINE_SET = "set"
-# Come la finestra si è chiusa: con Esc prima della fine, con Vai alla fine, o dal risultato a
-# incontro finito, col pulsante o con Esc.
+# Come la finestra si è chiusa: con Esc prima della fine, con Vai alla fine prima della fine, o dal
+# risultato a incontro finito, col pulsante, con Esc o con Vai alla fine.
 CON_ESC = "esc"
 ALLA_FINE = "fine"
 AL_RISULTATO = "risultato"
@@ -465,11 +469,12 @@ class FinestraDalVivo(_Dialogo):
         Esc, Vai alla fine o il risultato: il suono della partita si ferma con la sua maniglia, e la
         finestra si chiude. A incontro finito Esc vale come il pulsante del risultato: la fine si è
         sentita e la cronaca nel campo la dice già, quindi la vista mostra il risultato, con l'esito
-        e i punti allenamento, invece di dire che si è usciti senza vederla.
+        e i punti allenamento, invece di dire che si è usciti senza vederla. Dal collaudo di gioco vale
+        così anche Alt+V, Vai alla fine, che prima faceva sentire i guizzi di un salto che non c'è.
         """
         if self.uscita is not None:
             return
-        if uscita == CON_ESC and self.stato == FINITO:
+        if uscita in (CON_ESC, ALLA_FINE) and self.stato == FINITO:
             uscita = AL_RISULTATO
         self.uscita = uscita
         self.timer.Stop()

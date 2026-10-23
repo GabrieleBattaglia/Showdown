@@ -9,6 +9,7 @@ toccare niente, e la rete per gli errori scrive il resoconto nel registro e fa s
 Dalla revisione del 23 ottobre 2026 una prova fa girare il vero avvia_finestra fino alla chiusura
 normale, che deve dare zero e scrivere MESS si chiude: le altre lo sostituivano, e non vedevano che
 restituiva un esito che non c'era.
+Dal 2026-10-24, col collaudo di gioco, l'errore che ferma MESS col suo suono, errore_fatale, e non più quello del comando interrotto.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -150,7 +151,8 @@ def test_l_errore_fatale(app_wx, monkeypatch, programma_di_prova, suonati, capsy
     assert Showdown.main([]) == 1
     assert messaggi == [(f"MESS si è fermato per un errore imprevisto: RuntimeError, guasto. Il resoconto completo è nel file MESS - Errori.log, "
                          f"nella cartella {programma_di_prova}: allegalo quando chiedi aiuto.", "MESS si è fermato")]
-    assert suonati == ["errore_imprevisto"] and ASCOLTI[0].fermo
+    # Dal collaudo di gioco l'errore che ferma MESS ha il suo suono: errore_imprevisto resta al comando interrotto.
+    assert suonati == ["errore_fatale"] and ASCOLTI[0].fermo
     testo = (programma_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
     assert "Traceback (most recent call last):" in testo and "RuntimeError: guasto" in testo and "MESS si ferma per un errore fatale." in testo
     # Da sorgente la traccia va anche sulla console, come prima.

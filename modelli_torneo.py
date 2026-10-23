@@ -25,6 +25,10 @@ I modelli stanno nella cartella tornei, dentro la cartella del mondo dal 2026-10
 salvataggio, D9: ogni edizione aperta ne conserva una copia congelata, così l'editor cambia soltanto
 le edizioni future. Al primo uso, se la cartella manca o è vuota, si copiano i predefiniti che
 viaggiano col programma, in dati/tornei/modelli.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026: il ripristino del calendario predefinito che si
+ferma a metà porta nel suo errore la cartella prima_del_ripristino_ dove sono già finiti dei file, perché
+il messaggio la nomini; se non c'è finito niente, la cartella vuota se ne va. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -548,6 +552,10 @@ class GestoreModelli:
         Rimette il calendario predefinito: i modelli e il file delle formule di adesso vanno nella
         cartella tornei/prima_del_ripristino_AAAA-MM-GG_HH-MM, così non si perde niente, e al loro
         posto tornano i predefiniti. Restituisce la cartella dove sono andati quelli di prima.
+        Il ripristino può fermarsi a metà, con l'OSError del file che non si sposta o non si copia, dopo
+        aver già messo da parte una parte dei file: dal collaudo di gioco l'errore porta allora in
+        da_parte la cartella dove sono, perché il messaggio la nomini; se non c'è finito niente, la
+        cartella vuota se ne va, e l'errore non la porta.
         """
         cartella = self.cartella()
         os.makedirs(cartella, exist_ok=True)
@@ -557,12 +565,22 @@ class GestoreModelli:
             da_parte = f"{base}_{numero}"
             numero += 1
         os.makedirs(da_parte)
-        for nome in self._file_dei_modelli():
-            shutil.move(os.path.join(cartella, nome), os.path.join(da_parte, nome))
-        file_formule = percorsi.percorso(formule.NOME_FILE)
-        if os.path.exists(file_formule):
-            shutil.move(file_formule, os.path.join(da_parte, formule.NOME_FILE))
-        _copia_predefiniti(cartella)
+        try:
+            for nome in self._file_dei_modelli():
+                shutil.move(os.path.join(cartella, nome), os.path.join(da_parte, nome))
+            file_formule = percorsi.percorso(formule.NOME_FILE)
+            if os.path.exists(file_formule):
+                shutil.move(file_formule, os.path.join(da_parte, formule.NOME_FILE))
+            _copia_predefiniti(cartella)
+        except OSError as errore:
+            # rmdir toglie soltanto una cartella vuota: quella con dei file resta, e l'errore la nomina.
+            with contextlib.suppress(OSError):
+                os.rmdir(da_parte)
+            if os.path.isdir(da_parte):
+                errore.da_parte = da_parte
+            formule.azzera_cache()
+            self.azzera_cache()
+            raise
         formule.azzera_cache()
         formule.percorso_formule()
         self.azzera_cache()

@@ -55,6 +55,10 @@ Con la issue 7, dallo stesso collaudo, la riga del mercato dei giocatori dice su
 cognome la classe, come I1, e l'età completa in anni, mesi e giorni d'età separati dai due punti, come
 17:4:3, contata sul calendario dell'età, con l'anno da 108 giorni e il mese da 9: è quella della
 scheda. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal collaudo di gioco, il 24 ottobre 2026, Allena tutti dice il suo vero perché: tutti_infortunati quando
+oggi non si allena nessuno, e tutti_al_massimo quando a chi si allena non sale più niente; prima tutti e
+due dicevano che nessuno aveva un punto da spendere. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import copy
@@ -3239,8 +3243,26 @@ def tutto_al_massimo(g):
 
 
 def nessuno_da_allenare(p):
-    """L'avviso di Allena tutti quando nessuno ha un punto da spendere o può allenarsi."""
+    """L'avviso di Allena tutti quando nessuno di chi oggi si allena ha almeno un punto da spendere."""
     return f"Nessun tesserato di {p.nome} oggi può allenarsi con almeno un punto allenamento da spendere."
+
+
+def tutti_infortunati(p, giocatori):
+    """
+    L'avviso di Allena tutti quando oggi non si allena nessuno, perché i tesserati, giocatori, sono tutti
+    infortunati: al femminile se sono tutte donne, e al singolare se è uno solo.
+    """
+    donne = all(g.sesso == "f" for g in giocatori)
+    if len(giocatori) == 1:
+        chi = "la sua unica tesserata è infortunata" if donne else "il suo unico tesserato è infortunato"
+    else:
+        chi = "le sue tesserate sono tutte infortunate" if donne else "i suoi tesserati sono tutti infortunati"
+    return f"Oggi nessuno di {p.nome} si allena: {chi}."
+
+
+def tutti_al_massimo(p):
+    """L'avviso di Allena tutti, dopo la conferma, quando a chi si allena non sale niente, perché ha già tutto al massimo."""
+    return f"I tesserati di {p.nome} che oggi si allenano hanno già tutte le caratteristiche al massimo."
 
 
 def riepilogo_sala(p, esiti, cambi=()):

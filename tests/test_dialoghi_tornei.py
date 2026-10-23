@@ -10,6 +10,7 @@ conteggio e l'avviso quando non c'è niente, Esc che non svela, il gemello ugual
 l'albo nel suo dialogo; gli editor con le scelte dei giorni, che rifiutano col motivo e non si
 chiudono da soli; il lancio e la risposta alle sfide con la formazione; la casella della sala; la
 scheda, l'acciacco nella formazione; le notizie e il suono unico dell'avanzamento.
+Dal 2026-10-24, col collaudo di gioco, ciascuno col suo suono: Iscrivi e Togli sull'edizione prevista e su quella già cominciata, Togli sulla coppa, il modello e il file delle formule che non si scrivono, il rilancio a chi ha già rifiutato oggi e la sfida in arrivo che non vale più.
 """
 
 import datetime
@@ -18,7 +19,7 @@ import json
 
 import pytest
 import wx
-from aiuti_calendario import OGGI, apri, giorno, iscrivi_tutti, mondo_di_prova, polisportiva
+from aiuti_calendario import OGGI, apri, giorno, iscrivi_tutti, mondo_di_prova, polisportiva, solo
 
 import formule
 import iscrizioni
@@ -160,8 +161,49 @@ def test_i_rifiuti_del_calendario_col_loro_suono(calendario, suonati, messaggi):
     dialogo.elenco.SetSelection(prevista)
     dialogo.aggiorna_atleti()
     assert dialogo.elenco_iscrivibili.GetString(0).startswith("Le iscrizioni di questa edizione si aprono il ")
+    # Dal collaudo di gioco l'edizione prevista ha il suo suono, a Iscrivi e a Togli: prima era quello del campo da correggere.
     dialogo.iscrivi()
-    assert suonati[-1] == "campo_da_correggere" and messaggi[-1].startswith("Le iscrizioni di questa edizione si aprono il ")
+    assert suonati[-1] == "iscrizioni_non_ancora_aperte" and messaggi[-1].startswith("Le iscrizioni di questa edizione si aprono il ")
+    dialogo.togli()
+    assert suonati[-1] == "iscrizioni_non_ancora_aperte" and messaggi[-1].startswith("Le iscrizioni di questa edizione si aprono il ")
+    assert "campo_da_correggere" not in suonati
+
+
+def test_l_edizione_gia_cominciata_ha_le_iscrizioni_chiuse(calendario, suonati, messaggi):
+    # Dal collaudo di gioco Iscrivi e Togli su un'edizione già cominciata hanno il loro suono, e non quello del campo da correggere.
+    mondo, _club, dialogo = calendario
+    ed = _scegli_edizione(dialogo, "Open maschile del martedì", datetime.date(2026, 10, 6))
+    iscrivi_tutti(ed, mondo, range(1, 13))
+    giorno(mondo, MARTEDI)
+    dialogo.scelta.SetSelection(2)
+    dialogo.aggiorna(0)
+    assert dialogo.voci[0][0] == "in_corso"
+    for pulsante in (dialogo.iscrivi, dialogo.togli):
+        pulsante()
+        assert suonati[-1] == "iscrizioni_chiuse"
+        assert messaggi[-1] == "L'edizione è già cominciata: il sorteggio è fatto, e le iscrizioni non si cambiano più."
+    assert suonati == ["iscrizioni_chiuse", "iscrizioni_chiuse"]
+
+
+def test_togli_sulla_coppa_rimanda_alla_rosa(app_wx, messaggi, orologio, suonati):
+    # Dal collaudo di gioco Togli sulla Coppa delle polisportive ha il suo suono: non c'è un campo da correggere, ma un altro pulsante.
+    mondo = mondo_di_prova(20, 20)
+    altra = polisportiva(mondo, "PoliTeam01 Prova", ids=(1, 2, 3, 21, 22))
+    club = polisportiva(mondo, "Club Di Prova", cpu=False, cassa=1000, ids=(9, 10, 11, 25, 26, 27))
+    altra.gloria, club.gloria = 300, 250
+    apertura = datetime.datetime(2027, 5, 26, 9, 0)
+    mondo.datetime_corrente_simulazione = apertura
+    solo(["Coppa delle polisportive"])
+    coppa = apri(mondo, apertura, "Coppa delle polisportive")[0]
+    dialogo = gui_tornei.CalendarioTornei(None, mondo, club)
+    try:
+        dialogo.elenco.SetSelection(next(i for i, (tipo, ed) in enumerate(dialogo.voci) if tipo == "aperta" and ed is coppa))
+        dialogo.aggiorna_atleti()
+        assert dialogo.iscrivi_pulsante.GetLabel() == "&Rosa per la coppa..."
+        dialogo.togli()
+        assert suonati == ["coppa_solo_con_la_rosa"] and messaggi == ["La rosa per la coppa si cambia con Rosa per la coppa."]
+    finally:
+        dialogo.Destroy()
 
 
 def test_le_edizioni_in_corso_portano_al_pannello(calendario):
@@ -535,6 +577,49 @@ def test_l_editor_dei_modelli_dice_i_file_illeggibili(gestore, suonati):
         editor.Destroy()
 
 
+def _negato(*_argomenti, **_opzioni):
+    raise PermissionError(13, "Accesso negato")
+
+
+def test_il_modello_che_non_si_scrive_ha_il_suo_suono(gestore, suonati, messaggi, monkeypatch):
+    # Dal collaudo di gioco Salva, Duplica ed Elimina che non scrivono il file del modello suonano modello_non_scritto:
+    # prima suonavano come un campo da correggere, che non c'era.
+    monkeypatch.setattr(modelli_torneo.GestoreModelli, "salva", _negato)
+    monkeypatch.setattr(modelli_torneo.GestoreModelli, "elimina", _negato)
+    monkeypatch.setattr(gui_editor.ModelloTorneoDialogo, "ShowModal", lambda self: (self.conferma(), wx.ID_OK)[1])
+    editor = gui_editor.EditorModelli(None, gestore)
+    try:
+        editor.elenco.SetSelection(0)
+        editor.modifica()
+        assert suonati == ["dialogo_modello_torneo", "modello_non_scritto"] and messaggi[-1] == "Il modello non si è potuto salvare: [Errno 13] Accesso negato"
+        editor.duplica()
+        assert suonati[-1] == "modello_non_scritto" and messaggi[-1] == "Il modello non si è potuto duplicare: [Errno 13] Accesso negato"
+        editor.elimina()
+        assert suonati[-2:] == ["domanda", "modello_non_scritto"] and messaggi[-1] == "Il modello non si è potuto eliminare: [Errno 13] Accesso negato"
+        assert "campo_da_correggere" not in suonati and editor.esiti == [] and len(gestore.modelli()[0]) == 10
+    finally:
+        editor.Destroy()
+
+
+def test_il_file_delle_formule_che_non_si_scrive_ha_il_suo_suono(gestore, suonati, messaggi, monkeypatch):
+    # Dal collaudo di gioco il file delle formule che non si scrive suona formule_non_scritte, a Salva e a Elimina:
+    # prima suonava come la formula non valida, al salvataggio, o come quella in uso, all'eliminazione.
+    editor = gui_editor.EditorFormule(None, gestore)
+    try:
+        monkeypatch.setattr(formule, "scrivi", _negato)
+        editor.salva()
+        assert suonati == ["formule_non_scritte"] and messaggi[-1] == "Le formule non si sono potute salvare: [Errno 13] Accesso negato"
+        # Una formula salvata che nessun modello usa, e il file che non si riscrive.
+        monkeypatch.setattr(formule, "in_uso", lambda *_argomenti: [])
+        monkeypatch.setattr(formule, "elimina", _negato)
+        quante = len(editor.formule)
+        editor.elimina()
+        assert suonati[-2:] == ["domanda", "formule_non_scritte"] and messaggi[-1] == "[Errno 13] Accesso negato"
+        assert len(editor.formule) == quante and not {"formula_non_valida", "formula_in_uso"} & set(suonati)
+    finally:
+        editor.Destroy()
+
+
 def _fase(self, tipo, partecipanti=None, gironi=1, promossi=0, finalina=False):
     self.tipo.SetSelection(0 if tipo == formule.GIRONI else 1)
     if partecipanti is not None and self.partecipanti.IsEnabled():
@@ -655,6 +740,59 @@ def test_le_sfide_in_arrivo_si_accettano_o_si_rifiutano(sfidanti, suonati, messa
     try:
         dialogo.rifiuta()
         assert suonati[-1] == "sfida_rifiutata" and messaggi[-1] == "Sfida di PoliTeam04 rifiutata."
+    finally:
+        dialogo.Destroy()
+
+
+def test_il_rilancio_a_chi_ha_gia_rifiutato_oggi(sfidanti, suonati, messaggi):
+    # Dal collaudo di gioco il rilancio a chi oggi ha già rifiutato ha il suo suono: prima era quello del rifiuto di un lancio, che qui non parte.
+    mondo, club, cpu = sfidanti
+    oggi = sfide._oggi(mondo)
+    rifiutata = sfide.Sfida(mondo.sfide.nuovo_id(), iscrizioni.club_della(club), iscrizioni.club_della(cpu), oggi, oggi, convocati={"sfidante": [1, 2, 11]})
+    rifiutata.stato = sfide.RIFIUTATA
+    mondo.sfide.archivia(rifiutata)
+    dialogo = gui_sfide.LanciaSfida(None, mondo, club)
+    try:
+        assert dialogo.formazione.problema() is None
+        dialogo.lancia()
+        assert suonati == ["sfida_gia_rifiutata_oggi"] and messaggi == ["PoliTeam04 ha già rifiutato oggi: si può riprovare domani."]
+        assert dialogo.esiti == [] and sfide.disponibili(mondo, club) == 2
+    finally:
+        dialogo.Destroy()
+
+
+def test_la_sfida_in_arrivo_che_non_vale_piu_ha_il_suo_suono(sfidanti, suonati, messaggi):
+    # Dal collaudo di gioco il problema della sfida, e non della tua formazione, ha il suo suono, sfida_non_piu_valida: al volo, ad
+    # Accetta e a Rifiuta. Prima suonava come la formazione che non va, o come un campo da correggere.
+    mondo, club, cpu = sfidanti
+    oggi = mondo.datetime_corrente_simulazione.date()
+    sfide._proponi(mondo, cpu, club, sfide.convoca(mondo, cpu, oggi + datetime.timedelta(days=1)), oggi, Mondo.rapporto_vuoto(oggi))
+    dialogo = gui_sfide.SfideInArrivo(None, mondo, club)
+    try:
+        # La formazione che non va ha ancora il suo suono: tre titolari dello stesso sesso.
+        uomini = [i for i, g in enumerate(dialogo.formazione.convocabili) if g.sesso == "m"]
+        for posto, indice in enumerate(uomini[:3]):
+            dialogo.formazione.scelte[posto].SetSelection(indice)
+        for scelta in dialogo.formazione.scelte[3:]:
+            scelta.SetSelection(0)
+        dialogo.formazione.al_cambio()
+        assert suonati == ["formazione_non_valida"]
+        dialogo.accetta()
+        assert suonati[-1] == "formazione_non_valida" and messaggi[-1] == "Al tavolo servono due giocatori di un sesso e uno dell'altro."
+        dialogo.formazione.riempi(dialogo.formazione.convocabili, sfide.proposta(mondo, club))
+        # Chi sfida perde due dei suoi convocati, per esempio venduti: per domani non ha più una squadra.
+        for gid in (4, 5):
+            mondo._lascia(cpu, mondo.giocatori[gid])
+        dialogo.formazione.al_cambio()
+        assert suonati[-1] == "sfida_non_piu_valida" and "PoliTeam04 non ha più una squadra valida per il " in dialogo.formazione.stato.GetValue()
+        dialogo.accetta()
+        assert suonati[-1] == "sfida_non_piu_valida" and messaggi[-1].startswith("PoliTeam04 non ha più una squadra valida per il ")
+        # La sfida che non aspetta più una risposta.
+        mondo.sfide.attive[0].stato = sfide.RIFIUTATA
+        for pulsante in (dialogo.accetta, dialogo.rifiuta):
+            pulsante()
+            assert suonati[-1] == "sfida_non_piu_valida" and messaggi[-1] == "Questa sfida non aspetta più una risposta."
+        assert suonati.count("formazione_non_valida") == 2 and "campo_da_correggere" not in suonati and dialogo.esiti == []
     finally:
         dialogo.Destroy()
 

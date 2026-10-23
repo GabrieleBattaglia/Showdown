@@ -35,7 +35,7 @@ Se all'apertura la cartella scelta non c'è, per esempio perché la penna è sta
 
 ### Le finestre e le parole
 
-Tutte le finestre interne si aprono massimizzate, più comode da leggere con lo screen reader e il display braille, ed Esc chiude dove c'è il pulsante Chiudi. Davanti ai nomi dei tornei c'è l'articolo giusto: convocato al Campionato italiano, iscritta all'Open femminile del giovedì, la coppa d'oro alla Coppa delle polisportive. Nell'invito al caffè Invio nel testo chiude, e un Invio tenuto giù dalla voce del menu non lo chiude appena aperto. Venticinque suoni nuovi, nella collezione di GBUtils dalla V220 alla V228.
+Tutte le finestre interne si aprono massimizzate, più comode da leggere con lo screen reader e il display braille, ed Esc chiude dove c'è il pulsante Chiudi. Davanti ai nomi dei tornei c'è l'articolo giusto: convocato al Campionato italiano, iscritta all'Open femminile del giovedì, la coppa d'oro alla Coppa delle polisportive. Nell'invito al caffè Invio nel testo chiude, e un Invio tenuto giù dalla voce del menu non lo chiude appena aperto. Trentaquattro suoni nuovi, nella collezione di GBUtils dalla V220 alla V229.
 
 ### Cosa se ne va
 
@@ -52,6 +52,8 @@ Il riepilogo della sala allenamento e il diario dicono ogni spesa per intero: tu
 Nel mercato dei giocatori ogni candidato dice, subito dopo nome e cognome, la classe e l'età completa in anni, mesi e giorni separati dai due punti, come Anna Neri, I1, 17:4:3: è l'età esatta della scheda, contata sul calendario dell'età, dove un anno ha 12 mesi da 9 giorni. Il resto della riga non cambia.
 
 Quando la polisportiva attiva ha finito le mosse di mercato del giorno, la voce Mercato del menu Polisportive non è disponibile, e NVDA la legge così; Ctrl+K non resta muto, ma dice che per oggi le mosse sono finite, col loro suono. La voce torna disponibile col giorno nuovo o cambiando polisportiva attiva.
+
+Ogni evento ha davvero il suo suono, come promette il manuale: hanno il loro anche il modello di torneo e il file delle formule che non si scrivono, il rilancio a chi ha già rifiutato oggi la tua sfida e la sfida in arrivo che non vale più, le iscrizioni non ancora aperte, quelle già chiuse e Togli sulla Coppa delle polisportive, l'errore che ferma MESS e Allena tutti con i tesserati tutti infortunati, che prima suonavano come un altro evento; la sede che non corrisponde a nessun comune suona come un campo da correggere, e Vai alla fine a incontro finito porta al risultato senza il suono di un salto che non c'è. Il calendario predefinito che si ferma a metà del ripristino dice in quale cartella sono già finiti i modelli e le formule di prima.
 
 ## [1.94.6] - 2026-10-23
 

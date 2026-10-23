@@ -43,6 +43,10 @@ spostamento che non riesce e la cartella rifiutata hanno ciascuno il suo suono. 
 ha anche il file accanto al programma che non si riesce a scrivere quando si indica un'altra cartella.
 Con la verifica seguente lo hanno anche i dati di accanto al programma messi in una riserva della cartella
 del mondo, che la notizia porta alla finestra col suo tipo, e la notizia dice se fra quei dati c'era un mondo.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, per la regola di un suono per ogni evento, l'errore
+che ferma MESS ha il suo suono, errore_fatale, la sirena che crolla come un motore che si spegne: prima
+suonava come l'errore che interrompe un comando e lascia MESS aperto, che resta errore_imprevisto. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -301,7 +305,8 @@ def _in_primo_piano(finestre):
 def _errore_fatale(tipo, valore, traccia):
     """
     L'ultima rete del programma: l'errore che ferma MESS si scrive nel registro, e da sorgente anche
-    sulla console; poi lo dicono il suono dell'allarme e un messaggio, che nomina il file del registro.
+    sulla console; poi lo dicono il suono dell'errore fatale e un messaggio, che nomina il file del
+    registro. Dal collaudo di gioco il suono è suo, non più quello del comando interrotto.
     """
     import percorsi
     import registro
@@ -310,7 +315,7 @@ def _errore_fatale(tipo, valore, traccia):
     registro.scrivi("MESS si ferma per un errore fatale.")
     if not getattr(sys, "frozen", False):
         traceback.print_exception(tipo, valore, traccia)
-    suoni.suona("errore_imprevisto")
+    suoni.suona("errore_fatale")
     testo = (f"MESS si è fermato per un errore imprevisto: {tipo.__name__}, {valore}. "
              f"{testi.resoconto_degli_errori(percorsi.cartella_del_programma())}")
     # Senza wx, o senza schermo, resta il registro.

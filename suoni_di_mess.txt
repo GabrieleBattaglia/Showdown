@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 313 suoni, 288 della finestra e 25 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 322 suoni, 297 della finestra e 25 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -8,23 +8,24 @@ L'avvio con le collezioni di nomi e cognomi difettose: mess_avvio_con_avvisi.
 L'uscita dal programma con il mondo salvato: mess_uscita.
 L'uscita dal programma quando il salvataggio finale non riesce: mess_uscita_senza_salvataggio.
 Si apre MESS mentre è già aperto, e la finestra aperta torna in primo piano: mess_primo_piano.
-Finestra, applicazione, i salvataggi e gli errori gravi, 6 suoni.
+Finestra, applicazione, i salvataggi e gli errori gravi, 7 suoni.
 Il mondo salvato con Ctrl+S: meditimer_banco_salvato.
 Il mondo salvato con Ctrl+S, ma con un avviso dell'archivio: mess_salvataggio_con_avviso.
-Un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, o quando si cambia la cartella del mondo, e allora la cartella non cambia: mess_salvataggio_non_riuscito.
+Un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, dopo un avanzamento del mondo, che la barra di stato dice non salvato, o quando si cambia la cartella del mondo, e allora la cartella non cambia: mess_salvataggio_non_riuscito.
 All'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire: mess_salvataggio_illeggibile.
-Un errore imprevisto del programma, o un errore che lo ferma: sirena_d_allarme_1.
+Un errore imprevisto interrompe un comando, o succede quando la finestra non c'è, e MESS resta aperto: sirena_d_allarme_1.
+Un errore imprevisto ferma MESS, e un messaggio dice dove sta il resoconto da allegare quando si chiede aiuto: mess_errore_fatale.
 All'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto: mess_crash_precedente.
 Finestra, applicazione, il fuoco, i dialoghi e gli elenchi, 9 suoni.
 F5, il fuoco va nella vista principale: spostamento_f5.
 F7, il fuoco va nella barra di stato: spostamento_f7.
 Un'operazione annullata, con Esc o con Annulla in un dialogo: meteora_annullamento.
-La chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del mercato degli allenatori, del calendario o degli editor dopo averci lavorato: terminata.
+La chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del mercato degli allenatori, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente: terminata.
 Un pulsante premuto senza niente di scelto su cui lavorare: mess_tasto_a_vuoto.
 Un valore da correggere in un campo, e il dialogo resta aperto: mess_campo_da_correggere.
-Un elenco che si restringe mentre si scrive, e resta vuoto: espelli.
-Un elenco vuoto che torna a riempirsi mentre si scrive: aggiunta_giocatore.
-Una domanda di conferma, con Sì e No: meteora_sottotitoli_accesi.
+Un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre: espelli.
+Un elenco vuoto che torna a riempirsi mentre si scrive o si cambia un filtro: aggiunta_giocatore.
+Una domanda di conferma, con Sì e No, o la scelta fra i due mondi quando la cartella scelta ne ha già uno: meteora_sottotitoli_accesi.
 Finestra, applicazione, l'aiuto, 10 suoni.
 F1, la guida ai comandi, anche nella finestra dal vivo: pokermachine_manuale.
 Maiusc+F1, il manuale che si apre nel browser: mess_manuale.
@@ -117,7 +118,7 @@ Finestra, polisportive, chiusura, schede e svincolo, 10 suoni.
 La richiesta della password prima di chiudere una polisportiva protetta: mess_bussare_alla_porta.
 La domanda se chiudere per sempre la polisportiva attiva: mess_campana_a_martello.
 Una polisportiva chiusa per sempre: mess_triplice_fischio.
-La scheda della polisportiva attiva, con Ctrl+M, o di quella scelta nel lancio di una sfida: mess_occhiata_alla_scheda.
+La scheda della polisportiva attiva, con Ctrl+M, di quella scelta nel lancio di una sfida, o di quella scelta nella classifica della Coppa delle polisportive, nel pannello dei tornei: mess_occhiata_alla_scheda.
 I tesserati della polisportiva attiva, con Ctrl+Shift+T: mess_rosa_che_sfila.
 Il diario della polisportiva attiva, con Ctrl+Shift+M: mess_penna_sul_diario.
 L'elenco delle polisportive, con Ctrl+Shift+E: mess_albo_che_scorre.
@@ -139,7 +140,7 @@ Nel mercato tutti i filtri tolti: mess_filtri_tutti_tolti.
 Nel mercato, nella sala allenamento, nei contratti e nel pannello dei tornei, la scheda del giocatore scelto: carta_girata.
 Finestra, economia, le offerte, 11 suoni.
 Si apre il dialogo della cifra d'ingaggio di un libero: mess_cifra_ingaggio.
-La probabilità che il libero accetti, mentre si scrive la cifra: più è alta, più è acuto: mess_probabilita.
+La probabilità che il libero, o l'allenatore del mercato degli allenatori, accetti, mentre si scrive la cifra: più è alta, più è acuto: mess_probabilita.
 Si apre il dialogo della cifra da offrire per un tesserato di un'altra polisportiva: mess_cifra_offerta.
 Il libero accetta l'ingaggio: mess_ingaggio_accettato.
 Il libero rifiuta l'ingaggio: mess_ingaggio_rifiutato.
@@ -180,7 +181,7 @@ La cronaca dell'ultimo incontro che non si può scrivere nel file: mess_cronaca_
 Finestra, partite, la partita dal vivo, 12 suoni.
 Si apre la finestra della partita dal vivo, con Assisti: mess_conto_alla_rovescia.
 Nella partita dal vivo il riscaldamento saltato: mess_punto_successivo.
-Nella partita dal vivo Alt+V, Vai alla fine: mess_resto_dell_incontro.
+Nella partita dal vivo o in differita Alt+V, Vai alla fine, prima che l'incontro sia finito: mess_resto_dell_incontro.
 Nella partita dal vivo Alt+F o Alt+L a incontro già finito: mess_incontro_finito.
 Nella partita dal vivo Esc, l'amichevole resta registrata senza svelare il risultato: mess_amichevole_registrata.
 Nella partita dal vivo la pausa, con Invio o spazio mentre l'azione suona: meditimer_cronometro_pausa.
@@ -190,7 +191,7 @@ Nella partita dal vivo Alt+L, il lato d'ascolto passa all'altro giocatore: mess_
 Nella partita dal vivo il tasto più, velocità di gioco più alta: meteora_velocita_su.
 Nella partita dal vivo il tasto meno, velocità di gioco più bassa: meteora_velocita_giu.
 Nella partita dal vivo più o meno con la velocità già al massimo o al minimo: meteora_velocita_al_limite.
-Finestra, allenamento, la sala, 12 suoni.
+Finestra, allenamento, la sala, 13 suoni.
 Si apre la sala allenamento, con Ctrl+Shift+L: mess_sala_allenamento.
 Nella sala allenamento una spesa a mano, punti allenamento su una caratteristica: mess_allenamento_fatto.
 Nella sala allenamento l'allenamento completo di un tesserato secondo il suo programma: mess_allenamento_completo.
@@ -199,20 +200,21 @@ Nella sala allenamento un tesserato sale di classe, dopo l'esito: mess_classe_sa
 Nella sala allenamento non ci sono punti da spendere, o la cifra è zero: mess_portafoglio_vuoto.
 Nella sala allenamento la caratteristica scelta è già al massimo: mess_al_massimo.
 Nella sala allenamento il tesserato scelto è infortunato e oggi non si allena: mess_allenando_fermo.
+Nella sala allenamento Allena tutti quando oggi nessun tesserato si allena, perché sono tutti infortunati: mess_squadra_ferma.
 Nella sala allenamento cambia il programma del tesserato: mess_programma_cambiato.
 Nella sala allenamento cambia l'intensità del tesserato: mess_intensita_cambiata.
 Nella sala allenamento si accende l'iscrizione automatica ai tornei del tesserato, con Alt+U: mess_iscrizione_automatica_accesa.
 Nella sala allenamento si spegne l'iscrizione automatica ai tornei del tesserato, con Alt+U: mess_iscrizione_automatica_spenta.
 Finestra, contratti, i rinnovi, 9 suoni.
 Si apre il dialogo dei contratti e dei rinnovi, con Ctrl+Shift+K: mess_contratti_aperti.
-La probabilità che il tesserato accetti il rinnovo, mentre si scrivono stipendio e durata: più è alta, più è acuto: mess_probabilita_rinnovo.
+La probabilità che il tesserato, o l'allenatore dello staff, accetti il rinnovo, mentre si scrivono stipendio e durata: più è alta, più è acuto: mess_probabilita_rinnovo.
 Il tesserato accetta il rinnovo del contratto: mess_rinnovo_firmato.
 Il tesserato rifiuta il rinnovo, e si può riprovare un altro giorno: mess_rinnovo_rifiutato.
 Il terzo rifiuto del rinnovo, e il tesserato non tratta più: mess_rinnovo_chiuso.
-Il rinnovo non si può ancora proporre, perché il contratto non è negli ultimi tre mesi: mess_rinnovo_non_ancora.
-Oggi al tesserato è già stata fatta una proposta di rinnovo: mess_rinnovo_domani.
-Il tesserato ha già rifiutato tre proposte e non ne accetta altre: mess_rinnovo_niente_da_fare.
-Il tesserato ha già rinnovato il contratto: mess_rinnovo_gia_fatto.
+Il rinnovo del tesserato, o dell'allenatore dello staff, non si può ancora proporre, perché il contratto non è negli ultimi tre mesi: mess_rinnovo_non_ancora.
+Oggi al tesserato, o all'allenatore dello staff, è già stata fatta una proposta di rinnovo: mess_rinnovo_domani.
+Il tesserato, o l'allenatore dello staff, ha già rifiutato tre proposte e non ne accetta altre: mess_rinnovo_niente_da_fare.
+Il tesserato, o l'allenatore dello staff, ha già rinnovato il contratto: mess_rinnovo_gia_fatto.
 Finestra, contratti e allenamento, le notizie, 3 suoni.
 Nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo: mess_contratti_in_scadenza.
 Nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero: mess_contratto_scaduto.
@@ -243,14 +245,17 @@ Nell'avanzamento un allenatore del tuo staff smette di allenare, muore o lascia 
 Nell'avanzamento un tuo tesserato si ritira e può allenare, e per qualche giorno puoi assumerlo prima degli altri: mess_prelazione.
 Nell'avanzamento il contratto di un allenatore del tuo staff entra nella finestra del rinnovo, o all'ultimo mese: mess_staff_in_scadenza.
 All'apertura col mondo appena aggiornato, la notizia dello staff e del mercato degli allenatori aperto: mess_staff_appena_nato.
-Finestra, tornei, il calendario e le iscrizioni, 7 suoni.
+Finestra, tornei, il calendario e le iscrizioni, 10 suoni.
 Si apre il calendario dei tornei e delle iscrizioni, con Ctrl+U: mess_calendario_tornei.
 Si aprono le iscrizioni dei tuoi atleti alla prima edizione aperta, con Ctrl+J: mess_iscrizioni_tornei.
 Nel calendario un tuo atleta iscritto a un torneo con la quota pagata, o la rosa della tua polisportiva per la coppa: mess_iscrizione_fatta.
 Nel calendario l'iscrizione di un tuo atleta tolta, con la quota rimborsata: mess_iscrizione_tolta.
 Nel calendario la cassa della polisportiva non basta per la quota d'iscrizione: mess_iscrizione_senza_quota.
 Nel calendario l'atleta negli stessi giorni ha già un altro torneo o un'altra sfida: mess_iscrizione_sovrapposta.
-Nel calendario l'atleta non può giocare quel torneo, per sesso, classe, età o qualificazione: mess_iscrizione_non_idoneo.
+Nel calendario l'atleta non può giocare quel torneo, per sesso, classe, età o qualificazione, o Rosa per la coppa quando la tua polisportiva non è qualificata alla Coppa delle polisportive: mess_iscrizione_non_idoneo.
+Nel calendario Iscrivi o Togli su un'edizione prevista, che non ha ancora le iscrizioni aperte: mess_iscrizioni_non_ancora.
+Nel calendario Iscrivi o Togli su un'edizione già cominciata, col sorteggio fatto: mess_iscrizioni_chiuse.
+Nel calendario Togli sulla Coppa delle polisportive, dove la rosa si cambia con Rosa per la coppa: mess_coppa_con_la_rosa.
 Finestra, tornei, il pannello e le classifiche, 10 suoni.
 Si apre il pannello dei tornei in corso e conclusi di recente, con Ctrl+Y: mess_tornei_in_corso.
 Si apre la finestra dal vivo per ascoltare in differita un incontro dei tuoi, di torneo o di sfida: mess_differita_al_via.
@@ -258,22 +263,24 @@ Nell'ascolto in differita Esc prima della fine, e l'incontro resta da ascoltare 
 La cronaca di un incontro dei tuoi, di torneo o di sfida, aperta da leggere: mess_cronaca_torneo.
 Il risultato di un incontro dei tuoi che si mostra, dopo l'ascolto in differita o con Mostra il risultato: mess_risultato_svelato.
 Mostra tutti i risultati svela in un colpo gli incontri dei tuoi ancora da ascoltare: mess_risultati_svelati_tutti.
-Mostra tutti i risultati quando non c'è nessun incontro dei tuoi da svelare: mess_niente_da_svelare.
-Un incontro che non si può ascoltare né leggere: non è dei tuoi, o la sua edizione è già stata sostituita: mess_nessuna_differita.
+Mostra il risultato su un incontro che non è nascosto, o Mostra tutti i risultati quando non c'è nessun incontro dei tuoi da svelare: mess_niente_da_svelare.
+Un incontro che non si può ascoltare né leggere: non è dei tuoi, o la sua edizione è già stata sostituita, o nello storico una sfida che non è fra le ultime dieci giocate: mess_nessuna_differita.
 Si apre l'albo d'oro dei tornei, con Ctrl+Shift+B: mess_albo_d_oro.
 La classifica nazionale per sempre, uomini e donne, con Ctrl+Shift+W: mess_classifica_mondiale.
-Finestra, tornei, gli editor, 18 suoni.
+Finestra, tornei, gli editor, 20 suoni.
 Si apre l'editor dei modelli di torneo, con Ctrl+Shift+J: mess_editor_modelli.
 Nell'editor si apre il dialogo di un modello di torneo, nuovo o da modificare: mess_modello_torneo.
 Un modello di torneo salvato: mess_modello_salvato.
 Un modello di torneo duplicato, con un identificativo nuovo: mess_modello_duplicato.
 Un modello di torneo eliminato: mess_modello_eliminato.
+Un modello di torneo che non si può salvare, duplicare o eliminare, per esempio perché il suo file non si scrive: mess_modello_non_scritto.
 Si apre l'editor delle formule dei tornei, con Ctrl+Shift+Y: mess_editor_formule.
 Nell'editor delle formule nasce una formula nuova, ancora da salvare: mess_formula_nuova.
 Una formula valida salvata nel file delle formule: mess_formula_salvata.
-Una formula che non si può salvare, con il motivo: mess_formula_non_valida.
+Nell'editor delle formule una formula che non va, con il motivo, quando la si salva o quando Aggiungi fase non ha posto per un'altra fase: mess_formula_non_valida.
 Si vuole eliminare una formula che dei modelli usano ancora: mess_formula_in_uso.
 Una formula eliminata dal file delle formule: mess_formula_eliminata.
+Il file delle formule non si scrive quando si salva o si elimina una formula: mess_formule_non_scritte.
 Nell'editor delle formule si apre il dialogo di una fase, nuova o da modificare: mess_fase_dialogo.
 Nell'editor delle formule una fase aggiunta in fondo: mess_fase_aggiunta.
 Nell'editor delle formule una fase cambiata, con quelle che seguono aggiornate: mess_fase_modificata.
@@ -281,16 +288,18 @@ Nell'editor delle formule una fase tolta: mess_fase_tolta.
 Il calendario predefinito rimesso, con quello di prima messo da parte: mess_calendario_ripristinato.
 Il calendario predefinito non si riesce a rimettere, per esempio perché un file non si scrive, e la vista dice il perché: mess_calendario_non_ripristinato.
 Un modello o una formula dei tornei che non si leggono, all'avvio, nell'avanzamento o all'apertura dell'editor: mess_calendario_illeggibile.
-Finestra, partite, le sfide, 10 suoni.
+Finestra, partite, le sfide, 12 suoni.
 Si apre il lancio di una sfida a una polisportiva del computer, con Ctrl+W: mess_lancia_sfida.
 La polisportiva del computer accetta la tua sfida, che si gioca domani: mess_sfida_raccolta.
 La polisportiva del computer rifiuta la tua sfida, e dice perché: mess_sfida_declinata.
+Nel lancio di una sfida la polisportiva scelta ha già rifiutato oggi, e si riprova domani: mess_sfida_riprova_domani.
 La tua polisportiva non ha più sfide da lanciare questo mese: mess_nessuna_sfida_da_lanciare.
 Si aprono le sfide in arrivo, a cui rispondere entro oggi, prima dell'avanzamento seguente, con Ctrl+Shift+F: mess_sfide_in_arrivo.
 Accetti una sfida in arrivo, con la tua formazione: mess_sfida_accettata.
 Rifiuti una sfida in arrivo: mess_sfida_rifiutata.
+Nelle sfide in arrivo la sfida scelta non vale più: non aspetta più una risposta, chi sfida ha chiuso o non ha più una squadra valida, quando la accetti, la rifiuti o cambi la formazione: mess_sfida_non_piu_valida.
 Si apre la formazione per una sfida o la rosa per la coppa, con titolari e riserve: mess_formazione.
-Una formazione che non va, con il motivo: il due più uno, un doppione o un impegno: mess_formazione_non_valida.
+Una formazione che non va, con il motivo: il due più uno, un doppione o un impegno, mentre la si cambia o alla conferma: mess_formazione_non_valida.
 Si apre lo storico delle sfide delle tue polisportive, con Ctrl+Shift+H: mess_storico_sfide.
 Finestra, tornei e sfide, le notizie, 24 suoni.
 Nell'avanzamento un tuo atleta vince la medaglia d'oro in un torneo: mess_medaglia_oro.

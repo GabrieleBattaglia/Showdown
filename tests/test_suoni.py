@@ -5,6 +5,7 @@ né per contenuto, nessuna onda quadra salvo donazione, la firma di MESS su quel
 ogni evento è usato nel codice e ogni suono del codice è un evento. Poi il volume, l'altezza della
 probabilità d'ingaggio, il motore vero con la scheda audio finta, e la scelta del suono di un
 avanzamento del mondo, con il testo della barra di stato che lo accompagna.
+Dal 2026-10-24, col collaudo di gioco, i nove suoni della V229, ciascuno col suo preset breve salvo l'errore fatale, e la descrizione del calendario non ripristinato, che non promette più il calendario di prima.
 """
 
 import ast
@@ -211,6 +212,26 @@ def test_la_firma_di_mess():
     for preset in suoni.EVENTI.values():
         if preset.startswith("mess_"):
             assert Acusticator.descrizione(preset).startswith("MESS, "), preset
+
+
+def test_i_suoni_del_collaudo_di_gioco():
+    # Il collaudo di gioco, V229: nove eventi che suonavano come un altro hanno il loro preset, breve salvo l'errore che
+    # ferma MESS, con la descrizione che dice l'evento, la durata e a che cosa va bene; e il calendario non ripristinato non
+    # promette più che resta quello di prima, perché il ripristino può fermarsi a metà.
+    nuovi = {"modello_non_scritto": "mess_modello_non_scritto", "formule_non_scritte": "mess_formule_non_scritte",
+             "sfida_gia_rifiutata_oggi": "mess_sfida_riprova_domani", "sfida_non_piu_valida": "mess_sfida_non_piu_valida",
+             "iscrizioni_non_ancora_aperte": "mess_iscrizioni_non_ancora", "iscrizioni_chiuse": "mess_iscrizioni_chiuse",
+             "coppa_solo_con_la_rosa": "mess_coppa_con_la_rosa", "errore_fatale": "mess_errore_fatale",
+             "allenandi_tutti_infortunati": "mess_squadra_ferma"}
+    for evento, preset in nuovi.items():
+        assert suoni.EVENTI[evento] == preset
+        score, kind, _adsr = Acusticator.preset(preset)
+        durata = sum(float(d) for d in score[1::4])
+        assert kind != 2 and (durata < 0.5 or evento == "errore_fatale"), evento
+        descrizione = Acusticator.descrizione(preset)
+        assert descrizione.startswith("MESS, ") and "; " in descrizione and ". Va bene per " in descrizione, evento
+    assert suoni.EVENTI["errore_imprevisto"] != suoni.EVENTI["errore_fatale"]
+    assert "resta quello di prima" not in Acusticator.descrizione("mess_calendario_non_ripristinato")
 
 
 def test_ogni_evento_ha_la_sua_azione_detta_a_parole():

@@ -19,6 +19,13 @@ nativi a selezione singola, avvisi che lasciano aperto il dialogo col suono del 
 Dalla decisione 10 di Gabriele del 14 ottobre 2026 Lancia una sfida e Sfide in arrivo non hanno un
 pulsante predefinito, come il calendario: Invio sugli elenchi non fa niente, e si lancia o si accetta
 soltanto col pulsante, Alt+L o Alt+A. Prima Invio sull'elenco lanciava o accettava.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, per la regola di un suono per ogni evento: il
+rilancio a chi oggi ha già rifiutato ha il suo suono, sfida_gia_rifiutata_oggi, e non più quello del
+rifiuto di un lancio, che qui non parte; nelle sfide in arrivo la sfida che non vale più, perché non
+aspetta più una risposta, chi sfida ha chiuso o non ha più una squadra valida, ha il suo,
+sfida_non_piu_valida, ad Accetta, a Rifiuta e mentre si cambia la formazione, e l'avviso riporta il
+cursore sulla sfida; prima suonava come la formazione che non va, o come un campo da correggere. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import wx
@@ -40,12 +47,16 @@ class SezioneFormazione:
     La formazione dentro un dialogo: sei scelte, i tre titolari e le tre riserve, fra i convocabili, e
     il campo dello stato. convocabili sono i giocatori fra cui scegliere, proposta gli identificativi già
     scelti, controlla la funzione che dagli identificativi dà il problema della formazione, o None.
+    suono_del_problema, se c'è, è la funzione che dagli identificativi dà il suono di quel problema,
+    perché nelle sfide in arrivo può essere della sfida e non della formazione; senza, il suono è
+    formazione_non_valida.
     """
 
-    def __init__(self, dialogo, mondo, convocabili, proposta, controlla):
+    def __init__(self, dialogo, mondo, convocabili, proposta, controlla, suono_del_problema=None):
         self.dialogo = dialogo
         self.mondo = mondo
         self.controlla = controlla
+        self.suono_del_problema = suono_del_problema
         self.convocabili = []
         self.scelte = []
         self._valida = None
@@ -101,7 +112,10 @@ class SezioneFormazione:
         return self.controlla(self.ids())
 
     def aggiorna_stato(self, suono=True):
-        """Riscrive lo stato; quando la formazione smette di essere valida, mentre la si cambia, il suono lo dice."""
+        """
+        Riscrive lo stato; quando la formazione smette di essere valida, mentre la si cambia, il suono lo
+        dice, col perché: la formazione che non va, o, nelle sfide in arrivo, la sfida che non vale più.
+        """
         problema = self.problema()
         titolari = [self.mondo.giocatori[gid] for gid in self.ids()[:GIOCATORI_AL_TAVOLO] if gid in self.mondo.giocatori]
         testo = testi.stato_della_formazione(problema, titolari)
@@ -109,7 +123,7 @@ class SezioneFormazione:
             self.stato.ChangeValue(testo)
         valida = problema is None
         if suono and self._valida and not valida:
-            suoni.suona("formazione_non_valida")
+            suoni.suona(self.suono_del_problema(self.ids()) if self.suono_del_problema else "formazione_non_valida")
         self._valida = valida
 
     def al_cambio(self, event=None):
@@ -190,7 +204,8 @@ class LanciaSfida(_Dialogo):
         if sfide.disponibili(self.mondo, self.poli) <= 0:
             return "nessuna_sfida_da_lanciare"
         if self.mondo.sfide.rifiutata_oggi(self.poli.nome, nome, self.mondo.datetime_corrente_simulazione.date()):
-            return "sfida_rifiutata_dall_avversario"
+            # Dal collaudo di gioco il suo suono: prima era quello del rifiuto di un lancio, che qui non parte.
+            return "sfida_gia_rifiutata_oggi"
         return "formazione_non_valida"
 
     def lancia(self, event=None):
@@ -252,7 +267,8 @@ class SfideInArrivo(_Dialogo):
         self.etichetta("&Sfide in arrivo")
         self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         giorno = sfide.giorno_del_gioco(mondo)
-        self.formazione = SezioneFormazione(self, mondo, sfide.convocabili(mondo, poli, giorno), sfide.proposta(mondo, poli), self._problema_della_formazione)
+        self.formazione = SezioneFormazione(self, mondo, sfide.convocabili(mondo, poli, giorno), sfide.proposta(mondo, poli), self._problema_della_formazione,
+                                            self._suono_del_problema)
         accetta, rifiuta, _chiudi = self.pulsanti((wx.ID_ANY, "&Accetta"), (wx.ID_ANY, "&Rifiuta"), (wx.ID_CANCEL, "&Chiudi"), predefinito=False)
         accetta.Bind(wx.EVT_BUTTON, self.accetta)
         rifiuta.Bind(wx.EVT_BUTTON, self.rifiuta)
@@ -284,6 +300,22 @@ class SfideInArrivo(_Dialogo):
             return sfide.problema_formazione(self.mondo, self.poli, ids, sfide.giorno_del_gioco(self.mondo))
         return sfide.problema_risposta(self.mondo, s.id, self.poli, ids)
 
+    def _suono_del_problema(self, ids):
+        """
+        Il suono di una risposta che non si può dare con questi identificativi, dal collaudo di gioco: la sfida
+        che non vale più, perché non aspetta più una risposta, chi sfida ha chiuso o non ha più una squadra
+        valida, oppure la tua formazione che non va. Prima suonavano tutte e due come la formazione.
+        """
+        s = self._scelta() if hasattr(self, "proposte") and hasattr(self, "elenco") else None
+        if s is None:
+            return "formazione_non_valida"
+        if sfide.problema_risposta(self.mondo, s.id, self.poli):
+            return "sfida_non_piu_valida"
+        if sfide.problema_formazione(self.mondo, self.poli, ids, sfide.giorno_del_gioco(self.mondo), esclusa=s):
+            return "formazione_non_valida"
+        # Né la sfida né la formazione: resta la squadra di chi sfida, che per quel giorno non c'è più.
+        return "sfida_non_piu_valida" if sfide.problema_risposta(self.mondo, s.id, self.poli, ids) else "formazione_non_valida"
+
     def accetta(self, event=None):
         s = self._scelta()
         if s is None:
@@ -292,7 +324,11 @@ class SfideInArrivo(_Dialogo):
         ids = self.formazione.ids()
         problema = sfide.problema_risposta(self.mondo, s.id, self.poli, ids)
         if problema:
-            self.avvisa(self.formazione.problema() or problema, self.formazione.scelte[0], "formazione_non_valida")
+            if self._suono_del_problema(ids) == "sfida_non_piu_valida":
+                # Il perché è della sfida, non della formazione: il cursore torna sulla sfida.
+                self.avvisa(problema, self.elenco, "sfida_non_piu_valida")
+            else:
+                self.avvisa(self.formazione.problema() or problema, self.formazione.scelte[0], "formazione_non_valida")
             return
         cognomi = testi.unisci([self.mondo.giocatori[gid].cognome for gid in ids[:GIOCATORI_AL_TAVOLO]])
         if not self._conferma(f"Accettare la sfida di {s.sfidante['nome']}, con {cognomi}? Si gioca domani."):
@@ -308,7 +344,7 @@ class SfideInArrivo(_Dialogo):
             return
         problema = sfide.problema_risposta(self.mondo, s.id, self.poli)
         if problema:
-            self.avvisa(problema, self.elenco)
+            self.avvisa(problema, self.elenco, "sfida_non_piu_valida")
             return
         if not self._conferma(f"Rifiutare la sfida di {s.sfidante['nome']}? Non costa niente a nessuno."):
             self.elenco.SetFocus()

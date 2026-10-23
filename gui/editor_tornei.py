@@ -14,6 +14,11 @@ suo modello e della sua formula, D9 e D32.
 Ogni dialogo segue lo schema degli altri: pannello che scorre, adatta_finestra, etichette con la
 lettera, avvisi che lasciano aperto il dialogo col suono del loro perché, nessuna misura in pixel; la
 ricorrenza e l'importanza si scelgono in elenchi a tendina, non scrivendo numeri.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, per la regola di un suono per ogni evento, un file
+che non si scrive ha il suo suono: modello_non_scritto per il modello che non si salva, non si duplica o
+non si elimina, che prima suonava come un campo da correggere, e formule_non_scritte per il file delle
+formule, quando si salva o si elimina una formula, che prima suonava come la formula non valida o quella in
+uso. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -314,7 +319,7 @@ class EditorModelli(_Dialogo):
         try:
             self.gestore.salva(nuovo)
         except (OSError, ValueError) as errore:
-            self.avvisa(f"Il modello non si è potuto salvare: {errore}", self.elenco)
+            self.avvisa(f"Il modello non si è potuto salvare: {errore}", self.elenco, "modello_non_scritto")
             return None
         suoni.suona("modello_salvato")
         return nuovo
@@ -344,7 +349,7 @@ class EditorModelli(_Dialogo):
         try:
             copia = self.gestore.duplica(modello.id)
         except (OSError, ValueError) as errore:
-            self.avvisa(f"Il modello non si è potuto duplicare: {errore}", self.elenco)
+            self.avvisa(f"Il modello non si è potuto duplicare: {errore}", self.elenco, "modello_non_scritto")
             return
         suoni.suona("modello_duplicato")
         self.esiti.append(f"Modello duplicato: {copia.nome}, fermo finché non lo modifichi." if not copia.attivo else f"Modello duplicato: {copia.nome}.")
@@ -361,7 +366,7 @@ class EditorModelli(_Dialogo):
         try:
             self.gestore.elimina(modello.id)
         except (OSError, ValueError) as errore:
-            self.avvisa(f"Il modello non si è potuto eliminare: {errore}", self.elenco)
+            self.avvisa(f"Il modello non si è potuto eliminare: {errore}", self.elenco, "modello_non_scritto")
             return
         suoni.suona("modello_eliminato")
         self.esiti.append(f"Modello eliminato: {modello.nome}.")
@@ -562,7 +567,7 @@ class EditorFormule(_Dialogo):
             try:
                 formule.elimina(f["id"], modelli)
             except (OSError, ValueError) as errore:
-                self.avvisa(str(errore), self.scelta, "formula_in_uso")
+                self.avvisa(str(errore), self.scelta, "formule_non_scritte")
                 return
             self.salvate.discard(f["id"])
         posto = self.scelta.GetSelection()
@@ -586,7 +591,7 @@ class EditorFormule(_Dialogo):
         try:
             formule.scrivi(valide)
         except (OSError, ValueError) as errore:
-            self.avvisa(f"Le formule non si sono potute salvare: {errore}", self.scelta, "formula_non_valida")
+            self.avvisa(f"Le formule non si sono potute salvare: {errore}", self.scelta, "formule_non_scritte")
             return
         self.salvate = {x["id"] for x in valide}
         self.modificata = any(x["id"] not in self.salvate for x in self.formule)

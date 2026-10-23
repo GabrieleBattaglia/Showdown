@@ -77,6 +77,16 @@ il calendario illeggibile; il mondo e le impostazioni salvati nella cartella sce
 non si raggiunge più, e i dati di accanto al programma messi in una riserva della cartella del mondo alla
 prima partenza, che suonavano tutti e due come i dati spostati. Anche queste parti sono di Gabriele
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Con il collaudo di gioco di Gabriele, il 24 ottobre 2026, la regola di un suono per ogni evento è passata
+su tutto il codice, e nove eventi che suonavano ancora come un altro hanno il loro suono, nella V229: il
+modello di torneo e il file delle formule che non si scrivono, che suonavano come un campo da correggere,
+la formula non valida o quella in uso; la sfida già rifiutata oggi, che suonava come il rifiuto di un
+lancio, e la sfida in arrivo che non vale più, che suonava come la formazione che non va; le iscrizioni
+non ancora aperte, quelle chiuse e Togli sulla coppa, che suonavano come un campo da correggere; l'errore
+che ferma MESS, che suonava come quello che interrompe un comando; e Allena tutti con i tesserati tutti
+infortunati, che suonava come i punti che mancano. Le azioni dette a parole dichiarano ogni situazione in
+cui il loro evento suona. Anche queste parti sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
+5.5, UltraCode).
 """
 
 import sys
@@ -106,8 +116,10 @@ GRUPPI = (
         "salvataggio_con_avviso": "mess_salvataggio_con_avviso",
         "salvataggio_non_riuscito": "mess_salvataggio_non_riuscito",
         "salvataggio_illeggibile": "mess_salvataggio_illeggibile",
-        # Un'eccezione che nessuno aspettava: l'unico allarme vero.
+        # Un'eccezione che nessuno aspettava, e il comando si interrompe: l'allarme vero.
         "errore_imprevisto": "sirena_d_allarme_1",
+        # Dal collaudo di gioco: l'errore che ferma MESS, la stessa sirena che crolla come un motore che si spegne.
+        "errore_fatale": "mess_errore_fatale",
         # Dalla tappa 14: all'avvio, la volta prima MESS si è chiuso di colpo. Un avvertimento serio, ma non un allarme.
         "crash_precedente": "mess_crash_precedente",
     }),
@@ -350,10 +362,12 @@ GRUPPI = (
         "allenati_tutti": "mess_allenati_tutti",
         # La campanella della classe guadagnata suona in coda all'esito.
         "classe_salita": "mess_classe_salita",
-        # I tre avvisi che lasciano aperta la sala: il sacchetto vuoto, il soffitto, il passo zoppo.
+        # Gli avvisi che lasciano aperta la sala: il sacchetto vuoto, il soffitto, il passo zoppo, e dal
+        # collaudo di gioco lo stesso passo zoppo per tutta la squadra, quando Allena tutti li trova tutti infortunati.
         "punti_insufficienti": "mess_portafoglio_vuoto",
         "caratteristica_al_massimo": "mess_al_massimo",
         "allenando_infortunato": "mess_allenando_fermo",
+        "allenandi_tutti_infortunati": "mess_squadra_ferma",
         # Scattano a ogni freccia sulle due scelte: un tocco minimo e un battito di cuore.
         "programma_cambiato": "mess_programma_cambiato",
         "intensita_cambiata": "mess_intensita_cambiata",
@@ -424,10 +438,14 @@ GRUPPI = (
         # Il gettone che entra e quello che torna: l'iscrizione pagata e quella tolta col rimborso.
         "iscrizione_fatta": "mess_iscrizione_fatta",
         "iscrizione_tolta": "mess_iscrizione_tolta",
-        # I tre rifiuti, ciascuno col suo perché: la cassa, i giorni già presi, il torneo per altri.
+        # I rifiuti, ciascuno col suo perché: la cassa, i giorni già presi, il torneo per altri; dal collaudo di
+        # gioco l'edizione con le iscrizioni non ancora aperte, quella già cominciata, e Togli sulla coppa.
         "iscrizione_cassa_insufficiente": "mess_iscrizione_senza_quota",
         "iscrizione_sovrapposta": "mess_iscrizione_sovrapposta",
         "iscrizione_non_idoneo": "mess_iscrizione_non_idoneo",
+        "iscrizioni_non_ancora_aperte": "mess_iscrizioni_non_ancora",
+        "iscrizioni_chiuse": "mess_iscrizioni_chiuse",
+        "coppa_solo_con_la_rosa": "mess_coppa_con_la_rosa",
     }),
     ("Tornei, il pannello e le classifiche", {
         "dialogo_tornei_in_corso": "mess_tornei_in_corso",
@@ -449,12 +467,16 @@ GRUPPI = (
         "modello_salvato": "mess_modello_salvato",
         "modello_duplicato": "mess_modello_duplicato",
         "modello_eliminato": "mess_modello_eliminato",
+        # Dal collaudo di gioco i file che non si scrivono hanno il loro suono: prima il modello suonava come un campo
+        # da correggere, e le formule come la formula non valida o quella in uso.
+        "modello_non_scritto": "mess_modello_non_scritto",
         "dialogo_editor_formule": "mess_editor_formule",
         "formula_nuova": "mess_formula_nuova",
         "formula_salvata": "mess_formula_salvata",
         "formula_non_valida": "mess_formula_non_valida",
         "formula_in_uso": "mess_formula_in_uso",
         "formula_eliminata": "mess_formula_eliminata",
+        "formule_non_scritte": "mess_formule_non_scritte",
         "dialogo_fase": "mess_fase_dialogo",
         "fase_aggiunta": "mess_fase_aggiunta",
         "fase_modificata": "mess_fase_modificata",
@@ -470,10 +492,14 @@ GRUPPI = (
         "dialogo_lancia_sfida": "mess_lancia_sfida",
         "sfida_accettata_dall_avversario": "mess_sfida_raccolta",
         "sfida_rifiutata_dall_avversario": "mess_sfida_declinata",
+        # Dal collaudo di gioco: il rilancio a chi ha già rifiutato oggi, che prima suonava come il rifiuto di un lancio.
+        "sfida_gia_rifiutata_oggi": "mess_sfida_riprova_domani",
         "nessuna_sfida_da_lanciare": "mess_nessuna_sfida_da_lanciare",
         "dialogo_sfide_in_arrivo": "mess_sfide_in_arrivo",
         "sfida_accettata": "mess_sfida_accettata",
         "sfida_rifiutata": "mess_sfida_rifiutata",
+        # Dal collaudo di gioco: la sfida in arrivo che non vale più, che prima suonava come la formazione che non va.
+        "sfida_non_piu_valida": "mess_sfida_non_piu_valida",
         "dialogo_formazione": "mess_formazione",
         "formazione_non_valida": "mess_formazione_non_valida",
         "storico_sfide": "mess_storico_sfide",
@@ -521,19 +547,23 @@ AZIONI = {
     "primo_piano": "si apre MESS mentre è già aperto, e la finestra aperta torna in primo piano",
     "salvataggio_riuscito": "il mondo salvato con Ctrl+S",
     "salvataggio_con_avviso": "il mondo salvato con Ctrl+S, ma con un avviso dell'archivio",
-    "salvataggio_non_riuscito": "un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, o quando si cambia la cartella del mondo, e allora la cartella non cambia",
+    "salvataggio_non_riuscito": ("un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, dopo un avanzamento del mondo, che la barra di stato dice "
+                                 "non salvato, o quando si cambia la cartella del mondo, e allora la cartella non cambia"),
     "salvataggio_illeggibile": "all'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire",
-    "errore_imprevisto": "un errore imprevisto del programma, o un errore che lo ferma",
+    "errore_imprevisto": "un errore imprevisto interrompe un comando, o succede quando la finestra non c'è, e MESS resta aperto",
+    "errore_fatale": "un errore imprevisto ferma MESS, e un messaggio dice dove sta il resoconto da allegare quando si chiede aiuto",
     "crash_precedente": "all'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto",
     "fuoco_vista": "F5, il fuoco va nella vista principale",
     "fuoco_barra": "F7, il fuoco va nella barra di stato",
     "annullato": "un'operazione annullata, con Esc o con Annulla in un dialogo",
-    "lavoro_concluso": "la chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del mercato degli allenatori, del calendario o degli editor dopo averci lavorato",
+    "lavoro_concluso": ("la chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del mercato degli "
+                        "allenatori, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei tornei o degli editor, che la vista "
+                        "riassume, anche quando non si è cambiato niente"),
     "nessuna_selezione": "un pulsante premuto senza niente di scelto su cui lavorare",
     "campo_da_correggere": "un valore da correggere in un campo, e il dialogo resta aperto",
-    "elenco_svuotato": "un elenco che si restringe mentre si scrive, e resta vuoto",
-    "elenco_ripopolato": "un elenco vuoto che torna a riempirsi mentre si scrive",
-    "domanda": "una domanda di conferma, con Sì e No",
+    "elenco_svuotato": "un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre",
+    "elenco_ripopolato": "un elenco vuoto che torna a riempirsi mentre si scrive o si cambia un filtro",
+    "domanda": "una domanda di conferma, con Sì e No, o la scelta fra i due mondi quando la cartella scelta ne ha già uno",
     "guida": "F1, la guida ai comandi, anche nella finestra dal vivo",
     "manuale": "Maiusc+F1, il manuale che si apre nel browser",
     "manuale_mancante": "Maiusc+F1 quando il manuale manca o il browser non lo apre",
@@ -617,7 +647,8 @@ AZIONI = {
     "richiesta_password": "la richiesta della password prima di chiudere una polisportiva protetta",
     "domanda_chiusura_polisportiva": "la domanda se chiudere per sempre la polisportiva attiva",
     "polisportiva_chiusa": "una polisportiva chiusa per sempre",
-    "scheda_polisportiva": "la scheda della polisportiva attiva, con Ctrl+M, o di quella scelta nel lancio di una sfida",
+    "scheda_polisportiva": ("la scheda della polisportiva attiva, con Ctrl+M, di quella scelta nel lancio di una sfida, o di quella scelta nella "
+                            "classifica della Coppa delle polisportive, nel pannello dei tornei"),
     "tesserati_polisportiva": "i tesserati della polisportiva attiva, con Ctrl+Shift+T",
     "diario_polisportiva": "il diario della polisportiva attiva, con Ctrl+Shift+M",
     "elenco_polisportive": "l'elenco delle polisportive, con Ctrl+Shift+E",
@@ -636,7 +667,7 @@ AZIONI = {
     "filtri_tutti_tolti": "nel mercato tutti i filtri tolti",
     "mercato_scheda_giocatore": "nel mercato, nella sala allenamento, nei contratti e nel pannello dei tornei, la scheda del giocatore scelto",
     "dialogo_cifra_ingaggio": "si apre il dialogo della cifra d'ingaggio di un libero",
-    "probabilita_ingaggio": "la probabilità che il libero accetti, mentre si scrive la cifra: più è alta, più è acuto",
+    "probabilita_ingaggio": "la probabilità che il libero, o l'allenatore del mercato degli allenatori, accetti, mentre si scrive la cifra: più è alta, più è acuto",
     "dialogo_cifra_offerta_d_acquisto": "si apre il dialogo della cifra da offrire per un tesserato di un'altra polisportiva",
     "ingaggio_accettato": "il libero accetta l'ingaggio",
     "ingaggio_rifiutato": "il libero rifiuta l'ingaggio",
@@ -673,7 +704,7 @@ AZIONI = {
     "cronaca_non_salvata": "la cronaca dell'ultimo incontro che non si può scrivere nel file",
     "amichevole_al_via": "si apre la finestra della partita dal vivo, con Assisti",
     "riscaldamento_saltato": "nella partita dal vivo il riscaldamento saltato",
-    "resto_dell_incontro": "nella partita dal vivo Alt+V, Vai alla fine",
+    "resto_dell_incontro": "nella partita dal vivo o in differita Alt+V, Vai alla fine, prima che l'incontro sia finito",
     "incontro_finito": "nella partita dal vivo Alt+F o Alt+L a incontro già finito",
     "amichevole_registrata": "nella partita dal vivo Esc, l'amichevole resta registrata senza svelare il risultato",
     "dal_vivo_pausa": "nella partita dal vivo la pausa, con Invio o spazio mentre l'azione suona",
@@ -691,19 +722,21 @@ AZIONI = {
     "punti_insufficienti": "nella sala allenamento non ci sono punti da spendere, o la cifra è zero",
     "caratteristica_al_massimo": "nella sala allenamento la caratteristica scelta è già al massimo",
     "allenando_infortunato": "nella sala allenamento il tesserato scelto è infortunato e oggi non si allena",
+    "allenandi_tutti_infortunati": "nella sala allenamento Allena tutti quando oggi nessun tesserato si allena, perché sono tutti infortunati",
     "programma_cambiato": "nella sala allenamento cambia il programma del tesserato",
     "intensita_cambiata": "nella sala allenamento cambia l'intensità del tesserato",
     "iscrizione_automatica_accesa": "nella sala allenamento si accende l'iscrizione automatica ai tornei del tesserato, con Alt+U",
     "iscrizione_automatica_spenta": "nella sala allenamento si spegne l'iscrizione automatica ai tornei del tesserato, con Alt+U",
     "dialogo_contratti": "si apre il dialogo dei contratti e dei rinnovi, con Ctrl+Shift+K",
-    "probabilita_rinnovo": "la probabilità che il tesserato accetti il rinnovo, mentre si scrivono stipendio e durata: più è alta, più è acuto",
+    "probabilita_rinnovo": ("la probabilità che il tesserato, o l'allenatore dello staff, accetti il rinnovo, mentre si scrivono stipendio e durata: "
+                            "più è alta, più è acuto"),
     "rinnovo_accettato": "il tesserato accetta il rinnovo del contratto",
     "rinnovo_rifiutato": "il tesserato rifiuta il rinnovo, e si può riprovare un altro giorno",
     "rinnovo_chiuso": "il terzo rifiuto del rinnovo, e il tesserato non tratta più",
-    "rinnovo_fuori_finestra": "il rinnovo non si può ancora proporre, perché il contratto non è negli ultimi tre mesi",
-    "rinnovo_gia_proposto_oggi": "oggi al tesserato è già stata fatta una proposta di rinnovo",
-    "rinnovo_senza_proposte": "il tesserato ha già rifiutato tre proposte e non ne accetta altre",
-    "rinnovo_gia_concordato": "il tesserato ha già rinnovato il contratto",
+    "rinnovo_fuori_finestra": "il rinnovo del tesserato, o dell'allenatore dello staff, non si può ancora proporre, perché il contratto non è negli ultimi tre mesi",
+    "rinnovo_gia_proposto_oggi": "oggi al tesserato, o all'allenatore dello staff, è già stata fatta una proposta di rinnovo",
+    "rinnovo_senza_proposte": "il tesserato, o l'allenatore dello staff, ha già rifiutato tre proposte e non ne accetta altre",
+    "rinnovo_gia_concordato": "il tesserato, o l'allenatore dello staff, ha già rinnovato il contratto",
     "tuoi_contratti_in_scadenza": "nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo",
     "tuoi_contratti_scaduti": "nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero",
     "tuo_tesserato_infortunato_in_seduta": "nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento",
@@ -737,15 +770,21 @@ AZIONI = {
     "iscrizione_tolta": "nel calendario l'iscrizione di un tuo atleta tolta, con la quota rimborsata",
     "iscrizione_cassa_insufficiente": "nel calendario la cassa della polisportiva non basta per la quota d'iscrizione",
     "iscrizione_sovrapposta": "nel calendario l'atleta negli stessi giorni ha già un altro torneo o un'altra sfida",
-    "iscrizione_non_idoneo": "nel calendario l'atleta non può giocare quel torneo, per sesso, classe, età o qualificazione",
+    "iscrizione_non_idoneo": ("nel calendario l'atleta non può giocare quel torneo, per sesso, classe, età o qualificazione, o Rosa per la coppa "
+                              "quando la tua polisportiva non è qualificata alla Coppa delle polisportive"),
+    "iscrizioni_non_ancora_aperte": "nel calendario Iscrivi o Togli su un'edizione prevista, che non ha ancora le iscrizioni aperte",
+    "iscrizioni_chiuse": "nel calendario Iscrivi o Togli su un'edizione già cominciata, col sorteggio fatto",
+    "coppa_solo_con_la_rosa": "nel calendario Togli sulla Coppa delle polisportive, dove la rosa si cambia con Rosa per la coppa",
     "dialogo_tornei_in_corso": "si apre il pannello dei tornei in corso e conclusi di recente, con Ctrl+Y",
     "differita_al_via": "si apre la finestra dal vivo per ascoltare in differita un incontro dei tuoi, di torneo o di sfida",
     "differita_interrotta": "nell'ascolto in differita Esc prima della fine, e l'incontro resta da ascoltare senza svelare il risultato",
     "cronaca_torneo_letta": "la cronaca di un incontro dei tuoi, di torneo o di sfida, aperta da leggere",
     "risultato_svelato": "il risultato di un incontro dei tuoi che si mostra, dopo l'ascolto in differita o con Mostra il risultato",
     "risultati_svelati_tutti": "Mostra tutti i risultati svela in un colpo gli incontri dei tuoi ancora da ascoltare",
-    "nessun_risultato_da_svelare": "Mostra tutti i risultati quando non c'è nessun incontro dei tuoi da svelare",
-    "nessuna_differita": "un incontro che non si può ascoltare né leggere: non è dei tuoi, o la sua edizione è già stata sostituita",
+    "nessun_risultato_da_svelare": ("Mostra il risultato su un incontro che non è nascosto, o Mostra tutti i risultati quando non c'è nessun incontro "
+                                    "dei tuoi da svelare"),
+    "nessuna_differita": ("un incontro che non si può ascoltare né leggere: non è dei tuoi, o la sua edizione è già stata sostituita, o nello storico "
+                          "una sfida che non è fra le ultime dieci giocate"),
     "albo_d_oro": "si apre l'albo d'oro dei tornei, con Ctrl+Shift+B",
     "classifica_mondiale": "la classifica nazionale per sempre, uomini e donne, con Ctrl+Shift+W",
     "dialogo_editor_modelli": "si apre l'editor dei modelli di torneo, con Ctrl+Shift+J",
@@ -753,12 +792,14 @@ AZIONI = {
     "modello_salvato": "un modello di torneo salvato",
     "modello_duplicato": "un modello di torneo duplicato, con un identificativo nuovo",
     "modello_eliminato": "un modello di torneo eliminato",
+    "modello_non_scritto": "un modello di torneo che non si può salvare, duplicare o eliminare, per esempio perché il suo file non si scrive",
     "dialogo_editor_formule": "si apre l'editor delle formule dei tornei, con Ctrl+Shift+Y",
     "formula_nuova": "nell'editor delle formule nasce una formula nuova, ancora da salvare",
     "formula_salvata": "una formula valida salvata nel file delle formule",
-    "formula_non_valida": "una formula che non si può salvare, con il motivo",
+    "formula_non_valida": "nell'editor delle formule una formula che non va, con il motivo, quando la si salva o quando Aggiungi fase non ha posto per un'altra fase",
     "formula_in_uso": "si vuole eliminare una formula che dei modelli usano ancora",
     "formula_eliminata": "una formula eliminata dal file delle formule",
+    "formule_non_scritte": "il file delle formule non si scrive quando si salva o si elimina una formula",
     "dialogo_fase": "nell'editor delle formule si apre il dialogo di una fase, nuova o da modificare",
     "fase_aggiunta": "nell'editor delle formule una fase aggiunta in fondo",
     "fase_modificata": "nell'editor delle formule una fase cambiata, con quelle che seguono aggiornate",
@@ -769,12 +810,15 @@ AZIONI = {
     "dialogo_lancia_sfida": "si apre il lancio di una sfida a una polisportiva del computer, con Ctrl+W",
     "sfida_accettata_dall_avversario": "la polisportiva del computer accetta la tua sfida, che si gioca domani",
     "sfida_rifiutata_dall_avversario": "la polisportiva del computer rifiuta la tua sfida, e dice perché",
+    "sfida_gia_rifiutata_oggi": "nel lancio di una sfida la polisportiva scelta ha già rifiutato oggi, e si riprova domani",
     "nessuna_sfida_da_lanciare": "la tua polisportiva non ha più sfide da lanciare questo mese",
     "dialogo_sfide_in_arrivo": "si aprono le sfide in arrivo, a cui rispondere entro oggi, prima dell'avanzamento seguente, con Ctrl+Shift+F",
     "sfida_accettata": "accetti una sfida in arrivo, con la tua formazione",
     "sfida_rifiutata": "rifiuti una sfida in arrivo",
+    "sfida_non_piu_valida": ("nelle sfide in arrivo la sfida scelta non vale più: non aspetta più una risposta, chi sfida ha chiuso o non ha più "
+                             "una squadra valida, quando la accetti, la rifiuti o cambi la formazione"),
     "dialogo_formazione": "si apre la formazione per una sfida o la rosa per la coppa, con titolari e riserve",
-    "formazione_non_valida": "una formazione che non va, con il motivo: il due più uno, un doppione o un impegno",
+    "formazione_non_valida": "una formazione che non va, con il motivo: il due più uno, un doppione o un impegno, mentre la si cambia o alla conferma",
     "storico_sfide": "si apre lo storico delle sfide delle tue polisportive, con Ctrl+Shift+H",
     "tua_medaglia_oro": "nell'avanzamento un tuo atleta vince la medaglia d'oro in un torneo",
     "tua_medaglia_argento": "nell'avanzamento un tuo atleta vince la medaglia d'argento",

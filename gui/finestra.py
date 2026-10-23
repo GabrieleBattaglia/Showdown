@@ -86,6 +86,11 @@ all'apertura della finestra e dei menu, alla fine di ogni comando e a ogni avanz
 Windows non manda il comando di una voce disattivata, e Ctrl+K resterebbe muto: lo prende prima il
 gancio dei tasti della finestra, e la vista dice che per oggi le mosse sono finite, col loro suono. È
 di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal collaudo di gioco, il 24 ottobre 2026, il calendario predefinito che non si rimette perché il
+ripristino si è fermato a metà dice in quale cartella sono i modelli e le formule già messi da parte; e
+nell'amichevole Alt+V a incontro finito mostra il risultato senza i guizzi di un salto che non c'è, perché
+la finestra dal vivo lo restituisce come il risultato. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -1052,7 +1057,8 @@ class FinestraPrincipale(wx.Frame):
             return
         # Alt+V nella finestra dal vivo: prima i cinque guizzi del salto alla fine, poi l'esito. Se il
         # salvataggio non è riuscito, dopo l'esito si sente quello, e i guizzi restano fuori: due suoni
-        # messi in coda insieme si sovrapporrebbero.
+        # messi in coda insieme si sovrapporrebbero. A incontro finito, dal collaudo di gioco, Alt+V torna
+        # come il risultato, e i guizzi di un salto che non c'è non si sentono.
         salto = uscita == ALLA_FINE and riuscito
         # La cronaca intera va in coda, dopo il perché di un salvataggio non riuscito, che così resta in cima.
         self._concludi(testi.amichevole_solo_risultato(risultato, self.mondo), v.evento_esito, "resto_dell_incontro" if salto else esito,
@@ -1243,8 +1249,13 @@ class FinestraPrincipale(wx.Frame):
         try:
             da_parte = modelli_torneo.GestoreModelli().ripristina_predefiniti()
         except OSError as errore:
-            # Dalla V228 col suo suono, e non più con quello del calendario illeggibile, che parla d'altro.
-            self.mostra(f"Il calendario predefinito non si è potuto rimettere: {errore}.", "calendario non ripristinato", "calendario_non_ripristinato")
+            # Dalla V228 col suo suono, e non più con quello del calendario illeggibile, che parla d'altro. Dal collaudo
+            # di gioco, se il ripristino si è fermato a metà, il messaggio dice dove sono i file già messi da parte.
+            testo = f"Il calendario predefinito non si è potuto rimettere: {errore}."
+            da_parte = getattr(errore, "da_parte", None)
+            if da_parte:
+                testo += f" I modelli e le formule messi da parte prima dell'errore sono nella cartella {da_parte}."
+            self.mostra(testo, "calendario non ripristinato", "calendario_non_ripristinato")
             return
         self._problemi_detti = None
         self.mostra(f"Il calendario predefinito è tornato. Quello di prima è nella cartella {da_parte}.", "calendario predefinito", "calendario_ripristinato")

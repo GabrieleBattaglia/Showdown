@@ -53,6 +53,12 @@ Riprova, di un'altra cartella e di Esci; anche questa parte è di Gabriele Batta
 (Claude Opus 5.5, UltraCode). Dalla revisione dello stesso giorno le stesse tre scelte valgono anche per
 il salvataggio che all'avvio non si legge, MondoIllegibile; la domanda col mondo già presente non offre di
 usarlo quando non si legge; e in questi dialoghi Invio nel testo vale il predefinito, ma tenuto giù no.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, per la regola di un suono per ogni evento: nella
+fondazione la sede che non corrisponde a nessun comune è un campo da correggere, e ne ha il suono, non più
+quello di un pulsante premuto senza niente di scelto; nella sala allenamento Allena tutti con i tesserati
+tutti infortunati lo dice, col suo suono, allenandi_tutti_infortunati, e quando a chi si allena non sale
+niente dice che ha tutto al massimo, invece di dire per tutti e due che nessuno ha un punto da spendere.
+È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -618,7 +624,8 @@ class NuovaPolisportiva(_Dialogo):
             return None
         comune = self.comune_scelto()
         if comune is None and self.ci_sono_comuni:
-            self.avvisa("Nessun comune corrisponde a quello che hai scritto nella sede: correggilo, o cancellalo per vederli tutti.", self.sede, "nessuna_selezione")
+            # Un campo da correggere, dal collaudo di gioco: prima suonava come un pulsante premuto senza niente di scelto.
+            self.avvisa("Nessun comune corrisponde a quello che hai scritto nella sede: correggilo, o cancellalo per vederli tutti.", self.sede)
             return None
         if self.password.GetValue() != self.conferma_password.GetValue():
             self.avvisa("La password e la conferma non coincidono.", self.password, "password_non_coincidono")
@@ -1368,8 +1375,15 @@ class SalaAllenamento(_Dialogo):
         self._racconta([spesa], "allenamento_completo", fuoco)
 
     def tutti(self, event=None):
-        """Allena tutti: dopo la conferma, ciascuno di chi oggi si allena e ha almeno un punto spende tutto secondo il suo programma."""
+        """
+        Allena tutti: dopo la conferma, ciascuno di chi oggi si allena e ha almeno un punto spende tutto secondo
+        il suo programma. Dal collaudo di gioco ogni rifiuto dice il suo perché, col suo suono: i tesserati
+        tutti infortunati, nessuno di chi si allena con un punto da spendere, e tutto già al massimo.
+        """
         fuoco = wx.Window.FindFocus()
+        if self.allenandi and not any(allenamento.puo_allenarsi(g) for g in self.allenandi):
+            self.avvisa(testi.tutti_infortunati(self.poli, self.allenandi), self.elenco, "allenandi_tutti_infortunati")
+            return
         candidati = [g for g in self.allenandi if allenamento.puo_allenarsi(g) and g.punti_allenamento >= 1]
         if not candidati:
             self.avvisa(testi.nessuno_da_allenare(self.poli), self.elenco, "punti_insufficienti")
@@ -1379,7 +1393,7 @@ class SalaAllenamento(_Dialogo):
             return
         spese = [spesa for spesa in (self._secondo_il_programma(g) for g in candidati) if spesa is not None]
         if not spese:
-            self.avvisa(testi.nessuno_da_allenare(self.poli), self.elenco, "caratteristica_al_massimo")
+            self.avvisa(testi.tutti_al_massimo(self.poli), self.elenco, "caratteristica_al_massimo")
             return
         self._racconta(spese, "allenati_tutti", fuoco)
 

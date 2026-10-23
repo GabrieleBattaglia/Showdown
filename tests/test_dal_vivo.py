@@ -9,6 +9,7 @@ in cui si è premuto, e quella cambiata in pausa, che vale alla ripresa; la fine
 campo della cronaca, letto con Tab, con la guida che segue lato e velocità e torna con F1.
 Dalla decisione D30: le pause lunghe, time-out, cambio campo e inizio del set, che né Prosegui né
 l'ascolto fino a fine set fanno sentire, e il volume della partita, a parte da quello degli effetti.
+Dal 2026-10-24, col collaudo di gioco, Alt+V a incontro finito porta al risultato, come il pulsante ed Esc.
 """
 
 import itertools
@@ -370,8 +371,8 @@ def test_piu_e_meno_cambiano_la_velocita(vivo, suonati):
     assert vivo.gemello.regia.velocita == 7.0
 
 
-@pytest.mark.parametrize("con_esc", [False, True])
-def test_la_fine_dell_incontro_porta_al_risultato(app_wx, suonati, con_esc):
+@pytest.mark.parametrize("comando", ["pulsante", "esc", "vai_alla_fine"])
+def test_la_fine_dell_incontro_porta_al_risultato(app_wx, suonati, comando):
     vivo = Vivo(velocita=8, livello=cronaca.SINTETICA)
     try:
         f = vivo.finestra
@@ -388,14 +389,18 @@ def test_la_fine_dell_incontro_porta_al_risultato(app_wx, suonati, con_esc):
         f.fino_a_fine_set()
         f.cambia_lato()
         assert suonati[-2:] == ["incontro_finito", "incontro_finito"] and f.ascoltatore == "A"
-        if con_esc:
+        if comando == "esc":
             # Revisione della D30: a incontro finito la cronaca dice già chi ha vinto, ed Esc vale
             # come il pulsante del risultato, invece di dire che si è usciti senza vederne la fine.
             _tasto(f, wx.WXK_ESCAPE)
+        elif comando == "vai_alla_fine":
+            # Dal collaudo di gioco anche Alt+V, Vai alla fine: prima la finestra diceva un salto alla
+            # fine che non c'era, e chi la apriva faceva sentire i suoi cinque guizzi.
+            f.alla_fine.Command(wx.CommandEvent(wx.wxEVT_BUTTON, f.alla_fine.GetId()))
         else:
             f.al_prosegui()
         assert f.uscita == dal_vivo.AL_RISULTATO and f.GetReturnCode() == wx.ID_OK
-        assert vivo.cassa.accese == 0
+        assert vivo.cassa.accese == 0 and "resto_dell_incontro" not in suonati
     finally:
         vivo.finestra.timer.Stop()
         vivo.finestra.Destroy()

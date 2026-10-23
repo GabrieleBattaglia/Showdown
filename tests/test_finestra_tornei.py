@@ -8,6 +8,7 @@ ripristino dalla finestra, con la vista che dice che cosa è cambiato e il mondo
 cronaca dell'ultimo incontro di torneo o di sfida ascoltato in differita; il calendario che non si legge
 all'avvio e nella barra una volta sola; la sfida in attesa col nome di chi sfida; il suono unico
 dell'avanzamento con le notizie dei tornei.
+Dal 2026-10-24, col collaudo di gioco, il ripristino fermo a metà, che nel messaggio nomina la cartella dei file già messi da parte.
 """
 
 import datetime
@@ -235,6 +236,20 @@ def test_il_ripristino_del_calendario_che_non_riesce(finestra, suonati, messaggi
     assert finestra.vista.GetValue() == "Il calendario predefinito non si è potuto rimettere: [Errno 13] Accesso negato."
     assert finestra.barra.GetValue().splitlines()[3] == "calendario non ripristinato"
     assert suonati[-2:] == ["domanda", "calendario_non_ripristinato"] and "calendario_illeggibile" not in suonati
+
+
+def test_il_ripristino_fermo_a_meta_nomina_la_cartella(finestra, suonati, messaggi, monkeypatch, cartella_di_prova):
+    # Dal collaudo di gioco: il ripristino che si ferma dopo aver messo da parte una parte dei file dice dove sono.
+    def non_si_copia(_cartella):
+        raise PermissionError(13, "Accesso negato")
+
+    monkeypatch.setattr(modelli_torneo, "_copia_predefiniti", non_si_copia)
+    messaggi.risposta = wx.YES
+    finestra.ripristina_calendario()
+    da_parte = next(p for p in (cartella_di_prova / modelli_torneo.CARTELLA).iterdir() if p.name.startswith(modelli_torneo.PREFISSO_RIPRISTINO))
+    assert finestra.vista.GetValue() == ("Il calendario predefinito non si è potuto rimettere: [Errno 13] Accesso negato. "
+                                         f"I modelli e le formule messi da parte prima dell'errore sono nella cartella {da_parte}.")
+    assert suonati[-2:] == ["domanda", "calendario_non_ripristinato"]
 
 
 def test_gli_editor_dalla_finestra(finestra, suonati, monkeypatch):

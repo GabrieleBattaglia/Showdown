@@ -10,6 +10,7 @@ ricordata; il salvataggio della cronaca in una cartella temporanea, con il momen
 anche se si salva dopo un avanzamento; il perché di un mondo non salvato prima della cronaca intera;
 i suoni di ogni passo. I dialoghi sono sostituiti da risposte scritte, la cassa della partita da una
 cassa finta.
+Dal 2026-10-24, col collaudo di gioco, Alt+V a incontro finito mostra l'esito senza i guizzi di un salto alla fine che non c'è.
 """
 
 import datetime
@@ -266,6 +267,20 @@ def test_vai_alla_fine_dalla_finestra_dal_vivo(finestra, suonati, monkeypatch, c
     assert suonati[-4:] == ["amichevole_al_via", "dal_vivo_fino_a_fine_set", "resto_dell_incontro", _esito_atteso(finestra, 2)]
     assert finestra.vista.GetValue() == _testo_alla_fine(finestra)
     assert cassa.accese == 0
+
+
+def test_vai_alla_fine_a_incontro_finito_mostra_il_risultato(finestra, suonati, monkeypatch, cassa):
+    # Dal collaudo di gioco: a incontro finito Alt+V vale come il pulsante del risultato, ed Esc, e i cinque
+    # guizzi di un salto alla fine che non c'è non si sentono più prima dell'esito.
+    def nel_vivo(f):
+        f.stato = dal_vivo.FINITO
+        f.alla_fine.Command(wx.CommandEvent(wx.wxEVT_BUTTON, f.alla_fine.GetId()))
+
+    scelte = Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=nel_vivo)
+    finestra.amichevole()
+    assert scelte.dal_vivo[0].uscita == dal_vivo.AL_RISULTATO
+    assert suonati[-2:] == ["amichevole_al_via", _esito_atteso(finestra, 2)] and "resto_dell_incontro" not in suonati
+    assert finestra.vista.GetValue() == _testo_alla_fine(finestra)
 
 
 def test_la_velocita_cambiata_dal_vivo_si_ricorda(finestra, suonati, monkeypatch, cartella_di_prova):

@@ -32,6 +32,11 @@ niente. Mostra del pannello ha una voce in più, le ultime edizioni concluse con
 differite del calendario: D32 vuole riascoltabile l'ultimo concluso anche dopo le due settimane, e lì
 restano i tuoi incontri, col podio della sede preso dall'albo. Esc durante l'ascolto ha il suo suono,
 differita_interrotta, come vuole D30.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, per la regola di un suono per ogni evento, i rifiuti
+del calendario che suonavano come un campo da correggere hanno il loro suono: Iscrivi o Togli su
+un'edizione prevista, iscrizioni_non_ancora_aperte, o già cominciata, iscrizioni_chiuse, e Togli sulla
+Coppa delle polisportive, coppa_solo_con_la_rosa. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
+5.5, UltraCode).
 """
 
 import datetime
@@ -117,6 +122,7 @@ def ascolta_e_ricorda(genitore, mondo, differita, seme, impostazioni, tuoi, data
         suoni.suona("differita_interrotta")
         return None, velocita
     if uscita == ALLA_FINE:
+        # Soltanto a incontro in corso: a incontro finito la finestra dal vivo restituisce il risultato, come Esc.
         suoni.suona("resto_dell_incontro")
         suoni.in_coda("risultato_svelato")
     else:
@@ -358,14 +364,17 @@ class CalendarioTornei(_Dialogo):
         return "campo_da_correggere"
 
     def _non_aperta(self, elenco):
-        """L'avviso di un pulsante premuto su un'edizione che non ha le iscrizioni aperte."""
+        """
+        L'avviso di un pulsante premuto su un'edizione che non ha le iscrizioni aperte, ciascuno col suono del
+        suo perché, dal collaudo di gioco: quella prevista non le ha ancora aperte, quella già cominciata le ha chiuse.
+        """
         voce = self._voce()
         if voce is None:
             suoni.suona("nessuna_selezione")
         elif voce[0] == "prevista":
-            self.avvisa(self.elenco_iscrivibili.GetString(0), self.elenco)
+            self.avvisa(self.elenco_iscrivibili.GetString(0), self.elenco, "iscrizioni_non_ancora_aperte")
         else:
-            self.avvisa("L'edizione è già cominciata: il sorteggio è fatto, e le iscrizioni non si cambiano più.", self.elenco)
+            self.avvisa("L'edizione è già cominciata: il sorteggio è fatto, e le iscrizioni non si cambiano più.", self.elenco, "iscrizioni_chiuse")
 
     def iscrivi(self, event=None):
         if self._ripetuta("iscrivi"):
@@ -398,7 +407,7 @@ class CalendarioTornei(_Dialogo):
             self._non_aperta(self.elenco)
             return
         if not ed.individuale:
-            self.avvisa("La rosa per la coppa si cambia con Rosa per la coppa.", self.elenco_iscritti)
+            self.avvisa("La rosa per la coppa si cambia con Rosa per la coppa.", self.elenco_iscritti, "coppa_solo_con_la_rosa")
             return
         scelto = self._scelto(self.elenco_iscritti, self.iscritti)
         if scelto is None:
