@@ -1,18 +1,18 @@
 {
- "nota": "Tappa 14, issue 5: la descrizione della formula gironi_32 dice campionati italiani, e i mondi la copiano nelle sedi",
+ "nota": "Tappa 14, formato 9: ogni polisportiva ha il comune della sede; tolto il campo e rimesso il formato 8 le impronte dei mondi tornano identiche",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "9ad409eff7495cd6bf4994ca3d5e41e65059dc954f22bd20d6846a1f68791338",
+  "sha256": "8911ec852e33a77e8899bcfc7e5036e8b2c1d267cb8b605db2ac5f510d509d9a",
   "vivi": 674,
   "attivi": 674,
   "tesserati": 603,
   "polisportive": 41
  },
  "mondo_a_regime": {
-  "sha256": "ee4c8b4f5e4f2110cf020402db02d6d9d6ed6c3aa5cc9b6b0ad1fee9261acd4f",
+  "sha256": "1b4a4e51fe3113a9c944bf81ea19b2385bf2d2263aec2dcc507987e177fec946",
   "vivi": 1659,
   "attivi": 1259,
   "tesserati": 1078,

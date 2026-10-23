@@ -295,7 +295,7 @@ def _nome(g):
 def test_nuova_polisportiva(finestra, cartella_di_prova, monkeypatch):
     avvisi = []
     monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo))
-    dialogo = dialoghi.NuovaPolisportiva(finestra, finestra.mondo)
+    dialogo = dialoghi.NuovaPolisportiva(finestra, finestra.mondo, proposta="Bologna")
     try:
         dialogo.nome.ChangeValue("club di prova")
         dialogo.conferma()
@@ -306,20 +306,23 @@ def test_nuova_polisportiva(finestra, cartella_di_prova, monkeypatch):
         assert dialogo.risultato is None and avvisi[-1] == "La password e la conferma non coincidono."
         dialogo.conferma_password.ChangeValue("abc")
         dialogo.conferma()
-        assert dialogo.risultato == ("Circolo dei ciechi", "abc", True)
+        # Dalla tappa 14 anche la sede, il comune proposto, che basta confermare.
+        assert dialogo.risultato == ("Circolo dei ciechi", "abc", True, "Bologna")
     finally:
         dialogo.Destroy()
 
     def fonda(self):
         self.nome.ChangeValue("Circolo dei ciechi")
+        self.sede.SetValue("pescocost")
         self.conferma()
         return wx.ID_OK
 
     monkeypatch.setattr(dialoghi.NuovaPolisportiva, "ShowModal", fonda)
     finestra.nuova_polisportiva()
     nuova = finestra.mondo.polisportive["Circolo dei ciechi"]
-    assert finestra.mondo.miapolisportiva_attiva is nuova and not nuova.protetta
+    assert finestra.mondo.miapolisportiva_attiva is nuova and not nuova.protetta and nuova.luogo == "Pescocostanzo"
     assert finestra.vista.GetValue().startswith("Hai fondato Circolo dei ciechi. È la tua polisportiva attiva.")
+    assert "\nSede: Pescocostanzo, provincia dell'Aquila, Abruzzo\n" in finestra.vista.GetValue()
     assert "Circolo dei ciechi" in archivio.leggi(cartella_di_prova / FILE_MONDO)["mondo"]["polisportive"]
 
 

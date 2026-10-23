@@ -38,6 +38,9 @@ Dalla tappa 13, il 2026-10-21, decisione D33 e capitolo 4 del progetto, ci sono 
 polisportiva, coi tre posti, il rinnovo, il licenziamento e l'assunzione, e il mercato degli allenatori,
 coi filtri e l'offerta d'ingaggio. Le parti della tappa 13 sono di Gabriele Battaglia (IZ4APU) &
 ClaudIA (Claude Opus 5.5, UltraCode).
+Dalla tappa 14, il 2026-10-23, la fondazione chiede anche la sede, un comune cercato per nome in un elenco
+che si restringe mentre si scrive. Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, modalità auto).
 """
 
 import contextlib
@@ -51,6 +54,7 @@ import classe
 import contratti
 import economia
 import impostazioni as modulo_impostazioni
+import luoghi
 import mercato
 import partita_sonora
 import ricerca
@@ -69,7 +73,7 @@ from costanti import (
     STIPENDIO_MINIMO,
 )
 from gui import aspetto
-from modelli import probabilita_accettazione
+from modelli import normalizza_nome, probabilita_accettazione
 from motore import cronaca
 
 PAYPAL_URL = "https://paypal.me/GabrieleBattaglia780"
@@ -496,14 +500,31 @@ class EffettiSonori(_Dialogo):
 
 
 class NuovaPolisportiva(_Dialogo):
-    """La fondazione di una polisportiva: il nome, la password facoltativa della decisione D3 e se renderla attiva."""
+    """
+    La fondazione di una polisportiva: il nome, la sede, la password facoltativa della decisione D3 e se
+    renderla attiva. Dalla tappa 14, richiesta di Gabriele del 23 ottobre 2026, la sede è un comune: il
+    campo Sede ne propone uno estratto coi pesi della popolazione, che basta confermare, e mentre si
+    scrive restringe l'elenco dei comuni, ciascuno con la sua popolazione in percentuale su quella del
+    più popoloso, la provincia e la regione; quando l'elenco si svuota o torna pieno lo fa sentire, come
+    gli altri filtri. Fonda prende il comune scelto nell'elenco. Invio sul campo Sede o sull'elenco non
+    fonda subito, perché lì sembra scegliere il comune: chiede conferma, con il no già scelto. In
+    risultato restano nome, password, se renderla attiva e comune; il comune è vuoto soltanto se la
+    collezione dei comuni non si legge.
+    """
 
-    def __init__(self, genitore, mondo):
+    def __init__(self, genitore, mondo, proposta=None):
         super().__init__(genitore, "Nuova polisportiva")
         self.mondo = mondo
         self.risultato = None
+        self.comuni = []
+        self.elenco_vuoto = _ElencoCheSiRestringe()
+        self.ci_sono_comuni = bool(luoghi.candidati(""))
         self.etichetta(f"&Nome, da {NOME_POLISPORTIVA_MIN} a {NOME_POLISPORTIVA_MAX} caratteri")
         self.nome = self.aggiungi(wx.TextCtrl(self.pannello))
+        self.etichetta("&Sede: scrivi il nome del comune per cercarlo")
+        self.sede = self.aggiungi(wx.TextCtrl(self.pannello))
+        self.etichetta_comuni = self.etichetta("&Comuni trovati")
+        self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         self.etichetta("&Password, facoltativa")
         self.password = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
         self.etichetta("C&onferma della password")
@@ -512,18 +533,69 @@ class NuovaPolisportiva(_Dialogo):
         self.attiva.SetValue(True)
         fonda, _annulla = self.pulsanti((wx.ID_OK, "&Fonda"), (wx.ID_CANCEL, "Annulla"))
         fonda.Bind(wx.EVT_BUTTON, self.conferma)
-        self.completa((420, 320))
+        self.sede.Bind(wx.EVT_TEXT, self.filtra)
+        self.invio_su(self.sede, self.conferma_con_domanda)
+        self.invio_su(self.elenco, self.conferma_con_domanda)
+        self.sede.ChangeValue(luoghi.comune_a_caso() if proposta is None else proposta)
+        self.filtra()
+        self.completa((520, 560))
         self.nome.SetFocus()
 
-    def conferma(self, event=None):
+    def filtra(self, event=None):
+        """
+        L'elenco dei comuni per il testo del campo Sede, col primo già scelto, e il loro numero
+        nell'etichetta; il suono quando si svuota o torna pieno, e all'apertura se è vuoto.
+        """
+        self.comuni = luoghi.candidati(self.sede.GetValue())
+        self._riscrivi(self.elenco, [testi.riga_del_comune(comune) for comune in self.comuni], 0)
+        self.etichetta_comuni.SetLabel(f"&Comuni trovati: {testi.intero(len(self.comuni))}")
+        self.pannello.Layout()
+        apertura = self.elenco_vuoto.pieno is None
+        passaggio = self.elenco_vuoto.passaggio(bool(self.comuni))
+        if apertura and not self.comuni:
+            suoni.in_coda("elenco_svuotato")
+        elif passaggio:
+            suoni.suona(passaggio)
+
+    def comune_scelto(self):
+        """Il comune scelto nell'elenco, oppure None se l'elenco è vuoto."""
+        indice = self.elenco.GetSelection()
+        if indice == wx.NOT_FOUND or indice >= len(self.comuni):
+            return None
+        return self.comuni[indice]
+
+    def _controlla(self):
+        """Nome, sede e password: il risultato se vanno, altrimenti None, dopo l'avviso col cursore sul campo da correggere."""
         problema = self.mondo.problema_nome_polisportiva(self.nome.GetValue())
         if problema:
             self.avvisa(problema, self.nome)
-            return
+            return None
+        comune = self.comune_scelto()
+        if comune is None and self.ci_sono_comuni:
+            self.avvisa("Nessun comune corrisponde a quello che hai scritto nella sede: correggilo, o cancellalo per vederli tutti.", self.sede, "nessuna_selezione")
+            return None
         if self.password.GetValue() != self.conferma_password.GetValue():
             self.avvisa("La password e la conferma non coincidono.", self.password, "password_non_coincidono")
+            return None
+        return (self.nome.GetValue(), self.password.GetValue() or None, self.attiva.GetValue(), comune or "")
+
+    def conferma(self, event=None):
+        """Fonda, o Invio fuori dalla sede: si fonda senza domande, se tutto va."""
+        risultato = self._controlla()
+        if risultato is not None:
+            self.risultato = risultato
+            self.chiudi(wx.ID_OK)
+
+    def conferma_con_domanda(self):
+        """Invio sul campo Sede o sull'elenco: gli stessi controlli di Fonda, poi la domanda col nome e la sede, e al no il fuoco torna dov'era."""
+        fuoco = controllo_col_fuoco()
+        risultato = self._controlla()
+        if risultato is None:
             return
-        self.risultato = (self.nome.GetValue(), self.password.GetValue() or None, self.attiva.GetValue())
+        if not self._conferma(testi.domanda_fondazione(normalizza_nome(risultato[0]), risultato[3])):
+            self._torna(fuoco)
+            return
+        self.risultato = risultato
         self.chiudi(wx.ID_OK)
 
 

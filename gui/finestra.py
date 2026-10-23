@@ -590,10 +590,10 @@ class FinestraPrincipale(wx.Frame):
             if self._modale(dialogo) != wx.ID_OK or dialogo.risultato is None:
                 suoni.suona("annullato")
                 return
-            nome, password, attiva = dialogo.risultato
+            nome, password, attiva, luogo = dialogo.risultato
         finally:
             dialogo.Destroy()
-        p = self.mondo.fonda_polisportiva(nome, password, attiva)
+        p = self.mondo.fonda_polisportiva(nome, password, attiva, luogo)
         self._concludi(testi.fondata(p, self.mondo), f"fondata {p.nome}", "polisportiva_fondata")
 
     def cambia_polisportiva(self):

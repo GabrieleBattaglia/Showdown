@@ -349,12 +349,15 @@ class Mondo:
             return f"Esiste già una polisportiva che si chiama {esistente.nome}."
         return None
 
-    def fonda_polisportiva(self, nome, password=None, attiva=True):
-        """Fonda una polisportiva dell'utente, protetta se riceve una password; ValueError se il nome non va."""
+    def fonda_polisportiva(self, nome, password=None, attiva=True, luogo=None):
+        """
+        Fonda una polisportiva dell'utente, protetta se riceve una password, con la sede nel comune
+        scelto o, senza scelta, in quello estratto dal suo nome; ValueError se il nome non va.
+        """
         problema = self.problema_nome_polisportiva(nome)
         if problema:
             raise ValueError(problema)
-        poli = Polisportiva(nome=nome, password=password or None, datetime_creazione_sim=self.datetime_corrente_simulazione)
+        poli = Polisportiva(nome=nome, password=password or None, datetime_creazione_sim=self.datetime_corrente_simulazione, luogo=luogo)
         self.polisportive[poli.nome] = poli
         if attiva:
             self.miapolisportiva_attiva = poli

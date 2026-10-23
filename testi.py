@@ -992,6 +992,9 @@ def risultati_ricerca(mondo, descrizione, ids):
 def scheda_polisportiva(p, mondo):
     """La scheda di una polisportiva, nello stile delle schede di Terminal Beast."""
     righe = [f"[{'COMPUTER' if p.is_cpu_controlled else 'TUA'}] {p.nome} | Gloria: {p.gloria} | Tesserati: {len(p.tesserati)} su {p.maxtesserati} | Valore collettivo: {numero(p.indicecollettivotesserati)}"]
+    # Dalla tappa 14 la sede, il comune con la provincia e la regione.
+    if p.luogo:
+        righe.append(f"Sede: {luoghi.descrivi(p.luogo)}")
     righe.append(f"Fondata il {data_lunga(p.datetime_creazione_sim)} nel mondo simulato, {eta_polisportiva(p, mondo)} fa, e il {data_lunga(p.datacreazione_reale)} nel mondo reale, con la versione {p.versione_creazione}.")
     mosse = f"Mosse di mercato fatte oggi: {p.movimenti_oggi} su {LIMITE_MOVIMENTI_PER_TICK}"
     if not p.is_cpu_controlled:
@@ -1078,8 +1081,29 @@ def elenco_polisportive(mondo):
     righe = [f"Polisportive in Italia: {len(mondo.polisportive)}."]
     for p in sorted(mondo.polisportive.values(), key=lambda x: x.nome.casefold()):
         chi = "del computer" if p.is_cpu_controlled else "tua"
-        righe.append(f"{p.nome}, {chi}, {len(p.tesserati)} tesserati su {p.maxtesserati}, gloria {p.gloria}, valore {numero(p.indicecollettivotesserati)}, fondata da {eta_polisportiva(p, mondo)}")
+        # Dalla tappa 14 la sede, il comune soltanto, come la gloria e il valore: la provincia è nella scheda.
+        sede = f", sede {p.luogo}" if p.luogo else ""
+        righe.append(f"{p.nome}, {chi}{sede}, {len(p.tesserati)} tesserati su {p.maxtesserati}, gloria {p.gloria}, valore {numero(p.indicecollettivotesserati)}, "
+                     f"fondata da {eta_polisportiva(p, mondo)}")
     return "\n".join(righe)
+
+
+def riga_del_comune(comune):
+    """
+    Un comune nell'elenco della fondazione: il nome, la popolazione in percentuale su quella del più
+    popoloso, coi decimali che servono perché non sia mai 0%, poi provincia e regione. Roma 100%,
+    provincia di Roma, Lazio; Pescocostanzo 0,04%, provincia dell'Aquila, Abruzzo.
+    """
+    valore = luoghi.percentuale(comune)
+    nome = comune if valore is None else f"{comune} {percento(valore, luoghi.decimali_della_percentuale(valore))}"
+    posto = luoghi.dove_a_parole(comune)
+    return f"{nome}, {posto}" if posto else nome
+
+
+def domanda_fondazione(nome, comune):
+    """La domanda prima di fondare, quando si è dato Invio sulla sede: il nome e la sede, da confermare."""
+    sede = f" Sede: {luoghi.descrivi(comune)}." if comune else ""
+    return f"Vuoi fondare la polisportiva {nome}?{sede}"
 
 
 def tesserati_attiva(mondo):

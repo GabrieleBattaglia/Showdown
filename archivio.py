@@ -57,6 +57,9 @@ giocatore. La migrazione dal 7 lascia gli staff vuoti, D33 risposta 16, e segna 
 nascere: li fa nascere il caricamento, quando ci sono i giocatori, un allenatore per ogni ritirato vivo
 che può allenare e gli allenatori nati di un mondo della sua età. La classe migliore parte da quella di
 oggi, l'unica che si conosce.
+Il formato 9, della tappa 14, del 2026-10-23, richiesta di Gabriele: ogni polisportiva ha il comune della
+sede. La migrazione dall'8 lo dà a tutte, anche a quelle dell'utente, estratto coi pesi della popolazione
+da un caso nato dal nome, come per le polisportive del computer che nascono, e il caso del mondo non si tocca.
 """
 
 import contextlib
@@ -117,7 +120,7 @@ from sfide import RegistroSfide
 from utilita import adesso, adesso_utc, senza_raccolta
 
 APPLICAZIONE = "MESS"
-FORMATO = 8
+FORMATO = 9
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Il segnaposto dei giocatori mentre si scrive il resto del documento, _testo_firmato: due caratteri
@@ -554,8 +557,18 @@ def _dal_formato_7(documento):
     documento["formato"] = 8
 
 
+def _dal_formato_8(documento):
+    """
+    Dal formato 8 al 9, con la tappa 14, richiesta di Gabriele del 23 ottobre 2026: ogni polisportiva,
+    del computer o dell'utente, riceve il comune della sede, estratto dal suo nome come alla nascita.
+    """
+    for p in documento["mondo"]["polisportive"].values():
+        p.setdefault("luogo", luoghi.luogo_della_polisportiva(p["nome"]))
+    documento["formato"] = 9
+
+
 MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5, 6: _dal_formato_6,
-              7: _dal_formato_7}
+              7: _dal_formato_7, 8: _dal_formato_8}
 
 
 def _conservazione_da_json(valore):
