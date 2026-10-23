@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 310 suoni, 285 della finestra e 25 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 313 suoni, 288 della finestra e 25 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -59,9 +59,9 @@ Si apre il dialogo della velocità di gioco: mess_velocita_di_gioco.
 La velocità di gioco confermata e salvata: mess_velocita_salvata.
 Si apre il dialogo degli annunci della cronaca: mess_annunci_della_cronaca.
 Gli annunci della cronaca confermati e salvati: mess_annunci_salvati.
-Finestra, applicazione, la cartella del mondo, 9 suoni.
+Finestra, applicazione, la cartella del mondo, 11 suoni.
 Cartella del mondo, nel menu Impostazioni, e all'avvio Scegli un'altra cartella: si apre la finestra di Windows che sceglie dove stanno il mondo e i dati di gioco: mess_cartella_mondo.
-Il mondo e i dati di gioco spostati nella cartella scelta, o salvati lì se la cartella di prima non si raggiunge più, e alla prima partenza di questa versione da accanto al programma alla cartella del mondo: mess_cartella_spostata.
+Il mondo e i dati di gioco spostati nella cartella scelta dal menu, e alla prima partenza di questa versione i dati di accanto al programma, con un mondo o senza, passati in uso nella cartella del mondo: mess_cartella_spostata.
 Si sceglie il mondo che la cartella nuova ha già, e MESS si chiude per riaprirsi su di lui: mess_cartella_cambiata.
 All'avvio la cartella del mondo non c'è, per esempio la penna non è collegata, o c'è ma senza un mondo, per esempio il cloud non è pronto, o non si sa dove sia perché il file accanto al programma che la nomina non si legge, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire: mess_cartella_assente.
 I dati del mondo non passano nella cartella scelta, dal menu o alla prima partenza da accanto al programma, e tutto resta com'era: mess_cartella_non_spostata.
@@ -69,6 +69,8 @@ La cartella scelta non va bene, perché è già quella del mondo, sta dentro i s
 Dopo aver scelto il mondo della cartella nuova MESS non riesce a riaprirsi da solo, e un messaggio dice di riaprirlo a mano: mess_riapertura_mancata.
 Cartella del mondo, nel menu Impostazioni, trova rovinato a MESS aperto il file accanto al programma che dice dove sta la cartella del mondo, e la vista dice di riaprire MESS per sceglierla all'avvio: mess_cartella_illeggibile.
 Il file accanto al programma che dice dove sta la cartella del mondo non si scrive, quando si sceglie il mondo di un'altra cartella dal menu o la si indica all'avvio, e la cartella resta quella di prima: mess_cartella_non_registrata.
+Con Cartella del mondo, nel menu Impostazioni, la cartella di prima non si raggiunge più, per esempio una penna staccata a MESS aperto, e il mondo e le impostazioni si salvano nella cartella scelta, mentre il resto dei dati resta in quella di prima: mess_cartella_salvata_altrove.
+Alla prima partenza di questa versione i dati di accanto al programma vanno in una riserva della cartella del mondo, perché lei aveva già un mondo, che resta in uso: mess_dati_in_riserva.
 Finestra, mondo, i giocatori, 8 suoni.
 Si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G: pokermachine_raddoppio_carta.
 La scheda di un giocatore: meteora_tag_letti.
@@ -260,7 +262,7 @@ Mostra tutti i risultati quando non c'è nessun incontro dei tuoi da svelare: me
 Un incontro che non si può ascoltare né leggere: non è dei tuoi, o la sua edizione è già stata sostituita: mess_nessuna_differita.
 Si apre l'albo d'oro dei tornei, con Ctrl+Shift+B: mess_albo_d_oro.
 La classifica nazionale per sempre, uomini e donne, con Ctrl+Shift+W: mess_classifica_mondiale.
-Finestra, tornei, gli editor, 17 suoni.
+Finestra, tornei, gli editor, 18 suoni.
 Si apre l'editor dei modelli di torneo, con Ctrl+Shift+J: mess_editor_modelli.
 Nell'editor si apre il dialogo di un modello di torneo, nuovo o da modificare: mess_modello_torneo.
 Un modello di torneo salvato: mess_modello_salvato.
@@ -277,6 +279,7 @@ Nell'editor delle formule una fase aggiunta in fondo: mess_fase_aggiunta.
 Nell'editor delle formule una fase cambiata, con quelle che seguono aggiornate: mess_fase_modificata.
 Nell'editor delle formule una fase tolta: mess_fase_tolta.
 Il calendario predefinito rimesso, con quello di prima messo da parte: mess_calendario_ripristinato.
+Il calendario predefinito non si riesce a rimettere, per esempio perché un file non si scrive, e la vista dice il perché: mess_calendario_non_ripristinato.
 Un modello o una formula dei tornei che non si leggono, all'avvio, nell'avanzamento o all'apertura dell'editor: mess_calendario_illeggibile.
 Finestra, partite, le sfide, 10 suoni.
 Si apre il lancio di una sfida a una polisportiva del computer, con Ctrl+W: mess_lancia_sfida.

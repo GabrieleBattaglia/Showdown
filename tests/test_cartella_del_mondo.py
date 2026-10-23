@@ -529,8 +529,8 @@ def test_i_dati_accanto_al_programma_passano_nella_cartella_del_mondo(avvio, suo
     assert esito is None and _albero(mondo) == prima and _albero(programma_di_prova) == {os.path.join("Mondo", nome): dati for nome, dati in prima.items()}
     assert notizia == (f"Il mondo e i dati di gioco ora stanno nella cartella del mondo, {mondo}: li ho spostati da accanto al programma, nella "
                        f"cartella {programma_di_prova}. Dove tenerli si sceglie con Cartella del mondo, nel menu Impostazioni.")
-    # Il suono lo fa la finestra, quando è comparsa.
-    assert suonati == []
+    # Il suono lo fa la finestra, quando è comparsa: quello dei dati spostati, perché non sono andati in una riserva.
+    assert suonati == [] and not isinstance(notizia, testi.DatiInRiserva)
     # Alla partenza seguente non c'è più niente da spostare.
     assert Showdown.prepara_la_cartella() == (None, None, None)
 
@@ -546,7 +546,9 @@ def test_se_la_cartella_del_mondo_ne_ha_gia_uno_quelli_di_prima_vanno_in_riserva
     riserva = mondo / "Riserva 2026-10-23 19.05"
     assert {nome: dati for nome, dati in _albero(mondo).items() if not nome.startswith("Riserva")} == prima_mondo
     assert _albero(riserva)[FILE_MONDO] == f"di prima {FILE_MONDO}".encode()
-    assert "che resta quello in uso" in notizia and str(riserva) in notizia
+    assert "c'erano i dati di un mondo" in notizia and "che resta quello in uso" in notizia and str(riserva) in notizia
+    # Dalla V228 la finestra la suona col suono dei dati in riserva: lo dice il tipo della notizia.
+    assert isinstance(notizia, testi.DatiInRiserva)
 
 
 @pytest.mark.parametrize(("accanto", "nella_cartella", "resta"), [(OGGI, IERI, "accanto"), (IERI, OGGI, "cartella"), (OGGI, None, "cartella")])
@@ -564,6 +566,8 @@ def test_alla_prima_partenza_resta_in_uso_il_mondo_piu_recente(avvio, programma_
     _esito, notizia, _accettata = Showdown.prepara_la_cartella()
     riserva = mondo / "Riserva 2026-10-23 19.05"
     in_uso, da_parte = (8, 4) if resta == "accanto" else (4, 8)
+    # Il suono dei dati in riserva soltanto quando ci vanno quelli di accanto al programma.
+    assert isinstance(notizia, testi.DatiInRiserva) == (resta == "cartella")
     if nella_cartella is None:
         # Quello della cartella non si legge: resta lui, e quello di accanto va da parte, senza confronti.
         assert len(archivio.leggi(str(riserva / FILE_MONDO))["mondo"]["giocatori"]) == 8 and "che resta quello in uso" in notizia
@@ -593,7 +597,49 @@ def test_alla_prima_partenza_i_dati_senza_mondo_di_accanto_al_programma_vanno_in
     riserva = mondo / "Riserva 2026-10-23 19.05"
     assert {nome: dati for nome, dati in _albero(mondo).items() if not nome.startswith("Riserva")} == prima_mondo
     assert _albero(riserva) == {os.path.join("tornei", "Open.json"): b"di prima", impostazioni.FILE_IMPOSTAZIONI: b"{}"}
-    assert "che resta quello in uso" in notizia
+    # Dalla V228 la notizia non parla più dei dati di un mondo che accanto al programma non c'era, e nomina quelli che c'erano.
+    assert notizia == (f"Accanto al programma, nella cartella {programma_di_prova}, c'erano le impostazioni e i modelli dei tornei, senza un mondo, e "
+                       "la cartella del mondo ne aveva già uno, che resta quello in uso con i suoi dati: quelli di accanto al programma sono nella "
+                       f"cartella {riserva}.")
+    assert isinstance(notizia, testi.DatiInRiserva)
+
+
+def test_alla_prima_partenza_senza_un_mondo_ne_accanto_al_programma_ne_nella_cartella_ne_nasce_uno(avvio_intero, suonati, programma_di_prova):
+    # Dalla V228: accanto al programma ci sono soltanto delle impostazioni, delle cronache e le vecchie glorie, e la cartella del mondo
+    # è vuota. La notizia non dice più "il mondo e i dati di gioco": nomina i dati che c'erano, e il mondo nuovo che il caricamento fa nascere.
+    os.remove(percorsi.file_della_cartella())
+    (programma_di_prova / "cronache").mkdir()
+    (programma_di_prova / "cronache" / "partita.txt").write_text("di prima", encoding="utf-8")
+    (programma_di_prova / impostazioni.FILE_IMPOSTAZIONI).write_text("{}", encoding="utf-8")
+    (programma_di_prova / NOME_FILE_LOG_USCITE).write_text("di prima", encoding="utf-8")
+    assert Showdown.avvia_finestra() == Showdown.APERTA
+    mondo = programma_di_prova / "Mondo"
+    notizia = avvio_intero[0].opzioni["cartella_spostata"]
+    assert notizia == (f"Accanto al programma, nella cartella {programma_di_prova}, c'erano le impostazioni, le vecchie glorie e le cronache, senza "
+                       f"un mondo: ora stanno nella cartella del mondo, {mondo}, dove nasce un mondo nuovo. Dove tenere il mondo e i suoi dati si "
+                       "sceglie con Cartella del mondo, nel menu Impostazioni.")
+    assert not isinstance(notizia, testi.DatiInRiserva)
+    # Quello che la notizia promette, il codice lo fa: il mondo nasce nella cartella del mondo, accanto ai dati spostati.
+    assert avvio_intero[0].origine == archivio.NATO and percorsi.cartella() == str(mondo)
+    assert (mondo / "cronache" / "partita.txt").read_text(encoding="utf-8") == "di prima" and suonati == []
+
+
+def test_la_notizia_dei_dati_in_riserva_tiene_il_suo_tipo_anche_dopo_riprova(avvio_intero, suonati, monkeypatch, programma_di_prova):
+    # Dalla V228: alla prima partenza i dati di accanto al programma vanno in riserva, perché la cartella ha già un mondo, che però
+    # non si legge ancora; con Riprova si legge, e la finestra riceve la notizia del primo giro, col tipo che la fa suonare come i dati in riserva.
+    os.remove(percorsi.file_della_cartella())
+    mondo = programma_di_prova / "Mondo"
+    _mondo_del_futuro(str(mondo))
+    _salva_in(str(programma_di_prova), OGGI, _mondo(4))
+    monkeypatch.setattr(cdm, "adesso", lambda: ADESSO)
+    avviso = AvvisoFinto([(dialoghi.RIPROVA, lambda: _salva_in(str(mondo), OGGI, _mondo(8)))])
+    monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", avviso)
+    assert Showdown.avvia_finestra() == Showdown.APERTA
+    riserva = mondo / "Riserva 2026-10-23 19.05"
+    notizia = avvio_intero[0].opzioni["cartella_spostata"]
+    assert isinstance(notizia, testi.DatiInRiserva) and "c'erano i dati di un mondo" in notizia and str(riserva) in notizia
+    assert avvio_intero[0].origine == archivio.CARICATO and (riserva / FILE_MONDO).is_file()
+    assert suonati == ["salvataggio_illeggibile"] and len(avviso.testi) == 1
 
 
 def test_la_vecchia_disposizione_salta_le_cartelle_vuote_e_la_cartella_del_mondo(avvio, programma_di_prova):
@@ -1044,7 +1090,8 @@ def test_la_penna_staccata_a_mess_aperto_e_il_mondo_salvato_nella_cartella_scelt
     nuova = tmp_path_factory.mktemp("nuova")
     _sceglie(monkeypatch, nuova)
     finestra.scegli_la_cartella_del_mondo()
-    assert suonati == ["cartella_mondo", "cartella_spostata"]
+    # Dalla V228 col suo suono, e non più con quello dei dati spostati.
+    assert suonati == ["cartella_mondo", "cartella_salvata_altrove"]
     assert percorsi.cartella() == str(nuova) and impostazioni.carica()["volume_effetti"] == 33
     assert len(archivio.leggi(str(nuova / FILE_MONDO))["mondo"]["giocatori"]) == 12
     assert finestra.vista.GetValue().startswith(f"La cartella del mondo di prima, {penna}, non si raggiunge più: il mondo e le impostazioni ora "
@@ -1068,8 +1115,23 @@ def test_la_penna_staccata_e_la_cartella_col_mondo(finestra, suonati, monkeypatc
     assert "ci salvo il tuo mondo e le tue impostazioni" in domanda.testo
     riserva = dropbox / "Riserva 2026-10-23 19.05"
     assert _albero(riserva) == prima_sua and len(archivio.leggi(str(dropbox / FILE_MONDO))["mondo"]["giocatori"]) == 12
-    assert suonati == ["cartella_mondo", "domanda", "cartella_spostata"] and percorsi.cartella() == str(dropbox)
+    assert suonati == ["cartella_mondo", "domanda", "cartella_salvata_altrove"] and percorsi.cartella() == str(dropbox)
     assert finestra.vista.GetValue().endswith("Quello che la cartella aveva prima è nella sua sottocartella Riserva 2026-10-23 19.05.")
+
+
+def test_il_mondo_salvato_altrove_e_i_dati_spostati_hanno_due_suoni(finestra, suonati, monkeypatch, tmp_path_factory):
+    # Dalla V228: con la penna staccata il mondo si salva nella cartella scelta, e il resto dei dati resta di là; dalla cartella nuova, che
+    # si raggiunge, i dati si spostano davvero. Due eventi, due suoni.
+    _penna_staccata(finestra, suonati, tmp_path_factory)
+    nuova, altra = tmp_path_factory.mktemp("nuova"), tmp_path_factory.mktemp("altra")
+    scelte = iter([str(nuova), str(altra)])
+    monkeypatch.setattr(finestra_modulo, "scegli_cartella", lambda genitore, titolo, partenza="": next(scelte))
+    finestra.scegli_la_cartella_del_mondo()
+    assert finestra.vista.GetValue().startswith("La cartella del mondo di prima, ")
+    finestra.scegli_la_cartella_del_mondo()
+    assert finestra.vista.GetValue().startswith(f"Il mondo e i dati di gioco ora stanno nella cartella {altra}: li ho spostati dalla cartella {nuova}.")
+    assert suonati == ["cartella_mondo", "cartella_salvata_altrove", "cartella_mondo", "cartella_spostata"]
+    assert percorsi.cartella() == str(altra) and (altra / FILE_MONDO).is_file() and not (nuova / FILE_MONDO).exists()
 
 
 def test_la_penna_staccata_e_il_mondo_che_non_si_salva_nemmeno_nella_nuova(finestra, suonati, monkeypatch, tmp_path_factory):
@@ -1089,14 +1151,17 @@ def test_la_penna_staccata_e_il_mondo_che_non_si_salva_nemmeno_nella_nuova(fines
     assert "Salvataggio rifiutato" in testo
 
 
-def test_l_apertura_dopo_lo_spostamento_della_prima_partenza(app_wx, suonati, monkeypatch):
+@pytest.mark.parametrize(("notizia", "suono"), [("I dati sono passati.", "cartella_spostata"),
+                                                (testi.DatiInRiserva("I dati sono in una riserva."), "dati_in_riserva")])
+def test_l_apertura_dopo_lo_spostamento_della_prima_partenza(app_wx, suonati, monkeypatch, notizia, suono):
+    # Dalla V228 i dati andati in una riserva della cartella del mondo hanno il loro suono, e non più quello dei dati spostati.
     monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: wx.NO)
     m = _mondo()
-    f = FinestraPrincipale(m, archivio.CARICATO, [], Mondo.rapporto_vuoto(adesso()), m.datetime_ultimo_run_reale, cartella_spostata="I dati sono passati.")
+    f = FinestraPrincipale(m, archivio.CARICATO, [], Mondo.rapporto_vuoto(adesso()), m.datetime_ultimo_run_reale, cartella_spostata=notizia)
     try:
-        assert f.vista.GetValue().startswith("I dati sono passati.\nMESS, ")
+        assert f.vista.GetValue().startswith(f"{notizia}\nMESS, ")
         f.suoni_d_avvio()
-        assert suonati == ["avvio", "cartella_spostata"]
+        assert suonati == ["avvio", suono]
     finally:
         f.timer.Stop()
         f.Destroy()

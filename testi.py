@@ -43,7 +43,9 @@ sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode). Dall
 stesso giorno: il mondo della cartella che non si legge, e allora non si offre di usarlo; la cartella
 del mondo che non si raggiunge più a MESS aperto, e il mondo salvato nella nuova; la cartella scelta
 senza un mondo all'avvio; il salvataggio illeggibile all'avvio, che non ferma più MESS senza scelte, e
-al suo posto mondo_illeggibile_all_avvio sostituisce salvataggio_illeggibile.
+al suo posto mondo_illeggibile_all_avvio sostituisce salvataggio_illeggibile. Con la verifica seguente
+la notizia dei dati di accanto al programma dice la verità anche quando lì non c'era un mondo, e nomina
+i dati che c'erano; quando sono andati in una riserva è DatiInRiserva, perché la finestra la suoni col suo suono.
 """
 
 import copy
@@ -56,6 +58,7 @@ import classe
 import contratti
 import economia
 import formule
+import impostazioni
 import infortuni
 import luoghi
 import mercato
@@ -67,7 +70,7 @@ import sfide
 import staff
 import tornei
 import version
-from archivio import NATO
+from archivio import CARTELLA_QUARANTENA, NATO
 from costanti import (
     ANNO_SIMULAZIONE_GIORNI,
     ATTRIBUTI_BASE_CON_ALLENABILI,
@@ -75,15 +78,18 @@ from costanti import (
     CARATTERISTICHE_CONTROLLO_BASE,
     CARATTERISTICHE_DIFESA_BASE,
     CARATTERISTICHE_FISICHE_BASE,
+    CARTELLA_CRONACHE,
     ESPERIENZA_MASSIMA,
     FASCE_AMBIZIONE,
     FASCE_COSTANZA,
     FASCE_TEMPERAMENTO,
+    FILE_MONDO,
     INDOLI,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
     MAX_TOTALE_SKILL_GIOCO,
     NOME_ATTR_TO_DISPLAY_MAP,
+    NOME_FILE_LOG_USCITE,
     PA_BONUS_PIU_DEBOLE,
     PA_FATTORE_AMICHEVOLE,
     PA_FATTORE_SFIDA,
@@ -2469,24 +2475,63 @@ def nessun_mondo_nella_cartella(nuova):
             "ritrovi scegliendo di nuovo la sua cartella, con Cartella del mondo nel menu Impostazioni, quando è raggiungibile. Scegli questa cartella?")
 
 
-def vecchia_disposizione_spostata(trasloco, in_riserva, piu_recente=False):
+# I dati della cartella del mondo a parole, per la notizia dei dati che alla prima partenza stavano accanto al
+# programma senza un mondo: i file del mondo non ci sono, perché allora il mondo ci sarebbe.
+PAROLE_DEI_DATI = {
+    f"{FILE_MONDO}.tmp": "i resti di un salvataggio interrotto",
+    impostazioni.FILE_IMPOSTAZIONI: "le impostazioni",
+    NOME_FILE_LOG_USCITE: "le vecchie glorie",
+    CARTELLA_CRONACHE: "le cronache",
+    modelli_torneo.CARTELLA: "i modelli dei tornei",
+    formule.NOME_FILE: "le formule dei tornei",
+    CARTELLA_QUARANTENA: "le copie dei salvataggi illeggibili",
+}
+
+
+class DatiInRiserva(str):
+    """
+    La notizia della prima partenza quando i dati di accanto al programma sono andati in una riserva della
+    cartella del mondo, perché lei aveva già un mondo, che resta in uso: una frase come le altre, che si
+    riconosce dal tipo, come SenzaMondo in cartella_del_mondo.py, e la finestra la suona col suo suono.
+    """
+
+
+def _dati_a_parole(nomi):
+    return unisci([PAROLE_DEI_DATI.get(nome, f"i dati {nome}") for nome in nomi])
+
+
+def vecchia_disposizione_spostata(trasloco, in_riserva, piu_recente=False, con_mondo=True):
     """
     La riga in testa alla vista alla prima partenza con la cartella del mondo, quando i dati stavano
     ancora accanto al programma; in_riserva dice che sono andati in una riserva, perché la cartella del
-    mondo aveva già un mondo, più recente o non leggibile; piu_recente, che il mondo di accanto al
-    programma era stato salvato dopo quello della cartella del mondo, e ha preso il suo posto.
+    mondo aveva già un mondo, più recente o non leggibile, e allora la riga è DatiInRiserva; piu_recente,
+    che il mondo di accanto al programma era stato salvato dopo quello della cartella del mondo, e ha
+    preso il suo posto. con_mondo dice se fra i dati spostati c'era un mondo: accanto al programma potevano
+    esserci soltanto impostazioni, tornei o cronache, e allora la riga nomina quelli che c'erano; se quei
+    dati non sono andati in riserva, nemmeno la cartella del mondo aveva un mondo, e lì il caricamento ne
+    fa nascere uno nuovo.
     """
     if in_riserva:
-        testo = (f"Accanto al programma, nella cartella {trasloco.origine}, c'erano i dati di un mondo, ma la cartella del mondo ne aveva già "
-                 f"uno, che resta quello in uso: i dati di accanto al programma sono nella cartella {trasloco.destinazione}.")
-    else:
+        if con_mondo:
+            testo = (f"Accanto al programma, nella cartella {trasloco.origine}, c'erano i dati di un mondo, ma la cartella del mondo ne aveva già "
+                     f"uno, che resta quello in uso: i dati di accanto al programma sono nella cartella {trasloco.destinazione}.")
+        else:
+            testo = (f"Accanto al programma, nella cartella {trasloco.origine}, c'erano {_dati_a_parole(trasloco.spostati)}, senza un mondo, e la "
+                     "cartella del mondo ne aveva già uno, che resta quello in uso con i suoi dati: quelli di accanto al programma sono nella "
+                     f"cartella {trasloco.destinazione}.")
+        return DatiInRiserva(testo + _avanzi(trasloco))
+    if con_mondo:
         testo = (f"Il mondo e i dati di gioco ora stanno nella cartella del mondo, {trasloco.destinazione}: li ho spostati da accanto al programma, "
                  f"nella cartella {trasloco.origine}.")
         if piu_recente:
             testo += " La cartella del mondo aveva già un mondo, ma quello di accanto al programma è stato salvato dopo, e resta lui in uso."
         testo += " Dove tenerli si sceglie con Cartella del mondo, nel menu Impostazioni."
-        if trasloco.riserva:
-            testo += f" Quello che la cartella del mondo aveva prima è nella sua sottocartella {os.path.basename(trasloco.riserva)}."
+    else:
+        testo = (f"Accanto al programma, nella cartella {trasloco.origine}, c'erano {_dati_a_parole(trasloco.spostati)}, senza un mondo: ora "
+                 f"stanno nella cartella del mondo, {trasloco.destinazione}, dove nasce un mondo nuovo. Dove tenere il mondo e i suoi dati si "
+                 "sceglie con Cartella del mondo, nel menu Impostazioni.")
+    if trasloco.riserva:
+        testo += f" Quello che la cartella del mondo aveva prima è nella sua sottocartella {os.path.basename(trasloco.riserva)}."
     return testo + _avanzi(trasloco)
 
 

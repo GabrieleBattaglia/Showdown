@@ -224,6 +224,19 @@ def test_il_ripristino_del_calendario(finestra, suonati, cartella_di_prova, mess
     assert len(gestore.modelli()[0]) == 10
 
 
+def test_il_ripristino_del_calendario_che_non_riesce(finestra, suonati, messaggi, monkeypatch):
+    # Dalla V228 il ripristino che non riesce ha il suo suono, e non più quello del calendario illeggibile, che parla d'altro.
+    def non_riesce(self):
+        raise PermissionError(13, "Accesso negato")
+
+    monkeypatch.setattr(modelli_torneo.GestoreModelli, "ripristina_predefiniti", non_riesce)
+    messaggi.risposta = wx.YES
+    finestra.ripristina_calendario()
+    assert finestra.vista.GetValue() == "Il calendario predefinito non si è potuto rimettere: [Errno 13] Accesso negato."
+    assert finestra.barra.GetValue().splitlines()[3] == "calendario non ripristinato"
+    assert suonati[-2:] == ["domanda", "calendario_non_ripristinato"] and "calendario_illeggibile" not in suonati
+
+
 def test_gli_editor_dalla_finestra(finestra, suonati, monkeypatch):
     finestra.editor_modelli()
     assert finestra.vista.GetValue() == "Nessun modello di torneo cambiato." and suonati[-2:] == ["dialogo_editor_modelli", "lavoro_concluso"]

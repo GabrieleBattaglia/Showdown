@@ -77,6 +77,9 @@ cartella del mondo aperto non si raggiunge più, per esempio una penna staccata,
 impostazioni si salvano nella cartella scelta invece di andare persi. Con l'ultima verifica il file della
 cartella rovinato a MESS aperto e quello che non si scrive hanno ciascuno il suo suono, e quando MESS non
 riesce a riaprirsi si chiude col suono dell'uscita di sempre, non con quello che promette la riapertura.
+Con la verifica seguente hanno ciascuno il suo suono anche il calendario predefinito che non si riesce a
+rimettere, il mondo salvato nella cartella scelta quando quella di prima non si raggiunge più, e all'avvio
+i dati di accanto al programma messi in una riserva della cartella del mondo, che la notizia dice col suo tipo.
 """
 
 import contextlib
@@ -168,7 +171,8 @@ class FinestraPrincipale(wx.Frame):
         self.chiusa = False
         self._per_aggiornare = False
         # Dal 23 ottobre 2026: la riga dei dati spostati da accanto al programma alla cartella del mondo, se è
-        # successo a questo avvio; e il cambio di cartella che chiude MESS per riaprirlo sul mondo della cartella,
+        # successo a questo avvio, testi.DatiInRiserva se sono andati in una sua riserva; e il cambio di
+        # cartella che chiude MESS per riaprirlo sul mondo della cartella,
         # con la riapertura che non è partita, e allora MESS si chiude e basta.
         self.cartella_spostata = cartella_spostata
         self._per_cambiare_cartella = False
@@ -371,7 +375,8 @@ class FinestraPrincipale(wx.Frame):
         suono dell'avanzamento, quando il primo è finito. Dopo l'avvio suona una notizia sola, la più
         importante: dalla tappa 14 prima di tutte il crash della volta prima, staccato di un secondo
         come la notizia dello staff; dal 23 ottobre 2026, subito dopo, i dati spostati da accanto al
-        programma alla cartella del mondo, staccati allo stesso modo.
+        programma alla cartella del mondo, staccati allo stesso modo, col suono dei dati in riserva se sono
+        andati in una riserva della cartella, perché lei aveva già un mondo, che resta in uso.
         """
         if self.origine == archivio.DALLA_COPIA:
             primo = "avvio_dalla_copia"
@@ -385,7 +390,8 @@ class FinestraPrincipale(wx.Frame):
         if self.crash_precedente:
             suoni.in_coda("crash_precedente", pausa=PAUSA_NOTIZIA_DELLO_STAFF)
         elif self.cartella_spostata:
-            suoni.in_coda("cartella_spostata", pausa=PAUSA_NOTIZIA_DELLO_STAFF)
+            suono = "dati_in_riserva" if isinstance(self.cartella_spostata, testi.DatiInRiserva) else "cartella_spostata"
+            suoni.in_coda(suono, pausa=PAUSA_NOTIZIA_DELLO_STAFF)
         elif self.problemi_all_avvio:
             suoni.in_coda("calendario_illeggibile")
         elif getattr(self.mondo, "staff_appena_nato", False):
@@ -1152,7 +1158,8 @@ class FinestraPrincipale(wx.Frame):
         try:
             da_parte = modelli_torneo.GestoreModelli().ripristina_predefiniti()
         except OSError as errore:
-            self.mostra(f"Il calendario predefinito non si è potuto rimettere: {errore}.", "calendario non ripristinato", "calendario_illeggibile")
+            # Dalla V228 col suo suono, e non più con quello del calendario illeggibile, che parla d'altro.
+            self.mostra(f"Il calendario predefinito non si è potuto rimettere: {errore}.", "calendario non ripristinato", "calendario_non_ripristinato")
             return
         self._problemi_detti = None
         self.mostra(f"Il calendario predefinito è tornato. Quello di prima è nella cartella {da_parte}.", "calendario predefinito", "calendario_ripristinato")
@@ -1383,7 +1390,8 @@ class FinestraPrincipale(wx.Frame):
             self.mostra(testi.cartella_spostata(trasloco, attuale), "cartella del mondo cambiata", "cartella_spostata")
         else:
             registro.scrivi(f"La cartella del mondo {attuale} non si raggiungeva: il mondo si è salvato nella cartella {nuova}.")
-            self.mostra(testi.cartella_salvata_altrove(trasloco, attuale), "cartella del mondo cambiata", "cartella_spostata")
+            # Dalla V228 col suo suono: qui niente si è spostato, e il resto dei dati è rimasto nella cartella di prima.
+            self.mostra(testi.cartella_salvata_altrove(trasloco, attuale), "cartella del mondo cambiata", "cartella_salvata_altrove")
 
     def _usa_il_mondo_della_cartella(self, nuova):
         """

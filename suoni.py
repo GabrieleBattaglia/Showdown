@@ -71,8 +71,12 @@ non riuscito resta al mondo che non si salva, e l'annullamento ad Annulla e a Es
 arrivano gli ultimi due, nella V227, per il file accanto al programma che dice dove sta la cartella del
 mondo: quando si scopre rovinato a MESS aperto, che prima suonava come l'avviso dell'avvio, e quando non
 si scrive, che prima suonava come le impostazioni non salvate. I due suoni presi a prestito tornano ai
-loro eventi soli. Anche queste parti sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
-UltraCode).
+loro eventi soli. Con la verifica seguente ne arrivano altri tre, nella V228, per tre eventi che
+suonavano ancora come un altro: il calendario predefinito che non si riesce a rimettere, che suonava come
+il calendario illeggibile; il mondo e le impostazioni salvati nella cartella scelta quando quella di prima
+non si raggiunge più, e i dati di accanto al programma messi in una riserva della cartella del mondo alla
+prima partenza, che suonavano tutti e due come i dati spostati. Anche queste parti sono di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -172,7 +176,9 @@ GRUPPI = (
     # cassetto che si apre, un trasloco riuscito, un cambio di scena e una porta chiusa. Dalla V226 anche
     # il trasloco che torna indietro, un no gentile per la cartella rifiutata e la porta che si richiude.
     # Dalla V227 un indirizzo confuso per il file della cartella rovinato a MESS aperto, e una firma che
-    # non prende per quel file che non si scrive.
+    # non prende per quel file che non si scrive. Dalla V228 il trasloco che parte da lontano, per il mondo
+    # salvato nella cartella scelta quando quella di prima non si raggiunge più, e quello che si posa due
+    # volte, come una scatola riposta, per i dati di accanto al programma messi in riserva alla prima partenza.
     ("Applicazione, la cartella del mondo", {
         "cartella_mondo": "mess_cartella_mondo",
         "cartella_spostata": "mess_cartella_spostata",
@@ -183,6 +189,8 @@ GRUPPI = (
         "riapertura_mancata": "mess_riapertura_mancata",
         "cartella_illeggibile": "mess_cartella_illeggibile",
         "cartella_non_registrata": "mess_cartella_non_registrata",
+        "cartella_salvata_altrove": "mess_cartella_salvata_altrove",
+        "dati_in_riserva": "mess_dati_in_riserva",
     }),
     ("Mondo, i giocatori", {
         "dialogo_scheda_giocatore": "pokermachine_raddoppio_carta",
@@ -452,6 +460,9 @@ GRUPPI = (
         "fase_modificata": "mess_fase_modificata",
         "fase_tolta": "mess_fase_tolta",
         "calendario_ripristinato": "mess_calendario_ripristinato",
+        # Dalla V228 il ripristino che non riesce ha il suo suono, il calendario riavvolto che non riparte, e
+        # non più quello del calendario illeggibile, che parla d'altro.
+        "calendario_non_ripristinato": "mess_calendario_non_ripristinato",
         # Suona all'avvio, a ogni avanzamento che lo trova e all'apertura dell'editor: è lo stesso evento.
         "calendario_illeggibile": "mess_calendario_illeggibile",
     }),
@@ -555,7 +566,7 @@ AZIONI = {
     "dialogo_annunci_cronaca": "si apre il dialogo degli annunci della cronaca",
     "annunci_cronaca_salvati": "gli annunci della cronaca confermati e salvati",
     "cartella_mondo": "Cartella del mondo, nel menu Impostazioni, e all'avvio Scegli un'altra cartella: si apre la finestra di Windows che sceglie dove stanno il mondo e i dati di gioco",
-    "cartella_spostata": "il mondo e i dati di gioco spostati nella cartella scelta, o salvati lì se la cartella di prima non si raggiunge più, e alla prima partenza di questa versione da accanto al programma alla cartella del mondo",
+    "cartella_spostata": "il mondo e i dati di gioco spostati nella cartella scelta dal menu, e alla prima partenza di questa versione i dati di accanto al programma, con un mondo o senza, passati in uso nella cartella del mondo",
     "cartella_cambiata": "si sceglie il mondo che la cartella nuova ha già, e MESS si chiude per riaprirsi su di lui",
     "cartella_assente": "all'avvio la cartella del mondo non c'è, per esempio la penna non è collegata, o c'è ma senza un mondo, per esempio il cloud non è pronto, o non si sa dove sia perché il file accanto al programma che la nomina non si legge, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire",
     "cartella_non_spostata": "i dati del mondo non passano nella cartella scelta, dal menu o alla prima partenza da accanto al programma, e tutto resta com'era",
@@ -563,6 +574,8 @@ AZIONI = {
     "riapertura_mancata": "dopo aver scelto il mondo della cartella nuova MESS non riesce a riaprirsi da solo, e un messaggio dice di riaprirlo a mano",
     "cartella_illeggibile": "Cartella del mondo, nel menu Impostazioni, trova rovinato a MESS aperto il file accanto al programma che dice dove sta la cartella del mondo, e la vista dice di riaprire MESS per sceglierla all'avvio",
     "cartella_non_registrata": "il file accanto al programma che dice dove sta la cartella del mondo non si scrive, quando si sceglie il mondo di un'altra cartella dal menu o la si indica all'avvio, e la cartella resta quella di prima",
+    "cartella_salvata_altrove": "con Cartella del mondo, nel menu Impostazioni, la cartella di prima non si raggiunge più, per esempio una penna staccata a MESS aperto, e il mondo e le impostazioni si salvano nella cartella scelta, mentre il resto dei dati resta in quella di prima",
+    "dati_in_riserva": "alla prima partenza di questa versione i dati di accanto al programma vanno in una riserva della cartella del mondo, perché lei aveva già un mondo, che resta in uso",
     "dialogo_scheda_giocatore": "si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G",
     "scheda_giocatore": "la scheda di un giocatore",
     "dialogo_diario_giocatore": "si apre la scelta del giocatore di cui leggere il diario, con Ctrl+Shift+D",
@@ -751,6 +764,7 @@ AZIONI = {
     "fase_modificata": "nell'editor delle formule una fase cambiata, con quelle che seguono aggiornate",
     "fase_tolta": "nell'editor delle formule una fase tolta",
     "calendario_ripristinato": "il calendario predefinito rimesso, con quello di prima messo da parte",
+    "calendario_non_ripristinato": "il calendario predefinito non si riesce a rimettere, per esempio perché un file non si scrive, e la vista dice il perché",
     "calendario_illeggibile": "un modello o una formula dei tornei che non si leggono, all'avvio, nell'avanzamento o all'apertura dell'editor",
     "dialogo_lancia_sfida": "si apre il lancio di una sfida a una polisportiva del computer, con Ctrl+W",
     "sfida_accettata_dall_avversario": "la polisportiva del computer accetta la tua sfida, che si gioca domani",

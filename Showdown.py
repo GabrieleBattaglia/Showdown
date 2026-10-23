@@ -41,6 +41,8 @@ Con la verifica finale, le copie del salvataggio illeggibile si fanno una volta 
 ogni Riprova, la notizia dei dati spostati alla prima partenza va subito anche nel registro, e lo
 spostamento che non riesce e la cartella rifiutata hanno ciascuno il suo suono. Con l'ultima verifica lo
 ha anche il file accanto al programma che non si riesce a scrivere quando si indica un'altra cartella.
+Con la verifica seguente lo hanno anche i dati di accanto al programma messi in una riserva della cartella
+del mondo, che la notizia porta alla finestra col suo tipo, e la notizia dice se fra quei dati c'era un mondo.
 """
 
 import contextlib
@@ -118,7 +120,9 @@ def prepara_la_cartella(accettata=None):
     nuovo. Poi i dati della vecchia disposizione, accanto al programma, passano nella cartella del mondo.
     Restituisce la terna di esito, notizia e cartella accettata: l'esito è None se si va avanti,
     altrimenti SENZA_CARTELLA o NON_SPOSTATI; la notizia è la riga della vista sui dati spostati, o None,
-    che dalla verifica finale del 23 ottobre 2026 va subito anche nel registro.
+    che dalla verifica finale del 23 ottobre 2026 va subito anche nel registro. Dalla verifica seguente la
+    notizia dice se fra quei dati c'era un mondo, ed è testi.DatiInRiserva quando sono andati in una riserva
+    della cartella del mondo, perché lei aveva già un mondo: la finestra la suona col suono dei dati in riserva.
     """
     import wx
 
@@ -149,7 +153,11 @@ def prepara_la_cartella(accettata=None):
         return None, None, accettata
     in_riserva = not percorsi.stessa(trasloco.destinazione, percorsi.cartella())
     piu_recente = not in_riserva and trasloco.riserva is not None and cartella_del_mondo.ha_un_mondo(trasloco.riserva)
-    notizia = testi.vecchia_disposizione_spostata(trasloco, in_riserva, piu_recente)
+    # Accanto al programma potevano esserci soltanto impostazioni, tornei o cronache. Nella destinazione, la riserva o
+    # la cartella del mondo, adesso ci sono soltanto i dati spostati, perché quelli che la cartella aveva sono andati
+    # nella sua riserva: se lì c'è un mondo, è arrivato da accanto al programma.
+    con_mondo = cartella_del_mondo.ha_un_mondo(trasloco.destinazione)
+    notizia = testi.vecchia_disposizione_spostata(trasloco, in_riserva, piu_recente, con_mondo)
     # Anche nel registro, subito: se poi il mondo non si legge e si esce, la vista non la dice mai, e alla
     # partenza seguente non c'è più niente da spostare.
     registro.scrivi(notizia)
@@ -219,7 +227,8 @@ def avvia_finestra(crash_precedente=None, finestre=None):
         esito, notizia, accettata = prepara_la_cartella(accettata)
         if esito is not None:
             return esito
-        # I dati accanto al programma si spostano una volta sola: la notizia resta anche se il giro si ripete.
+        # I dati accanto al programma si spostano una volta sola: la notizia resta anche se il giro si ripete,
+        # e col suo tipo resta anche il suono che la finestra le dà, quello dei dati in riserva o dei dati spostati.
         cartella_spostata = notizia or cartella_spostata
         nomi.collezioni()
         messaggi = []
