@@ -3,6 +3,42 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [2.0.0] - 2026-10-23
+
+Il primo rilascio di MESS, compilato per Windows a 64 bit e con l'installatore. Con la 2.0.0 il rifacimento del vecchio sd.py è compiuto: le quattordici tappe del piano di sviluppo sono fatte.
+
+### Installare e aggiornare
+
+MESS si installa con MESS-Setup, che chiede di accettare la licenza GPL 3 e mette il programma nella tua cartella dei programmi, senza permessi di amministratore; oppure si scompatta lo zip in una cartella dove puoi scrivere, mai in Programmi, perché il mondo si salva accanto al programma. Windows può mostrare l'avviso di SmartScreen, perché il programma non è firmato: Altre informazioni, poi Esegui comunque.
+
+All'avvio MESS controlla se su GitHub c'è una versione nuova e propone di installarla, con le sue note: con Aggiorna la scarica, salva il mondo, si chiude e si riapre aggiornato; con Non adesso, o se non rispondi entro due minuti, te la ripropone alla prossima apertura. Ogni esito ha il suo suono.
+
+Si apre una copia sola di MESS: lanciarlo una seconda volta riporta in primo piano quella già aperta. Un errore imprevisto si annota nel file MESS - Errori.log, accanto al programma, e un crash nel file MESS - Crash precedente.log, che la vista segnala all'apertura dopo: sono i file da allegare quando chiedi aiuto.
+
+### L'aiuto
+
+Il manuale si apre nel browser con Maiusc+F1, dal menu Aiuto, con un titolo per ogni argomento. Nello stesso menu ci sono Entra al PUB, che prepara la mail per iscriversi alla lista di supporto degli utenti, e Chiedi aiuto al PUB, che prepara la mail con la tua domanda e le informazioni sul computer. MESS non spedisce mai niente da solo; senza un programma di posta ti guida a copiare i campi uno per volta. F3, Informazioni, dice anche la licenza.
+
+### Il mondo è l'Italia
+
+Il mondiale è diventato il Campionato italiano maschile e femminile, e chi lo vince è campione o campionessa d'Italia; la classifica mondiale è la Classifica nazionale, Ctrl+Maiusc+W, e le statistiche del mondo sono le Statistiche nazionali, Ctrl+I.
+
+Ogni polisportiva ha la sua sede in un comune italiano: quelle del computer la ricevono estratta coi pesi della popolazione, come i giocatori e gli allenatori; quando fondi la tua la scegli tu, da un campo che filtra i comuni mentre scrivi, ciascuno con la percentuale della sua popolazione rispetto a Roma, che vale 100%. La scheda della polisportiva dice la sede.
+
+Il mondo come salvataggio resta il mondo: Salva il mondo, il menu Mondo.
+
+### Le finestre e le parole
+
+Tutte le finestre interne si aprono massimizzate, più comode da leggere con lo screen reader e il display braille, ed Esc chiude dove c'è il pulsante Chiudi. Davanti ai nomi dei tornei c'è l'articolo giusto: convocato al Campionato italiano, iscritta all'Open femminile del giovedì, la coppa d'oro alla Coppa delle polisportive. Nell'invito al caffè Invio nel testo chiude, e un Invio tenuto giù dalla voce del menu non lo chiude appena aperto. Tredici suoni nuovi, nella collezione di GBUtils dalla V220 alla V223.
+
+### Cosa se ne va
+
+L'interfaccia testuale del vecchio sd.py, python Showdown.py --testo, non c'è più: tutto quello che faceva, e molto di più, sta nella finestra.
+
+### Il salvataggio
+
+Il mondo passa al formato 9: all'aggiornamento ogni polisportiva riceve una sede estratta. Chi arriva da una versione di prova trova i nomi nuovi dei tornei con Ripristina il calendario predefinito, nel menu Tornei, o ripartendo da un mondo nuovo.
+
 ## [1.94.6] - 2026-10-23
 
 Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.

@@ -1,42 +1,57 @@
 # MESS, Manageriale e Simulatore Showdown
 
-Un gioco gestionale dello showdown, il tennistavolo per ciechi, pensato da un giocatore cieco. Concepito il 13 aprile 2015 e portato in Python nel 2020.
+Un gioco gestionale dello showdown, il tennistavolo per ciechi, pensato da un giocatore cieco. Concepito il 13 aprile 2015, portato in Python nel 2020, rifatto da capo nel 2026 con un'interfaccia a finestra accessibile.
 
-Il mondo contiene giocatori generati a caso, ciascuno con nome, aspetto fisico descritto a parole e 26 caratteristiche tecniche e fisiche. Tu apri una o più polisportive, tesseri atleti convincendoli con la tua gloria, li alleni e organizzi partite simulate punto per punto. Accanto a te vivono polisportive guidate dal computer, e il mondo scorre con l'orologio vero: ogni 8 ore reali passa un giorno simulato, i giocatori invecchiano, si ritirano e lasciano il posto a nuove leve.
+L'Italia dello showdown è piena di giocatori generati a caso, ciascuno con nome, aspetto fisico descritto a parole, comune di provenienza e 26 caratteristiche tecniche e fisiche. Tu fondi una o più polisportive, tesseri atleti convincendoli con la tua gloria, li alleni con il tuo staff e li porti ai tornei, fino al Campionato italiano. Accanto a te vivono le polisportive guidate dal computer, e il mondo scorre con l'orologio vero: ogni 8 ore reali passa un giorno simulato, i giocatori invecchiano, si ritirano, diventano allenatori e lasciano il posto a nuove leve.
 
-## Stato del progetto
+## Scaricare e installare
 
-MESS è in fase di rifacimento. Il lavoro segue le tappe del file `piano_di_sviluppo.txt`, che elenca i problemi del vecchio programma, le decisioni prese e l'ordine dei lavori. Il punto d'arrivo è la versione 2.0.0, con un'interfaccia a finestra accessibile.
+MESS gira su Windows 10 e 11 a 64 bit. L'ultima versione sta nella pagina delle release su GitHub: https://github.com/GabrieleBattaglia/Showdown/releases
 
-Dalla versione 1.16.0 il gioco si apre in una finestra, da qualunque cartella, con:
+- **Con l'installatore, MESS-Setup:** chiede di accettare la licenza GPL 3 e installa MESS nella tua cartella dei programmi, senza permessi di amministratore. Alla disinstallazione chiede se cancellare anche il mondo.
+- **Con lo zip, MESS.zip:** si scompatta in una cartella dove puoi scrivere, mai in Programmi, perché il mondo si salva accanto al programma.
 
-    python Showdown.py
+Il programma non è firmato, quindi al primo avvio Windows può mostrare l'avviso di SmartScreen: Altre informazioni, poi Esegui comunque.
 
-Nella finestra si consulta il mondo, con schede, diari di giocatori e polisportive, elenchi, classifiche, statistiche, ricerche e il registro delle vecchie glorie, e si gestiscono le proprie polisportive: fondazione, password facoltativa, mercato con i filtri, ingaggi, acquisti e offerte, vendite, svincolo, bilancio, stipendi e arretrati, chiusura; e si giocano le amichevoli, da ascoltare dal vivo, con i suoni della pallina, dei colpi e dell'arbitro che si muovono sul tavolo, oppure da leggere alla fine, con la cronaca da salvare su file. Il mondo avanza anche mentre la finestra è aperta, e la barra di stato lo annuncia. Ogni evento della finestra ha il suo effetto sonoro, preso dalla collezione condivisa di GBUtils, e il volume degli effetti e quello della partita si regolano dal menu Impostazioni, da 0, che li spegne, a 100; `ascolta_suoni.py` fa sentire tutti quelli della finestra, gruppo per gruppo, e `strumenti/ascolta_partita.py` quelli della partita. Il file `suoni_di_mess.txt` elenca ogni azione con il suono che la accompagna, per ritoccarli con Acu_Maker. Le partite seguono il regolamento IBSA dello showdown. Nella sala allenamento si spendono i punti dei propri tesserati, a mano o secondo il loro programma, e dal dialogo dei contratti si propongono i rinnovi; ogni giocatore ha una classe, da K0 ad A1, che dice a colpo d'occhio quanto vale. Dalla versione 1.78.12 il mondo gioca da solo: tornei a calendario, con le iscrizioni a mano o automatiche, il pannello dei tornei e l'ascolto in differita delle partite dei tuoi, l'albo d'oro, la classifica mondiale e i mondiali, gli editor dei modelli di torneo e delle formule, le sfide fra polisportive con la gara a squadre e la Coppa delle polisportive. Dalla 1.79.0 la cronaca della partita dal vivo e della differita si può leggere in automatico, alla sintesi, al display braille o a entrambi, come si sceglie in Annunci della cronaca nel menu Impostazioni. Dalla 1.94.0 ogni polisportiva può avere uno staff, un capo allenatore e due assistenti, che fa imparare più in fretta, abbassa il rischio d'infortunio e fa crescere prima la fedeltà: si gestisce con Staff della polisportiva attiva e con il Mercato degli allenatori, nel menu Polisportive, e gli allenatori sono gli ex giocatori migliori e quelli che il mondo fa nascere. Ogni giocatore e ogni allenatore ha anche un comune di provenienza, scritto nella sua scheda. Resta anche l'interfaccia testuale del vecchio `sd.py`, che si avvia con:
+All'avvio MESS controlla se c'è una versione nuova e propone di installarla: l'aggiornamento salva il mondo, sostituisce il programma e lo riapre.
 
-    python Showdown.py --testo
+## Come si gioca
 
-Salvataggi e registri stanno accanto al programma, e così le impostazioni d'aspetto, i volumi e la velocità di gioco, nel file `mess_impostazioni.json`. Le cronache salvate delle partite stanno nella cartella `cronache`, un file per incontro. La cartella `strumenti` contiene il banco di prova del motore di partita, con i rapporti di prima e dopo la tappa 9, la taratura del valore, la simulazione lunga dell'economia, il banco degli estremi del motore, la carriera perfetta che fissa la classe, il rapporto della taratura dell'allenamento, gli ascolti e il banco alla cieca della partita sonora, lo script dell'elenco dei suoni e quello che scrive descrizioni fisiche di prova; dalla tappa 12 anche il banco dei tornei, la taratura dell'esito rapido, i mondi sintetici a regime, il profilo del giorno simulato e i rapporti della taratura dei tornei e dell'economia; dalla tappa 13 la prova dello staff, `prova_staff.py`, e la carta della taratura dello staff; la cartella `tests` la suite di pytest.
+Si apre la finestra con la vista, dove si leggono schede, elenchi e notizie, e la barra di stato, con F7, che dice in poche righe la data, la polisportiva attiva e gli eventi. Ogni comando sta in un menu e ha il suo suono. F1 dà la guida ai comandi, F2 le novità, Maiusc+F1 apre il manuale completo nel browser.
+
+Le partite seguono il regolamento IBSA dello showdown, e si ascoltano dal vivo, con i suoni della pallina, dei colpi e dell'arbitro che si muovono sul tavolo, oppure in differita. Ci sono la sala allenamento, il mercato, i contratti, lo staff con gli allenatori, i tornei a calendario con la Classifica nazionale e il Campionato italiano, le sfide fra polisportive e la Coppa delle polisportive, l'albo d'oro e le statistiche nazionali.
+
+## Aiuto
+
+- Il manuale, con Maiusc+F1, spiega ogni menu, ogni tasto e le regole del gioco.
+- Nel menu Aiuto, Entra al PUB prepara la mail per iscriversi alla lista di supporto degli utenti, e Chiedi aiuto al PUB prepara quella con la domanda e le informazioni sul computer.
+- I problemi si segnalano anche come issue su GitHub: https://github.com/GabrieleBattaglia/Showdown/issues
+
+Un errore imprevisto si annota in MESS - Errori.log, accanto al programma: è il file da allegare quando chiedi aiuto.
 
 ## Accessibilità
 
-MESS è pensato per essere usato con uno screen reader e con il display braille. La nuova interfaccia userà testi discorsivi, senza separatori grafici né tabelle allineate a colonne.
+MESS è pensato per lo screen reader e il display braille: testi discorsivi, senza separatori grafici né tabelle allineate a colonne, finestre massimizzate, un suono per ogni azione e la cronaca della partita che si può leggere in automatico alla sintesi o al display braille.
 
-## Installazione da sorgente
+## Dai sorgenti
 
-Serve Python 3.14. Il programma usa GBUtils, la libreria condivisa del parco software di IZ4APU, che non sta su PyPI e va clonata a parte:
+Serve Python 3.14, con le librerie di requirements.txt, e GBUtils, la libreria condivisa del parco software di IZ4APU, che non sta su PyPI e va clonata a parte, con la sua cartella in PYTHONPATH:
 
     git clone https://github.com/GabrieleBattaglia/GBUtils.git
+    pip install -r requirements.txt
+    python Showdown.py
 
-poi si mette la sua cartella in PYTHONPATH. Dalla versione 1.79.0 la cronaca letta in automatico passa da GBsintesi, un modulo di GBUtils, che usa accessible_output2 e pywin32:
-
-    pip install accessible_output2 pywin32
+Le prove stanno nella cartella tests, con pytest. La cartella strumenti contiene i banchi e le tarature del piano di sviluppo, e i loro rapporti. Il pacchetto si compila con PyInstaller dalla ricetta MESS.spec, poi zip_maker.py prepara lo zip per l'aggiornamento automatico e setup_maker.py l'installatore con Inno Setup 6.
 
 ## Dati
 
-La cartella `dati` contiene le collezioni di nomi e cognomi, un file di testo per collezione e una voce per riga, che si possono correggere o ampliare con un qualsiasi editor, e il vocabolario delle descrizioni fisiche, `vocabolario.json`, con cui il gioco compone l'aspetto di ogni giocatore; e `luoghi_italiani.json`, 1.291 comuni italiani con provincia, regione e abitanti, da cui si estrae il comune di provenienza di giocatori e allenatori, tanto più probabile quanto più il comune è popoloso.
+La cartella dati contiene le collezioni di nomi e cognomi, un file di testo per collezione e una voce per riga; il vocabolario delle descrizioni fisiche, vocabolario.json; luoghi_italiani.json, 1.291 comuni italiani con provincia, regione e abitanti, da cui si estraggono la provenienza di giocatori e allenatori e la sede delle polisportive; i modelli dei tornei e le loro formule.
 
-Il mondo si salva accanto al programma nel file compresso `mess_mondo.json.gz`, con la copia di sicurezza `mess_mondo.json.gz.bak`, e a finestra aperta si salva da solo a ogni avanzamento e a ogni operazione sulle polisportive. Il file è firmato: una modifica fatta a mano viene scoperta, e il gioco riprende dalla copia. I file che non si possono leggere finiscono nella cartella `salvataggi_illeggibili`. Le uscite di scena dei giocatori restano nel registro delle vecchie glorie, dentro il salvataggio, e si annotano anche in `vecchie_glorie.log`, e le cronache delle partite, quando si chiede di salvarle, in `log_partite_showdown.txt`.
+Il mondo si salva accanto al programma nel file compresso mess_mondo.json.gz, con la copia di sicurezza mess_mondo.json.gz.bak, e si salva da solo a ogni avanzamento e a ogni operazione sulle polisportive. Il file è firmato: una modifica fatta a mano viene scoperta, e il gioco riprende dalla copia. Accanto al programma stanno anche le impostazioni, mess_impostazioni.json, i modelli e le formule dei tornei che si possono cambiare con gli editor, le cronache salvate, nella cartella cronache, e il registro delle vecchie glorie, vecchie_glorie.log.
+
+## Licenza
+
+MESS è software libero, con licenza GNU GPL versione 3: vedi il file LICENSE.
 
 ## Autori
 
