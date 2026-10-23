@@ -46,6 +46,11 @@ senza un mondo all'avvio; il salvataggio illeggibile all'avvio, che non ferma pi
 al suo posto mondo_illeggibile_all_avvio sostituisce salvataggio_illeggibile. Con la verifica seguente
 la notizia dei dati di accanto al programma dice la verità anche quando lì non c'era un mondo, e nomina
 i dati che c'erano; quando sono andati in una riserva è DatiInRiserva, perché la finestra la suoni col suo suono.
+Con la issue 9 di Gabriele, dal collaudo di gioco dello stesso giorno, il resoconto di una spesa
+d'allenamento, nel riepilogo della sala e nel diario, elenca tutte le caratteristiche salite, ciascuna
+col suo da e a con due decimali, o con quelli che servono quando a due la salita non si vedrebbe: il
+riassunto delle altre caratteristiche salite di meno non c'è più. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -234,6 +239,22 @@ def da_a(prima, dopo):
     4,61 a 4,64 dopo una spesa piccola, che altrimenti sembrerebbe non aver fatto niente.
     """
     decimali = 2 if numero(prima) == numero(dopo) and abs(dopo - prima) >= 0.005 else 1
+    return f"da {numero(prima, decimali)} a {numero(dopo, decimali)}"
+
+
+def da_a_al_centesimo(prima, dopo):
+    """
+    Una salita del resoconto dettagliato di una spesa d'allenamento, dalla issue 9: sempre con due
+    decimali, da 14,62 a 14,71. Quando a due decimali i due numeri sarebbero uguali, la salita ha i
+    decimali che servono a vederla, di solito tre, come da 0,183 a 0,184: scritta da 0,18 a 0,18
+    sembrerebbe non aver fatto niente, e tacerla nasconderebbe una caratteristica che la spesa ha
+    fatto salire. Le sedute piccole di ogni giorno lo fanno spesso con precisione, resistenza e
+    forza, che hanno il tetto a 10 e salgono piano. I decimali arrivano al più a nove, la soglia
+    sotto cui l'allenamento non conta una salita; una salita nulla resta a due.
+    """
+    decimali = 2
+    while dopo > prima and decimali < 9 and numero(prima, decimali) == numero(dopo, decimali):
+        decimali += 1
     return f"da {numero(prima, decimali)} a {numero(dopo, decimali)}"
 
 
@@ -2171,19 +2192,25 @@ def calendario_illeggibile(problemi):
             "Ctrl+Maiusc+Y, oppure rimettendo il calendario predefinito dal menu Tornei.")
 
 
+def caratteristiche_salite(salite):
+    """
+    Le caratteristiche salite in una spesa d'allenamento, a parole e tutte, ciascuna col suo da e a
+    al centesimo: chiusura sinistra da 14,62 a 14,71 e difesa da 10,20 a 10,24. Le salite sono terne
+    di nome con _base, totale prima e dopo, come nella voce del diario. Le usano il diario e il
+    riepilogo della sala, così dicono la stessa cosa. Dalla issue 9 di Gabriele non c'è più il
+    riassunto delle caratteristiche salite di meno di un decimo, che diceva soltanto quante erano.
+    """
+    return unisci([f"{nome_caratteristica(nome).lower()} {da_a_al_centesimo(da, a)}" for nome, da, a in salite])
+
+
 def spesa_nel_diario(voce):
     """
     La voce di una spesa d'allenamento: Si allena con 120 punti allenamento: chiusura sinistra da
-    14,6 a 15,3, difesa da 10,2 a 10,4; valore da 142,3 a 145,1. Una spesa completa elenca le
-    caratteristiche salite di almeno un decimo, e dice quante altre sono salite di meno.
+    14,62 a 15,31 e difesa da 10,20 a 10,44; valore da 142,3 a 145,1. Dalla issue 9 elenca tutte le
+    caratteristiche salite, ciascuna al centesimo, come il riepilogo della sala.
     """
-    salite = [s for s in voce["spesa"] if s[2] - s[1] >= 0.1 - 1e-9 or len(voce["spesa"]) == 1]
-    altre = len(voce["spesa"]) - len(salite)
-    parti = [f"{nome_caratteristica(nome).lower()} {da_a(da, a)}" for nome, da, a in salite]
-    if altre:
-        parti.append(f"{conta(altre, 'altra caratteristica', 'altre caratteristiche')} di meno")
     da, a = voce["valore"]
-    return f"Si allena con {quanti_punti(voce['punti'], True)}: {unisci(parti)}; valore {da_a(da, a)}."
+    return f"Si allena con {quanti_punti(voce['punti'], True)}: {caratteristiche_salite(voce['spesa'])}; valore {da_a(da, a)}."
 
 
 def _diario(titolo, diario):
@@ -3142,24 +3169,22 @@ def voce_classe_salita(g):
 
 
 def _parti_spese(spese):
-    """Le caratteristiche salite di almeno un decimo, a parole, e quante altre sono salite di meno."""
-    salite = [s for s in spese if s.a - s.da >= 0.1 - 1e-9 or len(spese) == 1]
-    parti = [f"{_nome_semplice(s.caratteristica)} {da_a(s.da, s.a)}" for s in salite]
-    altre = len(spese) - len(salite)
-    if altre:
-        parti.append(f"{conta(altre, 'altra caratteristica', 'altre caratteristiche')} di meno")
-    return unisci(parti)
+    """Le caratteristiche salite in un elenco di Spesa, tutte e al centesimo, con le parole del diario: issue 9."""
+    return caratteristiche_salite((s.caratteristica + "_base", s.da, s.a) for s in spese)
 
 
 def dettaglio_spese(g, spese):
-    """Le caratteristiche salite in una spesa: Mario Rossi: chiusura sinistra da 14,6 a 15,3 e difesa da 10,2 a 10,4."""
+    """Le caratteristiche salite in una spesa: Mario Rossi: chiusura sinistra da 14,62 a 15,31 e difesa da 10,20 a 10,44."""
     return f"{nome_completo(g)}: {_parti_spese(spese)}."
 
 
 def voce_della_sala(esito, spese):
     """
     Una spesa nel riepilogo della sala, in una riga sola: l'esito, come esito_allenamento, e il
-    dettaglio delle caratteristiche salite, che nel messaggio breve della sala non c'è.
+    dettaglio delle caratteristiche salite, che nel messaggio breve della sala non c'è. Dalla issue
+    9 il dettaglio le elenca tutte, ciascuna col suo da e a al centesimo: Leone Samorini: 2,5 punti
+    spesi, valore da 95,37 a 95,40, classe I1; chiusura sinistra da 14,62 a 14,71, difesa da 10,20 a
+    10,24 e precisione da 0,183 a 0,184.
     """
     return f"{esito}; {_parti_spese(spese)}."
 

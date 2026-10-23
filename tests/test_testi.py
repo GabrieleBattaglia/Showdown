@@ -285,6 +285,36 @@ def test_i_testi_della_sala(mondo):
     assert testi.riga_caratteristica_allenamento(g, "chiusurasx").endswith(", al massimo")
 
 
+def test_il_resoconto_della_spesa_elenca_ogni_caratteristica_al_centesimo(mondo):
+    # Issue 9 di Gabriele: tutte le caratteristiche salite, ciascuna col suo da e a con due decimali, e
+    # niente più "2 altre caratteristiche di meno"; quando a due decimali la salita non si vedrebbe,
+    # quella caratteristica ha i decimali che servono a vederla.
+    assert testi.da_a_al_centesimo(14.6213, 14.7129) == "da 14,62 a 14,71"
+    assert testi.da_a_al_centesimo(14.6, 15.3) == "da 14,60 a 15,30"
+    assert testi.da_a_al_centesimo(0.18271, 0.18399) == "da 0,183 a 0,184"
+    assert testi.da_a_al_centesimo(2.2915652, 2.2915710) == "da 2,291565 a 2,291571"
+    assert testi.da_a_al_centesimo(4.6, 4.6) == "da 4,60 a 4,60"
+    spese = [allenamento.Spesa("chiusurasx", 14.6213, 14.7129, 1.5), allenamento.Spesa("difesa", 10.2, 10.2412, 0.7),
+             allenamento.Spesa("precisione", 0.18271, 0.18399, 0.3)]
+    dettaglio = "chiusura sinistra da 14,62 a 14,71, difesa da 10,20 a 10,24 e precisione da 0,183 a 0,184"
+    esito = "Leone Samorini: 2,5 punti spesi, valore da 95,37 a 95,40, classe I1"
+    assert testi.voce_della_sala(esito, spese) == f"{esito}; {dettaglio}."
+    g = mondo.giocatori[2]
+    assert testi.dettaglio_spese(g, spese) == f"{testi.nome_completo(g)}: {dettaglio}."
+    voce = {"data": ORA, "spesa": [[s.caratteristica + "_base", s.da, s.a] for s in spese], "punti": 2.5, "valore": [95.37, 95.40]}
+    assert testi.spesa_nel_diario(voce) == f"Si allena con 2,5 punti allenamento: {dettaglio}; valore da 95,37 a 95,40."
+    # Con un allenamento completo vero ogni caratteristica salita ha la sua parte, con almeno due
+    # decimali, e ciascuna si vede salire; il diario dice le stesse parole del riepilogo della sala.
+    for portafoglio in (1.0, 2.5, 140.0):
+        g.punti_allenamento, g.infortunato = portafoglio, False
+        spese = allenamento.allena_secondo_programma(g, ORA)
+        parti = re.findall(r"da (\d[\d.]*,(\d+)) a (\d[\d.]*,(\d+))", testi.voce_della_sala(testi.nome_completo(g), spese))
+        assert spese and len(parti) == len(spese)
+        assert all(prima != dopo and len(decimali_prima) >= 2 and len(decimali_prima) == len(decimali_dopo) for prima, decimali_prima, dopo, decimali_dopo in parti)
+        voce = testi.voce_diario(g.diario[0])
+        assert f": {testi._parti_spese(spese)}; valore da " in voce and "di meno" not in voce
+
+
 def test_i_testi_dei_contratti(mondo):
     p = mondo.miapolisportiva_attiva
     g = mondo.giocatori[9]

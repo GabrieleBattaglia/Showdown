@@ -45,6 +45,10 @@ L'interfaccia testuale del vecchio sd.py, python Showdown.py --testo, non c'è p
 
 Il mondo passa al formato 9: all'aggiornamento ogni polisportiva riceve una sede estratta. Chi arriva da una versione di prova trova i nomi nuovi dei tornei con Ripristina il calendario predefinito, nel menu Tornei, o ripartendo da un mondo nuovo.
 
+### Dal collaudo di gioco
+
+Il riepilogo della sala allenamento e il diario dicono ogni spesa per intero: tutte le caratteristiche che ha fatto salire, ciascuna da un valore all'altro con due decimali, come chiusura sinistra da 14,62 a 14,71, al posto del vago "2 altre caratteristiche di meno". Quando una caratteristica sale così poco che a due decimali sembrerebbe ferma, ha i decimali che servono a vederla salire, come precisione da 0,183 a 0,184.
+
 ## [1.94.6] - 2026-10-23
 
 Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.
