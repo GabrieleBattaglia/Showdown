@@ -1,11 +1,5 @@
 Collaudo della 1.94.6 di MESS con NVDA: le correzioni del collaudo della 1.94.0.
 Prima: nella cartella E:\git\tmp\mess-collaudo-t11, già aggiornata alla 1.94.6, lancia python Showdown.py.
 Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
-Domanda 1: la finestra si apre massimizzata?
-Domanda 2: nella scheda di un allenatore, con Alt+H nello staff o nel mercato degli allenatori, l'ultima riga dice Sarà in attività sperabilmente fino al, con l'anno?
-Domanda 3: nella scheda di un tuo tesserato la fedeltà dice per esempio Fedeltà a Pat-Bologna: 2%, e la classe al 37% verso G3, col simbolo?
-Domanda 4: nello staff, con Ctrl+H, la qualità dice per esempio Qualità dello staff 56%, e gli effetti più 6% o meno 15%?
-Domanda 5: quando la probabilità comincia per vocale l'articolo si elide, per esempio Accetterebbe all'8% o all'80%, nel mercato e nei rinnovi?
-Domanda 6: un giocatore che aveva l'indole da muro ora dice Indole: granitica, e nella sala allenamento il suo programma si chiama granitico?
-Domanda 7: nella guida ai comandi le percentuali della classe, dei contratti e dello staff hanno il simbolo?
-Domanda 8: alla chiusura la console non mostra più l'avviso di win32com sulla cache dei moduli COM?
+* Valido per tutta l'app. Puoi far aprire massimizzate, anche, tutte le finestre tipo le schede dei giocatori eccetera? In generale, tutto ciò che è massimizzato è molto più comodo da leggere con screen reader e Braille. Con finestre piccole il testo va a capo spesso ed è scomodo.
+* Non so se è già così: nelle finestre interne che prevedono il pulsante chiudi, associalo alla pressione di escape.
