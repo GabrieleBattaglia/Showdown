@@ -8,8 +8,8 @@ L'Italia dello showdown è piena di giocatori generati a caso, ciascuno con nome
 
 MESS gira su Windows 10 e 11 a 64 bit. L'ultima versione sta nella pagina delle release su GitHub: https://github.com/GabrieleBattaglia/Showdown/releases
 
-- **Con l'installatore, MESS-Setup:** chiede di accettare la licenza GPL 3 e installa MESS nella tua cartella dei programmi, senza permessi di amministratore. Alla disinstallazione chiede se cancellare anche il mondo.
-- **Con lo zip, MESS.zip:** si scompatta in una cartella dove puoi scrivere, mai in Programmi, perché il mondo si salva accanto al programma.
+- **Con l'installatore, MESS-Setup:** chiede di accettare la licenza GPL 3 e installa MESS nella tua cartella dei programmi, senza permessi di amministratore. Alla disinstallazione chiede se cancellare anche la cartella Mondo; una cartella del mondo scelta altrove resta com'è.
+- **Con lo zip, MESS.zip:** si scompatta in una cartella dove puoi scrivere, mai in Programmi, perché di serie il mondo si salva nella cartella Mondo accanto al programma.
 
 Il programma non è firmato, quindi al primo avvio Windows può mostrare l'avviso di SmartScreen: Altre informazioni, poi Esegui comunque.
 
@@ -47,7 +47,7 @@ Le prove stanno nella cartella tests, con pytest. La cartella strumenti contiene
 
 La cartella dati contiene le collezioni di nomi e cognomi, un file di testo per collezione e una voce per riga; il vocabolario delle descrizioni fisiche, vocabolario.json; luoghi_italiani.json, 1.291 comuni italiani con provincia, regione e abitanti, da cui si estraggono la provenienza di giocatori e allenatori e la sede delle polisportive; i modelli dei tornei e le loro formule.
 
-Il mondo si salva accanto al programma nel file compresso mess_mondo.json.gz, con la copia di sicurezza mess_mondo.json.gz.bak, e si salva da solo a ogni avanzamento e a ogni operazione sulle polisportive. Il file è firmato: una modifica fatta a mano viene scoperta, e il gioco riprende dalla copia. Accanto al programma stanno anche le impostazioni, mess_impostazioni.json, i modelli e le formule dei tornei che si possono cambiare con gli editor, le cronache salvate, nella cartella cronache, e il registro delle vecchie glorie, vecchie_glorie.log.
+Il mondo si salva nella cartella del mondo: di serie è la cartella Mondo accanto al programma, e con Cartella del mondo, nel menu Impostazioni, se ne sceglie un'altra, per esempio in Dropbox, per ritrovare il mondo su ogni computer. Lì stanno il file compresso mess_mondo.json.gz, con la copia di sicurezza mess_mondo.json.gz.bak, che si salva da solo a ogni avanzamento e a ogni operazione sulle polisportive; le impostazioni, mess_impostazioni.json; i modelli e le formule dei tornei che si possono cambiare con gli editor; le cronache salvate, nella cartella cronache; e il registro delle vecchie glorie, vecchie_glorie.log. Il file del mondo è firmato: una modifica fatta a mano viene scoperta, e il gioco riprende dalla copia. Accanto al programma restano i registri degli errori e, se la cartella del mondo non è quella di serie, mess_cartella_del_mondo.json, che ricorda dove sta.
 
 ## Licenza
 

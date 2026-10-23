@@ -9,7 +9,7 @@ Il primo rilascio di MESS, compilato per Windows a 64 bit e con l'installatore. 
 
 ### Installare e aggiornare
 
-MESS si installa con MESS-Setup, che chiede di accettare la licenza GPL 3 e mette il programma nella tua cartella dei programmi, senza permessi di amministratore; oppure si scompatta lo zip in una cartella dove puoi scrivere, mai in Programmi, perché il mondo si salva accanto al programma. Windows può mostrare l'avviso di SmartScreen, perché il programma non è firmato: Altre informazioni, poi Esegui comunque.
+MESS si installa con MESS-Setup, che chiede di accettare la licenza GPL 3 e mette il programma nella tua cartella dei programmi, senza permessi di amministratore; oppure si scompatta lo zip in una cartella dove puoi scrivere, mai in Programmi, perché di serie il mondo si salva nella cartella Mondo accanto al programma. Windows può mostrare l'avviso di SmartScreen, perché il programma non è firmato: Altre informazioni, poi Esegui comunque.
 
 All'avvio MESS controlla se su GitHub c'è una versione nuova e propone di installarla, con le sue note: con Aggiorna la scarica, salva il mondo, si chiude e si riapre aggiornato; con Non adesso, o se non rispondi entro due minuti, te la ripropone alla prossima apertura. Ogni esito ha il suo suono.
 
@@ -27,9 +27,15 @@ Ogni polisportiva ha la sua sede in un comune italiano: quelle del computer la r
 
 Il mondo come salvataggio resta il mondo: Salva il mondo, il menu Mondo.
 
+### La cartella del mondo
+
+Tutto quello che riguarda il tuo mondo sta in una cartella sola: il mondo e la sua copia di sicurezza, le impostazioni, i modelli e le formule dei tornei, le cronache e le vecchie glorie. Di serie è la cartella Mondo accanto al programma; con Cartella del mondo, nel menu Impostazioni, ne scegli un'altra con la finestra di Windows, per esempio in Dropbox o su una penna, e porti il mondo fra i tuoi computer. MESS ci sposta i dati, tutti o nessuno; se la cartella scelta ha già un mondo ti chiede quale tenere, dicendoti il più recente, e l'altro va in una sua sottocartella di riserva con la data.
+
+Se all'apertura la cartella scelta non c'è, per esempio perché la penna è staccata, MESS lo dice e propone Riprova, Scegli un'altra cartella ed Esci: un mondo nuovo non nasce mai altrove senza che tu lo sappia. Alla prima apertura di questa versione i dati che le versioni di prova scrivevano accanto al programma passano da soli nella cartella Mondo. Accanto al programma restano soltanto i registri degli errori e, se la cartella del mondo non è quella di serie, il file mess_cartella_del_mondo.json che ricorda dove sta.
+
 ### Le finestre e le parole
 
-Tutte le finestre interne si aprono massimizzate, più comode da leggere con lo screen reader e il display braille, ed Esc chiude dove c'è il pulsante Chiudi. Davanti ai nomi dei tornei c'è l'articolo giusto: convocato al Campionato italiano, iscritta all'Open femminile del giovedì, la coppa d'oro alla Coppa delle polisportive. Nell'invito al caffè Invio nel testo chiude, e un Invio tenuto giù dalla voce del menu non lo chiude appena aperto. Tredici suoni nuovi, nella collezione di GBUtils dalla V220 alla V223.
+Tutte le finestre interne si aprono massimizzate, più comode da leggere con lo screen reader e il display braille, ed Esc chiude dove c'è il pulsante Chiudi. Davanti ai nomi dei tornei c'è l'articolo giusto: convocato al Campionato italiano, iscritta all'Open femminile del giovedì, la coppa d'oro alla Coppa delle polisportive. Nell'invito al caffè Invio nel testo chiude, e un Invio tenuto giù dalla voce del menu non lo chiude appena aperto. Venticinque suoni nuovi, nella collezione di GBUtils dalla V220 alla V228.
 
 ### Cosa se ne va
 
