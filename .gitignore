@@ -26,3 +26,8 @@ mess_impostazioni.json
 /mess_mondo.json
 /mess_mondo.json.bak
 /salvataggi_illeggibili/
+# I registri delle sessioni di gioco, accanto al programma: dal 23 ottobre 2026 Gabriele gioca dai sorgenti, e non vuole
+# che le sessioni sporchino la cronologia; lo stato del mondo lo raccoglie la cartella del mondo.
+MESS - *.log
+MESS - *.log.1
+/vecchie_glorie.log
