@@ -62,9 +62,13 @@ Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Op
 Con la cartella del mondo, chiesta da Gabriele il 23 ottobre 2026, arriva il suo gruppo, quattro suoni
 nuovi nella V225: la voce del menu Impostazioni e la scelta della cartella, i dati spostati, MESS che
 si riapre sul mondo della cartella, e l'avviso dell'avvio quando la cartella non c'è. La domanda col
-mondo già presente usa il suono delle domande; lo spostamento che non riesce, quello del salvataggio
-non riuscito, perché anche lì i dati non arrivano dove dovevano. Anche queste parti sono di Gabriele
-Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+mondo già presente usa il suono delle domande. Con la verifica finale dello stesso giorno, per la regola
+di Gabriele di un suono per ogni evento, arrivano altri tre suoni, nella V226: lo spostamento dei dati
+che non riesce, che prima suonava come il salvataggio non riuscito; la cartella scelta e rifiutata,
+perché è già quella del mondo o sta dentro dei dati, che prima suonava come un annullamento; e MESS che
+non riesce a riaprirsi sul mondo della cartella, che prima aveva soltanto il messaggio. Il salvataggio
+non riuscito resta al mondo che non si salva, e l'annullamento ad Annulla e a Esc. Anche queste parti
+sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -161,12 +165,16 @@ GRUPPI = (
         "annunci_cronaca_salvati": "mess_annunci_salvati",
     }),
     # Dal 23 ottobre 2026, richiesta di Gabriele: la cartella del mondo, per portarlo fra le macchine. Un
-    # cassetto che si apre, un trasloco riuscito, un cambio di scena e una porta chiusa.
+    # cassetto che si apre, un trasloco riuscito, un cambio di scena e una porta chiusa. Dalla V226 anche
+    # il trasloco che torna indietro, un no gentile per la cartella rifiutata e la porta che si richiude.
     ("Applicazione, la cartella del mondo", {
         "cartella_mondo": "mess_cartella_mondo",
         "cartella_spostata": "mess_cartella_spostata",
         "cartella_cambiata": "mess_cartella_cambiata",
         "cartella_assente": "mess_cartella_assente",
+        "cartella_non_spostata": "mess_cartella_non_spostata",
+        "cartella_rifiutata": "mess_cartella_rifiutata",
+        "riapertura_mancata": "mess_riapertura_mancata",
     }),
     ("Mondo, i giocatori", {
         "dialogo_scheda_giocatore": "pokermachine_raddoppio_carta",
@@ -494,7 +502,7 @@ AZIONI = {
     "primo_piano": "si apre MESS mentre è già aperto, e la finestra aperta torna in primo piano",
     "salvataggio_riuscito": "il mondo salvato con Ctrl+S",
     "salvataggio_con_avviso": "il mondo salvato con Ctrl+S, ma con un avviso dell'archivio",
-    "salvataggio_non_riuscito": "un salvataggio che non riesce, con Ctrl+S o dopo un'operazione, e i dati del mondo che non si spostano nella cartella del mondo",
+    "salvataggio_non_riuscito": "un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, o quando si cambia la cartella del mondo, e allora la cartella non cambia",
     "salvataggio_illeggibile": "all'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire",
     "errore_imprevisto": "un errore imprevisto del programma, o un errore che lo ferma",
     "crash_precedente": "all'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto",
@@ -542,6 +550,9 @@ AZIONI = {
     "cartella_spostata": "il mondo e i dati di gioco spostati nella cartella scelta, o salvati lì se la cartella di prima non si raggiunge più, e alla prima partenza di questa versione da accanto al programma alla cartella del mondo",
     "cartella_cambiata": "si sceglie il mondo che la cartella nuova ha già, e MESS si chiude per riaprirsi su di lui",
     "cartella_assente": "all'avvio la cartella del mondo non c'è, o c'è ma senza un mondo, per esempio la penna non è collegata o il cloud non è pronto, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire",
+    "cartella_non_spostata": "i dati del mondo non passano nella cartella scelta, dal menu o alla prima partenza da accanto al programma, e tutto resta com'era",
+    "cartella_rifiutata": "la cartella scelta non va bene, perché è già quella del mondo, sta dentro i suoi dati o dentro quelli accanto al programma, e niente cambia",
+    "riapertura_mancata": "dopo aver scelto il mondo della cartella nuova MESS non riesce a riaprirsi da solo, e un messaggio dice di riaprirlo a mano",
     "dialogo_scheda_giocatore": "si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G",
     "scheda_giocatore": "la scheda di un giocatore",
     "dialogo_diario_giocatore": "si apre la scelta del giocatore di cui leggere il diario, con Ctrl+Shift+D",

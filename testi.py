@@ -2456,7 +2456,7 @@ def mondo_illeggibile_all_avvio(errore, cartella):
     righe = [f"Il salvataggio del mondo, nella cartella {cartella}, c'è ma non si può leggere: {errore}."]
     if getattr(errore, "cartella", None):
         righe.append(f"Una copia dei file è nella cartella {errore.cartella}.")
-    righe += ["Per non coprirli con un mondo nuovo, MESS non salva niente in quella cartella.",
+    righe += ["Per non coprirli con un mondo nuovo, MESS non salva il mondo in quella cartella.",
               "Se il mondo sta in un cloud come Dropbox, forse il file non è ancora arrivato tutto: aspetta, poi scegli Riprova. Se l'ha "
               "salvato una versione di MESS più recente, aggiorna MESS.",
               "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra. Esci, o Esc, chiude MESS senza toccare niente."]

@@ -1295,12 +1295,13 @@ class FinestraPrincipale(wx.Frame):
         if nuova is None:
             self._cartella_invariata()
         elif percorsi.stessa(nuova, attuale):
-            self.mostra(testi.cartella_gia_del_mondo(attuale), "cartella del mondo invariata", "annullato")
+            # Dalla verifica del 23 ottobre 2026 le cartelle rifiutate hanno il loro suono: l'annullamento resta ad Annulla e a Esc.
+            self.mostra(testi.cartella_gia_del_mondo(attuale), "cartella del mondo invariata", "cartella_rifiutata")
         elif cartella_del_mondo.intrecciate(attuale, nuova):
-            self.mostra(testi.cartelle_intrecciate(nuova, attuale), "cartella del mondo invariata", "annullato")
+            self.mostra(testi.cartelle_intrecciate(nuova, attuale), "cartella del mondo invariata", "cartella_rifiutata")
         elif cartella_del_mondo.intrecciate(programma, nuova):
             # Dentro la cartella tornei del programma, per esempio: alla partenza seguente MESS la sposterebbe dentro sé stessa.
-            self.mostra(testi.intrecciata_col_programma(nuova, programma, attuale), "cartella del mondo invariata", "annullato")
+            self.mostra(testi.intrecciata_col_programma(nuova, programma, attuale), "cartella del mondo invariata", "cartella_rifiutata")
         elif not cartella_del_mondo.ha_un_mondo(nuova):
             self._porta_il_mondo(attuale, nuova, ora)
         else:
@@ -1341,8 +1342,9 @@ class FinestraPrincipale(wx.Frame):
         """
         Il mondo si salva, poi i dati passano nella cartella nuova, e quelli che lei aveva in una sua riserva
         datata; il file accanto al programma la nomina. Se qualcosa non riesce, niente è cambiato, e la vista
-        dice il perché col suono del salvataggio non riuscito. Se la cartella del mondo di adesso non si
-        raggiunge più, per esempio una penna staccata a MESS aperto, lì non si salva e non c'è niente da
+        dice il perché, dalla verifica del 23 ottobre 2026 col suono dello spostamento non riuscito; quello
+        del salvataggio non riuscito resta al mondo che non si salva. Se la cartella del mondo di adesso non
+        si raggiunge più, per esempio una penna staccata a MESS aperto, lì non si salva e non c'è niente da
         spostare: il mondo e le impostazioni si salvano nella cartella nuova, appena il file la nomina, così
         i progressi non si perdono; se nemmeno lì il mondo si salva, tutto torna com'era.
         """
@@ -1353,12 +1355,15 @@ class FinestraPrincipale(wx.Frame):
                 self.mostra(testi.mondo_non_salvato_per_la_cartella(messaggi), "cartella del mondo invariata", "salvataggio_non_riuscito")
                 return
         dal_salvataggio = []
+        non_salvato = []
 
         def salva_nella_nuova():
             riuscito, messaggi, _avvisi = self._salva_raccogliendo()
             dal_salvataggio.extend(messaggi)
             if riuscito:
                 modulo_impostazioni.salva(self.impostazioni)
+            else:
+                non_salvato.append(True)
             return riuscito
 
         try:
@@ -1366,7 +1371,7 @@ class FinestraPrincipale(wx.Frame):
         except cartella_del_mondo.SpostamentoNonRiuscito as errore:
             registro.scrivi(f"I dati del mondo non si sono spostati da {attuale} a {nuova}: {errore.motivo}.")
             testo = "\n".join([testi.cartella_non_spostata(errore, nuova, attuale), *dal_salvataggio])
-            self.mostra(testo, "mondo non spostato", "salvataggio_non_riuscito")
+            self.mostra(testo, "mondo non spostato", "salvataggio_non_riuscito" if non_salvato else "cartella_non_spostata")
             return
         if raggiungibile:
             registro.scrivi(f"I dati del mondo sono passati da {attuale} a {nuova}.")
@@ -1397,6 +1402,8 @@ class FinestraPrincipale(wx.Frame):
             istanza.riapri()
         except OSError as errore:
             registro.scrivi(f"MESS non si è riaperto da solo: {errore}.")
+            # Dalla verifica del 23 ottobre 2026 ha il suo suono, prima del messaggio.
+            suoni.suona("riapertura_mancata")
             self._modali += 1
             try:
                 wx.MessageBox(testi.riapertura_non_riuscita(errore, nuova), "Cartella del mondo", wx.OK | wx.ICON_WARNING, self)

@@ -37,6 +37,9 @@ vero che fra gli ESITI non c'era, e faceva finire ogni chiusura nell'errore fata
 che c'è ma non ha un mondo è un problema dell'avvio come quella che manca, salvo dopo il sì a un mondo
 nuovo; il salvataggio che non si legge apre l'avviso con Riprova, Scegli un'altra cartella ed Esci,
 invece di fermare MESS e basta; e all'avvio non si accetta una cartella dentro i dati accanto al programma.
+Con la verifica finale, le copie del salvataggio illeggibile si fanno una volta sola per cartella e non a
+ogni Riprova, la notizia dei dati spostati alla prima partenza va subito anche nel registro, e lo
+spostamento che non riesce e la cartella rifiutata hanno ciascuno il suo suono.
 """
 
 import contextlib
@@ -86,7 +89,8 @@ def _scegli_all_avvio():
         return None
     programma = percorsi.cartella_del_programma()
     if cartella_del_mondo.intrecciate(programma, nuova):
-        suoni.suona("annullato")
+        # Dalla verifica finale del 23 ottobre 2026 la cartella rifiutata ha il suo suono, come dal menu.
+        suoni.suona("cartella_rifiutata")
         wx.MessageBox(testi.intrecciata_col_programma(nuova, programma), "MESS", wx.OK | wx.ICON_WARNING)
         return None
     if not cartella_del_mondo.ha_un_mondo(nuova):
@@ -111,12 +115,14 @@ def prepara_la_cartella(accettata=None):
     un cloud non ancora pronto, salvo accettata, la cartella per cui si è appena detto sì a un mondo
     nuovo. Poi i dati della vecchia disposizione, accanto al programma, passano nella cartella del mondo.
     Restituisce la terna di esito, notizia e cartella accettata: l'esito è None se si va avanti,
-    altrimenti SENZA_CARTELLA o NON_SPOSTATI; la notizia è la riga della vista sui dati spostati, o None.
+    altrimenti SENZA_CARTELLA o NON_SPOSTATI; la notizia è la riga della vista sui dati spostati, o None,
+    che dalla verifica finale del 23 ottobre 2026 va subito anche nel registro.
     """
     import wx
 
     import cartella_del_mondo
     import percorsi
+    import registro
     from gui.dialoghi import ESCI, UN_ALTRA_CARTELLA, CartellaAssente
 
     while (problema := cartella_del_mondo.problema_della_cartella(accettata)) is not None:
@@ -133,7 +139,7 @@ def prepara_la_cartella(accettata=None):
     try:
         trasloco = cartella_del_mondo.sposta_la_vecchia_disposizione()
     except cartella_del_mondo.SpostamentoNonRiuscito as errore:
-        suoni.suona("salvataggio_non_riuscito", sync=suoni.ATTESA_USCITA)
+        suoni.suona("cartella_non_spostata", sync=suoni.ATTESA_USCITA)
         testo = testi.vecchia_disposizione_non_spostata(errore, percorsi.cartella_del_programma(), percorsi.cartella())
         wx.MessageBox(testo, "MESS", wx.OK | wx.ICON_ERROR)
         return NON_SPOSTATI, None, accettata
@@ -141,10 +147,14 @@ def prepara_la_cartella(accettata=None):
         return None, None, accettata
     in_riserva = not percorsi.stessa(trasloco.destinazione, percorsi.cartella())
     piu_recente = not in_riserva and trasloco.riserva is not None and cartella_del_mondo.ha_un_mondo(trasloco.riserva)
-    return None, testi.vecchia_disposizione_spostata(trasloco, in_riserva, piu_recente), accettata
+    notizia = testi.vecchia_disposizione_spostata(trasloco, in_riserva, piu_recente)
+    # Anche nel registro, subito: se poi il mondo non si legge e si esce, la vista non la dice mai, e alla
+    # partenza seguente non c'è più niente da spostare.
+    registro.scrivi(notizia)
+    return None, notizia, accettata
 
 
-def _carica_o_scegli(mondo, accettata):
+def _carica_o_scegli(mondo, accettata, copie=None):
     """
     Carica il mondo. Se il salvataggio c'è ma non si legge, e nemmeno la sua copia, il suono e l'avviso
     con le tre scelte, dalla revisione del 23 ottobre 2026: prima MESS si fermava e basta, e una cartella
@@ -152,16 +162,27 @@ def _carica_o_scegli(mondo, accettata):
     computer, lo fermava a ogni avvio senza una via d'uscita dall'app. Restituisce la terna di origine,
     esito e cartella accettata: l'origine del mondo se si è caricato; altrimenti None, con l'esito
     ILLEGGIBILE se si esce, o None se si riprova, anche con un'altra cartella.
+    Dalla verifica finale dello stesso giorno, copie va dalla cartella del mondo, in forma confrontabile,
+    alla cartella dove sono le copie dei suoi file illeggibili: si fanno soltanto la prima volta per
+    quella cartella, o finché non riescono, e non a ogni Riprova, che col cloud si ripete; alle volte
+    seguenti l'avviso nomina la cartella delle copie della prima.
     """
     import percorsi
     from gui.dialoghi import ESCI, UN_ALTRA_CARTELLA, MondoIllegibile
 
+    copie = {} if copie is None else copie
+    cartella = percorsi.cartella()
+    chiave = percorsi.normale(cartella)
     try:
-        return archivio.carica(mondo), None, accettata
+        return archivio.carica(mondo, metti_da_parte=copie.get(chiave) is None), None, accettata
     except archivio.SalvataggioIllegibile as errore:
+        if errore.cartella is None:
+            errore.cartella = copie.get(chiave)
+        else:
+            copie[chiave] = errore.cartella
         # Il suono aspetta di finire, come all'uscita, prima della spiegazione.
         suoni.suona("salvataggio_illeggibile", sync=suoni.ATTESA_USCITA)
-        dialogo = MondoIllegibile(None, testi.mondo_illeggibile_all_avvio(errore, percorsi.cartella()))
+        dialogo = MondoIllegibile(None, testi.mondo_illeggibile_all_avvio(errore, cartella))
         try:
             scelta = dialogo.ShowModal()
         finally:
@@ -190,6 +211,8 @@ def avvia_finestra(crash_precedente=None, finestre=None):
     # Una wx.App sola per processo: quella delle prove, se c'è già.
     app = wx.GetApp() or wx.App(False)
     accettata, origine, cartella_spostata = None, None, None
+    # Per ogni cartella del mondo con un salvataggio illeggibile, dove sono le copie dei suoi file: si fanno una volta sola.
+    copie = {}
     while origine is None:
         esito, notizia, accettata = prepara_la_cartella(accettata)
         if esito is not None:
@@ -200,7 +223,7 @@ def avvia_finestra(crash_precedente=None, finestre=None):
         messaggi = []
         mondo = Mondo(notifica=messaggi.append)
         messaggi.extend(f"Attenzione: {avviso}" for avviso in nomi.avvisi)
-        origine, esito, accettata = _carica_o_scegli(mondo, accettata)
+        origine, esito, accettata = _carica_o_scegli(mondo, accettata, copie)
         if esito is not None:
             return esito
     # L'avanzamento lo racconta la finestra, dal suo riepilogo in numeri.

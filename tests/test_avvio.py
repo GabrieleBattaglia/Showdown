@@ -165,7 +165,7 @@ def test_il_salvataggio_rovinato_ferma_il_gioco(app_wx, monkeypatch, cartella_di
     monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: pytest.fail("nessun messaggio di Windows, solo l'avviso"))
     monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", lambda dialogo: testi_letti.append(dialogo.testo.GetValue()) or dialoghi.ESCI)
     assert Showdown.avvia_finestra() == Showdown.ILLEGGIBILE
-    assert len(testi_letti) == 1 and "MESS non salva niente in quella cartella" in testi_letti[0]
+    assert len(testi_letti) == 1 and "MESS non salva il mondo in quella cartella" in testi_letti[0]
     assert suonati == ["salvataggio_illeggibile"]
     assert (cartella_di_prova / FILE_MONDO).read_text(encoding="utf-8") == "non è un salvataggio"
     assert not (cartella_di_prova / FILE_MONDO_COPIA).exists()

@@ -14,7 +14,9 @@ scrive fuori dalle cartelle temporanee delle prove.
 
 import datetime
 import errno
+import faulthandler
 import functools
+import itertools
 import json
 import os
 import random
@@ -29,6 +31,7 @@ import impostazioni
 import istanza
 import modelli_torneo
 import percorsi
+import registro
 import Showdown
 import testi
 from costanti import CARTELLA_CRONACHE, FILE_MONDO, FILE_MONDO_COPIA, NOME_FILE_LOG_USCITE
@@ -498,7 +501,8 @@ def test_all_avvio_non_si_sceglie_una_cartella_dentro_i_dati_del_programma(avvio
     monkeypatch.setattr(dialoghi.CartellaAssente, "ShowModal", AvvisoFinto([(dialoghi.UN_ALTRA_CARTELLA, None), (dialoghi.ESCI, None)]))
     assert Showdown.prepara_la_cartella() == (Showdown.SENZA_CARTELLA, None, None)
     assert avvio == [testi.intrecciata_col_programma(str(dentro), str(programma_di_prova))]
-    assert suonati == ["cartella_assente", "cartella_mondo", "annullato", "cartella_assente"]
+    # Dalla verifica finale la cartella rifiutata ha il suo suono, e non quello dell'annullamento, che resta ad Annulla.
+    assert suonati == ["cartella_assente", "cartella_mondo", "cartella_rifiutata", "cartella_assente"]
     assert percorsi.cartella() == str(penna) and not dentro.exists()
 
 
@@ -591,7 +595,8 @@ def test_se_lo_spostamento_della_prima_partenza_non_riesce_mess_si_ferma(avvio, 
 
     monkeypatch.setattr(os, "rename", rinomina)
     assert Showdown.prepara_la_cartella() == (Showdown.NON_SPOSTATI, None, None)
-    assert suonati == ["salvataggio_non_riuscito"]
+    # Dalla verifica finale lo spostamento che non riesce ha il suo suono, e non quello del salvataggio non riuscito.
+    assert suonati == ["cartella_non_spostata"]
     assert avvio[0].startswith(f"I dati del mondo stanno ancora accanto al programma, nella cartella {programma_di_prova}, e non si sono potuti")
     assert avvio[0].endswith("Non ho toccato niente, e MESS si chiude: controlla che nessun altro programma stia usando quei file, e riaprilo.")
     assert _albero(programma_di_prova) == prima
@@ -750,7 +755,8 @@ def test_la_stessa_cartella_e_una_dentro_i_dati(finestra, suonati, monkeypatch, 
     _sceglie(monkeypatch, cartella_di_prova / "cronache" / "dentro")
     finestra.scegli_la_cartella_del_mondo()
     assert finestra.vista.GetValue().startswith(f"La cartella {cartella_di_prova / 'cronache' / 'dentro'} sta dentro i dati del mondo")
-    assert suonati == ["cartella_mondo", "annullato", "cartella_mondo", "annullato"]
+    # Due cartelle rifiutate, non annullate: Annulla della finestra di Windows ha l'altro suono.
+    assert suonati == ["cartella_mondo", "cartella_rifiutata", "cartella_mondo", "cartella_rifiutata"]
 
 
 def test_la_cartella_del_mondo_per_una_giunzione_e_la_stessa(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
@@ -763,7 +769,7 @@ def test_la_cartella_del_mondo_per_una_giunzione_e_la_stessa(finestra, suonati, 
         _sceglie(monkeypatch, giunzione)
         finestra.scegli_la_cartella_del_mondo()
         assert finestra.vista.GetValue() == f"La cartella {cartella_di_prova} è già quella del mondo: non cambia niente."
-        assert suonati == ["cartella_mondo", "annullato"] and _albero(cartella_di_prova) == prima
+        assert suonati == ["cartella_mondo", "cartella_rifiutata"] and _albero(cartella_di_prova) == prima
         assert percorsi.cartella() == str(cartella_di_prova)
     finally:
         os.rmdir(giunzione)
@@ -776,7 +782,7 @@ def test_dal_menu_non_si_sceglie_una_cartella_dentro_i_dati_del_programma(finest
     finestra.scegli_la_cartella_del_mondo()
     assert finestra.vista.GetValue() == testi.intrecciata_col_programma(str(dentro), str(programma_di_prova), str(cartella_di_prova))
     assert finestra.vista.GetValue().endswith(f"come tornei o cronache: scegline un'altra. Il mondo resta nella cartella {cartella_di_prova}.")
-    assert suonati == ["cartella_mondo", "annullato"] and percorsi.cartella() == str(cartella_di_prova) and not dentro.exists()
+    assert suonati == ["cartella_mondo", "cartella_rifiutata"] and percorsi.cartella() == str(cartella_di_prova) and not dentro.exists()
 
 
 def test_la_cartella_senza_mondo_riceve_i_dati_e_mess_continua(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
@@ -895,7 +901,9 @@ def test_se_mess_non_si_riapre_lo_dice_e_si_chiude_lo_stesso(finestra, suonati, 
     finestra.scegli_la_cartella_del_mondo()
     assert messaggi == [testi.riapertura_non_riuscita(FileNotFoundError(errno.ENOENT, "Impossibile trovare il file"), str(dropbox))]
     assert messaggi[0].startswith("MESS non si è potuto riaprire da solo: Impossibile trovare il file.")
-    assert finestra.chiusa and percorsi.cartella() == str(dropbox) and suonati[-1] == "cartella_cambiata"
+    # Dalla verifica finale la riapertura che non parte ha il suo suono, prima del messaggio; poi MESS si chiude per il cambio di cartella.
+    assert finestra.chiusa and percorsi.cartella() == str(dropbox)
+    assert suonati == ["cartella_mondo", "domanda", "riapertura_mancata", "cartella_cambiata"]
 
 
 def test_lo_spostamento_che_non_riesce_lascia_tutto_com_era(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
@@ -912,7 +920,8 @@ def test_lo_spostamento_che_non_riesce_lascia_tutto_com_era(finestra, suonati, m
     monkeypatch.setattr(os, "rename", rinomina)
     _sceglie(monkeypatch, nuova)
     finestra.scegli_la_cartella_del_mondo()
-    assert suonati == ["cartella_mondo", "salvataggio_non_riuscito"]
+    # Il mondo si è salvato, sono i dati che non si spostano: il suono dello spostamento, non quello del salvataggio.
+    assert suonati == ["cartella_mondo", "cartella_non_spostata"]
     assert set(os.listdir(cartella_di_prova)) == dati and os.listdir(nuova) == []
     assert percorsi.cartella() == str(cartella_di_prova)
     assert finestra.vista.GetValue().startswith(f"I dati del mondo non si sono potuti spostare nella cartella {nuova}: Accesso negato:")
@@ -1007,6 +1016,7 @@ def test_la_penna_staccata_e_il_mondo_che_non_si_salva_nemmeno_nella_nuova(fines
     finestra.scegli_la_cartella_del_mondo()
     # Tutto torna com'era: i dati della cartella al loro posto, senza riserva, e il file che nomina ancora la penna.
     assert _albero(dropbox) == prima_sua and percorsi.cartella() == str(penna)
+    # Qui è il mondo che non si salva, e il suono resta quello del salvataggio non riuscito.
     assert suonati == ["cartella_mondo", "domanda", "salvataggio_non_riuscito"]
     testo = finestra.vista.GetValue()
     assert testo.startswith(f"I dati del mondo non si sono potuti spostare nella cartella {dropbox}: il mondo non si è potuto salvare nella cartella nuova.")
@@ -1176,3 +1186,85 @@ def test_dopo_il_si_a_un_mondo_nuovo_mess_si_apre_senza_altri_avvisi(avvio_inter
     assert Showdown.avvia_finestra() == Showdown.APERTA
     assert suonati == ["cartella_assente", "cartella_mondo", "domanda"]
     assert avvio_intero[0].origine == archivio.NATO and percorsi.cartella() == str(vuota)
+
+
+# La verifica finale del 23 ottobre 2026: le copie dei file illeggibili una volta sola, la notizia dei dati spostati nel registro.
+
+def _riga_delle_copie(cartella):
+    return f"Una copia dei file è nella cartella {cartella}."
+
+
+def test_carica_puo_non_mettere_da_parte_i_file_illeggibili(cartella_di_prova):
+    _mondo_del_futuro(str(cartella_di_prova))
+    with pytest.raises(archivio.SalvataggioIllegibile) as errore:
+        archivio.carica(Mondo(), metti_da_parte=False)
+    assert errore.value.cartella is None and not (cartella_di_prova / archivio.CARTELLA_QUARANTENA).exists()
+    with pytest.raises(archivio.SalvataggioIllegibile) as errore:
+        archivio.carica(Mondo())
+    assert os.listdir(cartella_di_prova / archivio.CARTELLA_QUARANTENA) == [os.path.basename(errore.value.cartella)]
+
+
+def test_due_riprova_sullo_stesso_salvataggio_illeggibile_fanno_una_cartella_di_copie_sola(avvio_intero, suonati, monkeypatch, cartella_di_prova,
+                                                                                           tmp_path_factory):
+    # Ogni Riprova rifaceva le copie, in una cartella datata nuova a ogni secondo: col cloud, dove il testo consiglia di riprovare, si moltiplicavano.
+    _mondo_del_futuro(str(cartella_di_prova))
+    altra = tmp_path_factory.mktemp("altra")
+    _mondo_del_futuro(str(altra))
+    # Un secondo in più a ogni lettura dell'orologio: senza la correzione, ogni Riprova avrebbe la sua cartella.
+    secondi = itertools.count()
+    monkeypatch.setattr(archivio, "adesso", lambda: OGGI + datetime.timedelta(seconds=next(secondi)))
+    monkeypatch.setattr(dialoghi, "scegli_cartella", lambda genitore, titolo, partenza="": str(altra))
+    avviso = AvvisoFinto([(dialoghi.RIPROVA, None), (dialoghi.RIPROVA, None), (dialoghi.UN_ALTRA_CARTELLA, None), (dialoghi.RIPROVA, None),
+                          (dialoghi.ESCI, None)])
+    monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", avviso)
+    assert Showdown.avvia_finestra() == Showdown.ILLEGGIBILE
+    qui = os.listdir(cartella_di_prova / archivio.CARTELLA_QUARANTENA)
+    la = os.listdir(altra / archivio.CARTELLA_QUARANTENA)
+    assert len(qui) == 1 and len(la) == 1
+    # L'avviso dice sempre dove stanno le copie: quelle della prima volta, per ciascuna cartella.
+    copie_qui, copie_la = cartella_di_prova / archivio.CARTELLA_QUARANTENA / qui[0], altra / archivio.CARTELLA_QUARANTENA / la[0]
+    assert [_riga_delle_copie(copie_qui) in testo for testo in avviso.testi] == [True, True, True, False, False]
+    assert [_riga_delle_copie(copie_la) in testo for testo in avviso.testi] == [False, False, False, True, True]
+    assert all("MESS non salva il mondo in quella cartella." in testo for testo in avviso.testi)
+    assert suonati == ["salvataggio_illeggibile"] * 3 + ["cartella_mondo"] + ["salvataggio_illeggibile"] * 2
+
+
+def test_le_copie_che_non_riescono_si_riprovano(avvio_intero, monkeypatch, cartella_di_prova):
+    _mondo_del_futuro(str(cartella_di_prova))
+    vera, chiamate = archivio._metti_da_parte, []
+
+    def metti_da_parte(*file):
+        chiamate.append(file)
+        return None if len(chiamate) == 1 else vera(*file)
+
+    monkeypatch.setattr(archivio, "_metti_da_parte", metti_da_parte)
+    avviso = AvvisoFinto([(dialoghi.RIPROVA, None), (dialoghi.RIPROVA, None), (dialoghi.ESCI, None)])
+    monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", avviso)
+    assert Showdown.avvia_finestra() == Showdown.ILLEGGIBILE
+    # La prima volta le copie non riescono, e l'avviso non le nomina; la seconda sì, e poi basta.
+    assert len(chiamate) == 2
+    copie = cartella_di_prova / archivio.CARTELLA_QUARANTENA / os.listdir(cartella_di_prova / archivio.CARTELLA_QUARANTENA)[0]
+    assert ["Una copia dei file" in testo for testo in avviso.testi] == [False, True, True]
+    assert _riga_delle_copie(copie) in avviso.testi[2]
+
+
+def test_la_notizia_dei_dati_spostati_resta_nel_registro(avvio_intero, suonati, monkeypatch, programma_di_prova):
+    # Alla prima partenza i dati accanto al programma si spostavano, poi il mondo non si leggeva, e con Esci la notizia non compariva mai.
+    os.remove(percorsi.file_della_cartella())
+    _mondo_del_futuro(str(programma_di_prova))
+    avviso = AvvisoFinto([(dialoghi.ESCI, None)])
+    monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", avviso)
+    acceso = faulthandler.is_enabled()
+    registro.avvia(str(programma_di_prova))
+    try:
+        assert Showdown.avvia_finestra() == Showdown.ILLEGGIBILE
+    finally:
+        registro.chiudi()
+        if acceso and not faulthandler.is_enabled():
+            faulthandler.enable(file=sys.__stderr__)
+    mondo = programma_di_prova / "Mondo"
+    assert (mondo / FILE_MONDO).is_file() and not (programma_di_prova / FILE_MONDO).exists()
+    testo = (programma_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
+    assert (f"Il mondo e i dati di gioco ora stanno nella cartella del mondo, {mondo}: li ho spostati da accanto al programma, nella "
+            f"cartella {programma_di_prova}.") in testo
+    assert suonati == ["salvataggio_illeggibile"] and avviso.testi[0].startswith(f"Il salvataggio del mondo, nella cartella {mondo}, c'è ma")

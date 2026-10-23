@@ -62,6 +62,7 @@ sede. La migrazione dall'8 lo dà a tutte, anche a quelle dell'utente, estratto 
 da un caso nato dal nome, come per le polisportive del computer che nascono, e il caso del mondo non si tocca.
 Dal 2026-10-23, richiesta di Gabriele, il salvataggio, la copia e i salvataggi illeggibili stanno nella cartella
 del mondo, che percorsi.py rilegge a ogni chiamata e che si sceglie dal menu Impostazioni, non più accanto al programma.
+Con la verifica finale dello stesso giorno carica può non rifare le copie dei salvataggi illeggibili, per le Riprova dell'avvio.
 """
 
 import contextlib
@@ -753,13 +754,17 @@ def _fai_nascere(mondo):
     mondo.nuovi_giocatori_sessione.clear()
 
 
-def carica(mondo):
+def carica(mondo, metti_da_parte=True):
     """
     Carica il mondo dal salvataggio, oppure dalla copia di sicurezza se il salvataggio non si
     può usare; se non c'è nessuno dei due, fa nascere un mondo nuovo. Restituisce da dove viene il
     mondo: NATO, CARICATO o DALLA_COPIA. Se i file ci sono ma nessuno dei due si legge, blocca i
-    salvataggi del mondo e solleva SalvataggioIllegibile. Dalla verifica del 15 ottobre 2026, a mondo
-    pronto la memoria si congela, congela_la_memoria.
+    salvataggi del mondo e solleva SalvataggioIllegibile, dopo averne messo le copie in una cartella
+    datata di salvataggi_illeggibili. Dalla verifica finale della cartella del mondo, 23 ottobre 2026,
+    con metti_da_parte falso quelle copie non si fanno, e l'errore ha la cartella None: l'avvio lo
+    chiede a ogni Riprova dopo la prima, che le copie le ha già fatte. Il salvataggio scartato quando il
+    mondo viene dalla copia si mette da parte sempre, perché la copia sta per prendere il suo posto.
+    Dalla verifica del 15 ottobre 2026, a mondo pronto la memoria si congela, congela_la_memoria.
     Dal 16 ottobre 2026, decisione 4 di Gabriele, mentre si legge e si costruisce il mondo la raccolta dei
     cicli resta spenta, senza_raccolta: il mondo sono milioni di oggetti che nascono tutti insieme e
     vivono a lungo, e la raccolta li ripassava più volte, anche per intero, mentre crescevano. Alla fine
@@ -769,12 +774,12 @@ def carica(mondo):
     riesce, la raccolta si riaccende lo stesso. Il mondo caricato non cambia.
     """
     with senza_raccolta():
-        origine = _carica(mondo)
+        origine = _carica(mondo, metti_da_parte)
         congela_la_memoria()
     return origine
 
 
-def _carica(mondo):
+def _carica(mondo, metti_da_parte=True):
     """Il caricamento di carica, senza la memoria congelata."""
     principale = percorsi.percorso(FILE_MONDO)
     copia = percorsi.percorso(FILE_MONDO_COPIA)
@@ -805,7 +810,7 @@ def _carica(mondo):
             _annuncia_ripiego(mondo, motivo, principale, copia, esiste_principale)
             return DALLA_COPIA
     mondo.salvataggio_bloccato = True
-    raise SalvataggioIllegibile(motivo, _metti_da_parte(principale, copia))
+    raise SalvataggioIllegibile(motivo, _metti_da_parte(principale, copia) if metti_da_parte else None)
 
 
 def _annuncia_ripiego(mondo, motivo, principale, copia, esiste_principale):
