@@ -51,6 +51,10 @@ d'allenamento, nel riepilogo della sala e nel diario, elenca tutte le caratteris
 col suo da e a con due decimali, o con quelli che servono quando a due la salita non si vedrebbe: il
 riassunto delle altre caratteristiche salite di meno non c'è più. È di Gabriele Battaglia (IZ4APU) &
 ClaudIA (Claude Opus 5.5, UltraCode).
+Con la issue 7, dallo stesso collaudo, la riga del mercato dei giocatori dice subito dopo nome e
+cognome la classe, come I1, e l'età completa in anni, mesi e giorni d'età separati dai due punti, come
+17:4:3, contata sul calendario dell'età, con l'anno da 108 giorni e il mese da 9: è quella della
+scheda. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -214,6 +218,15 @@ def nome_completo(g):
 
 def anni(g):
     return int(g.eta_anni)
+
+
+def eta_completa(g):
+    """
+    L'età completa in anni, mesi e giorni d'età separati dai due punti, 17:4:3, come la vuole
+    Gabriele nel mercato dei giocatori, issue 7. È la stessa età della scheda, contata sul calendario
+    dell'età, con l'anno da 108 giorni e il mese da 9, quindi i giorni vanno da 0 a 8.
+    """
+    return formatta_eta_sim(g.eta, formato_breve=True, separatore=":")
 
 
 def indole(g):
@@ -1202,7 +1215,10 @@ def info_mercato(p, mondo):
 
 
 def riga_mercato(c):
-    """Un candidato del mercato in una riga: chi è, quanto vale, quanto prende al mese e quanto costa averlo."""
+    """
+    Un candidato del mercato in una riga: chi è, quanto vale, quanto prende al mese e quanto costa
+    averlo. Dalla issue 7, subito dopo nome e cognome, la classe e l'età completa: Anna Neri, I1, 17:4:3.
+    """
     g = c.giocatore
     if c.tipo == mercato.LIBERO:
         costo = f"chiede {euro(c.costo)} d'ingaggio"
@@ -1214,7 +1230,7 @@ def riga_mercato(c):
         mese = mese_e_anno(g.contratto_scadenza)
         costo += f", contratto fino {'ad' if mese[0] in 'aeiou' else 'a'} {mese}"
     tratti = "".join(", " + t for t in tratti_speciali(g))
-    return f"{nome_completo(g)}, {anni(g)} anni, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(c.stipendio)}, {costo}{tratti}, ID {g.id}"
+    return f"{nome_completo(g)}, {codice_classe(g)}, {eta_completa(g)}, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(c.stipendio)}, {costo}{tratti}, ID {g.id}"
 
 
 def _mossa(p, mondo):

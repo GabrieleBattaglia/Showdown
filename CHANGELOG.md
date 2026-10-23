@@ -49,6 +49,8 @@ Il mondo passa al formato 9: all'aggiornamento ogni polisportiva riceve una sede
 
 Il riepilogo della sala allenamento e il diario dicono ogni spesa per intero: tutte le caratteristiche che ha fatto salire, ciascuna da un valore all'altro con due decimali, come chiusura sinistra da 14,62 a 14,71, al posto del vago "2 altre caratteristiche di meno". Quando una caratteristica sale così poco che a due decimali sembrerebbe ferma, ha i decimali che servono a vederla salire, come precisione da 0,183 a 0,184.
 
+Nel mercato dei giocatori ogni candidato dice, subito dopo nome e cognome, la classe e l'età completa in anni, mesi e giorni separati dai due punti, come Anna Neri, I1, 17:4:3: è l'età esatta della scheda, contata sul calendario dell'età, dove un anno ha 12 mesi da 9 giorni. Il resto della riga non cambia.
+
 ## [1.94.6] - 2026-10-23
 
 Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.

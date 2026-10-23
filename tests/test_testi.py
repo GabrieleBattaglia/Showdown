@@ -172,6 +172,12 @@ def test_testi_del_mercato_e_delle_polisportive(mondo):
     libero = mercato.Candidato(g, mercato.LIBERO, 450, 210)
     riga = testi.riga_mercato(libero)
     assert riga.startswith(f"{g.nome} {g.cognome}, ") and ", stipendio 210 euro, chiede 450 euro d'ingaggio" in riga and riga.endswith(", ID 1")
+    # Dalla issue 7, subito dopo nome e cognome la classe e l'età completa, sul calendario dell'età della scheda.
+    g.eta = 108 * 17 + 9 * 4 + 3
+    assert testi.eta_completa(g) == "17:4:3"
+    assert testi.riga_mercato(libero).startswith(f"{g.nome} {g.cognome}, {testi.codice_classe(g)}, 17:4:3, valore ")
+    assert "Età: 17 anni, 4 mesi e 3 giorni simulati" in testi.scheda_giocatore(g, mondo)
+    assert " anni, " not in testi.riga_mercato(libero)
     in_vendita = mercato.Candidato(mondo.giocatori[3], mercato.IN_VENDITA, 1200, 300, cpu)
     assert f", in vendita da {cpu.nome} a 1.200 euro" in testi.riga_mercato(in_vendita)
     domanda = testi.domanda_ingaggio(libero, 450, 50.0, p, mondo)

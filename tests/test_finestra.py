@@ -470,6 +470,10 @@ def test_mercato(finestra, monkeypatch):
         assert valori == sorted(valori, reverse=True)
         assert dialogo.etichetta_trovati.GetLabel() == f"&Giocatori trovati: {len(liberi) + 1}"
         assert dialogo.elenco_filtri.GetString(0) == "Nessun filtro: compaiono tutti."
+        # Dalla issue 7 l'elenco dice, dopo nome e cognome, la classe e l'età completa.
+        primo = dialogo.righe[0].giocatore
+        assert dialogo.trovati.GetString(0) == testi.riga_mercato(dialogo.righe[0])
+        assert dialogo.trovati.GetString(0).startswith(f"{_nome(primo)}, {testi.codice_classe(primo)}, {testi.eta_completa(primo)}, valore ")
         dialogo.scelta.SetSelection(3)
         dialogo.aggiorna()
         assert [c.giocatore.id for c in dialogo.righe] == [10]

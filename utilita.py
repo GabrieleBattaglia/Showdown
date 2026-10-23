@@ -4,6 +4,9 @@ l'impronta delle password e, dal 2026-10-16, la raccolta della memoria spenta pe
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py. Nel simulatore un
 anno dura 108 giorni, divisi in 12 mesi da 9 giorni.
+Con la issue 7 di Gabriele, dal collaudo di gioco del 2026-10-23, l'età in forma breve sceglie il
+separatore, per i due punti del mercato dei giocatori, 17:4:3. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -109,14 +112,18 @@ def converti_giorni_sim(giorni_totali, anno_sim_giorni=ANNO_SIMULAZIONE_GIORNI, 
     return anni_compiuti, mesi_dopo_compleanno + 1, giorni_dopo_mese + 1
 
 
-def formatta_eta_sim(giorni_totali, formato_breve=False):
-    """L'età in giorni del simulatore, per esteso oppure in forma breve anni/mesi/giorni."""
+def formatta_eta_sim(giorni_totali, formato_breve=False, separatore="/"):
+    """
+    L'età in giorni del simulatore, per esteso oppure in forma breve anni/mesi/giorni. Il separatore
+    della forma breve è la barra, oppure quello dato: i due punti del mercato dei giocatori, 17:4:3,
+    chiesti da Gabriele con la issue 7.
+    """
     try:
         anni, mesi, giorni = converti_giorni_sim(giorni_totali, per_eta=True)
     except TypeError:
         return "Età N/D"
     if formato_breve:
-        return f"{anni}/{mesi}/{giorni}"
+        return f"{anni}{separatore}{mesi}{separatore}{giorni}"
     a_str = f"{anni} ann{'o' if anni == 1 else 'i'}"
     if mesi > 0 or giorni > 0:
         m_str = f"{mesi} mes{'e' if mesi == 1 else 'i'}"

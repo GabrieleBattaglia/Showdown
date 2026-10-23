@@ -25,6 +25,10 @@ def test_eta_per_esteso_e_breve():
     assert formatta_eta_sim(109) == "1 anno, 0 mesi e 1 giorno"
     assert formatta_eta_sim(108 * 20 + 9 + 2) == "20 anni, 1 mese e 2 giorni"
     assert formatta_eta_sim(108 * 20 + 9 + 2, formato_breve=True) == "20/1/2"
+    # Il separatore dei due punti del mercato dei giocatori, issue 7: l'ultimo giorno di un mese d'età è l'8.
+    assert formatta_eta_sim(108 * 17 + 9 * 4 + 3, formato_breve=True, separatore=":") == "17:4:3"
+    assert formatta_eta_sim(108 * 18 - 1, formato_breve=True, separatore=":") == "17:11:8"
+    assert formatta_eta_sim(108 * 18, formato_breve=True, separatore=":") == "18:0:0"
 
 
 def test_eta_non_valida():
