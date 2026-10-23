@@ -42,7 +42,11 @@ Dalla tappa 14, il 2026-10-23, la fondazione chiede anche la sede, un comune cer
 che si restringe mentre si scrive. Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, modalità auto). Con la decisione D34 arriva la proposta dell'aggiornamento automatico,
 con le note della release, che allo scadere dell'attesa si chiude da sola come Non adesso; questa parte
-è di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+è di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode). Dal collaudo di Gabriele del 23
+ottobre 2026 tutti i dialoghi si aprono massimizzati, come la finestra principale, ed Esc preme il loro
+pulsante Chiudi, se ce l'hanno: le due regole stanno in _Dialogo.completa, da cui passano tutti, così
+valgono anche per i dialoghi che verranno. Anche questa parte è di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -89,6 +93,8 @@ VAI_ALLA_FINE = "fine"
 MODI_DI_SEGUIRE = ((ASSISTI, "Assisti"), (VAI_ALLA_FINE, "Vai alla fine"))
 # I livelli della cronaca, con la normale come predefinita.
 LIVELLI_DI_CRONACA = ((cronaca.SINTETICA, "Sintetica"), (cronaca.NORMALE, "Normale"), (cronaca.TECNICA, "Tecnica"))
+# Il testo del pulsante che Esc preme, senza la lettera sottolineata: &Chiudi e C&hiudi valgono uguale.
+ETICHETTA_CHIUDI = "Chiudi"
 
 
 def controllo_col_fuoco():
@@ -96,8 +102,21 @@ def controllo_col_fuoco():
     return wx.Window.FindFocus()
 
 
+def pulsante_chiudi(finestra):
+    """Il primo pulsante Chiudi fra i controlli della finestra, a qualunque profondità, o None; i dialoghi che ci stanno dentro non contano."""
+    for figlio in finestra.GetChildren():
+        if figlio.IsTopLevel():
+            continue
+        if isinstance(figlio, wx.Button) and figlio.GetLabelText() == ETICHETTA_CHIUDI:
+            return figlio
+        trovato = pulsante_chiudi(figlio)
+        if trovato is not None:
+            return trovato
+    return None
+
+
 class _Dialogo(wx.Dialog):
-    """La base dei dialoghi: pannello che scorre, sizer verticale, chiusura con Esc."""
+    """La base dei dialoghi: pannello che scorre, sizer verticale, apertura massimizzata, chiusura con Esc."""
 
     def __init__(self, genitore, titolo):
         super().__init__(genitore, title=titolo, style=STILE_ADATTABILE)
@@ -131,8 +150,21 @@ class _Dialogo(wx.Dialog):
         return creati
 
     def completa(self, misura):
+        """
+        Dà il sizer al pannello e al dialogo la misura del contenuto, poi le due regole di tutte le finestre
+        interne, dal collaudo di Gabriele del 23 ottobre 2026. Il dialogo si apre massimizzato, come la
+        finestra principale, perché con lo screen reader e il display braille il testo largo va meno a capo;
+        la misura di adatta_finestra resta quella a cui torna se lo si ripristina. E se ha un pulsante
+        Chiudi, Esc lo preme: wx lo fa da sé soltanto quando Chiudi è wx.ID_CANCEL, o wx.ID_OK senza un
+        annullamento, e non con wx.ID_CLOSE o con un pulsante qualunque. Un dialogo che sceglie da sé il
+        pulsante di Esc, come l'aggiornamento col suo Non adesso, tiene il suo.
+        """
         self.pannello.SetSizer(self.sizer)
         adatta_finestra(self, self.pannello, misura)
+        self.Maximize()
+        chiudi = pulsante_chiudi(self)
+        if chiudi is not None and self.GetEscapeId() == wx.ID_ANY:
+            self.SetEscapeId(chiudi.GetId())
 
     def invio_su(self, controllo, azione):
         """
