@@ -47,6 +47,7 @@ import suoni
 import testi
 import tornei
 from calendario import SedeInDifferita
+from grammatica import torneo_con_preposizione
 from gui import sfide as gui_sfide
 from gui.dal_vivo import ALLA_FINE, CON_ESC, ascolta_in_differita
 from gui.dialoghi import Lettura, _Dialogo
@@ -315,7 +316,7 @@ class CalendarioTornei(_Dialogo):
             self.iscritti = [(self.mondo.giocatori[gid], posto) for posto, gid in enumerate(rosa, start=1) if gid in self.mondo.giocatori]
             righe_iscrivibili = [testi.riga_atleta_del_calendario(g, self.mondo) for g in self.iscrivibili] or ["Tutti i tuoi tesserati sono nella rosa."]
             if iscritto is None:
-                righe_iscritti = [f"{self.poli.nome} non è qualificata a {ed.nome}: si qualificano le polisportive con più gloria."]
+                righe_iscritti = [f"{self.poli.nome} non è qualificata {torneo_con_preposizione(ed.nome)}: si qualificano le polisportive con più gloria."]
             else:
                 righe_iscritti = [testi.riga_della_rosa(g, self.mondo, posto) for g, posto in self.iscritti] or ["La rosa è vuota."]
         self._riscrivi(self.elenco_iscrivibili, righe_iscrivibili, posti[0])
@@ -410,7 +411,7 @@ class CalendarioTornei(_Dialogo):
             return
         if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
             # Dal mondiale il posto passa al seguente, e chi hai tolto non torna convocato: si chiede.
-            if not self._conferma(f"Togliere {testi.nome_completo(g)} da {ed.nome}? Il posto passa al primo dei non convocati, e non si torna indietro."):
+            if not self._conferma(f"Togliere {testi.nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')}? Il posto passa al primo dei non convocati, e non si torna indietro."):
                 self.elenco_iscritti.SetFocus()
                 return
         rimborso = iscrizioni.togli(self.mondo, ed.id, g, self.poli)
@@ -422,10 +423,11 @@ class CalendarioTornei(_Dialogo):
         """La rosa della tua polisportiva qualificata alla coppa, fino a sei, nel dialogo della formazione."""
         iscritto = ed.iscritto(self.poli.nome)
         if iscritto is None:
-            self.avvisa(f"{self.poli.nome} non è qualificata a {ed.nome}: si qualificano le polisportive con più gloria.", self.elenco, "iscrizione_non_idoneo")
+            self.avvisa(f"{self.poli.nome} non è qualificata {torneo_con_preposizione(ed.nome)}: si qualificano le polisportive con più gloria.", self.elenco, "iscrizione_non_idoneo")
             return
         convocabili = [g for g in self._tesserati() if not g.ritirato]
-        dialogo = gui_sfide.FormazioneDialogo(self, self.mondo, f"Rosa per {ed.nome}", f"La rosa di {self.poli.nome} per {ed.nome}, dal "
+        dialogo = gui_sfide.FormazioneDialogo(self, self.mondo, f"Rosa {torneo_con_preposizione(ed.nome, 'per')}",
+                                              f"La rosa di {self.poli.nome} {torneo_con_preposizione(ed.nome, 'per')}, dal "
                                               f"{testi.data_breve(ed.data_inizio)}: i primi tre giocano ogni incontro, se sono sani, e le riserve li sostituiscono.",
                                               convocabili, iscritto.get("rosa", []), lambda ids: sfide.problema_rosa(self.mondo, ed.id, self.poli, ids))
         try:

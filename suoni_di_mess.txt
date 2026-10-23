@@ -1,18 +1,20 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 288 suoni, 263 della finestra e 25 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 301 suoni, 276 della finestra e 25 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
-Finestra, applicazione, l'avvio e l'uscita, 6 suoni.
+Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
 Il primo avvio, quando nasce un mondo nuovo: mess_mondo_nuovo.
 L'avvio con il mondo ripreso dalla copia di sicurezza, perché il salvataggio principale non si usa: mess_avvio_dalla_copia.
 L'avvio con le collezioni di nomi e cognomi difettose: mess_avvio_con_avvisi.
 L'uscita dal programma con il mondo salvato: mess_uscita.
 L'uscita dal programma quando il salvataggio finale non riesce: mess_uscita_senza_salvataggio.
-Finestra, applicazione, i salvataggi e gli errori gravi, 5 suoni.
+Si apre MESS mentre è già aperto, e la finestra aperta torna in primo piano: mess_primo_piano.
+Finestra, applicazione, i salvataggi e gli errori gravi, 6 suoni.
 Il mondo salvato con Ctrl+S: meditimer_banco_salvato.
 Il mondo salvato con Ctrl+S, ma con un avviso dell'archivio: mess_salvataggio_con_avviso.
 Un salvataggio che non riesce, con Ctrl+S o dopo un'operazione: mess_salvataggio_non_riuscito.
 All'avvio né il salvataggio né la sua copia si leggono, e il programma si ferma: mess_salvataggio_illeggibile.
-Un errore imprevisto del programma: sirena_d_allarme_1.
+Un errore imprevisto del programma, o un errore che lo ferma: sirena_d_allarme_1.
+All'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto: mess_crash_precedente.
 Finestra, applicazione, il fuoco, i dialoghi e gli elenchi, 9 suoni.
 F5, il fuoco va nella vista principale: spostamento_f5.
 F7, il fuoco va nella barra di stato: spostamento_f7.
@@ -23,13 +25,25 @@ Un valore da correggere in un campo, e il dialogo resta aperto: mess_campo_da_co
 Un elenco che si restringe mentre si scrive, e resta vuoto: espelli.
 Un elenco vuoto che torna a riempirsi mentre si scrive: aggiunta_giocatore.
 Una domanda di conferma, con Sì e No: meteora_sottotitoli_accesi.
-Finestra, applicazione, l'aiuto, 6 suoni.
+Finestra, applicazione, l'aiuto, 10 suoni.
 F1, la guida ai comandi, anche nella finestra dal vivo: pokermachine_manuale.
+Maiusc+F1, il manuale che si apre nel browser: mess_manuale.
+Maiusc+F1 quando il manuale manca o il browser non lo apre: mess_manuale_mancante.
 F2, le novità della versione: jingle_scoperta.
 F2, quando il file delle novità non si legge: mess_novita_illeggibile.
 F3, le informazioni con la versione e gli autori: mess_informazioni.
 Offrimi un caffè, nel menu Aiuto: donazione.
 Dona con PayPal, nell'invito al caffè: carillon_dolce.
+Entra al PUB, nel menu Aiuto, apre la finestra che prepara la mail d'iscrizione al gruppo di supporto: mess_pub_entra.
+Chiedi aiuto al PUB, nel menu Aiuto, apre la finestra che prepara la mail al gruppo, con la domanda da scrivere e le informazioni del computer: mess_pub_aiuto.
+Finestra, applicazione, l'aggiornamento automatico, 7 suoni.
+All'avvio, dal programma installato, è pronta una versione nuova e si apre la proposta di aggiornarsi: mess_aggiornamento_disponibile.
+Nella proposta dell'aggiornamento si preme Aggiorna, e comincia lo scaricamento: mess_aggiornamento_scelto.
+La proposta dell'aggiornamento resta senza risposta e si chiude da sola, da riproporre al prossimo avvio: mess_aggiornamento_scaduto.
+L'aggiornamento scaricato, e MESS che si chiude per installarlo e riaprirsi: mess_aggiornamento_esito.
+Lo scaricamento dell'aggiornamento non riesce, per esempio si interrompe, e si continua con questa versione: mess_aggiornamento_non_riuscito.
+La versione nuova c'è, ma il suo pacchetto non è ancora pronto da scaricare: mess_aggiornamento_non_pronto.
+L'aggiornamento scaricato non si installa perché un messaggio è rimasto aperto troppo a lungo; MESS resta aperto e lo ripropone al prossimo avvio: mess_aggiornamento_non_installato.
 Finestra, applicazione, le impostazioni, 14 suoni.
 Si apre il dialogo dell'aspetto, colori e caratteri, con Ctrl+P: scintillio_di_ghiaccio.
 Nel dialogo dell'aspetto, i valori tornano ai predefiniti: meteora_bande_azzerate.
@@ -53,7 +67,7 @@ Il diario di un giocatore: mess_diario_a_ritroso.
 L'elenco dei giocatori, con Ctrl+E: meteora_ramo_aggiornato.
 La classifica per valore, con Ctrl+L: meditimer_classifiche.
 La TOP 10 dei migliori giocatori, con Ctrl+T: mess_fuochi_d_artificio.
-Le statistiche del mondo, con Ctrl+I: meteora_marcatori.
+Le statistiche nazionali, con Ctrl+I: meteora_marcatori.
 Finestra, mondo, la sessione e la ricerca, 8 suoni.
 I nuovi arrivati della sessione, con Ctrl+Shift+N: meteora_marcatori_importati.
 I ritirati della sessione, con Ctrl+Shift+R: mess_saluto_in_eco.
@@ -235,7 +249,7 @@ Mostra tutti i risultati svela in un colpo gli incontri dei tuoi ancora da ascol
 Mostra tutti i risultati quando non c'è nessun incontro dei tuoi da svelare: mess_niente_da_svelare.
 Un incontro che non si può ascoltare né leggere: non è dei tuoi, o la sua edizione è già stata sostituita: mess_nessuna_differita.
 Si apre l'albo d'oro dei tornei, con Ctrl+Shift+B: mess_albo_d_oro.
-La classifica mondiale per sempre, uomini e donne, con Ctrl+Shift+W: mess_classifica_mondiale.
+La classifica nazionale per sempre, uomini e donne, con Ctrl+Shift+W: mess_classifica_mondiale.
 Finestra, tornei, gli editor, 17 suoni.
 Si apre l'editor dei modelli di torneo, con Ctrl+Shift+J: mess_editor_modelli.
 Nell'editor si apre il dialogo di un modello di torneo, nuovo o da modificare: mess_modello_torneo.
@@ -270,7 +284,7 @@ Nell'avanzamento un tuo atleta vince la medaglia d'oro in un torneo: mess_medagl
 Nell'avanzamento un tuo atleta vince la medaglia d'argento: mess_medaglia_argento.
 Nell'avanzamento un tuo atleta vince la medaglia di bronzo: mess_medaglia_bronzo.
 Nell'avanzamento un tuo atleta arriva quarto, la medaglia di legno: mess_medaglia_legno.
-Nell'avanzamento un tuo atleta vince il campionato mondiale: mess_titolo_mondiale.
+Nell'avanzamento un tuo atleta vince il campionato italiano e diventa campione o campionessa d'Italia: mess_titolo_mondiale.
 Nell'avanzamento la tua polisportiva vince la coppa d'oro della Coppa delle polisportive: mess_coppa_oro.
 Nell'avanzamento la tua polisportiva prende la coppa d'argento della Coppa delle polisportive: mess_coppa_argento.
 Nell'avanzamento la tua polisportiva prende la coppa di bronzo della Coppa delle polisportive: mess_coppa_bronzo.
@@ -280,7 +294,7 @@ Nell'avanzamento la tua polisportiva perde una sfida: mess_sfida_persa.
 Nell'avanzamento la tua polisportiva perde una sfida a tavolino, senza una squadra valida: mess_sfida_a_tavolino.
 Nell'avanzamento una polisportiva del computer sfida la tua, e aspetta la risposta entro oggi: mess_sfida_ricevuta.
 Nell'avanzamento una sfida alla tua polisportiva decade, senza risposta: mess_sfida_decaduta.
-Nell'avanzamento tuoi atleti convocati al campionato mondiale: mess_qualificati_mondiale.
+Nell'avanzamento tuoi atleti convocati al campionato italiano: mess_qualificati_mondiale.
 Nell'avanzamento la tua polisportiva qualificata alla Coppa delle polisportive: mess_qualificazione_coppa.
 Nell'avanzamento l'iscrizione automatica di un tuo atleta salta, perché la cassa non ha la quota: mess_iscrizioni_saltate.
 Nell'avanzamento un tuo atleta si fa male in gara e si ferma, anche col ritiro: mess_infortunio_in_gara.
@@ -289,7 +303,7 @@ Nell'avanzamento un tuo atleta perde a tavolino, perché non si presenta: mess_t
 Nell'avanzamento finisce un torneo dei tuoi, senza medaglie: mess_torneo_concluso.
 Nell'avanzamento l'iscrizione automatica iscrive tuoi atleti a un torneo: mess_iscrizioni_automatiche.
 Nell'avanzamento un torneo con tuoi iscritti si annulla per pochi iscritti, e la quota torna: mess_edizione_annullata.
-Nell'avanzamento finisce un campionato mondiale: mess_mondiale_concluso.
+Nell'avanzamento finisce un campionato italiano: mess_mondiale_concluso.
 Partita dal vivo, i suoni dell'incontro, 25 suoni.
 Il fischio singolo dell'arbitro, ai falli e alle riprese del gioco: mess_partita_fischio_singolo.
 La battuta, la paletta che colpisce la pallina al servizio: mess_partita_battuta.

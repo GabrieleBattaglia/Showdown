@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manuale di MESS</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --sfondo: #fcfcfa;
+  --testo: #1b1b1b;
+  --collegamento: #0a4d96;
+  --kbd-sfondo: #eceff3;
+  --kbd-bordo: #868c96;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sfondo: #131518;
+    --testo: #e9e9e9;
+    --collegamento: #8fc6ff;
+    --kbd-sfondo: #2a2f36;
+    --kbd-bordo: #7d838d;
+  }
+}
+html { font-size: 100%; }
+body {
+  margin: 0 auto;
+  padding: 1rem 1.25rem 4rem;
+  max-width: 46em;
+  background: var(--sfondo);
+  color: var(--testo);
+  font-family: system-ui, "Segoe UI", Arial, sans-serif;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+h1 { font-size: 2em; line-height: 1.2; margin: 0.6em 0 0.4em; }
+h2 { font-size: 1.6em; line-height: 1.25; margin: 2.4em 0 0.5em; padding-top: 0.6em; }
+h3 { font-size: 1.3em; line-height: 1.3; margin: 1.8em 0 0.4em; }
+p, li { max-width: 40em; }
+li { margin: 0.25em 0; }
+ol li { margin: 0.4em 0; }
+a { color: var(--collegamento); }
+a:focus, a:hover { outline: 0.15em solid var(--collegamento); outline-offset: 0.1em; }
+nav ul { padding-left: 1.4em; }
+nav li { margin: 0.15em 0; }
+kbd {
+  font-family: inherit;
+  font-size: 0.95em;
+  background: var(--kbd-sfondo);
+  color: var(--testo);
+  border: 0.06em solid var(--kbd-bordo);
+  border-bottom-width: 0.14em;
+  border-radius: 0.3em;
+  padding: 0.02em 0.35em;
+}
+code { font-family: Consolas, "Courier New", monospace; font-size: 0.95em; }
+</style>
+</head>
+<body>
+<h1>Manuale di MESS</h1>
+<p>MESS, Manageriale e Simulatore Showdown, è un gioco gestionale dello showdown, il tennistavolo per ciechi, pensato da un giocatore cieco. Questo manuale descrive la versione 2.0.0: come si installa, com'è fatta la finestra, che cosa fanno tutti i menu e i loro tasti, e le regole del gioco, dalla partita al campionato italiano.</p>
+<p>Il manuale si apre nel browser dal menu Aiuto, alla voce Manuale, oppure con <kbd>Maiusc+F1</kbd>. Nella finestra di MESS, <kbd>F1</kbd> mostra invece la guida ai comandi, più breve, con tutti i tasti e le legende. In questa pagina il tasto H di NVDA salta da un titolo all'altro, e i numeri da 1 a 3 portano ai titoli di quel livello.</p>
+<nav aria-label="Indice">
+<ul>
+<li><a href="#che-cos-e">Che cos'è MESS</a></li>
+<li><a href="#installazione">Installare MESS</a>
+<ul>
+<li><a href="#scaricare">Scaricare</a></li>
+<li><a href="#installatore">Il programma di installazione</a></li>
+<li><a href="#zip">La versione portatile, lo zip</a></li>
+<li><a href="#smartscreen">L'avviso di SmartScreen</a></li>
+<li><a href="#requisiti">Che cosa serve</a></li>
+<li><a href="#disinstallare">Disinstallare MESS</a></li>
+</ul></li>
+<li><a href="#primo-avvio">Il primo avvio e il mondo nuovo</a>
+<ul>
+<li><a href="#mondo-nuovo">Il mondo nuovo</a></li>
+<li><a href="#primi-passi">I primi passi</a></li>
+<li><a href="#aperture-seguenti">Le aperture seguenti</a></li>
+</ul></li>
+<li><a href="#finestra">La finestra</a>
+<ul>
+<li><a href="#vista">La vista principale</a></li>
+<li><a href="#barra">La barra di stato</a></li>
+<li><a href="#tempo-che-scorre">Il mondo che avanza</a></li>
+<li><a href="#dialoghi">I dialoghi</a></li>
+<li><a href="#suoni">I suoni</a></li>
+<li><a href="#fine-sessione">La fine della sessione</a></li>
+</ul></li>
+<li><a href="#menu">I menu e i loro tasti</a>
+<ul>
+<li><a href="#menu-file">Il menu File</a></li>
+<li><a href="#menu-giocatori">Il menu Giocatori</a></li>
+<li><a href="#menu-polisportive">Il menu Polisportive</a></li>
+<li><a href="#menu-partite">Il menu Partite</a></li>
+<li><a href="#menu-tornei">Il menu Tornei</a></li>
+<li><a href="#menu-mondo">Il menu Mondo</a></li>
+<li><a href="#menu-visualizza">Il menu Visualizza</a></li>
+<li><a href="#menu-impostazioni">Il menu Impostazioni</a></li>
+<li><a href="#menu-aiuto">Il menu Aiuto</a></li>
+</ul></li>
+<li><a href="#giocatori">Giocatori, schede e ricerche</a>
+<ul>
+<li><a href="#scegliere-giocatore">Scegliere un giocatore</a></li>
+<li><a href="#scheda-giocatore">La scheda del giocatore</a></li>
+<li><a href="#ricerca">La ricerca</a></li>
+<li><a href="#diari">I diari e le vecchie glorie</a></li>
+</ul></li>
+<li><a href="#regole">Le regole del gioco</a>
+<ul>
+<li><a href="#showdown">Lo showdown e la partita</a></li>
+<li><a href="#in-campo">Il giocatore in campo</a></li>
+<li><a href="#tempo-eta">Il tempo e l'età</a></li>
+<li><a href="#caratteristiche">Caratteristiche, valore e tratti</a></li>
+<li><a href="#classe">La classe, da K0 ad A1</a></li>
+<li><a href="#indoli">Le indoli e i programmi</a></li>
+<li><a href="#allenamento">L'allenamento e la sala allenamento</a></li>
+<li><a href="#infortuni">Infortuni e acciacchi</a></li>
+<li><a href="#esperienza">L'esperienza</a></li>
+<li><a href="#polisportive">Le tue polisportive</a></li>
+<li><a href="#economia">L'economia</a></li>
+<li><a href="#mercato">Il mercato dei giocatori</a></li>
+<li><a href="#contratti">I contratti e i rinnovi</a></li>
+<li><a href="#staff">Lo staff e gli allenatori</a></li>
+<li><a href="#gloria">La gloria e la fedeltà</a></li>
+<li><a href="#tornei">I tornei</a></li>
+<li><a href="#calendario">Il calendario predefinito</a></li>
+<li><a href="#campionato">Il Campionato italiano</a></li>
+<li><a href="#classifica">La Classifica nazionale e l'albo d'oro</a></li>
+<li><a href="#sfide">Le sfide fra polisportive</a></li>
+<li><a href="#coppa">La Coppa delle polisportive</a></li>
+<li><a href="#provenienza">La provenienza e la sede delle polisportive</a></li>
+<li><a href="#computer">Le polisportive del computer</a></li>
+</ul></li>
+<li><a href="#partite">Le partite da ascoltare e da leggere</a>
+<ul>
+<li><a href="#amichevole">L'amichevole</a></li>
+<li><a href="#dal-vivo">La partita dal vivo</a></li>
+<li><a href="#differita">La differita</a></li>
+<li><a href="#cronaca">La cronaca e i suoi annunci</a></li>
+</ul></li>
+<li><a href="#impostazioni">Le impostazioni</a></li>
+<li><a href="#file">I file di MESS</a>
+<ul>
+<li><a href="#dove-stanno">Dove stanno</a></li>
+<li><a href="#copia-sicurezza">La copia di sicurezza</a></li>
+<li><a href="#spostare-mondo">Salvare e spostare il mondo</a></li>
+</ul></li>
+<li><a href="#aggiornamenti-supporto">Aggiornamenti, errori e aiuto</a>
+<ul>
+<li><a href="#aggiornamento">L'aggiornamento automatico</a></li>
+<li><a href="#errori">Un errore imprevisto</a></li>
+<li><a href="#una-copia">Una sola copia aperta</a></li>
+<li><a href="#supporto">Chiedere aiuto e sostenere MESS</a></li>
+</ul></li>
+<li><a href="#licenza">Licenza e autori</a></li>
+</ul>
+</nav>
+<h2 id="che-cos-e">Che cos'è MESS</h2>
+<p>In MESS vive un'Italia dello showdown. All'inizio ci sono cinquanta atleti, e ogni giorno ne nascono di nuovi, finché il paese, dopo qualche decina d'anni di gioco, arriva a ventimila giocatori in attività. Ognuno ha un nome, un aspetto descritto a parole che invecchia con lui, un comune di provenienza, un carattere, un'indole di gioco e 24 caratteristiche tecniche e fisiche. Ci sono uomini e donne, ciechi e ipovedenti, ragazzi di nove anni e veterani; i giocatori crescono, si allenano, si infortunano, si ritirano, e i migliori diventano allenatori.</p>
+<p>Tu fondi una o più polisportive, scegli la loro sede fra i comuni italiani, tesseri atleti convincendoli con la gloria del tuo club e con i soldi della cassa, li alleni, rinnovi i contratti, assumi uno staff di allenatori, li iscrivi ai tornei e lanci sfide alle altre polisportive. Accanto alle tue vivono le polisportive del computer, che fanno le stesse cose secondo le stesse regole.</p>
+<p>Il tempo scorre con l'orologio vero, come in Hattrick: ogni 8 ore reali passa un giorno simulato, anche a programma chiuso. I tornei del calendario si giocano da soli, giorno dopo giorno, fino al Campionato italiano maschile e femminile di dicembre. Le partite dei tuoi atleti si giocano secondo il regolamento IBSA dello showdown, e si possono ascoltare dal vivo, con i suoni della pallina che corre sul tavolo, dei colpi e dell'arbitro.</p>
+<p>MESS è pensato per lo screen reader e il display braille: i testi sono discorsivi, senza tabelle a colonne né separatori grafici, ogni comando sta in un menu con il suo tasto rapido, ogni evento ha il suo suono, e la barra di stato tiene le informazioni essenziali in righe di quaranta caratteri.</p>
+<h2 id="installazione">Installare MESS</h2>
+<h3 id="scaricare">Scaricare</h3>
+<p>MESS si scarica dalla pagina delle release su GitHub, all'indirizzo <a href="https://github.com/GabrieleBattaglia/Showdown/releases/latest">https://github.com/GabrieleBattaglia/Showdown/releases/latest</a>. I file del programma sono due: il programma di installazione, che va bene quasi per tutti e si chiama MESS-Setup seguito dal numero della versione, per esempio MESS-Setup-2.0.0.exe, e MESS.zip, la versione portatile, che non si installa. Gli archivi Source code, che GitHub aggiunge da sé a ogni release, contengono il codice sorgente e non il programma. Il browser può avvisare che il file non viene scaricato spesso: in quel caso scegli di mantenerlo.</p>
+<h3 id="installatore">Il programma di installazione</h3>
+<p>Il programma di installazione non chiede i diritti di amministratore: installa MESS soltanto per il tuo utente, nella cartella MESS dentro AppData\Local\Programs del tuo profilo, dove MESS può scrivere il suo mondo e aggiornarsi da solo. Le sue pagine sono quelle di ogni installazione di Windows, in italiano, e si passa dall'una all'altra con Avanti, <kbd>Alt+A</kbd>:</p>
+<ol>
+<li>Contratto di licenza, con il testo inglese della GNU General Public License versione 3, la licenza di MESS. Per proseguire scegli Accetto i termini del contratto di licenza, <kbd>Alt+C</kbd>: finché la scelta resta su Non accetto i termini del contratto di licenza, <kbd>Alt+N</kbd>, il pulsante Avanti non si attiva, e l'installazione si può soltanto annullare.</li>
+<li>Selezione cartella di installazione, con la cartella proposta, che conviene lasciare com'è. Quando installi una versione nuova sopra quella che hai, questa pagina non compare, e la cartella resta quella di prima.</li>
+<li>Selezione processi aggiuntivi, con la casella Crea un'icona sul desktop, <kbd>Alt+D</kbd>, che all'inizio è spenta.</li>
+<li>Pronto per l'installazione, con il riepilogo e il pulsante Installa, <kbd>Alt+A</kbd>.</li>
+<li>La fine, con la casella Esegui MESS, già spuntata, e il pulsante Fine, <kbd>Alt+F</kbd>.</li>
+</ol>
+<p>Se MESS è aperto, il programma di installazione lo dice, MESS è attualmente in esecuzione, e chiede di chiuderlo e poi di scegliere OK, oppure Annulla per uscire. Installare una versione nuova sopra quella che hai non tocca il tuo mondo né le tue impostazioni. MESS compare poi nel menu Start, con il nome MESS, fra le app e senza una cartella sua; sul desktop soltanto se ne hai chiesto l'icona. In Impostazioni di Windows, App installate, c'è anche MESS, da dove si disinstalla.</p>
+<h3 id="zip">La versione portatile, lo zip</h3>
+<p>La versione portatile si estrae in una cartella dove puoi scrivere, per esempio dentro Documenti o su una chiavetta: in Esplora risorse, sul file MESS.zip, il tasto Applicazioni apre il menu con Estrai tutto, che propone una cartella nuova chiamata MESS, accanto allo zip. Lo zip non ha una cartella al suo interno: MESS.exe, il programma da avviare, il file LICENSE, con il testo della licenza, e la cartella _internal, che contiene le librerie, i dati del gioco e questo manuale e non va toccata, stanno direttamente nella sua radice. Per questo conviene estrarlo sempre in una cartella sua, senza mescolarlo ad altri file. Anche la versione portatile si aggiorna da sola, nella sua cartella.</p>
+<p>Non mettere mai MESS dentro C:\Programmi. MESS tiene il mondo, le impostazioni e le cronache accanto al programma, e lì si aggiorna; in quella cartella, senza i diritti di amministratore, non si può scrivere, e il mondo non si salverebbe.</p>
+<h3 id="smartscreen">L'avviso di SmartScreen</h3>
+<p>MESS non è firmato digitalmente, come molti programmi liberi scritti da una persona sola. Per questo, la prima volta che avvii il programma di installazione, o MESS.exe della versione portatile, Windows può mostrare la finestra Windows ha protetto il PC, che dice che Microsoft Defender SmartScreen ha impedito l'avvio di un'app non riconosciuta. Non vuol dire che il programma sia pericoloso, ma soltanto che Windows non lo conosce ancora. Attiva il collegamento Ulteriori informazioni: compaiono il nome del file, l'autore, che risulta sconosciuto, e il pulsante Esegui comunque, che avvia il programma. L'avviso di solito non torna alle volte seguenti.</p>
+<h3 id="requisiti">Che cosa serve</h3>
+<ul>
+<li>Windows 10 o 11 a 64 bit.</li>
+<li>Le cuffie, per la partita dal vivo: la pallina si sente a destra o a sinistra, vicina o lontana, e con gli altoparlanti la posizione si capisce molto meno.</li>
+<li>Uno screen reader, NVDA o JAWS, per avere la cronaca delle partite anche sul display braille. Senza screen reader, la cronaca la legge la voce di Windows.</li>
+<li>La rete serve soltanto per controllare gli aggiornamenti e per la pagina dell'offerta di un caffè; le mail al PUB, il gruppo di supporto, le spedisci tu dalla tua posta.</li>
+</ul>
+<h3 id="disinstallare">Disinstallare MESS</h3>
+<p>Installato con il programma di installazione, MESS si disinstalla da Impostazioni di Windows, App installate, che in Windows 10 si chiama App e funzionalità: cerca MESS e scegli Disinstalla. Se MESS è aperto, il programma di disinstallazione chiede di chiuderlo. Tolto il programma, una domanda chiede: Cancello anche i dati di MESS? Il mondo, la sua copia di sicurezza, le impostazioni, i tornei e le cronache. Il No è già scelto: con No i dati restano nella cartella di MESS, e reinstallando MESS ritrovi il tuo mondo; con Sì si cancellano anche loro, con le vecchie glorie e i registri degli errori, e la cartella, se è rimasta vuota, se ne va. Se vuoi tenere il tuo mondo da un'altra parte, prima di disinstallare copia altrove mess_mondo.json.gz e mess_mondo.json.gz.bak. La versione portatile, programma e dati, sta tutta nella sua cartella: per toglierla basta cancellarla, dopo aver messo da parte il mondo se ti serve.</p>
+<h2 id="primo-avvio">Il primo avvio e il mondo nuovo</h2>
+<h3 id="mondo-nuovo">Il mondo nuovo</h3>
+<p>Al primo avvio non c'è nessun salvataggio, e nasce un mondo nuovo, con il suo suono: cinquanta giocatori generati a caso, e la data simulata che parte dal giorno in cui il mondo nasce. La finestra si apre a tutto schermo, e la vista principale dice la versione, che è nato un mondo nuovo con cinquanta giocatori, che il mondo ha già fatto il suo primo giorno simulato, e che non hai ancora una polisportiva attiva; l'ultima riga ricorda che <kbd>F1</kbd> mostra la guida ai comandi.</p>
+<p>Accanto al programma nascono il salvataggio del mondo e, al primo bisogno, la cartella tornei con i modelli del calendario e il file delle formule dei tornei: sono copie di quelli che viaggiano con il programma, e si possono cambiare con gli editor del menu Tornei. Le polisportive del computer nascono man mano, nei giorni che seguono.</p>
+<h3 id="primi-passi">I primi passi</h3>
+<ol>
+<li>Fonda la tua polisportiva con <kbd>Ctrl+N</kbd>: il nome, la sede, una password se vuoi, e la casella che la rende la polisportiva attiva. Parte con 20.000 euro di cassa. Il capitolo <a href="#polisportive">Le tue polisportive</a> spiega il dialogo.</li>
+<li>Apri il mercato con <kbd>Ctrl+K</kbd> e tessera i primi atleti fra i liberi, offrendo un premio d'ingaggio.</li>
+<li>Nella sala allenamento, <kbd>Ctrl+Maiusc+L</kbd>, guarda i tuoi tesserati, il loro programma e l'iscrizione automatica ai tornei.</li>
+<li>Gioca un'amichevole con <kbd>Ctrl+O</kbd>, e ascoltala dal vivo con Assisti.</li>
+<li>Guarda il calendario dei tornei con <kbd>Ctrl+U</kbd>, e la barra di stato con <kbd>F7</kbd> ogni volta che senti il suono di un avanzamento.</li>
+</ol>
+<h3 id="aperture-seguenti">Le aperture seguenti</h3>
+<p>Alle aperture seguenti il gioco dà il bentornato, dice quando risale l'ultimo avanzamento del mondo e quanto tempo fa, e racconta a parole che cosa è successo nel frattempo: nascite, ritiri, uscite di scena, guarigioni, tornei conclusi, mosse delle polisportive del computer e soprattutto le notizie delle tue polisportive. Il mondo fa tutti i giorni maturati mentre il programma era chiuso, uno per uno, prima che la finestra si apra: dopo un'assenza lunga, in un mondo grande, l'apertura può richiedere qualche secondo per ogni settimana passata. Dopo il suono dell'avvio si sente quello dell'avanzamento, se il mondo è andato avanti. Se la volta prima MESS si era chiuso di colpo, la prima riga della vista lo dice, con un suono suo, come spiega <a href="#errori">Un errore imprevisto</a>.</p>
+<p>Se il salvataggio non si può leggere, o risulta modificato a mano, il gioco riparte dalla copia di sicurezza, con un suono suo, e lo dice in testa alla vista. Se non si legge nemmeno la copia, il gioco si ferma senza salvare nulla, per non coprire i file con un mondo nuovo: il capitolo <a href="#copia-sicurezza">La copia di sicurezza</a> spiega dove finiscono.</p>
+<h2 id="finestra">La finestra</h2>
+<p>La finestra di MESS ha due aree di testo e la barra dei menu. <kbd>Tab</kbd> passa da un'area all'altra; <kbd>F5</kbd> porta sulla vista principale e <kbd>F7</kbd> sulla barra di stato, ciascuno con il suo suono. Tutti i comandi stanno nei menu, che si aprono con <kbd>Alt</kbd> o con <kbd>F10</kbd>, e quasi tutti hanno un tasto rapido che funziona da qualunque punto della finestra.</p>
+<h3 id="vista">La vista principale</h3>
+<p>La vista principale è un'area di testo grande e in sola lettura. Ogni comando mostra lì il suo risultato, al posto di quello di prima, e ci porta il cursore, sulla prima riga: una scheda, un elenco, una classifica, l'esito di un'operazione. Si legge con le frecce come un documento, una frase o una voce per riga, senza righe vuote. Quando il mondo avanza, la vista non cambia: chi sta leggendo non si vede spostare il testo.</p>
+<h3 id="barra">La barra di stato</h3>
+<p>La barra di stato sta sotto la vista principale e ha quattro righe, ciascuna entro quaranta caratteri, pensate per il display braille. Le prime tre sono scritte a codici, una lettera seguita da un numero, come in meditimer; la quarta è a parole. Quando ci arriva il cursore, la barra si ricalcola prima che lo screen reader la legga, e <kbd>F7</kbd> premuto sulla barra la rinfresca. Mentre il cursore è sulla barra, il programma non la riscrive da solo, per non spostartelo.</p>
+<ol>
+<li>Il tempo: s è la data simulata, con l'ora, e a il tempo che manca al prossimo avanzamento del mondo, in ore e minuti. Per esempio: s23/10/2026 14:00 a3h12m.</li>
+<li>La polisportiva attiva: prima il nome, accorciato se serve perché la riga resti nei quaranta caratteri, poi g la gloria, t i tesserati sul massimo, m le mosse di mercato che restano oggi, c la cassa in migliaia di euro, e d le sfide che restano da lanciare. Se non hai una polisportiva attiva, la riga lo dice.</li>
+<li>La popolazione: l i giocatori liberi, t i tesserati, f quelli fermi perché ritirati o infortunati, n il totale e p le polisportive.</li>
+<li>L'ultima cosa successa, a parole: il comando appena dato, il salvataggio, oppure la notizia più importante dell'ultimo avanzamento, per esempio 12 tuoi atleti al campionato italiano.</li>
+</ol>
+<p>La legenda della barra è anche in fondo alla guida ai comandi, <kbd>F1</kbd>.</p>
+<h3 id="tempo-che-scorre">Il mondo che avanza</h3>
+<p>Nel mondo passa un giorno simulato ogni 8 ore reali, a programma aperto e a programma chiuso. A finestra aperta, ogni minuto il gioco guarda se è maturato un giorno: in quel caso lo fa, salva il mondo e lo annuncia con un solo suono, quello della notizia più importante, insieme alla quarta riga della barra di stato che la dice. Quel suono è l'invito a premere <kbd>F7</kbd>. Il riepilogo completo dell'ultimo avanzamento si legge nel menu Mondo con <kbd>Ctrl+Maiusc+A</kbd>.</p>
+<p>Le notizie hanno un ordine di importanza. Prima un salvataggio non riuscito; poi le notizie delle tue polisportive, dai tesserati andati via senza stipendio alle sfide che aspettano la tua risposta, ai titoli, alle medaglie e alle convocazioni dei tuoi atleti, fino ai contratti in scadenza; poi il primo del mese, quando arrivano sponsor e stipendi; infine, se il mondo è avanzato di un giorno solo, le notizie dell'Italia, come i campionati e i tornei conclusi, le morti e le polisportive del computer che nascono o chiudono. Il giorno qualunque ha il suo suono, un'alba, e un avanzamento di più giorni insieme ha un suono suo.</p>
+<p>Mentre è aperto un dialogo, il mondo aspetta che si chiuda: un'operazione a metà non si trova mai il mondo cambiato sotto i piedi. Il tempo non va perso: il resto delle 8 ore resta per la volta dopo, e il tempo si misura in modo che il cambio dell'ora legale non faccia guadagnare o perdere un'ora.</p>
+<h3 id="dialoghi">I dialoghi</h3>
+<p>Molti comandi aprono un dialogo, ciascuno con il suono della sua apertura. In ogni dialogo ogni campo ha davanti la sua etichetta, che NVDA legge, e quasi tutte hanno una lettera sottolineata: <kbd>Alt</kbd> con quella lettera porta il cursore sul campo o preme il pulsante. In questo manuale, accanto ai campi e ai pulsanti principali, c'è il loro tasto. <kbd>Esc</kbd> chiude il dialogo senza fare altro.</p>
+<ul>
+<li>Le domande che chiedono conferma di un'operazione che non si ritira, come un'offerta, uno svincolo o la chiusura di una polisportiva, hanno il No già scelto: un Invio di troppo non conferma niente. Per confermare si sceglie Sì.</li>
+<li>Nei dialoghi dove un errore costerebbe caro, come il calendario dei tornei, il lancio delle sfide, le sfide in arrivo, lo staff e il mercato degli allenatori, non c'è un pulsante predefinito: Invio sugli elenchi non fa niente, e si agisce soltanto con i pulsanti.</li>
+<li>Un avviso che lascia aperto il dialogo, per esempio una cifra sbagliata o una password che non coincide, ha un suono suo che dice di che errore si tratta, e riporta il cursore sul campo da correggere.</li>
+<li>Gli elenchi che si restringono mentre scrivi in un altro campo suonano quando restano vuoti e quando tornano ad avere qualcuno, perché lo screen reader non li legge mentre cambiano.</li>
+<li>Alla chiusura dei dialoghi delle polisportive, la vista principale riassume le operazioni fatte, e il mondo si salva subito, se qualcosa è cambiato.</li>
+<li>Ogni dialogo si apre massimizzato, a tutto schermo come la finestra di MESS, così le righe lunghe vanno meno a capo, sullo schermo e sul display braille; se lo ripristini, torna alla misura del suo contenuto. Dove c'è il pulsante Chiudi, <kbd>Esc</kbd> fa la stessa cosa del pulsante. Tengono il loro <kbd>Esc</kbd> la partita dal vivo e la differita, dove esce senza svelare il risultato, e la proposta dell'aggiornamento, dove vale Non adesso.</li>
+<li>Restano della loro misura i messaggi di Windows, come gli avvisi e le domande sì o no, e la finestra che prepara le mail al PUB, descritta in <a href="#menu-aiuto">Il menu Aiuto</a>.</li>
+</ul>
+<h3 id="suoni">I suoni</h3>
+<p>MESS suona: ogni evento della finestra ha il suo effetto, e nessun suono serve due eventi. Si sentono l'avvio e l'uscita, i salvataggi, i comandi dei menu, l'apertura di ogni dialogo e il suo esito, gli avvisi, le notizie del mondo che avanza, la proposta dell'aggiornamento, la tua risposta e i suoi esiti, la finestra che torna in primo piano e gli errori imprevisti. Gli esiti diversi della stessa azione si distinguono a orecchio prima di leggere il messaggio: un ingaggio accettato e uno rifiutato, la password giusta e quella sbagliata, un salvataggio riuscito, uno riuscito con un avviso e uno fallito, l'aggiornamento scaricato, quello non riuscito e quello non ancora pronto. Nei dialoghi dove scegli una cifra, un tic breve fa sentire la probabilità che l'altro accetti, più acuto quanto più è probabile, perché lo screen reader non legge la nota che cambia sotto il campo.</p>
+<p>Il volume degli effetti e quello della partita dal vivo si regolano dal menu Impostazioni, alla voce Effetti sonori: a zero tacciono.</p>
+<h3 id="fine-sessione">La fine della sessione</h3>
+<p>Si esce con Esci nel menu File, <kbd>Ctrl+Q</kbd>, oppure con <kbd>Alt+F4</kbd>. Il mondo si salva, si sente il suono del congedo, e una finestra riassume la sessione: quanto è durata, quanti comandi hai dato, e che cosa è successo nel mondo intanto. <kbd>Esc</kbd> o il pulsante Chiudi la chiudono, e il programma finisce. Se il salvataggio non riesce, il riepilogo lo dice: alla prossima partenza ritroverai il mondo dell'ultimo salvataggio riuscito. Quando MESS si chiude da solo per installare un aggiornamento, salva il mondo ma il riepilogo non c'è, come spiega <a href="#aggiornamento">L'aggiornamento automatico</a>.</p>
+<h2 id="menu">I menu e i loro tasti</h2>
+<p>Ogni menu si apre con <kbd>Alt</kbd> e la sua lettera; ogni voce ha il suo tasto rapido, se c'è, che vale da qualunque punto della finestra principale. Dentro un menu aperto, ogni voce ha anche la sua lettera sottolineata, che NVDA annuncia: premerla sceglie la voce senza scorrere il menu con le frecce. Le voci che finiscono con i puntini aprono un dialogo. La guida ai comandi, <kbd>F1</kbd>, elenca le stesse voci con i loro tasti.</p>
+<h3 id="menu-file">Il menu File, Alt+F</h3>
+<ul>
+<li>Salva il mondo, <kbd>Ctrl+S</kbd>: salva subito il mondo. Di solito non serve, perché il mondo si salva da solo a ogni avanzamento, a ogni operazione sulle polisportive e all'uscita.</li>
+<li>Esci, <kbd>Ctrl+Q</kbd>: salva il mondo e chiude MESS, dopo il riepilogo della sessione.</li>
+</ul>
+<h3 id="menu-giocatori">Il menu Giocatori, Alt+G</h3>
+<ul>
+<li>Scheda del giocatore, <kbd>Ctrl+G</kbd>: chiede un giocatore e ne mostra la scheda completa.</li>
+<li>Diario del giocatore, <kbd>Ctrl+Maiusc+D</kbd>: chiede un giocatore e ne mostra il diario, dalle voci più recenti.</li>
+<li>Elenco dei giocatori, <kbd>Ctrl+E</kbd>: tutti i giocatori, in ordine di numero, con lo stato di ciascuno.</li>
+<li>Classifica per valore, <kbd>Ctrl+L</kbd>: i giocatori in attività dal valore più alto, con la classe, l'età, l'indole e il club.</li>
+<li>TOP 10, <kbd>Ctrl+T</kbd>: i dieci giocatori di maggior valore e le dieci polisportive di maggior valore collettivo.</li>
+<li>Statistiche nazionali, <kbd>Ctrl+I</kbd>: i numeri dell'Italia nel suo insieme, cioè giocatori in attività per sesso, età media, tesserati e liberi, valore medio, ipovedenti, le classi, i contratti in scadenza, gli allenatori e lo staff medio nazionale, il migliore per ogni caratteristica e la polisportiva di maggior valore collettivo.</li>
+<li>Cerca giocatori, <kbd>Ctrl+F</kbd>: la ricerca, descritta nel capitolo <a href="#ricerca">La ricerca</a>.</li>
+<li>Risultati della ricerca, <kbd>Ctrl+R</kbd>: mostra di nuovo i risultati dell'ultima ricerca della sessione.</li>
+<li>Nuovi arrivati della sessione, <kbd>Ctrl+Maiusc+N</kbd>: chi è nato da quando hai aperto il programma.</li>
+<li>Ritirati della sessione, <kbd>Ctrl+Maiusc+R</kbd>: chi si è ritirato nella sessione.</li>
+<li>Usciti di scena nella sessione, <kbd>Ctrl+Maiusc+U</kbd>: chi è morto o ha lasciato il mondo dello showdown nella sessione.</li>
+</ul>
+<h3 id="menu-polisportive">Il menu Polisportive, Alt+P</h3>
+<p>Quasi tutte le voci lavorano sulla polisportiva attiva. Se non ne hai una, la vista dice di fondarla con <kbd>Ctrl+N</kbd> o di sceglierla con <kbd>Ctrl+Maiusc+C</kbd>.</p>
+<ul>
+<li>Nuova polisportiva, <kbd>Ctrl+N</kbd>: fonda una polisportiva, con la sua sede.</li>
+<li>Cambia polisportiva attiva, <kbd>Ctrl+Maiusc+C</kbd>: sceglie la polisportiva attiva fra le tue, con la password se è protetta.</li>
+<li>Mercato, <kbd>Ctrl+K</kbd>: il mercato dei giocatori, per tesserare, comprare e fare offerte.</li>
+<li>Vendite dei tesserati, senza tasto rapido: mette in vendita un tuo tesserato, o lo toglie dalla vendita.</li>
+<li>Svincola un tesserato, <kbd>Ctrl+Maiusc+S</kbd>: libera un tesserato, che torna libero; a contratto in corso costa una buonuscita.</li>
+<li>Paga gli arretrati, <kbd>Ctrl+Maiusc+P</kbd>: decide a chi dare i soldi della cassa, e quanti, quando gli stipendi non sono stati pagati.</li>
+<li>Sala allenamento, <kbd>Ctrl+Maiusc+L</kbd>: spende i punti allenamento dei tesserati e ne sceglie programma, intensità e iscrizione automatica ai tornei.</li>
+<li>Contratti e rinnovi, <kbd>Ctrl+Maiusc+K</kbd>: propone i rinnovi dei contratti in scadenza.</li>
+<li>Staff della polisportiva attiva, <kbd>Ctrl+H</kbd>: il capo allenatore e i due assistenti, da assumere, rinnovare o licenziare.</li>
+<li>Mercato degli allenatori, <kbd>Ctrl+Maiusc+G</kbd>: tutti gli allenatori liberi, con i filtri e l'offerta d'ingaggio.</li>
+<li>Scheda della polisportiva attiva, <kbd>Ctrl+M</kbd>: la sede, la gloria, i tesserati, i conti, il palmarès, le sfide, lo staff e la rosa.</li>
+<li>Bilancio della polisportiva attiva, <kbd>Ctrl+B</kbd>: la cassa, lo sponsor, gli stipendi e le entrate e uscite dei mesi passati.</li>
+<li>Tesserati della polisportiva attiva, <kbd>Ctrl+Maiusc+T</kbd>: la rosa, con la scadenza del contratto di ciascuno.</li>
+<li>Diario della polisportiva attiva, <kbd>Ctrl+Maiusc+M</kbd>: la storia della polisportiva, dalle voci più recenti.</li>
+<li>Elenco delle polisportive, <kbd>Ctrl+Maiusc+E</kbd>: le polisportive in Italia, tue e del computer, con il comune della sede, i tesserati, la gloria e il valore.</li>
+<li>Password della polisportiva attiva, senza tasto rapido: mette, cambia o toglie la password.</li>
+<li>Chiudi la polisportiva attiva, senza tasto rapido: chiude per sempre la polisportiva, dopo la password, se c'è, e una domanda di conferma; i tesserati tornano liberi.</li>
+</ul>
+<h3 id="menu-partite">Il menu Partite, Alt+R</h3>
+<ul>
+<li>Amichevole, <kbd>Ctrl+O</kbd>: un'amichevole fra un tuo tesserato e un giocatore qualunque, da ascoltare dal vivo o da leggere.</li>
+<li>Lancia una sfida, <kbd>Ctrl+W</kbd>: sfida una polisportiva del computer a una gara a squadre.</li>
+<li>Sfide in arrivo, <kbd>Ctrl+Maiusc+F</kbd>: le sfide che le polisportive del computer hanno lanciato alla tua, da accettare o rifiutare entro il giorno.</li>
+<li>Storico delle sfide, <kbd>Ctrl+Maiusc+H</kbd>: le sfide delle tue polisportive, con le ultime dieci da riascoltare o da leggere.</li>
+<li>Salva la cronaca, <kbd>Ctrl+Maiusc+O</kbd>: salva in un file la cronaca dell'ultimo incontro mostrato o ascoltato nella sessione, amichevole, di torneo o di sfida.</li>
+</ul>
+<h3 id="menu-tornei">Il menu Tornei, Alt+T</h3>
+<ul>
+<li>Calendario e iscrizioni, <kbd>Ctrl+U</kbd>: le edizioni dei tornei, aperte, prossime o in corso, con le iscrizioni a mano dei tuoi tesserati.</li>
+<li>Iscrizioni dei tuoi atleti, <kbd>Ctrl+J</kbd>: lo stesso dialogo, con il cursore già sui tuoi tesserati iscrivibili alla prima edizione aperta.</li>
+<li>Tornei in corso, <kbd>Ctrl+Y</kbd>: il pannello dei tornei, con classifiche, incontri, differite e risultati da svelare.</li>
+<li>Albo d'oro, <kbd>Ctrl+Maiusc+B</kbd>: tutti i podi di tutte le edizioni, per sempre.</li>
+<li>Classifica nazionale, <kbd>Ctrl+Maiusc+W</kbd>: la classifica per sempre dei punti di tutti i tornei, uomini e donne, come un medagliere storico.</li>
+<li>Editor dei modelli di torneo, <kbd>Ctrl+Maiusc+J</kbd>: crea, cambia, duplica ed elimina i modelli del calendario.</li>
+<li>Editor delle formule, <kbd>Ctrl+Maiusc+Y</kbd>: crea e cambia le formule, cioè le fasi di un torneo, gironi e tabellone.</li>
+<li>Ripristina il calendario predefinito, senza tasto rapido: rimette i modelli e le formule di partenza, dopo una domanda; quelli di prima vanno in una cartella a parte, dentro la cartella tornei.</li>
+</ul>
+<h3 id="menu-mondo">Il menu Mondo, Alt+M</h3>
+<ul>
+<li>Data e prossimo avanzamento, <kbd>Ctrl+D</kbd>: la data simulata e quando arriverà il prossimo giorno, con la regola del tempo.</li>
+<li>Riepilogo dell'ultimo avanzamento, <kbd>Ctrl+Maiusc+A</kbd>: tutto ciò che è successo nell'ultimo avanzamento della sessione, notizie dei tuoi comprese.</li>
+<li>Vecchie glorie, <kbd>Ctrl+Maiusc+V</kbd>: il registro di chi è uscito di scena, con la data, l'età, la polisportiva, le partite e il valore finale.</li>
+</ul>
+<h3 id="menu-visualizza">Il menu Visualizza, Alt+V</h3>
+<ul>
+<li>Vista principale, <kbd>F5</kbd>: porta il cursore sulla vista principale.</li>
+<li>Barra di stato, <kbd>F7</kbd>: porta il cursore sulla barra di stato, e se è già lì la rinfresca.</li>
+</ul>
+<h3 id="menu-impostazioni">Il menu Impostazioni, Alt+I</h3>
+<ul>
+<li>Aspetto, colori e caratteri, <kbd>Ctrl+P</kbd>: dimensione dei caratteri e colori del testo e dello sfondo.</li>
+<li>Conservazione dei diari, senza tasto rapido: per quanti giorni simulati si tengono le voci dei diari.</li>
+<li>Effetti sonori, senza tasto rapido: il volume degli effetti e quello della partita dal vivo.</li>
+<li>Velocità di gioco, senza tasto rapido: quanto durano le pause della partita dal vivo.</li>
+<li>Annunci della cronaca, senza tasto rapido: se e come la cronaca della partita dal vivo arriva da sola alla sintesi e al display braille.</li>
+</ul>
+<p>Il capitolo <a href="#impostazioni">Le impostazioni</a> descrive ogni dialogo.</p>
+<h3 id="menu-aiuto">Il menu Aiuto, Alt+A</h3>
+<ul>
+<li>Guida ai comandi, <kbd>F1</kbd>: mostra nella vista tutti i menu con i loro tasti, i tasti della partita dal vivo e le legende dei tornei, delle sfide, della classe, dell'allenamento, dei contratti, dello staff e della barra di stato.</li>
+<li>Manuale, <kbd>Maiusc+F1</kbd>: apre questo manuale nel browser predefinito, con il suo suono, e la quarta riga della barra di stato dice manuale nel browser; la vista principale resta com'era. Il manuale è il file manuale.html, nella cartella _internal accanto a MESS.exe: se manca, o Windows non lo apre, lo dice la vista, con un suono suo.</li>
+<li>Novità, <kbd>F2</kbd>: le novità di ogni versione, dalla più recente.</li>
+<li>Informazioni, <kbd>F3</kbd>: la versione, gli autori, la licenza e dove sta il codice. Dice che MESS è software libero, con licenza GNU GPL versione 3, come spiega <a href="#licenza">Licenza e autori</a>.</li>
+<li>Offrimi un caffè, senza tasto rapido: l'invito a sostenere l'autore, con il pulsante Dona con PayPal, <kbd>Alt+P</kbd>, che apre nel browser la pagina di PayPal, e Chiudi, <kbd>Alt+C</kbd>, già scelto: <kbd>Invio</kbd> nel testo, come <kbd>Esc</kbd>, chiude l'invito, e PayPal si apre soltanto con il suo pulsante. È l'unico posto in cui compare l'invito.</li>
+<li>Entra al PUB (gruppo di supporto), senza tasto rapido: con il suo suono, apre la finestra Entra al PUB, il gruppo di supporto, che prepara la mail che ti iscrive al PUB, il gruppo di supporto dei programmi di Gabriele Battaglia, una lista di posta su Google Groups, dove si chiede aiuto, si segnalano i problemi e si propongono idee. La mail va all'indirizzo dell'iscrizione, prg-user-blind+subscribe@googlegroups.com, e si spedisce così com'è, perché Google non legge l'oggetto e il testo. Poi Google ti scrive per chiederti di confermare l'iscrizione, e basta seguire le sue istruzioni.</li>
+<li>Chiedi aiuto al PUB, senza tasto rapido: con il suo suono, apre la finestra Chiedi aiuto al PUB, che prepara la mail al gruppo, all'indirizzo prg-user-blind@googlegroups.com, con l'oggetto Chiedo per MESS seguito dalla versione, per esempio Chiedo per MESS 2.0.0. La prima riga del testo, Scrivi qui la tua domanda, al posto di questa riga, va sostituita con la tua domanda. Sotto, dopo la riga Informazioni su MESS e sul computer di chi scrive, ci sono la versione di MESS e una riga per ogni informazione sul computer, con la sua etichetta: il sistema operativo, con la versione, la build e l'architettura; il processore e i suoi nuclei logici; la memoria, totale e libera; la lingua di sistema; lo screen reader; lo schermo e la sua scala; la versione di Python; e se il programma è compilato, con sì o no. Quelle che non si riescono a leggere non ci sono. Nel testo della mail non ci sono nemmeno il tuo nome, il nome del computer o i percorsi; i file del registro da allegare, invece, possono contenere percorsi con il nome del tuo utente di Windows, come spiegato più avanti. Le informazioni sul computer, come ricordano la spiegazione della finestra e il passo del testo, puoi cancellarle prima di spedire, e così ogni altra cosa. Se non sei ancora iscritto al PUB, la finestra ti ricorda che puoi farlo con Entra al PUB.</li>
+</ul>
+<p>Le due voci del PUB aprono una finestra con il fuoco su un testo in sola lettura, che si legge con le frecce. MESS non spedisce mai niente da solo: la mail la rileggi e la spedisci tu, dalla tua posta. Come gli altri dialoghi, la finestra si apre massimizzata, e <kbd>Esc</kbd> la chiude; finché resta aperta, il mondo aspetta.</p>
+<ul>
+<li>Se Windows ha un programma di posta, la finestra si apre lo stesso, e il testo dice che cosa succede, con il nome del programma, per esempio Thunderbird. Il pulsante Apri nel programma di posta, <kbd>Alt+A</kbd>, già scelto, prepara la mail in quel programma, da rileggere e spedire. La finestra resta aperta, e il pulsante già scelto diventa Chiudi: <kbd>Invio</kbd> la chiude. Se il programma di posta non parte, la finestra passa da sola ai passi.</li>
+<li>Se la mail non compare, per esempio perché il nuovo Outlook di Windows 11 si apre senza un account, torna nella finestra e scegli Passo per passo, <kbd>Alt+P</kbd>.</li>
+<li>Senza un programma di posta la finestra comincia direttamente dai passi, e il testo lo dice prima del primo passo.</li>
+<li>Nei passi, MESS copia negli appunti un pezzo della mail alla volta, e il testo della finestra dice dove incollarlo nella tua posta, per esempio nella webmail del browser, seguito da quello che ha copiato. Entra al PUB ha due passi: l'indirizzo, nel campo A, e poi la mail da spedire, con l'oggetto e il testo che possono restare vuoti. Chiedi aiuto al PUB ne ha quattro: l'indirizzo, l'oggetto, il testo, in cui scrivere la tua domanda al posto della prima riga, e infine la spedizione. OK, <kbd>Alt+O</kbd>, già scelto, passa al passo dopo, e all'ultimo chiude la finestra. Quello che MESS copia negli appunti ci resta anche dopo.</li>
+<li>Chiudi, <kbd>Alt+C</kbd>, che nei passi si chiama Annulla, <kbd>Alt+A</kbd>, e <kbd>Esc</kbd> chiudono la finestra in qualunque momento.</li>
+</ul>
+<p>In Chiedi aiuto al PUB, se accanto al programma ci sono i file del registro, e non sono vuoti, il testo della finestra e l'ultimo passo ti dicono di allegarli alla mail, con il loro nome e la cartella in cui stanno: sono il resoconto della chiusura improvvisa della volta prima, di solito MESS - Crash precedente.log, e il registro degli errori, MESS - Errori.log. Allegarli tocca a te, dalla tua posta: MESS prepara soltanto l'indirizzo, l'oggetto e il testo. A differenza del testo della mail, i registri possono contenere dei percorsi con il nome del tuo utente di Windows, per esempio nei messaggi d'errore: la finestra e l'ultimo passo te lo ricordano, perché tu li controlli prima di spedire. Come aprire quella cartella lo spiega <a href="#dove-stanno">Dove stanno</a>.</p>
+<p>Quando la finestra si chiude, la quarta riga della barra di stato dice com'è andata. Se la mail si è aperta nel programma di posta, o hai percorso tutti i passi, dice mail d'iscrizione al PUB pronta, oppure mail d'aiuto al PUB pronta. Se l'hai chiusa prima, con il suono dell'annullamento, dice iscrizione al PUB annullata, oppure richiesta d'aiuto annullata.</p>
+<h2 id="giocatori">Giocatori, schede e ricerche</h2>
+<h3 id="scegliere-giocatore">Scegliere un giocatore</h3>
+<p>Quando un comando chiede un giocatore, come la scheda o il diario, si apre un dialogo con due campi. Nel primo, Numero o nome del giocatore, <kbd>Alt+N</kbd>, scrivi il suo numero, o una parte del nome o del cognome: l'elenco Giocatori, <kbd>Alt+G</kbd>, si restringe mentre scrivi, e dice per ognuno numero, nome, età e stato. Invio, o il pulsante del dialogo, per esempio Mostra la scheda, <kbd>Alt+M</kbd>, sceglie il giocatore selezionato nell'elenco, che dopo ogni lettera scritta è il primo.</p>
+<h3 id="scheda-giocatore">La scheda del giocatore</h3>
+<p>La scheda segue le schede dei mostri di Terminal Beast: una riga d'intestazione con i dati principali separati dalla barra verticale, poi i blocchi annunciati da un'etichetta fra parentesi quadre. In testa c'è la polisportiva, oppure libero, ritirato o uscito di scena; poi il numero, il nome, sesso ed età, il valore, la classe con la percentuale verso la seguente e la classe migliore della carriera.</p>
+<p>Seguono la provenienza, cioè comune, provincia e regione; la descrizione fisica, che cambia con l'età; altezza e peso, indole, ambizione, punti allenamento e gloria richiesta; la costanza recente, e per i tuoi tesserati anche il programma e l'intensità dell'allenamento; i tratti speciali, il carattere, l'infortunio o l'acciacco se ci sono; lo stipendio, il contratto e il valore di mercato. Poi le 24 caratteristiche, due per riga, ciascuna con l'aggettivo e il numero fra parentesi, divise in caratteristiche fisiche, difesa, attacco e polivalenti; la carriera, con partite, set e goal; chi allena, se è un allenatore; i tornei e il palmarès, con la Classifica nazionale e i titoli; le classifiche con posizione e percentuale; l'età esatta e il prossimo compleanno.</p>
+<p>Gli aggettivi delle caratteristiche sono quelli di Hattrick, dal più basso al più alto: Inesistente, Disastroso, Tremendo, Scarso, Debole, Insufficiente, Accettabile, Buono, Eccellente, Formidabile, Straordinario, Splendido, Magnifico, Fuoriclasse, Sovrannaturale, Titanico, Extraterrestre, Mitico, Magico, Utopico e Divino.</p>
+<h3 id="ricerca">La ricerca</h3>
+<p>Cerca giocatori, <kbd>Ctrl+F</kbd>, apre un dialogo con quattro campi:</p>
+<ul>
+<li>Dove cercare, <kbd>Alt+D</kbd>: i giocatori in attività, tutti, i liberi, i tesserati, i nuovi arrivati della sessione, i ritirati, gli usciti di scena nella sessione, oppure i risultati della ricerca precedente, per restringerla ancora.</li>
+<li>Caratteristica, <kbd>Alt+C</kbd>: il valore, la classe, l'età, la gloria richiesta, l'esperienza, i punti allenamento, l'ambizione, i mesi di contratto rimasti, il nome, il cognome, l'indole, il sesso, i tratti, cioè ipovedente, mancino, ambidestro, gioco rapido, cambio di velocità, talento, apprendista rapido, maturazione precoce e tardiva, e ognuna delle 24 caratteristiche.</li>
+<li>Condizione, <kbd>Alt+O</kbd>: maggiore di o minore di per i numeri, migliore di o peggiore di per la classe, contiene per i testi, sì o no per i tratti, uomo o donna per il sesso.</li>
+<li>Valore, <kbd>Alt+V</kbd>: il numero, la classe, scritta come nella scheda, per esempio G4, oppure il testo; per i tratti e il sesso non serve.</li>
+</ul>
+<p>Cerca, <kbd>Alt+E</kbd>, mostra i risultati nella vista, con il suono che dice se ce ne sono. Minore di vuol dire davvero minore, e non minore o uguale.</p>
+<h3 id="diari">I diari e le vecchie glorie</h3>
+<p>Ogni giocatore, ogni polisportiva e ogni allenatore ha il suo diario, con la data simulata e le voci più recenti in cima: l'entrata nel mondo e la fondazione, i tesseramenti e gli abbandoni, le partite con il punteggio dei set, gli allenamenti, gli infortuni e le guarigioni, le medaglie e i titoli, il ritiro e l'uscita di scena. Gli allenamenti consecutivi della stessa caratteristica si fondono in una voce sola, dal valore di partenza a quello d'arrivo, e i tornei e le sfide di un anno si riassumono in una voce dell'anno. Per quanto tempo si conservano le voci si sceglie dal menu Impostazioni.</p>
+<p>Chi esce di scena, perché muore o perché lascia il mondo dello showdown, resta nel registro delle vecchie glorie, dentro il salvataggio, e si legge dal menu Mondo con <kbd>Ctrl+Maiusc+V</kbd>; la sua uscita si annota anche nel file vecchie_glorie.log, accanto al programma.</p>
+<h2 id="regole">Le regole del gioco</h2>
+<h3 id="showdown">Lo showdown e la partita</h3>
+<p>Lo showdown si gioca su un tavolo rettangolare di 366 centimetri per 122, con le sponde tutto intorno, uno schermo a metà sotto cui la pallina deve passare, e a ogni testata una porta, la tasca. I due giocatori, bendati, colpiscono con una paletta una pallina sonora, e cercano di mandarla nella tasca dell'avversario. Le partite di MESS seguono il regolamento IBSA dello showdown, edizione 2025-2028.</p>
+<ul>
+<li>Il goal vale 2 punti; ogni errore di gioco dà 1 punto all'avversario; la penalità ne dà 2.</li>
+<li>Il set lo vince chi arriva a 11 punti con 2 di scarto, senza un tetto. Gli incontri sono al meglio di 3 o di 5 set.</li>
+<li>Ogni giocatore batte due volte di seguito. La battuta deve rimbalzare una volta sola sulla sponda laterale e passare sotto lo schermo, e chi riceve la para come ogni altro colpo.</li>
+<li>Ogni fallo ha la sua causa e la chiamata dell'arbitro: servizio irregolare, schermo centrale, out, body touch, difesa irregolare, invasione, infrazione paletta e infrazione palla.</li>
+<li>L'arbitro fa il sorteggio con la moneta, porta la pallina al battitore, annuncia servizio e punteggio e fischia. Ci sono il riscaldamento, un minuto nel singolare, la pausa fra i set, il cambio campo a 6 punti nell'ultimo set possibile, un time-out per set, la palla morta con il servizio ripetuto, le ammonizioni e le penalità, e rarissime palette e palline rotte. Non c'è pubblico.</li>
+</ul>
+<p>La gara a squadre, quella delle sfide e della Coppa delle polisportive, è un set unico a 31 punti con 2 di scarto, tre servizi a testa, la rotazione fissa dei tre titolari e il cambio campo a 16 punti. Al tavolo ci sono due giocatori di un sesso e uno dell'altro. A differenza del regolamento IBSA, durante la gara non ci sono sostituzioni: le riserve servono se un titolare non può presentarsi.</p>
+<p>Un giocatore che si fa male durante un incontro si ritira alla fine del set; chi non può presentarsi perde a tavolino, 11 a 0 in ogni set, e nella gara a squadre 31 a 0.</p>
+<h3 id="in-campo">Il giocatore in campo</h3>
+<p>In partita contano le caratteristiche, i tratti, la stanchezza e il carattere. La stanchezza cresce con i colpi giocati: la frena la resistenza, la accelera l'età, e un giocatore molto resistente regge cinque set. Il colpo si sceglie secondo i propri punti forti e il lato debole dell'avversario, ma riesce bene a chi è lucido e riposato; leggere l'avversario è da giocatori esperti. Chi ripete sempre lo stesso colpo diventa prevedibile, e il difensore ci si abitua.</p>
+<p>Il mancino sorprende con la sua angolazione, e gli avversari, abituati ai destri, sbagliano lato più spesso; l'ambidestro cambia mano per coprire il lato debole. Ogni giocatore ha un temperamento, che la scheda dice a parole, da molto calmo a impetuoso: l'impetuoso rischia colpi più forti e fa più falli e più ammonizioni, il calmo sbaglia meno, e l'esperienza riduce i falli di tutti. Nei giorni di torneo con più incontri, ogni incontro dopo il primo parte con un po' della fatica di quelli prima.</p>
+<h3 id="tempo-eta">Il tempo e l'età</h3>
+<p>Un giorno simulato passa ogni 8 ore reali, quindi tre giorni simulati ogni giorno vero. Il calendario simulato ha i mesi e gli anni veri: un mese simulato dura circa 10 giorni reali, e il primo di ogni mese arrivano lo sponsor e gli stipendi. L'età dei giocatori corre più in fretta del calendario: un anno d'età dura 108 giorni simulati, circa 36 giorni veri, così una carriera intera si vive in qualche anno di gioco.</p>
+<p>Gli atleti entrano nel mondo fra i 9 e i 45 anni, e ogni giorno ne nascono da 2 a 9. Dai 50 anni comincia il declino; ci si ritira fra i 58 e i 75 anni, si muore fra i 70 e i 103, e ogni tanto qualcuno lascia il mondo dello showdown prima del tempo. Chi si ritira o esce di scena lascia libero il suo posto nella polisportiva.</p>
+<h3 id="caratteristiche">Caratteristiche, valore e tratti</h3>
+<p>Ogni giocatore ha 24 caratteristiche, divise in quattro gruppi:</p>
+<ul>
+<li>Fisiche: precisione, resistenza e forza.</li>
+<li>Difesa: chiusura sinistra, blocco sinistro, blocco destro e chiusura destra.</li>
+<li>Attacco: lungolinea sinistro e destro, diagonale sinistra e destra, singola, doppia e tripla sponda a sinistra e a destra, bomba centrale e battuta sinistra e destra.</li>
+<li>Polivalenti: difesa, controllo palla, tenuta paletta e attacco.</li>
+</ul>
+<p>Ogni caratteristica ha una parte di nascita e una parte allenata. Il valore complessivo pesa ogni caratteristica e ogni tratto per quanto conta davvero in partita: la precisione e la forza pesano molto, le sponde poco. I tratti speciali sono quattro: mancino, ambidestro, gioco rapido e cambio di velocità. Un giocatore può essere cieco o ipovedente; gli ipovedenti chiedono il 10% di gloria in meno per firmare, e in allenamento hanno uno sconto del 7% sulle caratteristiche di gioco.</p>
+<p>Ognuno ha anche un'ambizione, da modesto ad ambiziosissimo, che accorcia o allunga i contratti e conta nei rinnovi, e i tratti rari dell'allenamento, descritti più avanti.</p>
+<h3 id="classe">La classe, da K0 ad A1</h3>
+<p>La classe dice a colpo d'occhio quanto vale un giocatore: va da K0, il livello 100, il più debole, ad A1, il livello 1, il più forte. Il codice è il numero del livello con una lettera al posto delle decine, A per lo zero fino a K per il dieci: la A va da A1 ad A9, le lettere dalla B alla J vanno da 0 a 9, e la K ha soltanto K0.</p>
+<p>La classe pesa per il 70% il valore delle caratteristiche, pesate come in partita, e per il 30% l'esperienza di carriera. La scheda dice anche la percentuale del cammino verso la classe seguente, per esempio G4, al 37% verso G3. Le soglie sono fisse per sempre: A1 è la carriera perfetta, dai 9 ai 50 anni, e chi la supera resta A1; i nati stanno fra la I e la F, i bravi a metà carriera fra la E e la D. La classe serve anche al sorteggio dei tornei, alle teste di serie e alla convocazione delle sfide.</p>
+<h3 id="indoli">Le indoli e i programmi</h3>
+<p>Ogni giocatore nasce con un'indole, che dice quali caratteristiche preferisce e guida la sua spesa in allenamento. Le indoli sono nove, ciascuna con le caratteristiche principali e, dopo, quelle secondarie:</p>
+<ul>
+<li>Aggressiva: lungolinea, diagonali, bomba e attacco; poi le sponde e la forza.</li>
+<li>Difensiva: chiusure, blocchi e difesa; poi controllo palla, tenuta paletta e resistenza.</li>
+<li>Atletica: precisione, resistenza e forza; poi difesa e chiusure.</li>
+<li>Granitica, come un muro di granito: blocchi e difesa; poi chiusure e tenuta paletta.</li>
+<li>Di rimessa: blocchi e attacco; poi diagonali e controllo palla.</li>
+<li>Di controllo: controllo palla e tenuta paletta; poi blocchi e difesa.</li>
+<li>Da battuta: le due battute; poi blocchi e precisione.</li>
+<li>Tecnica: le sponde e i lungolinea; poi controllo palla e tenuta paletta.</li>
+<li>Completa: nessuna preferenza.</li>
+</ul>
+<p>Il programma d'allenamento è l'indole secondo cui si spendono i punti con l'allenamento completo. Chi arriva nuovo parte dalla sua indole, e il programma ha lo stesso nome accordato: aggressivo, difensivo, atletico, granitico, di rimessa, di controllo, da battuta, tecnico o completo. Lo scegli tu, nella sala allenamento, per i tuoi tesserati; liberi e giocatori del computer spendono da soli, secondo la loro indole.</p>
+<h3 id="allenamento">L'allenamento e la sala allenamento</h3>
+<p>L'allenamento si paga in punti allenamento, che vengono da più fonti:</p>
+<ul>
+<li>La seduta di ogni giorno: un punto per ogni tesserato all'intensità normale, 0,6 alla leggera, 1,4 all'intensa, e mezzo punto per i liberi.</li>
+<li>Gli incontri, vinti o persi: un'amichevole ne dà da 1 a 2,2, e 0,5 in più al più debole, anche quando perde; una sfida 3,5 a ogni titolare della squadra che vince e 2 a quelli della squadra che perde; un incontro di torneo da 6,3 a 14,3, e 3,2 in più al più debole, moltiplicati per l'importanza del torneo, cioè 1 negli Open, 1,5 nei Gran Premi e 4 al campionato italiano. Un incontro della Coppa delle polisportive dà i punti di una sfida moltiplicati per la sua importanza, 3. In ogni incontro chi vince più set prende più punti, e i tornei sono la prima fonte di punti.</li>
+</ul>
+<p>Ogni punto compra più o meno lo stesso valore, qualunque caratteristica tu alleni: la precisione, che pesa tanto, sale piano, e le sponde salgono in fretta. Il prezzo cresce punto per punto, sempre più vicino al tetto, e l'ultimo punto costa dodici volte il primo; ogni caratteristica può arrivare fino a Divino. Sopra il 70% del tetto i livelli calano un poco col passare del tempo, se non si continuano ad allenare, e dai 50 anni c'è il declino dell'età. Cresce soltanto ciò su cui spendi. I ragazzi imparano un po' più in fretta e gli anziani un po' più piano.</p>
+<p>I tratti rari dell'allenamento sono tre: il talento, che impara più in fretta; l'apprendista rapido, che impara molto in fretta e dimentica un po'; la maturazione precoce o tardiva, che sposta gli anni migliori e l'inizio del declino.</p>
+<p>L'intensità, leggera, normale o intensa, cambia i punti della seduta, il rischio d'infortunio in partita e la costanza recente, cioè quanto il giocatore regge la fatica in partita: ferma, bassa, regolare, alta o altissima secondo quanto si è allenato o ha giocato nelle ultime settimane. L'intensa fa reggere meglio la fatica, la leggera un po' meno; soltanto all'intensa c'è un piccolo rischio d'infortunio anche in seduta, che cresce dopo i 30 anni. Uno staff di allenatori fa imparare più in fretta e abbassa il rischio, come spiega <a href="#staff">Lo staff e gli allenatori</a>.</p>
+<p>La sala allenamento, <kbd>Ctrl+Maiusc+L</kbd>, ha in testa i punti e lo staff che allena, e poi:</p>
+<ul>
+<li>Allenandi, <kbd>Alt+L</kbd>: i tuoi tesserati, in ordine di nome, ciascuno con la classe, i punti da spendere, il programma e l'intensità.</li>
+<li>Caratteristiche, <kbd>Alt+C</kbd>: le 24 caratteristiche dell'allenando scelto, con l'aggettivo, il numero e il costo del prossimo punto.</li>
+<li>Punti da spendere, <kbd>Alt+P</kbd>, e Anteprima, <kbd>Alt+N</kbd>, che si raggiunge anche con Tab e dice dove arriverà la caratteristica.</li>
+<li>Spendi, <kbd>Alt+S</kbd>: spende i punti scelti sulla caratteristica scelta.</li>
+<li>Esegui allenamento completo, <kbd>Alt+E</kbd>: spende tutti i punti dell'allenando secondo il suo programma.</li>
+<li>Allena tutti, <kbd>Alt+T</kbd>: fa l'allenamento completo per tutti i tesserati.</li>
+<li>Programma, <kbd>Alt+G</kbd>, e Intensità, <kbd>Alt+I</kbd>: valgono subito.</li>
+<li>Iscrizione automatica ai tornei, <kbd>Alt+U</kbd>: la casella che manda l'allenando a un torneo ogni due mesi; è accesa all'inizio.</li>
+<li>Scheda, <kbd>Alt+D</kbd>, e Chiudi, <kbd>Alt+H</kbd>.</li>
+</ul>
+<p>Ogni spesa arriva in un messaggio breve, con il suo suono, e quello della classe guadagnata se l'allenando sale di classe. Alla chiusura la vista principale riepiloga le spese, caratteristica per caratteristica, e i cambi di programma, d'intensità e d'iscrizione automatica.</p>
+<h3 id="infortuni">Infortuni e acciacchi</h3>
+<p>Un infortunio ha una sede, che la scheda dice, e ferma il giocatore per qualche giorno, di più con l'età. Quello al braccio di gioco ferma chiunque, tranne l'ambidestro, che continua con l'altro braccio; chi ha giocato molto di recente rischia di più. Gli infortuni che fermano sono rari: più spesso, a fine incontro, un giocatore si porta dietro un acciacco, che per qualche giorno, da 3 a 7, lo fa rendere un poco meno, sempre meno fino a sparire. La scheda dice l'acciacco con la sede, la fine e il calo di oggi. Il computer non tessera i liberi infortunati finché non guariscono; tu invece puoi farlo.</p>
+<h3 id="esperienza">L'esperienza</h3>
+<p>L'esperienza di carriera va da 0 a 20 e cresce da più fonti, dalla più piccola alla più grande: un poco con l'età, anche da liberi; le amichevoli; lo stare in una polisportiva, con un piccolo aiuto dall'esperienza del gruppo; le sfide; e soprattutto i tornei, dove si impara da ogni incontro, un poco di più da ogni fase superata, e i primi dodici hanno un premio di piazzamento. L'esperienza conta per il 30% della classe, riduce i falli e fa leggere meglio l'avversario, e un giocatore esperto costa di più.</p>
+<h3 id="polisportive">Le tue polisportive</h3>
+<p>Puoi avere più polisportive, e una sola è quella attiva, su cui lavorano i comandi del menu Polisportive. La fondi con Nuova polisportiva, <kbd>Ctrl+N</kbd>, in un dialogo con:</p>
+<ul>
+<li>Il nome, <kbd>Alt+N</kbd>, da 5 a 50 caratteri, che resta come lo scrivi, senza maiuscole imposte e senza gli spazi in più, e dev'essere diverso da quelli che ci sono, anche a parte le maiuscole.</li>
+<li>La sede, <kbd>Alt+S</kbd>, il campo in cui scrivi il nome del comune per cercarlo. All'apertura contiene già un comune estratto con i pesi della popolazione, come per le polisportive del computer, che basta confermare. La ricerca non bada a maiuscole, accenti, apostrofi e trattini: forli trova Forlì.</li>
+<li>Comuni trovati, <kbd>Alt+C</kbd>: l'elenco dei comuni, che si restringe mentre scrivi nella sede, ha il primo già scelto e dice nell'etichetta quanti sono. Prima viene il comune che si chiama proprio come hai scritto, poi quelli che cominciano così, poi quelli con una parola che comincia così, infine quelli che lo contengono, in ogni gruppo dal più popoloso; con la sede vuota ci sono tutti, dal più popoloso. Ogni riga dice il comune con la sua popolazione in percentuale, la provincia e la regione, per esempio Avezzano 1%, provincia dell'Aquila, Abruzzo. Un suono avvisa quando l'elenco resta vuoto e quando torna ad avere qualcosa.</li>
+<li>La password, <kbd>Alt+P</kbd>, facoltativa, con la sua conferma, <kbd>Alt+O</kbd>: serve a chi condivide il gioco sullo stesso computer. Il gioco ne tiene soltanto l'impronta, da cui la password non si può ricavare.</li>
+<li>La casella Rendila la polisportiva attiva, <kbd>Alt+R</kbd>, già spuntata.</li>
+<li>Il pulsante Fonda, <kbd>Alt+F</kbd>.</li>
+</ul>
+<p>La sede è il comune scelto nell'elenco, non il testo scritto nel campo. Per questo Invio sul campo Sede o sull'elenco, e il doppio clic sull'elenco, non fondano subito: chiedono conferma con il nome e la sede, per esempio Vuoi fondare la polisportiva Gli Scattanti? Sede: Avezzano, provincia dell'Aquila, Abruzzo. Il No è già scelto, e riporta il cursore dov'era. La stessa domanda la fanno Fonda e Invio sul nome o sulle password quando il campo Sede è vuoto, o non dice proprio il comune scelto nell'elenco, per esempio perché ne hai scritto soltanto l'inizio. Se nessun comune corrisponde a quello che hai scritto, un avviso lo dice e riporta il cursore sulla sede: correggila, o cancellala per vederli tutti. Dopo la fondazione la sede non si cambia più. La vista principale dice che hai fondato la polisportiva e ne mostra la scheda, con la sede; il capitolo <a href="#provenienza">La provenienza e la sede delle polisportive</a> spiega le percentuali.</p>
+<p>Una polisportiva parte con 20.000 euro di cassa e può avere fino a 15 tesserati. Ogni giorno ha 5 mosse di mercato: un'offerta a un giocatore, un acquisto, uno svincolo, l'ingaggio o il licenziamento di un allenatore ne usano una. La seconda riga della barra di stato dice con m quante ne restano.</p>
+<p>Cambia polisportiva attiva, <kbd>Ctrl+Maiusc+C</kbd>, mostra Le tue polisportive, <kbd>Alt+L</kbd>, e il campo Password, <kbd>Alt+P</kbd>, per quelle protette; Attiva, <kbd>Alt+A</kbd>, conferma. Password della polisportiva attiva chiede quella attuale, se c'è, poi la nuova e la sua conferma: una nuova password vuota toglie la protezione. Chiudi la polisportiva attiva la chiude per sempre: chiede la password, se c'è, e una conferma, e i tesserati tornano liberi.</p>
+<h3 id="economia">L'economia</h3>
+<p>Ogni polisportiva ha una cassa in euro. Il primo di ogni mese simulato incassa lo sponsor e paga gli stipendi. Lo sponsor dipende dalla gloria della polisportiva e dal valore di mercato dei suoi tesserati: chi allena bene i suoi guadagna di più, finché i contratti durano. Una polisportiva nuova, senza palmarès, incassa meno di una affermata: partire è difficile, e i primi mesi si spende con giudizio. Le altre entrate sono le vendite e i premi dei tornei; le uscite sono gli stipendi, gli ingaggi, gli acquisti, le iscrizioni ai tornei, le buonuscite e gli stipendi dello staff.</p>
+<p>Lo stipendio lo decide il giocatore, come in Hattrick: cresce con il valore, con i tratti rari e con l'esperienza. Quello che paghi è fisso fino alla scadenza del contratto. Il bilancio della polisportiva attiva, <kbd>Ctrl+B</kbd>, mostra la cassa, lo sponsor e gli stipendi del mese, e le entrate e le uscite dei mesi passati; la cassa sta anche nella seconda riga della barra di stato, alla lettera c, in migliaia di euro.</p>
+<p>Quando la cassa non basta per gli stipendi, nessuno viene pagato, e gli stipendi diventano arretrati. Chi li aspetta perde pazienza, e la sua scheda dice l'umore, quanto aspetta e per quanto ancora pazienterà. Quanto dura dipende dalla fedeltà al club: un nuovo arrivato se ne va dopo due mesi senza stipendio, un veterano dopo cinque; chi se ne va torna libero anche a contratto in corso. Con Paga gli arretrati, <kbd>Ctrl+Maiusc+P</kbd>, scegli tu a chi dare i soldi che ci sono: Chi aspetta, <kbd>Alt+C</kbd>, la Cifra da pagare, <kbd>Alt+I</kbd>, e Paga, <kbd>Alt+P</kbd>. Ricevere soldi rende la pazienza. Un giocatore su cento è una bandiera: dopo anni nello stesso club gioca anche senza stipendio, e lo scopri soltanto quando succede. Quando il mondo avanza e i tuoi tesserati restano senza stipendio, la barra di stato lo dice per prima cosa.</p>
+<h3 id="mercato">Il mercato dei giocatori</h3>
+<p>Il mercato, <kbd>Ctrl+K</kbd>, ha tre tipi di giocatori: i liberi, a cui offri un premio d'ingaggio; quelli in vendita, che si comprano al prezzo chiesto; i tesserati del computer, per cui fai un'offerta d'acquisto alla loro polisportiva. In testa ci sono la cassa e le mosse rimaste, poi:</p>
+<ul>
+<li>Filtri, <kbd>Alt+F</kbd>: l'elenco dei filtri, con Aggiungi un filtro, <kbd>Alt+A</kbd>, che apre gli stessi campi della ricerca, Togli il filtro, <kbd>Alt+T</kbd>, e Togli tutti i filtri, <kbd>Alt+U</kbd>.</li>
+<li>Mostra, <kbd>Alt+S</kbd>: i liberi e chi è in vendita, solo i liberi, solo chi è in vendita, i tesserati del computer, oppure tutti.</li>
+<li>Costo massimo in euro, <kbd>Alt+M</kbd>: zero vuol dire nessun limite.</li>
+<li>Ordina per, <kbd>Alt+R</kbd>: valore dal più alto, costo dal più basso, stipendio dal più basso, età dal più giovane.</li>
+<li>Giocatori trovati, <kbd>Alt+G</kbd>: l'elenco, con quanti sono, e per ognuno l'età, il valore, lo stipendio, il costo, cioè l'ingaggio chiesto, il prezzo di vendita o il valore di mercato, la scadenza del contratto, i tratti speciali e il numero.</li>
+<li>Fai un'offerta, <kbd>Alt+O</kbd>, il pulsante predefinito; Scheda del giocatore, <kbd>Alt+H</kbd>; Chiudi, <kbd>Alt+C</kbd>.</li>
+</ul>
+<p>A un libero si offre un premio d'ingaggio, una tantum, scegliendo la cifra in un dialogo che spiega il contratto che il giocatore propone e dice la probabilità che accetti, con il tic che la fa sentire. Il giocatore chiede un ingaggio secondo forza, età e tratti, e la gloria della tua polisportiva glielo fa abbassare o alzare, fra la metà e il doppio: alla cifra chiesta accetta più o meno una volta su due, e con un terzo in più quasi sempre. Chi è in vendita si compra al prezzo chiesto. Un tesserato del computer la sua polisportiva lo cede se la cifra arriva al suo valore di mercato, fino a una volta e mezza per il più forte della rosa; quanto basti, però, lo devi indovinare.</p>
+<p>Ogni offerta costa una mossa e non si ritira, quindi il gioco chiede conferma, con il No già scelto, e l'esito arriva in un messaggio con il suo suono. Il dialogo resta aperto, e alla chiusura la vista riassume le offerte fatte. Chi arriva, anche comprato, firma un contratto nuovo.</p>
+<p>Con Vendite dei tesserati metti in vendita un tuo tesserato: Tesserati, <kbd>Alt+T</kbd>, Prezzo, <kbd>Alt+P</kbd>, che parte dal suo valore di mercato, Metti in vendita, <kbd>Alt+M</kbd>, e Togli dalla vendita, <kbd>Alt+G</kbd>. Le polisportive del computer lo comprano se il prezzo è giusto e se possono permetterselo, e la notizia arriva con l'avanzamento.</p>
+<h3 id="contratti">I contratti e i rinnovi</h3>
+<p>Chi entra in una polisportiva firma un contratto. La durata la propone il giocatore, da 4 a 24 mesi simulati: breve da ragazzo, che migliora e vuole ritrattare presto, lunga da anziano, più breve se è ambizioso e più lunga se è modesto. Lo stipendio resta fisso fino alla scadenza: chi migliora allenandosi non costa di più finché il contratto dura, e il conto arriva al rinnovo. Un mese di contratto è un mese del calendario simulato, circa 10 giorni veri.</p>
+<p>Negli ultimi tre mesi si può proporre il rinnovo, con stipendio e durata nuovi: una proposta al giorno, al massimo tre. Il giocatore accetta secondo l'offerta, la sua fedeltà e la gloria della polisportiva, e il contratto nuovo parte alla scadenza di quello in corso. Al terzo rifiuto non tratta più. Chi non rinnova torna libero alla scadenza, e nessuno incassa niente; intanto il suo valore di mercato scende, fino al 40% alla scadenza. La barra di stato avvisa quando un contratto entra negli ultimi tre mesi, all'ultimo mese e alla scadenza. Lo svincolo a contratto in corso costa una buonuscita, metà degli stipendi che restano, compreso un rinnovo già concordato.</p>
+<p>Il dialogo Contratti e rinnovi, <kbd>Ctrl+Maiusc+K</kbd>, mostra i Tesserati, <kbd>Alt+T</kbd>, dal contratto che scade prima, con lo stipendio, la scadenza e lo stato del rinnovo; poi lo Stipendio offerto, <kbd>Alt+S</kbd>, che parte dalla richiesta del giocatore, la Durata, <kbd>Alt+D</kbd>, che parte da quella che propone, e l'Esito previsto, <kbd>Alt+I</kbd>, che si raggiunge anche con Tab e dice la probabilità che accetti, con il tic a ogni ritocco. Proponi il rinnovo, <kbd>Alt+P</kbd>, chiede conferma; Scheda, <kbd>Alt+C</kbd>; Chiudi, <kbd>Alt+H</kbd>.</p>
+<h3 id="staff">Lo staff e gli allenatori</h3>
+<p>Ogni polisportiva può avere uno staff: un capo allenatore e due assistenti. Lo staff fa imparare più in fretta, abbassa il rischio d'infortunio in allenamento e in partita e fa crescere prima la fedeltà al club. Conta la qualità dello staff, che viene per il 70% dal capo, per il 20% dall'assistente migliore e per il 10% dall'altro. Rispetto allo staff medio nazionale di quel giorno, senza staff si impara circa il 15% più piano, col migliore fino al 20% più in fretta; il rischio d'infortunio cambia fino al 15%, e la fedeltà cresce fino a un quarto più in fretta. L'Italia nel suo insieme si allena sempre allo stesso ritmo, perché il confronto è con la media del giorno. I liberi si allenano senza staff.</p>
+<p>Gli allenatori sono di due tipi. Gli ex giocatori: chi si ritira con una classe migliore della carriera di almeno H0 diventa allenatore, e allena con quella classe. I nati allenatori: il mondo fa nascere adulti fra i 35 e i 60 anni, uomini e donne, con una classe a caso, più rara quanto più è alta. Si smette di allenare fra i 65 e i 75 anni, o alla morte; chi diventa allenatore dopo quell'età allena comunque cinque anni.</p>
+<p>Gli allenatori si assumono come i giocatori: un premio d'ingaggio alla firma, che costa una mossa, uno stipendio fisso fino alla scadenza, il rinnovo negli ultimi tre mesi e la buonuscita se li licenzi, anche questo con una mossa. Lo stipendio cresce in linea retta con la classe, da 20 euro al mese per un capo H0 a 110 per un A1; un assistente chiede la metà. L'ingaggio porta la reputazione del club, come per i giocatori: un club giovane paga di più i migliori.</p>
+<p>Chi diventa allenatore, perché nasce o si ritira, resta riservato a te per due ore vere, contate dall'avanzamento che lo fa nascere, prima che il computer lo veda; chi nasce mentre il gioco è chiuso resta tuo per due ore dall'apertura. Quando un tuo tesserato si ritira e può allenare, hai la prelazione per dieci giorni simulati, e la sua fedeltà al club lo fa chiedere meno. Le notizie dell'avanzamento dicono quando un allenatore del tuo staff se ne va per lo stipendio non pagato, torna libero a fine contratto, smette o esce di scena, e quando un suo contratto sta per scadere.</p>
+<p>Il dialogo dello staff, <kbd>Ctrl+H</kbd>, ha in testa la cassa, gli stipendi dello staff, le mosse e la qualità dello staff con i suoi effetti, e poi:</p>
+<ul>
+<li>Posti dello staff, <kbd>Alt+P</kbd>: Capo, Assistente 1 e Assistente 2, con l'allenatore, lo stipendio, la scadenza e il rinnovo.</li>
+<li>Stipendio offerto per il rinnovo, <kbd>Alt+S</kbd>, Durata, <kbd>Alt+D</kbd>, ed Esito previsto, <kbd>Alt+I</kbd>, come nei contratti dei giocatori.</li>
+<li>Assumi, <kbd>Alt+A</kbd>: apre il mercato degli allenatori per il posto scelto.</li>
+<li>Rinnova, <kbd>Alt+R</kbd>, e Licenzia, <kbd>Alt+L</kbd>, che chiede conferma con la buonuscita.</li>
+<li>Scheda, <kbd>Alt+C</kbd>, Diario, <kbd>Alt+O</kbd>, e Chiudi, <kbd>Alt+H</kbd>.</li>
+</ul>
+<p>Il mercato degli allenatori, <kbd>Ctrl+Maiusc+G</kbd>, mostra tutti gli allenatori liberi, dal migliore. Il Posto da offrire, <kbd>Alt+P</kbd>; i filtri Classe minima, <kbd>Alt+M</kbd>, Età massima, <kbd>Alt+E</kbd>, con zero per nessun limite, Tipo, <kbd>Alt+T</kbd>, cioè tutti, ex giocatori o nati allenatori, e Sesso, <kbd>Alt+S</kbd>; l'elenco Allenatori liberi, <kbd>Alt+A</kbd>, con la classe, l'età, il tipo, quanto chiede da capo e da assistente, e la prelazione o l'ora riservata a te. Ingaggia, <kbd>Alt+I</kbd>, offre il posto con la cifra d'ingaggio e il tic della probabilità, dopo una conferma; Scheda, <kbd>Alt+H</kbd>, Diario, <kbd>Alt+D</kbd>, e Chiudi, <kbd>Alt+C</kbd>.</p>
+<h3 id="gloria">La gloria e la fedeltà</h3>
+<p>La gloria di una polisportiva si ricalcola ogni giorno dal valore medio dei suoi tesserati, dalla loro età e dal loro numero, e dal palmarès degli ultimi cinque anni simulati, cioè le medaglie dei tesserati e le coppe vinte, pesate per l'importanza del torneo, che in una polisportiva affermata fa circa metà della gloria. La gloria porta lo sponsor, convince i giocatori a firmare e a rinnovare, abbassa gli ingaggi, e decide chi gioca la Coppa delle polisportive.</p>
+<p>La fedeltà di un giocatore al club cresce con i mesi passati insieme, e con le medaglie vinte con il club: 4 punti per un oro, 3 per un argento, 2 per un bronzo e 1 per il legno, cioè il quarto posto, e 1 per ogni sfida vinta. Un giocatore fedele pazienta di più senza stipendio e rinnova più volentieri.</p>
+<h3 id="tornei">I tornei</h3>
+<p>I tornei si giocano da soli, secondo il calendario dei modelli: ogni modello apre le sue edizioni qualche giorno prima dell'inizio, e chi si iscrive gioca in sedi parallele della stessa forza, divise a serpentina per classe, quando gli iscritti sono tanti. Sotto il minimo di iscritti un'edizione si annulla, e le quote si rimborsano. Le teste di serie vengono dalla classe, e i compagni di club non finiscono nello stesso girone quando si può. Gli spareggi dei gironi seguono il regolamento eventi della FISPIC; nel tabellone le teste di serie si incontrano il più tardi possibile, e dove la formula la prevede, come in quelle di partenza, la finalina per il terzo posto si gioca nello stesso turno della finale. Le medaglie sono quattro: oro, argento, bronzo e legno.</p>
+<p>Un torneo si chiude in due o tre giorni, fino a quattro incontri al giorno negli Open e tre nei Gran Premi e nel campionato italiano; nel giorno di un torneo chi gioca non fa altro. I premi vengono dalle quote d'iscrizione e da un contributo della federazione, e vanno ai primi posti. Ogni piazzamento dà punti della Classifica nazionale, moltiplicati per l'importanza del torneo, ed esperienza.</p>
+<p>Le partite dei tuoi tesserati si giocano col motore vero, anche a programma chiuso, e si possono riascoltare in differita; tutte le altre con un esito rapido, tarato sul motore, che dà le stesse vittorie e le stesse lunghezze dei set. Tesserati e liberi giocano circa un torneo ogni due mesi simulati: i tuoi tesserati ci vanno da soli con l'iscrizione automatica della sala allenamento, accesa all'inizio, e a mano li puoi iscrivere quanto vuoi. La quota d'iscrizione si paga subito, e torna se togli l'iscrizione prima del sorteggio. I liberi giocano gratis.</p>
+<p>Calendario e iscrizioni, <kbd>Ctrl+U</kbd>, è il dialogo delle iscrizioni a mano della polisportiva attiva:</p>
+<ul>
+<li>Mostra, <kbd>Alt+M</kbd>: le edizioni aperte alle iscrizioni, quelle dei prossimi 30 giorni o quelle in corso.</li>
+<li>Edizioni, <kbd>Alt+E</kbd>: l'elenco, con il sesso, la data d'inizio, gli iscritti, quanti sono dei tuoi e la quota.</li>
+<li>Iscrivibili, i tuoi tesserati, <kbd>Alt+I</kbd>, e Iscritti dei tuoi, <kbd>Alt+C</kbd>.</li>
+<li>Iscrivi, <kbd>Alt+V</kbd>, che paga la quota; per la Coppa delle polisportive il pulsante diventa Rosa per la coppa, <kbd>Alt+R</kbd>.</li>
+<li>Togli, <kbd>Alt+T</kbd>, che rimborsa la quota prima del sorteggio.</li>
+<li>Pannello del torneo, <kbd>Alt+P</kbd>, per un'edizione in corso, e Chiudi, <kbd>Alt+H</kbd>.</li>
+</ul>
+<p>Invio sugli elenchi non fa niente, così non si iscrive nessuno per sbaglio. Iscrizioni dei tuoi atleti, <kbd>Ctrl+J</kbd>, apre lo stesso dialogo con il cursore già sui tuoi tesserati.</p>
+<p>Il pannello dei tornei, Tornei in corso, <kbd>Ctrl+Y</kbd>, mostra i tornei in corso e quelli conclusi di recente, che restano interi per due settimane simulate:</p>
+<ul>
+<li>Mostra, <kbd>Alt+S</kbd>: i tornei con i tuoi atleti, tutti i tornei in corso, i conclusi di recente con i tuoi, tutti i conclusi di recente, oppure le ultime edizioni concluse con i tuoi, da riascoltare.</li>
+<li>Tornei, <kbd>Alt+T</kbd>, e Parti, <kbd>Alt+P</kbd>: la classifica generale, i tuoi incontri, i gironi e le fasi del tabellone.</li>
+<li>Classifica, <kbd>Alt+C</kbd>, e Incontri, <kbd>Alt+I</kbd>, della parte scelta.</li>
+<li>Ascolta in differita, <kbd>Alt+A</kbd>, oppure Invio su un incontro dei tuoi; Leggi la cronaca, <kbd>Alt+L</kbd>; Mostra il risultato, <kbd>Alt+M</kbd>.</li>
+<li>Mostra tutti i risultati, <kbd>Alt+U</kbd>, dopo una domanda; Scheda del giocatore, <kbd>Alt+G</kbd>; Chiudi, <kbd>Alt+H</kbd>.</li>
+</ul>
+<p>Un incontro dei tuoi resta da ascoltare, con il risultato nascosto, finché non lo ascolti, non ne leggi la cronaca o non ne chiedi il risultato. Le classifiche e le notizie dicono comunque chi va avanti. Alla chiusura, l'ultimo incontro ascoltato o letto diventa quello che Salva la cronaca, <kbd>Ctrl+Maiusc+O</kbd>, mette in un file.</p>
+<p>Gli editor cambiano soltanto le edizioni future. L'editor dei modelli, <kbd>Ctrl+Maiusc+J</kbd>, ha l'elenco dei Modelli, <kbd>Alt+M</kbd>, e i pulsanti Nuovo, <kbd>Alt+N</kbd>, Modifica, <kbd>Alt+O</kbd>, Duplica, <kbd>Alt+D</kbd>, Elimina, <kbd>Alt+E</kbd>, e Chiudi, <kbd>Alt+H</kbd>; Invio su un modello lo modifica. Un modello ha il nome, le note, se è attivo, il tipo, individuale o a squadre, il sesso, la formula, la ricorrenza, settimanale, mensile o annuale, con il giorno e il mese, i giorni d'iscrizione, il minimo d'iscritti, i set degli incontri e delle fasi finali, i turni al giorno, l'importanza, la quota, il contributo della federazione, il montepremi, i posti premiati, la qualificazione e i limiti di classe e d'età; in fondo un riepilogo, e Salva, <kbd>Alt+V</kbd>. L'editor delle formule, <kbd>Ctrl+Maiusc+Y</kbd>, fa scegliere una Formula, <kbd>Alt+F</kbd>, con il Nome, la Descrizione e le Fasi, gironi o tabellone, e lo Stato della formula, che dice se è valida; i pulsanti aggiungono, cambiano e tolgono fasi e formule, e Salva, <kbd>Alt+S</kbd>, la registra.</p>
+<p>Se un modello o una formula non si leggono, all'avvio la vista lo dice in testa, con il suo suono, e il mondo apre soltanto le edizioni dei modelli validi. Ripristina il calendario predefinito, nel menu Tornei, rimette quelli di partenza, e mette da parte quelli di prima.</p>
+<h3 id="calendario">Il calendario predefinito</h3>
+<p>Il calendario di partenza ha dieci modelli:</p>
+<ul>
+<li>Open maschile del martedì e Open maschile del sabato, ogni settimana: gironi da quattro, poi il tabellone, con la finale al meglio dei 5.</li>
+<li>Open femminile del giovedì e Open femminile della domenica, ogni settimana, con la stessa formula.</li>
+<li>Open misto del mese, l'8 di ogni mese: uomini e donne insieme.</li>
+<li>Gran Premio maschile, il 15 di ogni mese, e Gran Premio femminile, il 22: fino a 64 per sede, semifinali e finale al meglio dei 5, importanza una volta e mezza.</li>
+<li>Campionato italiano maschile, il 10 dicembre, e Campionato italiano femminile, il 12 dicembre.</li>
+<li>Coppa delle polisportive, il 15 giugno.</li>
+</ul>
+<p>Gli Open e i Gran Premi costano 10 euro d'iscrizione e si aprono alle iscrizioni due settimane prima, i Gran Premi un mese prima; il campionato italiano e la Coppa delle polisportive non costano niente, perché ci si arriva per merito.</p>
+<h3 id="campionato">Il Campionato italiano</h3>
+<p>Ogni anno del calendario simulato, a dicembre, si giocano il Campionato italiano maschile e il Campionato italiano femminile. Non ci si iscrive: sono convocati i 32 migliori di ogni sesso per i punti della Classifica nazionale guadagnati nell'ultimo anno, cioè negli ultimi 365 giorni simulati, fra chi può giocare. Si gioca a gironi e poi a tabellone, al meglio dei 3 nei gironi e al meglio dei 5 dai quarti.</p>
+<p>Il campionato vale quattro volte un torneo normale in punti, esperienza, gloria e premi, e la federazione garantisce almeno 3.000 euro di montepremi. Chi vince diventa campione o campionessa d'Italia: il titolo resta nella scheda, nel diario, nell'albo d'oro e nella Classifica nazionale, fra i titoli italiani. La barra di stato dice quando tuoi atleti sono convocati, per esempio 12 tuoi atleti al campionato italiano, quando il campionato è concluso e quando un tuo atleta lo vince, ciascuna notizia con il suo suono.</p>
+<h3 id="classifica">La Classifica nazionale e l'albo d'oro</h3>
+<p>La Classifica nazionale, <kbd>Ctrl+Maiusc+W</kbd>, è una classifica per sempre, come un medagliere storico: somma i punti di tutti i tornei giocati in carriera, vecchie glorie comprese. Mostra gli uomini e poi le donne, i primi cento con il posto, il nome, i punti, gli ori, gli argenti, i bronzi e i titoli italiani, e sotto i tuoi tesserati che stanno più in basso, con il loro posto. Ogni piazzamento vale punti secondo il posto, dal primo all'ultimo, moltiplicati per l'importanza del torneo; i punti dell'ultimo anno servono alla convocazione al campionato italiano, e la scheda di ogni giocatore li dice tutti e due.</p>
+<p>L'albo d'oro, <kbd>Ctrl+Maiusc+B</kbd>, conserva ogni podio di ogni edizione per sempre. Si sceglie il Modello, <kbd>Alt+M</kbd>, con il campionato italiano e la coppa in testa, l'Anno, <kbd>Alt+A</kbd>, dal più recente, e Mostra, <kbd>Alt+O</kbd>, tutte le sedi oppure soltanto quelle con i tuoi sul podio; poi le Edizioni, <kbd>Alt+E</kbd>, e i Podi, <kbd>Alt+P</kbd>. Chiudi è <kbd>Alt+H</kbd>.</p>
+<h3 id="sfide">Le sfide fra polisportive</h3>
+<p>Le sfide fra polisportive sono gare a squadre, un set a 31, con due giocatori di un sesso e uno dell'altro al tavolo e fino a tre riserve. Ogni polisportiva ne riceve due da lanciare il primo del mese, fino a quattro accumulate; una sfida giocata ne consuma una, una rifiutata o decaduta no. La seconda riga della barra di stato dice con d quante te ne restano. Le polisportive del computer riposano cinque giorni fra una sfida e l'altra: a meno di cinque giorni da una sfida giocata o accettata non ne accettano e non ne lanciano, e fra loro non sfidano chi sta riposando. Se lanci una sfida a una polisportiva che riposa, rifiuta e lo dice: ha appena giocato una sfida, e riposa. Le tue polisportive invece non hanno giorni di riposo: lanciano e accettano finché hanno sfide da lanciare e una squadra valida per il giorno del gioco. A una polisportiva che ha rifiutato una tua sfida puoi riprovare il giorno dopo.</p>
+<p>Le lanci con Lancia una sfida, <kbd>Ctrl+W</kbd>, a una polisportiva del computer, che risponde subito: Polisportive da sfidare, <kbd>Alt+P</kbd>, con la forza della loro squadra; la formazione; Lancia, <kbd>Alt+L</kbd>; Scheda della polisportiva, <kbd>Alt+H</kbd>; Chiudi, <kbd>Alt+C</kbd>. Le sfide che ricevi le trovi con Sfide in arrivo, <kbd>Ctrl+Maiusc+F</kbd>: Sfide in arrivo, <kbd>Alt+S</kbd>, con chi sfida, la forza e la scadenza; la formazione; Accetta, <kbd>Alt+A</kbd>; Rifiuta, <kbd>Alt+R</kbd>; Chiudi, <kbd>Alt+C</kbd>. A una sfida si risponde entro il giorno in cui arriva: all'avanzamento seguente decade. In tutti e due i dialoghi Invio sugli elenchi non fa niente: si lancia e si accetta soltanto con il pulsante.</p>
+<p>La formazione la propone il programma, con i migliori per classe fra chi può giocare quel giorno, e la cambi tu: Titolare 1, 2 e 3, <kbd>Alt+1</kbd>, <kbd>Alt+2</kbd> e <kbd>Alt+3</kbd>, nell'ordine della rotazione, e le riserve ai posti 4, 5 e 6, <kbd>Alt+4</kbd>, <kbd>Alt+5</kbd> e <kbd>Alt+6</kbd>, che possono restare vuote. Ogni convocabile si legge con la classe, il sesso e l'eventuale acciacco. Lo Stato della formazione, <kbd>Alt+N</kbd>, che si raggiunge anche con Tab, dice se è valida o perché no, e un suono avvisa quando smette di esserlo.</p>
+<p>La sfida si gioca all'avanzamento seguente, col motore vero. Quel giorno la formazione si riconvoca: chi non c'è più lascia il posto alle riserve, e chi non ha più una squadra valida perde a tavolino. La posta è una coppa, d'oro a chi vince e d'argento a chi perde, che nella gloria vale poco, l'argento ancora meno; a ogni convocato di chi vince va un punto di fedeltà, e le riserve imparano un poco anche senza giocare. Lo Storico delle sfide, <kbd>Ctrl+Maiusc+H</kbd>, tiene le sfide delle tue polisportive, dalla più recente, e delle ultime dieci fa riascoltare la gara in differita, <kbd>Alt+A</kbd>, o leggerne la cronaca, <kbd>Alt+L</kbd>.</p>
+<h3 id="coppa">La Coppa delle polisportive</h3>
+<p>Ogni anno, il 15 giugno, le 64 polisportive con più gloria che riescono a schierare una squadra valida giocano la Coppa delle polisportive, con la gara a squadre. Si qualificano all'apertura delle iscrizioni, venti giorni prima, e ognuna iscrive la sua rosa, fino a sei giocatori, che in quei giorni restano impegnati; per una tua polisportiva qualificata la rosa si sceglie nel calendario, con Rosa per la coppa, <kbd>Alt+R</kbd>. Per ogni incontro i titolari sono i tre migliori sani della rosa, nell'ordine della formazione per le tue. Si gioca per le coppe, d'oro, d'argento, di bronzo e di legno, senza premi in euro, e nella gloria una Coppa vinta vale moltissimo.</p>
+<h3 id="provenienza">La provenienza e la sede delle polisportive</h3>
+<p>Ogni giocatore e ogni allenatore ha un comune di provenienza, che la scheda dice nella seconda riga: comune, provincia e regione, per esempio Avezzano, provincia dell'Aquila, Abruzzo. Il comune si estrae con i pesi della popolazione dalla collezione dei comuni italiani preparata da Gabriele, 1.291 comuni di 110 province e 20 regioni: più un comune è popoloso, più è probabile venire di lì. Un ex giocatore che diventa allenatore tiene il suo comune.</p>
+<p>Anche ogni polisportiva ha una sede, un comune della stessa collezione. Le polisportive del computer la ricevono alla nascita, estratta con gli stessi pesi della popolazione. La sede della tua la scegli tu, alla fondazione, nel dialogo di Nuova polisportiva, descritto in <a href="#polisportive">Le tue polisportive</a>: accanto a ogni comune c'è la percentuale della sua popolazione rispetto a quella del comune più popoloso, Roma, che vale 100%. Milano, per esempio, ha il 49%, Bologna il 14% e Avezzano l'1%; i comuni più piccoli hanno i decimali che servono perché la percentuale non sia mai zero, come Pescocostanzo, con lo 0,04%.</p>
+<p>La sede, con la provincia e la regione, si legge nella seconda riga della scheda di ogni polisportiva, che per la tua attiva si apre con <kbd>Ctrl+M</kbd>: per esempio Sede: Avezzano, provincia dell'Aquila, Abruzzo. L'elenco delle polisportive, <kbd>Ctrl+Maiusc+E</kbd>, dice soltanto il comune.</p>
+<p>Per ora né la provenienza né la sede pesano sul gioco: serviranno ai tornei provinciali e regionali delle versioni future.</p>
+<h3 id="computer">Le polisportive del computer</h3>
+<p>Le polisportive del computer nascono quando ci sono abbastanza giocatori in attività, e possono chiudere quando, passato il primo periodo di vita, restano con poca gloria e pochi tesserati. Seguono le tue stesse regole: tesserano e comprano soltanto chi possono pagare, scegliendo per prime quelle con più gloria; a rosa piena ogni tanto provano un libero più forte del tesserato che vale meno; rinnovano i contratti o mettono in vendita chi costa troppo; quando non pagano, vendono il giocatore più caro; quando hanno la cassa piena si permettono stipendi più alti, così i campioni restano tesserati. Assumono lo staff migliore che possono pagare con lo sponsor, iscrivono i loro atleti ai tornei e lanciano sfide.</p>
+<p>Ognuna ha un carattere, prudente, equilibrato o ardito, che decide quali sfide accetta e lancia, secondo il rapporto fra la forza della squadra avversaria e la propria: quando rifiuta una tua sfida, dice perché.</p>
+<h2 id="partite">Le partite da ascoltare e da leggere</h2>
+<h3 id="amichevole">L'amichevole</h3>
+<p>Amichevole, <kbd>Ctrl+O</kbd>, fa giocare un tuo tesserato della polisportiva attiva contro chiunque altro, anche un altro tuo. Ogni giocatore gioca al massimo un'amichevole per giorno simulato, perché ogni amichevole dà punti allenamento: se oggi nessuno può giocare, la vista dice perché. Il comando apre tre dialoghi uno dopo l'altro: la scelta del tuo giocatore, la scelta dell'avversario, e le opzioni:</p>
+<ul>
+<li>Set dell'incontro, <kbd>Alt+S</kbd>: al meglio di 3 o di 5 set.</li>
+<li>Come seguire l'incontro, <kbd>Alt+C</kbd>: Assisti, la partita dal vivo, oppure Vai alla fine, che mostra subito il risultato.</li>
+<li>Livello della cronaca, <kbd>Alt+L</kbd>: sintetica, normale o tecnica, che vale anche per il file della cronaca.</li>
+<li>Gioca, <kbd>Alt+G</kbd>.</li>
+</ul>
+<p>Il dialogo ricorda le ultime scelte, anche dopo la chiusura del programma. L'incontro si gioca e si registra subito, e il mondo si salva. Con Vai alla fine la vista principale mostra il risultato, aperto da chi vince, i punti allenamento guadagnati e sotto la cronaca intera; con Assisti si apre la finestra dal vivo. L'esito si sente soltanto quando si mostra.</p>
+<h3 id="dal-vivo">La partita dal vivo</h3>
+<p>Nella finestra dal vivo la partita si sente dal punto di vista del tuo giocatore, alla sua testata del tavolo, con l'avversario di fronte, oltre lo schermo: la pallina che corre, rimbalza sulle sponde e passa sotto lo schermo, a destra o a sinistra, vicina o lontana, più cupa quanto più si allontana; i colpi, le parate, il goal che cade nella tasca, i falli e il fischietto dell'arbitro. L'arbitro fischia una volta per i falli, due dopo ogni goal, a lungo alla fine di ogni set e tre volte alla fine della partita; dopo il goal c'è una piccola fanfara, e dopo ogni fallo un segnale che lo distingue dal goal. Nella gara a squadre un suono breve segna ogni cambio al tavolo.</p>
+<ul>
+<li>Il pulsante Prosegui, <kbd>Alt+P</kbd>, ha il fuoco: <kbd>Invio</kbd> o <kbd>Spazio</kbd> fanno sentire il gioco fino al punto seguente, a un fallo o alla fine del set. Mentre suona, lo stesso pulsante diventa Pausa, e poi Riprendi, <kbd>Alt+R</kbd>; durante il riscaldamento si chiama Salta il riscaldamento, <kbd>Alt+S</kbd>.</li>
+<li>Ascolta fino a fine set, <kbd>Alt+F</kbd>.</li>
+<li>Cambia lato, <kbd>Alt+L</kbd>: ti porta dalla parte dell'altro giocatore, o dell'altra squadra, e il pulsante dice da chi stai ascoltando.</li>
+<li>Vai alla fine, <kbd>Alt+V</kbd>: salta al termine e mostra il risultato.</li>
+<li><kbd>Esc</kbd>: esce senza svelare chi ha vinto. L'incontro resta registrato, e la vista dice soltanto dove leggerne il risultato: nei diari dei giocatori o nella cronaca salvata. A incontro finito, Esc porta al risultato.</li>
+<li><kbd>Più</kbd> e <kbd>Meno</kbd>: cambiano la velocità di gioco al volo, e la nuova velocità vale anche per le partite seguenti.</li>
+<li><kbd>Tab</kbd> porta al campo della Cronaca, <kbd>Alt+C</kbd>, e <kbd>Maiusc+Tab</kbd> torna al pulsante; <kbd>F1</kbd> rimette nel campo la guida dei tasti.</li>
+</ul>
+<p>Quando l'incontro finisce, il pulsante diventa Fine dell'incontro: vai al risultato, <kbd>Alt+R</kbd>. Time-out, cambio campo e inizio del set non si sentono: si leggono nella cronaca, e il suono riprende dalla ripresa del gioco. La velocità di gioco accorcia le pause e la procedura dell'arbitro, mai l'azione, che resta sempre a tempo reale.</p>
+<h3 id="differita">La differita</h3>
+<p>Gli incontri dei tuoi nei tornei e nelle sfide si giocano col motore vero, e si possono riascoltare nella stessa finestra, in differita: dal pannello dei tornei, <kbd>Ctrl+Y</kbd>, con Ascolta in differita, <kbd>Alt+A</kbd>, o Invio sull'incontro, e dallo storico delle sfide, <kbd>Ctrl+Maiusc+H</kbd>. Ascolti dalla parte del tuo giocatore o della tua squadra, con gli stessi tasti della partita dal vivo, e il risultato resta nascosto finché non arrivi alla fine o non lo chiedi.</p>
+<h3 id="cronaca">La cronaca e i suoi annunci</h3>
+<p>La cronaca racconta l'incontro a tre livelli. La sintetica dà una riga per punto, più i set e l'incontro; la normale racconta ogni azione, con il fischio e la chiamata dell'arbitro dentro la frase dell'esito; la tecnica aggiunge la procedura dell'arbitro, i secondi e le probabilità di riuscita dei colpi. Le chiamate sono i termini italiani della FISPIC. Ogni punto si apre con il set e il punteggio di partenza. Nella partita dal vivo e in differita la cronaca cresce riga per riga nel suo campo mentre ascolti, senza toglierti il fuoco dal pulsante.</p>
+<p>Con la lettura automatica, accesa all'inizio, ogni riga nuova arriva da sola alla sintesi, al display braille o a tutti e due, come si sceglie in Annunci della cronaca nel menu Impostazioni. Spenta la lettura automatica, la cronaca resta da leggere nel suo campo, con Tab.</p>
+<p>Salva la cronaca, <kbd>Ctrl+Maiusc+O</kbd>, salva in un file l'ultimo incontro mostrato o ascoltato nella sessione, amichevole, di torneo o di sfida, al livello scelto: il file va nella cartella cronache, accanto al programma, e il suo nome dice quando si è giocato e chi, per esempio 2026-10-07 15.30.12 Rossi contro Bianchi.txt.</p>
+<h2 id="impostazioni">Le impostazioni</h2>
+<p>Le impostazioni descrivono il computer, non il mondo: si salvano nel file mess_impostazioni.json, accanto al programma. Se il file manca o è rovinato, valgono quelle di partenza.</p>
+<ul>
+<li>Aspetto, colori e caratteri, <kbd>Ctrl+P</kbd>: un'anteprima, la Dimensione dei caratteri in punti, <kbd>Alt+D</kbd>, da 8 a 72, e i colori del testo e dello sfondo, ciascuno in percentuali di rosso, verde e blu, da 0 a 100. All'inizio il testo è verde su nero, a 12 punti. Predefiniti, <kbd>Alt+P</kbd>, rimette i valori di partenza, da confermare con OK.</li>
+<li>Conservazione dei diari: i giorni simulati per i diari dei giocatori e degli allenatori, <kbd>Alt+G</kbd>, e per quelli delle polisportive, <kbd>Alt+P</kbd>, fino a 3.650; zero, il valore di partenza, vuol dire per sempre. Le voci più vecchie si tolgono a ogni salvataggio.</li>
+<li>Effetti sonori: il Volume degli effetti, <kbd>Alt+V</kbd>, da 0 a 100, che a 50, il valore di partenza, suona come i suoni sono stati pensati e a zero tace; il Volume della partita dal vivo, <kbd>Alt+P</kbd>, da 0 a 100, 50 all'inizio, che vale soltanto per i suoni della partita: a 95 suona come è stata pensata, a 100 arriva al massimo senza distorcere e a zero tace. A ogni ritocco, quando ti fermi, si sente il suono di prova al volume scritto.</li>
+<li>Velocità di gioco: da 1 a 8, 4 all'inizio. A 1 le pause fra i punti e la procedura dell'arbitro durano come nella realtà, a 2 la metà, a 4 un quarto. Salva è <kbd>Alt+S</kbd>.</li>
+<li>Annunci della cronaca: Leggi la cronaca in automatico, <kbd>Alt+L</kbd>, accesa all'inizio; Dove vanno le righe, <kbd>Alt+D</kbd>, alla sintesi e al braille, solo alla sintesi o solo al braille; la Sintesi, <kbd>Alt+I</kbd>, automatica, cioè il primo screen reader attivo o la voce di Windows, oppure NVDA, JAWS o la voce di Windows, SAPI5; le Celle del display braille, <kbd>Alt+C</kbd>, da 0 a 160, 40 all'inizio, dove 0 vuol dire non importa e manda ogni riga intera; il Tempo minimo di lettura di ogni blocco in braille, <kbd>Alt+T</kbd>, in millesimi, da 100 a 60.000, 2.000 all'inizio. Alla sintesi le righe si leggono una dopo l'altra; al display ogni riga si divide in blocchi grandi quanto le celle, spezzati fra le parole, e ogni blocco resta almeno per il tempo minimo. Il braille arriva da NVDA o da JAWS, anche quando la sintesi è la voce di Windows. Salva è <kbd>Alt+S</kbd>.</li>
+</ul>
+<h2 id="file">I file di MESS</h2>
+<h3 id="dove-stanno">Dove stanno</h3>
+<p>MESS scrive tutti i suoi file nella cartella in cui sta MESS.exe: con il programma di installazione è la cartella MESS dentro AppData\Local\Programs del tuo profilo, se non l'hai cambiata durante l'installazione; con lo zip, quella in cui l'hai estratto. AppData è una cartella nascosta: per aprire quella di MESS, scrivi %LOCALAPPDATA%\Programs\MESS nella finestra Esegui, che si apre con <kbd>Windows+R</kbd>, e premi Invio. Ecco che cosa ci trovi:</p>
+<ul>
+<li>MESS.exe, il programma, e LICENSE, il testo della licenza.</li>
+<li>La cartella _internal, con le librerie, i dati del gioco, le novità e questo manuale, manuale.html. Non va toccata: l'aggiornamento automatico la sostituisce intera.</li>
+<li>mess_mondo.json.gz: il mondo, compresso.</li>
+<li>mess_mondo.json.gz.bak: la copia di sicurezza, cioè il salvataggio precedente.</li>
+<li>mess_impostazioni.json: le impostazioni d'aspetto, i volumi, la velocità e gli annunci.</li>
+<li>La cartella tornei, con i modelli del calendario, e il file formule.json, con le formule dei tornei.</li>
+<li>La cartella cronache, con le cronache salvate, un file per incontro.</li>
+<li>vecchie_glorie.log: l'annotazione di ogni uscita di scena.</li>
+<li>MESS - Errori.log, e quando si riempie anche MESS - Errori.log.1: il registro degli errori imprevisti, descritto in <a href="#errori">Un errore imprevisto</a>.</li>
+<li>MESS - Crash.log, soltanto mentre MESS è aperto, e MESS - Crash precedente.log, dopo una chiusura improvvisa.</li>
+<li>auto_updater_error.log, se un aggiornamento automatico non è riuscito.</li>
+<li>La cartella salvataggi_illeggibili, se un salvataggio non si è potuto leggere.</li>
+</ul>
+<h3 id="copia-sicurezza">La copia di sicurezza</h3>
+<p>Il mondo si salva da solo a ogni avanzamento, a ogni operazione sulle polisportive e all'uscita. Il salvataggio si scrive prima in un file temporaneo e poi prende il posto del vecchio in un colpo solo: un'interruzione a metà, anche una mancanza di corrente, non lo rovina. A ogni salvataggio il file precedente diventa la copia di sicurezza.</p>
+<p>Il file del mondo è firmato: se qualcuno lo modifica a mano con un editor, il gioco se ne accorge e non lo usa. Se il salvataggio non si legge, o la firma non torna, il gioco riparte dalla copia, che prende il suo posto, e il file scartato va in una cartella datata dentro salvataggi_illeggibili. Se non si legge nemmeno la copia, vanno da parte tutti e due, e il gioco si ferma senza salvare nulla, per non coprirli con un mondo nuovo.</p>
+<h3 id="spostare-mondo">Salvare e spostare il mondo</h3>
+<p>Per mettere al sicuro il tuo mondo, o portarlo su un altro computer, copia mess_mondo.json.gz e mess_mondo.json.gz.bak con MESS chiuso, e mettili accanto a MESS.exe sull'altro computer, anch'esso chiuso. Il mondo riparte da dove l'hai lasciato e fa i giorni maturati nel frattempo, perché il tempo del mondo segue l'orologio vero. Per portare anche le tue preferenze, copia mess_impostazioni.json; per i tornei cambiati con gli editor, la cartella tornei e formule.json. Una versione più vecchia di MESS può rifiutare un mondo salvato da una più recente, se nel frattempo è cambiato il formato del salvataggio.</p>
+<h2 id="aggiornamenti-supporto">Aggiornamenti, errori e aiuto</h2>
+<h3 id="aggiornamento">L'aggiornamento automatico</h3>
+<p>MESS si aggiorna da solo, installato o portatile. A ogni avvio, quando la finestra è comparsa e se c'è la rete, controlla su GitHub se è uscita una versione nuova, e intanto puoi già giocare. Se non c'è, non dice niente. Se c'è, con il suo suono si apre il dialogo Aggiornamento di MESS. Il testo, che ha il cursore e si legge con le frecce, dice la versione nuova e quella che hai, che cosa succede se aggiorni, e poi le note della release, cioè le novità in breve. I pulsanti sono Aggiorna, <kbd>Alt+A</kbd>, e Non adesso, <kbd>Alt+N</kbd>, che è il predefinito: <kbd>Esc</kbd>, e <kbd>Invio</kbd> nel testo, valgono Non adesso, e si aggiorna soltanto con il pulsante Aggiorna. Se non rispondi entro 2 minuti, il dialogo si chiude da solo come Non adesso. Finché è aperto, il mondo aspetta.</p>
+<p>Se scegli Non adesso, si sente il suono dell'annullamento, e la quarta riga della barra di stato dice aggiornamento rimandato; se la proposta si chiude da sola allo scadere dei 2 minuti, ha un suono suo, e la barra dice aggiornamento rimandato: tempo scaduto. In tutti e due i casi continui a giocare con la versione che hai, e la proposta torna al prossimo avvio. Se scegli Aggiorna, con il suo suono, MESS scarica la versione nuova mentre giochi: la quarta riga della barra dice scarico MESS, con il numero della versione nuova, e poi a che punto è, per esempio aggiornamento scaricato al 40%.</p>
+<p>Ogni esito ha il suo suono, e arriva in un messaggio intitolato Aggiornamento di MESS, che aspetta il tuo OK; l'aggiornamento non riuscito ha anche l'icona dell'errore, il pacchetto non ancora pronto, che non è un guasto, quella dell'avviso.</p>
+<ul>
+<li>Aggiornamento scaricato: MESS salva il mondo, si chiude per installarlo e si riapre da solo. È l'esito buono: lo scaricamento è finito.</li>
+<li>Aggiornamento non riuscito: continui con questa versione, e te lo ripropongo al prossimo avvio. Lo scaricamento non è andato a buon fine.</li>
+<li>Disponibile la versione 2.0.1, ma il pacchetto non è ancora pronto: te la ripropongo a un prossimo avvio. Il numero è quello della versione nuova, già annunciata su GitHub ma con il pacchetto che non si può ancora scaricare: in questo caso la proposta non si apre nemmeno.</li>
+</ul>
+<p>Dopo l'OK all'aggiornamento scaricato, MESS chiude il dialogo che avevi aperto, se ce n'era uno: come annullato, oppure, se è una partita dal vivo o una differita, come con <kbd>Esc</kbd>, quindi senza svelare il risultato. Poi salva il mondo e si chiude, senza il riepilogo della sessione. Per qualche secondo compare la finestra Aggiornamento MESS, che chiede di non chiuderla: sostituisce i file del programma e riapre MESS nella versione nuova, con il tuo mondo e le tue impostazioni, che l'aggiornamento non tocca.</p>
+<p>Se il salvataggio non riesce, un messaggio con l'icona dell'errore lo dice prima della chiusura: alla riapertura ritrovi il mondo dell'ultimo salvataggio riuscito, e con OK MESS si chiude e installa la versione nuova. Se invece, al momento di chiudersi, resta aperto un messaggio, MESS aspetta che tu lo chiuda, ma non oltre 20 secondi, perché la sostituzione dei file aspetta la sua chiusura al massimo 30 secondi, e la chiusura comprende ancora il salvataggio del mondo. Passato quel tempo l'aggiornamento non può più installarsi, e MESS resta aperto: appena chiudi il messaggio, la vista lo dice, con un suono suo, diverso da quello dell'aggiornamento non riuscito, e la quarta riga della barra dice aggiornamento non installato. Continui con la versione che hai, e la proposta torna al prossimo avvio.</p>
+<p>Se infine non riesce la sostituzione dei file, MESS si riapre nella versione di prima, che resta intatta, e il motivo resta scritto nel file auto_updater_error.log, accanto al programma.</p>
+<h3 id="errori">Un errore imprevisto</h3>
+<p>Se un comando si interrompe per un errore imprevisto, MESS fa sentire un allarme e mostra il messaggio Errore imprevisto, con il tipo dell'errore e il file in cui ne ha scritto il resoconto completo, quello che serve a chi sviluppa per capire che cosa è successo: MESS - Errori.log, nella cartella del programma. MESS resta aperto, e puoi continuare. Se l'errore ferma MESS del tutto, il messaggio si intitola MESS si è fermato, e il resoconto va nello stesso file. Il registro non cresce senza limite: quando si riempie diventa MESS - Errori.log.1 e ne comincia uno nuovo, così i due insieme non superano i 10 MB.</p>
+<p>Se un giorno MESS si chiude di colpo, senza nessun messaggio, all'avvio seguente la prima riga della vista lo dice, con un suono suo: L'ultima volta MESS si è chiuso di colpo per un errore grave. Il resoconto di quella chiusura è nel file MESS - Crash precedente.log, nella stessa cartella. Mentre MESS è aperto, lì c'è anche il file MESS - Crash.log, pronto a raccogliere il resoconto di una chiusura improvvisa, che a ogni uscita normale si cancella da solo. Quando chiedi aiuto per un errore, allega MESS - Errori.log e, se c'è, MESS - Crash precedente.log: senza, è difficile capire che cosa è andato storto. Chiedi aiuto al PUB, nel menu Aiuto, ti ricorda da solo quelli che ci sono.</p>
+<h3 id="una-copia">Una sola copia aperta</h3>
+<p>MESS si apre una volta sola per ogni utente di Windows: due copie aperte insieme scriverebbero lo stesso mondo, e una cancellerebbe il lavoro dell'altra. Se avvii MESS mentre è già aperto, la seconda copia porta in primo piano la prima, anche se era ridotta a icona, e si chiude senza toccare niente; la finestra tornata davanti lo fa sentire con un suono suo. Per la stessa ragione il programma di installazione e quello di disinstallazione chiedono di chiudere MESS, se è aperto.</p>
+<h3 id="supporto">Chiedere aiuto e sostenere MESS</h3>
+<p>Per segnalare un errore, chiedere una spiegazione o proporre un'idea, apri una issue sul repository di MESS su GitHub, all'indirizzo <a href="https://github.com/GabrieleBattaglia/Showdown/issues">https://github.com/GabrieleBattaglia/Showdown/issues</a>; serve un account GitHub, gratuito. Scrivi la versione, che dice Informazioni con <kbd>F3</kbd>, che cosa stavi facendo, che cosa ti aspettavi e che cosa è successo, e se c'è stato un errore allega MESS - Errori.log e, se c'è, MESS - Crash precedente.log, che stanno nella cartella del programma.</p>
+<p>Puoi anche chiedere al PUB, il gruppo di supporto dei programmi di Gabriele, una lista di posta: nel menu Aiuto, Entra al PUB prepara la mail che ti iscrive, e Chiedi aiuto al PUB quella con la tua domanda, la versione e le informazioni sul computer, utili a chi ti risponde, e ti dice quali file del registro allegare, se ce ne sono. Le due voci sono descritte in <a href="#menu-aiuto">Il menu Aiuto</a>.</p>
+<p>Se MESS ti piace e vuoi sostenere il suo autore, nel menu Aiuto c'è Offrimi un caffè, con il pulsante che apre la pagina di PayPal di Gabriele. È soltanto lì: il gioco non lo ricorda mai da solo.</p>
+<h2 id="licenza">Licenza e autori</h2>
+<p>MESS è software libero: puoi usarlo, ridistribuirlo e modificarlo secondo la GNU General Public License, versione 3. È distribuito nella speranza che sia utile, ma senza alcuna garanzia, nemmeno quella implicita di commerciabilità o di idoneità a uno scopo particolare. Il testo completo della licenza, in inglese, viaggia con il programma, nel file LICENSE accanto a MESS.exe, ed è quello che il programma di installazione chiede di accettare. Lo ricorda anche Informazioni, nel menu Aiuto, con <kbd>F3</kbd>, insieme alla versione e agli autori. Il codice sorgente è su GitHub, nel repository GabrieleBattaglia/Showdown.</p>
+<p>MESS è stato ideato da Gabriele Battaglia (IZ4APU) il 13 aprile 2015, portato in Python nel 2020 con l'aiuto di Gemini 2.5, e rifatto dal 2026 da Gabriele Battaglia (IZ4APU) e ClaudIA, che ne hanno scritto insieme la versione a finestra, il motore della partita sul regolamento IBSA, il mondo che gioca e questo manuale.</p>
+<p>MESS si regge sulla libreria GBUtils di Gabriele, da cui vengono anche i suoni, l'aggiornamento automatico e gli annunci alla sintesi e al braille, e su librerie libere di altri autori, ciascuna con la sua licenza: Python; wxPython per la finestra; numpy, scipy e sounddevice, con PortAudio, per i suoni; accessible_output2 e pywin32 per la sintesi, il braille degli annunci e la voce di Windows; requests e certifi per l'aggiornamento automatico. Il pacchetto lo crea PyInstaller, e il programma di installazione Inno Setup.</p>
+</body>
+</html>

@@ -96,6 +96,9 @@ def test_elenchi_e_classifiche(mondo):
     assert len(testi.classifica(mondo).splitlines()) == 41
     assert testi.classifica(mondo).splitlines()[1].startswith("1. ")
     assert "[TESSERATI]" in testi.scheda_polisportiva(mondo.miapolisportiva_attiva, mondo)
+    # Dalla tappa 14, D34, il mondo come territorio è l'Italia.
+    assert testi.elenco_polisportive(mondo).startswith("Polisportive in Italia: ")
+    assert testi.elenco_giocatori(Mondo()) == "In Italia non ci sono ancora giocatori."
 
 
 def test_liste_della_sessione(mondo):
@@ -158,6 +161,8 @@ def test_guida_novita_e_informazioni():
     novita = testi.novita("# Changelog\n\n## [1.3.0] - 2026-10-06\n\n### Un mondo nuovo\n\nIl file `mess_mondo.json` si firma.\n")
     assert novita.splitlines() == ["Changelog.", "Versione 1.3.0 del 2026-10-06.", "Un mondo nuovo.", "Il file mess_mondo.json si firma."]
     _accessibile(testi.informazioni())
+    # Dalla seconda revisione della tappa 14 F3 dice anche la licenza.
+    assert "MESS è software libero, con licenza GNU GPL versione 3" in testi.informazioni()
 
 
 def test_testi_del_mercato_e_delle_polisportive(mondo):
@@ -334,3 +339,24 @@ def test_le_notizie_dei_contratti_e_la_guida(mondo):
     _accessibile(guida)
     _accessibile(testi.statistiche(mondo))
     assert "Classi: " in testi.statistiche(mondo) and "Contratti che scadono entro il primo del mese prossimo: " in testi.statistiche(mondo)
+
+
+def test_la_legenda_dice_i_punti_veri_degli_incontri():
+    # La revisione della tappa 14: la legenda diceva ancora i punti di un'amichevole di prima della tappa 12, da 2 a 4,5.
+    # I numeri si rifanno con la formula della registrazione: chi perde 3 a 0, chi vince 3 a 2 e il premio al più debole,
+    # per il fattore della fonte; la sfida è a un set solo.
+    import esperienza
+    from costanti import PA_BONUS_PIU_DEBOLE
+    from partita import PA_FATTORE, MotorePartita
+
+    def punti(valore):
+        return testi.numero(valore).removesuffix(",0")
+
+    legenda = testi.LEGENDA_ALLENAMENTO
+    assert "da 2 a 4,5" not in legenda and "Un'amichevole ne dà da 1 a 2,2, e 0,5 in più al più debole, anche quando perde;" in legenda
+    perde, vince = MotorePartita.punti_della_partita(3, 0)[1], MotorePartita.punti_della_partita(3, 2)[0]
+    for fonte, nome in ((esperienza.AMICHEVOLE, "Un'amichevole ne dà"), (esperienza.TORNEO, "un incontro di torneo")):
+        fattore = PA_FATTORE[fonte]
+        assert f"{nome} da {punti(perde * fattore)} a {punti(vince * fattore)}, e {punti(PA_BONUS_PIU_DEBOLE * fattore)} in più al più debole" in legenda
+    vinta, persa = (p * PA_FATTORE[esperienza.SFIDA] for p in MotorePartita.punti_della_partita(1, 0))
+    assert f"una sfida {punti(vinta)} a ogni titolare della squadra che vince e {punti(persa)} a quelli della squadra che perde;" in legenda

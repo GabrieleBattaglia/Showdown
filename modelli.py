@@ -265,6 +265,8 @@ CAMPI_POLISPORTIVA = (
     ("sfide_da_lanciare", int), ("ultima_sfida", DATA_O_NULLA), ("sfide_vinte", int), ("sfide_perse", int),
     # Dalla tappa 13, formato 8: lo staff, i numeri del capo e dei due assistenti, 0 per un posto vuoto.
     ("staff", LISTA_INTERI),
+    # Dalla tappa 14, formato 9: il comune della sede, vuoto soltanto se la collezione dei comuni non si legge.
+    ("luogo", str),
 )
 # I campi delle sfide di una polisportiva, con il valore di chi nasce: due sfide da lanciare, come il primo del mese.
 CAMPI_SFIDE_VUOTO = {"sfide_da_lanciare": SFIDE_AL_MESE, "ultima_sfida": None, "sfide_vinte": 0, "sfide_perse": 0}
@@ -993,7 +995,7 @@ class Giocatore:
         return "\n".join(out)
 
     def _riga_contratto(self):
-        """Il contratto nella scheda dell'interfaccia testuale."""
+        """Il contratto nella scheda di __str__, rimasta per le prove dopo che la tappa 14 ha tolto l'interfaccia testuale."""
         if self.contratto_scadenza is None:
             return "Contratto: nessuno"
         riga = f"Contratto: {self.contratto_stipendio} euro al mese fino al {self.contratto_scadenza:%d/%m/%Y}"
@@ -1082,8 +1084,11 @@ def normalizza_nome(nome):
 
 
 class Polisportiva:
-    def __init__(self, nome, password, datetime_creazione_sim, is_cpu_controlled=False):
+    def __init__(self, nome, password, datetime_creazione_sim, is_cpu_controlled=False, luogo=None):
         self.nome = normalizza_nome(nome)
+        # Dalla tappa 14 il comune della sede: quello scelto da chi fonda, oppure estratto coi pesi della
+        # popolazione da un caso nato dal nome, che il caso del mondo non lo tocca.
+        self.luogo = luoghi.luogo_della_polisportiva(self.nome) if luogo is None else luogo
         # Dalla tappa 3 la password non si conserva: si conserva la sua impronta.
         self.impronta_password = crea_impronta(password) if password and not is_cpu_controlled else None
         self.datetime_creazione_sim = datetime_creazione_sim

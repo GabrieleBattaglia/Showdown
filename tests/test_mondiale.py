@@ -21,7 +21,7 @@ import sfide
 from mondo import Mondo
 
 APERTURA = datetime.datetime(2026, 11, 30, 9, 0)
-MONDIALE = "Campionato mondiale maschile"
+MONDIALE = "Campionato italiano maschile"
 
 
 def _con_punti(uomini):
@@ -61,6 +61,12 @@ def test_l_iscrizione_che_si_sovrappone_si_annulla_col_rimborso():
     assert 1 not in vicino.ids() and poli.cassa == 100 and poli.conti_del_mese["rimborsi"] == 10
     assert rapporto["tuoi_qualificati"] == 1 and any("convocato" in n for n in rapporto["notizie"])
     assert g1.prossimo_torneo is None
+    # Dalla revisione della tappa 14 la preposizione articolata davanti al torneo: prima si leggeva "a Campionato italiano maschile".
+    nome = iscrizioni.nome_completo(g1)
+    assert f"{nome} è convocato al Campionato italiano maschile." in rapporto["notizie"]
+    assert any(voce.get("testo", "").startswith("Lascia l'Open maschile del sabato: è convocato al Campionato italiano maschile, ") for voce in g1.diario)
+    mondiale = next(ed for ed in mondo.calendario.edizioni if ed.nome == MONDIALE)
+    assert iscrizioni.problema_iscrizione(mondo, mondiale.id, g1, poli) == "Al Campionato italiano maschile si entra per qualificazione, non con l'iscrizione."
 
 
 def test_l_infortunato_sostituito_e_il_tolto_a_mano():

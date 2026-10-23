@@ -1,18 +1,18 @@
 {
- "nota": "Tappa 13: stipendi dello staff a un ottavo, da 15 a 112 euro, taratura della risposta 31",
+ "nota": "Tappa 14: col formato 9 ogni polisportiva ha il comune della sede, e la descrizione della formula gironi_32 dice campionati italiani, che i mondi copiano nelle sedi; tolto il campo, rimesso il formato 8 e ridetto campionati mondiali, le impronte dei mondi tornano identiche",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "d450616e8e5e57877c953142c6ed1797969deca1ac9e3c8dde268972f474c9d8",
+  "sha256": "8911ec852e33a77e8899bcfc7e5036e8b2c1d267cb8b605db2ac5f510d509d9a",
   "vivi": 674,
   "attivi": 674,
   "tesserati": 603,
   "polisportive": 41
  },
  "mondo_a_regime": {
-  "sha256": "e6e0a9c9133933a3c9234a3a22321746e8b089f30c4e3c6cae13f5d33f7249b5",
+  "sha256": "1b4a4e51fe3113a9c944bf81ea19b2385bf2d2263aec2dcc507987e177fec946",
   "vivi": 1659,
   "attivi": 1259,
   "tesserati": 1078,

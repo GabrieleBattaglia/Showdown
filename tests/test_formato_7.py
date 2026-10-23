@@ -4,7 +4,8 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 La catena intera dal formato 4, con un documento costruito sul modello del mondo di Gabriele, 61
 giocatori, 9 tesserati e una polisportiva dell'utente con 3 tesserati, che passa dal 4 al 5, al 6 e
 al 7, con giocatori, contratti e casse identici campo per campo a quelli della migrazione al 6;
-l'andata e il ritorno del formato 7 con i campi nuovi; un formato 8 rifiutato. Ogni passo della
+l'andata e il ritorno del formato 7 con i campi nuovi; un formato più recente di quello in uso
+rifiutato, dalla tappa 14 il 10, perché il formato è il 9. Ogni passo della
 tappa che aggiunge un campo salvato allarga queste prove.
 """
 
@@ -195,7 +196,7 @@ def test_un_registro_delle_sfide_incoerente_si_rifiuta():
 
 
 def test_un_formato_piu_recente_si_rifiuta(cartella_di_prova):
-    # Dalla tappa 13 il formato è l'8: si rifiuta il 9.
+    # Dalla tappa 14 il formato è il 9: si rifiuta il 10.
     contenuto = archivio.componi(_mondo_come_quello_di_gabriele())
     contenuto["formato"] = archivio.FORMATO + 1
     percorso = cartella_di_prova / FILE_MONDO

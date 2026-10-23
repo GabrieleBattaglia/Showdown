@@ -358,7 +358,7 @@ def test_un_salvataggio_del_formato_3_si_aggiorna(mondo, cartella_di_prova):
     assert ricaricato.giocatori[5].fedelta == 0. and ricaricato.giocatori[5].pazienza == 100.
     assert all(g.bandiera == (g.id % 100 == 0) for g in ricaricato.giocatori.values())
     assert archivio.salva(ricaricato)
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 8
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 9
 
 
 def test_i_testi_dell_economia(mondo):

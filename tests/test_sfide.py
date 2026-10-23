@@ -337,7 +337,7 @@ def test_la_coppa_qualifica_per_gloria_con_la_rosa():
     ed = _coppa(mondo, apertura, rapporto)
     # PoliTeam04 ha più gloria ma soltanto uomini: non si qualifica.
     assert ed.ids() == [a.nome, c.nome, b.nome, d.nome] and ed.data_inizio == datetime.date(2027, 6, 15)
-    assert rapporto["tue_qualificazioni_coppa"] == 1 and c.diario[0]["testo"].startswith("Qualificata a Coppa delle polisportive")
+    assert rapporto["tue_qualificazioni_coppa"] == 1 and c.diario[0]["testo"].startswith("Qualificata alla Coppa delle polisportive")
     assert all(iscritto["origine"] == iscrizioni.QUALIFICATO and 3 <= len(iscritto["rosa"]) <= 6 for iscritto in ed.iscritti)
     assert set(ed.iscritto(d.nome)["rosa"]) == {12, 13, 14, 28}
     # La rosa resta impegnata nei giorni della coppa.
@@ -346,6 +346,11 @@ def test_la_coppa_qualifica_per_gloria_con_la_rosa():
     assert sfide.problema_rosa(mondo, ed.id, c, [9, 10, 11]) == "Fra i primi tre servono due giocatori di un sesso e uno dell'altro."
     sfide.cambia_rosa(mondo, ed.id, c, [25, 9, 10, 26])
     assert ed.iscritto(c.nome)["rosa"] == [25, 9, 10, 26]
+    # Dalla revisione della tappa 14 la preposizione articolata davanti alla coppa: prima "per Coppa delle polisportive".
+    assert any(voce.get("testo", "").startswith("Cambia la rosa per la Coppa delle polisportive: ") for voce in c.diario)
+    assert sfide.problema_rosa(mondo, ed.id, e, [15, 16, 17]) == "PoliTeam04 Prova non è qualificata alla Coppa delle polisportive."
+    rosa = [mondo.giocatori[gid] for gid in (25, 9, 10)]
+    assert testi.rosa_iscritta(c, ed, rosa) == f"Rosa di {c.nome} per la Coppa delle polisportive: {', '.join(g.cognome for g in rosa[:2])} e {rosa[2].cognome}."
 
 
 def test_la_fatica_della_giornata_nella_coppa(monkeypatch):
@@ -420,7 +425,7 @@ def test_la_coppa_si_gioca_e_da_le_coppe():
     assert any(n for incontro in tuoi for lato in incontro.differita["azioni_iniziali"] for n in lato)
     voce = mondo.calendario.albo.voci[-1]
     assert voce[1] == modelli_torneo.SQUADRE and len(voce[8]) == 4 and mondo.calendario.albo.club[voce[8][0]][0] == podio[0].nome
-    assert rapporto["tuoi_tornei_conclusi"] == 1 and any(v.get("testo", "").startswith("Chiude Coppa delle polisportive, sede 1") for v in c.diario)
+    assert rapporto["tuoi_tornei_conclusi"] == 1 and any(v.get("testo", "").startswith("Chiude la Coppa delle polisportive, sede 1") for v in c.diario)
     # I titolari hanno le gare a squadre e i punti allenamento per l'importanza 3.
     assert sum(mondo.giocatori[gid].gare_squadre_vinte + mondo.giocatori[gid].gare_squadre_perse for gid in range(1, 41)) > 0
     # La decisione 9 di Gabriele del 14 ottobre 2026: la coppa dà alla rosa la fedeltà della coppa, come una

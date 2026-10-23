@@ -30,10 +30,16 @@ calendario e delle iscrizioni, del pannello dei tornei con le sue classifiche e 
 nascosti finché non li ascolti, dell'albo d'oro, della classifica mondiale, degli editor dei modelli e
 delle formule, delle sfide e del calendario che non si legge; la guida spiega tornei e sfide. Le parti
 della tappa 12 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
+Dalla tappa 14, il 2026-10-23, decisione D34, ci sono le frasi del registro degli errori: dove sta il
+resoconto di un errore imprevisto e, all'apertura dopo un crash, quello da allegare quando si chiede
+aiuto. Con la issue 4 arrivano le parole delle due voci del PUB, il gruppo di supporto: la mail che
+iscrive e quella che chiede aiuto, con le informazioni del computer e i file del registro da
+allegare. Sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
 import datetime
+import os
 import statistics
 
 import allenamento
@@ -46,6 +52,7 @@ import luoghi
 import mercato
 import modelli_torneo
 import palmares
+import registro
 import sfide
 import staff
 import tornei
@@ -67,8 +74,16 @@ from costanti import (
     MAX_TOTALE_PRECISIONE_RESISTENZA,
     MAX_TOTALE_SKILL_GIOCO,
     NOME_ATTR_TO_DISPLAY_MAP,
+    PA_BONUS_PIU_DEBOLE,
+    PA_FATTORE_AMICHEVOLE,
+    PA_FATTORE_SFIDA,
+    PA_FATTORE_TORNEO,
+    PA_PARTITA_BASE,
+    PA_PER_SET_VINTO,
+    PA_VITTORIA,
     PROPOSTE_RINNOVO_MASSIME,
 )
+from grammatica import torneo_con_preposizione
 from motore import cronaca
 from motore.campo import costanza_relativa
 from utilita import MESI, adesso_utc, converti_giorni_sim, data_breve, formatta_eta_sim, in_ora_locale
@@ -390,7 +405,7 @@ def _tornei_e_palmares(g, mondo):
     righe.append(f"Tornei giocati: {g.tornei_giocati} | Medaglie: {_medagliere(g)} | Gare a squadre: {g.gare_squadre_vinte} vinte, {g.gare_squadre_perse} perse")
     posto = posto_mondiale(g, mondo)
     classifica = "maschile" if g.sesso == "m" else "femminile"
-    mondiale = f"Classifica mondiale {classifica}: {numero(g.punti_mondiali)} punti" + (f", {posto}° posto" if posto else ", non ancora in classifica")
+    mondiale = f"Classifica nazionale {classifica}: {numero(g.punti_mondiali)} punti" + (f", {posto}° posto" if posto else ", non ancora in classifica")
     righe.append(f"{mondiale} | Punti dell'ultimo anno: {numero(palmares.punti_dell_anno(g, mondo.datetime_corrente_simulazione.date()))}")
     if g.titoli:
         titoli = [f"{voce['torneo']} del {data_breve(datetime.date.fromisoformat(voce['data'][:10]))}, {_posto_del_titolo(voce['posto'])}" for voce in g.titoli]
@@ -591,7 +606,7 @@ def _economia_del_giocatore(g, mondo):
 def elenco_giocatori(mondo):
     giocatori = sorted(mondo.giocatori.values(), key=lambda g: g.id)
     if not giocatori:
-        return "Il mondo non ha ancora giocatori."
+        return "In Italia non ci sono ancora giocatori."
     righe = [f"Elenco dei giocatori: {len(giocatori)} in tutto, dal numero {giocatori[0].id} al {giocatori[-1].id}."]
     righe.extend(riga_giocatore(g, mondo) for g in giocatori)
     return "\n".join(righe)
@@ -795,7 +810,7 @@ def qualita_dello_staff(p, mondo):
     """
     q = staff.qualita_della_polisportiva(p, mondo.allenatori)
     allenamento, rischio, fedelta = staff.fattori(q, mondo.qualita_media_dello_staff)
-    return (f"Qualità dello staff {round(q * 100)}%, lo staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}%: "
+    return (f"Qualità dello staff {round(q * 100)}%, lo staff medio nazionale {round(mondo.qualita_media_dello_staff * 100)}%: "
             f"allenamento {_rispetto_al_medio(allenamento)}, infortuni {_rispetto_al_medio(rischio)}, fedeltà {_rispetto_al_medio(fedelta)}.")
 
 
@@ -947,7 +962,7 @@ def _statistiche_dello_staff(mondo):
     con_capo = sum(1 for p in con_tesserati if p.staff[0])
     return [f"Allenatori: {len(allenatori)}, di cui {ex} ex giocatori e {len(allenatori) - ex} nati allenatori; liberi {liberi}, nello staff {len(allenatori) - liberi}.",
             f"Classi degli allenatori: {unisci([f'{lettera} {quanti}' for lettera, quanti in sorted(per_lettera.items())])}. "
-            f"Polisportive con un capo: {con_capo} su {len(con_tesserati)}; staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}%."]
+            f"Polisportive con un capo: {con_capo} su {len(con_tesserati)}; staff medio nazionale {round(mondo.qualita_media_dello_staff * 100)}%."]
 
 
 # Le liste della sessione e la ricerca.
@@ -992,6 +1007,9 @@ def risultati_ricerca(mondo, descrizione, ids):
 def scheda_polisportiva(p, mondo):
     """La scheda di una polisportiva, nello stile delle schede di Terminal Beast."""
     righe = [f"[{'COMPUTER' if p.is_cpu_controlled else 'TUA'}] {p.nome} | Gloria: {p.gloria} | Tesserati: {len(p.tesserati)} su {p.maxtesserati} | Valore collettivo: {numero(p.indicecollettivotesserati)}"]
+    # Dalla tappa 14 la sede, il comune con la provincia e la regione.
+    if p.luogo:
+        righe.append(f"Sede: {luoghi.descrivi(p.luogo)}")
     righe.append(f"Fondata il {data_lunga(p.datetime_creazione_sim)} nel mondo simulato, {eta_polisportiva(p, mondo)} fa, e il {data_lunga(p.datacreazione_reale)} nel mondo reale, con la versione {p.versione_creazione}.")
     mosse = f"Mosse di mercato fatte oggi: {p.movimenti_oggi} su {LIMITE_MOVIMENTI_PER_TICK}"
     if not p.is_cpu_controlled:
@@ -1075,11 +1093,35 @@ def bilancio(p, mondo):
 def elenco_polisportive(mondo):
     if not mondo.polisportive:
         return "Non esiste ancora nessuna polisportiva."
-    righe = [f"Polisportive del mondo: {len(mondo.polisportive)}."]
+    righe = [f"Polisportive in Italia: {len(mondo.polisportive)}."]
     for p in sorted(mondo.polisportive.values(), key=lambda x: x.nome.casefold()):
         chi = "del computer" if p.is_cpu_controlled else "tua"
-        righe.append(f"{p.nome}, {chi}, {len(p.tesserati)} tesserati su {p.maxtesserati}, gloria {p.gloria}, valore {numero(p.indicecollettivotesserati)}, fondata da {eta_polisportiva(p, mondo)}")
+        # Dalla tappa 14 la sede, il comune soltanto, come la gloria e il valore: la provincia è nella scheda.
+        sede = f", sede {p.luogo}" if p.luogo else ""
+        righe.append(f"{p.nome}, {chi}{sede}, {len(p.tesserati)} tesserati su {p.maxtesserati}, gloria {p.gloria}, valore {numero(p.indicecollettivotesserati)}, "
+                     f"fondata da {eta_polisportiva(p, mondo)}")
     return "\n".join(righe)
+
+
+def riga_del_comune(comune):
+    """
+    Un comune nell'elenco della fondazione: il nome, la popolazione in percentuale su quella del più
+    popoloso, coi decimali che servono perché non sia mai 0%, poi provincia e regione. Roma 100%,
+    provincia di Roma, Lazio; Pescocostanzo 0,04%, provincia dell'Aquila, Abruzzo.
+    """
+    valore = luoghi.percentuale(comune)
+    nome = comune if valore is None else f"{comune} {percento(valore, luoghi.decimali_della_percentuale(valore))}"
+    posto = luoghi.dove_a_parole(comune)
+    return f"{nome}, {posto}" if posto else nome
+
+
+def domanda_fondazione(nome, comune):
+    """
+    La domanda prima di fondare, quando si è dato Invio sulla sede o sull'elenco dei comuni, o quando il
+    campo Sede è vuoto o non dice il comune scelto: il nome e la sede, da confermare.
+    """
+    sede = f" Sede: {luoghi.descrivi(comune)}." if comune else ""
+    return f"Vuoi fondare la polisportiva {nome}?{sede}"
 
 
 def tesserati_attiva(mondo):
@@ -1333,7 +1375,7 @@ def _fatti_avanzamento(rapporto):
         conta(rapporto["sfide_giocate"], "sfida fra polisportive", "sfide fra polisportive") if rapporto.get("sfide_giocate") else "",
     ])
     if gare:
-        frasi.append(f"Nel mondo: {gare}.")
+        frasi.append(f"In Italia: {gare}.")
     if persone:
         frasi.append(persone[0].upper() + persone[1:] + ".")
     if mercato:
@@ -1464,8 +1506,8 @@ def voce_aggregata(voce):
     return testo + "."
 
 
-# I tornei, tappa 12, punto 12.12: i testi minimi dell'interfaccia testuale, che serviranno anche alla
-# finestra del passo 3. Gli incontri dei tuoi ancora da ascoltare non dicono il risultato, risposta 18;
+# I tornei, tappa 12, punto 12.12: i testi minimi dei tornei, nati per l'interfaccia testuale, che la
+# tappa 14 ha tolto, e usati dalla finestra. Gli incontri dei tuoi ancora da ascoltare non dicono il risultato, risposta 18;
 # le classifiche dicono comunque chi va avanti.
 
 NOMI_DEL_TABELLONE = {2: "finale", 4: "semifinali", 8: "quarti", 16: "ottavi", 32: "sedicesimi", 64: "trentaduesimi"}
@@ -1826,15 +1868,15 @@ def riga_della_rosa(g, mondo, posto):
 
 
 def iscrizione_fatta(g, ed, quota):
-    return f"{accorda(g, 'Iscritto')} {nome_completo(g)} a {ed.nome} del {data_breve(ed.data_inizio)}" + (f", per {euro(quota)}." if quota else ".")
+    return f"{accorda(g, 'Iscritto')} {nome_completo(g)} {torneo_con_preposizione(ed.nome)} del {data_breve(ed.data_inizio)}" + (f", per {euro(quota)}." if quota else ".")
 
 
 def iscrizione_tolta(g, ed, rimborso):
-    return f"{accorda(g, 'Tolto')} {nome_completo(g)} da {ed.nome} del {data_breve(ed.data_inizio)}" + (f": rimborso di {euro(rimborso)}." if rimborso else ".")
+    return f"{accorda(g, 'Tolto')} {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')} del {data_breve(ed.data_inizio)}" + (f": rimborso di {euro(rimborso)}." if rimborso else ".")
 
 
 def rosa_iscritta(poli, ed, giocatori):
-    return f"Rosa di {poli.nome} per {ed.nome}: {unisci([g.cognome for g in giocatori])}."
+    return f"Rosa di {poli.nome} {torneo_con_preposizione(ed.nome, 'per')}: {unisci([g.cognome for g in giocatori])}."
 
 
 def riepilogo_calendario(p, fatte):
@@ -1915,7 +1957,7 @@ def classifica_mondiale(mondo, quanti=100, tuoi=()):
     le donne, i primi cento con posto, nome, punti, ori, argenti, bronzi e titoli mondiali, e sotto i tuoi
     tesserati che stanno più in basso, col loro posto.
     """
-    righe = ["Classifica mondiale per sempre, come un medagliere storico: i punti di tutti i tornei giocati, vecchie glorie comprese."]
+    righe = ["Classifica nazionale per sempre, come un medagliere storico: i punti di tutti i tornei giocati, vecchie glorie comprese."]
     for sesso, titolo, singolare, plurale in (("m", "Uomini", "giocatore", "giocatori"), ("f", "Donne", "giocatrice", "giocatrici")):
         elenco = palmares.classifica_mondiale(mondo, sesso)
         if not elenco:
@@ -1936,7 +1978,7 @@ def classifica_mondiale(mondo, quanti=100, tuoi=()):
 
 def _riga_mondiale(posto, riga, tuo):
     testo = (f"{posto}. {riga['nome']}, {numero(riga['punti'])} punti, ori {riga['ori']}, argenti {riga['argenti']}, bronzi {riga['bronzi']}, "
-             f"titoli mondiali {riga['titoli']}")
+             f"titoli italiani {riga['titoli']}")
     if not riga["vivo"]:
         testo += ", vecchia gloria"
     if tuo:
@@ -2222,6 +2264,153 @@ def salvataggio_illeggibile(errore):
     return righe
 
 
+# Il registro degli errori e dei crash, tappa 14.
+
+def resoconto_degli_errori(cartella):
+    """Dove sta il resoconto di un errore imprevisto, per il messaggio che lo dice: nel registro, accanto al programma."""
+    return f"Il resoconto completo è nel file {registro.FILE_DEGLI_ERRORI}, nella cartella {cartella}: allegalo quando chiedi aiuto."
+
+
+def crash_precedente(percorso):
+    """La riga in testa alla vista all'apertura dopo un crash: dove sta il resoconto da allegare quando si chiede aiuto."""
+    return (f"L'ultima volta MESS si è chiuso di colpo per un errore grave. Il resoconto è nel file {os.path.basename(percorso)}, nella cartella "
+            f"{os.path.dirname(percorso)}: allegalo, insieme a {registro.FILE_DEGLI_ERRORI}, quando chiedi aiuto.")
+
+
+# Il PUB, il gruppo di supporto dei programmi di Gabriele, issue 4: gli indirizzi, le informazioni di
+# sistema e la composizione della mail vengono da GBUtils V221, la finestra che la prepara da GBwx;
+# qui le parole di MESS, per Entra al PUB e Chiedi aiuto al PUB del menu Aiuto.
+
+PULSANTI_DEL_PUB = {"apri": "&Apri nel programma di posta", "passi": "&Passo per passo", "ok": "&OK", "chiudi": "&Chiudi", "annulla": "&Annulla"}
+SENZA_POSTA_DEL_PUB = ("Non trovo un programma di posta, oppure non si è aperto: prepariamo la mail un pezzo alla volta, da incollare nella tua "
+                       "posta, per esempio nella webmail del browser.")
+# Le informazioni del computer nella mail d'aiuto, nell'ordine in cui compaiono; quelle che non si
+# leggono restano fuori, e vero e falso si dicono sì e no.
+ETICHETTE_DEL_PUB = {
+    "windows": "Sistema operativo",
+    "windows_versione": "Versione di Windows",
+    "windows_build": "Build di Windows",
+    "architettura": "Architettura",
+    "processore": "Processore",
+    "nuclei": "Nuclei logici",
+    "memoria_totale": "Memoria",
+    "memoria_libera": "Memoria libera",
+    "lingua": "Lingua di sistema",
+    "screen_reader": "Screen reader",
+    "schermo": "Schermo",
+    "scala": "Scala dello schermo",
+    "python": "Python",
+    "compilato": "Programma compilato",
+}
+PAROLE_DEL_PUB = {True: "sì", False: "no"}
+_ALTRA_STRADA = ("Se la mail non compare, torna qui e scegli Passo per passo: ti guido a scriverla nella tua posta, per esempio nella webmail "
+                 "del browser.")
+_ISCRIVITI = "Se non sei ancora iscritto al PUB, puoi farlo con Entra al PUB, nel menu Aiuto."
+
+
+def mail_d_iscrizione_al_pub():
+    """
+    Entra al PUB: le parole della mail che iscrive al gruppo, per finestra_mail di GBwx. All'indirizzo
+    dell'iscrizione Google non legge oggetto e testo, e risponde con una mail di conferma: nei passi
+    basta l'indirizzo.
+    """
+    from GBUtils import PUB_ISCRIZIONE
+
+    return {
+        "titolo": "Entra al PUB, il gruppo di supporto",
+        "destinatario": PUB_ISCRIZIONE,
+        "oggetto": "Iscrizione al PUB",
+        "corpo": "Invia questo messaggio così com'è per iscriverti al PUB. Google ti scriverà per chiederti di confermare.",
+        "spiegazione": "\n".join((
+            "Il PUB è il gruppo di supporto dei programmi di Gabriele Battaglia, una lista di posta su Google Groups, dove si chiede aiuto, si "
+            "segnalano i problemi e si propongono idee.",
+            "Il pulsante Apri nel programma di posta prepara in {programma} la mail che ti iscrive: spediscila così com'è, perché MESS non "
+            "spedisce niente da solo. Poi Google ti scriverà per chiederti di confermare l'iscrizione: segui le sue istruzioni.",
+            _ALTRA_STRADA,
+        )),
+        "passi": (
+            ("Passo 1 di 2. Scrivi una mail nuova nella tua posta, per esempio nella webmail del browser, e incolla nel campo A l'indirizzo "
+             "dell'iscrizione, che ho copiato negli appunti; poi torna qui e premi OK. L'indirizzo è questo:", PUB_ISCRIZIONE),
+            ("Passo 2 di 2. Oggetto e testo possono restare vuoti, perché Google non li legge: spedisci la mail così com'è. Google ti scriverà "
+             "per chiederti di confermare l'iscrizione: segui le sue istruzioni. OK chiude questa finestra.", None),
+        ),
+    }
+
+
+def allegati_per_il_pub(allegati, cartella):
+    """
+    La frase che chiede di allegare alla mail d'aiuto il crash della volta prima e il registro degli
+    errori, quelli che ci sono, con la cartella in cui stanno; vuota se non ce n'è nessuno.
+    """
+    if not allegati:
+        return ""
+    if len(allegati) == 1:
+        return (f"Allega alla mail anche il file {allegati[0]}, che sta accanto al programma, nella cartella {cartella}: aiuta a capire che "
+                f"cosa è andato storto.")
+    return (f"Allega alla mail anche i file {unisci(list(allegati))}, che stanno accanto al programma, nella cartella {cartella}: aiutano a "
+            f"capire che cosa è andato storto.")
+
+
+def riservatezza_dei_registri(allegati):
+    """
+    La frase che avverte che i file del registro da allegare, a differenza del testo della mail,
+    possono contenere percorsi con il nome dell'utente di Windows, per esempio nei messaggi d'errore;
+    vuota se non c'è niente da allegare. Dalla terza revisione della tappa 14.
+    """
+    if not allegati:
+        return ""
+    if len(allegati) == 1:
+        return "Il registro può contenere dei percorsi con il nome del tuo utente di Windows: controllalo prima di spedire."
+    return "I registri possono contenere dei percorsi con il nome del tuo utente di Windows: controllali prima di spedire."
+
+
+def mail_d_aiuto_al_pub(informazioni, allegati=(), cartella=""):
+    """
+    Chiedi aiuto al PUB: le parole della mail al gruppo, per finestra_mail di GBwx. L'oggetto dice la
+    versione; il testo ha una prima riga da sostituire con la domanda e sotto le informazioni sul
+    computer, da informazioni_di_sistema di GBUtils con le etichette italiane, introdotte da una riga
+    che parla a chi riceve la mail: dalla terza revisione della tappa 14 la libertà di cancellarle la
+    dicono la spiegazione della finestra e il passo del testo. allegati sono i nomi dei file del
+    registro da allegare, che stanno nella cartella, con l'avvertenza sui percorsi che contengono.
+    """
+    from GBUtils import PUB_GRUPPO, righe_informazioni
+
+    oggetto = f"Chiedo per MESS {version.__version__}"
+    corpo = "\n".join((
+        "Scrivi qui la tua domanda, al posto di questa riga.",
+        "Informazioni su MESS e sul computer di chi scrive:",
+        f"Programma: MESS {version.__version__}",
+        *righe_informazioni(ETICHETTE_DEL_PUB, informazioni, PAROLE_DEL_PUB),
+    ))
+    allega = allegati_per_il_pub(allegati, cartella)
+    riservatezza = riservatezza_dei_registri(allegati)
+    spedisci = f"{allega} {riservatezza} Poi spedisci la mail." if allega else "Spedisci la mail."
+    return {
+        "titolo": "Chiedi aiuto al PUB",
+        "destinatario": PUB_GRUPPO,
+        "oggetto": oggetto,
+        "corpo": corpo,
+        "spiegazione": "\n".join(parte for parte in (
+            f"Il pulsante Apri nel programma di posta prepara in {{programma}} una mail al PUB, il gruppo di supporto dei programmi di "
+            f"Gabriele Battaglia, con l'oggetto {oggetto}.",
+            "Scrivi la tua domanda al posto della prima riga del testo; sotto ci sono le informazioni sul tuo computer, utili a chi ti "
+            "risponde, che puoi cancellare se preferisci.",
+            allega,
+            riservatezza,
+            f"Poi spediscila tu: MESS non spedisce niente da solo. {_ISCRIVITI}",
+            _ALTRA_STRADA,
+        ) if parte),
+        "passi": (
+            ("Passo 1 di 4. Scrivi una mail nuova nella tua posta, per esempio nella webmail del browser, e incolla nel campo A l'indirizzo "
+             "del PUB, che ho copiato negli appunti; poi torna qui e premi OK. L'indirizzo è questo:", PUB_GRUPPO),
+            ("Passo 2 di 4. Incolla nel campo Oggetto quello che ho copiato negli appunti, poi torna qui e premi OK. L'oggetto è questo:", oggetto),
+            ("Passo 3 di 4. Incolla nel testo della mail quello che ho copiato negli appunti, e scrivi la tua domanda al posto della prima riga; "
+             "le informazioni sul computer, sotto, puoi cancellarle se preferisci. Poi torna qui e premi OK. Il testo è questo:", corpo),
+            (f"Passo 4 di 4. {spedisci} {_ISCRIVITI} OK chiude questa finestra.", None),
+        ),
+    }
+
+
 def somma_rapporti(primo, secondo):
     """
     Due riepiloghi di avanzamento sommati, con l'ora del secondo: il totale di una sessione. Dalla
@@ -2265,9 +2454,41 @@ LEGENDA_CLASSE = (
     "e per il 30% l'esperienza di carriera. La scheda dice anche la percentuale del cammino verso la classe seguente. Le soglie sono fisse per "
     "sempre: A1 è la carriera perfetta, dai 9 ai 50 anni, e chi la supera resta A1; i nati stanno fra la I e la F, i bravi a metà carriera fra la E e la D."
 )
+
+
+def _punti_in_legenda(valore):
+    """Un numero di punti allenamento nella legenda, con un decimale che sparisce quando è zero: 1, 2,2."""
+    return numero(valore).removesuffix(",0")
+
+
+def _punti_degli_incontri():
+    """
+    I punti allenamento degli incontri nella legenda, presi dalle costanti della tappa 12, D32: la formula
+    dà da PA_PARTITA_BASE, a chi perde senza vincere un set, a quello che prende chi vince 3 a 2 al meglio
+    dei 5, il premio al più debole a parte, tutto per il fattore della fonte; la sfida è a un set solo,
+    senza premio al più debole. La revisione della tappa 14 ha visto che la legenda diceva ancora i punti
+    di un'amichevole di prima della tappa 12, da 2 a 4,5 con un punto al più debole.
+    """
+    minimo = PA_PARTITA_BASE
+    massimo = PA_PARTITA_BASE + 3 * PA_PER_SET_VINTO + PA_VITTORIA
+    sfida_vinta = PA_PARTITA_BASE + PA_PER_SET_VINTO + PA_VITTORIA
+
+    def da_a(fattore):
+        return f"da {_punti_in_legenda(minimo * fattore)} a {_punti_in_legenda(massimo * fattore)}"
+
+    return (
+        f"Un'amichevole ne dà {da_a(PA_FATTORE_AMICHEVOLE)}, e {_punti_in_legenda(PA_BONUS_PIU_DEBOLE * PA_FATTORE_AMICHEVOLE)} in più al più debole, "
+        f"anche quando perde; una sfida {_punti_in_legenda(sfida_vinta * PA_FATTORE_SFIDA)} a ogni titolare della squadra che vince e "
+        f"{_punti_in_legenda(minimo * PA_FATTORE_SFIDA)} a quelli della squadra che perde; un incontro di torneo {da_a(PA_FATTORE_TORNEO)}, e "
+        f"{_punti_in_legenda(PA_BONUS_PIU_DEBOLE * PA_FATTORE_TORNEO)} in più al più debole, moltiplicati per l'importanza del torneo: "
+        "1 negli open, 1,5 nei gran premi, 4 al campionato italiano. Un incontro della Coppa delle polisportive dà i punti di una sfida "
+        "moltiplicati per la sua importanza, 3. "
+    )
+
+
 LEGENDA_ALLENAMENTO = (
-    "L'allenamento si paga in punti allenamento, che vengono dalla seduta di ogni giorno in polisportiva, metà per i liberi, e dalle amichevoli: "
-    "un incontro ne dà da 2 a 4,5, con un punto in più al più debole, anche quando perde. Ogni punto compra lo stesso valore a parità di livello, "
+    "L'allenamento si paga in punti allenamento, che vengono dalla seduta di ogni giorno in polisportiva, metà per i liberi, e dagli incontri, "
+    "vinti o persi. " + _punti_degli_incontri() + "Ogni punto compra lo stesso valore a parità di livello, "
     "quindi la precisione, che pesa tanto, sale piano, e le sponde salgono in fretta. Ogni caratteristica può arrivare al tetto, fino a Divino, "
     "ma l'ultimo punto costa dodici volte il primo, e sopra il 70% del tetto i livelli calano un poco ogni mese se non si continuano ad allenare. "
     "I ragazzi imparano un po' più in fretta, gli anziani un po' più piano; il talento, l'apprendista rapido e la maturazione precoce o tardiva sono tratti rari. "
@@ -2288,8 +2509,8 @@ LEGENDA_CONTRATTI = (
 LEGENDA_STAFF = (
     "Dalla tappa 13 ogni polisportiva può avere uno staff, un capo allenatore e due assistenti, nel dialogo dello staff, Ctrl+H. Lo staff fa imparare "
     "più in fretta, abbassa il rischio d'infortunio in allenamento e in partita e fa crescere prima la fedeltà al club; conta la qualità dello staff, "
-    "il 70% dal capo, il 20% dall'assistente migliore e il 10% dall'altro. Rispetto allo staff medio del mondo di quel giorno, senza staff si "
-    "impara circa il 15% più piano, col migliore fino al 20% più in fretta, e il mondo nel suo insieme si allena sempre come prima "
+    "il 70% dal capo, il 20% dall'assistente migliore e il 10% dall'altro. Rispetto allo staff medio nazionale di quel giorno, senza staff si "
+    "impara circa il 15% più piano, col migliore fino al 20% più in fretta, e l'Italia nel suo insieme si allena sempre come prima "
     "dello staff; i liberi si allenano senza staff. Gli allenatori sono "
     "ex giocatori arrivati almeno ad H0, che allenano con la classe migliore della carriera, o nati allenatori, adulti con una classe a caso, più rara "
     "quanto più è alta. Il mercato degli allenatori, Ctrl+Maiusc+G, li mostra tutti, dal migliore, coi filtri di classe, età, tipo e sesso. Si assumono "
@@ -2307,8 +2528,8 @@ GUIDA_DEI_TORNEI = (
     "soltanto coi pulsanti: la quota si paga subito e torna se togli l'iscrizione prima del sorteggio. Le partite dei tuoi si giocano col motore vero anche a "
     "programma chiuso: nel pannello dei tornei, Ctrl+Y, un incontro dei tuoi resta da ascoltare finché non lo ascolti in differita, Invio sull'incontro, non ne "
     "leggi la cronaca o non ne chiedi il risultato; Mostra tutti i risultati li svela tutti insieme, dopo una domanda. Le classifiche e le notizie dicono comunque "
-    "chi va avanti. Ogni anno c'è un campionato mondiale per sesso, a cui si è convocati per i punti dell'ultimo anno, e la Coppa delle polisportive a squadre, "
-    "per gloria. L'albo d'oro, Ctrl+Maiusc+B, conserva ogni podio per sempre, la classifica mondiale, Ctrl+Maiusc+W, i punti di tutta la carriera. Gli editor "
+    "chi va avanti. Ogni anno c'è un campionato italiano per sesso, a cui si è convocati per i punti dell'ultimo anno, e la Coppa delle polisportive a squadre, "
+    "per gloria. L'albo d'oro, Ctrl+Maiusc+B, conserva ogni podio per sempre, la classifica nazionale, Ctrl+Maiusc+W, i punti di tutta la carriera. Gli editor "
     "cambiano soltanto le edizioni future, e il calendario predefinito si rimette dal menu Tornei, senza perdere quello di prima."
 )
 GUIDA_DELLE_SFIDE = (
@@ -2338,6 +2559,7 @@ def informazioni():
         version.get_header() + ".",
         "MESS è un gioco gestionale dello showdown, il tennistavolo per ciechi, pensato da un giocatore cieco.",
         "Ideato da Gabriele Battaglia il 13 aprile 2015, portato in Python nel 2020 con l'aiuto di Gemini 2.5, rifatto dal 2026 con ClaudIA.",
+        "MESS è software libero, con licenza GNU GPL versione 3: puoi usarlo, studiarlo, modificarlo e ridistribuirlo alle sue condizioni.",
         "Il codice è su GitHub, nel repository GabrieleBattaglia/Showdown.",
     ])
 

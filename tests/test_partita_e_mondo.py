@@ -2,7 +2,8 @@
 Test della facciata del motore di partita, che non stampa nulla, e del mondo che avanza col tempo.
 Dalla tappa 9 la cronaca su file sta nella cartella cronache, una partita per file, e la partita si
 può giocare senza registrarla. Dal 2026-10-08 ogni giocatore gioca al massimo un'amichevole per giorno
-simulato, nella facciata e nell'interfaccia testuale.
+simulato, e la facciata lo controlla; la prova dell'interfaccia testuale se n'è andata con lei, nella
+tappa 14.
 """
 
 import datetime
@@ -11,7 +12,6 @@ import re
 
 import pytest
 
-import cli
 import esperienza
 import infortuni as modulo_infortuni
 import mondo as modulo_mondo
@@ -255,19 +255,6 @@ def test_un_amichevole_al_giorno(mondo):
     assert motore.problema_amichevole(11, 12) is None
     assert motore.gioca_partita(11, 12, 3)["error"] is None
     assert mondo.giocatori[11].ultimo_impegno == INIZIO + datetime.timedelta(days=1)
-
-
-def test_l_interfaccia_testuale_rifiuta_chi_ha_gia_giocato(mondo, monkeypatch, capsys):
-    for g in mondo.giocatori.values():
-        g.infortunato = False
-    mondo.giocatori[7].ultimo_impegno = INIZIO
-    interfaccia = cli.InterfacciaTestuale(mondo)
-    monkeypatch.setattr(cli, "dgt", lambda *a, **k: 7)
-    assert interfaccia._giocatore_per_partita("ID Giocatore 1? ") is None
-    assert "oggi" in capsys.readouterr().out
-    monkeypatch.setattr(cli, "dgt", lambda *a, **k: 8)
-    assert interfaccia._giocatore_per_partita("ID Giocatore 1? ") == 8
-
 
 
 # Tappa 11, decisione D31: i punti di un incontro, il premio al più debole, l'esperienza e la

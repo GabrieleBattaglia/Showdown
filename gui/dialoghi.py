@@ -38,9 +38,19 @@ Dalla tappa 13, il 2026-10-21, decisione D33 e capitolo 4 del progetto, ci sono 
 polisportiva, coi tre posti, il rinnovo, il licenziamento e l'assunzione, e il mercato degli allenatori,
 coi filtri e l'offerta d'ingaggio. Le parti della tappa 13 sono di Gabriele Battaglia (IZ4APU) &
 ClaudIA (Claude Opus 5.5, UltraCode).
+Dalla tappa 14, il 2026-10-23, la fondazione chiede anche la sede, un comune cercato per nome in un elenco
+che si restringe mentre si scrive. Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, modalità auto). Con la decisione D34 arriva la proposta dell'aggiornamento automatico,
+con le note della release, che allo scadere dell'attesa si chiude da sola come Non adesso; questa parte
+è di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode). Dal collaudo di Gabriele del 23
+ottobre 2026 tutti i dialoghi si aprono massimizzati, come la finestra principale, ed Esc preme il loro
+pulsante Chiudi, se ce l'hanno: le due regole stanno in _Dialogo.completa, da cui passano tutti, così
+valgono anche per i dialoghi che verranno. Anche questa parte è di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
+import time
 import webbrowser
 
 import wx
@@ -51,6 +61,7 @@ import classe
 import contratti
 import economia
 import impostazioni as modulo_impostazioni
+import luoghi
 import mercato
 import partita_sonora
 import ricerca
@@ -69,7 +80,7 @@ from costanti import (
     STIPENDIO_MINIMO,
 )
 from gui import aspetto
-from modelli import probabilita_accettazione
+from modelli import normalizza_nome, probabilita_accettazione
 from motore import cronaca
 
 PAYPAL_URL = "https://paypal.me/GabrieleBattaglia780"
@@ -83,6 +94,8 @@ VAI_ALLA_FINE = "fine"
 MODI_DI_SEGUIRE = ((ASSISTI, "Assisti"), (VAI_ALLA_FINE, "Vai alla fine"))
 # I livelli della cronaca, con la normale come predefinita.
 LIVELLI_DI_CRONACA = ((cronaca.SINTETICA, "Sintetica"), (cronaca.NORMALE, "Normale"), (cronaca.TECNICA, "Tecnica"))
+# Il testo del pulsante che Esc preme, senza la lettera sottolineata: &Chiudi e C&hiudi valgono uguale.
+ETICHETTA_CHIUDI = "Chiudi"
 
 
 def controllo_col_fuoco():
@@ -90,8 +103,21 @@ def controllo_col_fuoco():
     return wx.Window.FindFocus()
 
 
+def pulsante_chiudi(finestra):
+    """Il primo pulsante Chiudi fra i controlli della finestra, a qualunque profondità, o None; i dialoghi che ci stanno dentro non contano."""
+    for figlio in finestra.GetChildren():
+        if figlio.IsTopLevel():
+            continue
+        if isinstance(figlio, wx.Button) and figlio.GetLabelText() == ETICHETTA_CHIUDI:
+            return figlio
+        trovato = pulsante_chiudi(figlio)
+        if trovato is not None:
+            return trovato
+    return None
+
+
 class _Dialogo(wx.Dialog):
-    """La base dei dialoghi: pannello che scorre, sizer verticale, chiusura con Esc."""
+    """La base dei dialoghi: pannello che scorre, sizer verticale, apertura massimizzata, chiusura con Esc."""
 
     def __init__(self, genitore, titolo):
         super().__init__(genitore, title=titolo, style=STILE_ADATTABILE)
@@ -125,8 +151,21 @@ class _Dialogo(wx.Dialog):
         return creati
 
     def completa(self, misura):
+        """
+        Dà il sizer al pannello e al dialogo la misura del contenuto, poi le due regole di tutte le finestre
+        interne, dal collaudo di Gabriele del 23 ottobre 2026. Il dialogo si apre massimizzato, come la
+        finestra principale, perché con lo screen reader e il display braille il testo largo va meno a capo;
+        la misura di adatta_finestra resta quella a cui torna se lo si ripristina. E se ha un pulsante
+        Chiudi, Esc lo preme: wx lo fa da sé soltanto quando Chiudi è wx.ID_CANCEL, o wx.ID_OK senza un
+        annullamento, e non con wx.ID_CLOSE o con un pulsante qualunque. Un dialogo che sceglie da sé il
+        pulsante di Esc, come l'aggiornamento col suo Non adesso, tiene il suo.
+        """
         self.pannello.SetSizer(self.sizer)
         adatta_finestra(self, self.pannello, misura)
+        self.Maximize()
+        chiudi = pulsante_chiudi(self)
+        if chiudi is not None and self.GetEscapeId() == wx.ID_ANY:
+            self.SetEscapeId(chiudi.GetId())
 
     def invio_su(self, controllo, azione):
         """
@@ -496,14 +535,34 @@ class EffettiSonori(_Dialogo):
 
 
 class NuovaPolisportiva(_Dialogo):
-    """La fondazione di una polisportiva: il nome, la password facoltativa della decisione D3 e se renderla attiva."""
+    """
+    La fondazione di una polisportiva: il nome, la sede, la password facoltativa della decisione D3 e se
+    renderla attiva. Dalla tappa 14, richiesta di Gabriele del 23 ottobre 2026, la sede è un comune: il
+    campo Sede ne propone uno estratto coi pesi della popolazione, che basta confermare, e mentre si
+    scrive restringe l'elenco dei comuni, ciascuno con la sua popolazione in percentuale su quella del
+    più popoloso, la provincia e la regione; quando l'elenco si svuota o torna pieno lo fa sentire, come
+    gli altri filtri. Fonda prende il comune scelto nell'elenco. Invio sul campo Sede o sull'elenco, e
+    il doppio clic sull'elenco, non fondano subito, perché lì sembra scegliere il comune: chiedono
+    conferma, con il no già scelto. Dalla revisione della tappa 14 fanno la stessa domanda anche Fonda e
+    Invio sul nome o sulle password, quando il campo Sede è vuoto o non dice proprio il comune scelto
+    nell'elenco: prima fondavano in silenzio a Roma, il primo dell'elenco pieno, o nel primo comune di
+    un nome scritto a metà. In risultato restano nome, password, se renderla attiva e comune; il comune
+    è vuoto soltanto se la collezione dei comuni non si legge.
+    """
 
-    def __init__(self, genitore, mondo):
+    def __init__(self, genitore, mondo, proposta=None):
         super().__init__(genitore, "Nuova polisportiva")
         self.mondo = mondo
         self.risultato = None
+        self.comuni = []
+        self.elenco_vuoto = _ElencoCheSiRestringe()
+        self.ci_sono_comuni = bool(luoghi.candidati(""))
         self.etichetta(f"&Nome, da {NOME_POLISPORTIVA_MIN} a {NOME_POLISPORTIVA_MAX} caratteri")
         self.nome = self.aggiungi(wx.TextCtrl(self.pannello))
+        self.etichetta("&Sede: scrivi il nome del comune per cercarlo")
+        self.sede = self.aggiungi(wx.TextCtrl(self.pannello))
+        self.etichetta_comuni = self.etichetta("&Comuni trovati")
+        self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         self.etichetta("&Password, facoltativa")
         self.password = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
         self.etichetta("C&onferma della password")
@@ -512,18 +571,76 @@ class NuovaPolisportiva(_Dialogo):
         self.attiva.SetValue(True)
         fonda, _annulla = self.pulsanti((wx.ID_OK, "&Fonda"), (wx.ID_CANCEL, "Annulla"))
         fonda.Bind(wx.EVT_BUTTON, self.conferma)
-        self.completa((420, 320))
+        self.sede.Bind(wx.EVT_TEXT, self.filtra)
+        self.invio_su(self.sede, self.conferma_con_domanda)
+        self.invio_su(self.elenco, self.conferma_con_domanda)
+        self.elenco.Bind(wx.EVT_LISTBOX_DCLICK, self.conferma_con_domanda)
+        self.sede.ChangeValue(luoghi.comune_a_caso() if proposta is None else proposta)
+        self.filtra()
+        self.completa((520, 560))
         self.nome.SetFocus()
 
-    def conferma(self, event=None):
+    def filtra(self, event=None):
+        """
+        L'elenco dei comuni per il testo del campo Sede, col primo già scelto, e il loro numero
+        nell'etichetta; il suono quando si svuota o torna pieno, e all'apertura se è vuoto.
+        """
+        self.comuni = luoghi.candidati(self.sede.GetValue())
+        self._riscrivi(self.elenco, [testi.riga_del_comune(comune) for comune in self.comuni], 0)
+        self.etichetta_comuni.SetLabel(f"&Comuni trovati: {testi.intero(len(self.comuni))}")
+        self.pannello.Layout()
+        apertura = self.elenco_vuoto.pieno is None
+        passaggio = self.elenco_vuoto.passaggio(bool(self.comuni))
+        if apertura and not self.comuni:
+            suoni.in_coda("elenco_svuotato")
+        elif passaggio:
+            suoni.suona(passaggio)
+
+    def comune_scelto(self):
+        """Il comune scelto nell'elenco, oppure None se l'elenco è vuoto."""
+        indice = self.elenco.GetSelection()
+        if indice == wx.NOT_FOUND or indice >= len(self.comuni):
+            return None
+        return self.comuni[indice]
+
+    def _controlla(self):
+        """Nome, sede e password: il risultato se vanno, altrimenti None, dopo l'avviso col cursore sul campo da correggere."""
         problema = self.mondo.problema_nome_polisportiva(self.nome.GetValue())
         if problema:
             self.avvisa(problema, self.nome)
-            return
+            return None
+        comune = self.comune_scelto()
+        if comune is None and self.ci_sono_comuni:
+            self.avvisa("Nessun comune corrisponde a quello che hai scritto nella sede: correggilo, o cancellalo per vederli tutti.", self.sede, "nessuna_selezione")
+            return None
         if self.password.GetValue() != self.conferma_password.GetValue():
             self.avvisa("La password e la conferma non coincidono.", self.password, "password_non_coincidono")
+            return None
+        return (self.nome.GetValue(), self.password.GetValue() or None, self.attiva.GetValue(), comune or "")
+
+    def conferma(self, event=None):
+        """
+        Fonda, o Invio sul nome e sulle password: si fonda senza domande, se tutto va e il campo Sede
+        dice proprio il comune scelto; se è vuoto o dice altro, la domanda di Invio sulla sede.
+        """
+        self._fonda(chiedi=False)
+
+    def conferma_con_domanda(self, event=None):
+        """Invio sul campo Sede o sull'elenco e il doppio clic sull'elenco: la domanda col nome e la sede, sempre."""
+        self._fonda(chiedi=True)
+
+    def _fonda(self, chiedi):
+        """Gli stessi controlli per tutti, poi la domanda se serve: al no il fuoco torna dov'era."""
+        fuoco = controllo_col_fuoco()
+        risultato = self._controlla()
+        if risultato is None:
             return
-        self.risultato = (self.nome.GetValue(), self.password.GetValue() or None, self.attiva.GetValue())
+        comune = risultato[3]
+        if chiedi or (comune and not luoghi.coincide(self.sede.GetValue(), comune)):
+            if not self._conferma(testi.domanda_fondazione(normalizza_nome(risultato[0]), comune)):
+                self._torna(fuoco)
+                return
+        self.risultato = risultato
         self.chiudi(wx.ID_OK)
 
 
@@ -2030,6 +2147,24 @@ class Lettura(_Dialogo):
             event.Skip()
 
 
+# Il tempo entro cui un Invio dopo l'apertura del dialogo, o dopo un altro Invio, vale come tasto tenuto giù:
+# con NVDA, nei campi di testo, ogni ripetizione arriva come una pressione nuova e IsAutoRepeat non la vede
+# (la trappola di Tornello del 27 settembre 2026). Gli 0,65 secondi di serie della grazia di GBwx 1.1.1,
+# che Gabriele ha provato con NVDA il 23 ottobre 2026 nella finestra della mail.
+GRAZIA_INVIO = 0.65
+
+
+def _adesso():
+    return time.monotonic()
+
+
+def invio_da_ignorare(dialogo, event):
+    """Vero se l'Invio arriva entro la grazia dall'apertura del dialogo o dall'Invio precedente: un tasto tenuto giù."""
+    adesso = _adesso()
+    precedente, dialogo.ultimo_invio = dialogo.ultimo_invio, adesso
+    return event.IsAutoRepeat() or adesso - precedente < GRAZIA_INVIO
+
+
 class Caffe(Lettura):
     """L'invito a offrire un caffè, solo a richiesta dal menu Aiuto, con Dona con PayPal e Chiudi."""
 
@@ -2038,9 +2173,82 @@ class Caffe(Lettura):
         self.bottoni[0].Bind(wx.EVT_BUTTON, self.dona)
         # Invio chiude: donare deve essere una scelta, non un tasto premuto per abitudine.
         self.bottoni[-1].SetDefault()
+        # L'apertura conta come un Invio: quello tenuto giù dalla voce del menu non chiude l'invito appena aperto.
+        self.ultimo_invio = _adesso()
+
+    def _tasto(self, event):
+        """
+        Invio nel testo chiude come Chiudi, come Esc: l'area in sola lettura su più righe, che ha il
+        fuoco, si tiene Invio, e il pulsante predefinito da solo non basta, terza revisione della tappa
+        14. Sui pulsanti Invio resta loro; un Invio tenuto giù non risponde, anche con NVDA, grazie a
+        invio_da_ignorare, come nell'Aggiornamento.
+        """
+        tasto = event.GetKeyCode()
+        if event.GetEventObject() is self.testo and tasto in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not invio_da_ignorare(self, event):
+            self.chiudi(wx.ID_OK)
+        else:
+            super()._tasto(event)
 
     def dona(self, event=None):
         suoni.suona("caffe_paypal")
         with contextlib.suppress(webbrowser.Error):
             webbrowser.open(PAYPAL_URL)
         self.chiudi(wx.ID_OK)
+
+
+def durata_dell_attesa(secondi):
+    """Quanto aspetta la proposta dell'aggiornamento, a parole: 2 minuti, 1 minuto e 30 secondi, 45 secondi."""
+    minuti, resto = divmod(max(0, round(secondi)), 60)
+    parti = ([testi.conta(minuti, "minuto", "minuti")] if minuti else []) + ([testi.conta(resto, "secondo", "secondi")] if resto or not minuti else [])
+    return " e ".join(parti)
+
+
+class Aggiornamento(Lettura):
+    """
+    La proposta dell'aggiornamento automatico, tappa 14: nel testo in sola lettura, che ha il fuoco
+    all'apertura, la versione nuova, quella che si ha e le note della release; i pulsanti Aggiorna e
+    Non adesso, che è il predefinito. Esc, e Invio nel testo, valgono Non adesso: aggiornare si
+    sceglie solo con il suo pulsante. Con attesa, in secondi, il dialogo si chiude da solo come Non
+    adesso allo scadere, e l'aggiornamento torna al prossimo avvio. Il codice di ShowModal è wx.ID_YES
+    per aggiornare, wx.ID_NO altrimenti; scaduta dice se il no è venuto dallo scadere dell'attesa.
+    """
+
+    def __init__(self, genitore, versione_attuale, versione_nuova, note, attesa=None, impostazioni=None):
+        righe = [f"È disponibile MESS {versione_nuova}; tu hai la {versione_attuale}.",
+                 "Aggiorna scarica la versione nuova; poi MESS salva il mondo, si chiude e si riapre aggiornato, con il tuo mondo e le tue impostazioni."]
+        if attesa:
+            righe.append(f"Se non rispondi entro {durata_dell_attesa(attesa)}, il dialogo si chiude da solo e te lo ripropongo al prossimo avvio.")
+        righe += ["Le note della release:", (note or "").strip() or "Nessuna nota scritta per questa versione."]
+        super().__init__(genitore, "Aggiornamento di MESS", "\n".join(righe), impostazioni, ((wx.ID_YES, "&Aggiorna"), (wx.ID_NO, "&Non adesso")))
+        self.bottoni[0].Bind(wx.EVT_BUTTON, lambda event: self.chiudi(wx.ID_YES))
+        # Lettura lega l'ultimo pulsante alla chiusura con OK: qui vale Non adesso.
+        self.bottoni[-1].Unbind(wx.EVT_BUTTON)
+        self.bottoni[-1].Bind(wx.EVT_BUTTON, lambda event: self.chiudi(wx.ID_NO))
+        self.bottoni[-1].SetDefault()
+        self.SetEscapeId(wx.ID_NO)
+        # Vero se il dialogo si è chiuso da solo, allo scadere: la finestra le dà un suono diverso da Non adesso.
+        self.scaduta = False
+        # L'apertura conta come un Invio: il dialogo compare da solo all'avvio, magari mentre si preme Invio altrove.
+        self.ultimo_invio = _adesso()
+        self._scadenza = wx.CallLater(round(attesa * 1000), self._scaduta) if attesa else None
+
+    def _tasto(self, event):
+        """Esc, e Invio nel testo, valgono Non adesso; sui pulsanti Invio resta loro. Un Invio tenuto giù non risponde, anche con NVDA."""
+        tasto = event.GetKeyCode()
+        nel_testo = (event.GetEventObject() is self.testo and tasto in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER)
+                     and not invio_da_ignorare(self, event))
+        if tasto == wx.WXK_ESCAPE or nel_testo:
+            self.chiudi(wx.ID_NO)
+        else:
+            event.Skip()
+
+    def chiudi(self, codice):
+        if self._scadenza is not None:
+            self._scadenza.Stop()
+        super().chiudi(codice)
+
+    def _scaduta(self):
+        # Il dialogo può essere già chiuso, o distrutto.
+        if self and self.IsModal():
+            self.scaduta = True
+            self.EndModal(wx.ID_NO)

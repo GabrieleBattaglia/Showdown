@@ -49,6 +49,7 @@ import premiazioni
 import sfide
 import tornei
 from costanti import CONSERVAZIONE_TORNEI_CONCLUSI_GIORNI, FATICA_RESIDUA_GIORNATA, GIOCATORI_AL_TAVOLO
+from grammatica import accorda_al_torneo, maiuscola, torneo_con_preposizione
 from motore import ESSENZIALE, SQUADRE, TAVOLINO, Incontro, Squadra, a_tavolino, formato_singolare
 from partita import MotorePartita, differita_singolare, differita_squadre
 from premiazioni import Albo
@@ -332,11 +333,11 @@ class Calendario:
         for ed in self.edizioni:
             if gid in ed.giocatori():
                 cosa = "l'iscrizione" if ed.individuale else "la rosa della sua polisportiva"
-                risultato.append((ed.data_inizio, ed.data_fine, f"{cosa} a {ed.nome}, dal {data_breve(ed.data_inizio)}", "torneo"))
+                risultato.append((ed.data_inizio, ed.data_fine, f"{cosa} {torneo_con_preposizione(ed.nome)}, dal {data_breve(ed.data_inizio)}", "torneo"))
         for torneo in self.tornei:
             if gid in self.giocatori_del_torneo(torneo):
                 inizio, fine = self._intervallo_del_torneo(torneo)
-                risultato.append((inizio, fine, f"{torneo.modello['nome']}, in corso dal {data_breve(inizio)}", "torneo"))
+                risultato.append((inizio, fine, f"{torneo_con_preposizione(torneo.modello['nome'], None)}, in corso dal {data_breve(inizio)}", "torneo"))
         for s in mondo.sfide.attive:
             if s.stato == sfide.ACCETTATA and any(gid in ids for ids in s.convocati.values()):
                 risultato.append((s.data_gioco, s.data_gioco, f"una sfida fra {s.sfidante['nome']} e {s.sfidata['nome']}, il {data_breve(s.data_gioco)}", "sfida"))
@@ -492,6 +493,8 @@ class Calendario:
     def _annulla(self, mondo, ed, rapporto):
         """L'annullamento sotto il minimo, risposta 19: le quote tornano, i tuoi lo sanno; il mondiale che non si disputa resta nell'albo."""
         rapporto["edizioni_annullate"] += 1
+        # L'articolo davanti al nome e il participio accordato: "La Coppa delle polisportive del 3 marzo è annullata".
+        annullata = f"{maiuscola(torneo_con_preposizione(ed.nome, None))} del {data_breve(ed.data_inizio)} {accorda_al_torneo(ed.nome, 'annullato')}"
         tuoi = []
         for iscritto in ed.iscritti:
             iscrizioni.rimborsa(mondo, iscritto)
@@ -499,15 +502,15 @@ class Calendario:
                 poli = iscrizioni.polisportiva_del_club(mondo, iscritto["club"])
                 if sfide.tua(poli):
                     tuoi.append(poli)
-                    mondo.annota(poli, f"{ed.nome} del {data_breve(ed.data_inizio)} è annullata: le qualificate erano meno di {ed.minimo}.")
+                    mondo.annota(poli, f"{annullata}: le qualificate erano meno di {ed.minimo}.")
                 continue
             g = mondo.giocatori.get(iscritto["id"])
             if g is not None and iscrizioni.tuo(mondo, g):
                 tuoi.append(g)
-                mondo.annota(g, f"{ed.nome} del {data_breve(ed.data_inizio)} è annullato: gli iscritti erano meno di {ed.minimo}, e la quota torna.")
+                mondo.annota(g, f"{annullata}: gli iscritti erano meno di {ed.minimo}, e la quota torna.")
         if tuoi:
             rapporto["tue_edizioni_annullate"] += 1
-            rapporto["notizie"].append(f"{ed.nome} del {data_breve(ed.data_inizio)} è annullato per pochi iscritti.")
+            rapporto["notizie"].append(f"{annullata} per pochi iscritti.")
         if ed.qualificazione != modelli_torneo.NESSUNA:
             self.albo.non_disputato(ed, ed.numero)
 
@@ -651,7 +654,7 @@ class Calendario:
         restituisce quelle di questo incontro.
         """
         importanza = torneo.modello["importanza"]
-        gara = f"l'incontro di {torneo.modello['nome']}"
+        gara = f"l'incontro {torneo_con_preposizione(torneo.modello['nome'], 'di')}"
         club, squadre = {}, {}
         for lato, cid in (("A", incontro.a), ("B", incontro.b)):
             info = torneo.info[cid]

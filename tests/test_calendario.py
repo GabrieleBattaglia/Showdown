@@ -24,6 +24,7 @@ import tornei
 from calendario import Calendario
 from mondo import Mondo
 from partita import MotorePartita
+from utilita import data_breve
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 import mondi_sintetici as ms
@@ -42,7 +43,7 @@ def test_l_apertura_secondo_la_ricorrenza_anche_due_insieme():
     assert [ed.data_inizio for ed in apri(mondo, domani, MARTEDI)][-1] == datetime.date(2026, 10, 20)
     mensile = apri(mondo, OGGI, "Gran Premio maschile")
     assert [ed.data_inizio for ed in mensile] == [datetime.date(2026, 10, 15)]
-    annuale = apri(mondo, datetime.datetime(2026, 11, 30, 9, 0), "Campionato mondiale maschile")
+    annuale = apri(mondo, datetime.datetime(2026, 11, 30, 9, 0), "Campionato italiano maschile")
     assert [ed.data_inizio for ed in annuale] == [datetime.date(2026, 12, 10)]
 
 
@@ -86,7 +87,10 @@ def test_l_annullamento_con_i_rimborsi_e_la_riscrittura_del_giorno_dopo():
     mondo.calendario.sorteggi(mondo, martedi, rapporto)
     assert poli.cassa == 100 and poli.conti_del_mese["rimborsi"] == 30
     assert rapporto["edizioni_annullate"] == rapporto["tue_edizioni_annullate"] == 1 and rapporto["notizie"]
-    assert mondo.giocatori[1].diario[0]["testo"].endswith("è annullato: gli iscritti erano meno di 4, e la quota torna.")
+    # L'articolo davanti al nome del torneo, dalla seconda revisione della tappa 14.
+    data = data_breve(prima.data_inizio)
+    assert mondo.giocatori[1].diario[0]["testo"] == f"L'{prima.nome} del {data} è annullato: gli iscritti erano meno di 4, e la quota torna."
+    assert rapporto["notizie"] == [f"L'{prima.nome} del {data} è annullato per pochi iscritti."] and prima.nome.startswith("Open ")
     assert mondo.giocatori[1].prossimo_torneo is None and not mondo.calendario.tornei
     # Il giorno dopo l'iscrizione automatica li iscrive all'edizione utile seguente.
     rapporto = giorno(mondo, martedi + datetime.timedelta(days=1))

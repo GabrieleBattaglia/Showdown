@@ -46,6 +46,19 @@ il dialogo dello staff, il mercato degli allenatori, le offerte, i rinnovi, il l
 e i filtri, e le notizie dello staff, ventitré suoni nuovi, tutti mess_, entrati nella collezione con la V215; con la
 revisione del 22 ottobre 2026 il ventiquattresimo, l'allenatore in prelazione per un altro club, nella V219. Le parti della
 tappa 13 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Con la tappa 14, il 2026-10-23, decisione D34, MESS diventa un programma da installare: arrivano il
+manuale nel browser, la finestra che torna in primo piano quando si apre una seconda copia, il crash
+della volta prima detto all'avvio e il gruppo dell'aggiornamento automatico, con la proposta e gli
+esiti. Sono cinque suoni nuovi, tutti mess_, entrati nella collezione con la V220. Con la seconda
+revisione della tappa ne arrivano altri cinque, nella V222: il pulsante Aggiorna, la proposta che
+scade senza risposta, l'aggiornamento non riuscito, il pacchetto non ancora pronto e il manuale che
+manca, che prima suonava come le novità che non si leggono; la quinta che sale resta all'esito buono.
+Con la issue 4 il gruppo dell'aiuto ha le due voci del PUB, Entra al PUB e Chiedi aiuto al PUB, con
+mess_pub_entra e mess_pub_aiuto, anche loro nella V222. Con la terza revisione l'aggiornamento non
+installato, perché un messaggio è rimasto aperto oltre il limite della chiusura, ha il suo suono,
+mess_aggiornamento_non_installato, nella V223, e mess_aggiornamento_non_riuscito resta allo
+scaricamento che non riesce.
+Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -67,6 +80,8 @@ GRUPPI = (
         # Il motivo al contrario, e la sua versione grave quando il salvataggio finale non riesce.
         "uscita": "mess_uscita",
         "uscita_senza_salvataggio": "mess_uscita_senza_salvataggio",
+        # Dalla tappa 14: si apre MESS mentre è già aperto, e la finestra torna in primo piano con un eccomi.
+        "primo_piano": "mess_primo_piano",
     }),
     ("Applicazione, i salvataggi e gli errori gravi", {
         "salvataggio_riuscito": "meditimer_banco_salvato",
@@ -75,6 +90,8 @@ GRUPPI = (
         "salvataggio_illeggibile": "mess_salvataggio_illeggibile",
         # Un'eccezione che nessuno aspettava: l'unico allarme vero.
         "errore_imprevisto": "sirena_d_allarme_1",
+        # Dalla tappa 14: all'avvio, la volta prima MESS si è chiuso di colpo. Un avvertimento serio, ma non un allarme.
+        "crash_precedente": "mess_crash_precedente",
     }),
     ("Applicazione, il fuoco, i dialoghi e gli elenchi", {
         # F5 e F7 suonano come in Tornello e MeTeOra; il Tab resta muto.
@@ -91,12 +108,31 @@ GRUPPI = (
     }),
     ("Applicazione, l'aiuto", {
         "guida": "pokermachine_manuale",
+        # Dalla tappa 14, Maiusc+F1: due pagine che si sfogliano, mentre il manuale si apre nel browser.
+        "manuale": "mess_manuale",
+        # Il fruscio di una pagina e un tonfo sordo: il libro non c'è.
+        "manuale_mancante": "mess_manuale_mancante",
         "novita": "jingle_scoperta",
         "novita_illeggibile": "mess_novita_illeggibile",
         "informazioni": "mess_informazioni",
         # L'unica onda quadra, così com'è, come in Tornello, Terminal Beast e MeTeOra.
         "caffe": "donazione",
         "caffe_paypal": "carillon_dolce",
+        # Dalla tappa 14, issue 4: le due voci del PUB, il gruppo di supporto, ciascuna col suo suono.
+        "pub_entra": "mess_pub_entra",
+        "pub_aiuto": "mess_pub_aiuto",
+    }),
+    # Dalla tappa 14, solo dall'eseguibile compilato: un pacco che arriva, e la quinta che sale
+    # dell'esito buono. Dalla seconda revisione della tappa ogni scelta e ogni esito ha il suo suono.
+    ("Applicazione, l'aggiornamento automatico", {
+        "aggiornamento_disponibile": "mess_aggiornamento_disponibile",
+        "aggiornamento_scelto": "mess_aggiornamento_scelto",
+        "aggiornamento_scaduto": "mess_aggiornamento_scaduto",
+        "aggiornamento_esito": "mess_aggiornamento_esito",
+        "aggiornamento_non_riuscito": "mess_aggiornamento_non_riuscito",
+        "aggiornamento_non_pronto": "mess_aggiornamento_non_pronto",
+        # Dalla terza revisione: una porta che non si chiude, distinto dallo scaricamento non riuscito.
+        "aggiornamento_non_installato": "mess_aggiornamento_non_installato",
     }),
     ("Applicazione, le impostazioni", {
         "dialogo_aspetto": "scintillio_di_ghiaccio",
@@ -441,11 +477,13 @@ AZIONI = {
     "avvio_con_avvisi": "l'avvio con le collezioni di nomi e cognomi difettose",
     "uscita": "l'uscita dal programma con il mondo salvato",
     "uscita_senza_salvataggio": "l'uscita dal programma quando il salvataggio finale non riesce",
+    "primo_piano": "si apre MESS mentre è già aperto, e la finestra aperta torna in primo piano",
     "salvataggio_riuscito": "il mondo salvato con Ctrl+S",
     "salvataggio_con_avviso": "il mondo salvato con Ctrl+S, ma con un avviso dell'archivio",
     "salvataggio_non_riuscito": "un salvataggio che non riesce, con Ctrl+S o dopo un'operazione",
     "salvataggio_illeggibile": "all'avvio né il salvataggio né la sua copia si leggono, e il programma si ferma",
-    "errore_imprevisto": "un errore imprevisto del programma",
+    "errore_imprevisto": "un errore imprevisto del programma, o un errore che lo ferma",
+    "crash_precedente": "all'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto",
     "fuoco_vista": "F5, il fuoco va nella vista principale",
     "fuoco_barra": "F7, il fuoco va nella barra di stato",
     "annullato": "un'operazione annullata, con Esc o con Annulla in un dialogo",
@@ -456,11 +494,22 @@ AZIONI = {
     "elenco_ripopolato": "un elenco vuoto che torna a riempirsi mentre si scrive",
     "domanda": "una domanda di conferma, con Sì e No",
     "guida": "F1, la guida ai comandi, anche nella finestra dal vivo",
+    "manuale": "Maiusc+F1, il manuale che si apre nel browser",
+    "manuale_mancante": "Maiusc+F1 quando il manuale manca o il browser non lo apre",
     "novita": "F2, le novità della versione",
     "novita_illeggibile": "F2, quando il file delle novità non si legge",
     "informazioni": "F3, le informazioni con la versione e gli autori",
     "caffe": "Offrimi un caffè, nel menu Aiuto",
     "caffe_paypal": "Dona con PayPal, nell'invito al caffè",
+    "pub_entra": "Entra al PUB, nel menu Aiuto, apre la finestra che prepara la mail d'iscrizione al gruppo di supporto",
+    "pub_aiuto": "Chiedi aiuto al PUB, nel menu Aiuto, apre la finestra che prepara la mail al gruppo, con la domanda da scrivere e le informazioni del computer",
+    "aggiornamento_disponibile": "all'avvio, dal programma installato, è pronta una versione nuova e si apre la proposta di aggiornarsi",
+    "aggiornamento_scelto": "nella proposta dell'aggiornamento si preme Aggiorna, e comincia lo scaricamento",
+    "aggiornamento_scaduto": "la proposta dell'aggiornamento resta senza risposta e si chiude da sola, da riproporre al prossimo avvio",
+    "aggiornamento_esito": "l'aggiornamento scaricato, e MESS che si chiude per installarlo e riaprirsi",
+    "aggiornamento_non_riuscito": "lo scaricamento dell'aggiornamento non riesce, per esempio si interrompe, e si continua con questa versione",
+    "aggiornamento_non_pronto": "la versione nuova c'è, ma il suo pacchetto non è ancora pronto da scaricare",
+    "aggiornamento_non_installato": "l'aggiornamento scaricato non si installa perché un messaggio è rimasto aperto troppo a lungo; MESS resta aperto e lo ripropone al prossimo avvio",
     "dialogo_aspetto": "si apre il dialogo dell'aspetto, colori e caratteri, con Ctrl+P",
     "aspetto_predefiniti": "nel dialogo dell'aspetto, i valori tornano ai predefiniti",
     "aspetto_applicato": "l'aspetto confermato e applicato",
@@ -482,7 +531,7 @@ AZIONI = {
     "elenco_giocatori": "l'elenco dei giocatori, con Ctrl+E",
     "classifica": "la classifica per valore, con Ctrl+L",
     "top_10": "la TOP 10 dei migliori giocatori, con Ctrl+T",
-    "statistiche_mondo": "le statistiche del mondo, con Ctrl+I",
+    "statistiche_mondo": "le statistiche nazionali, con Ctrl+I",
     "nuovi_arrivati": "i nuovi arrivati della sessione, con Ctrl+Shift+N",
     "ritirati_sessione": "i ritirati della sessione, con Ctrl+Shift+R",
     "usciti_sessione": "gli usciti di scena nella sessione, con Ctrl+Shift+U",
@@ -646,7 +695,7 @@ AZIONI = {
     "nessun_risultato_da_svelare": "Mostra tutti i risultati quando non c'è nessun incontro dei tuoi da svelare",
     "nessuna_differita": "un incontro che non si può ascoltare né leggere: non è dei tuoi, o la sua edizione è già stata sostituita",
     "albo_d_oro": "si apre l'albo d'oro dei tornei, con Ctrl+Shift+B",
-    "classifica_mondiale": "la classifica mondiale per sempre, uomini e donne, con Ctrl+Shift+W",
+    "classifica_mondiale": "la classifica nazionale per sempre, uomini e donne, con Ctrl+Shift+W",
     "dialogo_editor_modelli": "si apre l'editor dei modelli di torneo, con Ctrl+Shift+J",
     "dialogo_modello_torneo": "nell'editor si apre il dialogo di un modello di torneo, nuovo o da modificare",
     "modello_salvato": "un modello di torneo salvato",
@@ -678,7 +727,7 @@ AZIONI = {
     "tua_medaglia_argento": "nell'avanzamento un tuo atleta vince la medaglia d'argento",
     "tua_medaglia_bronzo": "nell'avanzamento un tuo atleta vince la medaglia di bronzo",
     "tua_medaglia_legno": "nell'avanzamento un tuo atleta arriva quarto, la medaglia di legno",
-    "tuo_titolo_mondiale": "nell'avanzamento un tuo atleta vince il campionato mondiale",
+    "tuo_titolo_mondiale": "nell'avanzamento un tuo atleta vince il campionato italiano e diventa campione o campionessa d'Italia",
     "tua_coppa_oro": "nell'avanzamento la tua polisportiva vince la coppa d'oro della Coppa delle polisportive",
     "tua_coppa_argento": "nell'avanzamento la tua polisportiva prende la coppa d'argento della Coppa delle polisportive",
     "tua_coppa_bronzo": "nell'avanzamento la tua polisportiva prende la coppa di bronzo della Coppa delle polisportive",
@@ -688,7 +737,7 @@ AZIONI = {
     "tua_sfida_a_tavolino": "nell'avanzamento la tua polisportiva perde una sfida a tavolino, senza una squadra valida",
     "sfida_ricevuta": "nell'avanzamento una polisportiva del computer sfida la tua, e aspetta la risposta entro oggi",
     "sfida_decaduta": "nell'avanzamento una sfida alla tua polisportiva decade, senza risposta",
-    "tuoi_qualificati_mondiale": "nell'avanzamento tuoi atleti convocati al campionato mondiale",
+    "tuoi_qualificati_mondiale": "nell'avanzamento tuoi atleti convocati al campionato italiano",
     "tua_qualificazione_coppa": "nell'avanzamento la tua polisportiva qualificata alla Coppa delle polisportive",
     "tue_iscrizioni_saltate": "nell'avanzamento l'iscrizione automatica di un tuo atleta salta, perché la cassa non ha la quota",
     "tuo_infortunio_in_gara": "nell'avanzamento un tuo atleta si fa male in gara e si ferma, anche col ritiro",
@@ -697,7 +746,7 @@ AZIONI = {
     "tuo_torneo_concluso": "nell'avanzamento finisce un torneo dei tuoi, senza medaglie",
     "tue_iscrizioni_automatiche": "nell'avanzamento l'iscrizione automatica iscrive tuoi atleti a un torneo",
     "edizione_annullata": "nell'avanzamento un torneo con tuoi iscritti si annulla per pochi iscritti, e la quota torna",
-    "mondiale_concluso": "nell'avanzamento finisce un campionato mondiale",
+    "mondiale_concluso": "nell'avanzamento finisce un campionato italiano",
 }
 
 # Il volume a cui ogni preset suona com'è stato pensato.
@@ -861,6 +910,13 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
     def coppa(colore):
         return lambda n: f"coppa {colore} per la tua polisportiva" if n == 1 else f"{n} coppe {colore} alle tue"
 
+    def campioni(n):
+        # La revisione della tappa 14: al femminile se i titoli sono tutti di donne, al maschile se ci sono uomini.
+        donne = rapporto.get("tue_campionesse", 0) == n
+        if n == 1:
+            return "tua atleta campionessa d'Italia" if donne else "tuo atleta campione d'Italia"
+        return f"{n} tue atlete campionesse d'Italia" if donne else f"{n} tuoi atleti campioni d'Italia"
+
     tuoi = (
         ("tuoi_partiti", "tuoi_tesserati_partiti", lambda n: f"{conta(n, 'tesserato andato via', 'tesserati andati via')}, non pagati"),
         ("tuoi_scaduti", "tuoi_contratti_scaduti", lambda n: conta(n, "tesserato libero a fine contratto", "tesserati liberi a fine contratto")),
@@ -871,7 +927,7 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
         ("tuo_staff_uscito", "tuo_staff_uscito", lambda n: conta(n, "allenatore uscito dal tuo staff", "allenatori usciti dal tuo staff")),
         ("calendario_con_problemi", "calendario_illeggibile", lambda _n: "calendario dei tornei con problemi"),
         ("sfide_in_attesa", "sfida_ricevuta", sfida_in_attesa),
-        ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", lambda n: "tuo atleta campione del mondo" if n == 1 else f"{n} tuoi atleti campioni del mondo"),
+        ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", campioni),
         ("tue_medaglie_oro", "tua_medaglia_oro", lambda n: conta(n, "medaglia d'oro per i tuoi", "medaglie d'oro per i tuoi")),
         ("tue_coppe_oro", "tua_coppa_oro", coppa("d'oro")),
         # A pari metallo prima la medaglia e poi la coppa, come per l'oro: la revisione del 14 ottobre 2026
@@ -885,7 +941,7 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
         ("tue_sfide_vinte", "tua_sfida_vinta", lambda n: conta(n, "sfida vinta", "sfide vinte")),
         ("tue_sfide_perse", "tua_sfida_persa", lambda n: conta(n, "sfida persa", "sfide perse")),
         ("tue_sfide_a_tavolino", "tua_sfida_a_tavolino", lambda n: conta(n, "sfida persa a tavolino", "sfide perse a tavolino")),
-        ("tuoi_qualificati", "tuoi_qualificati_mondiale", lambda n: conta(n, "tuo atleta convocato al mondiale", "tuoi atleti convocati al mondiale")),
+        ("tuoi_qualificati", "tuoi_qualificati_mondiale", lambda n: conta(n, "tuo atleta al campionato italiano", "tuoi atleti al campionato italiano")),
         ("tue_qualificazioni_coppa", "tua_qualificazione_coppa",
          lambda n: "tua polisportiva qualificata alla coppa" if n == 1 else f"{n} tue polisportive alla coppa"),
         ("tue_iscrizioni_saltate", "tue_iscrizioni_saltate", lambda n: conta(n, "iscrizione saltata per la cassa", "iscrizioni saltate per la cassa")),
@@ -916,7 +972,7 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
         return "mondo_avanzato_piu_giorni", f"mondo avanzato {di_giorni}"
     if rapporto.get("mondiali_conclusi"):
         n = rapporto["mondiali_conclusi"]
-        return "mondiale_concluso", "campionato mondiale concluso" if n == 1 else f"{n} campionati mondiali conclusi"
+        return "mondiale_concluso", "campionato italiano concluso" if n == 1 else f"{n} campionati italiani conclusi"
     notizie = (
         ("morti", "notizia_morte", "morto", "morti"),
         ("poli_chiuse", "polisportiva_cpu_chiusa", "polisportiva chiusa", "polisportive chiuse"),

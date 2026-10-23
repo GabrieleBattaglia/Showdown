@@ -1,0 +1,18 @@
+# MESS, le librerie di terze parti, con le versioni minime: quelle installate il 23 ottobre 2026, con Python 3.14.
+# GBUtils non viene da PyPI: è la libreria di Gabriele, nella path, e porta GBwx e GBsintesi.
+# La finestra.
+wxPython>=4.3.2
+# I suoni della finestra e della partita, con Acusticator di GBUtils.
+numpy>=2.5.4
+scipy>=1.18.1
+sounddevice>=0.5.6
+# La sintesi e il braille degli annunci della cronaca, con GBsintesi di GBUtils; pywin32 per la voce di Windows.
+accessible-output2>=0.17
+pywin32>=312
+# L'aggiornamento automatico, con gestisci_aggiornamento di GBUtils.
+requests>=2.34.2
+certifi>=2026.10.19
+# Le prove.
+pytest>=9.1.1
+# Il pacchetto, con MESS.spec.
+pyinstaller>=6.22.3

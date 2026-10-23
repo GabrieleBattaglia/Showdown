@@ -4,6 +4,8 @@ __pycache__/
 build/
 dist/
 *.zip
+# L'installatore di Inno Setup, che setup_maker.py scrive accanto a MESS.zip, tappa 14
+MESS-Setup-*.exe
 
 # Campioni di descrizioni da leggere, rigenerabili con strumenti/campioni_descrizioni.py
 strumenti/campioni_descrizioni.txt
@@ -16,3 +18,11 @@ mess_impostazioni.json
 # davanti, perché dati/tornei, le copie predefinite che viaggiano col programma, resti nel repository.
 /formule.json
 /tornei/
+# Il mondo e la sua copia di sicurezza, nella cartella del programma: fuori dal repository dal 23
+# ottobre 2026, scelta di Gabriele per la tappa 14. Con loro le altre copie del mondo: il salvataggio
+# non compresso e la sua copia, del formato di prima, e i salvataggi che non si sono potuti leggere.
+/mess_mondo.json.gz
+/mess_mondo.json.gz.bak
+/mess_mondo.json
+/mess_mondo.json.bak
+/salvataggi_illeggibili/

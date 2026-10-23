@@ -158,7 +158,9 @@ CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", 
                    # che l'albo conserva, per la misura del calendario nella simulazione lunga.
                    "premi_tornei",
                    # La tappa 13, progetto 4.5: le notizie dello staff dell'utente.
-                   "tuo_staff_partito", "tuo_staff_scaduto", "tuo_staff_uscito", "tue_prelazioni", "tuo_staff_in_scadenza")
+                   "tuo_staff_partito", "tuo_staff_scaduto", "tuo_staff_uscito", "tue_prelazioni", "tuo_staff_in_scadenza",
+                   # La revisione della tappa 14: quanti dei tuoi titoli italiani vanno a una donna, perché la barra accordi.
+                   "tue_campionesse")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
@@ -349,12 +351,15 @@ class Mondo:
             return f"Esiste già una polisportiva che si chiama {esistente.nome}."
         return None
 
-    def fonda_polisportiva(self, nome, password=None, attiva=True):
-        """Fonda una polisportiva dell'utente, protetta se riceve una password; ValueError se il nome non va."""
+    def fonda_polisportiva(self, nome, password=None, attiva=True, luogo=None):
+        """
+        Fonda una polisportiva dell'utente, protetta se riceve una password, con la sede nel comune
+        scelto o, senza scelta, in quello estratto dal suo nome; ValueError se il nome non va.
+        """
         problema = self.problema_nome_polisportiva(nome)
         if problema:
             raise ValueError(problema)
-        poli = Polisportiva(nome=nome, password=password or None, datetime_creazione_sim=self.datetime_corrente_simulazione)
+        poli = Polisportiva(nome=nome, password=password or None, datetime_creazione_sim=self.datetime_corrente_simulazione, luogo=luogo)
         self.polisportive[poli.nome] = poli
         if attiva:
             self.miapolisportiva_attiva = poli
@@ -2215,7 +2220,11 @@ class Mondo:
         return poli_cpu < attivi / GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET
 
     def _notifica_rapporto(self, rapporto):
-        """Il riepilogo dell'avanzamento nella forma dell'interfaccia testuale."""
+        """
+        Il riepilogo dell'avanzamento, riga per riga, alla funzione notifica. Lo leggeva l'interfaccia
+        testuale, tolta con la tappa 14; la finestra fa il suo riepilogo dal rapporto, e qui la notifica
+        di solito non va da nessuna parte.
+        """
         for numero, testo in ((rapporto["guariti"], "guariti"), (rapporto["usciti"], "giocatori usciti prematuramente"),
                               (rapporto["morti"], "deceduti per età"), (rapporto["ritirati"], "ritirati per età"),
                               (rapporto["autoallenati"], "allenamenti da autonomi")):

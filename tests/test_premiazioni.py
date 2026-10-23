@@ -81,6 +81,8 @@ def test_le_medaglie_del_giocatore_e_del_club(chiusa):
     assert a.palmares_recente == {"2026-10": [30.0, 0.0]} and b.palmares_recente == {"2026-10": [5.0, 0.0]}
     assert chiusa["toccate"] == {a.nome, b.nome}
     assert chiusa["rapporto"]["tue_medaglie_bronzo"] == 1 and chiusa["rapporto"]["tuoi_tornei_conclusi"] == 1 and chiusa["rapporto"]["tornei_conclusi"] == 1
+    # Dalla revisione della tappa 14 la preposizione articolata davanti al torneo: prima si leggeva "a Open maschile del martedì".
+    assert f"{g[3].nome} {g[3].cognome} vince la medaglia di bronzo all'Open maschile del martedì." in chiusa["rapporto"]["notizie"]
 
 
 def test_i_premi_nei_conti_e_alla_federazione(chiusa):
@@ -111,11 +113,33 @@ def test_i_punti_della_classifica_e_i_tornei_giocati(chiusa):
 def test_i_diari(chiusa):
     mondo, a, b = chiusa["mondo"], chiusa["a"], chiusa["b"]
     tuo = mondo.giocatori[3].diario[0]["testo"]
-    assert tuo.startswith("Chiude Open maschile del martedì, sede 1, terzo su 8:") and "medaglia di bronzo" in tuo and "premio di" in tuo
-    assert b.diario[0]["testo"].startswith("Chiude Open maschile del martedì, sede 1: ")
+    assert tuo.startswith("Chiude l'Open maschile del martedì, sede 1, terzo su 8:") and "medaglia di bronzo" in tuo and "premio di" in tuo
+    assert b.diario[0]["testo"].startswith("Chiude l'Open maschile del martedì, sede 1: ")
     del_computer = mondo.giocatori[2].diario[0]
     assert del_computer["anno"] == 2026 and del_computer["tornei"] == 1 and del_computer["incontri"] >= 3
     assert a.diario[0]["anno"] == 2026 and a.diario[0]["ori"] == 1 and a.diario[0]["iscrizioni"] == 2
+
+
+@pytest.mark.parametrize(("nome", "uomini", "donne", "titolo"), [("Campionato italiano maschile", 8, 0, "campione"),
+                                                                 ("Campionato italiano femminile", 0, 8, "campionessa")])
+def test_il_tuo_campione_d_italia(nome, uomini, donne, titolo):
+    # Dalla tappa 14, D34: il mondiale è il campionato italiano, e il tuo che lo vince è campione o campionessa d'Italia.
+    mondo = mondo_di_prova(uomini, donne)
+    polisportiva(mondo, "Club Di Prova", cpu=False, ids=(1,))
+    info = {gid: {"nome": f"{g.nome} {g.cognome}", "sesso": g.sesso, "club": iscrizioni.club_di(mondo, g) if gid == 1 else None,
+                  "forza": 1.0 - gid / 10.0, "pagato": 0} for gid, g in mondo.giocatori.items()}
+    torneo = tornei.Torneo(1, 1, 1, modello(nome).a_dizionario(), formule.formula("gironi_32"), OGGI, 7, info)
+    _gioca_fino_alla_fine(torneo)
+    calendario = Calendario()
+    calendario.numeri_dei_tornei[torneo.id] = 1
+    rapporto = Mondo.rapporto_vuoto(OGGI)
+    premiazioni.chiudi(mondo, calendario, torneo, OGGI, rapporto)
+    g = mondo.giocatori[1]
+    assert torneo.classifica_finale[0] == 1 and rapporto["tuoi_titoli_mondiali"] == 1 and rapporto["mondiali_conclusi"] == 1
+    # La revisione della tappa 14: la campionessa si conta a parte, perché la barra accordi.
+    assert rapporto["tue_campionesse"] == (titolo == "campionessa")
+    assert f"{g.nome} {g.cognome} è {titolo} d'Italia." in rapporto["notizie"]
+    assert [(t["torneo"], t["posto"], t["mondiale"]) for t in g.titoli] == [(nome, 1, True)]
 
 
 def test_l_albo_conserva_tutto_e_si_legge_dopo(chiusa):
