@@ -14,3 +14,5 @@ Economia, le offerte, 2026-10-08 08:40: test superato, nessun commento
 Economia, vendite e arretrati, 2026-10-08 08:40: test superato, nessun commento
 Economia, i conti del mese, 2026-10-08 08:40: test superato, nessun commento
 Partite, l'amichevole, 2026-10-08 08:40: test superato, nessun commento
+Staff, gli allenatori, 2026-10-23 10:46: test superato, nessun commento
+Staff, le notizie, 2026-10-23 10:46: test superato, nessun commento
