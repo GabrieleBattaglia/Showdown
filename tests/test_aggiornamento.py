@@ -214,12 +214,21 @@ class TastoFinto:
         self.saltato = True
 
 
-def test_esc_e_invio_nel_testo_valgono_non_adesso(app_wx):
+def test_esc_e_invio_nel_testo_valgono_non_adesso(app_wx, monkeypatch):
+    orologio = [100.0]
+    monkeypatch.setattr(dialoghi, "_adesso", lambda: orologio[0])
     dialogo = dialoghi.Aggiornamento(None, "1.94.6", "2.0.0", "Note.")
     try:
+        # Un Invio subito dopo l'apertura, con NVDA una pressione nuova, cade nella grazia e non risponde.
+        orologio[0] += 0.2
+        presto = TastoFinto(wx.WXK_RETURN, dialogo.testo)
+        dialogo._tasto(presto)
+        assert presto.saltato and dialogo.GetReturnCode() == 0
+        orologio[0] += 5
         ripetuto = TastoFinto(wx.WXK_RETURN, dialogo.testo, ripetuto=True)
         dialogo._tasto(ripetuto)
         assert ripetuto.saltato and dialogo.GetReturnCode() == 0
+        orologio[0] += 5
         dialogo._tasto(TastoFinto(wx.WXK_RETURN, dialogo.testo))
         assert dialogo.GetReturnCode() == wx.ID_NO
         dialogo.SetReturnCode(0)

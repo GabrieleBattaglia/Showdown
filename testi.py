@@ -2378,7 +2378,7 @@ def mail_d_aiuto_al_pub(informazioni, allegati=(), cartella=""):
     oggetto = f"Chiedo per MESS {version.__version__}"
     corpo = "\n".join((
         "Scrivi qui la tua domanda, al posto di questa riga.",
-        "Informazioni sul computer di chi scrive:",
+        "Informazioni su MESS e sul computer di chi scrive:",
         f"Programma: MESS {version.__version__}",
         *righe_informazioni(ETICHETTE_DEL_PUB, informazioni, PAROLE_DEL_PUB),
     ))

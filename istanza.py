@@ -22,6 +22,8 @@ from multiprocessing.connection import Client, Listener
 
 # AllowSetForegroundWindow: qualunque processo, cioè la prima copia.
 _ASFW_ANY = -1
+# Quante volte ferma() sblocca il filo dell'ascolto, a 50 ms l'una, prima di lasciarlo: due secondi al più.
+LIMITE_DEGLI_SBLOCCHI = 40
 
 
 def nome():
@@ -72,6 +74,7 @@ class Ascolto:
         self._nome = nome_della_pipe or nome()
         self._fermo = False
         self._mutex = None
+        self._filo = None
         try:
             self._ascoltatore = Listener(self._nome, family="AF_PIPE", authkey=_chiave(self._nome))
         except OSError:
@@ -83,7 +86,8 @@ class Ascolto:
                 kernel32.CreateMutexW.restype = wintypes.HANDLE
                 kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, wintypes.BOOL, wintypes.LPCWSTR]
                 self._mutex = kernel32.CreateMutexW(None, False, nome_del_mutex()) or None
-            threading.Thread(target=self._ascolta, name="MESS, istanza unica", daemon=True).start()
+            self._filo = threading.Thread(target=self._ascolta, name="MESS, istanza unica", daemon=True)
+            self._filo.start()
 
     def _ascolta(self):
         while not self._fermo:
@@ -107,9 +111,17 @@ class Ascolto:
             kernel32.CloseHandle(self._mutex)
             self._mutex = None
         if self._ascoltatore is not None:
+            # Prima il filo, poi il Listener. Il filo si sblocca aprendo e chiudendo la pipe senza la stretta
+            # di mano di Client, che aspetterebbe per sempre una sfida (la lezione della 1.96.11 di MeTeOra),
+            # più volte, finché non è finito: se arriva in accept dopo un'apertura, aspetterebbe la seguente.
+            # Solo dopo si chiude il Listener: chiuso prima, i suoi handle restavano in coda chiusi mentre il
+            # filo li usava, Windows ne riusava i numeri, e un'istanza della pipe poteva restare aperta,
+            # così che nessuno, nello stesso processo, poteva più ascoltare con quel nome.
+            for _ in range(LIMITE_DEGLI_SBLOCCHI):
+                if self._filo is None or not self._filo.is_alive():
+                    break
+                with contextlib.suppress(OSError), open(self._nome, "rb", buffering=0):
+                    pass
+                self._filo.join(0.05)
             with contextlib.suppress(Exception):
                 self._ascoltatore.close()
-            # Sblocca accept aprendo e chiudendo la pipe senza la stretta di mano di Client, che
-            # aspetterebbe per sempre una sfida (la lezione della 1.96.11 di MeTeOra).
-            with contextlib.suppress(OSError), open(self._nome, "rb", buffering=0):
-                pass

@@ -50,6 +50,7 @@ valgono anche per i dialoghi che verranno. Anche questa parte è di Gabriele Bat
 """
 
 import contextlib
+import time
 import webbrowser
 
 import wx
@@ -2146,6 +2147,24 @@ class Lettura(_Dialogo):
             event.Skip()
 
 
+# Il tempo entro cui un Invio dopo l'apertura del dialogo, o dopo un altro Invio, vale come tasto tenuto giù:
+# con NVDA, nei campi di testo, ogni ripetizione arriva come una pressione nuova e IsAutoRepeat non la vede
+# (la trappola di Tornello del 27 settembre 2026). Gli 0,65 secondi di serie della grazia di GBwx 1.1.1,
+# che Gabriele ha provato con NVDA il 23 ottobre 2026 nella finestra della mail.
+GRAZIA_INVIO = 0.65
+
+
+def _adesso():
+    return time.monotonic()
+
+
+def invio_da_ignorare(dialogo, event):
+    """Vero se l'Invio arriva entro la grazia dall'apertura del dialogo o dall'Invio precedente: un tasto tenuto giù."""
+    adesso = _adesso()
+    precedente, dialogo.ultimo_invio = dialogo.ultimo_invio, adesso
+    return event.IsAutoRepeat() or adesso - precedente < GRAZIA_INVIO
+
+
 class Caffe(Lettura):
     """L'invito a offrire un caffè, solo a richiesta dal menu Aiuto, con Dona con PayPal e Chiudi."""
 
@@ -2154,15 +2173,18 @@ class Caffe(Lettura):
         self.bottoni[0].Bind(wx.EVT_BUTTON, self.dona)
         # Invio chiude: donare deve essere una scelta, non un tasto premuto per abitudine.
         self.bottoni[-1].SetDefault()
+        # L'apertura conta come un Invio: quello tenuto giù dalla voce del menu non chiude l'invito appena aperto.
+        self.ultimo_invio = _adesso()
 
     def _tasto(self, event):
         """
         Invio nel testo chiude come Chiudi, come Esc: l'area in sola lettura su più righe, che ha il
         fuoco, si tiene Invio, e il pulsante predefinito da solo non basta, terza revisione della tappa
-        14. Sui pulsanti Invio resta loro; un Invio tenuto giù non risponde, come nell'Aggiornamento.
+        14. Sui pulsanti Invio resta loro; un Invio tenuto giù non risponde, anche con NVDA, grazie a
+        invio_da_ignorare, come nell'Aggiornamento.
         """
         tasto = event.GetKeyCode()
-        if event.GetEventObject() is self.testo and tasto in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.IsAutoRepeat():
+        if event.GetEventObject() is self.testo and tasto in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not invio_da_ignorare(self, event):
             self.chiudi(wx.ID_OK)
         else:
             super()._tasto(event)
@@ -2206,12 +2228,15 @@ class Aggiornamento(Lettura):
         self.SetEscapeId(wx.ID_NO)
         # Vero se il dialogo si è chiuso da solo, allo scadere: la finestra le dà un suono diverso da Non adesso.
         self.scaduta = False
+        # L'apertura conta come un Invio: il dialogo compare da solo all'avvio, magari mentre si preme Invio altrove.
+        self.ultimo_invio = _adesso()
         self._scadenza = wx.CallLater(round(attesa * 1000), self._scaduta) if attesa else None
 
     def _tasto(self, event):
-        """Esc, e Invio nel testo, valgono Non adesso; sui pulsanti Invio resta loro. Un Invio tenuto giù non risponde."""
+        """Esc, e Invio nel testo, valgono Non adesso; sui pulsanti Invio resta loro. Un Invio tenuto giù non risponde, anche con NVDA."""
         tasto = event.GetKeyCode()
-        nel_testo = event.GetEventObject() is self.testo and tasto in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.IsAutoRepeat()
+        nel_testo = (event.GetEventObject() is self.testo and tasto in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER)
+                     and not invio_da_ignorare(self, event))
         if tasto == wx.WXK_ESCAPE or nel_testo:
             self.chiudi(wx.ID_NO)
         else:

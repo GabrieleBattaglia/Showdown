@@ -329,6 +329,8 @@ def test_caffe_invio_nel_testo_chiude_davvero(app_wx, monkeypatch):
     donazioni = []
     monkeypatch.setattr(dialoghi.webbrowser, "open", lambda *a, **k: donazioni.append(a))
     dialogo = dialoghi.Caffe(None, "Offrimi un caffè, se ti va.")
+    # Come se l'invito fosse aperto da un po': Invio cade fuori dalla grazia dell'apertura.
+    dialogo.ultimo_invio = float("-inf")
     fuoco = []
 
     def premi():
@@ -346,13 +348,25 @@ def test_caffe_invio_nel_testo_chiude_davvero(app_wx, monkeypatch):
     assert fuoco == [True] and codice == wx.ID_OK and donazioni == []
 
 
-def test_caffe_invio_tenuto_giu_e_sui_pulsanti(app_wx):
+def test_caffe_invio_tenuto_giu_e_sui_pulsanti(app_wx, monkeypatch):
+    orologio = [100.0]
+    monkeypatch.setattr(dialoghi, "_adesso", lambda: orologio[0])
     dialogo = dialoghi.Caffe(None, "Offrimi un caffè, se ti va.")
     try:
-        # Un Invio tenuto giù non chiude; sul pulsante di PayPal resta suo, e dona soltanto chi lo sceglie.
+        # L'Invio tenuto giù dalla voce del menu, con NVDA: pressioni nuove, mai ripetute per wx, ogni 30 ms
+        # dall'apertura; non chiudono, perché ognuna cade nella grazia della precedente.
+        for _ in range(40):
+            orologio[0] += 0.03
+            tenuto = _Tasto(wx.WXK_RETURN, dialogo.testo)
+            dialogo._tasto(tenuto)
+            assert tenuto.saltato and dialogo.GetReturnCode() == 0
+        # Una ripetizione che wx riconosce non chiude nemmeno lei.
+        orologio[0] += 5
         ripetuto = _Tasto(wx.WXK_RETURN, dialogo.testo, ripetuto=True)
         dialogo._tasto(ripetuto)
         assert ripetuto.saltato and dialogo.GetReturnCode() == 0
+        # Sul pulsante di PayPal Invio resta suo, e dona soltanto chi lo sceglie.
+        orologio[0] += 5
         sul_pulsante = _Tasto(wx.WXK_RETURN, dialogo.bottoni[0])
         dialogo._tasto(sul_pulsante)
         assert sul_pulsante.saltato and dialogo.GetReturnCode() == 0
@@ -1229,7 +1243,7 @@ def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, cartella_di_prov
     assert mail["corpo"].splitlines() == [
         "Scrivi qui la tua domanda, al posto di questa riga.",
         # Una riga che resta nella mail spedita, e parla a chi la riceve, non a chi la scrive.
-        "Informazioni sul computer di chi scrive:",
+        "Informazioni su MESS e sul computer di chi scrive:",
         f"Programma: MESS {VERSIONE}",
         "Sistema operativo: Windows 11 Pro",
         "Versione di Windows: 25H2",
