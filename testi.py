@@ -30,10 +30,14 @@ calendario e delle iscrizioni, del pannello dei tornei con le sue classifiche e 
 nascosti finché non li ascolti, dell'albo d'oro, della classifica mondiale, degli editor dei modelli e
 delle formule, delle sfide e del calendario che non si legge; la guida spiega tornei e sfide. Le parti
 della tappa 12 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
+Dalla tappa 14, il 2026-10-23, decisione D34, ci sono le frasi del registro degli errori: dove sta il
+resoconto di un errore imprevisto e, all'apertura dopo un crash, quello da allegare quando si chiede
+aiuto. Sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
 import datetime
+import os
 import statistics
 
 import allenamento
@@ -46,6 +50,7 @@ import luoghi
 import mercato
 import modelli_torneo
 import palmares
+import registro
 import sfide
 import staff
 import tornei
@@ -2255,6 +2260,19 @@ def salvataggio_illeggibile(errore):
         righe.append(f"Una copia dei file è nella cartella {errore.cartella}.")
     righe.append("Per non coprirli con un mondo nuovo, il gioco si ferma qui senza salvare nulla.")
     return righe
+
+
+# Il registro degli errori e dei crash, tappa 14.
+
+def resoconto_degli_errori(cartella):
+    """Dove sta il resoconto di un errore imprevisto, per il messaggio che lo dice: nel registro, accanto al programma."""
+    return f"Il resoconto completo è nel file {registro.FILE_DEGLI_ERRORI}, nella cartella {cartella}: allegalo quando chiedi aiuto."
+
+
+def crash_precedente(percorso):
+    """La riga in testa alla vista all'apertura dopo un crash: dove sta il resoconto da allegare quando si chiede aiuto."""
+    return (f"L'ultima volta MESS si è chiuso di colpo per un errore grave. Il resoconto è nel file {os.path.basename(percorso)}, nella cartella "
+            f"{os.path.dirname(percorso)}: allegalo, insieme a {registro.FILE_DEGLI_ERRORI}, quando chiedi aiuto.")
 
 
 def somma_rapporti(primo, secondo):

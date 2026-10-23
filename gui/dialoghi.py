@@ -40,7 +40,9 @@ coi filtri e l'offerta d'ingaggio. Le parti della tappa 13 sono di Gabriele Batt
 ClaudIA (Claude Opus 5.5, UltraCode).
 Dalla tappa 14, il 2026-10-23, la fondazione chiede anche la sede, un comune cercato per nome in un elenco
 che si restringe mentre si scrive. Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA
-(Claude Opus 5.5, modalità auto).
+(Claude Opus 5.5, modalità auto). Con la decisione D34 arriva la proposta dell'aggiornamento automatico,
+con le note della release, che allo scadere dell'attesa si chiude da sola come Non adesso; questa parte
+è di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -2126,3 +2128,55 @@ class Caffe(Lettura):
         with contextlib.suppress(webbrowser.Error):
             webbrowser.open(PAYPAL_URL)
         self.chiudi(wx.ID_OK)
+
+
+def durata_dell_attesa(secondi):
+    """Quanto aspetta la proposta dell'aggiornamento, a parole: 2 minuti, 1 minuto e 30 secondi, 45 secondi."""
+    minuti, resto = divmod(max(0, round(secondi)), 60)
+    parti = ([testi.conta(minuti, "minuto", "minuti")] if minuti else []) + ([testi.conta(resto, "secondo", "secondi")] if resto or not minuti else [])
+    return " e ".join(parti)
+
+
+class Aggiornamento(Lettura):
+    """
+    La proposta dell'aggiornamento automatico, tappa 14: nel testo in sola lettura, che ha il fuoco
+    all'apertura, la versione nuova, quella che si ha e le note della release; i pulsanti Aggiorna e
+    Non adesso, che è il predefinito. Esc, e Invio nel testo, valgono Non adesso: aggiornare si
+    sceglie solo con il suo pulsante. Con attesa, in secondi, il dialogo si chiude da solo come Non
+    adesso allo scadere, e l'aggiornamento torna al prossimo avvio. Il codice di ShowModal è wx.ID_YES
+    per aggiornare, wx.ID_NO altrimenti.
+    """
+
+    def __init__(self, genitore, versione_attuale, versione_nuova, note, attesa=None, impostazioni=None):
+        righe = [f"È disponibile MESS {versione_nuova}; tu hai la {versione_attuale}.",
+                 "Aggiorna scarica la versione nuova; poi MESS salva il mondo, si chiude e si riapre aggiornato, con il tuo mondo e le tue impostazioni."]
+        if attesa:
+            righe.append(f"Se non rispondi entro {durata_dell_attesa(attesa)}, il dialogo si chiude da solo e te lo ripropongo al prossimo avvio.")
+        righe += ["Le note della release:", (note or "").strip() or "Nessuna nota scritta per questa versione."]
+        super().__init__(genitore, "Aggiornamento di MESS", "\n".join(righe), impostazioni, ((wx.ID_YES, "&Aggiorna"), (wx.ID_NO, "&Non adesso")))
+        self.bottoni[0].Bind(wx.EVT_BUTTON, lambda event: self.chiudi(wx.ID_YES))
+        # Lettura lega l'ultimo pulsante alla chiusura con OK: qui vale Non adesso.
+        self.bottoni[-1].Unbind(wx.EVT_BUTTON)
+        self.bottoni[-1].Bind(wx.EVT_BUTTON, lambda event: self.chiudi(wx.ID_NO))
+        self.bottoni[-1].SetDefault()
+        self.SetEscapeId(wx.ID_NO)
+        self._scadenza = wx.CallLater(round(attesa * 1000), self._scaduta) if attesa else None
+
+    def _tasto(self, event):
+        """Esc, e Invio nel testo, valgono Non adesso; sui pulsanti Invio resta loro. Un Invio tenuto giù non risponde."""
+        tasto = event.GetKeyCode()
+        nel_testo = event.GetEventObject() is self.testo and tasto in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.IsAutoRepeat()
+        if tasto == wx.WXK_ESCAPE or nel_testo:
+            self.chiudi(wx.ID_NO)
+        else:
+            event.Skip()
+
+    def chiudi(self, codice):
+        if self._scadenza is not None:
+            self._scadenza.Stop()
+        super().chiudi(codice)
+
+    def _scaduta(self):
+        # Il dialogo può essere già chiuso, o distrutto.
+        if self and self.IsModal():
+            self.EndModal(wx.ID_NO)

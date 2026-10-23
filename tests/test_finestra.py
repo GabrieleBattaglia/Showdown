@@ -23,6 +23,7 @@ import suoni
 import testi
 from costanti import FILE_MONDO
 from gui import dialoghi
+from gui import finestra as finestra_modulo
 from gui.finestra import FinestraPrincipale
 from modelli import Polisportiva
 from mondo import Mondo
@@ -77,7 +78,9 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
                    finestra.lancia_sfida, finestra.sfide_in_arrivo, finestra.storico_sfide, finestra.calendario_tornei, finestra.iscrizioni_tornei,
                    finestra.tornei_in_corso, finestra.albo_d_oro, finestra.editor_modelli, finestra.editor_formule, finestra.ripristina_calendario,
                    # Dalla 1.79.0 gli annunci della cronaca; dalla tappa 13 lo staff e il mercato degli allenatori.
-                   finestra.cambia_annunci, finestra.staff, finestra.mercato_allenatori}
+                   finestra.cambia_annunci, finestra.staff, finestra.mercato_allenatori,
+                   # Dalla tappa 14 il manuale, che apre il browser e lascia la vista com'era: lo prova test_il_manuale_nel_browser.
+                   finestra.manuale}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -1003,13 +1006,71 @@ def test_il_tic_della_probabilita(app_wx, suonati):
         dialogo.Destroy()
 
 
-def test_l_errore_imprevisto(finestra, suonati, monkeypatch):
+def test_l_errore_imprevisto(finestra, suonati, monkeypatch, cartella_di_prova):
     messaggi = []
     monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: messaggi.append(testo))
     finestra.errore_imprevisto(ValueError, ValueError("prova"))
     assert suonati == ["errore_imprevisto"]
-    assert messaggi == ["Il comando si è interrotto per un errore imprevisto: ValueError, prova. La traccia completa è sulla console."]
+    # Dalla tappa 14 il messaggio non rimanda più alla console, ma al registro accanto al programma.
+    assert messaggi == [f"Il comando si è interrotto per un errore imprevisto: ValueError, prova. Il resoconto completo è nel file MESS - Errori.log, "
+                        f"nella cartella {cartella_di_prova}: allegalo quando chiedi aiuto."]
     assert finestra._modali == 0
+
+
+# Il manuale nel browser, tappa 14.
+
+def test_il_manuale_nel_browser(finestra, suonati, monkeypatch):
+    aperti = []
+    monkeypatch.setattr(finestra_modulo.os, "startfile", aperti.append, raising=False)
+    finestra.vista.ChangeValue("Il testo che si sta leggendo.")
+    voci = {voce[0]: voce[1:] for _titolo, elenco in finestra.voci_menu() for voce in filter(None, elenco)}
+    assert voci["&Manuale"] == ("Shift+F1", finestra.manuale)
+    finestra._esegui(finestra.manuale)
+    assert [Path(p).name for p in aperti] == ["manuale.html"] and Path(aperti[0]).is_file()
+    # La vista resta com'era, la barra dice dov'è il manuale.
+    assert suonati == ["manuale"] and finestra.vista.GetValue() == "Il testo che si sta leggendo."
+    assert finestra.barra.GetValue().splitlines()[3] == "manuale nel browser"
+    assert "Manuale, Maiusc+F1" in testi.guida(finestra.voci_guida())
+
+
+def test_il_manuale_che_manca_o_non_si_apre(finestra, suonati, monkeypatch, cartella_di_prova):
+    import percorsi
+
+    monkeypatch.setattr(percorsi, "risorsa", lambda nome: str(cartella_di_prova / nome))
+    monkeypatch.setattr(finestra_modulo.os, "startfile", lambda percorso: pytest.fail("un manuale che non c'è non si apre"), raising=False)
+    finestra.manuale()
+    assert finestra.vista.GetValue().startswith(f"Il manuale non c'è: dovrebbe essere il file {cartella_di_prova / 'manuale.html'}.")
+    (cartella_di_prova / "manuale.html").write_text("<html></html>", encoding="utf-8")
+
+    def senza_browser(_percorso):
+        raise OSError(2, "Nessuna applicazione associata")
+
+    monkeypatch.setattr(finestra_modulo.os, "startfile", senza_browser, raising=False)
+    finestra.manuale()
+    assert finestra.vista.GetValue().startswith("Il manuale non si apre nel browser: Nessuna applicazione associata.")
+    assert suonati == ["novita_illeggibile", "novita_illeggibile"]
+
+
+# Il crash della volta prima, tappa 14.
+
+def test_il_crash_della_volta_prima_all_apertura(app_wx, mondo, suonati, monkeypatch, cartella_di_prova):
+    resoconto = cartella_di_prova / "MESS - Crash precedente.log"
+    f = FinestraPrincipale(mondo, archivio.CARICATO, [], Mondo.rapporto_vuoto(adesso()), mondo.datetime_ultimo_run_reale, crash_precedente=str(resoconto))
+    try:
+        assert f.vista.GetValue().startswith(f"L'ultima volta MESS si è chiuso di colpo per un errore grave. Il resoconto è nel file MESS - Crash precedente.log, "
+                                             f"nella cartella {cartella_di_prova}: allegalo, insieme a MESS - Errori.log, quando chiedi aiuto.\nMESS, ")
+        f.suoni_d_avvio()
+        assert suonati == ["avvio", "crash_precedente"]
+        # Staccato di un secondo dalla fine dell'avvio, come la notizia dello staff.
+        rinviati = []
+        monkeypatch.setattr(suoni, "attesa", lambda: 0.4)
+        monkeypatch.setattr(wx, "CallLater", lambda millisecondi, funzione, *argomenti, **opzioni: rinviati.append((millisecondi, argomenti)))
+        f.suoni_d_avvio()
+        assert rinviati == [(1400, ("crash_precedente",))]
+    finally:
+        f.timer.Stop()
+        f.Destroy()
+        wx.Yield()
 
 
 def test_il_suono_di_prova_aspetta_che_ci_si_fermi(app_wx, suonati):

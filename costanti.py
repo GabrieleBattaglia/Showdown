@@ -3,7 +3,8 @@ Costanti di MESS: regole, tarature e tabelle delle caratteristiche dei giocatori
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 2 del piano, dallo smontaggio di sd.py: sono le costanti che
 stavano in testa al vecchio file, con i valori invariati. Le tabelle dei menu del programma
-testuale stanno invece in cli.py, perché sono interfaccia e non regole.
+testuale stavano invece in cli.py, perché erano interfaccia e non regole; con la tappa 14 se ne sono
+andate con lui, insieme alla paginazione delle sue liste.
 Con la tappa 9, il 2026-10-07, il motore di partita è nuovo, e qui restano soltanto le regole
 IBSA della decisione D25, le misure del tavolo e i numeri del mondo, cioè temperamento,
 infortuni e valore complessivo; i numeri regolabili del motore stanno in motore/taratura.py.
@@ -221,7 +222,6 @@ MAX_TOTALE_PRECISIONE_RESISTENZA = 10.0  # Limite totale, base più allenato, pe
 MAX_TOTALE_SKILL_GIOCO = 40.0  # Limite totale per le altre skill
 # Limiti vari.
 MAX_TESSERATI_POLISPORTIVA = 15
-PAGINAZIONE_LISTE = 25
 LIMITE_MOVIMENTI_PER_TICK = 5
 # La probabilità, in percentuale, che in un giorno una polisportiva del computer a rosa piena provi
 # a tesserare un libero più forte del tesserato che le serve meno: decisione D19 della tappa 7.

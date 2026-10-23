@@ -4,6 +4,11 @@ __pycache__/
 build/
 dist/
 *.zip
+# L'installatore di Inno Setup, che setup_maker.py scrive accanto a MESS.zip, tappa 14
+MESS-Setup-*.exe
+# Il registro degli errori e dei crash, accanto al mondo, tappa 14
+MESS - *.log
+MESS - *.log.1
 
 # Campioni di descrizioni da leggere, rigenerabili con strumenti/campioni_descrizioni.py
 strumenti/campioni_descrizioni.txt

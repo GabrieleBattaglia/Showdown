@@ -46,6 +46,12 @@ il dialogo dello staff, il mercato degli allenatori, le offerte, i rinnovi, il l
 e i filtri, e le notizie dello staff, ventitré suoni nuovi, tutti mess_, entrati nella collezione con la V215; con la
 revisione del 22 ottobre 2026 il ventiquattresimo, l'allenatore in prelazione per un altro club, nella V219. Le parti della
 tappa 13 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Con la tappa 14, il 2026-10-23, decisione D34, MESS diventa un programma da installare: arrivano il
+manuale nel browser, la finestra che torna in primo piano quando si apre una seconda copia, il crash
+della volta prima detto all'avvio e il gruppo dell'aggiornamento automatico, con la proposta e gli
+esiti. Sono cinque suoni nuovi, tutti mess_, entrati nella collezione con la V220. Il manuale che manca
+suona come le novità che non si leggono: è lo stesso guaio, un documento dell'aiuto che non c'è. Le
+parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -67,6 +73,8 @@ GRUPPI = (
         # Il motivo al contrario, e la sua versione grave quando il salvataggio finale non riesce.
         "uscita": "mess_uscita",
         "uscita_senza_salvataggio": "mess_uscita_senza_salvataggio",
+        # Dalla tappa 14: si apre MESS mentre è già aperto, e la finestra torna in primo piano con un eccomi.
+        "primo_piano": "mess_primo_piano",
     }),
     ("Applicazione, i salvataggi e gli errori gravi", {
         "salvataggio_riuscito": "meditimer_banco_salvato",
@@ -75,6 +83,8 @@ GRUPPI = (
         "salvataggio_illeggibile": "mess_salvataggio_illeggibile",
         # Un'eccezione che nessuno aspettava: l'unico allarme vero.
         "errore_imprevisto": "sirena_d_allarme_1",
+        # Dalla tappa 14: all'avvio, la volta prima MESS si è chiuso di colpo. Un avvertimento serio, ma non un allarme.
+        "crash_precedente": "mess_crash_precedente",
     }),
     ("Applicazione, il fuoco, i dialoghi e gli elenchi", {
         # F5 e F7 suonano come in Tornello e MeTeOra; il Tab resta muto.
@@ -91,12 +101,19 @@ GRUPPI = (
     }),
     ("Applicazione, l'aiuto", {
         "guida": "pokermachine_manuale",
+        # Dalla tappa 14, Maiusc+F1: due pagine che si sfogliano, mentre il manuale si apre nel browser.
+        "manuale": "mess_manuale",
         "novita": "jingle_scoperta",
         "novita_illeggibile": "mess_novita_illeggibile",
         "informazioni": "mess_informazioni",
         # L'unica onda quadra, così com'è, come in Tornello, Terminal Beast e MeTeOra.
         "caffe": "donazione",
         "caffe_paypal": "carillon_dolce",
+    }),
+    # Dalla tappa 14, solo dall'eseguibile compilato: un pacco che arriva, e la quinta che sale degli esiti.
+    ("Applicazione, l'aggiornamento automatico", {
+        "aggiornamento_disponibile": "mess_aggiornamento_disponibile",
+        "aggiornamento_esito": "mess_aggiornamento_esito",
     }),
     ("Applicazione, le impostazioni", {
         "dialogo_aspetto": "scintillio_di_ghiaccio",
@@ -441,11 +458,13 @@ AZIONI = {
     "avvio_con_avvisi": "l'avvio con le collezioni di nomi e cognomi difettose",
     "uscita": "l'uscita dal programma con il mondo salvato",
     "uscita_senza_salvataggio": "l'uscita dal programma quando il salvataggio finale non riesce",
+    "primo_piano": "si apre MESS mentre è già aperto, e la finestra aperta torna in primo piano",
     "salvataggio_riuscito": "il mondo salvato con Ctrl+S",
     "salvataggio_con_avviso": "il mondo salvato con Ctrl+S, ma con un avviso dell'archivio",
     "salvataggio_non_riuscito": "un salvataggio che non riesce, con Ctrl+S o dopo un'operazione",
     "salvataggio_illeggibile": "all'avvio né il salvataggio né la sua copia si leggono, e il programma si ferma",
-    "errore_imprevisto": "un errore imprevisto del programma",
+    "errore_imprevisto": "un errore imprevisto del programma, o un errore che lo ferma",
+    "crash_precedente": "all'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto",
     "fuoco_vista": "F5, il fuoco va nella vista principale",
     "fuoco_barra": "F7, il fuoco va nella barra di stato",
     "annullato": "un'operazione annullata, con Esc o con Annulla in un dialogo",
@@ -456,11 +475,14 @@ AZIONI = {
     "elenco_ripopolato": "un elenco vuoto che torna a riempirsi mentre si scrive",
     "domanda": "una domanda di conferma, con Sì e No",
     "guida": "F1, la guida ai comandi, anche nella finestra dal vivo",
+    "manuale": "Maiusc+F1, il manuale che si apre nel browser",
     "novita": "F2, le novità della versione",
-    "novita_illeggibile": "F2, quando il file delle novità non si legge",
+    "novita_illeggibile": "F2 quando il file delle novità non si legge, o Maiusc+F1 quando il manuale manca o non si apre",
     "informazioni": "F3, le informazioni con la versione e gli autori",
     "caffe": "Offrimi un caffè, nel menu Aiuto",
     "caffe_paypal": "Dona con PayPal, nell'invito al caffè",
+    "aggiornamento_disponibile": "all'avvio, dal programma installato, è pronta una versione nuova e si apre la proposta di aggiornarsi",
+    "aggiornamento_esito": "un esito dell'aggiornamento automatico, come lo scaricamento finito prima che MESS si chiuda per installarlo",
     "dialogo_aspetto": "si apre il dialogo dell'aspetto, colori e caratteri, con Ctrl+P",
     "aspetto_predefiniti": "nel dialogo dell'aspetto, i valori tornano ai predefiniti",
     "aspetto_applicato": "l'aspetto confermato e applicato",

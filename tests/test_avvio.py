@@ -1,89 +1,188 @@
 """
-Test del programma intero, dall'avvio al salvataggio, con le risposte dell'utente preparate in
-un copione e i file in una cartella temporanea: la nascita del mondo, una polisportiva, una
-partita, il salvataggio; poi il ritorno, che ricarica il mondo; infine un salvataggio rovinato,
-davanti al quale il programma si ferma senza toccare nulla. Dalla tappa 9 la partita si gioca
-col motore nuovo, e la sua fine si riconosce dalla riga Fine dell'incontro.
+Le prove dell'avvio di MESS, Showdown.py, dalla tappa 14: l'interfaccia testuale, che le prove di prima
+recitavano con un copione, se n'è andata con cli.py. Qui main con l'istanza unica sostituita: un MESS
+già aperto fa chiudere subito questa copia, senza toccare il registro; l'avvio e l'uscita si scrivono
+nel registro, che all'uscita si chiude, e l'ascolto si ferma; il crash della volta prima arriva alla
+finestra; un errore che ferma MESS si scrive nel registro e si dice in un messaggio che nomina il file,
+col suono dell'allarme. Poi la finestra: davanti a un salvataggio rovinato il gioco si ferma senza
+toccare niente, e la rete per gli errori scrive il resoconto nel registro e fa suonare l'allarme.
+Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
-import builtins
-import random
+import faulthandler
+import sys
+import threading
 
 import pytest
+import wx
 
-import archivio
-import cli
+import istanza
+import registro
 import Showdown
-from costanti import FILE_MONDO, FILE_MONDO_COPIA
-from utilita import METODO_IMPRONTA, verifica_impronta
+from costanti import FILE_MONDO, FILE_MONDO_COPIA, VERSIONE
+
+# Gli ascolti finti creati in ogni prova, nell'ordine.
+ASCOLTI = []
 
 
-class Copione:
-    """Risponde alle domande del programma con le risposte preparate, controllando che arrivino nell'ordine atteso."""
+class AscoltoFinto:
+    """L'ascolto dell'istanza unica senza pipe: tiene la funzione che porta la finestra in primo piano."""
 
-    def __init__(self, risposte):
-        self.risposte = list(risposte)
+    def __init__(self, mostra, nome_della_pipe=None, attiva=True):
+        self.mostra = mostra
+        self.attiva = attiva
+        self.fermo = False
+        ASCOLTI.append(self)
 
-    def __call__(self, tipo, domanda, dettagli):
-        if tipo == "input" or (tipo == "key" and domanda.startswith("...")):
-            return ""
-        assert self.risposte, f"Copione finito, ma il programma chiede ancora: {domanda!r}"
-        atteso, valore = self.risposte.pop(0)
-        assert atteso == tipo, f"Attesa una domanda di tipo {atteso}, arrivata una di tipo {tipo}: {domanda!r}"
-        return valore() if callable(valore) else valore
+    def ferma(self):
+        self.fermo = True
 
 
-@pytest.fixture
-def recita(monkeypatch):
-    def installa(risposte):
-        copione = Copione(risposte)
-        monkeypatch.setattr(cli, "menu", lambda d=None, p="> ", **kw: copione("menu", p, {"d": d, **kw}))
-        monkeypatch.setattr(cli, "dgt", lambda prompt="", kind="s", **kw: copione("dgt", prompt, kw))
-        monkeypatch.setattr(cli, "key", lambda prompt="", **kw: copione("key", prompt, kw))
-        monkeypatch.setattr(builtins, "input", lambda prompt="": copione("input", prompt, {}))
-        return copione
-    return installa
+@pytest.fixture(autouse=True)
+def senza_sistema(monkeypatch):
+    """Nessuna pipe vera, i ganci delle eccezioni rimessi a posto, il registro chiuso e faulthandler com'era."""
+    ASCOLTI.clear()
+    monkeypatch.setattr(istanza, "manda", lambda: False)
+    monkeypatch.setattr(istanza, "Ascolto", AscoltoFinto)
+    monkeypatch.setattr(sys, "excepthook", sys.excepthook)
+    monkeypatch.setattr(threading, "excepthook", threading.excepthook)
+    acceso = faulthandler.is_enabled()
+    yield
+    registro.chiudi()
+    if acceso and not faulthandler.is_enabled():
+        faulthandler.enable(file=sys.__stderr__)
 
 
-def test_nascita_partita_salvataggio_e_ritorno(cartella_di_prova, recita, capsys):
-    random.seed(31)
-    mondi = []
-
-    def disponibile(posizione):
-        return lambda: sorted(gid for gid, g in mondi[0].giocatori.items() if not g.ritirato and not g.infortunato)[posizione]
-
-    copione = recita([
-        ("menu", "MPO"), ("menu", "APR"), ("dgt", "club di prova"), ("dgt", "abc"), ("dgt", "abc"), ("key", "s"), ("menu", None),
-        ("menu", "OPA"), ("dgt", disponibile(0)), ("dgt", disponibile(1)), ("dgt", 3), ("menu", "R"),
-        ("menu", ""),
-    ])
-    assert Showdown.avvia(mondi.append)
-    assert copione.risposte == []
-    schermo = capsys.readouterr().out
-    assert "Nessun salvataggio trovato: nasce un mondo nuovo, con 50 giocatori." in schermo
-    assert "Fine dell'incontro: vince " in schermo
-    assert "Mondo salvato:" in schermo
-    documento = archivio.leggi(cartella_di_prova / FILE_MONDO)
-    club = documento["mondo"]["polisportive"]["club di prova"]
-    # La password non è nel salvataggio, c'è la sua impronta. Prima la prova cercava le lettere abc
-    # nell'impronta, che è esadecimale e a volte le conteneva per caso, circa due volte su cento.
-    assert club["impronta_password"].startswith(f"{METODO_IMPRONTA}$") and verifica_impronta("abc", club["impronta_password"])
-    assert documento["mondo"]["polisportiva_attiva"] == "club di prova"
-    giocati = [g for g in documento["mondo"]["giocatori"] if g["partitevinte"] + g["partiteperse"] == 1]
-    assert len(giocati) == 2
-
-    recita([("menu", "")])
-    assert Showdown.avvia()
-    schermo = capsys.readouterr().out
-    assert "Mondo caricato:" in schermo and "Polisportiva attiva: club di prova." in schermo
-    assert (cartella_di_prova / FILE_MONDO_COPIA).exists()
+def _non_si_apre(*_argomenti, **_opzioni):
+    pytest.fail("la finestra non doveva aprirsi")
 
 
-def test_salvataggio_rovinato_il_programma_si_ferma(cartella_di_prova, recita, capsys):
+def test_un_mess_gia_aperto_fa_chiudere_questa_copia(monkeypatch, cartella_di_prova):
+    monkeypatch.setattr(istanza, "manda", lambda: True)
+    monkeypatch.setattr(Showdown, "avvia_finestra", _non_si_apre)
+    assert Showdown.main() == 0
+    assert ASCOLTI == [] and list(cartella_di_prova.iterdir()) == []
+
+
+def test_la_pipe_presa_da_una_copia_partita_insieme(monkeypatch, cartella_di_prova):
+    risposte = iter([False, True])
+    monkeypatch.setattr(istanza, "manda", lambda: next(risposte))
+    monkeypatch.setattr(istanza, "Ascolto", lambda mostra: AscoltoFinto(mostra, attiva=False))
+    monkeypatch.setattr(Showdown, "avvia_finestra", _non_si_apre)
+    assert Showdown.main() == 0
+    assert list(cartella_di_prova.iterdir()) == []
+
+
+def test_l_avvio_e_l_uscita_nel_registro(monkeypatch, cartella_di_prova):
+    ricevuti = []
+
+    class FinestraFinta:
+        def __init__(self):
+            self.chiamate = 0
+
+        def porta_in_primo_piano(self):
+            self.chiamate += 1
+
+    aperta = FinestraFinta()
+
+    def finestra(crash_precedente, finestre):
+        ricevuti.append(crash_precedente)
+        # Prima che la finestra ci sia, la richiesta di un'altra copia non fa niente; poi la porta in primo piano.
+        ASCOLTI[0].mostra()
+        finestre.append(aperta)
+        ASCOLTI[0].mostra()
+        assert (cartella_di_prova / registro.FILE_DEL_CRASH).exists()
+        return True
+
+    monkeypatch.setattr(Showdown, "avvia_finestra", finestra)
+    monkeypatch.setattr(wx, "CallAfter", lambda funzione, *a, **k: funzione(*a, **k))
+    assert Showdown.main() == 0
+    assert ricevuti == [None] and aperta.chiamate == 1 and ASCOLTI[0].fermo
+    testo = (cartella_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
+    assert f"MESS {VERSIONE} si avvia." in testo and testo.rstrip().endswith("MESS si chiude.")
+    assert not (cartella_di_prova / registro.FILE_DEL_CRASH).exists()
+
+
+def test_il_salvataggio_illeggibile_da_il_codice_uno(monkeypatch):
+    monkeypatch.setattr(Showdown, "avvia_finestra", lambda *_a: False)
+    assert Showdown.main() == 1
+
+
+def test_il_crash_della_volta_prima_arriva_alla_finestra(monkeypatch, cartella_di_prova):
+    (cartella_di_prova / registro.FILE_DEL_CRASH).write_text("Fatal Python error: Aborted\n", encoding="utf-8")
+    ricevuti = []
+    monkeypatch.setattr(Showdown, "avvia_finestra", lambda crash_precedente, finestre: ricevuti.append(crash_precedente) or True)
+    assert Showdown.main() == 0
+    assert ricevuti == [str(cartella_di_prova / registro.FILE_DEL_CRASH_PRECEDENTE)]
+
+
+def test_l_errore_fatale(app_wx, monkeypatch, cartella_di_prova, suonati, capsys):
+    def guasto(*_argomenti):
+        raise RuntimeError("guasto")
+
+    messaggi = []
+    monkeypatch.setattr(Showdown, "avvia_finestra", guasto)
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, titolo, *a, **k: messaggi.append((testo, titolo)))
+    assert Showdown.main() == 1
+    assert messaggi == [(f"MESS si è fermato per un errore imprevisto: RuntimeError, guasto. Il resoconto completo è nel file MESS - Errori.log, "
+                         f"nella cartella {cartella_di_prova}: allegalo quando chiedi aiuto.", "MESS si è fermato")]
+    assert suonati == ["errore_imprevisto"] and ASCOLTI[0].fermo
+    testo = (cartella_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
+    assert "Traceback (most recent call last):" in testo and "RuntimeError: guasto" in testo and "MESS si ferma per un errore fatale." in testo
+    # Da sorgente la traccia va anche sulla console, come prima.
+    assert "RuntimeError: guasto" in capsys.readouterr().err
+    assert not (cartella_di_prova / registro.FILE_DEL_CRASH).exists()
+
+
+def test_il_salvataggio_rovinato_ferma_il_gioco(app_wx, monkeypatch, cartella_di_prova, suonati):
     (cartella_di_prova / FILE_MONDO).write_text("non è un salvataggio", encoding="utf-8")
-    recita([])
-    assert not Showdown.avvia()
-    schermo = capsys.readouterr().out
-    assert "il gioco si ferma qui senza salvare nulla" in schermo
+    messaggi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: messaggi.append(testo))
+    assert Showdown.avvia_finestra() is False
+    assert len(messaggi) == 1 and "il gioco si ferma qui senza salvare nulla" in messaggi[0]
+    assert suonati == ["salvataggio_illeggibile"]
     assert (cartella_di_prova / FILE_MONDO).read_text(encoding="utf-8") == "non è un salvataggio"
     assert not (cartella_di_prova / FILE_MONDO_COPIA).exists()
+
+
+def test_la_rete_per_gli_errori(monkeypatch, cartella_di_prova, suonati, capsys):
+    detti = []
+
+    class FinestraFinta:
+        vera = True
+
+        def __bool__(self):
+            return self.vera
+
+        def errore_imprevisto(self, tipo, valore):
+            detti.append((tipo, str(valore)))
+
+    finestra = FinestraFinta()
+    monkeypatch.setattr(wx, "CallAfter", lambda funzione, *a, **k: funzione(*a, **k))
+    # Il gancio dei fili di prima, al posto di quello di pytest, che segnalerebbe l'eccezione di prova.
+    fili = []
+    monkeypatch.setattr(threading, "excepthook", lambda argomenti: fili.append(argomenti.exc_type))
+    registro.avvia(str(cartella_di_prova))
+    Showdown._rete_per_gli_errori(finestra)
+    try:
+        raise ValueError("nel comando")
+    except ValueError:
+        sys.excepthook(*sys.exc_info())
+    assert detti == [(ValueError, "nel comando")] and suonati == []
+    # La finestra che non c'è più lascia l'allarme.
+    finestra.vera = False
+    try:
+        raise KeyError("dopo la chiusura")
+    except KeyError:
+        sys.excepthook(*sys.exc_info())
+    assert suonati == ["errore_imprevisto"]
+    # Gli altri fili vanno soltanto nel registro.
+    try:
+        raise OSError("nel filo")
+    except OSError:
+        threading.excepthook(threading.ExceptHookArgs((*sys.exc_info(), None)))
+    assert suonati == ["errore_imprevisto"] and len(detti) == 1 and fili == [OSError]
+    registro.chiudi()
+    testo = (cartella_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
+    assert "ValueError: nel comando" in testo and "KeyError: 'dopo la chiusura'" in testo and "OSError: nel filo" in testo
+    assert "ValueError: nel comando" in capsys.readouterr().err

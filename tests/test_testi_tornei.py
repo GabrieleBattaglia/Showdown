@@ -1,5 +1,5 @@
 """
-Test dei testi dei tornei e della voce TOR dell'interfaccia testuale, tappa 12, punto 12.12 del progetto.
+Test dei testi dei tornei, tappa 12, punto 12.12 del progetto; la voce TOR dell'interfaccia testuale se n'è andata con lei, nella tappa 14.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Il calendario, la sede in elenco, la classifica di un girone, gli incontri con i risultati dei tuoi
 nascosti finché non si ascoltano, risposta 18, e Mostra tutti i risultati che li svela dopo la
@@ -12,7 +12,6 @@ import datetime
 import pytest
 from aiuti_calendario import OGGI, apri, giorno, iscrivi_tutti, mondo_di_prova, polisportiva
 
-import cli
 import testi
 from mondo import Mondo
 from premiazioni import Albo
@@ -92,25 +91,3 @@ def test_il_riepilogo_coi_tornei_le_sfide_e_le_notizie():
     secondo.update(sfide_in_attesa=0, notizie=["Club Di Prova vince la sfida con PoliTeam04, 31 a 27."])
     somma = testi.somma_rapporti(primo, secondo)
     assert somma["sfide_in_attesa"] == 0 and len(somma["notizie"]) == 2 and somma["tornei_conclusi"] == 2 and somma["ora"] == "oggi"
-
-
-def test_la_voce_tor_dell_interfaccia_testuale(in_corso, monkeypatch, capsys):
-    mondo = in_corso
-    interfaccia = cli.InterfacciaTestuale(mondo)
-    scelte = iter(["C", "S", "A", ""])
-    monkeypatch.setattr(cli, "menu", lambda *a, **k: next(scelte))
-    monkeypatch.setattr(cli, "dgt", lambda *a, **k: 1)
-    interfaccia.menu_tornei()
-    uscita = capsys.readouterr().out
-    assert f"Edizioni con le iscrizioni aperte: {len(mondo.calendario.edizioni)}." in uscita and "sede 1, dal 6 ottobre 2026" in uscita
-    assert "Girone A, la classifica:" in uscita and "tuo, giocato, da ascoltare" in uscita and "L'albo d'oro è ancora vuoto." in uscita
-    # Mostra tutti i risultati: col no non cambia niente, col sì li svela e dice quanti.
-    quanti = len(mondo.calendario.da_svelare())
-    monkeypatch.setattr(cli, "dgt", lambda *a, **k: "n")
-    interfaccia._mostra_tutti_i_risultati()
-    assert len(mondo.calendario.da_svelare()) == quanti
-    monkeypatch.setattr(cli, "dgt", lambda *a, **k: "s")
-    interfaccia._mostra_tutti_i_risultati()
-    assert f"Mostrati i risultati di {quanti} incontri" in capsys.readouterr().out and not mondo.calendario.da_svelare()
-    interfaccia._mostra_tutti_i_risultati()
-    assert "Non ci sono incontri dei tuoi ancora da ascoltare." in capsys.readouterr().out

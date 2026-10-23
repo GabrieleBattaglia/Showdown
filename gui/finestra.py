@@ -50,9 +50,18 @@ Dal 2026-10-21, con la tappa 13 e la decisione D33, il menu Polisportive ha lo s
 attiva e il mercato degli allenatori, che alla chiusura riepilogano le operazioni nella vista; all'avvio
 col mondo appena aggiornato, la notizia dello staff ha il suo suono. Le parti della tappa 13 sono di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2026-10-23, con la tappa 14 e la decisione D34, il menu Aiuto ha il manuale, manuale.html, che si
+apre nel browser con Maiusc+F1. La finestra conduce la sua parte dell'aggiornamento automatico: la
+proposta con le note della release, gli esiti in un messaggio che aspetta l'OK, l'avanzamento dello
+scaricamento nella barra di stato e la chiusura per farsi sostituire, che salva il mondo e non aspetta
+il riepilogo di fine sessione. Torna in primo piano quando si prova ad aprire MESS una seconda volta;
+all'apertura dopo un crash la vista lo dice in testa, col suono staccato come la notizia dello staff; e
+il messaggio di un errore imprevisto rimanda al registro degli errori, accanto al programma. Le parti
+della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
+import os
 
 import wx
 from GBUtils import Donazione
@@ -62,6 +71,7 @@ import archivio
 import impostazioni as modulo_impostazioni
 import modelli_torneo
 import percorsi
+import registro
 import ricerca
 import sfide
 import suoni
@@ -70,6 +80,7 @@ from gui import aspetto
 from gui.dal_vivo import ALLA_FINE, CON_ESC, FinestraDalVivo
 from gui.dialoghi import (
     ASSISTI,
+    Aggiornamento,
     AnnunciDellaCronaca,
     Aspetto,
     Caffe,
@@ -100,17 +111,25 @@ from utilita import adesso, adesso_utc
 
 TITOLO = "MESS, Manageriale e Simulatore Showdown"
 # Il silenzio fra il suono dell'avvio e quello della notizia dello staff: con la pausa breve della coda
-# il fischietto si confondeva con l'avvio, collaudo di Gabriele del 23 ottobre 2026.
+# il fischietto si confondeva con l'avvio, collaudo di Gabriele del 23 ottobre 2026. Dalla tappa 14
+# vale anche per la notizia del crash della volta prima.
 PAUSA_NOTIZIA_DELLO_STAFF = 1.0
 RIGHE_BARRA = 4
+# Ogni quanti millesimi la chiusura per l'aggiornamento riprova, finché un messaggio resta aperto.
+RIPROVA_DELLA_CHIUSURA = 200
 
 
 class FinestraPrincipale(wx.Frame):
-    def __init__(self, mondo, origine, messaggi, rapporto, ultimo_prima, avvisi_all_avvio=False):
+    def __init__(self, mondo, origine, messaggi, rapporto, ultimo_prima, avvisi_all_avvio=False, crash_precedente=None):
         super().__init__(None, title=TITOLO)
         self.mondo = mondo
         self.origine = origine
         self.avvisi_all_avvio = avvisi_all_avvio
+        # Dalla tappa 14: il resoconto del crash della volta prima, se c'è stato; chiusa diventa vera
+        # quando la finestra comincia a chiudersi, e il filo dell'aggiornamento non le chiede più niente.
+        self.crash_precedente = crash_precedente
+        self.chiusa = False
+        self._per_aggiornare = False
         self.rapporto = rapporto
         self.rapporto_sessione = rapporto
         self._modali = 0
@@ -146,6 +165,8 @@ class FinestraPrincipale(wx.Frame):
         apertura = testi.apertura(mondo, origine, messaggi, rapporto, ultimo_prima, adesso_utc())
         if self.problemi_all_avvio:
             apertura = f"{testi.calendario_illeggibile(self.problemi_all_avvio)}\n{apertura}"
+        if crash_precedente:
+            apertura = f"{testi.crash_precedente(crash_precedente)}\n{apertura}"
         self.mostra(apertura)
 
     # Costruzione.
@@ -247,6 +268,7 @@ class FinestraPrincipale(wx.Frame):
             )),
             ("&Aiuto", (
                 ("&Guida ai comandi", "F1", lambda: self.mostra(testi.guida(self.voci_guida()), "guida ai comandi", "guida")),
+                ("&Manuale", "Shift+F1", self.manuale),
                 ("&Novità", "F2", self.novita),
                 ("&Informazioni", "F3", lambda: self.mostra(testi.informazioni(), "informazioni", "informazioni")),
                 ("&Offrimi un caffè...", None, self.caffe),
@@ -293,7 +315,9 @@ class FinestraPrincipale(wx.Frame):
         Il suono dell'avvio, da chiamare quando la finestra è comparsa: prima l'avvio dalla copia di
         sicurezza, poi quello con le collezioni di nomi difettose, poi la nascita di un mondo nuovo,
         e infine l'avvio di sempre. Se il mondo è avanzato mentre il programma era chiuso, segue il
-        suono dell'avanzamento, quando il primo è finito.
+        suono dell'avanzamento, quando il primo è finito. Dopo l'avvio suona una notizia sola, la più
+        importante: dalla tappa 14 prima di tutte il crash della volta prima, staccato di un secondo
+        come la notizia dello staff.
         """
         if self.origine == archivio.DALLA_COPIA:
             primo = "avvio_dalla_copia"
@@ -304,7 +328,9 @@ class FinestraPrincipale(wx.Frame):
         else:
             primo = "avvio"
         suoni.suona(primo)
-        if self.problemi_all_avvio:
+        if self.crash_precedente:
+            suoni.in_coda("crash_precedente", pausa=PAUSA_NOTIZIA_DELLO_STAFF)
+        elif self.problemi_all_avvio:
             suoni.in_coda("calendario_illeggibile")
         elif getattr(self.mondo, "staff_appena_nato", False):
             # Dalla tappa 13: il mondo appena aggiornato al formato 8 ha lo staff, e la notizia vale più dell'avanzamento.
@@ -314,8 +340,9 @@ class FinestraPrincipale(wx.Frame):
 
     def errore_imprevisto(self, tipo, valore):
         """
-        Un'eccezione sfuggita a un comando: la traccia va sulla console, che chi non vede non legge,
-        e il comando muore in silenzio. Qui la dicono il suono dell'allarme e un messaggio.
+        Un'eccezione sfuggita a un comando: il comando muore in silenzio, e dalla tappa 14 il resoconto
+        completo va nel registro degli errori, accanto al programma. Qui la dicono il suono
+        dell'allarme e un messaggio, che dice dove sta il resoconto.
         """
         if not self or self.IsBeingDeleted() or self._errore_aperto:
             return
@@ -323,7 +350,7 @@ class FinestraPrincipale(wx.Frame):
         self._modali += 1
         try:
             suoni.suona("errore_imprevisto")
-            wx.MessageBox(f"Il comando si è interrotto per un errore imprevisto: {tipo.__name__}, {valore}. La traccia completa è sulla console.",
+            wx.MessageBox(f"Il comando si è interrotto per un errore imprevisto: {tipo.__name__}, {valore}. {testi.resoconto_degli_errori(percorsi.cartella())}",
                           "Errore imprevisto", wx.OK | wx.ICON_ERROR, self)
         finally:
             self._modali -= 1
@@ -1160,6 +1187,26 @@ class FinestraPrincipale(wx.Frame):
             suono = "novita_illeggibile"
         self.mostra(testo, "novità", suono)
 
+    def manuale(self):
+        """
+        Il manuale, manuale.html, nel browser predefinito, dalla tappa 14: la vista resta com'era, e la
+        barra dice che il manuale è aperto. Se il file manca, o Windows non lo apre, lo dice la vista,
+        col suono delle novità che non si leggono: anche questo è un documento dell'aiuto che manca.
+        """
+        percorso = percorsi.risorsa("manuale.html")
+        if not os.path.isfile(percorso):
+            self.mostra(f"Il manuale non c'è: dovrebbe essere il file {percorso}. Reinstallare MESS lo rimette al suo posto.", "manuale mancante",
+                        "novita_illeggibile")
+            return
+        try:
+            os.startfile(percorso)  # noqa: S606 - il manuale si apre col browser che Windows associa all'HTML
+        except OSError as errore:
+            self.mostra(f"Il manuale non si apre nel browser: {errore.strerror or errore}. È il file {percorso}.", "manuale non aperto", "novita_illeggibile")
+            return
+        suoni.suona("manuale")
+        self.ultimo_evento = "manuale nel browser"
+        self.aggiorna_barra()
+
     def caffe(self):
         invito = Donazione(lang="it", probabilita=100, stampa=False) or "Grazie se vorrai offrire un caffè all'autore."
         dialogo = Caffe(self, invito, self.impostazioni)
@@ -1169,22 +1216,102 @@ class FinestraPrincipale(wx.Frame):
         finally:
             dialogo.Destroy()
 
+    # L'aggiornamento automatico e l'istanza unica, tappa 14, decisione D34: li conducono
+    # aggiornamento.py e istanza.py, dai loro fili; qui la finestra e le frasi.
+
+    def proponi_l_aggiornamento(self, versione_attuale, versione_nuova, note, attesa=None):
+        """
+        La proposta dell'aggiornamento, con le note della release rese leggibili come le novità: vero
+        se si sceglie Aggiorna. Allo scadere dell'attesa il dialogo si chiude come Non adesso. Finché è
+        aperto il mondo non avanza.
+        """
+        dialogo = Aggiornamento(self, versione_attuale, versione_nuova, testi.novita(note or ""), attesa, self.impostazioni)
+        try:
+            # In coda: all'avvio può suonare ancora il motivo di MESS.
+            suoni.in_coda("aggiornamento_disponibile")
+            scelta = self._modale(dialogo)
+        finally:
+            dialogo.Destroy()
+        if scelta == wx.ID_YES:
+            self.ultimo_evento = f"scarico MESS {versione_nuova}"
+        else:
+            suoni.suona("annullato")
+            self.ultimo_evento = "aggiornamento rimandato"
+        self.aggiorna_barra()
+        return scelta == wx.ID_YES
+
+    def avvisa_dell_aggiornamento(self, testo):
+        """
+        Un esito dell'aggiornamento, in un messaggio che aspetta l'OK: torna soltanto quando lo si è
+        chiuso, perché i 30 secondi dello script di sostituzione partano dopo, non mentre lo si legge.
+        """
+        self._modali += 1
+        try:
+            suoni.in_coda("aggiornamento_esito")
+            wx.MessageBox(testo, "Aggiornamento di MESS", wx.OK | wx.ICON_INFORMATION, self)
+        finally:
+            self._modali -= 1
+
+    def avanzamento_dell_aggiornamento(self, presi, totale):
+        """A che punto è lo scaricamento, nella quarta riga della barra di stato, entro quaranta caratteri; non sotto il cursore di chi legge."""
+        if not self or self.chiusa:
+            return
+        if totale:
+            self.ultimo_evento = f"aggiornamento scaricato {testi.con_articolo('al', testi.percento(presi * 100 // totale))}"
+        else:
+            self.ultimo_evento = f"aggiornamento: {testi.numero(presi / 1048576, 1)} MB scaricati"
+        if not self.barra.HasFocus():
+            self.aggiorna_barra()
+
+    def chiudi_per_aggiornare(self):
+        """
+        GBUtils sta per sostituire MESS: la finestra salva il mondo e si chiude senza il riepilogo di
+        fine sessione, che aspetterebbe l'OK mentre lo script di sostituzione aspetta al massimo 30
+        secondi. Un dialogo aperto si chiude prima, come annullato; un messaggio aperto, che non si
+        può chiudere da qui, si aspetta, e la chiusura riprova finché non è stato letto.
+        """
+        if not self or self.chiusa:
+            return
+        self._per_aggiornare = True
+        aperti = [d for d in wx.GetTopLevelWindows() if isinstance(d, wx.Dialog) and d.IsModal()]
+        for dialogo in aperti:
+            dialogo.EndModal(wx.ID_CANCEL)
+        if aperti or self._modali:
+            wx.CallLater(RIPROVA_DELLA_CHIUSURA, self.chiudi_per_aggiornare)
+            return
+        self.Close(force=True)
+
+    def porta_in_primo_piano(self):
+        """Si è provato ad aprire MESS una seconda volta: questa finestra torna in primo piano, col suo suono, e l'altra copia si chiude."""
+        if not self or self.chiusa:
+            return
+        if self.IsIconized():
+            self.Iconize(False)
+        self.Raise()
+        suoni.suona("primo_piano")
+
     # Chiusura.
 
     def _alla_chiusura(self, event):
         """
         Alla chiusura il mondo si salva, e una finestra riassume la sessione; poi la finestra se ne va.
         Il suono del congedo aspetta di finire, fino a un massimo, prima del riepilogo: dopo, il
-        programma si chiude, e lo troncherebbe.
+        programma si chiude, e lo troncherebbe. Quando si chiude per l'aggiornamento il riepilogo non
+        c'è, e un salvataggio non riuscito si scrive nel registro degli errori.
         """
+        self.chiusa = True
         self.timer.Stop()
         riuscito, messaggi, _avvisi = self._salva_raccogliendo()
-        riepilogo = testi.chiusura(adesso() - self.inizio, self.comandi, messaggi, self.rapporto_sessione)
-        if not riuscito:
-            riepilogo += "\nIl mondo non è stato salvato: alla prossima partenza ritroverai quello dell'ultimo salvataggio riuscito."
         suoni.suona("uscita" if riuscito else "uscita_senza_salvataggio", sync=suoni.ATTESA_USCITA)
-        dialogo = Lettura(self, "Fine sessione", riepilogo, self.impostazioni)
-        with contextlib.suppress(RuntimeError):
-            dialogo.ShowModal()
-        dialogo.Destroy()
+        if self._per_aggiornare:
+            if not riuscito:
+                registro.scrivi(" ".join(["Il mondo non si è salvato prima dell'aggiornamento.", *messaggi]))
+        else:
+            riepilogo = testi.chiusura(adesso() - self.inizio, self.comandi, messaggi, self.rapporto_sessione)
+            if not riuscito:
+                riepilogo += "\nIl mondo non è stato salvato: alla prossima partenza ritroverai quello dell'ultimo salvataggio riuscito."
+            dialogo = Lettura(self, "Fine sessione", riepilogo, self.impostazioni)
+            with contextlib.suppress(RuntimeError):
+                dialogo.ShowModal()
+            dialogo.Destroy()
         self.Destroy()
