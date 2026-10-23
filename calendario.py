@@ -49,6 +49,7 @@ import premiazioni
 import sfide
 import tornei
 from costanti import CONSERVAZIONE_TORNEI_CONCLUSI_GIORNI, FATICA_RESIDUA_GIORNATA, GIOCATORI_AL_TAVOLO
+from grammatica import torneo_con_preposizione
 from motore import ESSENZIALE, SQUADRE, TAVOLINO, Incontro, Squadra, a_tavolino, formato_singolare
 from partita import MotorePartita, differita_singolare, differita_squadre
 from premiazioni import Albo
@@ -332,7 +333,7 @@ class Calendario:
         for ed in self.edizioni:
             if gid in ed.giocatori():
                 cosa = "l'iscrizione" if ed.individuale else "la rosa della sua polisportiva"
-                risultato.append((ed.data_inizio, ed.data_fine, f"{cosa} a {ed.nome}, dal {data_breve(ed.data_inizio)}", "torneo"))
+                risultato.append((ed.data_inizio, ed.data_fine, f"{cosa} {torneo_con_preposizione(ed.nome)}, dal {data_breve(ed.data_inizio)}", "torneo"))
         for torneo in self.tornei:
             if gid in self.giocatori_del_torneo(torneo):
                 inizio, fine = self._intervallo_del_torneo(torneo)
@@ -651,7 +652,7 @@ class Calendario:
         restituisce quelle di questo incontro.
         """
         importanza = torneo.modello["importanza"]
-        gara = f"l'incontro di {torneo.modello['nome']}"
+        gara = f"l'incontro {torneo_con_preposizione(torneo.modello['nome'], 'di')}"
         club, squadre = {}, {}
         for lato, cid in (("A", incontro.a), ("B", incontro.b)):
             info = torneo.info[cid]

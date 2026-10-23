@@ -53,6 +53,7 @@ from costanti import (
     SOGLIA_ECCESSO_CARICO_GIOVANI,
 )
 from economia import scritta_in_euro
+from grammatica import maiuscola, torneo_con_preposizione
 from utilita import accorda, data_breve
 
 COMPUTER = "computer"
@@ -307,9 +308,9 @@ def automatiche(mondo, calendario, data, rapporto):
         paga(poli, quota)
         ed.aggiungi(gid, club_di(mondo, g), quota, AUTOMATICA)
         rapporto["tue_iscrizioni"] += 1
-        testo = f"Iscritto in automatico a {ed.nome}, che comincia il {data_breve(ed.data_inizio)}" + (f": {scritta_in_euro(quota)}." if quota else ".")
+        testo = f"Iscritto in automatico {torneo_con_preposizione(ed.nome)}, che comincia il {data_breve(ed.data_inizio)}" + (f": {scritta_in_euro(quota)}." if quota else ".")
         mondo.annota(g, testo.replace("Iscritto", accorda(g.sesso, "Iscritto"), 1))
-        mondo.annota(poli, f"{nome_completo(g)} {accorda(g.sesso, 'iscritto')} in automatico a {ed.nome}, dal {data_breve(ed.data_inizio)}"
+        mondo.annota(poli, f"{nome_completo(g)} {accorda(g.sesso, 'iscritto')} in automatico {torneo_con_preposizione(ed.nome)}, dal {data_breve(ed.data_inizio)}"
                      + (f": {scritta_in_euro(quota)}." if quota else "."))
 
 
@@ -336,11 +337,11 @@ def problema_iscrizione(mondo, id_edizione, g, poli):
     if g.ritirato:
         return f"{nome_completo(g)} si è {accorda(g.sesso, 'ritirato')} dall'attività."
     if not ed.individuale or ed.qualificazione != modelli_torneo.NESSUNA:
-        return f"A {ed.nome} si entra per qualificazione, non con l'iscrizione."
+        return f"{maiuscola(torneo_con_preposizione(ed.nome))} si entra per qualificazione, non con l'iscrizione."
     if (ed.sesso != "aperto" and ed.sesso != g.sesso) or (ed.filtri and not modelli_torneo.idoneo(ed.oggetto_modello, g)):
         return f"{nome_completo(g)} non può giocare {ed.nome}: è un torneo per altri giocatori."
     if g.id in ed.ids():
-        return f"{nome_completo(g)} è già {accorda(g.sesso, 'iscritto')} a {ed.nome}."
+        return f"{nome_completo(g)} è già {accorda(g.sesso, 'iscritto')} {torneo_con_preposizione(ed.nome)}."
     for inizio, fine, descrizione, tipo in calendario.impegni_descritti(mondo, g.id):
         if inizio <= ed.data_fine and ed.data_inizio <= fine:
             regola = "due tornei negli stessi giorni non si giocano" if tipo == "torneo" else "un torneo e una sfida negli stessi giorni non si giocano"
@@ -358,8 +359,8 @@ def iscrivi(mondo, id_edizione, g, poli):
     ed = _edizione(mondo.calendario, id_edizione)
     paga(poli, ed.quota)
     ed.aggiungi(g.id, club_di(mondo, g), ed.quota, MANO)
-    mondo.annota(g, f"{accorda(g.sesso, 'Iscritto')} a {ed.nome}, che comincia il {data_breve(ed.data_inizio)}.")
-    mondo.annota(poli, f"Iscrive {nome_completo(g)} a {ed.nome}" + (f", per {scritta_in_euro(ed.quota)}." if ed.quota else "."))
+    mondo.annota(g, f"{accorda(g.sesso, 'Iscritto')} {torneo_con_preposizione(ed.nome)}, che comincia il {data_breve(ed.data_inizio)}.")
+    mondo.annota(poli, f"Iscrive {nome_completo(g)} {torneo_con_preposizione(ed.nome)}" + (f", per {scritta_in_euro(ed.quota)}." if ed.quota else "."))
     return ed
 
 
@@ -370,7 +371,7 @@ def problema_ritiro(mondo, id_edizione, g, poli):
         return "Il sorteggio è già fatto: l'iscrizione non si toglie più."
     iscritto = ed.iscritto(g.id)
     if iscritto is None:
-        return f"{nome_completo(g)} non è {accorda(g.sesso, 'iscritto')} a {ed.nome}."
+        return f"{nome_completo(g)} non è {accorda(g.sesso, 'iscritto')} {torneo_con_preposizione(ed.nome)}."
     if poli is None or poli.is_cpu_controlled or (g.id not in poli.tesserati and polisportiva_del_club(mondo, iscritto["club"]) is not poli):
         return f"{nome_completo(g)} non è un tuo tesserato."
     return None
@@ -394,7 +395,7 @@ def togli(mondo, id_edizione, g, poli):
     # di nuovo. Il ricordo dura fino al sorteggio dell'edizione.
     calendario.ricorda_tolta(g.id, ed.id)
     mondo.annota(g, f"Non gioca più {ed.nome}: l'iscrizione è tolta.")
-    mondo.annota(poli, f"Toglie {nome_completo(g)} da {ed.nome}" + (f": rimborso di {scritta_in_euro(euro)}." if euro else "."))
+    mondo.annota(poli, f"Toglie {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')}" + (f": rimborso di {scritta_in_euro(euro)}." if euro else "."))
     if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
         # Chi hai tolto non torna convocato: resta fra gli esclusi, come gli infortunati sostituiti.
         ed.esclusi.append(g.id)
@@ -435,13 +436,13 @@ def convoca(mondo, calendario, ed, g, rapporto=None):
             continue
         rimborsa(mondo, altra.togli(g.id))
         if tuo(mondo, g):
-            mondo.annota(g, f"Lascia {altra.nome}: è {accorda(g.sesso, 'convocato')} a {ed.nome}, che ha la precedenza.")
+            mondo.annota(g, f"Lascia {altra.nome}: è {accorda(g.sesso, 'convocato')} {torneo_con_preposizione(ed.nome)}, che ha la precedenza.")
     ed.aggiungi(g.id, club_di(mondo, g), 0, QUALIFICATO)
     if tuo(mondo, g):
-        mondo.annota(g, f"{accorda(g.sesso, 'Convocato')} a {ed.nome}, dal {data_breve(ed.data_inizio)}.")
+        mondo.annota(g, f"{accorda(g.sesso, 'Convocato')} {torneo_con_preposizione(ed.nome)}, dal {data_breve(ed.data_inizio)}.")
         if rapporto is not None:
             rapporto["tuoi_qualificati"] += 1
-            rapporto["notizie"].append(f"{nome_completo(g)} è {accorda(g.sesso, 'convocato')} a {ed.nome}.")
+            rapporto["notizie"].append(f"{nome_completo(g)} è {accorda(g.sesso, 'convocato')} {torneo_con_preposizione(ed.nome)}.")
 
 
 def prossimo_convocato(mondo, calendario, ed):

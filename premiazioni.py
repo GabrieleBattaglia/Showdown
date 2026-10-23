@@ -28,6 +28,7 @@ import modelli_torneo
 import palmares
 from costanti import FEDELTA_PER_MEDAGLIA, IMPORTANZA_TITOLO
 from economia import scritta_in_euro
+from grammatica import torneo_con_preposizione
 from modelli import CAMPI_AGGREGATA_GIOCATORE, CAMPI_AGGREGATA_POLISPORTIVA, annota_aggregata
 from utilita import accorda
 
@@ -125,7 +126,7 @@ def chiudi(mondo, calendario, torneo, data, rapporto):
                 incrementi[CAMPI_DELLE_MEDAGLIE[medaglia]] = 1
             annota_aggregata(g.diario, data, CAMPI_AGGREGATA_GIOCATORE, **incrementi)
             if medaglia and importanza >= IMPORTANZA_TITOLO:
-                mondo.annota(g, f"{_medaglia_a_parole(medaglia).capitalize()} a {nome}, sede {torneo.sede}.", data)
+                mondo.annota(g, f"{_medaglia_a_parole(medaglia).capitalize()} {torneo_con_preposizione(nome)}, sede {torneo.sede}.", data)
     for conto in per_club.values():
         _voce_del_club(mondo, conto, torneo, data, importanza)
     if tuoi:
@@ -172,14 +173,14 @@ def chiudi_squadre(mondo, calendario, torneo, data, rapporto):
                 incrementi[CAMPI_DELLE_COPPE[coppa]] = 1
             annota_aggregata(poli.diario, data, CAMPI_AGGREGATA_POLISPORTIVA, **incrementi)
             if coppa and importanza >= IMPORTANZA_TITOLO:
-                mondo.annota(poli, f"Coppa {COPPE_A_PAROLE[coppa]} a {nome}.", data)
+                mondo.annota(poli, f"Coppa {COPPE_A_PAROLE[coppa]} {torneo_con_preposizione(nome)}.", data)
             continue
         tue.add(cid)
         testo = f"Chiude {nome}, sede {torneo.sede}, {posto_a_parole(posto, 'f')} su {len(classifica)}: {vinti} incontri vinti su {giocati}"
         if coppa:
             testo += f", coppa {COPPE_A_PAROLE[coppa]}"
             rapporto[f"tue_coppe_{coppa}"] += 1
-            rapporto["notizie"].append(f"{poli.nome} vince la coppa {COPPE_A_PAROLE[coppa]} a {nome}.")
+            rapporto["notizie"].append(f"{poli.nome} vince la coppa {COPPE_A_PAROLE[coppa]} {torneo_con_preposizione(nome)}.")
         mondo.annota(poli, testo + ".", data)
         for gid in info.get("rosa", ()):
             g = mondo.giocatori.get(gid)
@@ -224,9 +225,11 @@ def _voce_del_tuo(mondo, g, torneo, posto, iscritti, giocati, vinti, medaglia, p
     if medaglia:
         testo += f", {_medaglia_a_parole(medaglia)}"
         rapporto[f"tue_medaglie_{medaglia}"] += 1
-        notizia = f"{g.nome} {g.cognome} vince la {_medaglia_a_parole(medaglia)} a {nome}"
+        notizia = f"{g.nome} {g.cognome} vince la {_medaglia_a_parole(medaglia)} {torneo_con_preposizione(nome)}"
         if mondiale and medaglia == "oro":
             rapporto["tuoi_titoli_mondiali"] += 1
+            if g.sesso == "f":
+                rapporto["tue_campionesse"] += 1
             notizia = f"{g.nome} {g.cognome} è {'campione' if g.sesso == 'm' else 'campionessa'} d'Italia"
         rapporto["notizie"].append(notizia + ".")
     if premio and poli is not None:
@@ -255,7 +258,7 @@ def _voce_del_club(mondo, conto, torneo, data, importanza):
     annota_aggregata(poli.diario, data, CAMPI_AGGREGATA_POLISPORTIVA, **incrementi)
     if importanza >= IMPORTANZA_TITOLO and any(medaglie.values()):
         vinte = ", ".join(f"{quante} {CAMPI_DELLE_MEDAGLIE[m] if quante > 1 else m}" for m, quante in medaglie.items() if quante)
-        mondo.annota(poli, f"Medaglie a {nome}: {vinte}.", data)
+        mondo.annota(poli, f"Medaglie {torneo_con_preposizione(nome)}: {vinte}.", data)
 
 
 class Albo:

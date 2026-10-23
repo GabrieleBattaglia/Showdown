@@ -9,6 +9,7 @@ from grammatica import (
     con_indeterminativo,
     elenco,
     preposizione_articolata,
+    torneo_con_preposizione,
 )
 
 
@@ -125,3 +126,56 @@ def test_aggettivo_con_complemento():
 )
 def test_elenco(parti, atteso):
     assert elenco(parti) == atteso
+
+
+# La revisione della tappa 14: la preposizione davanti al nome di un torneo.
+
+@pytest.mark.parametrize(
+    ("nome", "preposizione", "atteso"),
+    [
+        ("Campionato italiano maschile", "a", "al Campionato italiano maschile"),
+        ("Gran Premio femminile", "a", "al Gran Premio femminile"),
+        ("Open misto del mese", "a", "all'Open misto del mese"),
+        ("Coppa delle polisportive", "a", "alla Coppa delle polisportive"),
+        ("Open femminile del giovedì", "da", "dall'Open femminile del giovedì"),
+        ("Campionato italiano femminile", "da", "dal Campionato italiano femminile"),
+        ("Coppa delle polisportive", "di", "della Coppa delle polisportive"),
+        ("Supercoppa d'inverno", "a", "alla Supercoppa d'inverno"),
+        ("Europei a squadre", "a", "agli Europei a squadre"),
+        ("Giochi del Mediterraneo", "a", "ai Giochi del Mediterraneo"),
+        ("Olimpiadi dello showdown", "a", "alle Olimpiadi dello showdown"),
+        ("Sfida dei campioni", "a", "alla Sfida dei campioni"),
+        ("Trofeo, edizione speciale", "a", "al Trofeo, edizione speciale"),
+        ("Il Trofeo dei Tigli", "a", "al Trofeo dei Tigli"),
+        ("Lo Showdown d'oro", "a", "allo Showdown d'oro"),
+        ("La Coppa del lago", "da", "dalla Coppa del lago"),
+        ("L'Aquila d'argento", "a", "all'Aquila d'argento"),
+        ("Le Giornate di Ostia", "a", "alle Giornate di Ostia"),
+        ("Gran Premio femminile", "per", "per il Gran Premio femminile"),
+        # Un nome che non si riconosce resta com'è, con la preposizione semplice.
+        ("Showdown d'autunno", "a", "a Showdown d'autunno"),
+        ("Showdown d'autunno", "da", "da Showdown d'autunno"),
+        ("I Memorial Rossi", "a", "a I Memorial Rossi"),
+        ("Il", "a", "a Il"),
+        # Davanti a una a, la d eufonica.
+        ("Autunno in gara", "a", "ad Autunno in gara"),
+        ("Autunno in gara", "da", "da Autunno in gara"),
+    ],
+)
+def test_la_preposizione_davanti_al_torneo(nome, preposizione, atteso):
+    assert torneo_con_preposizione(nome, preposizione) == atteso
+
+
+def test_i_nomi_dei_tornei_predefiniti_si_riconoscono_tutti():
+    # I modelli che viaggiano col programma vogliono tutti la preposizione articolata.
+    import json
+    import pathlib
+
+    import modelli_torneo
+    import percorsi
+
+    cartella = pathlib.Path(percorsi.risorsa(modelli_torneo.RISORSA))
+    nomi = [json.loads(file.read_text(encoding="utf-8"))["nome"] for file in cartella.glob("*.json")]
+    assert len(nomi) == 10
+    for nome in nomi:
+        assert torneo_con_preposizione(nome).startswith(("al ", "all'", "alla ")), nome

@@ -60,6 +60,7 @@ from costanti import (
     RIPOSO_SFIDA_GIORNI,
     TENTATIVI_SFIDA_CPU,
 )
+from grammatica import torneo_con_preposizione
 from modelli import CAMPI_AGGREGATA_POLISPORTIVA, annota_aggregata
 from motore import ESSENZIALE, SQUADRE, TAVOLINO, Incontro, Squadra, a_tavolino
 from motore.squadre import composizione_valida
@@ -830,9 +831,9 @@ def qualifica_coppa(mondo, calendario, ed, rapporto, quante=None):
             impegni.setdefault(g.id, []).append((ed.data_inizio, ed.data_fine))
         if tua(poli):
             rapporto["tue_qualificazioni_coppa"] += 1
-            rapporto["notizie"].append(f"{poli.nome} è qualificata a {ed.nome}.")
+            rapporto["notizie"].append(f"{poli.nome} è qualificata {torneo_con_preposizione(ed.nome)}.")
             cognomi = _unisci([g.cognome for g in rosa])
-            mondo.annota(poli, f"Qualificata a {ed.nome}, dal {data_breve(ed.data_inizio)}, con {cognomi}.")
+            mondo.annota(poli, f"Qualificata {torneo_con_preposizione(ed.nome)}, dal {data_breve(ed.data_inizio)}, con {cognomi}.")
 
 
 def rimpiazza_le_chiuse(mondo, calendario, ed, rapporto):
@@ -856,7 +857,7 @@ def problema_rosa(mondo, id_edizione, poli, ids):
     if ed is None or ed.data_inizio <= _oggi(mondo):
         return "Il sorteggio è già fatto: la rosa non si cambia più."
     if not tua(poli) or ed.iscritto(poli.nome) is None:
-        return f"{poli.nome if poli else 'La polisportiva'} non è qualificata a {ed.nome}."
+        return f"{poli.nome if poli else 'La polisportiva'} non è qualificata {torneo_con_preposizione(ed.nome)}."
     ids = list(ids)
     if not GIOCATORI_AL_TAVOLO <= len(ids) <= CONVOCATI_SFIDA:
         return f"La rosa ha da {GIOCATORI_AL_TAVOLO} a {CONVOCATI_SFIDA} giocatori."
@@ -883,7 +884,7 @@ def cambia_rosa(mondo, id_edizione, poli, ids):
         raise ValueError(problema)
     ed = mondo.calendario.edizione(id_edizione)
     ed.iscritto(poli.nome)["rosa"] = list(ids)
-    mondo.annota(poli, f"Cambia la rosa per {ed.nome}: {_unisci([mondo.giocatori[gid].cognome for gid in ids])}.")
+    mondo.annota(poli, f"Cambia la rosa {torneo_con_preposizione(ed.nome, 'per')}: {_unisci([mondo.giocatori[gid].cognome for gid in ids])}.")
 
 
 def schiera_coppa(mondo, poli, rosa, tua_polisportiva=None):

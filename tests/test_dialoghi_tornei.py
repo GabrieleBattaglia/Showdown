@@ -802,6 +802,16 @@ def test_l_ordine_delle_notizie_dei_tornei_e_delle_sfide():
     assert suoni.evento_avanzamento(tutto, True, True) == ("mondo_avanzato", "mondo avanzato di un giorno")
 
 
+def test_la_campionessa_d_italia_nella_barra():
+    # La revisione della tappa 14: al femminile se i titoli sono tutti di donne, al maschile se c'è almeno un uomo.
+    attesi = {(1, 0): "tuo atleta campione d'Italia", (1, 1): "tua atleta campionessa d'Italia", (2, 0): "2 tuoi atleti campioni d'Italia",
+              (2, 1): "2 tuoi atleti campioni d'Italia", (2, 2): "2 tue atlete campionesse d'Italia"}
+    for (titoli, donne), testo in attesi.items():
+        assert suoni.evento_avanzamento(_rapporto(tuoi_titoli_mondiali=titoli, tue_campionesse=donne), True, True) == ("tuo_titolo_mondiale", testo)
+    for donne in (0, 1, 999):
+        assert len(suoni.evento_avanzamento(_rapporto(tuoi_titoli_mondiali=999, tue_campionesse=donne), True, True)[1]) <= 40
+
+
 def test_la_sfida_in_attesa_e_quella_decaduta_nella_barra():
     # Il nome di chi sfida, se ci sta nei quaranta caratteri; altrimenti la forma corta.
     assert suoni.evento_avanzamento(_rapporto(sfide_in_attesa=1), True, True, "Polisportiva Dal Nome Lunghissimo Di Prova")[1] == "sfida ricevuta, rispondi oggi"

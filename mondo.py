@@ -158,7 +158,9 @@ CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", 
                    # che l'albo conserva, per la misura del calendario nella simulazione lunga.
                    "premi_tornei",
                    # La tappa 13, progetto 4.5: le notizie dello staff dell'utente.
-                   "tuo_staff_partito", "tuo_staff_scaduto", "tuo_staff_uscito", "tue_prelazioni", "tuo_staff_in_scadenza")
+                   "tuo_staff_partito", "tuo_staff_scaduto", "tuo_staff_uscito", "tue_prelazioni", "tuo_staff_in_scadenza",
+                   # La revisione della tappa 14: quanti dei tuoi titoli italiani vanno a una donna, perché la barra accordi.
+                   "tue_campionesse")
 # Per quanti giorni simulati si conservano le voci dei diari: zero vuol dire per sempre, come in Terminal Beast.
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"

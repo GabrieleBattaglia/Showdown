@@ -81,6 +81,8 @@ def test_le_medaglie_del_giocatore_e_del_club(chiusa):
     assert a.palmares_recente == {"2026-10": [30.0, 0.0]} and b.palmares_recente == {"2026-10": [5.0, 0.0]}
     assert chiusa["toccate"] == {a.nome, b.nome}
     assert chiusa["rapporto"]["tue_medaglie_bronzo"] == 1 and chiusa["rapporto"]["tuoi_tornei_conclusi"] == 1 and chiusa["rapporto"]["tornei_conclusi"] == 1
+    # Dalla revisione della tappa 14 la preposizione articolata davanti al torneo: prima si leggeva "a Open maschile del martedì".
+    assert f"{g[3].nome} {g[3].cognome} vince la medaglia di bronzo all'Open maschile del martedì." in chiusa["rapporto"]["notizie"]
 
 
 def test_i_premi_nei_conti_e_alla_federazione(chiusa):
@@ -134,6 +136,8 @@ def test_il_tuo_campione_d_italia(nome, uomini, donne, titolo):
     premiazioni.chiudi(mondo, calendario, torneo, OGGI, rapporto)
     g = mondo.giocatori[1]
     assert torneo.classifica_finale[0] == 1 and rapporto["tuoi_titoli_mondiali"] == 1 and rapporto["mondiali_conclusi"] == 1
+    # La revisione della tappa 14: la campionessa si conta a parte, perché la barra accordi.
+    assert rapporto["tue_campionesse"] == (titolo == "campionessa")
     assert f"{g.nome} {g.cognome} è {titolo} d'Italia." in rapporto["notizie"]
     assert [(t["torneo"], t["posto"], t["mondiale"]) for t in g.titoli] == [(nome, 1, True)]
 

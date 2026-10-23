@@ -84,7 +84,7 @@ def test_l_albo_d_oro_a_parole():
 
 def test_il_riepilogo_coi_tornei_le_sfide_e_le_notizie():
     primo = Mondo.rapporto_vuoto("ieri")
-    primo.update(tornei_conclusi=2, incontri_torneo=40, sfide_giocate=3, sfide_in_attesa=2, notizie=["Mario Rossi vince la medaglia d'oro a Open maschile del martedì."])
+    primo.update(tornei_conclusi=2, incontri_torneo=40, sfide_giocate=3, sfide_in_attesa=2, notizie=["Mario Rossi vince la medaglia d'oro all'Open maschile del martedì."])
     testo = testi._fatti_avanzamento(primo)
     assert "Mario Rossi vince la medaglia d'oro" in testo and "2 sfide aspettano la tua risposta entro oggi, prima dell'avanzamento seguente." in testo
     assert "In Italia: 2 tornei conclusi, 40 incontri di torneo e 3 sfide fra polisportive." in testo

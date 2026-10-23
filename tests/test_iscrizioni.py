@@ -110,7 +110,8 @@ def test_l_automatica_dell_utente_e_la_cassa_che_non_basta():
     apri(mondo, OGGI, MARTEDI)
     rapporto = _automatiche(mondo, OGGI)
     assert rapporto["tue_iscrizioni"] == 1 and rapporto["tue_iscrizioni_saltate"] == 1 and poli.cassa == 5
-    assert mondo.giocatori[1].diario[0]["testo"].startswith("Iscritto in automatico a ")
+    # Dalla revisione della tappa 14 con la preposizione articolata: prima si leggeva "a Open maschile del martedì".
+    assert mondo.giocatori[1].diario[0]["testo"].startswith("Iscritto in automatico all'Open maschile del martedì, che comincia il ")
     # Il giorno dopo la stessa edizione non si conta di nuovo; il terzo, con l'automatica spenta, non entra mai.
     rapporto = _automatiche(mondo, OGGI)
     assert rapporto["tue_iscrizioni_saltate"] == 0 and not _dove(mondo, 3)
@@ -124,7 +125,12 @@ def test_la_data_del_ritmo_non_si_tocca_togliendo_o_annullando():
     assert poli.cassa == 90 and poli.conti_del_mese["iscrizioni"] == 10
     assert iscrizioni.togli(mondo, ed.id, mondo.giocatori[1], poli) == 10
     assert poli.cassa == 100 and poli.conti_del_mese["rimborsi"] == 10 and mondo.giocatori[1].prossimo_torneo is None
-    with pytest.raises(ValueError, match="non è iscritto"):
+    # Dalla revisione della tappa 14 la preposizione articolata davanti al torneo, anche nel diario del club.
+    nome = iscrizioni.nome_completo(mondo.giocatori[1])
+    del_club = [voce.get("testo", "") for voce in poli.diario]
+    assert any(testo.startswith(f"Iscrive {nome} all'Open maschile del martedì, per ") for testo in del_club)
+    assert any(testo.startswith(f"Toglie {nome} dall'Open maschile del martedì: rimborso di ") for testo in del_club)
+    with pytest.raises(ValueError, match="non è iscritto all'Open maschile del martedì"):
         iscrizioni.togli(mondo, ed.id, mondo.giocatori[1], poli)
 
 

@@ -861,6 +861,13 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
     def coppa(colore):
         return lambda n: f"coppa {colore} per la tua polisportiva" if n == 1 else f"{n} coppe {colore} alle tue"
 
+    def campioni(n):
+        # La revisione della tappa 14: al femminile se i titoli sono tutti di donne, al maschile se ci sono uomini.
+        donne = rapporto.get("tue_campionesse", 0) == n
+        if n == 1:
+            return "tua atleta campionessa d'Italia" if donne else "tuo atleta campione d'Italia"
+        return f"{n} tue atlete campionesse d'Italia" if donne else f"{n} tuoi atleti campioni d'Italia"
+
     tuoi = (
         ("tuoi_partiti", "tuoi_tesserati_partiti", lambda n: f"{conta(n, 'tesserato andato via', 'tesserati andati via')}, non pagati"),
         ("tuoi_scaduti", "tuoi_contratti_scaduti", lambda n: conta(n, "tesserato libero a fine contratto", "tesserati liberi a fine contratto")),
@@ -871,7 +878,7 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
         ("tuo_staff_uscito", "tuo_staff_uscito", lambda n: conta(n, "allenatore uscito dal tuo staff", "allenatori usciti dal tuo staff")),
         ("calendario_con_problemi", "calendario_illeggibile", lambda _n: "calendario dei tornei con problemi"),
         ("sfide_in_attesa", "sfida_ricevuta", sfida_in_attesa),
-        ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", lambda n: "tuo atleta campione d'Italia" if n == 1 else f"{n} tuoi atleti campioni d'Italia"),
+        ("tuoi_titoli_mondiali", "tuo_titolo_mondiale", campioni),
         ("tue_medaglie_oro", "tua_medaglia_oro", lambda n: conta(n, "medaglia d'oro per i tuoi", "medaglie d'oro per i tuoi")),
         ("tue_coppe_oro", "tua_coppa_oro", coppa("d'oro")),
         # A pari metallo prima la medaglia e poi la coppa, come per l'oro: la revisione del 14 ottobre 2026

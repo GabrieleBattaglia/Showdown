@@ -5,7 +5,8 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-02 dal motore di Terminal Beast, lore.py, secondo la decisione D8 del piano.
 Rispetto all'originale aggiunge l'articolo determinativo, le preposizioni articolate, gli
 aggettivi in -ico e in -cio e -gio, gli aggettivi preceduti da un avverbio e quelli seguiti
-da un complemento.
+da un complemento. Dalla revisione della tappa 14, il 2026-10-23, la preposizione davanti ai nomi dei
+tornei, articolata per quelli che riconosce.
 """
 
 # Aggettivi che non cambiano mai forma. Quelli che finiscono in a, in vocale accentata o in
@@ -209,3 +210,56 @@ def elenco(parti, congiunzione="e"):
 
 def maiuscola(frase):
     return frase[:1].upper() + frase[1:]
+
+
+# Le prime parole dei nomi dei tornei che MESS riconosce, col genere e il numero, per la preposizione
+# articolata davanti al nome: al Campionato italiano maschile, all'Open misto del mese, alla Coppa delle
+# polisportive. Quelle di due parole si cercano prima, come Gran Premio. La revisione della tappa 14,
+# il 23 ottobre 2026: prima si leggeva "Convocato a Campionato italiano maschile".
+PAROLE_DEI_TORNEI = {
+    "gran premio": ("m", "s"), "grand prix": ("m", "s"), "grand slam": ("m", "s"),
+    "campionato": ("m", "s"), "campionati": ("m", "p"), "torneo": ("m", "s"), "trofeo": ("m", "s"), "open": ("m", "s"),
+    "premio": ("m", "s"), "memorial": ("m", "s"), "festival": ("m", "s"), "meeting": ("m", "s"), "master": ("m", "s"),
+    "masters": ("m", "s"), "circuito": ("m", "s"), "criterium": ("m", "s"), "palio": ("m", "s"), "giochi": ("m", "p"),
+    "europei": ("m", "p"), "mondiali": ("m", "p"), "coppa": ("f", "s"), "supercoppa": ("f", "s"), "finale": ("f", "s"),
+    "finali": ("f", "p"), "gara": ("f", "s"), "sfida": ("f", "s"), "giornata": ("f", "s"), "giornate": ("f", "p"),
+    "rassegna": ("f", "s"), "festa": ("f", "s"), "maratona": ("f", "s"), "serie": ("f", "s"), "olimpiade": ("f", "s"),
+    "olimpiadi": ("f", "p"),
+}
+# Gli articoli con cui può cominciare un nome scritto con l'editor dei tornei, con la loro posizione fra
+# gli articoli: "Il Trofeo dei Tigli" diventa "al Trofeo dei Tigli". Manca i, che si confonde col numero
+# romano di una prima edizione, come in "I Memorial Rossi".
+ARTICOLI_DEI_NOMI = {"il": 0, "lo": 1, "la": 2, "gli": 4, "le": 5}
+
+
+def torneo_con_preposizione(nome, preposizione="a"):
+    """
+    Il nome di un torneo con la preposizione davanti, articolata se il nome comincia con una parola che
+    MESS riconosce o con un articolo: al Campionato italiano maschile, al Gran Premio femminile,
+    all'Open misto del mese, alla Coppa delle polisportive, dal Trofeo dei Tigli se il nome è "Il Trofeo
+    dei Tigli". Un nome che non si riconosce, scritto dall'utente con l'editor dei tornei, resta com'è,
+    con la preposizione semplice: a Showdown d'autunno; davanti a una a la preposizione a prende la d
+    eufonica, come la congiunzione e in elenco: ad Autunno in gara.
+    """
+    parole = nome.split()
+    if not parole:
+        return preposizione
+    minuscole = [parola.casefold().rstrip(",.;:") for parola in parole]
+    for apostrofo in ("'", chr(0x2019)):
+        if minuscole[0].startswith("l" + apostrofo) and len(parole[0]) > 2:
+            return unisci(_articolata(preposizione, 6), nome.lstrip()[2:])
+    if minuscole[0] in ARTICOLI_DEI_NOMI and len(parole) > 1:
+        resto = nome.lstrip()[len(parole[0]):].lstrip()
+        return unisci(_articolata(preposizione, ARTICOLI_DEI_NOMI[minuscole[0]]), resto)
+    forma = PAROLE_DEI_TORNEI.get(" ".join(minuscole[:2])) or PAROLE_DEI_TORNEI.get(minuscole[0])
+    if forma is None:
+        eufonica = preposizione == "a" and minuscole[0].startswith("a")
+        return f"{'ad' if eufonica else preposizione} {nome}"
+    return con_determinativo(Sostantivo(nome, *forma), preposizione)
+
+
+def _articolata(preposizione, indice):
+    """La preposizione fusa con l'articolo che sta a quella posizione: il, lo, la, i, gli, le, l'."""
+    if preposizione in PREPOSIZIONI:
+        return PREPOSIZIONI[preposizione][indice]
+    return f"{preposizione} {ARTICOLI[indice]}"

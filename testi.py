@@ -67,8 +67,16 @@ from costanti import (
     MAX_TOTALE_PRECISIONE_RESISTENZA,
     MAX_TOTALE_SKILL_GIOCO,
     NOME_ATTR_TO_DISPLAY_MAP,
+    PA_BONUS_PIU_DEBOLE,
+    PA_FATTORE_AMICHEVOLE,
+    PA_FATTORE_SFIDA,
+    PA_FATTORE_TORNEO,
+    PA_PARTITA_BASE,
+    PA_PER_SET_VINTO,
+    PA_VITTORIA,
     PROPOSTE_RINNOVO_MASSIME,
 )
+from grammatica import torneo_con_preposizione
 from motore import cronaca
 from motore.campo import costanza_relativa
 from utilita import MESI, adesso_utc, converti_giorni_sim, data_breve, formatta_eta_sim, in_ora_locale
@@ -1101,7 +1109,10 @@ def riga_del_comune(comune):
 
 
 def domanda_fondazione(nome, comune):
-    """La domanda prima di fondare, quando si è dato Invio sulla sede: il nome e la sede, da confermare."""
+    """
+    La domanda prima di fondare, quando si è dato Invio sulla sede o sull'elenco dei comuni, o quando il
+    campo Sede è vuoto o non dice il comune scelto: il nome e la sede, da confermare.
+    """
     sede = f" Sede: {luoghi.descrivi(comune)}." if comune else ""
     return f"Vuoi fondare la polisportiva {nome}?{sede}"
 
@@ -1850,15 +1861,15 @@ def riga_della_rosa(g, mondo, posto):
 
 
 def iscrizione_fatta(g, ed, quota):
-    return f"{accorda(g, 'Iscritto')} {nome_completo(g)} a {ed.nome} del {data_breve(ed.data_inizio)}" + (f", per {euro(quota)}." if quota else ".")
+    return f"{accorda(g, 'Iscritto')} {nome_completo(g)} {torneo_con_preposizione(ed.nome)} del {data_breve(ed.data_inizio)}" + (f", per {euro(quota)}." if quota else ".")
 
 
 def iscrizione_tolta(g, ed, rimborso):
-    return f"{accorda(g, 'Tolto')} {nome_completo(g)} da {ed.nome} del {data_breve(ed.data_inizio)}" + (f": rimborso di {euro(rimborso)}." if rimborso else ".")
+    return f"{accorda(g, 'Tolto')} {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')} del {data_breve(ed.data_inizio)}" + (f": rimborso di {euro(rimborso)}." if rimborso else ".")
 
 
 def rosa_iscritta(poli, ed, giocatori):
-    return f"Rosa di {poli.nome} per {ed.nome}: {unisci([g.cognome for g in giocatori])}."
+    return f"Rosa di {poli.nome} {torneo_con_preposizione(ed.nome, 'per')}: {unisci([g.cognome for g in giocatori])}."
 
 
 def riepilogo_calendario(p, fatte):
@@ -2289,9 +2300,41 @@ LEGENDA_CLASSE = (
     "e per il 30% l'esperienza di carriera. La scheda dice anche la percentuale del cammino verso la classe seguente. Le soglie sono fisse per "
     "sempre: A1 è la carriera perfetta, dai 9 ai 50 anni, e chi la supera resta A1; i nati stanno fra la I e la F, i bravi a metà carriera fra la E e la D."
 )
+
+
+def _punti_in_legenda(valore):
+    """Un numero di punti allenamento nella legenda, con un decimale che sparisce quando è zero: 1, 2,2."""
+    return numero(valore).removesuffix(",0")
+
+
+def _punti_degli_incontri():
+    """
+    I punti allenamento degli incontri nella legenda, presi dalle costanti della tappa 12, D32: la formula
+    dà da PA_PARTITA_BASE, a chi perde senza vincere un set, a quello che prende chi vince 3 a 2 al meglio
+    dei 5, il premio al più debole a parte, tutto per il fattore della fonte; la sfida è a un set solo,
+    senza premio al più debole. La revisione della tappa 14 ha visto che la legenda diceva ancora i punti
+    di un'amichevole di prima della tappa 12, da 2 a 4,5 con un punto al più debole.
+    """
+    minimo = PA_PARTITA_BASE
+    massimo = PA_PARTITA_BASE + 3 * PA_PER_SET_VINTO + PA_VITTORIA
+    sfida_vinta = PA_PARTITA_BASE + PA_PER_SET_VINTO + PA_VITTORIA
+
+    def da_a(fattore):
+        return f"da {_punti_in_legenda(minimo * fattore)} a {_punti_in_legenda(massimo * fattore)}"
+
+    return (
+        f"Un'amichevole ne dà {da_a(PA_FATTORE_AMICHEVOLE)}, e {_punti_in_legenda(PA_BONUS_PIU_DEBOLE * PA_FATTORE_AMICHEVOLE)} in più al più debole, "
+        f"anche quando perde; una sfida {_punti_in_legenda(sfida_vinta * PA_FATTORE_SFIDA)} a ogni titolare della squadra che vince e "
+        f"{_punti_in_legenda(minimo * PA_FATTORE_SFIDA)} a quelli della squadra che perde; un incontro di torneo {da_a(PA_FATTORE_TORNEO)}, e "
+        f"{_punti_in_legenda(PA_BONUS_PIU_DEBOLE * PA_FATTORE_TORNEO)} in più al più debole, moltiplicati per l'importanza del torneo: "
+        "1 negli open, 1,5 nei gran premi, 4 al campionato italiano. Un incontro della Coppa delle polisportive dà i punti di una sfida "
+        "moltiplicati per la sua importanza, 3. "
+    )
+
+
 LEGENDA_ALLENAMENTO = (
-    "L'allenamento si paga in punti allenamento, che vengono dalla seduta di ogni giorno in polisportiva, metà per i liberi, e dalle amichevoli: "
-    "un incontro ne dà da 2 a 4,5, con un punto in più al più debole, anche quando perde. Ogni punto compra lo stesso valore a parità di livello, "
+    "L'allenamento si paga in punti allenamento, che vengono dalla seduta di ogni giorno in polisportiva, metà per i liberi, e dagli incontri, "
+    "vinti o persi. " + _punti_degli_incontri() + "Ogni punto compra lo stesso valore a parità di livello, "
     "quindi la precisione, che pesa tanto, sale piano, e le sponde salgono in fretta. Ogni caratteristica può arrivare al tetto, fino a Divino, "
     "ma l'ultimo punto costa dodici volte il primo, e sopra il 70% del tetto i livelli calano un poco ogni mese se non si continuano ad allenare. "
     "I ragazzi imparano un po' più in fretta, gli anziani un po' più piano; il talento, l'apprendista rapido e la maturazione precoce o tardiva sono tratti rari. "

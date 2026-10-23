@@ -317,8 +317,11 @@ def test_nuova_polisportiva(finestra, cartella_di_prova, monkeypatch):
         self.conferma()
         return wx.ID_OK
 
+    # Il comune scritto a metà: dalla revisione della tappa 14 Fonda chiede prima, e qui si risponde sì.
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo) or wx.YES)
     monkeypatch.setattr(dialoghi.NuovaPolisportiva, "ShowModal", fonda)
     finestra.nuova_polisportiva()
+    assert avvisi[-1] == "Vuoi fondare la polisportiva Circolo dei ciechi? Sede: Pescocostanzo, provincia dell'Aquila, Abruzzo."
     nuova = finestra.mondo.polisportive["Circolo dei ciechi"]
     assert finestra.mondo.miapolisportiva_attiva is nuova and not nuova.protetta and nuova.luogo == "Pescocostanzo"
     assert finestra.vista.GetValue().startswith("Hai fondato Circolo dei ciechi. È la tua polisportiva attiva.")

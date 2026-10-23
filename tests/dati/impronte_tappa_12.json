@@ -1,5 +1,5 @@
 {
- "nota": "Tappa 14, formato 9: ogni polisportiva ha il comune della sede; tolto il campo e rimesso il formato 8 le impronte dei mondi tornano identiche",
+ "nota": "Tappa 14: col formato 9 ogni polisportiva ha il comune della sede, e la descrizione della formula gironi_32 dice campionati italiani, che i mondi copiano nelle sedi; tolto il campo, rimesso il formato 8 e ridetto campionati mondiali, le impronte dei mondi tornano identiche",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420

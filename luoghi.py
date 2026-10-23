@@ -150,6 +150,16 @@ def decimali_della_percentuale(valore):
     return decimali
 
 
+def coincide(testo, comune):
+    """
+    Vero se il testo scritto è proprio il nome del comune, senza badare a maiuscole, accenti e
+    apostrofi, come la ricerca: forli è Forlì, mentre bol non è Bologna e il testo vuoto non è nessuno.
+    Dalla revisione della tappa 14, perché la fondazione chieda conferma quando la sede scelta
+    nell'elenco non è quella scritta nel campo.
+    """
+    return bool(comune) and _chiave(testo) == _chiave(comune)
+
+
 def candidati(testo):
     """
     I comuni che la ricerca della fondazione mostra per il testo scritto, senza badare a maiuscole,

@@ -506,10 +506,13 @@ class NuovaPolisportiva(_Dialogo):
     campo Sede ne propone uno estratto coi pesi della popolazione, che basta confermare, e mentre si
     scrive restringe l'elenco dei comuni, ciascuno con la sua popolazione in percentuale su quella del
     più popoloso, la provincia e la regione; quando l'elenco si svuota o torna pieno lo fa sentire, come
-    gli altri filtri. Fonda prende il comune scelto nell'elenco. Invio sul campo Sede o sull'elenco non
-    fonda subito, perché lì sembra scegliere il comune: chiede conferma, con il no già scelto. In
-    risultato restano nome, password, se renderla attiva e comune; il comune è vuoto soltanto se la
-    collezione dei comuni non si legge.
+    gli altri filtri. Fonda prende il comune scelto nell'elenco. Invio sul campo Sede o sull'elenco, e
+    il doppio clic sull'elenco, non fondano subito, perché lì sembra scegliere il comune: chiedono
+    conferma, con il no già scelto. Dalla revisione della tappa 14 fanno la stessa domanda anche Fonda e
+    Invio sul nome o sulle password, quando il campo Sede è vuoto o non dice proprio il comune scelto
+    nell'elenco: prima fondavano in silenzio a Roma, il primo dell'elenco pieno, o nel primo comune di
+    un nome scritto a metà. In risultato restano nome, password, se renderla attiva e comune; il comune
+    è vuoto soltanto se la collezione dei comuni non si legge.
     """
 
     def __init__(self, genitore, mondo, proposta=None):
@@ -536,6 +539,7 @@ class NuovaPolisportiva(_Dialogo):
         self.sede.Bind(wx.EVT_TEXT, self.filtra)
         self.invio_su(self.sede, self.conferma_con_domanda)
         self.invio_su(self.elenco, self.conferma_con_domanda)
+        self.elenco.Bind(wx.EVT_LISTBOX_DCLICK, self.conferma_con_domanda)
         self.sede.ChangeValue(luoghi.comune_a_caso() if proposta is None else proposta)
         self.filtra()
         self.completa((520, 560))
@@ -580,21 +584,27 @@ class NuovaPolisportiva(_Dialogo):
         return (self.nome.GetValue(), self.password.GetValue() or None, self.attiva.GetValue(), comune or "")
 
     def conferma(self, event=None):
-        """Fonda, o Invio fuori dalla sede: si fonda senza domande, se tutto va."""
-        risultato = self._controlla()
-        if risultato is not None:
-            self.risultato = risultato
-            self.chiudi(wx.ID_OK)
+        """
+        Fonda, o Invio sul nome e sulle password: si fonda senza domande, se tutto va e il campo Sede
+        dice proprio il comune scelto; se è vuoto o dice altro, la domanda di Invio sulla sede.
+        """
+        self._fonda(chiedi=False)
 
-    def conferma_con_domanda(self):
-        """Invio sul campo Sede o sull'elenco: gli stessi controlli di Fonda, poi la domanda col nome e la sede, e al no il fuoco torna dov'era."""
+    def conferma_con_domanda(self, event=None):
+        """Invio sul campo Sede o sull'elenco e il doppio clic sull'elenco: la domanda col nome e la sede, sempre."""
+        self._fonda(chiedi=True)
+
+    def _fonda(self, chiedi):
+        """Gli stessi controlli per tutti, poi la domanda se serve: al no il fuoco torna dov'era."""
         fuoco = controllo_col_fuoco()
         risultato = self._controlla()
         if risultato is None:
             return
-        if not self._conferma(testi.domanda_fondazione(normalizza_nome(risultato[0]), risultato[3])):
-            self._torna(fuoco)
-            return
+        comune = risultato[3]
+        if chiedi or (comune and not luoghi.coincide(self.sede.GetValue(), comune)):
+            if not self._conferma(testi.domanda_fondazione(normalizza_nome(risultato[0]), comune)):
+                self._torna(fuoco)
+                return
         self.risultato = risultato
         self.chiudi(wx.ID_OK)
 

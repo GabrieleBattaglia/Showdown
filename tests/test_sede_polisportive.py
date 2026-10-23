@@ -242,9 +242,12 @@ def test_l_elenco_si_restringe_mentre_si_scrive(fondazione, suonati, messaggi):
     d.conferma()
     assert d.risultato is None and messaggi[-1].startswith("Nessun comune corrisponde a quello che hai scritto nella sede")
     assert suonati[-2:] == ["elenco_svuotato", "nessuna_selezione"]
+    # Con un nome scritto a metà Fonda chiede prima, dalla revisione della tappa 14, e al sì fonda nel comune scelto.
     d.sede.SetValue("bol")
     d.elenco.SetSelection(1)
+    messaggi.risposta = wx.YES
     d.conferma()
+    assert messaggi[-1] == "Vuoi fondare la polisportiva Circolo nuovo? Sede: Bolzano, provincia di Bolzano, Trentino-Alto Adige."
     assert d.risultato == ("Circolo nuovo", None, True, "Bolzano") and d.GetReturnCode() == wx.ID_OK
 
 
@@ -264,3 +267,63 @@ def test_invio_sulla_sede_chiede_conferma(fondazione, suonati, messaggi):
     messaggi.risposta = wx.YES
     assert d.invio(d.sede)
     assert d.risultato == ("  circolo   nuovo ", "abc", True, "Pescocostanzo") and d.GetReturnCode() == wx.ID_OK
+
+
+def _premi_fonda(d):
+    """Il clic su Fonda, che è anche quello che fa Invio sul nome e sulle password, col pulsante predefinito."""
+    fonda = d.GetDefaultItem()
+    assert fonda.GetLabel() == "&Fonda" and fonda.GetId() == wx.ID_OK
+    evento = wx.CommandEvent(wx.wxEVT_BUTTON, wx.ID_OK)
+    evento.SetEventObject(fonda)
+    fonda.GetEventHandler().ProcessEvent(evento)
+
+
+def test_la_sede_si_confronta_col_comune_scelto():
+    assert luoghi.coincide("forli", "Forlì") and luoghi.coincide(" L'AQUILA ", "L'Aquila") and luoghi.coincide("sant angelo", "Sant'Angelo")
+    assert not luoghi.coincide("bol", "Bologna") and not luoghi.coincide("", "Roma") and not luoghi.coincide("", "")
+
+
+def test_fonda_chiede_conferma_se_la_sede_non_dice_il_comune_scelto(fondazione, suonati, messaggi):
+    # La revisione della tappa 14: prima Fonda e Invio sul nome fondavano in silenzio a Roma, il primo dell'elenco pieno.
+    d = fondazione
+    d.nome.ChangeValue("Circolo nuovo")
+    d.sede.SetValue("")
+    _premi_fonda(d)
+    assert d.risultato is None and messaggi == ["Vuoi fondare la polisportiva Circolo nuovo? Sede: Roma, provincia di Roma, Lazio."]
+    assert suonati[-2:] == ["domanda", "annullato"]
+    # Un nome scritto a metà, o un comune dell'elenco diverso da quello scritto: la stessa domanda, col no già scelto.
+    d.sede.SetValue("pescocost")
+    d.conferma()
+    assert d.risultato is None and messaggi[-1] == "Vuoi fondare la polisportiva Circolo nuovo? Sede: Pescocostanzo, provincia dell'Aquila, Abruzzo."
+    d.sede.SetValue("roma")
+    d.elenco.SetSelection(1)
+    d.conferma()
+    assert d.risultato is None and messaggi[-1] == f"Vuoi fondare la polisportiva Circolo nuovo? Sede: {luoghi.descrivi('Romano di Lombardia')}."
+    assert len(messaggi) == 3 and suonati.count("domanda") == 3 == suonati.count("annullato")
+    # Il campo che dice proprio il comune scelto, anche senza maiuscole e accenti, fonda senza domande.
+    d.sede.SetValue("PESCOCOSTANZO")
+    _premi_fonda(d)
+    assert len(messaggi) == 3 and d.risultato == ("Circolo nuovo", None, True, "Pescocostanzo") and d.GetReturnCode() == wx.ID_OK
+
+
+def test_al_si_la_sede_vuota_fonda_nel_comune_scelto(fondazione, messaggi):
+    d = fondazione
+    d.nome.ChangeValue("Circolo nuovo")
+    d.sede.SetValue("")
+    messaggi.risposta = wx.YES
+    _premi_fonda(d)
+    assert messaggi[-1].endswith("Sede: Roma, provincia di Roma, Lazio.") and d.risultato == ("Circolo nuovo", None, True, "Roma")
+
+
+def test_il_doppio_clic_sull_elenco_chiede_conferma(fondazione, suonati, messaggi):
+    d = fondazione
+    d.nome.ChangeValue("Circolo nuovo")
+    evento = wx.CommandEvent(wx.wxEVT_LISTBOX_DCLICK, d.elenco.GetId())
+    evento.SetEventObject(d.elenco)
+    # Anche quando il campo dice proprio il comune: il doppio clic sembra sceglierlo, come Invio sull'elenco.
+    d.elenco.GetEventHandler().ProcessEvent(evento)
+    assert d.risultato is None and messaggi == ["Vuoi fondare la polisportiva Circolo nuovo? Sede: Pescocostanzo, provincia dell'Aquila, Abruzzo."]
+    assert suonati == ["domanda", "annullato"]
+    messaggi.risposta = wx.YES
+    d.elenco.GetEventHandler().ProcessEvent(evento)
+    assert d.risultato == ("Circolo nuovo", None, True, "Pescocostanzo") and d.GetReturnCode() == wx.ID_OK

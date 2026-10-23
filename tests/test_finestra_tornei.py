@@ -286,12 +286,12 @@ def test_la_sfida_in_attesa_e_le_notizie_nella_barra(finestra, suonati, monkeypa
     assert finestra._evento_avanzamento(rapporto, True) == ("sfida_ricevuta", "sfida da PoliTeam04, rispondi oggi")
     # L'avanzamento vero: una medaglia d'oro dei tuoi, col suo suono solo, e la frase nel riepilogo.
     medaglia = Mondo.rapporto_vuoto(adesso()) | {"ticks": 1, "giorni": 1, "tue_medaglie_oro": 1, "tornei_conclusi": 1, "incontri_torneo": 5,
-                                                 "notizie": ["Mario Rossi vince la medaglia d'oro a Open maschile del martedì."]}
+                                                 "notizie": ["Mario Rossi vince la medaglia d'oro all'Open maschile del martedì."]}
     monkeypatch.setattr(mondo, "processa_tempo_trascorso", lambda: medaglia)
     suonati.clear()
     finestra.avanza()
     assert suonati == ["tua_medaglia_oro"] and finestra.ultimo_evento == "1 medaglia d'oro per i tuoi"
     finestra.riepilogo()
-    assert "Mario Rossi vince la medaglia d'oro a Open maschile del martedì." in finestra.vista.GetValue()
+    assert "Mario Rossi vince la medaglia d'oro all'Open maschile del martedì." in finestra.vista.GetValue()
     assert "In Italia: 1 torneo concluso e 5 incontri di torneo." in finestra.vista.GetValue()
     assert suoni.EVENTI["tua_medaglia_oro"] == "mess_medaglia_oro"
