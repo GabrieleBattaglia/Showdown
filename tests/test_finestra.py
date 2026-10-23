@@ -4,6 +4,8 @@ barra di stato, il salvataggio, la chiusura con il riepilogo, la scelta del gioc
 ricerca, l'aspetto e l'invito al caffè. Le finestre modali vengono sostituite, perché una prova
 che aspetta un tasto non finirebbe mai. Dal 2026-10-07 anche i suoni, che il conftest registra
 senza suonarli: le prove in fondo controllano che i comandi facciano sentire il loro evento.
+Dal 2026-10-23, con la issue 6, la voce Mercato non disponibile a mosse finite, e Ctrl+K che lo dice
+lo stesso: il tasto passa davvero dal ciclo di wx e dai tasti rapidi del menu di Windows.
 """
 
 import datetime
@@ -21,7 +23,7 @@ import partita_sonora
 import ricerca
 import suoni
 import testi
-from costanti import FILE_MONDO, VERSIONE
+from costanti import FILE_MONDO, LIMITE_MOVIMENTI_PER_TICK, VERSIONE
 from gui import dialoghi
 from gui import finestra as finestra_modulo
 from gui.finestra import FinestraPrincipale
@@ -951,6 +953,208 @@ def test_il_mercato_che_si_apre_vuoto(finestra, suonati, monkeypatch):
     monkeypatch.setattr(dialoghi.mercato, "candidati", lambda *a, **k: [])
     finestra.mercato()
     assert suonati == ["dialogo_mercato", "elenco_svuotato", "lavoro_concluso"]
+
+
+# La voce Mercato a mosse finite, issue 6 di Gabriele: non disponibile, e Ctrl+K lo dice lo stesso.
+
+MF_BYCOMMAND, MF_GRAYED = 0x0, 0x1
+WM_KEYDOWN, WM_KEYUP = 0x0100, 0x0101
+VK_K, VK_SHIFT, VK_CONTROL, VK_MENU, VK_LWIN, VK_RWIN = 0x4B, 0x10, 0x11, 0x12, 0x5B, 0x5C
+VK_LSHIFT, VK_RSHIFT, VK_LCONTROL, VK_RCONTROL, VK_LMENU, VK_RMENU = 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5
+# Ctrl+K vuole il solo Ctrl sinistro giù: Maiuscolo, Alt e i tasti di Windows su, o il tasto rapido non corrisponde.
+MODIFICATORI_DI_CTRL_K = {VK_CONTROL: True, VK_LCONTROL: True, VK_RCONTROL: False, VK_SHIFT: False, VK_LSHIFT: False, VK_RSHIFT: False,
+                          VK_MENU: False, VK_LMENU: False, VK_RMENU: False, VK_LWIN: False, VK_RWIN: False}
+
+
+def _user32_dei_tasti():
+    """ctypes e user32 con le firme che servono a premere un tasto dentro il processo e a leggere i menu di Windows, in una copia tutta sua."""
+    import ctypes
+    from ctypes import wintypes
+
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    user32.GetKeyboardState.restype = wintypes.BOOL
+    user32.GetKeyboardState.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
+    user32.SetKeyboardState.restype = wintypes.BOOL
+    user32.SetKeyboardState.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
+    user32.PostMessageW.restype = wintypes.BOOL
+    user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+    user32.MapVirtualKeyW.restype = wintypes.UINT
+    user32.MapVirtualKeyW.argtypes = [wintypes.UINT, wintypes.UINT]
+    user32.GetMenu.restype = wintypes.HMENU
+    user32.GetMenu.argtypes = [wintypes.HWND]
+    user32.GetMenuState.restype = wintypes.UINT
+    user32.GetMenuState.argtypes = [wintypes.HMENU, wintypes.UINT, wintypes.UINT]
+    return ctypes, user32
+
+
+def _grigia_per_windows(finestra, voce):
+    """
+    Vero se nel menu di Windows della finestra la voce è grigia, cioè non disponibile, come la legge NVDA.
+    Windows conosce la voce col numero di wx ridotto a 16 bit, come in wxMenuItem::GetMSWId.
+    """
+    _ctypes, user32 = _user32_dei_tasti()
+    stato = user32.GetMenuState(user32.GetMenu(finestra.GetHandle()), voce.GetId() & 0xFFFF, MF_BYCOMMAND)
+    assert stato != 0xFFFFFFFF, "la voce non è nel menu di Windows"
+    return bool(stato & MF_GRAYED)
+
+
+def _svuota_la_coda():
+    """Fa elaborare al ciclo di wx i messaggi in coda, tasti rapidi dei menu compresi, come il ciclo del programma."""
+    ciclo = wx.EventLoopBase.GetActive()
+    attivatore = None
+    if ciclo is None:
+        ciclo = wx.GUIEventLoop()
+        attivatore = wx.EventLoopActivator(ciclo)
+    applicazione = wx.GetApp()
+    try:
+        for _ in range(500):
+            if ciclo.Pending():
+                ciclo.Dispatch()
+            elif applicazione.HasPendingEvents():
+                applicazione.ProcessPendingEvents()
+            else:
+                break
+    finally:
+        del attivatore
+
+
+def _ctrl_k(finestra, gancio=True):
+    """
+    Ctrl+K nella vista principale come la tastiera vera, sul desktop nascosto. Se gancio è vero, prima
+    l'evento wxEVT_CHAR_HOOK che il gancio dei tasti di wx crea per un tasto vero, e che sale fino alla
+    finestra: se un gestore lo tiene, senza Skip, wx butta il tasto, e qui finisce. Poi Ctrl e K giù per
+    il filo, con SetKeyboardState, e WM_KEYDOWN della K messo in coda con PostMessage: il ciclo di wx lo
+    passa ai tasti rapidi del menu, come il tasto vero. Il gancio va rifatto perché Windows lo chiama
+    soltanto per i tasti veri, e SendInput li manderebbe allo schermo vero.
+    """
+    ctypes, user32 = _user32_dei_tasti()
+    if gancio:
+        evento = wx.KeyEvent(wx.wxEVT_CHAR_HOOK)
+        evento.SetEventObject(finestra.vista)
+        evento.SetKeyCode(ord("K"))
+        evento.SetControlDown(True)
+        if finestra.vista.GetEventHandler().ProcessEvent(evento) and not evento.IsNextEventAllowed():
+            return
+    prima = (ctypes.c_ubyte * 256)()
+    user32.GetKeyboardState(prima)
+    stato = (ctypes.c_ubyte * 256)(*prima)
+    for codice, giu in MODIFICATORI_DI_CTRL_K.items():
+        stato[codice] = 0x80 if giu else 0
+    stato[VK_K] = 0x80
+    lparam = 1 | ((user32.MapVirtualKeyW(VK_K, 0) & 0xFF) << 16)
+    hwnd = finestra.vista.GetHandle()
+    try:
+        user32.SetKeyboardState(stato)
+        user32.PostMessageW(hwnd, WM_KEYDOWN, VK_K, lparam)
+        _svuota_la_coda()
+        stato[VK_K] = 0
+        user32.SetKeyboardState(stato)
+        user32.PostMessageW(hwnd, WM_KEYUP, VK_K, lparam | (1 << 30) | (1 << 31))
+        _svuota_la_coda()
+    finally:
+        user32.SetKeyboardState(prima)
+
+
+def _apri_il_menu(finestra, voce):
+    """L'apertura del menu della voce, come la dice wx quando Windows lo prepara."""
+    finestra.GetEventHandler().ProcessEvent(wx.MenuEvent(wx.wxEVT_MENU_OPEN, 0, voce.GetMenu()))
+
+
+def test_la_voce_del_mercato_segue_le_mosse(finestra, suonati, monkeypatch):
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    voce = finestra.voci_del_menu[finestra.mercato]
+    assert voce.IsEnabled() and not _grigia_per_windows(finestra, voce)
+    # Le mosse finite: alla fine di un comando qualunque la voce non è disponibile, e Windows la dà grigia.
+    poli.movimenti_oggi = LIMITE_MOVIMENTI_PER_TICK
+    finestra._esegui(finestra.bilancio)
+    assert not voce.IsEnabled() and _grigia_per_windows(finestra, voce)
+    # Il comando dice che le mosse sono finite, col loro suono, e il dialogo non si apre.
+    suonati.clear()
+    finestra.mercato()
+    assert finestra.vista.GetValue() == "Per oggi Club Di Prova ha finito le mosse di mercato."
+    assert suonati == ["mosse_finite"] and finestra.ultimo_evento == "nessuna mossa"
+    # Lo svincolo, che usa anche lui una mossa, lo dice con le stesse parole.
+    finestra.vista.ChangeValue("")
+    finestra.svincola()
+    assert finestra.vista.GetValue() == "Per oggi Club Di Prova ha finito le mosse di mercato." and suonati == ["mosse_finite", "mosse_finite"]
+    # Un'altra polisportiva attiva, che ha le sue mosse: la voce torna disponibile.
+    seconda = mondo.fonda_polisportiva("Seconda squadra", attiva=False)
+
+    def scegli_la_seconda(self):
+        self.elenco.SetSelection(1)
+        self.conferma()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.CambiaPolisportiva, "ShowModal", scegli_la_seconda)
+    finestra._esegui(finestra.cambia_polisportiva)
+    assert mondo.miapolisportiva_attiva is seconda and voce.IsEnabled()
+    # All'apertura del menu la voce si rimette in pari anche senza un comando.
+    mondo.miapolisportiva_attiva = poli
+    _apri_il_menu(finestra, voce)
+    assert not voce.IsEnabled()
+    # Senza polisportiva attiva la voce resta disponibile, e il comando lo dice come sempre.
+    mondo.miapolisportiva_attiva = None
+    _apri_il_menu(finestra, voce)
+    assert voce.IsEnabled()
+    mondo.miapolisportiva_attiva = poli
+    _apri_il_menu(finestra, voce)
+    assert not voce.IsEnabled()
+    # Il giorno nuovo rende le mosse: col mondo che avanza la voce torna disponibile.
+    mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 10, 12, 0)
+    mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=17)
+    finestra._al_minuto(None)
+    assert mondo.mosse_rimaste(poli) == LIMITE_MOVIMENTI_PER_TICK and voce.IsEnabled() and not _grigia_per_windows(finestra, voce)
+
+
+def test_la_voce_del_mercato_all_apertura(app_wx, mondo):
+    # Il mondo caricato con le mosse già finite: la voce non è disponibile da subito.
+    mondo.miapolisportiva_attiva.movimenti_oggi = LIMITE_MOVIMENTI_PER_TICK
+    f = FinestraPrincipale(mondo, archivio.CARICATO, [], Mondo.rapporto_vuoto(adesso()), mondo.datetime_ultimo_run_reale)
+    try:
+        assert not f.voci_del_menu[f.mercato].IsEnabled()
+    finally:
+        f.timer.Stop()
+        f.Destroy()
+        wx.Yield()
+
+
+def test_ctrl_k_a_mosse_finite_sul_desktop_nascosto(finestra, suonati):
+    poli = finestra.mondo.miapolisportiva_attiva
+    voce = finestra.voci_del_menu[finestra.mercato]
+    # Con le mosse il gancio lascia passare Ctrl+K, che arriva al tasto rapido del menu: il mercato si apre.
+    # Nel ciclo di wx può scattare anche il suono in coda di una prova di prima: si guarda che ci sia quello del mercato.
+    comandi = finestra.comandi
+    _ctrl_k(finestra)
+    assert "dialogo_mercato" in suonati and finestra.comandi == comandi + 1, (list(suonati), finestra.comandi - comandi)
+    # Come tratta Windows il tasto rapido di una voce disattivata: lo prende e non manda il comando.
+    # Senza il gancio della finestra Ctrl+K a mosse finite resterebbe muto.
+    poli.movimenti_oggi = LIMITE_MOVIMENTI_PER_TICK
+    finestra.aggiorna_le_voci()
+    assert not voce.IsEnabled()
+    suonati.clear()
+    finestra.vista.ChangeValue("Il testo di prima.")
+    comandi = finestra.comandi
+    _ctrl_k(finestra, gancio=False)
+    assert finestra.comandi == comandi and finestra.vista.GetValue() == "Il testo di prima.", (list(suonati), finestra.vista.GetValue())
+    assert "mosse_finite" not in suonati and "dialogo_mercato" not in suonati, list(suonati)
+    # Col gancio, come col tasto vero, la vista dice che le mosse sono finite, col loro suono.
+    suonati.clear()
+    _ctrl_k(finestra)
+    assert finestra.vista.GetValue() == "Per oggi Club Di Prova ha finito le mosse di mercato."
+    assert suonati == ["mosse_finite"] and finestra.comandi == comandi + 1
+    # La voce rimasta indietro si rimette in pari prima del tasto: disponibile senza mosse, Ctrl+K dice lo stesso che sono finite.
+    voce.Enable(True)
+    suonati.clear()
+    _ctrl_k(finestra)
+    assert suonati == ["mosse_finite"] and not voce.IsEnabled()
+    # Non disponibile con le mosse tornate: Windows apre il menu per finta prima di guardare la voce, e la trova
+    # già disponibile; il mercato si apre anche senza il gancio.
+    poli.movimenti_oggi = 0
+    suonati.clear()
+    comandi = finestra.comandi
+    _ctrl_k(finestra, gancio=False)
+    assert "dialogo_mercato" in suonati and voce.IsEnabled() and finestra.comandi == comandi + 1, (list(suonati), voce.IsEnabled())
 
 
 def test_i_tre_esiti_del_pagamento(finestra, suonati, monkeypatch):

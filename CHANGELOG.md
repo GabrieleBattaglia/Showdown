@@ -51,6 +51,8 @@ Il riepilogo della sala allenamento e il diario dicono ogni spesa per intero: tu
 
 Nel mercato dei giocatori ogni candidato dice, subito dopo nome e cognome, la classe e l'età completa in anni, mesi e giorni separati dai due punti, come Anna Neri, I1, 17:4:3: è l'età esatta della scheda, contata sul calendario dell'età, dove un anno ha 12 mesi da 9 giorni. Il resto della riga non cambia.
 
+Quando la polisportiva attiva ha finito le mosse di mercato del giorno, la voce Mercato del menu Polisportive non è disponibile, e NVDA la legge così; Ctrl+K non resta muto, ma dice che per oggi le mosse sono finite, col loro suono. La voce torna disponibile col giorno nuovo o cambiando polisportiva attiva.
+
 ## [1.94.6] - 2026-10-23
 
 Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.

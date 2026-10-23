@@ -80,6 +80,12 @@ riesce a riaprirsi si chiude col suono dell'uscita di sempre, non con quello che
 Con la verifica seguente hanno ciascuno il suo suono anche il calendario predefinito che non si riesce a
 rimettere, il mondo salvato nella cartella scelta quando quella di prima non si raggiunge più, e all'avvio
 i dati di accanto al programma messi in una riserva della cartella del mondo, che la notizia dice col suo tipo.
+Con la issue 6 di Gabriele, dal collaudo di gioco dello stesso giorno, quando la polisportiva attiva ha
+finito le mosse di mercato la voce Mercato non è disponibile, e NVDA la legge così; si rimette in pari
+all'apertura della finestra e dei menu, alla fine di ogni comando e a ogni avanzamento del mondo.
+Windows non manda il comando di una voce disattivata, e Ctrl+K resterebbe muto: lo prende prima il
+gancio dei tasti della finestra, e la vista dice che per oggi le mosse sono finite, col loro suono. È
+di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -157,6 +163,17 @@ NON_INSTALLATO = ("L'aggiornamento non si è installato: MESS doveva chiudersi e
                   "Continui con questa versione, e l'aggiornamento te lo ripropongo al prossimo avvio.")
 # Il suono degli esiti dell'aggiornamento che non sono quello buono, lo scaricamento finito.
 SUONI_DEGLI_ESITI = {aggiornamento.NON_RIUSCITO: "aggiornamento_non_riuscito", aggiornamento.NON_PRONTO: "aggiornamento_non_pronto"}
+# I modificatori di un tasto rapido dei menu e quelli di un evento dei tasti, per riconoscere il tasto rapido nel gancio della finestra, issue 6.
+MODIFICATORI_DEI_TASTI_RAPIDI = ((wx.ACCEL_ALT, wx.MOD_ALT), (wx.ACCEL_CTRL, wx.MOD_CONTROL), (wx.ACCEL_SHIFT, wx.MOD_SHIFT))
+
+
+def _modificatori(flags):
+    """I modificatori, come li dà wx.KeyEvent.GetModifiers, del tasto rapido coi flags di un wx.AcceleratorEntry."""
+    modificatori = wx.MOD_NONE
+    for rapido, tasto in MODIFICATORI_DEI_TASTI_RAPIDI:
+        if flags & rapido:
+            modificatori |= tasto
+    return modificatori
 
 
 class FinestraPrincipale(wx.Frame):
@@ -208,6 +225,10 @@ class FinestraPrincipale(wx.Frame):
         self.applica_aspetto()
         dentro_area_utile(self, (1024, 768))
         self.Bind(wx.EVT_CLOSE, self._alla_chiusura)
+        # Dalla issue 6 la voce Mercato segue le mosse della polisportiva attiva, e Ctrl+K parla anche quando non è disponibile.
+        self.Bind(wx.EVT_MENU_OPEN, self._all_apertura_del_menu)
+        self.Bind(wx.EVT_CHAR_HOOK, self._tasto)
+        self.aggiorna_le_voci()
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self._al_minuto, self.timer)
         self.timer.Start(60_000)
@@ -334,6 +355,8 @@ class FinestraPrincipale(wx.Frame):
 
     def _crea_menu(self):
         barra_menu = wx.MenuBar()
+        # Le voci dei menu per comando, da rendere disponibili o no: dalla issue 6 quella del mercato.
+        self.voci_del_menu = {}
         for titolo, voci in self.voci_menu():
             menu = wx.Menu()
             for voce in voci:
@@ -342,6 +365,7 @@ class FinestraPrincipale(wx.Frame):
                     continue
                 testo, tasto, comando = voce
                 elemento = menu.Append(wx.ID_ANY, f"{testo}\t{tasto}" if tasto else testo)
+                self.voci_del_menu[comando] = elemento
                 self.Bind(wx.EVT_MENU, lambda event, c=comando: self._esegui(c), elemento)
             barra_menu.Append(menu, titolo)
         self.SetMenuBar(barra_menu)
@@ -422,7 +446,56 @@ class FinestraPrincipale(wx.Frame):
 
     def _esegui(self, comando):
         self.comandi += 1
-        comando()
+        try:
+            comando()
+        finally:
+            # Dalla issue 6: il comando può aver speso mosse di mercato o cambiato la polisportiva attiva.
+            self.aggiorna_le_voci()
+
+    # La voce Mercato a mosse finite, issue 6 di Gabriele, dal collaudo di gioco del 23 ottobre 2026.
+
+    def _mercato_chiuso(self):
+        """Vero se la polisportiva attiva ha finito le mosse di mercato di oggi; senza polisportiva attiva no, e il comando lo dice."""
+        p = self.mondo.miapolisportiva_attiva
+        return p is not None and self.mondo.mosse_rimaste(p) <= 0
+
+    def aggiorna_le_voci(self):
+        """
+        Rimette in pari la voce Mercato: non disponibile quando la polisportiva attiva ha finito le mosse
+        di mercato, e NVDA la legge così, di nuovo disponibile appena le mosse tornano o cambia la
+        polisportiva attiva. Senza polisportiva attiva resta disponibile.
+        """
+        if not self or self.chiusa:
+            return
+        voce = self.voci_del_menu[self.mercato]
+        disponibile = not self._mercato_chiuso()
+        if voce.IsEnabled() != disponibile:
+            voce.Enable(disponibile)
+
+    def _all_apertura_del_menu(self, event):
+        """
+        All'apertura di un menu la voce Mercato si rimette in pari. Windows apre il menu per finta anche
+        quando si preme il tasto rapido di una sua voce, e guarda se la voce è disponibile soltanto dopo:
+        così anche Ctrl+K la trova com'è adesso.
+        """
+        self.aggiorna_le_voci()
+        event.Skip()
+
+    def _tasto(self, event):
+        """
+        Il gancio dei tasti della finestra, che wx chiama prima dei tasti rapidi dei menu. Windows non
+        manda il comando di una voce disattivata, e Ctrl+K a mosse finite resterebbe muto: qui, se la
+        voce Mercato non è disponibile, il suo tasto rapido esegue lo stesso il comando, che dice nella
+        vista che per oggi le mosse sono finite. Ogni altro tasto prosegue come sempre.
+        """
+        voce = self.voci_del_menu[self.mercato]
+        rapido = voce.GetAccel()
+        if rapido is not None and event.GetKeyCode() == rapido.GetKeyCode() and event.GetModifiers() == _modificatori(rapido.GetFlags()):
+            self.aggiorna_le_voci()
+            if not voce.IsEnabled():
+                self._esegui(self.mercato)
+                return
+        event.Skip()
 
     def mostra(self, testo, evento=None, suono=None):
         """Mette il testo nella vista principale, al posto di quello di prima, con il cursore all'inizio; suono è l'effetto del comando."""
@@ -502,6 +575,8 @@ class FinestraPrincipale(wx.Frame):
         rapporto = self.mondo.processa_tempo_trascorso()
         if not rapporto["ticks"]:
             return
+        # Dalla issue 6: col giorno nuovo le mosse di mercato ripartono, e la voce Mercato torna disponibile.
+        self.aggiorna_le_voci()
         self.rapporto = rapporto
         self.rapporto_sessione = testi.somma_rapporti(self.rapporto_sessione, rapporto) if self.rapporto_sessione else rapporto
         salvato, _messaggi, _avvisi = self._salva_raccogliendo()
@@ -701,9 +776,20 @@ class FinestraPrincipale(wx.Frame):
         self.mondo.miapolisportiva_attiva = p
         self._concludi(testi.scheda_polisportiva(p, self.mondo), f"attiva {p.nome}", "polisportiva_attivata")
 
+    def _mosse_finite(self, p):
+        """Vero se per oggi la polisportiva p ha finito le mosse di mercato, e allora lo dice nella vista, col suo suono."""
+        if self.mondo.mosse_rimaste(p) > 0:
+            return False
+        self.mostra(f"Per oggi {p.nome} ha finito le mosse di mercato.", "nessuna mossa", "mosse_finite")
+        return True
+
     def mercato(self):
+        """
+        Il mercato dei giocatori. Dalla issue 6, a mosse finite, la voce non è disponibile, e Ctrl+K arriva
+        qui dal gancio dei tasti: la vista dice che per oggi le mosse sono finite, e il dialogo non si apre.
+        """
         p = self._attiva()
-        if p is None:
+        if p is None or self._mosse_finite(p):
             return
         # Il suono dell'apertura viene prima del dialogo, che se nasce con l'elenco vuoto lo dice subito dopo.
         suoni.suona("dialogo_mercato")
@@ -832,8 +918,7 @@ class FinestraPrincipale(wx.Frame):
             self.mostra(f"{p.nome} non ha tesserati da svincolare.", "nessun tesserato", "rosa_vuota")
             return
         # Le mosse si guardano prima di far scegliere il tesserato, non dopo.
-        if self.mondo.mosse_rimaste(p) <= 0:
-            self.mostra(f"Per oggi {p.nome} ha finito le mosse di mercato.", "nessuna mossa", "mosse_finite")
+        if self._mosse_finite(p):
             return
         dialogo = SceltaGiocatore(self, self.mondo, f"Svincola un tesserato di {p.nome}", "S&vincola", rosa)
         try:
