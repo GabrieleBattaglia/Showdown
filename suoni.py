@@ -67,8 +67,12 @@ di Gabriele di un suono per ogni evento, arrivano altri tre suoni, nella V226: l
 che non riesce, che prima suonava come il salvataggio non riuscito; la cartella scelta e rifiutata,
 perché è già quella del mondo o sta dentro dei dati, che prima suonava come un annullamento; e MESS che
 non riesce a riaprirsi sul mondo della cartella, che prima aveva soltanto il messaggio. Il salvataggio
-non riuscito resta al mondo che non si salva, e l'annullamento ad Annulla e a Esc. Anche queste parti
-sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+non riuscito resta al mondo che non si salva, e l'annullamento ad Annulla e a Esc. Con l'ultima verifica
+arrivano gli ultimi due, nella V227, per il file accanto al programma che dice dove sta la cartella del
+mondo: quando si scopre rovinato a MESS aperto, che prima suonava come l'avviso dell'avvio, e quando non
+si scrive, che prima suonava come le impostazioni non salvate. I due suoni presi a prestito tornano ai
+loro eventi soli. Anche queste parti sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import sys
@@ -167,6 +171,8 @@ GRUPPI = (
     # Dal 23 ottobre 2026, richiesta di Gabriele: la cartella del mondo, per portarlo fra le macchine. Un
     # cassetto che si apre, un trasloco riuscito, un cambio di scena e una porta chiusa. Dalla V226 anche
     # il trasloco che torna indietro, un no gentile per la cartella rifiutata e la porta che si richiude.
+    # Dalla V227 un indirizzo confuso per il file della cartella rovinato a MESS aperto, e una firma che
+    # non prende per quel file che non si scrive.
     ("Applicazione, la cartella del mondo", {
         "cartella_mondo": "mess_cartella_mondo",
         "cartella_spostata": "mess_cartella_spostata",
@@ -175,6 +181,8 @@ GRUPPI = (
         "cartella_non_spostata": "mess_cartella_non_spostata",
         "cartella_rifiutata": "mess_cartella_rifiutata",
         "riapertura_mancata": "mess_riapertura_mancata",
+        "cartella_illeggibile": "mess_cartella_illeggibile",
+        "cartella_non_registrata": "mess_cartella_non_registrata",
     }),
     ("Mondo, i giocatori", {
         "dialogo_scheda_giocatore": "pokermachine_raddoppio_carta",
@@ -549,10 +557,12 @@ AZIONI = {
     "cartella_mondo": "Cartella del mondo, nel menu Impostazioni, e all'avvio Scegli un'altra cartella: si apre la finestra di Windows che sceglie dove stanno il mondo e i dati di gioco",
     "cartella_spostata": "il mondo e i dati di gioco spostati nella cartella scelta, o salvati lì se la cartella di prima non si raggiunge più, e alla prima partenza di questa versione da accanto al programma alla cartella del mondo",
     "cartella_cambiata": "si sceglie il mondo che la cartella nuova ha già, e MESS si chiude per riaprirsi su di lui",
-    "cartella_assente": "all'avvio la cartella del mondo non c'è, o c'è ma senza un mondo, per esempio la penna non è collegata o il cloud non è pronto, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire",
+    "cartella_assente": "all'avvio la cartella del mondo non c'è, per esempio la penna non è collegata, o c'è ma senza un mondo, per esempio il cloud non è pronto, o non si sa dove sia perché il file accanto al programma che la nomina non si legge, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire",
     "cartella_non_spostata": "i dati del mondo non passano nella cartella scelta, dal menu o alla prima partenza da accanto al programma, e tutto resta com'era",
     "cartella_rifiutata": "la cartella scelta non va bene, perché è già quella del mondo, sta dentro i suoi dati o dentro quelli accanto al programma, e niente cambia",
     "riapertura_mancata": "dopo aver scelto il mondo della cartella nuova MESS non riesce a riaprirsi da solo, e un messaggio dice di riaprirlo a mano",
+    "cartella_illeggibile": "Cartella del mondo, nel menu Impostazioni, trova rovinato a MESS aperto il file accanto al programma che dice dove sta la cartella del mondo, e la vista dice di riaprire MESS per sceglierla all'avvio",
+    "cartella_non_registrata": "il file accanto al programma che dice dove sta la cartella del mondo non si scrive, quando si sceglie il mondo di un'altra cartella dal menu o la si indica all'avvio, e la cartella resta quella di prima",
     "dialogo_scheda_giocatore": "si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G",
     "scheda_giocatore": "la scheda di un giocatore",
     "dialogo_diario_giocatore": "si apre la scelta del giocatore di cui leggere il diario, con Ctrl+Shift+D",

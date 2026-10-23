@@ -39,7 +39,8 @@ nuovo; il salvataggio che non si legge apre l'avviso con Riprova, Scegli un'altr
 invece di fermare MESS e basta; e all'avvio non si accetta una cartella dentro i dati accanto al programma.
 Con la verifica finale, le copie del salvataggio illeggibile si fanno una volta sola per cartella e non a
 ogni Riprova, la notizia dei dati spostati alla prima partenza va subito anche nel registro, e lo
-spostamento che non riesce e la cartella rifiutata hanno ciascuno il suo suono.
+spostamento che non riesce e la cartella rifiutata hanno ciascuno il suo suono. Con l'ultima verifica lo
+ha anche il file accanto al programma che non si riesce a scrivere quando si indica un'altra cartella.
 """
 
 import contextlib
@@ -101,7 +102,8 @@ def _scegli_all_avvio():
     try:
         percorsi.imposta_cartella(nuova)
     except OSError as errore:
-        suoni.suona("impostazioni_non_salvate")
+        # Dall'ultima verifica col suo suono, e non più con quello delle impostazioni non salvate.
+        suoni.suona("cartella_non_registrata")
         wx.MessageBox(testi.cartella_non_scritta(errore, nuova), "MESS", wx.OK | wx.ICON_ERROR)
         return None
     return nuova

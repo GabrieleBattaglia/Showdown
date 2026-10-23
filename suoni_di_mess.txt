@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 308 suoni, 283 della finestra e 25 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 310 suoni, 285 della finestra e 25 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -59,14 +59,16 @@ Si apre il dialogo della velocità di gioco: mess_velocita_di_gioco.
 La velocità di gioco confermata e salvata: mess_velocita_salvata.
 Si apre il dialogo degli annunci della cronaca: mess_annunci_della_cronaca.
 Gli annunci della cronaca confermati e salvati: mess_annunci_salvati.
-Finestra, applicazione, la cartella del mondo, 7 suoni.
+Finestra, applicazione, la cartella del mondo, 9 suoni.
 Cartella del mondo, nel menu Impostazioni, e all'avvio Scegli un'altra cartella: si apre la finestra di Windows che sceglie dove stanno il mondo e i dati di gioco: mess_cartella_mondo.
 Il mondo e i dati di gioco spostati nella cartella scelta, o salvati lì se la cartella di prima non si raggiunge più, e alla prima partenza di questa versione da accanto al programma alla cartella del mondo: mess_cartella_spostata.
 Si sceglie il mondo che la cartella nuova ha già, e MESS si chiude per riaprirsi su di lui: mess_cartella_cambiata.
-All'avvio la cartella del mondo non c'è, o c'è ma senza un mondo, per esempio la penna non è collegata o il cloud non è pronto, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire: mess_cartella_assente.
+All'avvio la cartella del mondo non c'è, per esempio la penna non è collegata, o c'è ma senza un mondo, per esempio il cloud non è pronto, o non si sa dove sia perché il file accanto al programma che la nomina non si legge, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire: mess_cartella_assente.
 I dati del mondo non passano nella cartella scelta, dal menu o alla prima partenza da accanto al programma, e tutto resta com'era: mess_cartella_non_spostata.
 La cartella scelta non va bene, perché è già quella del mondo, sta dentro i suoi dati o dentro quelli accanto al programma, e niente cambia: mess_cartella_rifiutata.
 Dopo aver scelto il mondo della cartella nuova MESS non riesce a riaprirsi da solo, e un messaggio dice di riaprirlo a mano: mess_riapertura_mancata.
+Cartella del mondo, nel menu Impostazioni, trova rovinato a MESS aperto il file accanto al programma che dice dove sta la cartella del mondo, e la vista dice di riaprire MESS per sceglierla all'avvio: mess_cartella_illeggibile.
+Il file accanto al programma che dice dove sta la cartella del mondo non si scrive, quando si sceglie il mondo di un'altra cartella dal menu o la si indica all'avvio, e la cartella resta quella di prima: mess_cartella_non_registrata.
 Finestra, mondo, i giocatori, 8 suoni.
 Si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G: pokermachine_raddoppio_carta.
 La scheda di un giocatore: meteora_tag_letti.

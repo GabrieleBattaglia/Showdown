@@ -74,7 +74,9 @@ Anche queste parti sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.
 Dalla revisione dello stesso giorno non si accetta una cartella dentro i dati che le versioni di prova
 tenevano accanto al programma; il mondo della cartella che non si legge non si offre di usarlo; e se la
 cartella del mondo aperto non si raggiunge più, per esempio una penna staccata, il mondo e le
-impostazioni si salvano nella cartella scelta invece di andare persi.
+impostazioni si salvano nella cartella scelta invece di andare persi. Con l'ultima verifica il file della
+cartella rovinato a MESS aperto e quello che non si scrive hanno ciascuno il suo suono, e quando MESS non
+riesce a riaprirsi si chiude col suono dell'uscita di sempre, non con quello che promette la riapertura.
 """
 
 import contextlib
@@ -166,9 +168,11 @@ class FinestraPrincipale(wx.Frame):
         self.chiusa = False
         self._per_aggiornare = False
         # Dal 23 ottobre 2026: la riga dei dati spostati da accanto al programma alla cartella del mondo, se è
-        # successo a questo avvio; e il cambio di cartella che chiude MESS per riaprirlo sul mondo della cartella.
+        # successo a questo avvio; e il cambio di cartella che chiude MESS per riaprirlo sul mondo della cartella,
+        # con la riapertura che non è partita, e allora MESS si chiude e basta.
         self.cartella_spostata = cartella_spostata
         self._per_cambiare_cartella = False
+        self._riapertura_mancata = False
         # Da quando, in secondi di time.monotonic, la finestra prova a chiudersi per l'aggiornamento.
         self._chiusura_dal = None
         self.rapporto = rapporto
@@ -1281,8 +1285,9 @@ class FinestraPrincipale(wx.Frame):
             attuale = percorsi.cartella()
         except OSError as errore:
             # Il file che nomina la cartella del mondo si è rovinato a MESS aperto: lo sistema il prossimo avvio.
+            # Dall'ultima verifica col suo suono, e non più con quello dell'avviso dell'avvio.
             self.mostra(f"Non so più dove sia la cartella del mondo: {errore}. Riapri MESS, e all'avvio potrai sceglierla.",
-                        "cartella del mondo illeggibile", "cartella_assente")
+                        "cartella del mondo illeggibile", "cartella_illeggibile")
             return
         ora = adesso()
         self._modali += 1
@@ -1385,7 +1390,7 @@ class FinestraPrincipale(wx.Frame):
         Il mondo di adesso si salva dov'è e lì resta, intatto; il file accanto al programma nomina la cartella
         nuova, e MESS lancia la copia che si riaprirà sul suo mondo, poi si chiude senza salvare di nuovo: il
         salvataggio andrebbe ormai nella cartella nuova, sopra il suo mondo. Se la copia non parte, un messaggio
-        dice di riaprire MESS a mano.
+        dice di riaprire MESS a mano, e MESS si chiude col suono dell'uscita di sempre, perché non si riapre.
         """
         riuscito, messaggi, _avvisi = self._salva_raccogliendo()
         if not riuscito:
@@ -1394,7 +1399,8 @@ class FinestraPrincipale(wx.Frame):
         try:
             percorsi.imposta_cartella(nuova)
         except OSError as errore:
-            self.mostra(testi.cartella_non_scritta(errore, nuova), "cartella del mondo invariata", "impostazioni_non_salvate")
+            # Dall'ultima verifica col suo suono, e non più con quello delle impostazioni non salvate.
+            self.mostra(testi.cartella_non_scritta(errore, nuova), "cartella del mondo invariata", "cartella_non_registrata")
             return
         self._per_cambiare_cartella = True
         registro.scrivi(f"MESS si chiude per riaprirsi sul mondo della cartella {nuova}.")
@@ -1403,6 +1409,7 @@ class FinestraPrincipale(wx.Frame):
         except OSError as errore:
             registro.scrivi(f"MESS non si è riaperto da solo: {errore}.")
             # Dalla verifica del 23 ottobre 2026 ha il suo suono, prima del messaggio.
+            self._riapertura_mancata = True
             suoni.suona("riapertura_mancata")
             self._modali += 1
             try:
@@ -1593,7 +1600,9 @@ class FinestraPrincipale(wx.Frame):
         if self._per_cambiare_cartella:
             # Il mondo si è appena salvato nella sua cartella, e il file accanto al programma nomina ormai l'altra:
             # un salvataggio adesso finirebbe lì, sopra il mondo che MESS sta per riaprire. Niente riepilogo.
-            suoni.suona("cartella_cambiata", sync=suoni.ATTESA_USCITA)
+            # Se la riapertura non è partita, MESS non si riapre: dall'ultima verifica il suono è quello
+            # dell'uscita di sempre, che dice il mondo salvato, e non quello che promette la riapertura.
+            suoni.suona("uscita" if self._riapertura_mancata else "cartella_cambiata", sync=suoni.ATTESA_USCITA)
             self.Destroy()
             return
         riuscito, messaggi, _avvisi = self._salva_raccogliendo()

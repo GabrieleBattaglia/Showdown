@@ -506,6 +506,20 @@ def test_all_avvio_non_si_sceglie_una_cartella_dentro_i_dati_del_programma(avvio
     assert percorsi.cartella() == str(penna) and not dentro.exists()
 
 
+def test_all_avvio_il_file_della_cartella_che_non_si_scrive(avvio, suonati, tmp_path, monkeypatch):
+    # Ultima verifica del 23 ottobre 2026: il file che non si scrive ha il suo suono, e non più quello delle impostazioni non salvate.
+    penna, col_mondo = tmp_path / "penna", tmp_path / "dropbox"
+    _salva_in(str(col_mondo), OGGI)
+    percorsi.imposta_cartella(str(penna))
+    monkeypatch.setattr(percorsi, "imposta_cartella", _lancia(PermissionError(errno.EACCES, "Accesso negato")))
+    monkeypatch.setattr(dialoghi, "scegli_cartella", lambda genitore, titolo, partenza="": str(col_mondo))
+    monkeypatch.setattr(dialoghi.CartellaAssente, "ShowModal", AvvisoFinto([(dialoghi.UN_ALTRA_CARTELLA, None), (dialoghi.ESCI, None)]))
+    assert Showdown.prepara_la_cartella() == (Showdown.SENZA_CARTELLA, None, None)
+    assert avvio == [testi.cartella_non_scritta(PermissionError(errno.EACCES, "Accesso negato"), str(col_mondo))]
+    assert suonati == ["cartella_assente", "cartella_mondo", "cartella_non_registrata", "cartella_assente"]
+    assert percorsi.cartella() == str(penna)
+
+
 def test_i_dati_accanto_al_programma_passano_nella_cartella_del_mondo(avvio, suonati, programma_di_prova):
     os.remove(percorsi.file_della_cartella())
     _dati_di_prova(programma_di_prova, "di prima")
@@ -562,6 +576,24 @@ def test_alla_prima_partenza_resta_in_uso_il_mondo_piu_recente(avvio, programma_
         assert (mondo / impostazioni.FILE_IMPOSTAZIONI).exists()
     else:
         assert "che resta quello in uso" in notizia and (riserva / impostazioni.FILE_IMPOSTAZIONI).exists()
+
+
+def test_alla_prima_partenza_i_dati_senza_mondo_di_accanto_al_programma_vanno_in_riserva(avvio, programma_di_prova, monkeypatch):
+    # La voce delle cartelle Riserva nel manuale, dall'ultima verifica: la cartella del mondo ha un mondo, e accanto al
+    # programma ci sono soltanto dei tornei e delle impostazioni. Nella riserva vanno loro, e la cartella resta com'era.
+    os.remove(percorsi.file_della_cartella())
+    mondo = programma_di_prova / "Mondo"
+    _salva_in(str(mondo), IERI, _mondo(4))
+    prima_mondo = _albero(mondo)
+    (programma_di_prova / "tornei").mkdir()
+    (programma_di_prova / "tornei" / "Open.json").write_text("di prima", encoding="utf-8")
+    (programma_di_prova / impostazioni.FILE_IMPOSTAZIONI).write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(cdm, "adesso", lambda: ADESSO)
+    _esito, notizia, _accettata = Showdown.prepara_la_cartella()
+    riserva = mondo / "Riserva 2026-10-23 19.05"
+    assert {nome: dati for nome, dati in _albero(mondo).items() if not nome.startswith("Riserva")} == prima_mondo
+    assert _albero(riserva) == {os.path.join("tornei", "Open.json"): b"di prima", impostazioni.FILE_IMPOSTAZIONI: b"{}"}
+    assert "che resta quello in uso" in notizia
 
 
 def test_la_vecchia_disposizione_salta_le_cartelle_vuote_e_la_cartella_del_mondo(avvio, programma_di_prova):
@@ -893,6 +925,7 @@ def test_usa_il_mondo_della_cartella_e_mess_si_riapre(finestra, suonati, monkeyp
 
 def test_se_mess_non_si_riapre_lo_dice_e_si_chiude_lo_stesso(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
     dropbox = _cartella_col_mondo(tmp_path_factory)
+    prima_sua = _albero(dropbox)
     messaggi = []
     monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: messaggi.append(testo) or wx.OK)
     monkeypatch.setattr(istanza, "riapri", _lancia(FileNotFoundError(errno.ENOENT, "Impossibile trovare il file")))
@@ -903,7 +936,40 @@ def test_se_mess_non_si_riapre_lo_dice_e_si_chiude_lo_stesso(finestra, suonati, 
     assert messaggi[0].startswith("MESS non si è potuto riaprire da solo: Impossibile trovare il file.")
     # Dalla verifica finale la riapertura che non parte ha il suo suono, prima del messaggio; poi MESS si chiude per il cambio di cartella.
     assert finestra.chiusa and percorsi.cartella() == str(dropbox)
-    assert suonati == ["cartella_mondo", "domanda", "riapertura_mancata", "cartella_cambiata"]
+    # Dall'ultima verifica MESS, che non si riapre, si chiude col suono dell'uscita di sempre e non con quello della riapertura;
+    # e come col cambio di cartella non salva di nuovo, perché il salvataggio finirebbe sopra il mondo della cartella.
+    assert suonati == ["cartella_mondo", "domanda", "riapertura_mancata", "uscita"]
+    assert _albero(dropbox) == prima_sua
+
+
+def test_il_file_della_cartella_che_non_si_scrive_quando_si_usa_il_mondo_della_cartella(finestra, suonati, monkeypatch, cartella_di_prova,
+                                                                                         tmp_path_factory):
+    # Ultima verifica del 23 ottobre 2026: il file che non si scrive ha il suo suono, e non più quello delle impostazioni non salvate.
+    dropbox = _cartella_col_mondo(tmp_path_factory)
+    prima_sua = _albero(dropbox)
+    riaperture = []
+    monkeypatch.setattr(istanza, "riapri", lambda: riaperture.append(percorsi.cartella()))
+    monkeypatch.setattr(percorsi, "imposta_cartella", _lancia(PermissionError(errno.EACCES, "Accesso negato")))
+    monkeypatch.setattr(dialoghi.MondoGiaPresente, "ShowModal", DomandaFinta(dialoghi.USA_IL_MONDO_DELLA_CARTELLA))
+    _sceglie(monkeypatch, dropbox)
+    finestra.scegli_la_cartella_del_mondo()
+    assert suonati == ["cartella_mondo", "domanda", "cartella_non_registrata"]
+    assert finestra.vista.GetValue() == testi.cartella_non_scritta(PermissionError(errno.EACCES, "Accesso negato"), str(dropbox))
+    assert finestra.barra.GetValue().splitlines()[3] == "cartella del mondo invariata"
+    # MESS resta aperto sul suo mondo, nella sua cartella, e quella scelta non si tocca.
+    assert riaperture == [] and not finestra.chiusa and percorsi.cartella() == str(cartella_di_prova) and _albero(dropbox) == prima_sua
+
+
+def test_il_file_della_cartella_rovinato_a_mess_aperto(finestra, suonati, monkeypatch, cartella_di_prova):
+    # Ultima verifica del 23 ottobre 2026: ha il suo suono, e non più quello dell'avviso dell'avvio.
+    scelte = _sceglie(monkeypatch, None)
+    with open(percorsi.file_della_cartella(), "w", encoding="utf-8") as f:
+        f.write("non è json")
+    finestra.scegli_la_cartella_del_mondo()
+    assert suonati == ["cartella_illeggibile"] and scelte == []
+    assert finestra.vista.GetValue().startswith(f"Non so più dove sia la cartella del mondo: il file {percorsi.FILE_DELLA_CARTELLA}, accanto al programma, è rovinato.")
+    assert finestra.vista.GetValue().endswith("Riapri MESS, e all'avvio potrai sceglierla.")
+    assert finestra.barra.GetValue().splitlines()[3] == "cartella del mondo illeggibile"
 
 
 def test_lo_spostamento_che_non_riesce_lascia_tutto_com_era(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
