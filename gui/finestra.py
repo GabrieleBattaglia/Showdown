@@ -123,8 +123,11 @@ RIGHE_BARRA = 4
 # Ogni quanti millesimi la chiusura per l'aggiornamento riprova, finché un messaggio resta aperto.
 RIPROVA_DELLA_CHIUSURA = 200
 # Dopo quanti secondi la chiusura per l'aggiornamento smette di riprovare: lo script di sostituzione
-# aspetta la chiusura di MESS al massimo 30 secondi, e oltre si chiuderebbe per niente.
-LIMITE_DELLA_CHIUSURA = 25
+# aspetta la chiusura di MESS al massimo 30 secondi, e oltre si chiuderebbe per niente. Dalla terza
+# revisione della tappa 14 sono 20, non 25: i 30 secondi contano dall'avvio dello script, e la
+# chiusura che comincia allo scadere del limite comprende ancora il salvataggio del mondo, lento
+# coi mondi grandi, e il suono d'uscita, fino a ATTESA_USCITA.
+LIMITE_DELLA_CHIUSURA = 20
 NON_INSTALLATO = ("L'aggiornamento non si è installato: MESS doveva chiudersi entro 30 secondi, ma un messaggio è rimasto aperto. "
                   "Continui con questa versione, e l'aggiornamento te lo ripropongo al prossimo avvio.")
 # Il suono degli esiti dell'aggiornamento che non sono quello buono, lo scaricamento finito.
@@ -1325,11 +1328,12 @@ class FinestraPrincipale(wx.Frame):
         Un esito dell'aggiornamento, in un messaggio che aspetta l'OK: torna soltanto quando lo si è
         chiuso, perché i 30 secondi dello script di sostituzione partano dopo, non mentre lo si legge.
         Il suono lo sceglie la frase: l'aggiornamento scaricato, quello non riuscito e il pacchetto
-        non ancora pronto hanno ciascuno il suo, e i due esiti cattivi l'icona dell'errore.
+        non ancora pronto hanno ciascuno il suo. Lo scaricamento non riuscito ha l'icona dell'errore;
+        il pacchetto non ancora pronto, che non è un guasto, dalla terza revisione quella dell'avviso.
         """
         esito = aggiornamento.esito(testo)
         suono = SUONI_DEGLI_ESITI.get(esito, "aggiornamento_esito")
-        icona = wx.ICON_ERROR if esito in (aggiornamento.NON_RIUSCITO, aggiornamento.NON_PRONTO) else wx.ICON_INFORMATION
+        icona = {aggiornamento.NON_RIUSCITO: wx.ICON_ERROR, aggiornamento.NON_PRONTO: wx.ICON_WARNING}.get(esito, wx.ICON_INFORMATION)
         self._modali += 1
         try:
             suoni.in_coda(suono)
@@ -1390,7 +1394,7 @@ class FinestraPrincipale(wx.Frame):
         if self._modali or any(isinstance(d, wx.Dialog) and d.IsModal() for d in wx.GetTopLevelWindows()):
             wx.CallLater(RIPROVA_DELLA_CHIUSURA, self._di_che_non_si_e_installato)
             return
-        self.mostra(NON_INSTALLATO, "aggiornamento non installato", "aggiornamento_non_riuscito")
+        self.mostra(NON_INSTALLATO, "aggiornamento non installato", "aggiornamento_non_installato")
 
     def porta_in_primo_piano(self):
         """Si è provato ad aprire MESS una seconda volta: questa finestra torna in primo piano, col suo suono, e l'altra copia si chiude."""

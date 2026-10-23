@@ -2351,24 +2351,40 @@ def allegati_per_il_pub(allegati, cartella):
             f"capire che cosa è andato storto.")
 
 
+def riservatezza_dei_registri(allegati):
+    """
+    La frase che avverte che i file del registro da allegare, a differenza del testo della mail,
+    possono contenere percorsi con il nome dell'utente di Windows, per esempio nei messaggi d'errore;
+    vuota se non c'è niente da allegare. Dalla terza revisione della tappa 14.
+    """
+    if not allegati:
+        return ""
+    if len(allegati) == 1:
+        return "Il registro può contenere dei percorsi con il nome del tuo utente di Windows: controllalo prima di spedire."
+    return "I registri possono contenere dei percorsi con il nome del tuo utente di Windows: controllali prima di spedire."
+
+
 def mail_d_aiuto_al_pub(informazioni, allegati=(), cartella=""):
     """
     Chiedi aiuto al PUB: le parole della mail al gruppo, per finestra_mail di GBwx. L'oggetto dice la
-    versione; il testo ha una prima riga da sostituire con la domanda e sotto le informazioni utili
-    a chi risponde, da informazioni_di_sistema di GBUtils con le etichette italiane. allegati sono i
-    nomi dei file del registro da allegare, che stanno nella cartella.
+    versione; il testo ha una prima riga da sostituire con la domanda e sotto le informazioni sul
+    computer, da informazioni_di_sistema di GBUtils con le etichette italiane, introdotte da una riga
+    che parla a chi riceve la mail: dalla terza revisione della tappa 14 la libertà di cancellarle la
+    dicono la spiegazione della finestra e il passo del testo. allegati sono i nomi dei file del
+    registro da allegare, che stanno nella cartella, con l'avvertenza sui percorsi che contengono.
     """
     from GBUtils import PUB_GRUPPO, righe_informazioni
 
     oggetto = f"Chiedo per MESS {version.__version__}"
     corpo = "\n".join((
         "Scrivi qui la tua domanda, al posto di questa riga.",
-        "Informazioni utili per chi ti risponde, che puoi cancellare se preferisci:",
+        "Informazioni sul computer di chi scrive:",
         f"Programma: MESS {version.__version__}",
         *righe_informazioni(ETICHETTE_DEL_PUB, informazioni, PAROLE_DEL_PUB),
     ))
     allega = allegati_per_il_pub(allegati, cartella)
-    spedisci = f"{allega} Poi spedisci la mail." if allega else "Spedisci la mail."
+    riservatezza = riservatezza_dei_registri(allegati)
+    spedisci = f"{allega} {riservatezza} Poi spedisci la mail." if allega else "Spedisci la mail."
     return {
         "titolo": "Chiedi aiuto al PUB",
         "destinatario": PUB_GRUPPO,
@@ -2377,9 +2393,10 @@ def mail_d_aiuto_al_pub(informazioni, allegati=(), cartella=""):
         "spiegazione": "\n".join(parte for parte in (
             f"Il pulsante Apri nel programma di posta prepara in {{programma}} una mail al PUB, il gruppo di supporto dei programmi di "
             f"Gabriele Battaglia, con l'oggetto {oggetto}.",
-            "Scrivi la tua domanda al posto della prima riga del testo; sotto ci sono le informazioni utili a chi ti risponde, che puoi "
-            "cancellare se preferisci.",
+            "Scrivi la tua domanda al posto della prima riga del testo; sotto ci sono le informazioni sul tuo computer, utili a chi ti "
+            "risponde, che puoi cancellare se preferisci.",
             allega,
+            riservatezza,
             f"Poi spediscila tu: MESS non spedisce niente da solo. {_ISCRIVITI}",
             _ALTRA_STRADA,
         ) if parte),
@@ -2388,7 +2405,7 @@ def mail_d_aiuto_al_pub(informazioni, allegati=(), cartella=""):
              "del PUB, che ho copiato negli appunti; poi torna qui e premi OK. L'indirizzo è questo:", PUB_GRUPPO),
             ("Passo 2 di 4. Incolla nel campo Oggetto quello che ho copiato negli appunti, poi torna qui e premi OK. L'oggetto è questo:", oggetto),
             ("Passo 3 di 4. Incolla nel testo della mail quello che ho copiato negli appunti, e scrivi la tua domanda al posto della prima riga; "
-             "poi torna qui e premi OK. Il testo è questo:", corpo),
+             "le informazioni sul computer, sotto, puoi cancellarle se preferisci. Poi torna qui e premi OK. Il testo è questo:", corpo),
             (f"Passo 4 di 4. {spedisci} {_ISCRIVITI} OK chiude questa finestra.", None),
         ),
     }

@@ -4,7 +4,8 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Ogni dialogo di gui/ si apre con ShowModal, come lo apre la finestra, sul desktop nascosto del conftest
 e senza suonare: dentro il suo ciclo si guarda che sia massimizzato e si preme Esc, che deve chiuderlo.
 Se ha un pulsante Chiudi, Esc deve chiuderlo con lo stesso codice del pulsante, premuto in una seconda
-apertura. La partita dal vivo tiene il suo Esc, che esce senza svelare il risultato. La rassegna sa
+apertura; senza Chiudi, deve chiuderlo come Annulla, o come Non adesso nella proposta
+dell'aggiornamento. La partita dal vivo tiene il suo Esc, che esce senza svelare il risultato. La rassegna sa
 quali dialoghi ci sono: un dialogo nuovo che non ci sta fa fallire la prova, finché non lo si aggiunge
 a FABBRICHE. Un Chiudi wx.ID_CLOSE o qualunque, come in un dialogo futuro, risponde a Esc anche lui.
 """
@@ -186,6 +187,11 @@ def test_ogni_dialogo_si_apre_massimizzato_ed_esc_lo_chiude(scena, suonati, nome
             assert chiudi is None and dialogo.uscita == dal_vivo.CON_ESC and codice == wx.ID_CANCEL
         if chiudi is not None:
             assert dialogo.GetEscapeId() == chiudi.GetId()
+        else:
+            # Senza Chiudi, Esc chiude come Annulla, e mai come una conferma: nella proposta
+            # dell'aggiornamento come Non adesso, wx.ID_NO. Dalla terza revisione della tappa 14.
+            annulla = wx.ID_NO if isinstance(dialogo, dialoghi.Aggiornamento) else wx.ID_CANCEL
+            assert codice == annulla, f"{nome}: Esc chiude con {codice}, non come Annulla"
     finally:
         dialogo.Destroy()
     if chiudi is None:

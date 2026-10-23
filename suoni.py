@@ -54,7 +54,10 @@ revisione della tappa ne arrivano altri cinque, nella V222: il pulsante Aggiorna
 scade senza risposta, l'aggiornamento non riuscito, il pacchetto non ancora pronto e il manuale che
 manca, che prima suonava come le novità che non si leggono; la quinta che sale resta all'esito buono.
 Con la issue 4 il gruppo dell'aiuto ha le due voci del PUB, Entra al PUB e Chiedi aiuto al PUB, con
-mess_pub_entra e mess_pub_aiuto, anche loro nella V222.
+mess_pub_entra e mess_pub_aiuto, anche loro nella V222. Con la terza revisione l'aggiornamento non
+installato, perché un messaggio è rimasto aperto oltre il limite della chiusura, ha il suo suono,
+mess_aggiornamento_non_installato, nella V223, e mess_aggiornamento_non_riuscito resta allo
+scaricamento che non riesce.
 Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -128,6 +131,8 @@ GRUPPI = (
         "aggiornamento_esito": "mess_aggiornamento_esito",
         "aggiornamento_non_riuscito": "mess_aggiornamento_non_riuscito",
         "aggiornamento_non_pronto": "mess_aggiornamento_non_pronto",
+        # Dalla terza revisione: una porta che non si chiude, distinto dallo scaricamento non riuscito.
+        "aggiornamento_non_installato": "mess_aggiornamento_non_installato",
     }),
     ("Applicazione, le impostazioni", {
         "dialogo_aspetto": "scintillio_di_ghiaccio",
@@ -502,8 +507,9 @@ AZIONI = {
     "aggiornamento_scelto": "nella proposta dell'aggiornamento si preme Aggiorna, e comincia lo scaricamento",
     "aggiornamento_scaduto": "la proposta dell'aggiornamento resta senza risposta e si chiude da sola, da riproporre al prossimo avvio",
     "aggiornamento_esito": "l'aggiornamento scaricato, e MESS che si chiude per installarlo e riaprirsi",
-    "aggiornamento_non_riuscito": "l'aggiornamento non riesce: lo scaricamento si interrompe, o MESS non si chiude in tempo per installarlo",
+    "aggiornamento_non_riuscito": "lo scaricamento dell'aggiornamento non riesce, per esempio si interrompe, e si continua con questa versione",
     "aggiornamento_non_pronto": "la versione nuova c'è, ma il suo pacchetto non è ancora pronto da scaricare",
+    "aggiornamento_non_installato": "l'aggiornamento scaricato non si installa perché un messaggio è rimasto aperto troppo a lungo; MESS resta aperto e lo ripropone al prossimo avvio",
     "dialogo_aspetto": "si apre il dialogo dell'aspetto, colori e caratteri, con Ctrl+P",
     "aspetto_predefiniti": "nel dialogo dell'aspetto, i valori tornano ai predefiniti",
     "aspetto_applicato": "l'aspetto confermato e applicato",

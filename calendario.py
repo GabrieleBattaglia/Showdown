@@ -337,7 +337,7 @@ class Calendario:
         for torneo in self.tornei:
             if gid in self.giocatori_del_torneo(torneo):
                 inizio, fine = self._intervallo_del_torneo(torneo)
-                risultato.append((inizio, fine, f"{torneo.modello['nome']}, in corso dal {data_breve(inizio)}", "torneo"))
+                risultato.append((inizio, fine, f"{torneo_con_preposizione(torneo.modello['nome'], None)}, in corso dal {data_breve(inizio)}", "torneo"))
         for s in mondo.sfide.attive:
             if s.stato == sfide.ACCETTATA and any(gid in ids for ids in s.convocati.values()):
                 risultato.append((s.data_gioco, s.data_gioco, f"una sfida fra {s.sfidante['nome']} e {s.sfidata['nome']}, il {data_breve(s.data_gioco)}", "sfida"))

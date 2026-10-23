@@ -339,7 +339,7 @@ def problema_iscrizione(mondo, id_edizione, g, poli):
     if not ed.individuale or ed.qualificazione != modelli_torneo.NESSUNA:
         return f"{maiuscola(torneo_con_preposizione(ed.nome))} si entra per qualificazione, non con l'iscrizione."
     if (ed.sesso != "aperto" and ed.sesso != g.sesso) or (ed.filtri and not modelli_torneo.idoneo(ed.oggetto_modello, g)):
-        return f"{nome_completo(g)} non può giocare {ed.nome}: è un torneo per altri giocatori."
+        return f"{nome_completo(g)} non può giocare {torneo_con_preposizione(ed.nome, None)}: è un torneo per altri giocatori."
     if g.id in ed.ids():
         return f"{nome_completo(g)} è già {accorda(g.sesso, 'iscritto')} {torneo_con_preposizione(ed.nome)}."
     for inizio, fine, descrizione, tipo in calendario.impegni_descritti(mondo, g.id):

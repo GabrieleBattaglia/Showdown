@@ -33,6 +33,7 @@ from gui.finestra import LIMITE_DELLA_CHIUSURA, NON_INSTALLATO, RIPROVA_DELLA_CH
 from modelli import Polisportiva
 from mondo import Mondo
 from partita import differita_singolare
+from suoni import EVENTI
 from utilita import adesso, adesso_utc
 
 
@@ -297,7 +298,8 @@ def test_gli_esiti_dalle_frasi_vere_di_gbutils(compilato, monkeypatch):
 @pytest.mark.parametrize(("testo", "suono", "icona"), [
     (aggiornamento.FRASE_PRONTO, "aggiornamento_esito", wx.ICON_INFORMATION),
     (aggiornamento.FRASE_NON_RIUSCITO, "aggiornamento_non_riuscito", wx.ICON_ERROR),
-    (f"Disponibile la versione 2.1.0, {aggiornamento.FRASE_NON_PRONTO}", "aggiornamento_non_pronto", wx.ICON_ERROR),
+    # Il pacchetto non ancora pronto non è un guasto: dalla terza revisione della tappa 14 ha l'icona dell'avviso.
+    (f"Disponibile la versione 2.1.0, {aggiornamento.FRASE_NON_PRONTO}", "aggiornamento_non_pronto", wx.ICON_WARNING),
 ])
 def test_l_esito_aspetta_l_ok(finestra, suonati, monkeypatch, testo, suono, icona):
     messaggi = []
@@ -396,7 +398,9 @@ def test_chiudi_per_aggiornare_smette_di_riprovare_e_lo_dice(finestra, suonati, 
     assert not finestra.chiusa and not finestra._per_aggiornare and suonati == []
     finestra._modali = 0
     finestra._di_che_non_si_e_installato()
-    assert finestra.vista.GetValue() == NON_INSTALLATO and suonati == ["aggiornamento_non_riuscito"]
+    # Il suono suo, dalla terza revisione: quello dell'aggiornamento non riuscito resta allo scaricamento.
+    assert finestra.vista.GetValue() == NON_INSTALLATO and suonati == ["aggiornamento_non_installato"]
+    assert EVENTI["aggiornamento_non_installato"] == "mess_aggiornamento_non_installato" != EVENTI["aggiornamento_non_riuscito"]
     riga = finestra.barra.GetValue().splitlines()[3]
     assert riga == "aggiornamento non installato" and len(riga) <= 40
     assert len(rinviati) == 3 and not finestra.chiusa

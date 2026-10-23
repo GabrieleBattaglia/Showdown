@@ -291,6 +291,80 @@ def test_caffe_invio_chiude(app_wx):
         dialogo.Destroy()
 
 
+class _Tasto:
+    """Un tasto premuto, per _tasto del dialogo: il codice, il controllo da cui parte, e se è una ripetizione."""
+
+    def __init__(self, codice, oggetto, ripetuto=False):
+        self.codice, self.oggetto, self.ripetuto, self.saltato = codice, oggetto, ripetuto, False
+
+    def GetKeyCode(self):
+        return self.codice
+
+    def GetEventObject(self):
+        return self.oggetto
+
+    def IsAutoRepeat(self):
+        return self.ripetuto
+
+    def Skip(self):
+        self.saltato = True
+
+
+def _invio_come_wx(dialogo):
+    """
+    Invio come lo vede wx: il gancio della tastiera di Windows crea wxEVT_CHAR_HOOK sul controllo che
+    ha il fuoco, e l'evento sale fino al dialogo. Un WM_KEYDOWN messo in coda con PostMessage non
+    passa dal gancio, prova della terza revisione della tappa 14, e SendInput toccherebbe lo schermo vero.
+    """
+    fuoco = wx.Window.FindFocus()
+    bersaglio = fuoco if fuoco is not None and fuoco.GetTopLevelParent() is dialogo else dialogo
+    evento = wx.KeyEvent(wx.wxEVT_CHAR_HOOK)
+    evento.SetEventObject(bersaglio)
+    evento.SetKeyCode(wx.WXK_RETURN)
+    bersaglio.GetEventHandler().ProcessEvent(evento)
+
+
+def test_caffe_invio_nel_testo_chiude_davvero(app_wx, monkeypatch):
+    # L'area in sola lettura su più righe, che ha il fuoco, si teneva Invio, e il caffè restava aperto.
+    donazioni = []
+    monkeypatch.setattr(dialoghi.webbrowser, "open", lambda *a, **k: donazioni.append(a))
+    dialogo = dialoghi.Caffe(None, "Offrimi un caffè, se ti va.")
+    fuoco = []
+
+    def premi():
+        dialogo.testo.SetFocus()
+        fuoco.append(wx.Window.FindFocus() is dialogo.testo)
+        _invio_come_wx(dialogo)
+
+    rete = wx.CallLater(3000, lambda: dialogo.IsModal() and dialogo.EndModal(4242))
+    wx.CallAfter(premi)
+    try:
+        codice = dialogo.ShowModal()
+    finally:
+        rete.Stop()
+        dialogo.Destroy()
+    assert fuoco == [True] and codice == wx.ID_OK and donazioni == []
+
+
+def test_caffe_invio_tenuto_giu_e_sui_pulsanti(app_wx):
+    dialogo = dialoghi.Caffe(None, "Offrimi un caffè, se ti va.")
+    try:
+        # Un Invio tenuto giù non chiude; sul pulsante di PayPal resta suo, e dona soltanto chi lo sceglie.
+        ripetuto = _Tasto(wx.WXK_RETURN, dialogo.testo, ripetuto=True)
+        dialogo._tasto(ripetuto)
+        assert ripetuto.saltato and dialogo.GetReturnCode() == 0
+        sul_pulsante = _Tasto(wx.WXK_RETURN, dialogo.bottoni[0])
+        dialogo._tasto(sul_pulsante)
+        assert sul_pulsante.saltato and dialogo.GetReturnCode() == 0
+        dialogo._tasto(_Tasto(wx.WXK_NUMPAD_ENTER, dialogo.testo))
+        assert dialogo.GetReturnCode() == wx.ID_OK
+        dialogo.SetReturnCode(0)
+        dialogo._tasto(_Tasto(wx.WXK_ESCAPE, dialogo.bottoni[0]))
+        assert dialogo.GetReturnCode() == wx.ID_OK
+    finally:
+        dialogo.Destroy()
+
+
 # Le operazioni delle polisportive, tappa 7.
 
 def _nome(g):
@@ -1154,7 +1228,8 @@ def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, cartella_di_prov
     assert mail_preparate.separatori == [","]
     assert mail["corpo"].splitlines() == [
         "Scrivi qui la tua domanda, al posto di questa riga.",
-        "Informazioni utili per chi ti risponde, che puoi cancellare se preferisci:",
+        # Una riga che resta nella mail spedita, e parla a chi la riceve, non a chi la scrive.
+        "Informazioni sul computer di chi scrive:",
         f"Programma: MESS {VERSIONE}",
         "Sistema operativo: Windows 11 Pro",
         "Versione di Windows: 25H2",
@@ -1175,8 +1250,12 @@ def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, cartella_di_prov
     assert [testo for _istruzione, testo in mail["passi"]] == [GBUtils.PUB_GRUPPO, mail["oggetto"], mail["corpo"], None]
     assert [istruzione[:13] for istruzione, _testo in mail["passi"]] == ["Passo 1 di 4.", "Passo 2 di 4.", "Passo 3 di 4.", "Passo 4 di 4."]
     assert f"con l'oggetto Chiedo per MESS {VERSIONE}." in mail["spiegazione"] and "\n\n" not in mail["spiegazione"]
-    # Senza registri, niente da allegare.
+    # La libertà di cancellare le informazioni la dicono la spiegazione e il passo del testo, non la mail.
+    assert "sotto ci sono le informazioni sul tuo computer, utili a chi ti risponde, che puoi cancellare se preferisci." in mail["spiegazione"]
+    assert "le informazioni sul computer, sotto, puoi cancellarle se preferisci." in mail["passi"][2][0]
+    # Senza registri, niente da allegare, e nessuna avvertenza sui percorsi.
     assert "Allega" not in mail["spiegazione"] and mail["passi"][-1][0].startswith("Passo 4 di 4. Spedisci la mail.")
+    assert "utente di Windows" not in mail["spiegazione"] + mail["passi"][-1][0]
     assert suonati == ["pub_aiuto"] and finestra.barra.GetValue().splitlines()[3] == "mail d'aiuto al PUB pronta"
     # Un registro vuoto non si allega; uno scritto sì, con la cartella in cui sta.
     errori = cartella_di_prova / "MESS - Errori.log"
@@ -1187,13 +1266,17 @@ def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, cartella_di_prov
     finestra.chiedi_aiuto_al_pub()
     allega = (f"Allega alla mail anche il file MESS - Errori.log, che sta accanto al programma, nella cartella {cartella_di_prova}: aiuta a "
               f"capire che cosa è andato storto.")
-    assert allega in mail_preparate[-1]["spiegazione"].splitlines()
-    assert mail_preparate[-1]["passi"][-1][0].startswith(f"Passo 4 di 4. {allega} Poi spedisci la mail.")
+    # Il registro, a differenza del testo, può contenere percorsi col nome dell'utente di Windows: lo dicono la spiegazione e l'ultimo passo.
+    riservatezza = "Il registro può contenere dei percorsi con il nome del tuo utente di Windows: controllalo prima di spedire."
+    assert mail_preparate[-1]["spiegazione"].splitlines()[2:4] == [allega, riservatezza]
+    assert mail_preparate[-1]["passi"][-1][0].startswith(f"Passo 4 di 4. {allega} {riservatezza} Poi spedisci la mail.")
     # Con il crash della volta prima, i file sono due.
     (cartella_di_prova / "MESS - Crash precedente.log").write_text("Fatal Python error: Segmentation fault\n", encoding="utf-8")
     finestra.chiedi_aiuto_al_pub()
     assert ("Allega alla mail anche i file MESS - Crash precedente.log e MESS - Errori.log, che stanno accanto al programma, nella cartella "
             f"{cartella_di_prova}: aiutano a capire che cosa è andato storto.") in mail_preparate[-1]["spiegazione"]
+    plurale = "I registri possono contenere dei percorsi con il nome del tuo utente di Windows: controllali prima di spedire."
+    assert plurale in mail_preparate[-1]["spiegazione"].splitlines() and plurale in mail_preparate[-1]["passi"][-1][0]
     # Il resoconto che non si è potuto mettere da parte resta nel file del crash, e si allega quello.
     (cartella_di_prova / "MESS - Crash precedente.log").unlink()
     (cartella_di_prova / "MESS - Crash.log").write_text("Fatal Python error: Segmentation fault\n", encoding="utf-8")

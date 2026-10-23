@@ -207,6 +207,26 @@ def test_la_sovrapposizione_rifiutata_col_nome_dell_altro_impegno():
     assert "La cassa di Club Di Prova ha 3 euro" in iscrizioni.problema_iscrizione(mondo, lontano.id, g, poli)
     donne = apri(mondo, OGGI, "Open femminile del giovedì")
     poli.cassa = 1000
-    assert "non può giocare" in iscrizioni.problema_iscrizione(mondo, donne[0].id, g, poli)
+    # La frase intera, con l'articolo davanti al nome del torneo dalla terza revisione della tappa 14.
+    atteso = f"{iscrizioni.nome_completo(g)} non può giocare l'Open femminile del giovedì: è un torneo per altri giocatori."
+    assert iscrizioni.problema_iscrizione(mondo, donne[0].id, g, poli) == atteso
     estraneo = mondo_di_prova(2, 0).giocatori[2]
     assert "non è tesserato" in iscrizioni.problema_iscrizione(mondo, lontano.id, estraneo, poli)
+
+
+def test_il_torneo_in_corso_rifiutato_con_l_articolo(monkeypatch):
+    # Una sede in corso che dura dieci giorni, dal martedì 6 ottobre: l'open del 13 cade negli stessi giorni.
+    mondo = mondo_di_prova(4, 0)
+    poli = polisportiva(mondo, "Club Di Prova", cpu=False, cassa=1000, ids=(1,))
+    g = mondo.giocatori[1]
+    prima, seconda = apri(mondo, OGGI, MARTEDI)
+    iscrivi_tutti(prima, mondo, (1, 2, 3, 4))
+    martedi = OGGI + datetime.timedelta(days=1)
+    mondo.datetime_corrente_simulazione = martedi
+    mondo.calendario.sorteggi(mondo, martedi, Mondo.rapporto_vuoto(martedi))
+    monkeypatch.setattr(mondo.calendario, "durata_del_torneo", lambda torneo: 10)
+    descrizioni = [voce[2] for voce in mondo.calendario.impegni_descritti(mondo, 1)]
+    assert descrizioni == ["l'Open maschile del martedì, in corso dal 6 ottobre 2026"]
+    atteso = (f"{iscrizioni.nome_completo(g)} negli stessi giorni ha già l'Open maschile del martedì, in corso dal 6 ottobre 2026: "
+              "due tornei negli stessi giorni non si giocano.")
+    assert iscrizioni.problema_iscrizione(mondo, seconda.id, g, poli) == atteso

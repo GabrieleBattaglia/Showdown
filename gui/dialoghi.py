@@ -2155,6 +2155,18 @@ class Caffe(Lettura):
         # Invio chiude: donare deve essere una scelta, non un tasto premuto per abitudine.
         self.bottoni[-1].SetDefault()
 
+    def _tasto(self, event):
+        """
+        Invio nel testo chiude come Chiudi, come Esc: l'area in sola lettura su più righe, che ha il
+        fuoco, si tiene Invio, e il pulsante predefinito da solo non basta, terza revisione della tappa
+        14. Sui pulsanti Invio resta loro; un Invio tenuto giù non risponde, come nell'Aggiornamento.
+        """
+        tasto = event.GetKeyCode()
+        if event.GetEventObject() is self.testo and tasto in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.IsAutoRepeat():
+            self.chiudi(wx.ID_OK)
+        else:
+            super()._tasto(event)
+
     def dona(self, event=None):
         suoni.suona("caffe_paypal")
         with contextlib.suppress(webbrowser.Error):

@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 300 suoni, 275 della finestra e 25 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 301 suoni, 276 della finestra e 25 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -36,13 +36,14 @@ Offrimi un caffè, nel menu Aiuto: donazione.
 Dona con PayPal, nell'invito al caffè: carillon_dolce.
 Entra al PUB, nel menu Aiuto, apre la finestra che prepara la mail d'iscrizione al gruppo di supporto: mess_pub_entra.
 Chiedi aiuto al PUB, nel menu Aiuto, apre la finestra che prepara la mail al gruppo, con la domanda da scrivere e le informazioni del computer: mess_pub_aiuto.
-Finestra, applicazione, l'aggiornamento automatico, 6 suoni.
+Finestra, applicazione, l'aggiornamento automatico, 7 suoni.
 All'avvio, dal programma installato, è pronta una versione nuova e si apre la proposta di aggiornarsi: mess_aggiornamento_disponibile.
 Nella proposta dell'aggiornamento si preme Aggiorna, e comincia lo scaricamento: mess_aggiornamento_scelto.
 La proposta dell'aggiornamento resta senza risposta e si chiude da sola, da riproporre al prossimo avvio: mess_aggiornamento_scaduto.
 L'aggiornamento scaricato, e MESS che si chiude per installarlo e riaprirsi: mess_aggiornamento_esito.
-L'aggiornamento non riesce: lo scaricamento si interrompe, o MESS non si chiude in tempo per installarlo: mess_aggiornamento_non_riuscito.
+Lo scaricamento dell'aggiornamento non riesce, per esempio si interrompe, e si continua con questa versione: mess_aggiornamento_non_riuscito.
 La versione nuova c'è, ma il suo pacchetto non è ancora pronto da scaricare: mess_aggiornamento_non_pronto.
+L'aggiornamento scaricato non si installa perché un messaggio è rimasto aperto troppo a lungo; MESS resta aperto e lo ripropone al prossimo avvio: mess_aggiornamento_non_installato.
 Finestra, applicazione, le impostazioni, 14 suoni.
 Si apre il dialogo dell'aspetto, colori e caratteri, con Ctrl+P: scintillio_di_ghiaccio.
 Nel dialogo dell'aspetto, i valori tornano ai predefiniti: meteora_bande_azzerate.
