@@ -86,7 +86,11 @@ non ancora aperte, quelle chiuse e Togli sulla coppa, che suonavano come un camp
 che ferma MESS, che suonava come quello che interrompe un comando; e Allena tutti con i tesserati tutti
 infortunati, che suonava come i punti che mancano. Le azioni dette a parole dichiarano ogni situazione in
 cui il loro evento suona. Anche queste parti sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
-5.5, UltraCode).
+5.5, UltraCode). Con le verifiche dello stesso collaudo tre azioni dicono tutte le loro situazioni: il tutto
+al massimo anche con l'allenamento completo e con Allena tutti, l'incontro finito anche in differita, e
+l'errore imprevisto senza finestra mentre MESS si chiude; le iscrizioni chiuse suonano col loro suono
+anche nei due ripieghi del calendario, Iscrivi e Togli dopo il sorteggio. È di Gabriele Battaglia (IZ4APU)
+& ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -550,7 +554,8 @@ AZIONI = {
     "salvataggio_non_riuscito": ("un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, dopo un avanzamento del mondo, che la barra di stato dice "
                                  "non salvato, o quando si cambia la cartella del mondo, e allora la cartella non cambia"),
     "salvataggio_illeggibile": "all'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire",
-    "errore_imprevisto": "un errore imprevisto interrompe un comando, o succede quando la finestra non c'è, e MESS resta aperto",
+    "errore_imprevisto": ("un errore imprevisto interrompe un comando, e MESS resta aperto; o, senza messaggio, succede quando la finestra "
+                          "non c'è più mentre MESS si chiude"),
     "errore_fatale": "un errore imprevisto ferma MESS, e un messaggio dice dove sta il resoconto da allegare quando si chiede aiuto",
     "crash_precedente": "all'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto",
     "fuoco_vista": "F5, il fuoco va nella vista principale",
@@ -705,7 +710,7 @@ AZIONI = {
     "amichevole_al_via": "si apre la finestra della partita dal vivo, con Assisti",
     "riscaldamento_saltato": "nella partita dal vivo il riscaldamento saltato",
     "resto_dell_incontro": "nella partita dal vivo o in differita Alt+V, Vai alla fine, prima che l'incontro sia finito",
-    "incontro_finito": "nella partita dal vivo Alt+F o Alt+L a incontro già finito",
+    "incontro_finito": "nella partita dal vivo o in differita Alt+F o Alt+L a incontro già finito",
     "amichevole_registrata": "nella partita dal vivo Esc, l'amichevole resta registrata senza svelare il risultato",
     "dal_vivo_pausa": "nella partita dal vivo la pausa, con Invio o spazio mentre l'azione suona",
     "dal_vivo_ripresa": "nella partita dal vivo la ripresa dopo la pausa",
@@ -720,7 +725,8 @@ AZIONI = {
     "allenati_tutti": "nella sala allenamento Allena tutti, ogni tesserato secondo il suo programma",
     "classe_salita": "nella sala allenamento un tesserato sale di classe, dopo l'esito",
     "punti_insufficienti": "nella sala allenamento non ci sono punti da spendere, o la cifra è zero",
-    "caratteristica_al_massimo": "nella sala allenamento la caratteristica scelta è già al massimo",
+    "caratteristica_al_massimo": ("nella sala allenamento la caratteristica scelta è già al massimo, o con l'allenamento completo e con Allena tutti "
+                                  "chi si allena ha già tutte le caratteristiche al massimo"),
     "allenando_infortunato": "nella sala allenamento il tesserato scelto è infortunato e oggi non si allena",
     "allenandi_tutti_infortunati": "nella sala allenamento Allena tutti quando oggi nessun tesserato si allena, perché sono tutti infortunati",
     "programma_cambiato": "nella sala allenamento cambia il programma del tesserato",

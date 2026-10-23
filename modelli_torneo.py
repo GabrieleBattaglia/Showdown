@@ -27,7 +27,9 @@ le edizioni future. Al primo uso, se la cartella manca o è vuota, si copiano i 
 viaggiano col programma, in dati/tornei/modelli.
 Dal collaudo di gioco di Gabriele, il 24 ottobre 2026: il ripristino del calendario predefinito che si
 ferma a metà porta nel suo errore la cartella prima_del_ripristino_ dove sono già finiti dei file, perché
-il messaggio la nomini; se non c'è finito niente, la cartella vuota se ne va. È di Gabriele Battaglia
+il messaggio la nomini; se non c'è finito niente, la cartella vuota se ne va. Con le verifiche dello
+stesso collaudo il modello rinominato con le sole maiuscole non cancella più il suo file, e quello
+rinominato quando il file di prima non si toglie lascia le cose come stavano. È di Gabriele Battaglia
 (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -499,6 +501,10 @@ class GestoreModelli:
         """
         Scrive il modello nel suo file, con la scrittura sicura; se è stato rinominato, il file di
         prima se ne va. ValueError col motivo, senza scrivere niente, se il modello o il nome non vanno.
+        Dalle verifiche del collaudo di gioco: quando cambiano soltanto le maiuscole, su Windows il file
+        scritto è quello di prima, e toglierlo cancellava il modello; ora prende soltanto le maiuscole
+        nuove. E se il file di prima non si toglie, se ne va il nuovo e l'OSError sale: niente cambia, e
+        non restano due file dello stesso modello.
         """
         errore = problema(modello, formule_date) or self.problema_nome(modello.nome, escluso=modello.id)
         if errore:
@@ -507,10 +513,23 @@ class GestoreModelli:
         os.makedirs(cartella, exist_ok=True)
         vecchio = self._file_del_modello(modello.id)
         nuovo = nome_file(modello.nome)
-        _scrivi_sicuro(os.path.join(cartella, nuovo), json.dumps(modello.a_dizionario(), ensure_ascii=False, indent=1) + "\n")
+        percorso_nuovo = os.path.join(cartella, nuovo)
+        _scrivi_sicuro(percorso_nuovo, json.dumps(modello.a_dizionario(), ensure_ascii=False, indent=1) + "\n")
         if vecchio and vecchio != nuovo:
-            with contextlib.suppress(FileNotFoundError):
-                os.remove(os.path.join(cartella, vecchio))
+            percorso_vecchio = os.path.join(cartella, vecchio)
+            if _stesso_file(percorso_vecchio, percorso_nuovo):
+                with contextlib.suppress(OSError):
+                    os.rename(percorso_vecchio, percorso_nuovo)
+            else:
+                try:
+                    os.remove(percorso_vecchio)
+                except FileNotFoundError:
+                    pass
+                except OSError:
+                    with contextlib.suppress(OSError):
+                        os.remove(percorso_nuovo)
+                    self.azzera_cache()
+                    raise
         self._ricorda_id(modello.id)
         self.azzera_cache()
 
@@ -608,6 +627,14 @@ def _numero_dell_id(id_modello):
     if isinstance(id_modello, str) and id_modello.startswith(PREFISSO_ID) and id_modello[len(PREFISSO_ID):].isdigit():
         return int(id_modello[len(PREFISSO_ID):])
     return 0
+
+
+def _stesso_file(primo, secondo):
+    """Vero se i due percorsi sono lo stesso file, come su Windows due nomi che differiscono per le sole maiuscole."""
+    try:
+        return os.path.samefile(primo, secondo)
+    except OSError:
+        return False
 
 
 def _scrivi_sicuro(percorso, testo):

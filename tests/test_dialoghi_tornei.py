@@ -10,7 +10,7 @@ conteggio e l'avviso quando non c'è niente, Esc che non svela, il gemello ugual
 l'albo nel suo dialogo; gli editor con le scelte dei giorni, che rifiutano col motivo e non si
 chiudono da soli; il lancio e la risposta alle sfide con la formazione; la casella della sala; la
 scheda, l'acciacco nella formazione; le notizie e il suono unico dell'avanzamento.
-Dal 2026-10-24, col collaudo di gioco, ciascuno col suo suono: Iscrivi e Togli sull'edizione prevista e su quella già cominciata, Togli sulla coppa, il modello e il file delle formule che non si scrivono, il rilancio a chi ha già rifiutato oggi e la sfida in arrivo che non vale più.
+Dal 2026-10-24, col collaudo di gioco, ciascuno col suo suono: Iscrivi e Togli sull'edizione prevista e su quella già cominciata, Togli sulla coppa, il modello e il file delle formule che non si scrivono, il rilancio a chi ha già rifiutato oggi e la sfida in arrivo che non vale più. Con le verifiche anche i ripieghi di Iscrivi e Togli dopo il sorteggio.
 """
 
 import datetime
@@ -183,6 +183,25 @@ def test_l_edizione_gia_cominciata_ha_le_iscrizioni_chiuse(calendario, suonati, 
         assert suonati[-1] == "iscrizioni_chiuse"
         assert messaggi[-1] == "L'edizione è già cominciata: il sorteggio è fatto, e le iscrizioni non si cambiano più."
     assert suonati == ["iscrizioni_chiuse", "iscrizioni_chiuse"]
+
+
+def test_i_ripieghi_dopo_il_sorteggio_hanno_le_iscrizioni_chiuse(calendario, suonati, messaggi):
+    # Dalle verifiche del collaudo di gioco: un'edizione cominciata che restasse fra le aperte, prima che il calendario la tolga,
+    # Iscrivi e Togli la rifiutano col suono delle iscrizioni chiuse, che sono il loro perché, e non con quello del campo da correggere.
+    mondo, _club, dialogo = calendario
+    ed = _scegli_edizione(dialogo, "Open maschile del martedì", datetime.date(2026, 10, 13))
+    _scegli(dialogo.elenco_iscrivibili, dialogo.iscrivibili, 1)
+    dialogo.iscrivi()
+    assert ed.ids() == [1]
+    inizio = ed.data_inizio
+    mondo.datetime_corrente_simulazione = mondo.datetime_corrente_simulazione.replace(year=inizio.year, month=inizio.month, day=inizio.day)
+    _scegli(dialogo.elenco_iscrivibili, dialogo.iscrivibili, 2)
+    dialogo.iscrivi()
+    assert suonati[-1] == "iscrizioni_chiuse" and messaggi[-1] == "Le iscrizioni di questa edizione sono chiuse."
+    _scegli(dialogo.elenco_iscritti, dialogo.iscritti, 1)
+    dialogo.togli()
+    assert suonati[-1] == "iscrizioni_chiuse" and messaggi[-1] == "Il sorteggio è già fatto: l'iscrizione non si toglie più."
+    assert ed.ids() == [1] and "campo_da_correggere" not in suonati
 
 
 def test_togli_sulla_coppa_rimanda_alla_rosa(app_wx, messaggi, orologio, suonati):

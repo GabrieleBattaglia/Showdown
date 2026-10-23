@@ -6,6 +6,7 @@ contratti, con il rinnovo dentro e fuori dalla finestra, accettato, rifiutato e 
 buonuscita nello svincolo, la proposta di contratto nel dialogo dell'ingaggio e le voci del menu
 nella guida. I messaggi di wx sono sostituiti da un registratore, che risponde come gli si dice.
 Dal 2026-10-24, col collaudo di gioco, Allena tutti coi tesserati tutti infortunati e con tutto al massimo, ciascuno col suo perché e il suo suono.
+Con le verifiche, il tutto al massimo accordato e detto soltanto di chi ha un punto da spendere.
 """
 
 import datetime
@@ -223,12 +224,19 @@ def test_allena_tutti_dice_il_suo_perche(sala, mondo, messaggi, suonati, monkeyp
         g.infortunato, g.infortunio_fine_datetime, g.infortunio_sede = False, None, None
     monkeypatch.setattr(allenamento, "allena_secondo_programma", lambda *_argomenti, **_opzioni: [])
     sala.tutti()
-    assert suonati[-2:] == ["domanda", "caratteristica_al_massimo"] and messaggi[-1] == testi.tutti_al_massimo(p)
-    assert messaggi[-1] == "I tesserati di Club Della Sala che oggi si allenano hanno già tutte le caratteristiche al massimo."
+    assert suonati[-2:] == ["domanda", "caratteristica_al_massimo"] and messaggi[-1] == testi.tutti_al_massimo(p, sala.allenandi)
+    assert messaggi[-1].endswith(" di Club Della Sala che oggi si allenano e hanno almeno un punto da spendere hanno già tutte le caratteristiche al massimo.")
     assert suonati.count("punti_insufficienti") == 0
+    # Dalle verifiche: chi non ha un punto da spendere resta fuori anche dall'avviso, che parla del solo candidato rimasto.
+    rimasto = sala.allenandi[0]
+    for g in sala.allenandi[1:]:
+        g.punti_allenamento = 0.5
+    sala.tutti()
+    assert messaggi[-1] == testi.tutti_al_massimo(p, [rimasto]) and messaggi[-1].startswith(("L'unico tesserato di ", "L'unica tesserata di "))
+    assert " che oggi si allena e ha almeno un punto da spendere ha già tutte le caratteristiche al massimo." in messaggi[-1]
 
 
-def test_i_tesserati_tutti_infortunati_a_parole():
+def test_gli_avvisi_di_allena_tutti_accordati():
     p = Polisportiva("Club Della Sala", None, ORA)
 
     def tesserati(*sessi):
@@ -238,6 +246,13 @@ def test_i_tesserati_tutti_infortunati_a_parole():
     assert testi.tutti_infortunati(p, tesserati("f", "f")) == "Oggi nessuno di Club Della Sala si allena: le sue tesserate sono tutte infortunate."
     assert testi.tutti_infortunati(p, tesserati("m")) == "Oggi nessuno di Club Della Sala si allena: il suo unico tesserato è infortunato."
     assert testi.tutti_infortunati(p, tesserati("f")) == "Oggi nessuno di Club Della Sala si allena: la sua unica tesserata è infortunata."
+    # Dalle verifiche del collaudo di gioco anche il tutto al massimo di Allena tutti si accorda, e parla di chi ha un punto da spendere.
+    resto = "che oggi si allenano e hanno almeno un punto da spendere hanno già tutte le caratteristiche al massimo."
+    assert testi.tutti_al_massimo(p, tesserati("m", "f")) == f"I tesserati di Club Della Sala {resto}"
+    assert testi.tutti_al_massimo(p, tesserati("f", "f")) == f"Le tesserate di Club Della Sala {resto}"
+    resto = "che oggi si allena e ha almeno un punto da spendere ha già tutte le caratteristiche al massimo."
+    assert testi.tutti_al_massimo(p, tesserati("m")) == f"L'unico tesserato di Club Della Sala {resto}"
+    assert testi.tutti_al_massimo(p, tesserati("f")) == f"L'unica tesserata di Club Della Sala {resto}"
 
 
 def test_la_classe_salita_suona_in_coda_e_va_nel_diario(sala, messaggi, suonati):

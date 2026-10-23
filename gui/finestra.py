@@ -90,7 +90,9 @@ Dal collaudo di gioco, il 24 ottobre 2026, il calendario predefinito che non si 
 ripristino si è fermato a metà dice in quale cartella sono i modelli e le formule già messi da parte; e
 nell'amichevole Alt+V a incontro finito mostra il risultato senza i guizzi di un salto che non c'è, perché
 la finestra dal vivo lo restituisce come il risultato. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
-Opus 5.5, UltraCode).
+Opus 5.5, UltraCode). Con le verifiche dello stesso collaudo quel messaggio parla dei file di prima, che
+possono essere soltanto dei modelli, e la voce Mercato si rimette in pari anche quando un errore ferma a
+metà l'avanzamento del mondo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -577,7 +579,13 @@ class FinestraPrincipale(wx.Frame):
         suono solo: quello della notizia più importante, che si mette in coda se sta suonando
         l'effetto di un comando.
         """
-        rapporto = self.mondo.processa_tempo_trascorso()
+        try:
+            rapporto = self.mondo.processa_tempo_trascorso()
+        except Exception:
+            # Dalle verifiche del collaudo di gioco: l'avanzamento fermato a metà da un errore può aver già portato un
+            # giorno nuovo, con le mosse di mercato di nuovo libere, e la voce Mercato si rimette in pari lo stesso.
+            self.aggiorna_le_voci()
+            raise
         if not rapporto["ticks"]:
             return
         # Dalla issue 6: col giorno nuovo le mosse di mercato ripartono, e la voce Mercato torna disponibile.
@@ -1250,11 +1258,12 @@ class FinestraPrincipale(wx.Frame):
             da_parte = modelli_torneo.GestoreModelli().ripristina_predefiniti()
         except OSError as errore:
             # Dalla V228 col suo suono, e non più con quello del calendario illeggibile, che parla d'altro. Dal collaudo
-            # di gioco, se il ripristino si è fermato a metà, il messaggio dice dove sono i file già messi da parte.
+            # di gioco, se il ripristino si è fermato a metà, il messaggio dice dove sono i file già messi da parte: dalle
+            # verifiche li chiama file, perché possono esserci soltanto dei modelli, senza le formule.
             testo = f"Il calendario predefinito non si è potuto rimettere: {errore}."
             da_parte = getattr(errore, "da_parte", None)
             if da_parte:
-                testo += f" I modelli e le formule messi da parte prima dell'errore sono nella cartella {da_parte}."
+                testo += f" I file di prima già messi da parte sono nella cartella {da_parte}."
             self.mostra(testo, "calendario non ripristinato", "calendario_non_ripristinato")
             return
         self._problemi_detti = None

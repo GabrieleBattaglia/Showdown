@@ -9,6 +9,7 @@ cronaca dell'ultimo incontro di torneo o di sfida ascoltato in differita; il cal
 all'avvio e nella barra una volta sola; la sfida in attesa col nome di chi sfida; il suono unico
 dell'avanzamento con le notizie dei tornei.
 Dal 2026-10-24, col collaudo di gioco, il ripristino fermo a metà, che nel messaggio nomina la cartella dei file già messi da parte.
+Con le verifiche li chiama file, perché fermo fra i modelli non ci sono le formule.
 """
 
 import datetime
@@ -18,6 +19,7 @@ import wx
 from aiuti_calendario import OGGI, apri, giorno, iscrivi_tutti, mondo_di_prova, polisportiva
 
 import archivio
+import formule
 import modelli_torneo
 import sfide
 import suoni
@@ -248,8 +250,28 @@ def test_il_ripristino_fermo_a_meta_nomina_la_cartella(finestra, suonati, messag
     finestra.ripristina_calendario()
     da_parte = next(p for p in (cartella_di_prova / modelli_torneo.CARTELLA).iterdir() if p.name.startswith(modelli_torneo.PREFISSO_RIPRISTINO))
     assert finestra.vista.GetValue() == ("Il calendario predefinito non si è potuto rimettere: [Errno 13] Accesso negato. "
-                                         f"I modelli e le formule messi da parte prima dell'errore sono nella cartella {da_parte}.")
+                                         f"I file di prima già messi da parte sono nella cartella {da_parte}.")
     assert suonati[-2:] == ["domanda", "calendario_non_ripristinato"]
+
+
+def test_il_ripristino_fermo_fra_i_modelli_non_promette_le_formule(finestra, messaggi, monkeypatch, cartella_di_prova):
+    # Dalle verifiche del collaudo di gioco: fermo al terzo modello, da parte ci sono soltanto due modelli, e il messaggio
+    # non dice più che ci sono anche le formule.
+    sposta, spostati = modelli_torneo.shutil.move, []
+
+    def al_terzo_si_ferma(origine, destinazione):
+        if len(spostati) == 2:
+            raise PermissionError(13, "Accesso negato")
+        spostati.append(origine)
+        return sposta(origine, destinazione)
+
+    monkeypatch.setattr(modelli_torneo.shutil, "move", al_terzo_si_ferma)
+    messaggi.risposta = wx.YES
+    finestra.ripristina_calendario()
+    da_parte = next(p for p in (cartella_di_prova / modelli_torneo.CARTELLA).iterdir() if p.name.startswith(modelli_torneo.PREFISSO_RIPRISTINO))
+    assert len(list(da_parte.iterdir())) == 2 and not (da_parte / formule.NOME_FILE).exists()
+    assert finestra.vista.GetValue().endswith(f" I file di prima già messi da parte sono nella cartella {da_parte}.")
+    assert "formule" not in finestra.vista.GetValue()
 
 
 def test_gli_editor_dalla_finestra(finestra, suonati, monkeypatch):

@@ -58,6 +58,8 @@ fondazione la sede che non corrisponde a nessun comune è un campo da correggere
 quello di un pulsante premuto senza niente di scelto; nella sala allenamento Allena tutti con i tesserati
 tutti infortunati lo dice, col suo suono, allenandi_tutti_infortunati, e quando a chi si allena non sale
 niente dice che ha tutto al massimo, invece di dire per tutti e due che nessuno ha un punto da spendere.
+Con le verifiche dello stesso collaudo quell'avviso parla soltanto di chi si allena e ha almeno un punto da
+spendere, al femminile e al singolare come quello degli infortunati.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -1393,7 +1395,7 @@ class SalaAllenamento(_Dialogo):
             return
         spese = [spesa for spesa in (self._secondo_il_programma(g) for g in candidati) if spesa is not None]
         if not spese:
-            self.avvisa(testi.tutti_al_massimo(self.poli), self.elenco, "caratteristica_al_massimo")
+            self.avvisa(testi.tutti_al_massimo(self.poli, candidati), self.elenco, "caratteristica_al_massimo")
             return
         self._racconta(spese, "allenati_tutti", fuoco)
 

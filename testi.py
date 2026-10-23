@@ -59,6 +59,11 @@ Dal collaudo di gioco, il 24 ottobre 2026, Allena tutti dice il suo vero perché
 oggi non si allena nessuno, e tutti_al_massimo quando a chi si allena non sale più niente; prima tutti e
 due dicevano che nessuno aveva un punto da spendere. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
 Opus 5.5, UltraCode).
+Con le verifiche dello stesso collaudo da_a non si ferma più a due decimali: il valore, l'anteprima e la
+domanda di una spesa piccola hanno i decimali che servono a vederli salire, da 144,400 a 144,402, e non
+dicono più da 144,4 a 144,4; tutti_al_massimo parla soltanto di chi si allena e ha almeno un punto da
+spendere, con le forme accordate di tutti_infortunati. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import copy
@@ -250,13 +255,25 @@ def quanti_punti(valore, allenamento=False):
     return f"{testo} {'punto' if testo == '1' else 'punti'}{' allenamento' if allenamento else ''}"
 
 
+def _da_a_che_si_vede(prima, dopo, decimali):
+    """
+    Il da e a con almeno i decimali dati, e con quelli che servono perché i due numeri non siano
+    uguali quando i valori non lo sono: al più nove, la soglia sotto cui l'allenamento non conta una
+    salita. Una salita nulla resta ai decimali dati.
+    """
+    while dopo != prima and decimali < 9 and numero(prima, decimali) == numero(dopo, decimali):
+        decimali += 1
+    return f"da {numero(prima, decimali)} a {numero(dopo, decimali)}"
+
+
 def da_a(prima, dopo):
     """
-    Una salita a parole, da 14,6 a 15,3; con due decimali quando a uno non si vedrebbe, come da
-    4,61 a 4,64 dopo una spesa piccola, che altrimenti sembrerebbe non aver fatto niente.
+    Una salita a parole, da 14,6 a 15,3; con i decimali che servono quando a uno non si vedrebbe, da
+    4,61 a 4,64 dopo una spesa piccola, che altrimenti sembrerebbe non aver fatto niente. Dalle
+    verifiche del collaudo di gioco anche quando non basta il secondo, da 144,400 a 144,402: prima si
+    fermava a uno sotto i cinque millesimi, e il valore diceva da 144,4 a 144,4.
     """
-    decimali = 2 if numero(prima) == numero(dopo) and abs(dopo - prima) >= 0.005 else 1
-    return f"da {numero(prima, decimali)} a {numero(dopo, decimali)}"
+    return _da_a_che_si_vede(prima, dopo, 1)
 
 
 def da_a_al_centesimo(prima, dopo):
@@ -265,14 +282,11 @@ def da_a_al_centesimo(prima, dopo):
     decimali, da 14,62 a 14,71. Quando a due decimali i due numeri sarebbero uguali, la salita ha i
     decimali che servono a vederla, di solito tre, come da 0,183 a 0,184: scritta da 0,18 a 0,18
     sembrerebbe non aver fatto niente, e tacerla nasconderebbe una caratteristica che la spesa ha
-    fatto salire. Le sedute piccole di ogni giorno lo fanno spesso con precisione, resistenza e
-    forza, che hanno il tetto a 10 e salgono piano. I decimali arrivano al più a nove, la soglia
-    sotto cui l'allenamento non conta una salita; una salita nulla resta a due.
+    fatto salire. Le sedute piccole di ogni giorno lo fanno spesso, soprattutto ma non solo con
+    precisione, resistenza e forza, che hanno il tetto a 10 e salgono piano. I decimali arrivano al
+    più a nove; una salita nulla resta a due.
     """
-    decimali = 2
-    while dopo > prima and decimali < 9 and numero(prima, decimali) == numero(dopo, decimali):
-        decimali += 1
-    return f"da {numero(prima, decimali)} a {numero(dopo, decimali)}"
+    return _da_a_che_si_vede(prima, dopo, 2)
 
 
 def codice_classe(g):
@@ -3260,9 +3274,19 @@ def tutti_infortunati(p, giocatori):
     return f"Oggi nessuno di {p.nome} si allena: {chi}."
 
 
-def tutti_al_massimo(p):
-    """L'avviso di Allena tutti, dopo la conferma, quando a chi si allena non sale niente, perché ha già tutto al massimo."""
-    return f"I tesserati di {p.nome} che oggi si allenano hanno già tutte le caratteristiche al massimo."
+def tutti_al_massimo(p, giocatori):
+    """
+    L'avviso di Allena tutti, dopo la conferma, quando a chi oggi si allena e ha almeno un punto da
+    spendere, i giocatori, non sale niente, perché ha già tutto al massimo: al femminile se sono
+    tutte donne, e al singolare se è uno solo, come tutti_infortunati. Dalle verifiche del collaudo
+    di gioco non dice più di tutti quelli che si allenano, perché chi non ha un punto resta fuori.
+    """
+    donne = all(g.sesso == "f" for g in giocatori)
+    if len(giocatori) == 1:
+        chi = "L'unica tesserata" if donne else "L'unico tesserato"
+        return f"{chi} di {p.nome} che oggi si allena e ha almeno un punto da spendere ha già tutte le caratteristiche al massimo."
+    chi = "Le tesserate" if donne else "I tesserati"
+    return f"{chi} di {p.nome} che oggi si allenano e hanno almeno un punto da spendere hanno già tutte le caratteristiche al massimo."
 
 
 def riepilogo_sala(p, esiti, cambi=()):

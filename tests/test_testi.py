@@ -321,6 +321,32 @@ def test_il_resoconto_della_spesa_elenca_ogni_caratteristica_al_centesimo(mondo)
         assert f": {testi._parti_spese(spese)}; valore da " in voce and "di meno" not in voce
 
 
+def _da_a_fermi(testo):
+    """Le coppie da e a di un testo che dicono lo stesso numero."""
+    return [(prima, dopo) for prima, dopo in re.findall(r"[Dd]a (\d[\d.]*,\d+) a (\d[\d.]*,\d+)", testo) if prima == dopo]
+
+
+def test_il_valore_e_l_anteprima_non_sembrano_fermi(mondo):
+    # Dalle verifiche del collaudo di gioco: da_a, che dice il valore nel messaggio breve, nel riepilogo e nel diario, e la
+    # caratteristica e il valore nell'anteprima e nella domanda, sotto i cinque millesimi restava a un decimale e diceva
+    # valore da 144,4 a 144,4; ora aggiunge i decimali che servono a vederlo salire, come da_a_al_centesimo.
+    assert testi.da_a(144.4, 144.402) == "da 144,400 a 144,402"
+    assert testi.da_a(1.137, 1.1402) == "da 1,137 a 1,140"
+    assert testi.da_a(14.6, 15.3) == "da 14,6 a 15,3" and testi.da_a(4.61, 4.64) == "da 4,61 a 4,64" and testi.da_a(4.6, 4.6) == "da 4,6 a 4,6"
+    # Con giocatori veri: un punto su ogni caratteristica nell'anteprima e nella domanda, e l'allenamento completo con 0,3 punti
+    # nel messaggio breve e nel diario, non dicono mai lo stesso numero prima e dopo.
+    for g in list(mondo.giocatori.values())[:12]:
+        g.infortunato = False
+        for c in allenamento.CARATTERISTICHE:
+            if allenamento.anteprima(g, c, 1).punti > 0:
+                assert not _da_a_fermi(testi.anteprima_allenamento(g, c, 1) + " " + testi.domanda_spesa(g, c, 1))
+        valore_prima, classe_prima = g.indice_collettivo_valore, testi.codice_classe(g)
+        g.punti_allenamento = 0.3
+        spese = allenamento.allena_secondo_programma(g, ORA)
+        assert spese and not _da_a_fermi(testi.esito_allenamento(g, 0.3, valore_prima, classe_prima))
+        assert not _da_a_fermi(testi.voce_diario(g.diario[0]))
+
+
 def test_i_testi_dei_contratti(mondo):
     p = mondo.miapolisportiva_attiva
     g = mondo.giocatori[9]

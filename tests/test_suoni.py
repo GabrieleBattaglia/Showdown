@@ -5,7 +5,7 @@ né per contenuto, nessuna onda quadra salvo donazione, la firma di MESS su quel
 ogni evento è usato nel codice e ogni suono del codice è un evento. Poi il volume, l'altezza della
 probabilità d'ingaggio, il motore vero con la scheda audio finta, e la scelta del suono di un
 avanzamento del mondo, con il testo della barra di stato che lo accompagna.
-Dal 2026-10-24, col collaudo di gioco, i nove suoni della V229, ciascuno col suo preset breve salvo l'errore fatale, e la descrizione del calendario non ripristinato, che non promette più il calendario di prima.
+Dal 2026-10-24, col collaudo di gioco, i nove suoni della V229, ciascuno col suo preset breve salvo l'errore fatale, e la descrizione del calendario non ripristinato, che non promette più il calendario di prima. Con le verifiche, le azioni che dicono tutte le loro situazioni.
 """
 
 import ast
@@ -232,6 +232,17 @@ def test_i_suoni_del_collaudo_di_gioco():
         assert descrizione.startswith("MESS, ") and "; " in descrizione and ". Va bene per " in descrizione, evento
     assert suoni.EVENTI["errore_imprevisto"] != suoni.EVENTI["errore_fatale"]
     assert "resta quello di prima" not in Acusticator.descrizione("mess_calendario_non_ripristinato")
+
+
+def test_le_azioni_dicono_tutte_le_loro_situazioni():
+    # Dalle verifiche del collaudo di gioco: chi ritocca un suono con Acu_Maker legge dove suona. Il tutto al massimo suona anche
+    # con l'allenamento completo e con Allena tutti, l'incontro finito anche in differita, e l'errore imprevisto senza finestra
+    # soltanto mentre MESS si chiude, quando non resta aperto.
+    al_massimo = suoni.AZIONI["caratteristica_al_massimo"]
+    assert "caratteristica scelta" in al_massimo and "allenamento completo" in al_massimo and "Allena tutti" in al_massimo
+    assert "in differita" in suoni.AZIONI["incontro_finito"]
+    imprevisto = suoni.AZIONI["errore_imprevisto"]
+    assert "MESS resta aperto" in imprevisto and "mentre MESS si chiude" in imprevisto and not imprevisto.endswith("MESS resta aperto")
 
 
 def test_ogni_evento_ha_la_sua_azione_detta_a_parole():

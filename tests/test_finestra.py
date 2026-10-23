@@ -5,7 +5,9 @@ ricerca, l'aspetto e l'invito al caffè. Le finestre modali vengono sostituite, 
 che aspetta un tasto non finirebbe mai. Dal 2026-10-07 anche i suoni, che il conftest registra
 senza suonarli: le prove in fondo controllano che i comandi facciano sentire il loro evento.
 Dal 2026-10-23, con la issue 6, la voce Mercato non disponibile a mosse finite, e Ctrl+K che lo dice
-lo stesso: il tasto passa davvero dal ciclo di wx e dai tasti rapidi del menu di Windows.
+lo stesso: il tasto passa davvero dal ciclo di wx e dai tasti rapidi del menu di Windows, mentre
+l'evento del gancio dei tasti, che Windows crea soltanto per i tasti veri, è rifatto dalla prova. Con
+le verifiche del collaudo di gioco, la voce rimessa in pari anche dall'avanzamento fermato da un errore.
 """
 
 import datetime
@@ -1105,6 +1107,25 @@ def test_la_voce_del_mercato_segue_le_mosse(finestra, suonati, monkeypatch):
     mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=17)
     finestra._al_minuto(None)
     assert mondo.mosse_rimaste(poli) == LIMITE_MOVIMENTI_PER_TICK and voce.IsEnabled() and not _grigia_per_windows(finestra, voce)
+
+
+def test_la_voce_del_mercato_dopo_un_avanzamento_fermato_a_meta(finestra, monkeypatch):
+    # Dalle verifiche del collaudo di gioco: un errore che ferma l'avanzamento dopo il giorno nuovo, con le mosse già
+    # rese, non lascia indietro la voce, e l'errore sale come prima, fino alla rete degli errori.
+    poli = finestra.mondo.miapolisportiva_attiva
+    voce = finestra.voci_del_menu[finestra.mercato]
+    poli.movimenti_oggi = LIMITE_MOVIMENTI_PER_TICK
+    finestra.aggiorna_le_voci()
+    assert not voce.IsEnabled()
+
+    def giorno_nuovo_poi_errore():
+        poli.movimenti_oggi = 0
+        raise RuntimeError("errore a metà dell'avanzamento")
+
+    monkeypatch.setattr(finestra.mondo, "processa_tempo_trascorso", giorno_nuovo_poi_errore)
+    with pytest.raises(RuntimeError):
+        finestra.avanza()
+    assert finestra.mondo.mosse_rimaste(poli) == LIMITE_MOVIMENTI_PER_TICK and voce.IsEnabled()
 
 
 def test_la_voce_del_mercato_all_apertura(app_wx, mondo):

@@ -35,8 +35,10 @@ differita_interrotta, come vuole D30.
 Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, per la regola di un suono per ogni evento, i rifiuti
 del calendario che suonavano come un campo da correggere hanno il loro suono: Iscrivi o Togli su
 un'edizione prevista, iscrizioni_non_ancora_aperte, o già cominciata, iscrizioni_chiuse, e Togli sulla
-Coppa delle polisportive, coppa_solo_con_la_rosa. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
-5.5, UltraCode).
+Coppa delle polisportive, coppa_solo_con_la_rosa. Con le verifiche dello stesso collaudo anche i due
+ripieghi che dicono il sorteggio già fatto, il rifiuto di Iscrivi e quello di Togli su un'edizione che il
+calendario non ha ancora tolto, suonano iscrizioni_chiuse. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -348,8 +350,13 @@ class CalendarioTornei(_Dialogo):
         return prima is not None and adesso_monotono - prima < RIPETIZIONE_IGNORATA
 
     def _suono_del_rifiuto(self, ed, g):
-        """Il suono di un'iscrizione rifiutata, nell'ordine dei controlli di iscrizioni.problema_iscrizione."""
-        if ed.data_inizio <= self._oggi() or g.id not in self.poli.tesserati or g.ritirato:
+        """
+        Il suono di un'iscrizione rifiutata, nell'ordine dei controlli di iscrizioni.problema_iscrizione. Dalle
+        verifiche del collaudo di gioco l'edizione già cominciata ha il suono delle iscrizioni chiuse, che sono il suo perché.
+        """
+        if ed.data_inizio <= self._oggi():
+            return "iscrizioni_chiuse"
+        if g.id not in self.poli.tesserati or g.ritirato:
             return "campo_da_correggere"
         if not ed.individuale or ed.qualificazione != modelli_torneo.NESSUNA or (ed.sesso not in ("aperto", g.sesso)) or (
                 ed.filtri and not modelli_torneo.idoneo(ed.oggetto_modello, g)):
@@ -416,7 +423,8 @@ class CalendarioTornei(_Dialogo):
         g, _origine = scelto
         problema = iscrizioni.problema_ritiro(self.mondo, ed.id, g, self.poli)
         if problema:
-            self.avvisa(problema, self.elenco_iscritti)
+            # Dalle verifiche del collaudo di gioco: il sorteggio già fatto è un'iscrizione chiusa, e ne ha il suono.
+            self.avvisa(problema, self.elenco_iscritti, "iscrizioni_chiuse" if ed.data_inizio <= self._oggi() else "campo_da_correggere")
             return
         if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
             # Dal mondiale il posto passa al seguente, e chi hai tolto non torna convocato: si chiede.

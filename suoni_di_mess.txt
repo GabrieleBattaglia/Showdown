@@ -13,7 +13,7 @@ Il mondo salvato con Ctrl+S: meditimer_banco_salvato.
 Il mondo salvato con Ctrl+S, ma con un avviso dell'archivio: mess_salvataggio_con_avviso.
 Un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, dopo un avanzamento del mondo, che la barra di stato dice non salvato, o quando si cambia la cartella del mondo, e allora la cartella non cambia: mess_salvataggio_non_riuscito.
 All'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire: mess_salvataggio_illeggibile.
-Un errore imprevisto interrompe un comando, o succede quando la finestra non c'è, e MESS resta aperto: sirena_d_allarme_1.
+Un errore imprevisto interrompe un comando, e MESS resta aperto; o, senza messaggio, succede quando la finestra non c'è più mentre MESS si chiude: sirena_d_allarme_1.
 Un errore imprevisto ferma MESS, e un messaggio dice dove sta il resoconto da allegare quando si chiede aiuto: mess_errore_fatale.
 All'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto: mess_crash_precedente.
 Finestra, applicazione, il fuoco, i dialoghi e gli elenchi, 9 suoni.
@@ -182,7 +182,7 @@ Finestra, partite, la partita dal vivo, 12 suoni.
 Si apre la finestra della partita dal vivo, con Assisti: mess_conto_alla_rovescia.
 Nella partita dal vivo il riscaldamento saltato: mess_punto_successivo.
 Nella partita dal vivo o in differita Alt+V, Vai alla fine, prima che l'incontro sia finito: mess_resto_dell_incontro.
-Nella partita dal vivo Alt+F o Alt+L a incontro già finito: mess_incontro_finito.
+Nella partita dal vivo o in differita Alt+F o Alt+L a incontro già finito: mess_incontro_finito.
 Nella partita dal vivo Esc, l'amichevole resta registrata senza svelare il risultato: mess_amichevole_registrata.
 Nella partita dal vivo la pausa, con Invio o spazio mentre l'azione suona: meditimer_cronometro_pausa.
 Nella partita dal vivo la ripresa dopo la pausa: meditimer_cronometro_ripreso.
@@ -198,7 +198,7 @@ Nella sala allenamento l'allenamento completo di un tesserato secondo il suo pro
 Nella sala allenamento Allena tutti, ogni tesserato secondo il suo programma: mess_allenati_tutti.
 Nella sala allenamento un tesserato sale di classe, dopo l'esito: mess_classe_salita.
 Nella sala allenamento non ci sono punti da spendere, o la cifra è zero: mess_portafoglio_vuoto.
-Nella sala allenamento la caratteristica scelta è già al massimo: mess_al_massimo.
+Nella sala allenamento la caratteristica scelta è già al massimo, o con l'allenamento completo e con Allena tutti chi si allena ha già tutte le caratteristiche al massimo: mess_al_massimo.
 Nella sala allenamento il tesserato scelto è infortunato e oggi non si allena: mess_allenando_fermo.
 Nella sala allenamento Allena tutti quando oggi nessun tesserato si allena, perché sono tutti infortunati: mess_squadra_ferma.
 Nella sala allenamento cambia il programma del tesserato: mess_programma_cambiato.

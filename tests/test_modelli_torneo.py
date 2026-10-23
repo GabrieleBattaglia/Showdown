@@ -5,6 +5,7 @@ girone da 5, i predefiniti in una cartella vuota, il file rovinato in problemi()
 l'identificativo che resta alla rinomina e cambia al duplicato, il ripristino che mette da parte i
 file di prima, e a_dizionario che non condivide niente col modello.
 Dal 2026-10-24, col collaudo di gioco, il ripristino fermo a metà, che porta nell'errore la cartella dei file già messi da parte, o non ne lascia una vuota.
+Con le verifiche, la rinomina con le sole maiuscole che non cancella il modello, e quella col file di prima che non si toglie, che non cambia niente.
 """
 
 import dataclasses
@@ -222,6 +223,39 @@ def test_l_identificativo_resta_alla_rinomina_e_cambia_al_duplicato(gestore, car
         gestore.salva(dataclasses.replace(seconda, nome="Gran Premio maschile"))
     with pytest.raises(ValueError, match="non c'è"):
         gestore.elimina("modello_99")
+
+
+def test_la_rinomina_con_le_sole_maiuscole_tiene_il_modello(gestore, cartella_di_prova):
+    # Dalle verifiche del collaudo di gioco: su Windows i due nomi sono lo stesso file, e togliere quello di prima
+    # cancellava il modello appena salvato. Ora il modello resta, e il file prende le maiuscole nuove.
+    modello = gestore.modello("modello_2")
+    modello.nome = "OPEN MASCHILE DEL SABATO"
+    gestore.salva(modello)
+    gestore.azzera_cache()
+    assert gestore.modello("modello_2").nome == "OPEN MASCHILE DEL SABATO" and len(gestore.modelli()[0]) == 10
+    nomi = [p.name for p in (cartella_di_prova / mt.CARTELLA).glob("*.json")]
+    assert "OPEN MASCHILE DEL SABATO.json" in nomi and "Open maschile del sabato.json" not in nomi
+
+
+def test_la_rinomina_col_file_di_prima_che_non_si_toglie_non_cambia_niente(gestore, cartella_di_prova, monkeypatch):
+    # Dalle verifiche: se il file di prima non si toglie, se ne va il nuovo e l'errore sale, così l'avviso dice il vero,
+    # niente cambia, e non restano due file con lo stesso identificativo.
+    cartella = cartella_di_prova / mt.CARTELLA
+    togli = mt.os.remove
+
+    def bloccato(percorso):
+        if str(percorso).endswith("Open maschile del sabato.json"):
+            raise PermissionError(13, "Accesso negato")
+        togli(percorso)
+
+    monkeypatch.setattr(mt.os, "remove", bloccato)
+    modello = gestore.modello("modello_2")
+    modello.nome = "Open del sabato sera"
+    with pytest.raises(PermissionError):
+        gestore.salva(modello)
+    monkeypatch.setattr(mt.os, "remove", togli)
+    assert (cartella / "Open maschile del sabato.json").exists() and not (cartella / "Open del sabato sera.json").exists()
+    assert gestore.modello("modello_2").nome == "Open maschile del sabato" and len(gestore.modelli()[0]) == 10
 
 
 def test_due_gestori_della_stessa_cartella_vedono_le_stesse_scritture(gestore):
