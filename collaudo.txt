@@ -1,41 +1,11 @@
-Collaudo della 1.79.0 di MESS con NVDA: la cronaca che cresce riga per riga e i suoi annunci automatici.
-Prima: nella cartella E:\git\tmp\mess-collaudo-t11 lancia python Showdown.py. È la copia del programma col tuo mondo, aggiornata alla 1.94.0 con git pull, e il tuo mondo vero non si tocca.
+Collaudo della 1.94.6 di MESS con NVDA: le correzioni del collaudo della 1.94.0.
+Prima: nella cartella E:\git\tmp\mess-collaudo-t11, già aggiornata alla 1.94.6, lancia python Showdown.py.
 Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
-* Il gioco non parte a finestra massimizzata, va corretto.
-
-Collaudo della 1.94.0 di MESS con NVDA, la tappa 13: lo staff delle polisportive, cioè gli allenatori.
-Prima: nella stessa copia, E:\git\tmp\mess-collaudo-t11. Al primo avvio il tuo mondo passa al formato 8: nasce lo staff, e il mondo vero non si tocca.
-Prima: la prova 4 guarda il primo avvio dopo l'aggiornamento, che è anche quello delle prove 1, 2 e 3: ascolta quell'apertura anche per la prova 4.
-Prima: se una domanda va bene cancella la sua riga; se non va, scrivi il commento dopo i due punti.
-PROVA 4, l'apertura col mondo aggiornato.
-Passo 1: lancia python Showdown.py e ascolta l'apertura.
-Domanda 1: dopo il suono dell'avvio si sente quello della notizia dello staff, una fanfara col fischietto, e la vista dice che il mercato degli allenatori è aperto, quanti sono i liberi e che per due ore sono riservati a te?
-* Sì ma è poco evidente il fischietto, molto unito agli altri suoni di apertura. Si può correggere stancandolo dagli altri di 1 secondo.
-
-Domanda 2: con Ctrl+Maiusc+M, il diario della polisportiva attiva, la prima voce dice che arriva lo staff?
-Esito:
-* No, io ho queste voci:
-Diario di Pat-Bologna: 19 voci, dalla più recente.
-24 novembre 2026: Enrica Battaglio iscritta in automatico a Open femminile del giovedì, dal 3 dicembre 2026: 10 euro.
-
-PROVA 5, lo staff della polisportiva.
-Esito:
-* Tutto ok. nella scheda dei membri staff, non mi piace questa riga
-Smetterà di allenare fra circa 30 anni simulati.
-* Puoi dire "Sarà in attività sperabilmente fino al...." e poi anno della simulazione.
-
-PROVA 9, la sala allenamento, le schede e le statistiche.
-Domanda 3: la prima riga della scheda del giocatore ha la classe di oggi e, subito dopo, la classe migliore della carriera?
-* Indole, da muro. Che significa da muro?
-* Valido per tutta l'app. Invece di dire 2 su 100, usa 2% che risparmia caratteri sulla barra Braille ed è più elegante. Applica ovunque e ricordalo per il futuro.
-
-* Chiudendo l'app, ti riporto questo warning visto in console:
-e:\git\tmp\mess-collaudo-t11>showdown                                                                                   
-Rebuilding cache of generated files for COM support...                                                                  
-Checking C866CA3A-32F7-11D2-9602-00C04F8EE628x0x5x4                                                                     
-Could not add module (IID('{C866CA3A-32F7-11D2-9602-00C04F8EE628}'), 0, 5, 4) - <class 'AttributeError'>: module 'win32com.gen_py.C866CA3A-32F7-11D2-9602-00C04F8EE628x0x5x4' has no attribute 'CLSIDToClassMap'                                
-Done.                                                                                                                   
-
-
-Il resto tutto ok.
-Anche prova 10 ascolto suoni, tutti ottimi.
+Domanda 1: la finestra si apre massimizzata?
+Domanda 2: nella scheda di un allenatore, con Alt+H nello staff o nel mercato degli allenatori, l'ultima riga dice Sarà in attività sperabilmente fino al, con l'anno?
+Domanda 3: nella scheda di un tuo tesserato la fedeltà dice per esempio Fedeltà a Pat-Bologna: 2%, e la classe al 37% verso G3, col simbolo?
+Domanda 4: nello staff, con Ctrl+H, la qualità dice per esempio Qualità dello staff 56%, e gli effetti più 6% o meno 15%?
+Domanda 5: quando la probabilità comincia per vocale l'articolo si elide, per esempio Accetterebbe all'8% o all'80%, nel mercato e nei rinnovi?
+Domanda 6: un giocatore che aveva l'indole da muro ora dice Indole: granitica, e nella sala allenamento il suo programma si chiama granitico?
+Domanda 7: nella guida ai comandi le percentuali della classe, dei contratti e dello staff hanno il simbolo?
+Domanda 8: alla chiusura la console non mostra più l'avviso di win32com sulla cache dei moduli COM?

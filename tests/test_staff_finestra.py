@@ -113,7 +113,7 @@ def test_lo_staff_si_apre_coi_tre_posti(staff_aperto, mondo):
     poli = mondo.miapolisportiva_attiva
     assert [d.elenco.GetString(i) for i in range(3)] == ["Capo: posto vuoto", "Assistente 1: posto vuoto", "Assistente 2: posto vuoto"]
     assert d.info.GetLabel() == testi.testata_staff(poli, mondo)
-    assert "stipendi dello staff 0 euro al mese" in d.info.GetLabel() and "Qualità dello staff 0 su 100" in d.info.GetLabel()
+    assert "stipendi dello staff 0 euro al mese" in d.info.GetLabel() and "Qualità dello staff 0%" in d.info.GetLabel()
     assert d.previsto.GetValue() == "Posto vuoto: Assumi apre il mercato degli allenatori per questo posto."
 
 
@@ -357,11 +357,22 @@ def test_le_voci_del_menu_e_il_riepilogo(finestra, mondo, suonati, monkeypatch):
     assert finestra.ultimo_evento == "staff: 1 operazione"
 
 
-def test_il_suono_della_notizia_dello_staff_all_apertura(finestra, mondo, suonati):
+def test_il_suono_della_notizia_dello_staff_all_apertura(finestra, mondo, suonati, monkeypatch):
     mondo.staff_appena_nato = True
     finestra.problemi_all_avvio = False
     finestra.suoni_d_avvio()
     assert suonati == ["avvio", "staff_appena_nato"]
+    # Dal collaudo del 23 ottobre 2026 il fischietto arriva un secondo dopo la fine dell'avvio, non subito.
+    import suoni
+
+    rinviati = []
+    monkeypatch.setattr(suoni, "attesa", lambda: 0.4)
+    monkeypatch.setattr(wx, "CallLater", lambda millisecondi, funzione, *argomenti, **opzioni: rinviati.append((millisecondi, argomenti)))
+    finestra.suoni_d_avvio()
+    assert rinviati == [(1400, ("staff_appena_nato",))]
+    rinviati.clear()
+    suoni.in_coda("avanzamento")
+    assert rinviati == [(int((0.4 + suoni.PAUSA_IN_CODA) * 1000), ("avanzamento",))]
 
 
 def test_dopo_un_rifiuto_restano_le_cifre_scritte(staff_aperto, mondo, messaggi, suonati, monkeypatch):

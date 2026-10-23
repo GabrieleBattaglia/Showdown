@@ -66,7 +66,7 @@ def ascolta(eventi):
     for numero, (evento, preset) in enumerate(eventi.items(), 1):
         print(f"{numero} di {len(eventi)}: {evento}, preset {preset}. {Acusticator.descrizione(preset) or 'Senza descrizione.'}")
         if evento in CON_ALTEZZA:
-            print(f"Lo senti {conta(len(PERCENTUALI_DI_PROVA), 'volta', 'volte')}: al {', al '.join(map(str, PERCENTUALI_DI_PROVA))} per cento.")
+            print(f"Lo senti {conta(len(PERCENTUALI_DI_PROVA), 'volta', 'volte')}: al {', al '.join(f'{p}%' for p in PERCENTUALI_DI_PROVA)}.")
         tasto = key("\rInvio per sentirlo, Escape chiude il gruppo.\r")
         print()
         if tasto == "\x1b":

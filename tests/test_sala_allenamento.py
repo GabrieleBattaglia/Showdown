@@ -331,7 +331,7 @@ def test_i_testi_della_sala_accordati(mondo):
     assert testi.da_a(14.6, 15.3) == "da 14,6 a 15,3" and testi.da_a(4.61, 4.64) == "da 4,61 a 4,64" and testi.da_a(4.6, 4.6) == "da 4,6 a 4,6"
     nomi = {k: testi.nome_programma(k) for k in ("aggressiva", "difensiva", "atletica", "tecnica", "completa", "muro", "rimessa", "controllo", "battuta")}
     assert nomi == {"aggressiva": "aggressivo", "difensiva": "difensivo", "atletica": "atletico", "tecnica": "tecnico", "completa": "completo",
-                    "muro": "da muro", "rimessa": "di rimessa", "controllo": "di controllo", "battuta": "da battuta"}
+                    "muro": "granitico", "rimessa": "di rimessa", "controllo": "di controllo", "battuta": "da battuta"}
     g = mondo.giocatori[3]
     g.punti_allenamento = 1.0
     g.programma = "aggressiva" if g.indole != "aggressiva" else "difensiva"

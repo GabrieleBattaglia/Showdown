@@ -848,7 +848,7 @@ class Mercato(_Dialogo):
                        "più offri, più è probabile che accetti.")
         importo = self._cifra(f"Ingaggio di {testi.nome_completo(g)}", spiegazione,
                               "&Ingaggio da offrire, in euro", richiesta, "dialogo_cifra_ingaggio",
-                              lambda cifra: f"Accetterebbe al {testi.numero(probabilita_accettazione(cifra, richiesta), 0)}%.",
+                              lambda cifra: f"Accetterebbe {testi.con_articolo('al', testi.percento(probabilita_accettazione(cifra, richiesta)))}.",
                               lambda cifra: probabilita_accettazione(cifra, richiesta))
         if importo is None:
             return None
@@ -1845,7 +1845,7 @@ class MercatoAllenatori(_DialogoDelloStaff):
         richiesta = staff.ingaggio_richiesto(a, ruolo, self.poli)
         dialogo = Cifra(self, f"Ingaggio di {testi.nome_completo(a)}", testi.spiegazione_ingaggio_allenatore(a, self.poli, posto, self.mondo),
                         "&Ingaggio da offrire, in euro", richiesta, self.poli.cassa,
-                        lambda cifra: f"Accetterebbe al {testi.numero(probabilita_accettazione(cifra, richiesta), 0)}%.",
+                        lambda cifra: f"Accetterebbe {testi.con_articolo('al', testi.percento(probabilita_accettazione(cifra, richiesta)))}.",
                         lambda cifra: probabilita_accettazione(cifra, richiesta))
         try:
             suoni.suona("dialogo_cifra_ingaggio_allenatore")

@@ -725,7 +725,7 @@ def test_le_allenatrici_e_le_frasi_dello_staff(mondo):
     assert a.diario[0]["testo"].startswith("Licenziata da Club di prova")
 
 
-def test_la_riserva_passata_non_si_mostra_e_la_fine_in_giorni(mondo):
+def test_la_riserva_passata_non_si_mostra_e_la_fine_della_carriera(mondo):
     a = _allenatore(mondo, 20)
     a.riservato_fino = adesso_utc() - datetime.timedelta(hours=1)
     mondo._ora_reale = adesso_utc() - datetime.timedelta(hours=3)
@@ -734,9 +734,16 @@ def test_la_riserva_passata_non_si_mostra_e_la_fine_in_giorni(mondo):
     assert "riservat" in testi.riga_allenatore(a, mondo)
     mondo._ora_reale = None
     oggi = mondo.datetime_corrente_simulazione
-    for giorni, frase in ((30, "fra 30 giorni simulati."), (100, "fra circa 1 anno simulato."), (400, "fra circa 4 anni simulati.")):
+    # Dal collaudo del 23 ottobre 2026 l'anno del calendario simulato, con le parole di Gabriele.
+    # Il giro del giorno in cui compie eta_fine lo toglie, quindi l'anno è quello del giorno prima.
+    for giorni in (0, 30, 400, 11_000):
         a.eta_fine = a.eta(oggi) + giorni
-        assert testi.scheda_allenatore(a, mondo).endswith("Smetterà di allenare " + frase)
+        anno = (oggi + datetime.timedelta(days=max(0, giorni - 1))).year
+        assert testi.scheda_allenatore(a, mondo).endswith(f"Sarà in attività sperabilmente fino al {anno}.")
+    # A cavallo dell'anno: oggi il 29 dicembre, smette il primo gennaio, quindi lavora fino al 31 dicembre.
+    mondo.datetime_corrente_simulazione = datetime.datetime(oggi.year, 12, 29, 12, 0)
+    a.eta_fine = a.eta(mondo.datetime_corrente_simulazione) + 3
+    assert testi.scheda_allenatore(a, mondo).endswith(f"Sarà in attività sperabilmente fino al {oggi.year}.")
 
 
 def test_la_prelazione_al_singolare_e_al_plurale():

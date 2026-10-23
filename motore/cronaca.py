@@ -150,7 +150,7 @@ def _dettagli_tecnici(evento):
         parti.append(f"posizione {_numero(evento.pos[0], 0)}, {_numero(evento.pos[1], 0)}")
     dati = evento.dati or {}
     if dati.get("prob"):
-        parti.append("fasce " + ", ".join(_numero(100 * p) for p in dati["prob"]))
+        parti.append("fasce " + ", ".join(f"{_numero(100 * p)}%" for p in dati["prob"]))
     for chiave in ("qualita", "pressione", "valore"):
         if dati.get(chiave) is not None:
             parti.append(f"{chiave} {_numero(dati[chiave], 2)}")

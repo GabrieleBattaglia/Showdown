@@ -55,6 +55,12 @@ def test_numeri_e_date_all_italiana():
     assert testi.durata(datetime.timedelta(hours=2)) == "2 ore"
     assert testi.durata(datetime.timedelta(seconds=30)) == "meno di un minuto"
     assert testi.unisci(["a", "", "b", "c"]) == "a, b e c"
+    # Le percentuali col simbolo e l'articolo eliso davanti a un numero che si legge con una vocale, collaudo del 23 ottobre 2026.
+    assert testi.percento(64) == "64%" and testi.percento(1.5, 1) == "1,5%" and testi.percento(1234) == "1.234%"
+    attesi = {"0%": "al 0%", "1%": "all'1%", "8%": "all'8%", "11%": "all'11%", "18%": "al 18%", "64%": "al 64%", "80%": "all'80%",
+              "89%": "all'89%", "100%": "al 100%", "800%": "all'800%", "1.000%": "al 1.000%", "8.000%": "all'8.000%", "1,5%": "all'1,5%"}
+    assert {scritto: testi.con_articolo("al", scritto) for scritto in attesi} == attesi
+    assert testi.con_articolo("il", "11%") == "l'11%" and testi.con_articolo("il", "37%") == "il 37%"
 
 
 def test_scala_degli_aggettivi():
@@ -202,7 +208,7 @@ def test_la_scheda_della_tappa_11(mondo):
     scheda = testi.scheda_giocatore(g, mondo)
     _accessibile(scheda)
     righe = scheda.splitlines()
-    assert re.search(r"\| Classe: [A-K]\d(, al \d+ per cento verso [A-K]\d|, la più alta) \| Classe migliore della carriera: [A-K]\d$", righe[0])
+    assert re.search(r"\| Classe: [A-K]\d(, (al |all')\d+% verso [A-K]\d|, la più alta) \| Classe migliore della carriera: [A-K]\d$", righe[0])
     # Dalla tappa 13 la seconda riga è la provenienza, richiesta di Gabriele del 22 ottobre 2026.
     assert righe[1] == f"Provenienza: {luoghi.descrivi(g.luogo)}" and g.luogo
     assert f"| Indole: {testi.indole(g)} | Ambizione: {testi.ambizione(g)} | Punti allenamento: 38,5 | " in righe[3]
@@ -212,7 +218,7 @@ def test_la_scheda_della_tappa_11(mondo):
     assert f"Stipendio: {testi.euro(g.contratto_stipendio)} al mese, fisso fino al {testi.data_breve(g.contratto_scadenza)}" in scheda
     g.programma = "muro" if g.indole != "muro" else "tecnica"
     g.intensita = "intensa"
-    assert f"Allenamento: programma {testi.INDOLI[g.programma]['nome']}, intensità intensa" in testi.scheda_giocatore(g, mondo)
+    assert f"Allenamento: programma {testi.nome_programma(g.programma)}, intensità intensa" in testi.scheda_giocatore(g, mondo)
     libero = mondo.giocatori[1]
     assert testi.scheda_giocatore(libero, mondo).splitlines()[4].startswith("Allenamento: costanza recente ")
     assert "classe " in testi.riga_giocatore(g, mondo)
@@ -283,7 +289,7 @@ def test_i_testi_dei_contratti(mondo):
     assert ", in scadenza: chiede " in testi.riga_contratto(g, p, mondo)
     mesi = contratti.durata_proposta(g)
     previsto = testi.esito_previsto_rinnovo(g, p, 300, mesi)
-    assert previsto.startswith("Accetterebbe al ") and f"Per {mesi} mesi chiede {testi.euro(contratti.richiesta_rinnovo(g, p, mesi))} al mese. " in previsto and previsto.endswith(f"partirebbe il {testi.data_breve(g.contratto_scadenza)}.")
+    assert re.match(r"Accetterebbe (al |all')\d+%\. ", previsto) and f"Per {mesi} mesi chiede {testi.euro(contratti.richiesta_rinnovo(g, p, mesi))} al mese. " in previsto and previsto.endswith(f"partirebbe il {testi.data_breve(g.contratto_scadenza)}.")
     assert testi.domanda_rinnovo(g, p, 300, mesi).startswith(f"Proporre a {testi.nome_completo(g)} il rinnovo a 300 euro al mese per {mesi} mesi")
     g.proposte_rinnovo = 1
     rifiuto = testi.esito_rinnovo(g, p, False, 310, 12)

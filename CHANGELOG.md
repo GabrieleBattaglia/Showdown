@@ -3,6 +3,22 @@
 Tutti i cambiamenti e le novità introdotte nelle versioni di MESS.
 Il changelog nasce con la versione 1.0.0, il 2 ottobre 2026. Il vecchio sd.py, arrivato alla versione 25.4.24, conta come serie 1: durante i lavori del piano di sviluppo la versione avanza come 1.y.z, e la nuova interfaccia a finestra uscirà come 2.0.0. Ogni versione ha la sua voce, scritta insieme alle modifiche.
 
+## [1.94.6] - 2026-10-23
+
+Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.
+
+La finestra si apre massimizzata.
+
+All'apertura col mondo appena aggiornato, il fischietto della notizia dello staff arriva un secondo dopo la fine del suono dell'avvio: prima lo seguiva subito e si confondeva con lui.
+
+Nella scheda di un allenatore la fine della carriera si dice con l'anno del calendario simulato, Sarà in attività sperabilmente fino al 2056, al posto di Smetterà di allenare fra circa 30 anni simulati.
+
+L'indole da muro si chiama granitica, e il programma d'allenamento che le corrisponde granitico: un muro di granito, che blocca e difende. Cambia soltanto il nome, i salvataggi restano come sono. Anche l'interfaccia testuale ora accorda il programma, granitico, aggressivo, e non più granitica o aggressiva.
+
+Le percentuali si scrivono col simbolo, in tutta l'app e nella guida ai comandi, perché sono più corte sul display braille: Fedeltà 2%, la classe al 37% verso G3, Accetterebbe al 64%, Qualità dello staff 56%, e le fasce della cronaca tecnica.
+
+Davanti a un numero che si legge con una vocale l'articolo si elide: Accetterebbe all'8%, all'11%, all'80%, oggi l'1,5%, al posto di al 8% e il 1,5%.
+
 ## [1.94.0] - 2026-10-22
 
 ### Lo staff delle polisportive

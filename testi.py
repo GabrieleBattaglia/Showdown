@@ -102,6 +102,41 @@ def intero(valore):
     return f"{int(valore):,}".replace(",", ".")
 
 
+def percento(valore, decimali=0):
+    """Una percentuale col simbolo, all'italiana: 64%, 1,5%. Regola di Gabriele del 23 ottobre 2026."""
+    return f"{numero(valore, decimali)}%"
+
+
+# L'articolo e la preposizione articolata davanti a un numero che si legge con una vocale.
+ELISIONI = {"il": "l'", "al": "all'", "dal": "dall'", "del": "dell'", "nel": "nell'", "sul": "sull'"}
+
+
+def _si_legge_con_vocale(scritto):
+    """
+    Vero se il numero scritto in cifre all'inizio del testo si legge con una vocale: uno, otto, undici,
+    gli ottanta, gli ottocento e le loro migliaia, ottomila; un milione. Mille e cento no.
+    """
+    intera = ""
+    for carattere in scritto:
+        if not (carattere.isdigit() or carattere == "."):
+            break
+        intera += carattere
+    gruppi = [g for g in intera.split(".") if g]
+    if not gruppi:
+        return False
+    primo = int(gruppi[0])
+    if len(gruppi) == 2 and primo == 1:
+        return False
+    return primo in (1, 8, 11) or 80 <= primo <= 89 or 800 <= primo <= 899
+
+
+def con_articolo(articolo, scritto):
+    """L'articolo davanti a un numero, eliso quando serve: al 64%, all'8%; il 37%, l'11%; dal 1,5% no, dall'1,5%."""
+    if _si_legge_con_vocale(scritto):
+        return ELISIONI[articolo] + scritto
+    return f"{articolo} {scritto}"
+
+
 def conta(n, singolare, plurale):
     """Il numero con il nome al singolare o al plurale."""
     return f"{n} {singolare if n == 1 else plurale}"
@@ -146,7 +181,7 @@ def anni(g):
 
 
 def indole(g):
-    """L'indole del giocatore a parole, come da muro o di rimessa."""
+    """L'indole del giocatore a parole, come granitica o di rimessa."""
     return INDOLI[g.indole]["nome"]
 
 
@@ -177,11 +212,11 @@ def codice_classe(g):
 
 
 def classe_scheda(g):
-    """La classe nella scheda: G4, al 37 per cento verso G3; per A1, la più alta."""
+    """La classe nella scheda: G4, al 37% verso G3; per A1, la più alta."""
     c = classe.classe(g)
     if c.percentuale is None:
         return f"{c.codice}, la più alta"
-    return f"{c.codice}, al {c.percentuale} per cento verso {classe.codice(c.livello - 1)}"
+    return f"{c.codice}, {con_articolo('al', percento(c.percentuale))} verso {classe.codice(c.livello - 1)}"
 
 
 def ambizione(g):
@@ -204,7 +239,7 @@ def costanza(g):
 def nome_programma(chiave):
     """
     Il nome di un programma d'allenamento, cioè di un'indole, accordato a programma: aggressivo,
-    difensivo, completo; i nomi con la preposizione restano come sono, da muro, di rimessa.
+    difensivo, granitico, completo; i nomi con la preposizione restano come sono, di rimessa, da battuta.
     """
     nome = INDOLI[chiave]["nome"]
     return nome[:-1] + "o" if " " not in nome and nome.endswith("a") else nome
@@ -313,7 +348,7 @@ def acciacco(g, oggi, con_calo=False):
     dove = infortuni.frase_sede(g.acciacco_sede)
     testo = accorda(g, "acciaccato") + (f" {dove}" if dove else "") + f" fino al {data_breve(fino)}: rende un poco meno"
     if con_calo:
-        testo += f", oggi il {numero(calo * 100)} per cento"
+        testo += f", oggi {con_articolo('il', percento(calo * 100, 1))}"
     return testo
 
 
@@ -542,7 +577,7 @@ def _economia_del_giocatore(g, mondo):
         righe.append(contratto)
     club = mondo.polisportive.get(g.appartenenza)
     if club is not None:
-        riga = f"Fedeltà a {club.nome}: {numero(g.fedelta, 0)} su 100 | Umore: {umore(g)}"
+        riga = f"Fedeltà a {club.nome}: {numero(g.fedelta, 0)}% | Umore: {umore(g)}"
         if g.arretrati:
             riga += f", {attesa(g)}"
         righe.append(riga)
@@ -654,11 +689,11 @@ def _statistiche_delle_classi(gruppo, mondo):
 # Lo staff, tappa 13, decisione D33.
 
 def _rispetto_al_medio(fattore):
-    """Un fattore dello staff a parole, rispetto allo staff medio: più 6 per cento, meno 15 per cento, come lo staff medio."""
+    """Un fattore dello staff a parole, rispetto allo staff medio: più 6%, meno 15%, come lo staff medio."""
     scarto = round((fattore - 1.0) * 100)
     if scarto == 0:
         return "come lo staff medio"
-    return f"{'più' if scarto > 0 else 'meno'} {abs(scarto)} per cento"
+    return f"{'più' if scarto > 0 else 'meno'} {abs(scarto)}%"
 
 
 def nome_allenatore(a):
@@ -718,11 +753,11 @@ def scheda_allenatore(a, mondo):
                      f"{euro(staff.stipendio_richiesto(a, staff.ASSISTENTE))} da assistente.")
     if a.prelazione:
         righe.append(f"In prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}.")
-    # Sotto l'anno si dice in giorni: fino alla revisione del 22 ottobre 2026 usciva "fra circa 1 anno simulati" o "0 anni".
-    resta = max(1, a.eta_fine - a.eta(oggi))
-    anni_che_restano = round(resta / ANNO_SIMULAZIONE_GIORNI)
-    quando = f"circa {conta(anni_che_restano, 'anno simulato', 'anni simulati')}" if anni_che_restano else conta(resta, "giorno simulato", "giorni simulati")
-    righe.append(f"Smetterà di allenare fra {quando}.")
+    # Dal collaudo del 23 ottobre 2026 l'anno del calendario simulato, con le parole di Gabriele, al posto di
+    # "Smetterà di allenare fra circa 30 anni simulati". Il giro del giorno in cui compie eta_fine lo toglie
+    # dal mondo, quindi l'ultimo giorno in attività è quello prima: conta per chi smette il primo gennaio.
+    fine = oggi + datetime.timedelta(days=max(0, a.eta_fine - a.eta(oggi) - 1))
+    righe.append(f"Sarà in attività sperabilmente fino al {fine.year}.")
     return "\n".join(righe)
 
 
@@ -756,11 +791,11 @@ def qualita_dello_staff(p, mondo):
     La qualità dello staff in una frase, con gli effetti rispetto allo staff medio del mondo. Dalla risposta
     35 i fattori dei giocatori si dividono per la loro media, così il mondo si allena come prima; i rapporti
     fra i club restano quelli delle ancore, e la frase li dice rispetto allo staff medio, coi fattori prima
-    della divisione: senza staff il 15 per cento meno, col migliore fino al 20 in più.
+    della divisione: senza staff il 15% meno, col migliore fino al 20% in più.
     """
     q = staff.qualita_della_polisportiva(p, mondo.allenatori)
     allenamento, rischio, fedelta = staff.fattori(q, mondo.qualita_media_dello_staff)
-    return (f"Qualità dello staff {round(q * 100)} su 100, lo staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}: "
+    return (f"Qualità dello staff {round(q * 100)}%, lo staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}%: "
             f"allenamento {_rispetto_al_medio(allenamento)}, infortuni {_rispetto_al_medio(rischio)}, fedeltà {_rispetto_al_medio(fedelta)}.")
 
 
@@ -812,7 +847,7 @@ def riga_posto_staff(p, posto, mondo):
 def esito_previsto_rinnovo_staff(a, p, stipendio, mesi, oggi):
     """L'esito previsto di una proposta di rinnovo allo staff, come per i tesserati."""
     probabilita = staff.probabilita_rinnovo(a, p, stipendio, mesi, oggi)
-    return (f"Accetterebbe al {numero(probabilita, 0)} per cento. Per {mesi} mesi chiede {euro(staff.richiesta_rinnovo(a, p, mesi, oggi))} al mese. "
+    return (f"Accetterebbe {con_articolo('al', percento(probabilita))}. Per {mesi} mesi chiede {euro(staff.richiesta_rinnovo(a, p, mesi, oggi))} al mese. "
             f"Il contratto nuovo partirebbe il {data_breve(a.contratto_scadenza)}.")
 
 
@@ -820,7 +855,7 @@ def domanda_rinnovo_staff(a, p, stipendio, mesi, oggi):
     """La conferma della proposta di rinnovo a un allenatore, con la probabilità."""
     probabilita = staff.probabilita_rinnovo(a, p, stipendio, mesi, oggi)
     return (f"Proporre a {nome_completo(a)}, {staff.nome_del_ruolo(a)}, il rinnovo a {euro(stipendio)} al mese per {mesi} mesi, "
-            f"dal {data_breve(a.contratto_scadenza)}? Accetterebbe al {numero(probabilita, 0)} per cento.")
+            f"dal {data_breve(a.contratto_scadenza)}? Accetterebbe {con_articolo('al', percento(probabilita))}.")
 
 
 def esito_rinnovo_staff(a, p, accettato, richiesta, mesi):
@@ -876,14 +911,14 @@ def spiegazione_ingaggio_allenatore(a, p, posto, mondo):
 
 def domanda_offerta_allenatore(a, p, posto, importo, probabilita, mondo):
     return (f"Offrire a {nome_completo(a)} il posto di {NOMI_DEI_POSTI[posto].lower()} dello staff di {p.nome}, con un ingaggio di {euro(importo)}? "
-            f"Accetta al {numero(probabilita, 0)}%. Userai {_mossa(p, mondo)}.")
+            f"Accetta {con_articolo('al', percento(probabilita))}. Userai {_mossa(p, mondo)}.")
 
 
 def esito_offerta_allenatore(a, p, accetta, importo, probabilita):
     if accetta:
         return (f"{nome_completo(a)} ha accettato l'ingaggio di {euro(importo)}: è {staff.nome_del_ruolo(a)} di {p.nome}, "
                 f"a {euro(a.contratto_stipendio)} al mese fino al {data_breve(a.contratto_scadenza)}.")
-    return f"{nome_completo(a)} ha rifiutato l'ingaggio di {euro(importo)}: accettava al {numero(probabilita, 0)}%."
+    return f"{nome_completo(a)} ha rifiutato l'ingaggio di {euro(importo)}: accettava {con_articolo('al', percento(probabilita))}."
 
 
 def riepilogo_staff(p, esiti, mondo):
@@ -912,7 +947,7 @@ def _statistiche_dello_staff(mondo):
     con_capo = sum(1 for p in con_tesserati if p.staff[0])
     return [f"Allenatori: {len(allenatori)}, di cui {ex} ex giocatori e {len(allenatori) - ex} nati allenatori; liberi {liberi}, nello staff {len(allenatori) - liberi}.",
             f"Classi degli allenatori: {unisci([f'{lettera} {quanti}' for lettera, quanti in sorted(per_lettera.items())])}. "
-            f"Polisportive con un capo: {con_capo} su {len(con_tesserati)}; staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)} su 100."]
+            f"Polisportive con un capo: {con_capo} su {len(con_tesserati)}; staff medio del mondo {round(mondo.qualita_media_dello_staff * 100)}%."]
 
 
 # Le liste della sessione e la ricerca.
@@ -1142,13 +1177,13 @@ def domanda_offerta_d_acquisto(c, importo, p, mondo):
 
 def domanda_ingaggio(c, importo, probabilita, p, mondo):
     return (f"Offrire a {nome_completo(c.giocatore)} un ingaggio di {euro(importo)}, per tesserarsi con {p.nome}? "
-            f"Accetta al {numero(probabilita, 0)}%. {proposta_di_contratto(c.giocatore, mondo)} Userai {_mossa(p, mondo)}.")
+            f"Accetta {con_articolo('al', percento(probabilita))}. {proposta_di_contratto(c.giocatore, mondo)} Userai {_mossa(p, mondo)}.")
 
 
 def esito_ingaggio(g, p, accetta, importo, probabilita):
     if accetta:
         return f"{nome_completo(g)} ha accettato l'ingaggio di {euro(importo)}: ora è {accorda(g, 'tesserato')} con {p.nome}."
-    return f"{nome_completo(g)} ha rifiutato l'ingaggio di {euro(importo)}: accettava al {numero(probabilita, 0)}%."
+    return f"{nome_completo(g)} ha rifiutato l'ingaggio di {euro(importo)}: accettava {con_articolo('al', percento(probabilita))}."
 
 
 def esito_acquisto(g, venditore, p, prezzo):
@@ -1989,7 +2024,7 @@ def riepilogo_premi(modello, formula):
     percentuale = tornei.prima_percentuale(modello.pendenza_premi, min(modello.posti_premiati, tetto))
     nuovo = max(0, montepremi - quote)
     testo = (f"Una sede piena paga {euro(quote)} di quote e ha un montepremi di {euro(montepremi)}, diviso fra i primi {len(premi)}: {primi}; "
-             f"al primo va il {numero(percentuale, 0)} per cento.")
+             f"al primo va {con_articolo('il', percento(percentuale))}.")
     return testo + f" La federazione mette {euro(nuovo)} di denaro nuovo per sede piena, circa {euro(round(nuovo * edizioni_al_mese(modello)))} al mese con una sede per edizione."
 
 
@@ -2226,15 +2261,15 @@ def guida(voci):
 LEGENDA_CLASSE = (
     "La classe dice a colpo d'occhio quanto vale un giocatore: va da K0, il livello 100, il più debole, ad A1, il livello 1, il più forte. "
     "Il codice è il numero del livello con una lettera al posto delle decine, A per lo zero fino a K per il dieci: la A va da A1 ad A9, "
-    "le lettere dalla B alla J da 0 a 9, e la K ha soltanto K0. Conta per il 70 per cento il valore delle caratteristiche, pesate come in partita, "
-    "e per il 30 l'esperienza di carriera. La scheda dice anche la percentuale del cammino verso la classe seguente. Le soglie sono fisse per "
+    "le lettere dalla B alla J da 0 a 9, e la K ha soltanto K0. Conta per il 70% il valore delle caratteristiche, pesate come in partita, "
+    "e per il 30% l'esperienza di carriera. La scheda dice anche la percentuale del cammino verso la classe seguente. Le soglie sono fisse per "
     "sempre: A1 è la carriera perfetta, dai 9 ai 50 anni, e chi la supera resta A1; i nati stanno fra la I e la F, i bravi a metà carriera fra la E e la D."
 )
 LEGENDA_ALLENAMENTO = (
     "L'allenamento si paga in punti allenamento, che vengono dalla seduta di ogni giorno in polisportiva, metà per i liberi, e dalle amichevoli: "
     "un incontro ne dà da 2 a 4,5, con un punto in più al più debole, anche quando perde. Ogni punto compra lo stesso valore a parità di livello, "
     "quindi la precisione, che pesa tanto, sale piano, e le sponde salgono in fretta. Ogni caratteristica può arrivare al tetto, fino a Divino, "
-    "ma l'ultimo punto costa dodici volte il primo, e sopra il 70 per cento del tetto i livelli calano un poco ogni mese se non si continuano ad allenare. "
+    "ma l'ultimo punto costa dodici volte il primo, e sopra il 70% del tetto i livelli calano un poco ogni mese se non si continuano ad allenare. "
     "I ragazzi imparano un po' più in fretta, gli anziani un po' più piano; il talento, l'apprendista rapido e la maturazione precoce o tardiva sono tratti rari. "
     "Il programma è l'indole secondo cui si spende con l'allenamento completo; l'intensità, leggera, normale o intensa, cambia i punti della seduta, "
     "il rischio d'infortunio, anche in seduta all'intensa, e la costanza recente, cioè quanto si regge la fatica in partita."
@@ -2244,7 +2279,7 @@ LEGENDA_CONTRATTI = (
     "più breve se è ambizioso; lo stipendio resta fisso fino alla scadenza. Negli ultimi tre mesi si può proporre il rinnovo, con stipendio e durata nuovi, "
     "una proposta al giorno e al massimo tre; il giocatore accetta secondo l'offerta, la fedeltà e la gloria della polisportiva, e il contratto nuovo "
     "parte alla scadenza di quello in corso. Chi non rinnova torna libero, e nessuno incassa niente; nella finestra il suo valore di mercato scende, "
-    "fino al 40 per cento alla scadenza. Lo svincolo a contratto in corso costa una buonuscita, metà degli stipendi che restano. "
+    "fino al 40% alla scadenza. Lo svincolo a contratto in corso costa una buonuscita, metà degli stipendi che restano. "
     "Un mese di contratto è un mese del calendario simulato: circa 10 giorni veri."
 )
 
@@ -2253,8 +2288,8 @@ LEGENDA_CONTRATTI = (
 LEGENDA_STAFF = (
     "Dalla tappa 13 ogni polisportiva può avere uno staff, un capo allenatore e due assistenti, nel dialogo dello staff, Ctrl+H. Lo staff fa imparare "
     "più in fretta, abbassa il rischio d'infortunio in allenamento e in partita e fa crescere prima la fedeltà al club; conta la qualità dello staff, "
-    "il 70 per cento dal capo, il 20 dall'assistente migliore e il 10 dall'altro. Rispetto allo staff medio del mondo di quel giorno, senza staff si "
-    "impara circa il 15 per cento più piano, col migliore fino al 20 per cento più in fretta, e il mondo nel suo insieme si allena sempre come prima "
+    "il 70% dal capo, il 20% dall'assistente migliore e il 10% dall'altro. Rispetto allo staff medio del mondo di quel giorno, senza staff si "
+    "impara circa il 15% più piano, col migliore fino al 20% più in fretta, e il mondo nel suo insieme si allena sempre come prima "
     "dello staff; i liberi si allenano senza staff. Gli allenatori sono "
     "ex giocatori arrivati almeno ad H0, che allenano con la classe migliore della carriera, o nati allenatori, adulti con una classe a caso, più rara "
     "quanto più è alta. Il mercato degli allenatori, Ctrl+Maiusc+G, li mostra tutti, dal migliore, coi filtri di classe, età, tipo e sesso. Si assumono "
@@ -2717,9 +2752,9 @@ def riga_contratto(g, p, mondo):
 
 
 def esito_previsto_rinnovo(g, p, stipendio, mesi):
-    """L'esito previsto di una proposta: Accetterebbe al 64 per cento. Per 12 mesi chiede 310 euro al mese. Il contratto nuovo partirebbe il 1 marzo 2028."""
+    """L'esito previsto di una proposta: Accetterebbe al 64%. Per 12 mesi chiede 310 euro al mese. Il contratto nuovo partirebbe il 1 marzo 2028."""
     probabilita = contratti.probabilita_rinnovo(g, p, stipendio, mesi)
-    return (f"Accetterebbe al {numero(probabilita, 0)} per cento. Per {mesi} mesi chiede {euro(contratti.richiesta_rinnovo(g, p, mesi))} al mese. "
+    return (f"Accetterebbe {con_articolo('al', percento(probabilita))}. Per {mesi} mesi chiede {euro(contratti.richiesta_rinnovo(g, p, mesi))} al mese. "
             f"Il contratto nuovo partirebbe il {data_breve(g.contratto_scadenza)}.")
 
 
@@ -2727,7 +2762,7 @@ def domanda_rinnovo(g, p, stipendio, mesi):
     """La conferma della proposta di rinnovo, con la probabilità."""
     probabilita = contratti.probabilita_rinnovo(g, p, stipendio, mesi)
     return (f"Proporre a {nome_completo(g)} il rinnovo a {euro(stipendio)} al mese per {mesi} mesi, dal {data_breve(g.contratto_scadenza)}? "
-            f"Accetterebbe al {numero(probabilita, 0)} per cento.")
+            f"Accetterebbe {con_articolo('al', percento(probabilita))}.")
 
 
 def esito_rinnovo(g, p, accettato, richiesta, mesi):

@@ -757,17 +757,18 @@ def suona(evento, sync=False, volume=None, semitoni=0.0, fattore=None):
         return False
 
 
-def in_coda(evento, **opzioni):
+def in_coda(evento, pausa=PAUSA_IN_CODA, **opzioni):
     """
     Suona l'evento quando è finito il suono in corso, più una breve pausa, così due suoni non si
-    sovrappongono; se non suona niente, subito. Non blocca: l'attesa la fa un timer di wx.
+    sovrappongono; se non suona niente, subito. Non blocca: l'attesa la fa un timer di wx. Una pausa
+    più lunga stacca un suono che deve farsi notare, come la notizia dello staff all'apertura.
     """
     resta = attesa()
     if resta <= 0:
         return suona(evento, **opzioni)
     import wx
 
-    wx.CallLater(int((resta + PAUSA_IN_CODA) * 1000), suona, evento, **opzioni)
+    wx.CallLater(int((resta + pausa) * 1000), suona, evento, **opzioni)
     return True
 
 

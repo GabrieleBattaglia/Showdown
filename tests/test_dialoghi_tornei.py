@@ -714,7 +714,7 @@ def test_la_formazione_dice_l_acciacco(sfidanti):
     assert ", acciaccato alla caviglia fino al " in testi.riga_allenando(g, mondo)
     scheda = testi.scheda_giocatore(g, mondo)
     # Con 3 giorni rimasti su 4 il calo di oggi è tre quarti di quello del primo giorno.
-    assert "Acciaccato alla caviglia fino al " in scheda and ": rende un poco meno, oggi il 1,5 per cento" in scheda
+    assert "Acciaccato alla caviglia fino al " in scheda and ": rende un poco meno, oggi l'1,5%" in scheda
 
 
 # La sala allenamento.

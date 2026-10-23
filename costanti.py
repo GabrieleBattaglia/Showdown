@@ -744,6 +744,7 @@ FASCE_COSTANZA = ((0.1, "ferma"), (0.35, "bassa"), (0.6, "regolare"), (0.85, "al
 # Le indoli della nascita, D31: gli archetipi di prima rivisti e corretti, con il nome da leggere
 # nella scheda e le caratteristiche principali e secondarie, coi nomi senza suffisso. Il modello di
 # spesa, uno per tutti, dà alle principali e alle secondarie le loro preferenze; completa non ne ha.
+# Dal collaudo del 23 ottobre 2026 l'indole muro si legge granitica, non più da muro: scelta di Gabriele.
 _SPONDE = ("singolaspondasx", "singolaspondadx", "doppiaspondasx", "doppiaspondadx", "triplaspondasx", "triplaspondadx")
 _CHIUSURE = ("chiusurasx", "chiusuradx")
 _BLOCCHI = ("bloccosx", "bloccodx")
@@ -752,7 +753,7 @@ INDOLI = {
                    "secondarie": (*_SPONDE, "forza")},
     "difensiva": {"nome": "difensiva", "principali": (*_CHIUSURE, *_BLOCCHI, "difesa"), "secondarie": ("controllopalla", "tenutapaletta", "resistenza")},
     "atletica": {"nome": "atletica", "principali": ("precisione", "resistenza", "forza"), "secondarie": ("difesa", *_CHIUSURE)},
-    "muro": {"nome": "da muro", "principali": (*_BLOCCHI, "difesa"), "secondarie": (*_CHIUSURE, "tenutapaletta")},
+    "muro": {"nome": "granitica", "principali": (*_BLOCCHI, "difesa"), "secondarie": (*_CHIUSURE, "tenutapaletta")},
     "rimessa": {"nome": "di rimessa", "principali": (*_BLOCCHI, "attacco"), "secondarie": ("diagonalesx", "diagonaledx", "controllopalla")},
     "controllo": {"nome": "di controllo", "principali": ("controllopalla", "tenutapaletta"), "secondarie": (*_BLOCCHI, "difesa")},
     "battuta": {"nome": "da battuta", "principali": ("battutasx", "battutadx"), "secondarie": (*_BLOCCHI, "precisione")},

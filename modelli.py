@@ -951,12 +951,15 @@ class Giocatore:
                 compl = f"Prossimo Compleanno (sim): tra {ANNO_SIMULAZIONE_GIORNI} giorni (compirà 1 anno sim)"
             else:
                 compl = f"Prossimo Compleanno (sim): tra {gg_manc} giorni (compirà {anni_prox} anni sim)"
+        # Il programma accordato, granitico e non granitica: testi si importa qui, perché importa i modelli.
+        from testi import nome_programma
+
         out = [f"\n--- Scheda Giocatore ID: {self.id} ---", f"{self.nome} {self.cognome}", eta_sex, f"Stato: {stato_str}",
                f"Descrizione: {getattr(self, 'descrizione_fisica', '(N/D)')}",
                f"Scoperto (sim): {self.datetime_creazione_sim:%Y-%m-%d %H:%M}", f"Scoperto (reale): {self.datacreazione_reale:%Y-%m-%d %H:%M}",
                f"Versione Creazione: {self.versione}", f"{compl}", f"Altezza: {self.altezza} cm, Peso: {self.peso} kg",
                f"Punti allenamento: {self.punti_allenamento:.1f}", f"Classe: {classe.classe(self).codice}",
-               f"Indole: {INDOLI[self.indole]['nome']}, programma {INDOLI[self.programma]['nome']}, intensità {self.intensita}",
+               f"Indole: {INDOLI[self.indole]['nome']}, programma {nome_programma(self.programma)}, intensità {self.intensita}",
                self._riga_contratto(),
                f"ICV Tot: {self.indice_collettivo_valore:.2f} (B: {self.icv_base:.2f}, A: {self.icv_allenato:.2f})",
                f"Gloria Rich: {self.gloria_richiesta}"]

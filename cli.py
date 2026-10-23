@@ -557,12 +557,12 @@ class InterfacciaTestuale:
 
     def _allena_singolo_giocatore(self, g):
         while g.punti_allenamento >= 0.1:
-            print(f"\nAllenando: {g.nome} {g.cognome} (ID:{g.id}), punti allenamento: {g.punti_allenamento:.1f}, programma {INDOLI[g.programma]['nome']}")
+            print(f"\nAllenando: {g.nome} {g.cognome} (ID:{g.id}), punti allenamento: {g.punti_allenamento:.1f}, programma {testi.nome_programma(g.programma)}")
             if not puo_allenarsi(g):
                 print(f"{g.nome} è {accorda(g.sesso, 'infortunato')}: non si allena.")
                 return
             if g.ipovedente:
-                print("(Ipovedente: 7 per cento di sconto sulle caratteristiche di gioco)")
+                print("(Ipovedente: 7% di sconto sulle caratteristiche di gioco)")
             try:
                 scelta = menu(d=MENU_ALLENAMENTO, p="Caratteristica (ESC/Invio=Fine)? ", keyslist=True, pager=PAGINAZIONE_LISTE, show=True, show_on_filter=True)
                 if scelta is None or scelta == '':
@@ -582,7 +582,7 @@ class InterfacciaTestuale:
 
     def _allenamento_completo(self, g):
         """L'allenamento completo: tutti i punti secondo il programma, con conferma."""
-        if key(f"\rSpendere tutti i {g.punti_allenamento:.1f} punti secondo il programma {INDOLI[g.programma]['nome']}? (S/n)\r").lower() == 'n':
+        if key(f"\rSpendere tutti i {g.punti_allenamento:.1f} punti secondo il programma {testi.nome_programma(g.programma)}? (S/n)\r").lower() == 'n':
             print("-> Annullato.")
             return
         icv_pre = g.indice_collettivo_valore

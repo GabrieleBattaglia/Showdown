@@ -366,7 +366,7 @@ def test_i_testi_dell_economia(mondo):
     g = mondo.giocatori[1]
     scheda = testi.scheda_giocatore(g, mondo)
     assert f"Stipendio: {_euro(economia.stipendio(g))} al mese, fisso fino al " in scheda and " | Valore di mercato: " in scheda
-    assert "Fedeltà a Club di prova: 0 su 100 | Umore: sereno" in scheda
+    assert "Fedeltà a Club di prova: 0% | Umore: sereno" in scheda
     assert "Punti allenamento: " in scheda
     g.arretrati = 300
     g.pazienza = 40.

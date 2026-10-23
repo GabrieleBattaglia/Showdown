@@ -99,6 +99,9 @@ from partita import MotorePartita
 from utilita import adesso, adesso_utc
 
 TITOLO = "MESS, Manageriale e Simulatore Showdown"
+# Il silenzio fra il suono dell'avvio e quello della notizia dello staff: con la pausa breve della coda
+# il fischietto si confondeva con l'avvio, collaudo di Gabriele del 23 ottobre 2026.
+PAUSA_NOTIZIA_DELLO_STAFF = 1.0
 RIGHE_BARRA = 4
 
 
@@ -305,7 +308,7 @@ class FinestraPrincipale(wx.Frame):
             suoni.in_coda("calendario_illeggibile")
         elif getattr(self.mondo, "staff_appena_nato", False):
             # Dalla tappa 13: il mondo appena aggiornato al formato 8 ha lo staff, e la notizia vale più dell'avanzamento.
-            suoni.in_coda("staff_appena_nato")
+            suoni.in_coda("staff_appena_nato", pausa=PAUSA_NOTIZIA_DELLO_STAFF)
         elif self.avanzamento_all_avvio:
             suoni.in_coda(self.avanzamento_all_avvio)
 

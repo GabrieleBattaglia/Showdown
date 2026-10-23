@@ -71,6 +71,8 @@ def avvia_finestra():
     rapporto = mondo.processa_tempo_trascorso()
     finestra = FinestraPrincipale(mondo, origine, messaggi, rapporto, ultimo_prima, avvisi_all_avvio=bool(nomi.avvisi))
     _rete_per_gli_errori(finestra)
+    # Dal collaudo del 23 ottobre 2026 la finestra si apre massimizzata, come vuole Gabriele.
+    finestra.Maximize()
     finestra.Show()
     wx.CallAfter(finestra.suoni_d_avvio)
     app.MainLoop()
