@@ -31,3 +31,8 @@ mess_impostazioni.json
 # due. Le voci qui sopra restano per i dati della disposizione di prima, finché la prima partenza non li sposta.
 /Mondo/
 /mess_cartella_del_mondo.json
+# I registri delle sessioni di gioco, accanto al programma: dal 23 ottobre 2026 Gabriele gioca dai sorgenti, e non vuole
+# che le sessioni sporchino la cronologia; lo stato del mondo lo raccoglie la cartella del mondo.
+MESS - *.log
+MESS - *.log.1
+/vecchie_glorie.log
