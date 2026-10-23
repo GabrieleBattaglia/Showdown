@@ -56,8 +56,11 @@ proposta con le note della release, gli esiti in un messaggio che aspetta l'OK, 
 scaricamento nella barra di stato e la chiusura per farsi sostituire, che salva il mondo e non aspetta
 il riepilogo di fine sessione. Torna in primo piano quando si prova ad aprire MESS una seconda volta;
 all'apertura dopo un crash la vista lo dice in testa, col suono staccato come la notizia dello staff; e
-il messaggio di un errore imprevisto rimanda al registro degli errori, accanto al programma. Le parti
-della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+il messaggio di un errore imprevisto rimanda al registro degli errori, accanto al programma. Con la
+issue 4 il menu Aiuto ha anche Entra al PUB e Chiedi aiuto al PUB, il gruppo di supporto: preparano
+la mail con le funzioni comuni di GBUtils, nella finestra di GBwx che senza posta guida passo per
+passo, e quella d'aiuto chiede di allegare i file del registro che ci sono. Le parti della tappa 14
+sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -283,6 +286,10 @@ class FinestraPrincipale(wx.Frame):
                 ("&Novità", "F2", self.novita),
                 ("&Informazioni", "F3", lambda: self.mostra(testi.informazioni(), "informazioni", "informazioni")),
                 ("&Offrimi un caffè...", None, self.caffe),
+                None,
+                # Il PUB, il gruppo di supporto, issue 4: le mail si preparano con le funzioni comuni di GBUtils V221.
+                ("&Entra al PUB (gruppo di supporto)...", None, self.entra_al_pub),
+                ("&Chiedi aiuto al PUB...", None, self.chiedi_aiuto_al_pub),
             )),
         )
 
@@ -1226,6 +1233,62 @@ class FinestraPrincipale(wx.Frame):
             self._modale(dialogo)
         finally:
             dialogo.Destroy()
+
+    # Il PUB, il gruppo di supporto, issue 4: indirizzi, informazioni di sistema e mail vengono da
+    # GBUtils V221, la finestra della mail da GBwx, le parole da testi. La finestra si apre sempre,
+    # anche quando il programma di posta c'è, e senza posta guida un passo alla volta.
+
+    def entra_al_pub(self):
+        """Entra al PUB, nel menu Aiuto: la mail che iscrive al gruppo di supporto."""
+        suoni.suona("pub_entra")
+        self._mail_al_pub(testi.mail_d_iscrizione_al_pub(), "mail d'iscrizione al PUB pronta", "iscrizione al PUB annullata")
+
+    def chiedi_aiuto_al_pub(self):
+        """
+        Chiedi aiuto al PUB, nel menu Aiuto: la mail al gruppo, con l'oggetto che dice la versione, la
+        riga da sostituire con la domanda e le informazioni del computer; se ci sono il crash della volta
+        prima o il registro degli errori, la finestra dice di allegarli.
+        """
+        from GBUtils import informazioni_di_sistema
+
+        suoni.suona("pub_aiuto")
+        mail = testi.mail_d_aiuto_al_pub(informazioni_di_sistema(","), self._registri_da_allegare(), percorsi.cartella())
+        self._mail_al_pub(mail, "mail d'aiuto al PUB pronta", "richiesta d'aiuto annullata")
+
+    def _registri_da_allegare(self):
+        """
+        I nomi dei file del registro da allegare a una richiesta d'aiuto, quelli che ci sono e non sono
+        vuoti, accanto al programma: il resoconto del crash della volta prima, che resta nel file del
+        crash quando non si è potuto mettere da parte, e il registro degli errori.
+        """
+        nomi = [registro.FILE_DEL_CRASH_PRECEDENTE, registro.FILE_DEGLI_ERRORI]
+        if self.crash_precedente:
+            nomi.insert(0, os.path.basename(self.crash_precedente))
+        presenti = []
+        for nome in dict.fromkeys(nomi):
+            with contextlib.suppress(OSError):
+                if os.path.getsize(percorsi.percorso(nome)):
+                    presenti.append(nome)
+        return presenti
+
+    def _mail_al_pub(self, mail, pronta, annullata):
+        """
+        La finestra di GBwx che prepara la mail; finché resta aperta, il mondo non avanza. La barra dice
+        se la mail è pronta, cioè aperta nel programma di posta o scritta passo per passo, o se si è
+        chiusa prima, con il suono dell'annullamento.
+        """
+        from GBwx import finestra_mail
+
+        self._modali += 1
+        try:
+            riuscita = finestra_mail(self, mail["titolo"], mail["destinatario"], mail["oggetto"], mail["corpo"], mail["spiegazione"],
+                                     mail["passi"], testi.PULSANTI_DEL_PUB, testi.SENZA_POSTA_DEL_PUB)
+        finally:
+            self._modali -= 1
+        if not riuscita:
+            suoni.suona("annullato")
+        self.ultimo_evento = pronta if riuscita else annullata
+        self.aggiorna_barra()
 
     # L'aggiornamento automatico e l'istanza unica, tappa 14, decisione D34: li conducono
     # aggiornamento.py e istanza.py, dai loro fili; qui la finestra e le frasi.

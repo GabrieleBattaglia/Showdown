@@ -53,6 +53,8 @@ esiti. Sono cinque suoni nuovi, tutti mess_, entrati nella collezione con la V22
 revisione della tappa ne arrivano altri cinque, nella V222: il pulsante Aggiorna, la proposta che
 scade senza risposta, l'aggiornamento non riuscito, il pacchetto non ancora pronto e il manuale che
 manca, che prima suonava come le novità che non si leggono; la quinta che sale resta all'esito buono.
+Con la issue 4 il gruppo dell'aiuto ha le due voci del PUB, Entra al PUB e Chiedi aiuto al PUB, con
+mess_pub_entra e mess_pub_aiuto, anche loro nella V222.
 Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -113,6 +115,9 @@ GRUPPI = (
         # L'unica onda quadra, così com'è, come in Tornello, Terminal Beast e MeTeOra.
         "caffe": "donazione",
         "caffe_paypal": "carillon_dolce",
+        # Dalla tappa 14, issue 4: le due voci del PUB, il gruppo di supporto, ciascuna col suo suono.
+        "pub_entra": "mess_pub_entra",
+        "pub_aiuto": "mess_pub_aiuto",
     }),
     # Dalla tappa 14, solo dall'eseguibile compilato: un pacco che arriva, e la quinta che sale
     # dell'esito buono. Dalla seconda revisione della tappa ogni scelta e ogni esito ha il suo suono.
@@ -491,6 +496,8 @@ AZIONI = {
     "informazioni": "F3, le informazioni con la versione e gli autori",
     "caffe": "Offrimi un caffè, nel menu Aiuto",
     "caffe_paypal": "Dona con PayPal, nell'invito al caffè",
+    "pub_entra": "Entra al PUB, nel menu Aiuto, apre la finestra che prepara la mail d'iscrizione al gruppo di supporto",
+    "pub_aiuto": "Chiedi aiuto al PUB, nel menu Aiuto, apre la finestra che prepara la mail al gruppo, con la domanda da scrivere e le informazioni del computer",
     "aggiornamento_disponibile": "all'avvio, dal programma installato, è pronta una versione nuova e si apre la proposta di aggiornarsi",
     "aggiornamento_scelto": "nella proposta dell'aggiornamento si preme Aggiorna, e comincia lo scaricamento",
     "aggiornamento_scaduto": "la proposta dell'aggiornamento resta senza risposta e si chiude da sola, da riproporre al prossimo avvio",

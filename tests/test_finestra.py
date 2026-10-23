@@ -21,7 +21,7 @@ import partita_sonora
 import ricerca
 import suoni
 import testi
-from costanti import FILE_MONDO
+from costanti import FILE_MONDO, VERSIONE
 from gui import dialoghi
 from gui import finestra as finestra_modulo
 from gui.finestra import FinestraPrincipale
@@ -80,7 +80,9 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
                    # Dalla 1.79.0 gli annunci della cronaca; dalla tappa 13 lo staff e il mercato degli allenatori.
                    finestra.cambia_annunci, finestra.staff, finestra.mercato_allenatori,
                    # Dalla tappa 14 il manuale, che apre il browser e lascia la vista com'era: lo prova test_il_manuale_nel_browser.
-                   finestra.manuale}
+                   finestra.manuale,
+                   # Dalla tappa 14, issue 4, le voci del PUB, che aprirebbero la posta per davvero: le provano le prove del PUB.
+                   finestra.entra_al_pub, finestra.chiedi_aiuto_al_pub}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -1050,6 +1052,199 @@ def test_il_manuale_che_manca_o_non_si_apre(finestra, suonati, monkeypatch, cart
     assert finestra.vista.GetValue().startswith("Il manuale non si apre nel browser: Nessuna applicazione associata.")
     # Il manuale che manca ha il suo suono, diverso da quello delle novità che non si leggono.
     assert suonati == ["manuale_mancante", "manuale_mancante"]
+
+
+# Le voci del PUB, il gruppo di supporto, tappa 14, issue 4. La finestra della mail, l'apertura della
+# posta, gli appunti e le informazioni del computer si sostituiscono sempre: nessuna prova apre la
+# posta, tocca gli appunti veri o dipende dal computer su cui gira.
+
+INFORMAZIONI_DI_PROVA = (
+    ("windows", "Windows 11 Pro"), ("windows_versione", "25H2"), ("windows_build", "26300.7171"), ("architettura", "x64"),
+    ("processore", "AMD Ryzen 9 7950X 16-Core Processor"), ("nuclei", 32), ("memoria_totale", "31,9 GB"), ("memoria_libera", "18,2 GB"),
+    ("lingua", "it_IT"), ("screen_reader", "NVDA 2026.3.1"), ("schermo", "2560x1440"), ("scala", None), ("python", "3.14.7 64 bit"),
+    ("compilato", False),
+)
+
+
+class MailPreparate(list):
+    """Le mail che finestra_mail avrebbe preparato, in ordine; risposta è il suo esito, e separatori i decimali chiesti alle informazioni."""
+
+    def __init__(self):
+        super().__init__()
+        self.risposta = True
+        self.separatori = []
+
+
+@pytest.fixture
+def informazioni_finte(monkeypatch):
+    """Le informazioni del computer, sempre le stesse: quelle vere dipendono da dove gira la prova."""
+    import GBUtils
+
+    separatori = []
+
+    def finte(separatore="."):
+        separatori.append(separatore)
+        return list(INFORMAZIONI_DI_PROVA)
+
+    monkeypatch.setattr(GBUtils, "informazioni_di_sistema", finte)
+    return separatori
+
+
+@pytest.fixture
+def mail_preparate(monkeypatch, informazioni_finte):
+    """Al posto di finestra_mail di GBwx: registra con che cosa si sarebbe aperta, e restituisce l'esito che la prova sceglie."""
+    import GBUtils
+    import GBwx
+
+    preparate = MailPreparate()
+    preparate.separatori = informazioni_finte
+
+    def finta(genitore, titolo, destinatario, oggetto, corpo, spiegazione, passi, pulsanti, senza_posta="", misura=(560, 420)):
+        preparate.append({"titolo": titolo, "destinatario": destinatario, "oggetto": oggetto, "corpo": corpo, "spiegazione": spiegazione,
+                          "passi": passi, "pulsanti": pulsanti, "senza_posta": senza_posta, "modali": genitore._modali})
+        return preparate.risposta
+
+    monkeypatch.setattr(GBwx, "finestra_mail", finta)
+    monkeypatch.setattr(GBUtils, "apri_mail", lambda *mail, **opzioni: pytest.fail("nessuna prova apre la posta"))
+    return preparate
+
+
+def test_le_voci_del_pub_nel_menu_aiuto(finestra):
+    aiuto = dict(finestra.voci_menu())["&Aiuto"]
+    # Dopo il caffè, precedute da un separatore, senza tasto rapido.
+    assert aiuto[-4:] == (("&Offrimi un caffè...", None, finestra.caffe), None,
+                          ("&Entra al PUB (gruppo di supporto)...", None, finestra.entra_al_pub),
+                          ("&Chiedi aiuto al PUB...", None, finestra.chiedi_aiuto_al_pub))
+    assert "Offrimi un caffè; Entra al PUB (gruppo di supporto); Chiedi aiuto al PUB." in testi.guida(finestra.voci_guida())
+
+
+def test_entra_al_pub(finestra, suonati, mail_preparate):
+    import GBUtils
+
+    finestra.vista.ChangeValue("Il testo che si sta leggendo.")
+    finestra._esegui(finestra.entra_al_pub)
+    mail = mail_preparate[-1]
+    assert mail["destinatario"] == GBUtils.PUB_ISCRIZIONE == "prg-user-blind+subscribe@googlegroups.com"
+    assert mail["titolo"] == "Entra al PUB, il gruppo di supporto" and mail["oggetto"] == "Iscrizione al PUB"
+    assert mail["corpo"] == "Invia questo messaggio così com'è per iscriverti al PUB. Google ti scriverà per chiederti di confermare."
+    assert "{programma}" in mail["spiegazione"] and "\n\n" not in mail["spiegazione"]
+    # Nei passi basta l'indirizzo: Google non legge oggetto e testo, e l'ultimo passo dice di spedire.
+    assert [testo for _istruzione, testo in mail["passi"]] == [GBUtils.PUB_ISCRIZIONE, None]
+    assert mail["pulsanti"] == testi.PULSANTI_DEL_PUB and set(mail["pulsanti"]) == {"apri", "passi", "ok", "chiudi", "annulla"}
+    assert mail["senza_posta"] == testi.SENZA_POSTA_DEL_PUB
+    # Finché la finestra della mail è aperta il mondo non avanza; la vista resta com'era, la barra dice l'esito.
+    assert mail["modali"] == 1 and finestra._modali == 0
+    assert suonati == ["pub_entra"] and finestra.vista.GetValue() == "Il testo che si sta leggendo."
+    assert finestra.barra.GetValue().splitlines()[3] == "mail d'iscrizione al PUB pronta"
+    # Chiusa prima di preparare la mail: il suono dell'annullamento.
+    mail_preparate.risposta = False
+    finestra.entra_al_pub()
+    assert suonati == ["pub_entra", "pub_entra", "annullato"]
+    assert finestra.barra.GetValue().splitlines()[3] == "iscrizione al PUB annullata"
+
+
+def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, cartella_di_prova):
+    import GBUtils
+
+    finestra._esegui(finestra.chiedi_aiuto_al_pub)
+    mail = mail_preparate[-1]
+    assert mail["destinatario"] == GBUtils.PUB_GRUPPO == "prg-user-blind@googlegroups.com"
+    assert mail["titolo"] == "Chiedi aiuto al PUB" and mail["oggetto"] == f"Chiedo per MESS {VERSIONE}"
+    # La memoria con la virgola, all'italiana; la scala che non si legge resta fuori, e il falso si dice no.
+    assert mail_preparate.separatori == [","]
+    assert mail["corpo"].splitlines() == [
+        "Scrivi qui la tua domanda, al posto di questa riga.",
+        "Informazioni utili per chi ti risponde, che puoi cancellare se preferisci:",
+        f"Programma: MESS {VERSIONE}",
+        "Sistema operativo: Windows 11 Pro",
+        "Versione di Windows: 25H2",
+        "Build di Windows: 26300.7171",
+        "Architettura: x64",
+        "Processore: AMD Ryzen 9 7950X 16-Core Processor",
+        "Nuclei logici: 32",
+        "Memoria: 31,9 GB",
+        "Memoria libera: 18,2 GB",
+        "Lingua di sistema: it_IT",
+        "Screen reader: NVDA 2026.3.1",
+        "Schermo: 2560x1440",
+        "Python: 3.14.7 64 bit",
+        "Programma compilato: no",
+    ]
+    # L'indirizzo mailto resta sotto il limite oltre il quale certi programmi di posta lo tagliano.
+    assert len(GBUtils.indirizzo_mailto(mail["destinatario"], mail["oggetto"], mail["corpo"])) <= 2000
+    assert [testo for _istruzione, testo in mail["passi"]] == [GBUtils.PUB_GRUPPO, mail["oggetto"], mail["corpo"], None]
+    assert [istruzione[:13] for istruzione, _testo in mail["passi"]] == ["Passo 1 di 4.", "Passo 2 di 4.", "Passo 3 di 4.", "Passo 4 di 4."]
+    assert f"con l'oggetto Chiedo per MESS {VERSIONE}." in mail["spiegazione"] and "\n\n" not in mail["spiegazione"]
+    # Senza registri, niente da allegare.
+    assert "Allega" not in mail["spiegazione"] and mail["passi"][-1][0].startswith("Passo 4 di 4. Spedisci la mail.")
+    assert suonati == ["pub_aiuto"] and finestra.barra.GetValue().splitlines()[3] == "mail d'aiuto al PUB pronta"
+    # Un registro vuoto non si allega; uno scritto sì, con la cartella in cui sta.
+    errori = cartella_di_prova / "MESS - Errori.log"
+    errori.write_text("", encoding="utf-8")
+    finestra.chiedi_aiuto_al_pub()
+    assert "Allega" not in mail_preparate[-1]["spiegazione"]
+    errori.write_text("2026-10-23 08:00:00,000 MESS 2.0.0 si avvia.\n", encoding="utf-8")
+    finestra.chiedi_aiuto_al_pub()
+    allega = (f"Allega alla mail anche il file MESS - Errori.log, che sta accanto al programma, nella cartella {cartella_di_prova}: aiuta a "
+              f"capire che cosa è andato storto.")
+    assert allega in mail_preparate[-1]["spiegazione"].splitlines()
+    assert mail_preparate[-1]["passi"][-1][0].startswith(f"Passo 4 di 4. {allega} Poi spedisci la mail.")
+    # Con il crash della volta prima, i file sono due.
+    (cartella_di_prova / "MESS - Crash precedente.log").write_text("Fatal Python error: Segmentation fault\n", encoding="utf-8")
+    finestra.chiedi_aiuto_al_pub()
+    assert ("Allega alla mail anche i file MESS - Crash precedente.log e MESS - Errori.log, che stanno accanto al programma, nella cartella "
+            f"{cartella_di_prova}: aiutano a capire che cosa è andato storto.") in mail_preparate[-1]["spiegazione"]
+    # Il resoconto che non si è potuto mettere da parte resta nel file del crash, e si allega quello.
+    (cartella_di_prova / "MESS - Crash precedente.log").unlink()
+    (cartella_di_prova / "MESS - Crash.log").write_text("Fatal Python error: Segmentation fault\n", encoding="utf-8")
+    finestra.crash_precedente = str(cartella_di_prova / "MESS - Crash.log")
+    finestra.chiedi_aiuto_al_pub()
+    assert "anche i file MESS - Crash.log e MESS - Errori.log, che stanno" in mail_preparate[-1]["spiegazione"]
+    mail_preparate.risposta = False
+    finestra.chiedi_aiuto_al_pub()
+    assert suonati[-2:] == ["pub_aiuto", "annullato"] and finestra.barra.GetValue().splitlines()[3] == "richiesta d'aiuto annullata"
+
+
+def test_la_finestra_della_mail_con_le_parole_di_mess(finestra, monkeypatch, informazioni_finte):
+    # La finestra vera di GBwx, con apri_mail, gli appunti e il programma di posta sostituiti: al posto
+    # dell'attesa di un tasto si legge l'area di testo e si preme Apri, o OK fino all'ultimo passo.
+    import GBUtils
+    import GBwx
+
+    aperte, copiati, viste = [], [], []
+    programma = ["Thunderbird"]
+    monkeypatch.setattr(GBUtils, "programma_di_posta", lambda: programma[0])
+    monkeypatch.setattr(GBUtils, "apri_mail", lambda *mail, **opzioni: aperte.append(mail) or True)
+    monkeypatch.setattr(GBwx, "_negli_appunti", lambda testo: copiati.append(testo) or True)
+
+    def mostra(dialogo):
+        viste.append(dialogo.testo.GetValue())
+        if programma[0]:
+            dialogo._apri()
+        else:
+            while not dialogo.riuscita:
+                dialogo._avanti()
+                viste.append(dialogo.testo.GetValue())
+        return wx.ID_OK
+
+    monkeypatch.setattr(wx.Dialog, "ShowModal", mostra)
+    finestra.chiedi_aiuto_al_pub()
+    oggetto = f"Chiedo per MESS {VERSIONE}"
+    assert viste[0].startswith("Il pulsante Apri nel programma di posta prepara in Thunderbird una mail al PUB") and "{programma}" not in viste[0]
+    assert [mail[:2] for mail in aperte] == [(GBUtils.PUB_GRUPPO, oggetto)] and aperte[0][2].startswith("Scrivi qui la tua domanda")
+    assert copiati == [] and finestra.barra.GetValue().splitlines()[3] == "mail d'aiuto al PUB pronta"
+    # Senza programma di posta, un passo alla volta: ogni passo copia il suo testo negli appunti.
+    programma[0] = None
+    viste.clear()
+    finestra.chiedi_aiuto_al_pub()
+    assert copiati[:2] == [GBUtils.PUB_GRUPPO, oggetto] and copiati[2] == aperte[0][2] and len(copiati) == 3
+    assert viste[0] == f"{testi.SENZA_POSTA_DEL_PUB}\n{testi.mail_d_aiuto_al_pub(INFORMAZIONI_DI_PROVA)['passi'][0][0]}\n{GBUtils.PUB_GRUPPO}"
+    assert viste[-1].startswith("Passo 4 di 4. Spedisci la mail.")
+    assert finestra.barra.GetValue().splitlines()[3] == "mail d'aiuto al PUB pronta"
+    copiati.clear()
+    finestra.entra_al_pub()
+    assert copiati == [GBUtils.PUB_ISCRIZIONE] and len(aperte) == 1
+    assert finestra.barra.GetValue().splitlines()[3] == "mail d'iscrizione al PUB pronta"
 
 
 # Il crash della volta prima, tappa 14.
