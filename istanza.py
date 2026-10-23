@@ -15,6 +15,9 @@ pipe aspetta che questa sia uscita, aspetta_l_uscita: altrimenti la troverebbe a
 porterebbe in primo piano e si chiuderebbe lei. Da sorgente si riapre l'interprete di adesso con
 Showdown.py, dal programma compilato MESS.exe. Questa parte è di Gabriele Battaglia (IZ4APU) &
 ClaudIA (Claude Opus 5.5, UltraCode).
+Dalla revisione dello stesso giorno la copia che si riapre ha il permesso di venire in primo piano,
+perché la sua finestra prenda il fuoco e lo screen reader la legga, e quella del programma compilato
+parte con PYINSTALLER_RESET_ENVIRONMENT, come un MESS aperto da capo e non come un figlio di questo.
 """
 
 import contextlib
@@ -116,10 +119,20 @@ def comando_di_riapertura(pid=None):
 
 
 def riapri():
-    """Lancia la copia di MESS che si apre quando questa sarà uscita; OSError se non parte."""
+    """
+    Lancia la copia di MESS che si apre quando questa sarà uscita; OSError se non parte. Questa copia
+    ha il primo piano e le permette di prenderlo: senza, la finestra nuova potrebbe comparire dietro, e
+    NVDA non la leggerebbe. Dal programma compilato la copia nuova riparte come un MESS aperto da capo:
+    PYINSTALLER_RESET_ENVIRONMENT le dice di non usare l'ambiente che PyInstaller ha preparato per questa.
+    """
     import percorsi
 
-    subprocess.Popen(comando_di_riapertura(), cwd=percorsi.cartella_del_programma(), close_fds=True)  # noqa: S603 - il comando è MESS stesso
+    opzioni = {"cwd": percorsi.cartella_del_programma(), "close_fds": True}
+    if getattr(sys, "frozen", False):
+        opzioni["env"] = {**os.environ, "PYINSTALLER_RESET_ENVIRONMENT": "1"}
+    processo = subprocess.Popen(comando_di_riapertura(), **opzioni)  # noqa: S603 - il comando è MESS stesso
+    with contextlib.suppress(Exception):
+        ctypes.windll.user32.AllowSetForegroundWindow(processo.pid)
 
 
 class Ascolto:

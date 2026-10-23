@@ -50,7 +50,9 @@ valgono anche per i dialoghi che verranno. Anche questa parte è di Gabriele Bat
 la finestra di Windows che sceglie una cartella, wx.DirDialog nativa e accessibile, la domanda quando la
 cartella scelta ha già un mondo e l'avviso dell'avvio quando la cartella non c'è, con le scelte di
 Riprova, di un'altra cartella e di Esci; anche questa parte è di Gabriele Battaglia (IZ4APU) & ClaudIA
-(Claude Opus 5.5, UltraCode).
+(Claude Opus 5.5, UltraCode). Dalla revisione dello stesso giorno le stesse tre scelte valgono anche per
+il salvataggio che all'avvio non si legge, MondoIllegibile; la domanda col mondo già presente non offre di
+usarlo quando non si legge; e in questi dialoghi Invio nel testo vale il predefinito, ma tenuto giù no.
 """
 
 import contextlib
@@ -2286,7 +2288,11 @@ class _SceltaConTesto(_Dialogo):
     """
     Un testo da leggere, in un'area in sola lettura che ha il fuoco all'apertura, e una riga di
     pulsanti, ciascuno col suo codice d'uscita; predefinita è il codice del pulsante di Invio, ed Esc
-    vale l'ultimo.
+    vale l'ultimo. Dalla revisione del 23 ottobre 2026 Invio nel testo vale il predefinito, come nel
+    caffè e nell'aggiornamento, perché l'area su più righe si tiene il tasto; e un Invio tenuto giù non
+    risponde, anche con NVDA, invio_da_ignorare: l'apertura conta come un Invio, così quello rimasto
+    dalla finestra di Windows che sceglie la cartella non annulla la domanda appena aperta, né ripete
+    Riprova a raffica nell'avviso dell'avvio.
     """
 
     def __init__(self, genitore, titolo, testo, scelte, predefinita, impostazioni=None):
@@ -2297,8 +2303,11 @@ class _SceltaConTesto(_Dialogo):
         self.bottoni = self.pulsanti(*scelte, predefinito=False)
         for bottone, (codice, _etichetta) in zip(self.bottoni, scelte, strict=True):
             bottone.Bind(wx.EVT_BUTTON, lambda event, c=codice: self.chiudi(c))
+        self.predefinita = predefinita
         self.bottoni[[codice for codice, _etichetta in scelte].index(predefinita)].SetDefault()
         self.SetEscapeId(scelte[-1][0])
+        self.ultimo_invio = _adesso()
+        self.Bind(wx.EVT_CHAR_HOOK, self._tasto)
         self.completa((560, 420))
         wx.CallAfter(self._al_testo)
 
@@ -2307,25 +2316,51 @@ class _SceltaConTesto(_Dialogo):
             self.testo.SetInsertionPoint(0)
             self.testo.SetFocus()
 
+    def _tasto(self, event):
+        """Invio, ovunque sia il fuoco, non risponde se è tenuto giù; nel testo vale il predefinito, sui pulsanti resta loro."""
+        if event.GetKeyCode() not in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) or event.HasAnyModifiers():
+            event.Skip()
+        elif invio_da_ignorare(self, event):
+            return
+        elif event.GetEventObject() is self.testo:
+            self.chiudi(self.predefinita)
+        else:
+            event.Skip()
+
 
 class MondoGiaPresente(_SceltaConTesto):
     """
     La cartella scelta dal menu Impostazioni ha già un mondo: il testo dice quando è stato salvato
     l'uno e l'altro e quale è il più recente, e il suo pulsante lo dice anche lui. Le scelte sono Usa
     il mondo della cartella, Porta il mio mondo e Annulla, che è il predefinito e vale anche per Esc:
-    un Invio di troppo non deve spostare un mondo.
+    un Invio di troppo non deve spostare un mondo. Con usabile falso, quando il mondo della cartella non
+    si legge o quello aperto non si potrebbe salvare, Usa il mondo della cartella non c'è.
     """
 
-    def __init__(self, genitore, testo, piu_recente, impostazioni=None):
+    def __init__(self, genitore, testo, piu_recente, impostazioni=None, usabile=True):
         usa = "&Usa il mondo della cartella" + (", il più recente" if piu_recente == testi.QUELLO_DELLA_CARTELLA else "")
         porta = "&Porta il mio mondo" + (", il più recente" if piu_recente == testi.IL_TUO else "")
+        scelte = ((USA_IL_MONDO_DELLA_CARTELLA, usa),) if usabile else ()
         super().__init__(genitore, "Nella cartella c'è già un mondo", testo,
-                         ((USA_IL_MONDO_DELLA_CARTELLA, usa), (PORTA_IL_MIO_MONDO, porta), (wx.ID_CANCEL, "Annulla")), wx.ID_CANCEL, impostazioni)
+                         (*scelte, (PORTA_IL_MIO_MONDO, porta), (wx.ID_CANCEL, "Annulla")), wx.ID_CANCEL, impostazioni)
 
 
-class CartellaAssente(_SceltaConTesto):
-    """L'avviso dell'avvio quando la cartella del mondo non c'è: Riprova, il predefinito, Scegli un'altra cartella ed Esci, che vale anche per Esc."""
+class _AvvisoDellAvvio(_SceltaConTesto):
+    """Un avviso dell'avvio che ferma il mondo: Riprova, il predefinito, Scegli un'altra cartella ed Esci, che vale anche per Esc."""
+
+    def __init__(self, genitore, titolo, testo):
+        super().__init__(genitore, titolo, testo, ((RIPROVA, "&Riprova"), (UN_ALTRA_CARTELLA, "&Scegli un'altra cartella"), (ESCI, "&Esci")), RIPROVA)
+
+
+class CartellaAssente(_AvvisoDellAvvio):
+    """L'avviso dell'avvio quando la cartella del mondo non c'è, non si sa dove sia, o c'è ma senza un mondo."""
 
     def __init__(self, genitore, testo):
-        super().__init__(genitore, "MESS, la cartella del mondo non c'è", testo,
-                         ((RIPROVA, "&Riprova"), (UN_ALTRA_CARTELLA, "&Scegli un'altra cartella"), (ESCI, "&Esci")), RIPROVA)
+        super().__init__(genitore, "MESS non trova il mondo", testo)
+
+
+class MondoIllegibile(_AvvisoDellAvvio):
+    """L'avviso dell'avvio quando il salvataggio c'è ma non si legge, e nemmeno la sua copia: dalla revisione del 23 ottobre 2026 non ferma più MESS senza scelte."""
+
+    def __init__(self, genitore, testo):
+        super().__init__(genitore, "MESS, il salvataggio non si legge", testo)

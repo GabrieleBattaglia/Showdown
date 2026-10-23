@@ -12,7 +12,7 @@ Finestra, applicazione, i salvataggi e gli errori gravi, 6 suoni.
 Il mondo salvato con Ctrl+S: meditimer_banco_salvato.
 Il mondo salvato con Ctrl+S, ma con un avviso dell'archivio: mess_salvataggio_con_avviso.
 Un salvataggio che non riesce, con Ctrl+S o dopo un'operazione, e i dati del mondo che non si spostano nella cartella del mondo: mess_salvataggio_non_riuscito.
-All'avvio né il salvataggio né la sua copia si leggono, e il programma si ferma: mess_salvataggio_illeggibile.
+All'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire: mess_salvataggio_illeggibile.
 Un errore imprevisto del programma, o un errore che lo ferma: sirena_d_allarme_1.
 All'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto: mess_crash_precedente.
 Finestra, applicazione, il fuoco, i dialoghi e gli elenchi, 9 suoni.
@@ -61,9 +61,9 @@ Si apre il dialogo degli annunci della cronaca: mess_annunci_della_cronaca.
 Gli annunci della cronaca confermati e salvati: mess_annunci_salvati.
 Finestra, applicazione, la cartella del mondo, 4 suoni.
 Cartella del mondo, nel menu Impostazioni, e all'avvio Scegli un'altra cartella: si apre la finestra di Windows che sceglie dove stanno il mondo e i dati di gioco: mess_cartella_mondo.
-Il mondo e i dati di gioco spostati nella cartella scelta, e alla prima partenza di questa versione da accanto al programma alla cartella del mondo: mess_cartella_spostata.
+Il mondo e i dati di gioco spostati nella cartella scelta, o salvati lì se la cartella di prima non si raggiunge più, e alla prima partenza di questa versione da accanto al programma alla cartella del mondo: mess_cartella_spostata.
 Si sceglie il mondo che la cartella nuova ha già, e MESS si chiude per riaprirsi su di lui: mess_cartella_cambiata.
-All'avvio la cartella del mondo non c'è, per esempio la penna non è collegata o il cloud non è pronto, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire: mess_cartella_assente.
+All'avvio la cartella del mondo non c'è, o c'è ma senza un mondo, per esempio la penna non è collegata o il cloud non è pronto, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire: mess_cartella_assente.
 Finestra, mondo, i giocatori, 8 suoni.
 Si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G: pokermachine_raddoppio_carta.
 La scheda di un giocatore: meteora_tag_letti.

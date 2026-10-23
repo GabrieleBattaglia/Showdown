@@ -27,6 +27,7 @@ import archivio
 import cartella_del_mondo as cdm
 import impostazioni
 import istanza
+import modelli_torneo
 import percorsi
 import Showdown
 import testi
@@ -155,6 +156,45 @@ def test_stessa_e_dentro():
     assert percorsi.dentro("C:\\Giochi\\MESS\\cronache", "C:\\Giochi\\MESS")
     assert not percorsi.dentro("C:\\Giochi\\MESSA", "C:\\Giochi\\MESS")
     assert not percorsi.dentro("D:\\MESS", "C:\\MESS")
+    # Un disco che non c'è, come una penna staccata, non fa sollevare niente.
+    assert not percorsi.stessa("Q:\\Penna\\MESS", "C:\\Giochi\\MESS") and percorsi.stessa("Q:\\Penna\\MESS", "q:\\penna\\mess\\")
+
+
+def _giunzione(verso, dove):
+    """Una giunzione di Windows, come quella di mklink /J: la stessa cartella raggiunta per un'altra strada."""
+    _winapi = pytest.importorskip("_winapi")
+    if not hasattr(_winapi, "CreateJunction"):
+        pytest.skip("questo Python non sa creare giunzioni")
+    _winapi.CreateJunction(str(verso), str(dove))
+
+
+def test_la_stessa_cartella_per_una_giunzione_non_si_trasloca(tmp_path):
+    # Revisione del 23 ottobre 2026, difetto 2: stessa() rispondeva falso, e Porta il mio mondo metteva tutti i dati in una riserva dentro sé stessi.
+    vera, giunzione = tmp_path / "Mondo vero", tmp_path / "Collegamento"
+    _dati_di_prova(vera, "mio")
+    prima = _albero(vera)
+    _giunzione(vera, giunzione)
+    try:
+        assert percorsi.stessa(vera, giunzione) and percorsi.normale(vera) == percorsi.normale(giunzione)
+        assert percorsi.dentro(giunzione / "cronache" / "nuova", vera)
+        assert cdm.intrecciate(str(vera), str(giunzione / "tornei" / "nuova"))
+        with pytest.raises(cdm.SpostamentoNonRiuscito) as errore:
+            cdm.trasloca(str(vera), str(giunzione), ADESSO)
+        assert errore.value.motivo == f"le cartelle {vera} e {giunzione} sono la stessa"
+        assert _albero(vera) == prima and not any(nome.startswith("Riserva") for nome in os.listdir(vera))
+    finally:
+        os.rmdir(giunzione)
+
+
+def test_la_cartella_relativa_si_scrive_fra_le_forme_reali(programma_di_prova, tmp_path):
+    # Il programma raggiunto per una giunzione: la cartella del mondo dentro di lui si scrive relativa, senza errori.
+    giunzione = tmp_path / "MESS per collegamento"
+    _giunzione(programma_di_prova, giunzione)
+    try:
+        percorsi.imposta_cartella(str(giunzione / "Dati"))
+        assert json.loads(_leggi(percorsi.file_della_cartella())) == {"cartella": "Dati"}
+    finally:
+        os.rmdir(giunzione)
 
 
 # cartella_del_mondo.py: i dati e la data del salvataggio.
@@ -172,16 +212,37 @@ def test_i_dati_e_il_mondo_di_una_cartella(tmp_path):
                              "mess_impostazioni.json", "vecchie_glorie.log", "cronache", "tornei", "formule.json", "salvataggi_illeggibili"}
 
 
-def test_la_data_dal_salvataggio_o_dal_file(tmp_path):
-    assert cdm.salvato(tmp_path) == (None, False)
+def _mondo_del_futuro(cartella):
+    """Un salvataggio firmato di una versione più recente, che questa non sa leggere: il caso realistico del mondo dell'altro computer."""
+    documento = {"applicazione": "MESS", "formato": archivio.FORMATO + 1, "versione": "9.0.0", "salvato": OGGI.isoformat(), "mondo": {}}
+    os.makedirs(cartella, exist_ok=True)
+    with open(os.path.join(cartella, FILE_MONDO), "w", encoding="utf-8") as f:
+        json.dump({**documento, "firma": archivio.firma(documento)}, f)
+
+
+def test_la_data_dal_salvataggio_dalla_copia_o_il_perche(tmp_path):
+    assert cdm.salvato(tmp_path) == cdm.Salvato(None, False, None)
     file = _salva_in(str(tmp_path), OGGI)
-    assert cdm.salvato(tmp_path) == (OGGI, True)
-    # Un salvataggio che non si legge dice la data del suo file.
+    assert cdm.salvato(tmp_path) == (OGGI, True, None)
+    # Un secondo salvataggio: il primo passa nella copia.
+    _salva_in(str(tmp_path), ADESSO)
+    assert cdm.salvato(tmp_path) == (ADESSO, True, None)
+    # Il salvataggio rovinato e la copia buona: la data è quella della copia, che MESS caricherebbe.
     with open(file, "wb") as f:
         f.write(b"rovinato")
     momento = datetime.datetime(2026, 10, 20, 8, 30).timestamp()
     os.utime(file, (momento, momento))
-    assert cdm.salvato(tmp_path) == (datetime.datetime(2026, 10, 20, 8, 30), False)
+    assert cdm.salvato(tmp_path) == (OGGI, True, None)
+    # Nessuno dei due: la data del file del salvataggio, e il perché con le parole del caricamento.
+    with open(tmp_path / FILE_MONDO_COPIA, "wb") as f:
+        f.write(b"rovinata anche lei")
+    data, dal_salvataggio, errore = cdm.salvato(tmp_path)
+    assert data == datetime.datetime(2026, 10, 20, 8, 30) and not dal_salvataggio
+    assert errore.startswith("il file non è un JSON valido") and "; e la copia di sicurezza nemmeno, perché il file non è un JSON valido" in errore
+    # Il mondo di una versione più recente non si legge, e lo dice.
+    altra = tmp_path / "altra"
+    _mondo_del_futuro(str(altra))
+    assert cdm.salvato(altra).errore.startswith(f"il file viene da una versione più recente del gioco, con il formato {archivio.FORMATO + 1}")
 
 
 def test_le_frasi_della_data_e_del_piu_recente():
@@ -189,6 +250,7 @@ def test_le_frasi_della_data_e_del_piu_recente():
     assert testi.quando_salvato(datetime.datetime(2026, 10, 8, 9, 0), True) == "è stato salvato l'8 ottobre 2026 alle 09:00"
     assert testi.quando_salvato(OGGI, False).startswith("ha il file datato il 23 ottobre 2026 alle 18:40: il salvataggio non dice")
     assert testi.quando_salvato(None, False) == "non è ancora stato salvato"
+    assert testi.quando_salvato(OGGI, False, "la firma non corrisponde") == "non si legge, con il file datato il 23 ottobre 2026 alle 18:40: la firma non corrisponde"
     assert testi.piu_recente(IERI, OGGI) == testi.QUELLO_DELLA_CARTELLA
     assert testi.piu_recente(OGGI, IERI) == testi.IL_TUO
     assert testi.piu_recente(OGGI, OGGI) is None
@@ -310,12 +372,31 @@ def test_i_problemi_della_cartella(programma_di_prova, tmp_path):
     assert cdm.problema_della_cartella() == f"la cartella {assente} non c'è"
     # Non si crea: è su una penna che magari non è collegata.
     assert not assente.exists()
+    # Il file rovinato lo dice in italiano, senza l'errore di json in inglese.
     with open(percorsi.file_della_cartella(), "w", encoding="utf-8") as f:
         f.write("rotto")
-    assert cdm.problema_della_cartella().startswith(f"il file {percorsi.FILE_DELLA_CARTELLA}, accanto al programma, non si legge")
+    assert cdm.problema_della_cartella() == f"il file {percorsi.FILE_DELLA_CARTELLA}, accanto al programma, è rovinato"
     os.remove(percorsi.file_della_cartella())
     (programma_di_prova / "Mondo").write_text("un file, non una cartella", encoding="utf-8")
     assert cdm.problema_della_cartella().startswith(f"la cartella {programma_di_prova / 'Mondo'} non si può creare")
+
+
+def test_la_cartella_scelta_senza_mondo_e_un_problema_dell_avvio(programma_di_prova, tmp_path):
+    # Revisione del 23 ottobre 2026, osservazione 2: il cloud non ancora pronto faceva nascere un mondo nuovo accanto al vero.
+    cloud = tmp_path / "Dropbox" / "MESS"
+    cloud.mkdir(parents=True)
+    (cloud / impostazioni.FILE_IMPOSTAZIONI).write_text("{}", encoding="utf-8")
+    percorsi.imposta_cartella(str(cloud))
+    problema = cdm.problema_della_cartella()
+    assert problema == f"nella cartella {cloud} non c'è un mondo di MESS" and isinstance(problema, cdm.SenzaMondo)
+    # Dopo il sì a un mondo nuovo, quella cartella va bene; un'altra no.
+    assert cdm.problema_della_cartella(str(cloud)) is None
+    assert isinstance(cdm.problema_della_cartella(str(tmp_path)), cdm.SenzaMondo)
+    _salva_in(str(cloud), OGGI)
+    assert cdm.problema_della_cartella() is None
+    # La predefinita senza mondo no: lì nasce il primo mondo di chi comincia.
+    percorsi.imposta_cartella(percorsi.cartella_predefinita())
+    assert cdm.problema_della_cartella() is None and not cdm.ha_un_mondo(percorsi.cartella_predefinita())
 
 
 class _MetodoFinto:
@@ -356,12 +437,16 @@ def avvio(app_wx, monkeypatch):
 def test_la_cartella_che_manca_e_riprova(avvio, suonati, tmp_path, monkeypatch):
     penna = tmp_path / "penna" / "MESS"
     percorsi.imposta_cartella(str(penna))
-    finto = AvvisoFinto([(dialoghi.RIPROVA, None), (dialoghi.RIPROVA, lambda: penna.mkdir(parents=True))])
+    # La penna collegata, ma il cloud che non ha ancora portato il mondo; poi arriva anche lui.
+    finto = AvvisoFinto([(dialoghi.RIPROVA, None), (dialoghi.RIPROVA, lambda: penna.mkdir(parents=True)),
+                         (dialoghi.RIPROVA, lambda: _salva_in(str(penna), OGGI))])
     monkeypatch.setattr(dialoghi.CartellaAssente, "ShowModal", finto)
-    assert Showdown.prepara_la_cartella() == (None, None)
-    assert suonati == ["cartella_assente", "cartella_assente"]
-    assert finto.testi[0].splitlines()[0] == f"MESS non trova la cartella del mondo: la cartella {penna} non c'è."
-    assert "Poi scegli Riprova." in finto.testi[0] and "\n\n" not in finto.testi[0]
+    assert Showdown.prepara_la_cartella() == (None, None, None)
+    assert suonati == ["cartella_assente"] * 3
+    assert finto.testi[0].splitlines()[0] == f"MESS non trova il mondo: la cartella {penna} non c'è."
+    assert "Poi scegli Riprova." in finto.testi[0] and "\n\n" not in finto.testi[0] and "nascere" not in finto.testi[0]
+    assert finto.testi[2].splitlines()[0] == f"MESS non trova il mondo: nella cartella {penna} non c'è un mondo di MESS."
+    assert "o per indicare di nuovo questa, se vuoi farci nascere un mondo nuovo." in finto.testi[2]
     assert percorsi.cartella() == str(penna)
 
 
@@ -383,7 +468,7 @@ def test_scegli_un_altra_cartella_all_avvio(avvio, suonati, tmp_path, monkeypatc
     monkeypatch.setattr(dialoghi, "scegli_cartella", lambda genitore, titolo, partenza="": next(scelte))
     copione = AvvisoFinto([(dialoghi.UN_ALTRA_CARTELLA, None)] * 3)
     monkeypatch.setattr(dialoghi.CartellaAssente, "ShowModal", copione)
-    assert Showdown.prepara_la_cartella() == (None, None)
+    assert Showdown.prepara_la_cartella() == (None, None, str(col_mondo))
     # La finestra chiusa con Annulla; la cartella senza mondo, con la domanda a cui si risponde no; quella col mondo, senza domande.
     assert suonati == ["cartella_assente", "cartella_mondo", "annullato", "cartella_assente", "cartella_mondo", "domanda", "annullato",
                        "cartella_assente", "cartella_mondo"]
@@ -399,15 +484,29 @@ def test_la_cartella_senza_mondo_scelta_all_avvio_col_si(avvio, suonati, tmp_pat
     monkeypatch.setattr(dialoghi, "scegli_cartella", lambda genitore, titolo, partenza="": str(vuota))
     monkeypatch.setattr(dialoghi.CartellaAssente, "ShowModal", AvvisoFinto([(dialoghi.UN_ALTRA_CARTELLA, None)]))
     monkeypatch.setattr(wx, "MessageBox", lambda testo, titolo="", stile=0, *a, **k: wx.YES)
-    assert Showdown.prepara_la_cartella() == (None, None)
+    # Dopo il sì la cartella senza mondo è accettata, e l'avviso non torna.
+    assert Showdown.prepara_la_cartella() == (None, None, str(vuota))
     assert percorsi.cartella() == str(vuota) and suonati == ["cartella_assente", "cartella_mondo", "domanda"]
+
+
+def test_all_avvio_non_si_sceglie_una_cartella_dentro_i_dati_del_programma(avvio, suonati, programma_di_prova, tmp_path, monkeypatch):
+    # Revisione del 23 ottobre 2026, difetto 3: la cartella tornei del programma bloccava MESS a ogni avvio.
+    penna = tmp_path / "penna"
+    percorsi.imposta_cartella(str(penna))
+    dentro = programma_di_prova / "tornei"
+    monkeypatch.setattr(dialoghi, "scegli_cartella", lambda genitore, titolo, partenza="": str(dentro))
+    monkeypatch.setattr(dialoghi.CartellaAssente, "ShowModal", AvvisoFinto([(dialoghi.UN_ALTRA_CARTELLA, None), (dialoghi.ESCI, None)]))
+    assert Showdown.prepara_la_cartella() == (Showdown.SENZA_CARTELLA, None, None)
+    assert avvio == [testi.intrecciata_col_programma(str(dentro), str(programma_di_prova))]
+    assert suonati == ["cartella_assente", "cartella_mondo", "annullato", "cartella_assente"]
+    assert percorsi.cartella() == str(penna) and not dentro.exists()
 
 
 def test_i_dati_accanto_al_programma_passano_nella_cartella_del_mondo(avvio, suonati, programma_di_prova):
     os.remove(percorsi.file_della_cartella())
     _dati_di_prova(programma_di_prova, "di prima")
     prima = _albero(programma_di_prova)
-    esito, notizia = Showdown.prepara_la_cartella()
+    esito, notizia, _accettata = Showdown.prepara_la_cartella()
     mondo = programma_di_prova / "Mondo"
     assert esito is None and _albero(mondo) == prima and _albero(programma_di_prova) == {os.path.join("Mondo", nome): dati for nome, dati in prima.items()}
     assert notizia == (f"Il mondo e i dati di gioco ora stanno nella cartella del mondo, {mondo}: li ho spostati da accanto al programma, nella "
@@ -415,7 +514,7 @@ def test_i_dati_accanto_al_programma_passano_nella_cartella_del_mondo(avvio, suo
     # Il suono lo fa la finestra, quando è comparsa.
     assert suonati == []
     # Alla partenza seguente non c'è più niente da spostare.
-    assert Showdown.prepara_la_cartella() == (None, None)
+    assert Showdown.prepara_la_cartella() == (None, None, None)
 
 
 def test_se_la_cartella_del_mondo_ne_ha_gia_uno_quelli_di_prima_vanno_in_riserva(avvio, programma_di_prova, monkeypatch):
@@ -425,11 +524,58 @@ def test_se_la_cartella_del_mondo_ne_ha_gia_uno_quelli_di_prima_vanno_in_riserva
     _dati_di_prova(programma_di_prova, "di prima")
     prima_mondo = _albero(mondo)
     monkeypatch.setattr(cdm, "adesso", lambda: ADESSO)
-    _esito, notizia = Showdown.prepara_la_cartella()
+    _esito, notizia, _accettata = Showdown.prepara_la_cartella()
     riserva = mondo / "Riserva 2026-10-23 19.05"
     assert {nome: dati for nome, dati in _albero(mondo).items() if not nome.startswith("Riserva")} == prima_mondo
     assert _albero(riserva)[FILE_MONDO] == f"di prima {FILE_MONDO}".encode()
     assert "che resta quello in uso" in notizia and str(riserva) in notizia
+
+
+@pytest.mark.parametrize(("accanto", "nella_cartella", "resta"), [(OGGI, IERI, "accanto"), (IERI, OGGI, "cartella"), (OGGI, None, "cartella")])
+def test_alla_prima_partenza_resta_in_uso_il_mondo_piu_recente(avvio, programma_di_prova, monkeypatch, accanto, nella_cartella, resta):
+    # Revisione del 23 ottobre 2026, osservazione 6: una versione di prima aperta nel frattempo ha salvato accanto al programma.
+    os.remove(percorsi.file_della_cartella())
+    mondo = programma_di_prova / "Mondo"
+    if nella_cartella is None:
+        _mondo_del_futuro(str(mondo))
+    else:
+        _salva_in(str(mondo), nella_cartella, _mondo(4))
+    _salva_in(str(programma_di_prova), accanto, _mondo(8))
+    (programma_di_prova / impostazioni.FILE_IMPOSTAZIONI).write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(cdm, "adesso", lambda: ADESSO)
+    _esito, notizia, _accettata = Showdown.prepara_la_cartella()
+    riserva = mondo / "Riserva 2026-10-23 19.05"
+    in_uso, da_parte = (8, 4) if resta == "accanto" else (4, 8)
+    if nella_cartella is None:
+        # Quello della cartella non si legge: resta lui, e quello di accanto va da parte, senza confronti.
+        assert len(archivio.leggi(str(riserva / FILE_MONDO))["mondo"]["giocatori"]) == 8 and "che resta quello in uso" in notizia
+        return
+    assert len(archivio.leggi(str(mondo / FILE_MONDO))["mondo"]["giocatori"]) == in_uso
+    assert len(archivio.leggi(str(riserva / FILE_MONDO))["mondo"]["giocatori"]) == da_parte
+    if resta == "accanto":
+        assert "quello di accanto al programma è stato salvato dopo, e resta lui in uso" in notizia
+        assert notizia.endswith("Quello che la cartella del mondo aveva prima è nella sua sottocartella Riserva 2026-10-23 19.05.")
+        assert (mondo / impostazioni.FILE_IMPOSTAZIONI).exists()
+    else:
+        assert "che resta quello in uso" in notizia and (riserva / impostazioni.FILE_IMPOSTAZIONI).exists()
+
+
+def test_la_vecchia_disposizione_salta_le_cartelle_vuote_e_la_cartella_del_mondo(avvio, programma_di_prova):
+    # Revisione del 23 ottobre 2026, difetto 3: la cartella del mondo dentro la cartella tornei del programma fermava MESS a ogni avvio.
+    mondo = programma_di_prova / "tornei"
+    _salva_in(str(mondo), OGGI)
+    percorsi.imposta_cartella(str(mondo))
+    (programma_di_prova / "cronache").mkdir()
+    (programma_di_prova / archivio.CARTELLA_QUARANTENA).mkdir()
+    assert cdm.vecchia_disposizione() == []
+    assert Showdown.prepara_la_cartella() == (None, None, None)
+    (programma_di_prova / impostazioni.FILE_IMPOSTAZIONI).write_text("{}", encoding="utf-8")
+    assert cdm.vecchia_disposizione() == [impostazioni.FILE_IMPOSTAZIONI]
+    esito, notizia, _accettata = Showdown.prepara_la_cartella()
+    assert esito is None and "che resta quello in uso" in notizia
+    # Le cartelle vuote e quella che contiene il mondo restano dove sono, e il mondo pure.
+    assert (programma_di_prova / "cronache").is_dir() and (mondo / FILE_MONDO).is_file()
+    assert not (programma_di_prova / impostazioni.FILE_IMPOSTAZIONI).exists()
 
 
 def test_se_lo_spostamento_della_prima_partenza_non_riesce_mess_si_ferma(avvio, suonati, programma_di_prova, monkeypatch):
@@ -444,7 +590,7 @@ def test_se_lo_spostamento_della_prima_partenza_non_riesce_mess_si_ferma(avvio, 
         vera(da, a)
 
     monkeypatch.setattr(os, "rename", rinomina)
-    assert Showdown.prepara_la_cartella() == (Showdown.NON_SPOSTATI, None)
+    assert Showdown.prepara_la_cartella() == (Showdown.NON_SPOSTATI, None, None)
     assert suonati == ["salvataggio_non_riuscito"]
     assert avvio[0].startswith(f"I dati del mondo stanno ancora accanto al programma, nella cartella {programma_di_prova}, e non si sono potuti")
     assert avvio[0].endswith("Non ho toccato niente, e MESS si chiude: controlla che nessun altro programma stia usando quei file, e riaprilo.")
@@ -482,14 +628,72 @@ def test_aspetta_l_uscita_di_un_processo_vero():
     assert istanza.aspetta_l_uscita(os.getpid(), 0.05) is False
 
 
+def test_aspetta_l_uscita_di_un_processo_che_esce_durante_l_attesa():
+    # Come la copia vecchia di MESS che si chiude mentre la nuova aspetta: l'attesa finisce all'uscita, ben prima dello scadere.
+    import subprocess
+    import time
+
+    processo = subprocess.Popen([sys.executable, "-B", "-c", "import time; time.sleep(0.4)"])
+    try:
+        inizio = time.monotonic()
+        assert istanza.aspetta_l_uscita(processo.pid, 30) is True
+        assert time.monotonic() - inizio < 20 and processo.wait(5) == 0
+    finally:
+        if processo.poll() is None:
+            processo.kill()
+
+
+class _ProcessoFinto:
+    pid = 4321
+
+
 def test_il_comando_di_riapertura(monkeypatch, programma_di_prova):
     assert istanza.comando_di_riapertura(77) == [sys.executable, str(programma_di_prova / "Showdown.py"), "--attendi", "77"]
+    lanciati, permessi = [], []
+    monkeypatch.setattr(istanza.subprocess, "Popen", lambda comando, **opzioni: lanciati.append((comando, opzioni)) or _ProcessoFinto())
+    monkeypatch.setattr(istanza.ctypes.windll.user32, "AllowSetForegroundWindow", permessi.append)
+    # Da sorgente: l'ambiente di adesso, e la copia nuova può venire in primo piano.
+    istanza.riapri()
+    assert lanciati == [([sys.executable, str(programma_di_prova / "Showdown.py"), "--attendi", str(os.getpid())],
+                         {"cwd": str(programma_di_prova), "close_fds": True})]
+    assert permessi == [4321]
+    # Dal programma compilato: MESS.exe, aperto da capo per PyInstaller.
     monkeypatch.setattr(sys, "frozen", True, raising=False)
     assert istanza.comando_di_riapertura(77) == [sys.executable, "--attendi", "77"]
-    lanciati = []
-    monkeypatch.setattr(istanza.subprocess, "Popen", lambda comando, **opzioni: lanciati.append((comando, opzioni)))
     istanza.riapri()
-    assert lanciati == [([sys.executable, "--attendi", str(os.getpid())], {"cwd": str(programma_di_prova), "close_fds": True})]
+    comando, opzioni = lanciati[-1]
+    assert comando == [sys.executable, "--attendi", str(os.getpid())] and opzioni["cwd"] == str(programma_di_prova)
+    assert opzioni["env"]["PYINSTALLER_RESET_ENVIRONMENT"] == "1" and opzioni["env"].get("PATH") == os.environ.get("PATH")
+    assert permessi == [4321, 4321]
+
+
+def test_la_vera_scelta_della_cartella(app_wx, monkeypatch, tmp_path):
+    # La funzione vera, con la finestra di Windows che risponde da sé: parte dalla cartella data se c'è, e restituisce quella scelta.
+    partenze = []
+
+    def mostra(dialogo):
+        partenze.append(dialogo.GetPath())
+        return wx.ID_OK
+
+    monkeypatch.setattr(wx.DirDialog, "ShowModal", mostra)
+    assert dialoghi.scegli_cartella(None, testi.TITOLO_DELLA_SCELTA, str(tmp_path)) == str(tmp_path)
+    dialoghi.scegli_cartella(None, testi.TITOLO_DELLA_SCELTA, str(tmp_path / "manca"))
+    assert partenze == [str(tmp_path), ""]
+    monkeypatch.setattr(wx.DirDialog, "ShowModal", lambda dialogo: wx.ID_CANCEL)
+    assert dialoghi.scegli_cartella(None, testi.TITOLO_DELLA_SCELTA, str(tmp_path)) is None
+
+
+def test_dopo_lo_spostamento_i_modelli_si_rileggono(cartella_di_prova, tmp_path_factory):
+    # Revisione del 23 ottobre 2026, difetto 5: tornando nella cartella di prima si rileggevano i modelli di prima del primo spostamento.
+    gestore = modelli_torneo.GestoreModelli()
+    gestore.crea_predefiniti()
+    quanti = len(gestore.modelli()[0])
+    nuova = tmp_path_factory.mktemp("penna")
+    cdm.cambia_cartella(str(nuova), ADESSO)
+    file = sorted(nome for nome in os.listdir(nuova / modelli_torneo.CARTELLA) if nome.endswith(modelli_torneo.ESTENSIONE))[0]
+    os.remove(nuova / modelli_torneo.CARTELLA / file)
+    cdm.cambia_cartella(str(cartella_di_prova), ADESSO)
+    assert len(gestore.modelli()[0]) == quanti - 1
 
 
 # La finestra.
@@ -547,6 +751,32 @@ def test_la_stessa_cartella_e_una_dentro_i_dati(finestra, suonati, monkeypatch, 
     finestra.scegli_la_cartella_del_mondo()
     assert finestra.vista.GetValue().startswith(f"La cartella {cartella_di_prova / 'cronache' / 'dentro'} sta dentro i dati del mondo")
     assert suonati == ["cartella_mondo", "annullato", "cartella_mondo", "annullato"]
+
+
+def test_la_cartella_del_mondo_per_una_giunzione_e_la_stessa(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
+    # Revisione del 23 ottobre 2026, difetto 2: la domanda col mondo già presente partiva, e Porta il mio mondo svuotava la cartella.
+    _il_mio_salvato_ieri(finestra, cartella_di_prova)
+    prima = _albero(cartella_di_prova)
+    giunzione = tmp_path_factory.mktemp("altrove") / "Collegamento"
+    _giunzione(cartella_di_prova, giunzione)
+    try:
+        _sceglie(monkeypatch, giunzione)
+        finestra.scegli_la_cartella_del_mondo()
+        assert finestra.vista.GetValue() == f"La cartella {cartella_di_prova} è già quella del mondo: non cambia niente."
+        assert suonati == ["cartella_mondo", "annullato"] and _albero(cartella_di_prova) == prima
+        assert percorsi.cartella() == str(cartella_di_prova)
+    finally:
+        os.rmdir(giunzione)
+
+
+def test_dal_menu_non_si_sceglie_una_cartella_dentro_i_dati_del_programma(finestra, suonati, monkeypatch, cartella_di_prova, programma_di_prova):
+    # Revisione del 23 ottobre 2026, difetto 3: alla partenza seguente MESS avrebbe dovuto spostare la cartella tornei dentro sé stessa.
+    dentro = programma_di_prova / "tornei"
+    _sceglie(monkeypatch, dentro)
+    finestra.scegli_la_cartella_del_mondo()
+    assert finestra.vista.GetValue() == testi.intrecciata_col_programma(str(dentro), str(programma_di_prova), str(cartella_di_prova))
+    assert finestra.vista.GetValue().endswith(f"come tornei o cronache: scegline un'altra. Il mondo resta nella cartella {cartella_di_prova}.")
+    assert suonati == ["cartella_mondo", "annullato"] and percorsi.cartella() == str(cartella_di_prova) and not dentro.exists()
 
 
 def test_la_cartella_senza_mondo_riceve_i_dati_e_mess_continua(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
@@ -700,6 +930,89 @@ def test_il_mondo_che_non_si_salva_non_cambia_cartella(finestra, suonati, monkey
     assert percorsi.cartella() == str(cartella_di_prova) and os.listdir(nuova) == []
 
 
+def test_il_mondo_della_cartella_che_non_si_legge_non_si_offre(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
+    # Revisione del 23 ottobre 2026, difetto 4: Usa il mondo della cartella riapriva MESS su un salvataggio che lo fermava a ogni avvio.
+    dropbox = tmp_path_factory.mktemp("dropbox")
+    _mondo_del_futuro(str(dropbox))
+    _il_mio_salvato_ieri(finestra, cartella_di_prova)
+    domanda = DomandaFinta(wx.ID_CANCEL)
+    monkeypatch.setattr(dialoghi.MondoGiaPresente, "ShowModal", domanda)
+    monkeypatch.setattr(finestra_modulo, "adesso", lambda: ADESSO)
+    _sceglie(monkeypatch, dropbox)
+    finestra.scegli_la_cartella_del_mondo()
+    righe = domanda.testo.splitlines()
+    assert righe[0].startswith(f"Nella cartella {dropbox} c'è già un mondo di MESS, che non si legge, con il file datato ")
+    assert "il file viene da una versione più recente del gioco" in righe[0]
+    assert righe[1] == f"Il tuo mondo, nella cartella {cartella_di_prova}, è stato salvato il 22 ottobre 2026 alle 21:15."
+    assert righe[2].startswith("Quel mondo non si può usare") and "più recente è" not in domanda.testo and "Usa il mondo" not in domanda.testo
+    assert domanda.pulsanti == ["&Porta il mio mondo", "Annulla"] and domanda.predefinito == "Annulla"
+    assert suonati == ["cartella_mondo", "domanda", "annullato"] and percorsi.cartella() == str(cartella_di_prova)
+
+
+def _penna_staccata(finestra, suonati, tmp_path_factory):
+    """La cartella del mondo su una penna, col mondo salvato, che si stacca a MESS aperto: dove stava, e dove è finita."""
+    penna = tmp_path_factory.mktemp("penna") / "MESS"
+    penna.mkdir()
+    percorsi.imposta_cartella(str(penna))
+    finestra.salva()
+    staccata = penna.with_name("MESS staccata")
+    os.rename(penna, staccata)
+    suonati.clear()
+    return penna, staccata
+
+
+def test_la_penna_staccata_a_mess_aperto_e_il_mondo_salvato_nella_cartella_scelta(finestra, suonati, monkeypatch, tmp_path_factory):
+    # Revisione del 23 ottobre 2026, osservazione 3: il mondo si salvava soltanto nella cartella che non c'era più, e i progressi si perdevano.
+    penna, staccata = _penna_staccata(finestra, suonati, tmp_path_factory)
+    prima = _albero(staccata)
+    finestra.impostazioni = impostazioni.valide({**finestra.impostazioni, "volume_effetti": 33})
+    nuova = tmp_path_factory.mktemp("nuova")
+    _sceglie(monkeypatch, nuova)
+    finestra.scegli_la_cartella_del_mondo()
+    assert suonati == ["cartella_mondo", "cartella_spostata"]
+    assert percorsi.cartella() == str(nuova) and impostazioni.carica()["volume_effetti"] == 33
+    assert len(archivio.leggi(str(nuova / FILE_MONDO))["mondo"]["giocatori"]) == 12
+    assert finestra.vista.GetValue().startswith(f"La cartella del mondo di prima, {penna}, non si raggiunge più: il mondo e le impostazioni ora "
+                                                f"stanno nella cartella {nuova}, dove li ho salvati")
+    assert finestra.barra.GetValue().splitlines()[3] == "cartella del mondo cambiata"
+    assert _albero(staccata) == prima
+
+
+def test_la_penna_staccata_e_la_cartella_col_mondo(finestra, suonati, monkeypatch, tmp_path_factory):
+    penna, _staccata = _penna_staccata(finestra, suonati, tmp_path_factory)
+    dropbox = _cartella_col_mondo(tmp_path_factory)
+    prima_sua = _albero(dropbox)
+    domanda = DomandaFinta(dialoghi.PORTA_IL_MIO_MONDO)
+    monkeypatch.setattr(dialoghi.MondoGiaPresente, "ShowModal", domanda)
+    monkeypatch.setattr(finestra_modulo, "adesso", lambda: ADESSO)
+    _sceglie(monkeypatch, dropbox)
+    finestra.scegli_la_cartella_del_mondo()
+    # Usare il mondo della cartella perderebbe i progressi, che non si salvano da nessuna parte: non si offre.
+    assert domanda.pulsanti == ["&Porta il mio mondo", "Annulla"]
+    assert domanda.testo.splitlines()[1] == f"Il tuo mondo è aperto, ma la sua cartella, {penna}, non si raggiunge più, e lì non si può salvare."
+    assert "ci salvo il tuo mondo e le tue impostazioni" in domanda.testo
+    riserva = dropbox / "Riserva 2026-10-23 19.05"
+    assert _albero(riserva) == prima_sua and len(archivio.leggi(str(dropbox / FILE_MONDO))["mondo"]["giocatori"]) == 12
+    assert suonati == ["cartella_mondo", "domanda", "cartella_spostata"] and percorsi.cartella() == str(dropbox)
+    assert finestra.vista.GetValue().endswith("Quello che la cartella aveva prima è nella sua sottocartella Riserva 2026-10-23 19.05.")
+
+
+def test_la_penna_staccata_e_il_mondo_che_non_si_salva_nemmeno_nella_nuova(finestra, suonati, monkeypatch, tmp_path_factory):
+    penna, _staccata = _penna_staccata(finestra, suonati, tmp_path_factory)
+    dropbox = _cartella_col_mondo(tmp_path_factory)
+    prima_sua = _albero(dropbox)
+    monkeypatch.setattr(dialoghi.MondoGiaPresente, "ShowModal", DomandaFinta(dialoghi.PORTA_IL_MIO_MONDO))
+    finestra.mondo.salvataggio_bloccato = True
+    _sceglie(monkeypatch, dropbox)
+    finestra.scegli_la_cartella_del_mondo()
+    # Tutto torna com'era: i dati della cartella al loro posto, senza riserva, e il file che nomina ancora la penna.
+    assert _albero(dropbox) == prima_sua and percorsi.cartella() == str(penna)
+    assert suonati == ["cartella_mondo", "domanda", "salvataggio_non_riuscito"]
+    testo = finestra.vista.GetValue()
+    assert testo.startswith(f"I dati del mondo non si sono potuti spostare nella cartella {dropbox}: il mondo non si è potuto salvare nella cartella nuova.")
+    assert "Salvataggio rifiutato" in testo
+
+
 def test_l_apertura_dopo_lo_spostamento_della_prima_partenza(app_wx, suonati, monkeypatch):
     monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: wx.NO)
     m = _mondo()
@@ -735,3 +1048,131 @@ def test_il_piu_recente_sul_pulsante_del_mio_mondo(app_wx):
         assert [b.GetLabel() for b in dialogo.bottoni] == ["&Usa il mondo della cartella", "&Porta il mio mondo, il più recente", "Annulla"]
     finally:
         dialogo.Destroy()
+
+
+class _Tasto:
+    """Un Invio come lo vede il gancio della tastiera: il controllo da cui arriva, e se wx lo crede ripetuto."""
+
+    def __init__(self, oggetto, codice=wx.WXK_RETURN, ripetuto=False):
+        self.oggetto, self.codice, self.ripetuto, self.saltato = oggetto, codice, ripetuto, False
+
+    def GetKeyCode(self):
+        return self.codice
+
+    def GetEventObject(self):
+        return self.oggetto
+
+    def IsAutoRepeat(self):
+        return self.ripetuto
+
+    def HasAnyModifiers(self):
+        return False
+
+    def Skip(self):
+        self.saltato = True
+
+
+@pytest.mark.parametrize(("fabbrica", "predefinito"), [
+    (lambda: dialoghi.MondoGiaPresente(None, "Testo.", testi.QUELLO_DELLA_CARTELLA), wx.ID_CANCEL),
+    (lambda: dialoghi.CartellaAssente(None, "Testo."), dialoghi.RIPROVA),
+    (lambda: dialoghi.MondoIllegibile(None, "Testo."), dialoghi.RIPROVA),
+])
+def test_invio_nel_testo_vale_il_predefinito_ma_tenuto_giu_no(app_wx, monkeypatch, fabbrica, predefinito):
+    # Revisione del 23 ottobre 2026, osservazione 8: un Invio rimasto dalla finestra di Windows annullava la domanda, o ripeteva Riprova.
+    orologio = [100.0]
+    monkeypatch.setattr(dialoghi, "_adesso", lambda: orologio[0])
+    dialogo = fabbrica()
+    try:
+        # L'Invio tenuto giù dall'apertura, con NVDA: pressioni nuove ogni 30 ms, che non chiudono, nel testo come sui pulsanti.
+        for oggetto in (dialogo.testo, dialogo.bottoni[0]) * 10:
+            orologio[0] += 0.03
+            tasto = _Tasto(oggetto)
+            dialogo._tasto(tasto)
+            assert not tasto.saltato and dialogo.GetReturnCode() == 0
+        # Lasciato il tasto, un Invio nel testo vale il pulsante predefinito.
+        orologio[0] += 1.0
+        dialogo._tasto(_Tasto(dialogo.testo))
+        assert dialogo.GetReturnCode() == predefinito
+        # Su un pulsante l'Invio resta suo, ed Esc va a wx.
+        orologio[0] += 1.0
+        sul_pulsante, esc = _Tasto(dialogo.bottoni[0]), _Tasto(dialogo.testo, wx.WXK_ESCAPE)
+        dialogo._tasto(sul_pulsante)
+        dialogo._tasto(esc)
+        assert sul_pulsante.saltato and esc.saltato
+    finally:
+        dialogo.Destroy()
+
+
+def test_l_avviso_del_salvataggio_illeggibile_e_i_suoi_pulsanti(app_wx):
+    dialogo = dialoghi.MondoIllegibile(None, "Il salvataggio non si legge.")
+    try:
+        assert dialogo.GetTitle() == "MESS, il salvataggio non si legge"
+        assert [b.GetLabel() for b in dialogo.bottoni] == ["&Riprova", "&Scegli un'altra cartella", "&Esci"]
+        assert dialogo.GetDefaultItem() is dialogo.bottoni[0] and dialogo.GetEscapeId() == dialoghi.ESCI
+    finally:
+        dialogo.Destroy()
+
+
+# L'avvio intero, con la finestra principale e il suo ciclo finti.
+
+class FinestraFinta:
+    """Al posto di FinestraPrincipale: annota il mondo con cui nasce, e non mostra niente."""
+
+    def __init__(self, nate, mondo, origine, *_argomenti, **opzioni):
+        nate.append(self)
+        self.mondo, self.origine, self.opzioni = mondo, origine, opzioni
+
+    def Maximize(self):
+        pass
+
+    def Show(self):
+        pass
+
+    def suoni_d_avvio(self):
+        pass
+
+
+@pytest.fixture
+def avvio_intero(avvio, monkeypatch):
+    """avvia_finestra vero fino alla fine: la finestra principale, il suo ciclo e i rinvii di wx sono finti. Restituisce le finestre nate."""
+    import threading
+
+    nate = []
+    monkeypatch.setattr(finestra_modulo, "FinestraPrincipale", functools.partial(FinestraFinta, nate))
+    monkeypatch.setattr(wx.App, "MainLoop", lambda self: 0)
+    monkeypatch.setattr(wx, "CallAfter", lambda funzione, *a, **k: None)
+    # La rete per gli errori cambia i ganci delle eccezioni: tornano com'erano.
+    monkeypatch.setattr(sys, "excepthook", sys.excepthook)
+    monkeypatch.setattr(threading, "excepthook", threading.excepthook)
+    return nate
+
+
+def test_il_salvataggio_illeggibile_all_avvio_e_un_altra_cartella(avvio_intero, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
+    # Revisione del 23 ottobre 2026, difetto 4: il mondo di una versione più recente nella cartella scelta fermava MESS a ogni avvio.
+    _mondo_del_futuro(str(cartella_di_prova))
+    illeggibile = (cartella_di_prova / FILE_MONDO).read_bytes()
+    buona = tmp_path_factory.mktemp("buona")
+    _salva_in(str(buona), OGGI)
+    monkeypatch.setattr(dialoghi, "scegli_cartella", lambda genitore, titolo, partenza="": str(buona))
+    avviso = AvvisoFinto([(dialoghi.RIPROVA, None), (dialoghi.UN_ALTRA_CARTELLA, None)])
+    monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", avviso)
+    assert Showdown.avvia_finestra() == Showdown.APERTA
+    assert suonati == ["salvataggio_illeggibile", "salvataggio_illeggibile", "cartella_mondo"]
+    righe = avviso.testi[0].splitlines()
+    assert righe[0].startswith(f"Il salvataggio del mondo, nella cartella {cartella_di_prova}, c'è ma non si può leggere: il file viene da una versione")
+    assert righe[-1] == "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra. Esci, o Esc, chiude MESS senza toccare niente."
+    # MESS si apre sul mondo della cartella scelta, e quello illeggibile resta com'era.
+    assert len(avvio_intero) == 1 and avvio_intero[0].origine == archivio.CARICATO and percorsi.cartella() == str(buona)
+    assert (cartella_di_prova / FILE_MONDO).read_bytes() == illeggibile
+
+
+def test_dopo_il_si_a_un_mondo_nuovo_mess_si_apre_senza_altri_avvisi(avvio_intero, suonati, monkeypatch, tmp_path):
+    vuota = tmp_path / "vuota"
+    vuota.mkdir()
+    percorsi.imposta_cartella(str(tmp_path / "penna"))
+    monkeypatch.setattr(dialoghi, "scegli_cartella", lambda genitore, titolo, partenza="": str(vuota))
+    monkeypatch.setattr(dialoghi.CartellaAssente, "ShowModal", AvvisoFinto([(dialoghi.UN_ALTRA_CARTELLA, None)]))
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, titolo="", stile=0, *a, **k: wx.YES)
+    assert Showdown.avvia_finestra() == Showdown.APERTA
+    assert suonati == ["cartella_assente", "cartella_mondo", "domanda"]
+    assert avvio_intero[0].origine == archivio.NATO and percorsi.cartella() == str(vuota)

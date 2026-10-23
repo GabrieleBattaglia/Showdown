@@ -71,6 +71,10 @@ cartella; con Porta il mio mondo i dati della cartella vanno in una sua riserva,
 spostano. All'apertura dopo lo spostamento dei dati che stavano accanto al programma, la vista lo
 dice in testa, col suo suono. I registri stanno accanto al programma, non nella cartella del mondo.
 Anche queste parti sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dalla revisione dello stesso giorno non si accetta una cartella dentro i dati che le versioni di prova
+tenevano accanto al programma; il mondo della cartella che non si legge non si offre di usarlo; e se la
+cartella del mondo aperto non si raggiunge più, per esempio una penna staccata, il mondo e le
+impostazioni si salvano nella cartella scelta invece di andare persi.
 """
 
 import contextlib
@@ -1287,12 +1291,16 @@ class FinestraPrincipale(wx.Frame):
             nuova = scegli_cartella(self, testi.TITOLO_DELLA_SCELTA, attuale)
         finally:
             self._modali -= 1
+        programma = percorsi.cartella_del_programma()
         if nuova is None:
             self._cartella_invariata()
         elif percorsi.stessa(nuova, attuale):
             self.mostra(testi.cartella_gia_del_mondo(attuale), "cartella del mondo invariata", "annullato")
         elif cartella_del_mondo.intrecciate(attuale, nuova):
             self.mostra(testi.cartelle_intrecciate(nuova, attuale), "cartella del mondo invariata", "annullato")
+        elif cartella_del_mondo.intrecciate(programma, nuova):
+            # Dentro la cartella tornei del programma, per esempio: alla partenza seguente MESS la sposterebbe dentro sé stessa.
+            self.mostra(testi.intrecciata_col_programma(nuova, programma, attuale), "cartella del mondo invariata", "annullato")
         elif not cartella_del_mondo.ha_un_mondo(nuova):
             self._porta_il_mondo(attuale, nuova, ora)
         else:
@@ -1310,10 +1318,19 @@ class FinestraPrincipale(wx.Frame):
         self.aggiorna_barra()
 
     def _quale_mondo(self, attuale, nuova, ora):
-        """La domanda col suono delle domande quando la cartella scelta ha già un mondo: il codice della scelta, o wx.ID_CANCEL."""
-        tuo, suo = cartella_del_mondo.salvato(attuale), cartella_del_mondo.salvato(nuova)
+        """
+        La domanda col suono delle domande quando la cartella scelta ha già un mondo: il codice della scelta,
+        o wx.ID_CANCEL. Usa il mondo della cartella non si offre quando quel mondo non si legge, perché MESS
+        si riaprirebbe su un salvataggio che lo ferma, né quando la cartella del mondo aperto non si
+        raggiunge più, perché i suoi progressi non si salverebbero da nessuna parte.
+        """
+        raggiungibile = os.path.isdir(attuale)
+        tuo = cartella_del_mondo.salvato(attuale) if raggiungibile else None
+        suo = cartella_del_mondo.salvato(nuova)
+        usabile = raggiungibile and not suo.errore
         testo = testi.mondo_gia_presente(attuale, tuo, nuova, suo, cartella_del_mondo.nome_della_riserva(nuova, ora))
-        dialogo = MondoGiaPresente(self, testo, testi.piu_recente(tuo[0], suo[0]), self.impostazioni)
+        recente = testi.piu_recente(tuo.data, suo.data) if usabile else None
+        dialogo = MondoGiaPresente(self, testo, recente, self.impostazioni, usabile)
         try:
             suoni.suona("domanda")
             return self._modale(dialogo)
@@ -1324,20 +1341,39 @@ class FinestraPrincipale(wx.Frame):
         """
         Il mondo si salva, poi i dati passano nella cartella nuova, e quelli che lei aveva in una sua riserva
         datata; il file accanto al programma la nomina. Se qualcosa non riesce, niente è cambiato, e la vista
-        dice il perché col suono del salvataggio non riuscito.
+        dice il perché col suono del salvataggio non riuscito. Se la cartella del mondo di adesso non si
+        raggiunge più, per esempio una penna staccata a MESS aperto, lì non si salva e non c'è niente da
+        spostare: il mondo e le impostazioni si salvano nella cartella nuova, appena il file la nomina, così
+        i progressi non si perdono; se nemmeno lì il mondo si salva, tutto torna com'era.
         """
-        riuscito, messaggi, _avvisi = self._salva_raccogliendo()
-        if not riuscito:
-            self.mostra(testi.mondo_non_salvato_per_la_cartella(messaggi), "cartella del mondo invariata", "salvataggio_non_riuscito")
-            return
+        raggiungibile = os.path.isdir(attuale)
+        if raggiungibile:
+            riuscito, messaggi, _avvisi = self._salva_raccogliendo()
+            if not riuscito:
+                self.mostra(testi.mondo_non_salvato_per_la_cartella(messaggi), "cartella del mondo invariata", "salvataggio_non_riuscito")
+                return
+        dal_salvataggio = []
+
+        def salva_nella_nuova():
+            riuscito, messaggi, _avvisi = self._salva_raccogliendo()
+            dal_salvataggio.extend(messaggi)
+            if riuscito:
+                modulo_impostazioni.salva(self.impostazioni)
+            return riuscito
+
         try:
-            trasloco = cartella_del_mondo.cambia_cartella(nuova, ora)
+            trasloco = cartella_del_mondo.cambia_cartella(nuova, ora, None if raggiungibile else salva_nella_nuova)
         except cartella_del_mondo.SpostamentoNonRiuscito as errore:
             registro.scrivi(f"I dati del mondo non si sono spostati da {attuale} a {nuova}: {errore.motivo}.")
-            self.mostra(testi.cartella_non_spostata(errore, nuova, attuale), "mondo non spostato", "salvataggio_non_riuscito")
+            testo = "\n".join([testi.cartella_non_spostata(errore, nuova, attuale), *dal_salvataggio])
+            self.mostra(testo, "mondo non spostato", "salvataggio_non_riuscito")
             return
-        registro.scrivi(f"I dati del mondo sono passati da {attuale} a {nuova}.")
-        self.mostra(testi.cartella_spostata(trasloco, attuale), "cartella del mondo cambiata", "cartella_spostata")
+        if raggiungibile:
+            registro.scrivi(f"I dati del mondo sono passati da {attuale} a {nuova}.")
+            self.mostra(testi.cartella_spostata(trasloco, attuale), "cartella del mondo cambiata", "cartella_spostata")
+        else:
+            registro.scrivi(f"La cartella del mondo {attuale} non si raggiungeva: il mondo si è salvato nella cartella {nuova}.")
+            self.mostra(testi.cartella_salvata_altrove(trasloco, attuale), "cartella del mondo cambiata", "cartella_spostata")
 
     def _usa_il_mondo_della_cartella(self, nuova):
         """

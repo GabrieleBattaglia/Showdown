@@ -6,21 +6,31 @@ nel registro, che all'uscita si chiude, e l'ascolto si ferma; il crash della vol
 finestra; un errore che ferma MESS si scrive nel registro e si dice in un messaggio che nomina il file,
 col suono dell'allarme. Poi la finestra: davanti a un salvataggio rovinato il gioco si ferma senza
 toccare niente, e la rete per gli errori scrive il resoconto nel registro e fa suonare l'allarme.
+Dalla revisione del 23 ottobre 2026 una prova fa girare il vero avvia_finestra fino alla chiusura
+normale, che deve dare zero e scrivere MESS si chiude: le altre lo sostituivano, e non vedevano che
+restituiva un esito che non c'era.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
+import datetime
 import faulthandler
+import random
 import sys
 import threading
 
 import pytest
 import wx
 
+import archivio
 import istanza
 import percorsi
 import registro
 import Showdown
 from costanti import FILE_MONDO, FILE_MONDO_COPIA, VERSIONE
+from gui import dialoghi
+from gui import finestra as finestra_modulo
+from mondo import Mondo
+from utilita import adesso, adesso_utc
 
 # Gli ascolti finti creati in ogni prova, nell'ordine.
 ASCOLTI = []
@@ -149,14 +159,52 @@ def test_l_errore_fatale(app_wx, monkeypatch, programma_di_prova, suonati, capsy
 
 
 def test_il_salvataggio_rovinato_ferma_il_gioco(app_wx, monkeypatch, cartella_di_prova, suonati):
+    # Dalla revisione del 23 ottobre 2026 l'avviso ha le tre scelte; con Esci, o Esc, il gioco si ferma come prima, senza toccare niente.
     (cartella_di_prova / FILE_MONDO).write_text("non è un salvataggio", encoding="utf-8")
-    messaggi = []
-    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: messaggi.append(testo))
+    testi_letti = []
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: pytest.fail("nessun messaggio di Windows, solo l'avviso"))
+    monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", lambda dialogo: testi_letti.append(dialogo.testo.GetValue()) or dialoghi.ESCI)
     assert Showdown.avvia_finestra() == Showdown.ILLEGGIBILE
-    assert len(messaggi) == 1 and "il gioco si ferma qui senza salvare nulla" in messaggi[0]
+    assert len(testi_letti) == 1 and "MESS non salva niente in quella cartella" in testi_letti[0]
     assert suonati == ["salvataggio_illeggibile"]
     assert (cartella_di_prova / FILE_MONDO).read_text(encoding="utf-8") == "non è un salvataggio"
     assert not (cartella_di_prova / FILE_MONDO_COPIA).exists()
+
+
+def test_la_chiusura_normale_da_zero_e_lo_scrive(app_wx, monkeypatch, cartella_di_prova, programma_di_prova, suonati):
+    # Revisione del 23 ottobre 2026, difetto 1: avvia_finestra restituiva True, che fra gli ESITI non c'è, e ogni chiusura finiva
+    # nell'errore fatale. Qui gira il vero avvia_finestra fino alla fine: finti soltanto la finestra principale e il suo ciclo.
+    random.seed(5)
+    ora = adesso()
+    m = Mondo()
+    m.datetime_corrente_simulazione = ora
+    m.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(minutes=5)
+    m.crea_giocatori_casuali(6, ora)
+    archivio.scrivi(m, str(cartella_di_prova / FILE_MONDO), str(cartella_di_prova / FILE_MONDO_COPIA))
+    nate, rinviati = [], []
+
+    class FinestraFinta:
+        def __init__(self, mondo, origine, *_argomenti, **_opzioni):
+            nate.append(origine)
+
+        def Maximize(self):
+            pass
+
+        def Show(self):
+            pass
+
+        def suoni_d_avvio(self):
+            pass
+
+    monkeypatch.setattr(finestra_modulo, "FinestraPrincipale", FinestraFinta)
+    monkeypatch.setattr(wx.App, "MainLoop", lambda self: 0)
+    monkeypatch.setattr(wx, "CallAfter", lambda funzione, *a, **k: rinviati.append(funzione))
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: pytest.fail("nessun messaggio: la chiusura è normale"))
+    assert Showdown.main([]) == 0
+    assert nate == [archivio.CARICATO] and len(rinviati) == 2 and ASCOLTI[0].fermo
+    assert "errore_imprevisto" not in suonati
+    testo = (programma_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
+    assert testo.rstrip().endswith("MESS si chiude.") and "errore fatale" not in testo and "Traceback" not in testo
 
 
 def test_la_rete_per_gli_errori(monkeypatch, cartella_di_prova, suonati, capsys):

@@ -68,7 +68,10 @@ Type: filesandordirs; Name: "{app}\_internal_vecchio"
 ; Il pacchetto a cartella di PyInstaller, senza i dati che una prova avesse lasciato in dist, come fa zip_maker.py.
 ; Ogni motivo comincia con la barra rovesciata, che lo lega alla cartella dell'eseguibile: senza,
 ; formule.json toglierebbe anche _internal\dati\tornei\formule.json, le formule predefinite.
-Source: "dist\MESS\*"; DestDir: "{app}"; Excludes: "\Mondo\*,\mess_cartella_del_mondo.json*,\mess_mondo.json*,\mess_impostazioni.json,\formule.json,\*.log,\*.log.1,\*.tmp,\tornei\*,\cronache\*,\salvataggi_illeggibili\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Le cartelle dei dati si escludono intere, col loro nome, e anche col loro contenuto: con createallsubdirs
+; il solo contenuto escluso lasciava le cartelle vuote, e una cartella tornei vuota accanto all'eseguibile
+; sarebbe sembrata, alla prima partenza, un dato della vecchia disposizione da spostare.
+Source: "dist\MESS\*"; DestDir: "{app}"; Excludes: "\Mondo,\Mondo\*,\mess_cartella_del_mondo.json*,\mess_mondo.json*,\mess_impostazioni.json,\formule.json,\*.log,\*.log.1,\*.tmp,\tornei,\tornei\*,\cronache,\cronache\*,\salvataggi_illeggibili,\salvataggi_illeggibili\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\MESS"; Filename: "{app}\MESS.exe"

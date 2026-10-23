@@ -39,7 +39,11 @@ Con la cartella del mondo, chiesta da Gabriele il 23 ottobre 2026, arrivano le f
 dal menu Impostazioni: la domanda quando la cartella ha già un mondo, con le date dei due salvataggi e
 il più recente, lo spostamento riuscito o no, l'avviso dell'avvio quando la cartella non c'è, e i
 dati della vecchia disposizione, accanto al programma, spostati alla prima partenza. Anche queste
-sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode). Dalla revisione dello
+stesso giorno: il mondo della cartella che non si legge, e allora non si offre di usarlo; la cartella
+del mondo che non si raggiunge più a MESS aperto, e il mondo salvato nella nuova; la cartella scelta
+senza un mondo all'avvio; il salvataggio illeggibile all'avvio, che non ferma più MESS senza scelte, e
+al suo posto mondo_illeggibile_all_avvio sostituisce salvataggio_illeggibile.
 """
 
 import copy
@@ -2261,15 +2265,6 @@ def staff_appena_nato(mondo):
             "Lo staff è nel menu Polisportive, con Ctrl+H; il mercato degli allenatori con Ctrl+Maiusc+G.")
 
 
-def salvataggio_illeggibile(errore):
-    """Le frasi che spiegano perché il gioco si ferma quando il salvataggio non si legge."""
-    righe = [f"Il salvataggio c'è ma non si può leggere: {errore}."]
-    if getattr(errore, "cartella", None):
-        righe.append(f"Una copia dei file è nella cartella {errore.cartella}.")
-    righe.append("Per non coprirli con un mondo nuovo, il gioco si ferma qui senza salvare nulla.")
-    return righe
-
-
 # Il registro degli errori e dei crash, tappa 14.
 
 def resoconto_degli_errori(cartella):
@@ -2292,8 +2287,14 @@ IL_TUO = "tuo"
 QUELLO_DELLA_CARTELLA = "della cartella"
 
 
-def quando_salvato(data, dal_salvataggio):
-    """Quando è stato salvato un mondo, a parole, dopo il nome del mondo: dal salvataggio stesso, o dalla data del suo file."""
+def quando_salvato(data, dal_salvataggio, errore=None):
+    """
+    Quando è stato salvato un mondo, a parole, dopo il nome del mondo: dal salvataggio stesso, o dalla
+    data del suo file; oppure, con errore, che non si legge e perché, con la data del file se c'è.
+    """
+    if errore:
+        datato = f", con il file datato {con_articolo('il', data_lunga(data))}" if data is not None else ""
+        return f"non si legge{datato}: {errore}"
     if data is None:
         return "non è ancora stato salvato"
     if dal_salvataggio:
@@ -2313,26 +2314,42 @@ def piu_recente(data_tua, data_sua):
 def mondo_gia_presente(tua_cartella, tuo, sua_cartella, suo, riserva):
     """
     La domanda quando la cartella scelta ha già un mondo: quando è stato salvato l'uno e l'altro, quale
-    è il più recente, e che cosa fanno le tre scelte. tuo e suo sono le coppie di data e provenienza di
-    cartella_del_mondo.salvato; riserva è il nome della sottocartella di riserva.
+    è il più recente, e che cosa fanno le tre scelte. tuo e suo vengono da cartella_del_mondo.salvato, una
+    data, da dove viene e l'errore; riserva è il nome della sottocartella di riserva. Dalla revisione del
+    23 ottobre 2026 ci sono due casi in cui Usa il mondo della cartella non si offre, e le scelte restano
+    due: il mondo della cartella non si legge, e MESS non lo saprebbe aprire; oppure tuo è None, perché
+    la cartella del tuo mondo non si raggiunge più, e i tuoi progressi non si salverebbero da nessuna parte.
     """
-    recente = piu_recente(tuo[0], suo[0])
-    if recente == IL_TUO:
-        quale = "Il più recente è il tuo."
-    elif recente == QUELLO_DELLA_CARTELLA:
-        quale = "Il più recente è quello della cartella."
+    righe = [f"Nella cartella {sua_cartella} c'è già un mondo di MESS, che {quando_salvato(*suo)}."]
+    if tuo is None:
+        righe.append(f"Il tuo mondo è aperto, ma la sua cartella, {tua_cartella}, non si raggiunge più, e lì non si può salvare.")
     else:
-        quale = "I due mondi sono stati salvati nello stesso momento."
-    return "\n".join([
-        f"Nella cartella {sua_cartella} c'è già un mondo di MESS, che {quando_salvato(*suo)}.",
-        f"Il tuo mondo, nella cartella {tua_cartella}, {quando_salvato(*tuo)}.",
-        quale,
-        "Usa il mondo della cartella: il tuo mondo resta dov'è, intatto, con le tue impostazioni, i tuoi tornei e le tue cronache, e MESS si "
-        "chiude e si riapre sul mondo della cartella.",
-        f"Porta il mio mondo: quello che la cartella ha adesso va in una sua sottocartella di riserva, {riserva}, e ci si spostano il tuo "
-        "mondo, le tue impostazioni, i tuoi tornei e le tue cronache. MESS continua.",
-        "Annulla, o Esc, non cambia niente.",
-    ])
+        righe.append(f"Il tuo mondo, nella cartella {tua_cartella}, {quando_salvato(*tuo)}.")
+    if suo[2]:
+        righe.append("Quel mondo non si può usare, perché MESS non lo saprebbe aprire: se l'ha salvato una versione di MESS più recente, "
+                     "aggiorna MESS su questo computer, poi scegli di nuovo questa cartella.")
+    elif tuo is None:
+        righe.append("Per usare il mondo della cartella, ricollega prima la cartella del tuo mondo, perché i progressi di adesso si salvino, "
+                     "poi scegli di nuovo questa cartella.")
+    else:
+        recente = piu_recente(tuo[0], suo[0])
+        if recente == IL_TUO:
+            righe.append("Il più recente è il tuo.")
+        elif recente == QUELLO_DELLA_CARTELLA:
+            righe.append("Il più recente è quello della cartella.")
+        else:
+            righe.append("I due mondi sono stati salvati nello stesso momento.")
+        righe.append("Usa il mondo della cartella: il tuo mondo resta dov'è, intatto, con le tue impostazioni, i tuoi tornei e le tue cronache, "
+                     "e MESS si chiude e si riapre sul mondo della cartella.")
+    if tuo is None:
+        righe.append(f"Porta il mio mondo: quello che la cartella ha adesso va in una sua sottocartella di riserva, {riserva}, e ci salvo il "
+                     "tuo mondo e le tue impostazioni; il resto dei tuoi dati, come le cronache e i modelli dei tornei, resta nella cartella "
+                     "che non si raggiunge. MESS continua.")
+    else:
+        righe.append(f"Porta il mio mondo: quello che la cartella ha adesso va in una sua sottocartella di riserva, {riserva}, e ci si "
+                     "spostano il tuo mondo, le tue impostazioni, i tuoi tornei e le tue cronache. MESS continua.")
+    righe.append("Annulla, o Esc, non cambia niente.")
+    return "\n".join(righe)
 
 
 def cartella_spostata(trasloco, prima):
@@ -2342,6 +2359,20 @@ def cartella_spostata(trasloco, prima):
     if trasloco.riserva:
         testo += f" Quello che la cartella aveva prima è nella sua sottocartella {os.path.basename(trasloco.riserva)}."
     return testo + _avanzi(trasloco)
+
+
+def cartella_salvata_altrove(trasloco, prima):
+    """
+    La vista quando la cartella del mondo di prima non si raggiungeva più, per esempio una penna staccata
+    a MESS aperto, e il mondo si è salvato nella cartella scelta: che cosa c'è adesso, e che cosa è rimasto là.
+    """
+    testo = (f"La cartella del mondo di prima, {prima}, non si raggiunge più: il mondo e le impostazioni ora stanno nella cartella "
+             f"{trasloco.destinazione}, dove li ho salvati, e su questo computer MESS li cercherà lì anche alle prossime partenze. Il resto "
+             "dei dati, come le cronache e i modelli dei tornei, è rimasto nella cartella di prima: qui i tornei ripartono dai modelli e "
+             "dalle formule di serie.")
+    if trasloco.riserva:
+        testo += f" Quello che la cartella aveva prima è nella sua sottocartella {os.path.basename(trasloco.riserva)}."
+    return testo
 
 
 def _avanzi(trasloco):
@@ -2373,6 +2404,17 @@ def cartelle_intrecciate(nuova, attuale):
             f"Il mondo resta nella cartella {attuale}.")
 
 
+def intrecciata_col_programma(nuova, programma, attuale=None):
+    """
+    Una cartella del mondo dentro una delle cartelle dei dati che le versioni di prova tenevano accanto al
+    programma, come tornei o cronache, non si accetta: alla partenza seguente MESS la sposterebbe dentro sé
+    stessa. attuale, dal menu, è la cartella in cui il mondo resta.
+    """
+    testo = (f"La cartella {nuova} sta dentro una delle cartelle che MESS usava accanto al programma, nella cartella {programma}, "
+             "per i dati del mondo, come tornei o cronache: scegline un'altra.")
+    return f"{testo} Il mondo resta nella cartella {attuale}." if attuale else testo
+
+
 def mondo_non_salvato_per_la_cartella(messaggi):
     """La vista quando il mondo non si salva prima di cambiare cartella: per non perdere niente, la cartella resta quella."""
     return "\n".join(["Prima di cambiare cartella il mondo si salva, ma il salvataggio non è riuscito: la cartella del mondo resta quella di prima.",
@@ -2389,13 +2431,36 @@ def riapertura_non_riuscita(errore, nuova):
             f"e si aprirà sul mondo della cartella {nuova}.")
 
 
-def cartella_assente(problema):
-    """L'avviso dell'avvio quando la cartella del mondo non c'è: il perché, che cosa fare, e le tre scelte."""
+def cartella_assente(problema, senza_mondo=False):
+    """
+    L'avviso dell'avvio quando la cartella del mondo non c'è, o non si sa dove sia, o c'è ma senza un mondo:
+    il perché, che cosa fare, e le tre scelte. senza_mondo dice l'ultimo caso, in cui indicare la stessa
+    cartella vuol dire farci nascere un mondo nuovo.
+    """
+    scegli = "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra"
+    if senza_mondo:
+        scegli += ", o per indicare di nuovo questa, se vuoi farci nascere un mondo nuovo"
     return "\n".join([
-        f"MESS non trova la cartella del mondo: {problema}.",
+        f"MESS non trova il mondo: {problema}.",
         "Se sta su una penna, collegala; se sta in un cloud come Dropbox, aspetta che sia pronto. Poi scegli Riprova.",
-        "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra. Esci, o Esc, chiude MESS senza toccare niente.",
+        f"{scegli}. Esci, o Esc, chiude MESS senza toccare niente.",
     ])
+
+
+def mondo_illeggibile_all_avvio(errore, cartella):
+    """
+    L'avviso dell'avvio quando il salvataggio c'è ma non si legge, e nemmeno la sua copia: il perché, che
+    cosa fare, e le stesse tre scelte della cartella che non c'è. Prima della revisione del 23 ottobre 2026
+    MESS si fermava e basta, e una cartella del mondo con un salvataggio illeggibile lo fermava a ogni avvio.
+    """
+    righe = [f"Il salvataggio del mondo, nella cartella {cartella}, c'è ma non si può leggere: {errore}."]
+    if getattr(errore, "cartella", None):
+        righe.append(f"Una copia dei file è nella cartella {errore.cartella}.")
+    righe += ["Per non coprirli con un mondo nuovo, MESS non salva niente in quella cartella.",
+              "Se il mondo sta in un cloud come Dropbox, forse il file non è ancora arrivato tutto: aspetta, poi scegli Riprova. Se l'ha "
+              "salvato una versione di MESS più recente, aggiorna MESS.",
+              "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra. Esci, o Esc, chiude MESS senza toccare niente."]
+    return "\n".join(righe)
 
 
 def nessun_mondo_nella_cartella(nuova):
@@ -2404,18 +2469,22 @@ def nessun_mondo_nella_cartella(nuova):
             "ritrovi scegliendo di nuovo la sua cartella, con Cartella del mondo nel menu Impostazioni, quando è raggiungibile. Scegli questa cartella?")
 
 
-def vecchia_disposizione_spostata(trasloco, in_riserva):
+def vecchia_disposizione_spostata(trasloco, in_riserva, piu_recente=False):
     """
     La riga in testa alla vista alla prima partenza con la cartella del mondo, quando i dati stavano
     ancora accanto al programma; in_riserva dice che sono andati in una riserva, perché la cartella del
-    mondo aveva già un mondo.
+    mondo aveva già un mondo, più recente o non leggibile; piu_recente, che il mondo di accanto al
+    programma era stato salvato dopo quello della cartella del mondo, e ha preso il suo posto.
     """
     if in_riserva:
         testo = (f"Accanto al programma, nella cartella {trasloco.origine}, c'erano i dati di un mondo, ma la cartella del mondo ne aveva già "
                  f"uno, che resta quello in uso: i dati di accanto al programma sono nella cartella {trasloco.destinazione}.")
     else:
         testo = (f"Il mondo e i dati di gioco ora stanno nella cartella del mondo, {trasloco.destinazione}: li ho spostati da accanto al programma, "
-                 f"nella cartella {trasloco.origine}. Dove tenerli si sceglie con Cartella del mondo, nel menu Impostazioni.")
+                 f"nella cartella {trasloco.origine}.")
+        if piu_recente:
+            testo += " La cartella del mondo aveva già un mondo, ma quello di accanto al programma è stato salvato dopo, e resta lui in uso."
+        testo += " Dove tenerli si sceglie con Cartella del mondo, nel menu Impostazioni."
         if trasloco.riserva:
             testo += f" Quello che la cartella del mondo aveva prima è nella sua sottocartella {os.path.basename(trasloco.riserva)}."
     return testo + _avanzi(trasloco)

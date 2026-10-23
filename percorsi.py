@@ -14,6 +14,9 @@ programma, uno per macchina, FILE_DELLA_CARTELLA, che si rilegge a ogni chiamata
 il file vale la cartella predefinita; un file che c'è ma non si legge solleva CartellaIllegibile,
 un OSError, così chi scrive fallisce col suo messaggio invece di scrivere altrove. La cartella del
 programma, cartella_del_programma(), tiene soltanto quel file e i registri degli errori e dei crash.
+Dalla revisione dello stesso giorno stessa() e dentro() confrontano le cartelle reali, con giunzioni,
+collegamenti e unità di subst risolti: la cartella del mondo raggiunta per un'altra strada restava
+un'altra cartella, e i dati finivano in una riserva dentro sé stessi.
 Le parti del 23 ottobre sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -52,14 +55,37 @@ def cartella_predefinita():
     return nel_programma(CARTELLA_PREDEFINITA)
 
 
+def _reale(cartella):
+    """
+    La cartella com'è davvero sul disco: assoluta, senza punti e barre di troppo, e con giunzioni,
+    collegamenti simbolici e unità di subst risolti, perché la stessa cartella raggiunta per un'altra
+    strada resti la stessa (revisione della cartella del mondo, 23 ottobre 2026). Se il disco non
+    risponde, la forma assoluta.
+    """
+    try:
+        return os.path.realpath(cartella)
+    except (OSError, ValueError):
+        return os.path.normpath(os.path.abspath(cartella))
+
+
 def normale(cartella):
-    """Una cartella in forma confrontabile: assoluta, senza punti e barre di troppo, con le maiuscole come le vede Windows."""
-    return os.path.normcase(os.path.normpath(os.path.abspath(cartella)))
+    """Una cartella in forma confrontabile: quella reale, con le maiuscole come le vede Windows."""
+    return os.path.normcase(_reale(cartella))
 
 
 def stessa(prima, seconda):
-    """Vero se le due cartelle sono la stessa."""
-    return normale(prima) == normale(seconda)
+    """
+    Vero se le due cartelle sono la stessa, anche raggiunte per strade diverse: prima la forma reale,
+    poi, se tutte e due ci sono, l'identità che dà il disco, quando la dà; un numero di file a zero,
+    come su certi dischi di rete, non prova niente.
+    """
+    if normale(prima) == normale(seconda):
+        return True
+    try:
+        a, b = os.stat(prima), os.stat(seconda)
+    except (OSError, ValueError):
+        return False
+    return bool(a.st_ino) and os.path.samestat(a, b)
 
 
 def dentro(cartella, contenitore):
@@ -83,8 +109,11 @@ def cartella_scelta():
             dati = json.load(f)
     except FileNotFoundError:
         return None
-    except (OSError, ValueError) as e:
-        raise CartellaIllegibile(f"il file {FILE_DELLA_CARTELLA}, accanto al programma, non si legge: {e}") from e
+    except ValueError as e:
+        # L'errore di json è in inglese e tecnico: a chi gioca basta sapere che il file è rovinato.
+        raise CartellaIllegibile(f"il file {FILE_DELLA_CARTELLA}, accanto al programma, è rovinato") from e
+    except OSError as e:
+        raise CartellaIllegibile(f"il file {FILE_DELLA_CARTELLA}, accanto al programma, non si legge: {e.strerror or e}") from e
     scelta = dati.get("cartella") if isinstance(dati, dict) else None
     if not isinstance(scelta, str) or not scelta.strip():
         raise CartellaIllegibile(f"il file {FILE_DELLA_CARTELLA}, accanto al programma, non dice quale sia la cartella del mondo")
@@ -114,7 +143,8 @@ def imposta_cartella(nuova):
             os.remove(nome)
         return
     programma = cartella_del_programma()
-    scritta = os.path.relpath(nuova, programma) if dentro(nuova, programma) else os.path.abspath(nuova)
+    # Relativa fra le due forme reali: una delle due raggiunta per una giunzione potrebbe stare su un altro disco.
+    scritta = os.path.relpath(_reale(nuova), _reale(programma)) if dentro(nuova, programma) else os.path.abspath(nuova)
     temporaneo = nome + ".tmp"
     try:
         with open(temporaneo, "w", encoding="utf-8", newline="\n") as f:

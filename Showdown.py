@@ -32,6 +32,11 @@ scrivevano accanto al programma passano nella cartella del mondo, e la vista lo 
 riapre sul mondo di un'altra cartella, la copia nuova parte con --attendi e aspetta che la vecchia
 sia uscita prima di presentarsi all'istanza unica. Anche queste parti sono di Gabriele Battaglia
 (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dalla revisione dello stesso giorno: avvia_finestra a finestra chiusa restituisce APERTA, e non più un
+vero che fra gli ESITI non c'era, e faceva finire ogni chiusura nell'errore fatale; una cartella scelta
+che c'è ma non ha un mondo è un problema dell'avvio come quella che manca, salvo dopo il sì a un mondo
+nuovo; il salvataggio che non si legge apre l'avviso con Riprova, Scegli un'altra cartella ed Esci,
+invece di fermare MESS e basta; e all'avvio non si accetta una cartella dentro i dati accanto al programma.
 """
 
 import contextlib
@@ -62,8 +67,11 @@ ESITI = {
 
 def _scegli_all_avvio():
     """
-    Scegli un'altra cartella, nell'avviso dell'avvio: la finestra di Windows, e una cartella senza mondo
-    soltanto dopo una domanda, perché lì nascerà un mondo nuovo. Vero se la cartella è cambiata.
+    Scegli un'altra cartella, negli avvisi dell'avvio: la finestra di Windows, e una cartella senza mondo
+    soltanto dopo una domanda, perché lì nascerà un mondo nuovo. Restituisce la cartella, se è cambiata,
+    altrimenti None. Dalla revisione del 23 ottobre 2026 non si accetta una cartella dentro i dati che le
+    versioni di prova tenevano accanto al programma, come la sua cartella tornei: alla partenza seguente
+    MESS avrebbe dovuto spostarla dentro sé stessa, e si sarebbe fermato a ogni avvio.
     """
     import wx
 
@@ -75,28 +83,35 @@ def _scegli_all_avvio():
     nuova = scegli_cartella(None, testi.TITOLO_DELLA_SCELTA)
     if nuova is None:
         suoni.suona("annullato")
-        return False
+        return None
+    programma = percorsi.cartella_del_programma()
+    if cartella_del_mondo.intrecciate(programma, nuova):
+        suoni.suona("annullato")
+        wx.MessageBox(testi.intrecciata_col_programma(nuova, programma), "MESS", wx.OK | wx.ICON_WARNING)
+        return None
     if not cartella_del_mondo.ha_un_mondo(nuova):
         suoni.suona("domanda")
         if wx.MessageBox(testi.nessun_mondo_nella_cartella(nuova), "MESS", wx.YES_NO | wx.NO_DEFAULT | wx.ICON_QUESTION) != wx.YES:
             suoni.suona("annullato")
-            return False
+            return None
     try:
         percorsi.imposta_cartella(nuova)
     except OSError as errore:
         suoni.suona("impostazioni_non_salvate")
         wx.MessageBox(testi.cartella_non_scritta(errore, nuova), "MESS", wx.OK | wx.ICON_ERROR)
-        return False
-    return True
+        return None
+    return nuova
 
 
-def prepara_la_cartella():
+def prepara_la_cartella(accettata=None):
     """
     Prima del mondo, la sua cartella. Finché non c'è, l'avviso col suo suono e le tre scelte: Riprova,
-    dopo aver collegato la penna o atteso il cloud; Scegli un'altra cartella; Esci. Poi i dati della
-    vecchia disposizione, accanto al programma, passano nella cartella del mondo. Restituisce la coppia
-    di esito e notizia: l'esito è None se si va avanti, altrimenti SENZA_CARTELLA o NON_SPOSTATI; la
-    notizia è la riga della vista sui dati spostati, o None.
+    dopo aver collegato la penna o atteso il cloud; Scegli un'altra cartella; Esci. Dalla revisione del 23
+    ottobre 2026 l'avviso viene anche per una cartella scelta che c'è ma non ha un mondo, come quella di
+    un cloud non ancora pronto, salvo accettata, la cartella per cui si è appena detto sì a un mondo
+    nuovo. Poi i dati della vecchia disposizione, accanto al programma, passano nella cartella del mondo.
+    Restituisce la terna di esito, notizia e cartella accettata: l'esito è None se si va avanti,
+    altrimenti SENZA_CARTELLA o NON_SPOSTATI; la notizia è la riga della vista sui dati spostati, o None.
     """
     import wx
 
@@ -104,36 +119,68 @@ def prepara_la_cartella():
     import percorsi
     from gui.dialoghi import ESCI, UN_ALTRA_CARTELLA, CartellaAssente
 
-    while (problema := cartella_del_mondo.problema_della_cartella()) is not None:
-        dialogo = CartellaAssente(None, testi.cartella_assente(problema))
+    while (problema := cartella_del_mondo.problema_della_cartella(accettata)) is not None:
+        dialogo = CartellaAssente(None, testi.cartella_assente(problema, isinstance(problema, cartella_del_mondo.SenzaMondo)))
         try:
             suoni.suona("cartella_assente")
             scelta = dialogo.ShowModal()
         finally:
             dialogo.Destroy()
         if scelta == ESCI:
-            return SENZA_CARTELLA, None
+            return SENZA_CARTELLA, None, accettata
         if scelta == UN_ALTRA_CARTELLA:
-            _scegli_all_avvio()
+            accettata = _scegli_all_avvio() or accettata
     try:
         trasloco = cartella_del_mondo.sposta_la_vecchia_disposizione()
     except cartella_del_mondo.SpostamentoNonRiuscito as errore:
         suoni.suona("salvataggio_non_riuscito", sync=suoni.ATTESA_USCITA)
         testo = testi.vecchia_disposizione_non_spostata(errore, percorsi.cartella_del_programma(), percorsi.cartella())
         wx.MessageBox(testo, "MESS", wx.OK | wx.ICON_ERROR)
-        return NON_SPOSTATI, None
+        return NON_SPOSTATI, None, accettata
     if trasloco is None:
-        return None, None
-    return None, testi.vecchia_disposizione_spostata(trasloco, not percorsi.stessa(trasloco.destinazione, percorsi.cartella()))
+        return None, None, accettata
+    in_riserva = not percorsi.stessa(trasloco.destinazione, percorsi.cartella())
+    piu_recente = not in_riserva and trasloco.riserva is not None and cartella_del_mondo.ha_un_mondo(trasloco.riserva)
+    return None, testi.vecchia_disposizione_spostata(trasloco, in_riserva, piu_recente), accettata
+
+
+def _carica_o_scegli(mondo, accettata):
+    """
+    Carica il mondo. Se il salvataggio c'è ma non si legge, e nemmeno la sua copia, il suono e l'avviso
+    con le tre scelte, dalla revisione del 23 ottobre 2026: prima MESS si fermava e basta, e una cartella
+    del mondo scelta con un salvataggio illeggibile, per esempio di una versione più recente sull'altro
+    computer, lo fermava a ogni avvio senza una via d'uscita dall'app. Restituisce la terna di origine,
+    esito e cartella accettata: l'origine del mondo se si è caricato; altrimenti None, con l'esito
+    ILLEGGIBILE se si esce, o None se si riprova, anche con un'altra cartella.
+    """
+    import percorsi
+    from gui.dialoghi import ESCI, UN_ALTRA_CARTELLA, MondoIllegibile
+
+    try:
+        return archivio.carica(mondo), None, accettata
+    except archivio.SalvataggioIllegibile as errore:
+        # Il suono aspetta di finire, come all'uscita, prima della spiegazione.
+        suoni.suona("salvataggio_illeggibile", sync=suoni.ATTESA_USCITA)
+        dialogo = MondoIllegibile(None, testi.mondo_illeggibile_all_avvio(errore, percorsi.cartella()))
+        try:
+            scelta = dialogo.ShowModal()
+        finally:
+            dialogo.Destroy()
+    if scelta == ESCI:
+        return None, ILLEGGIBILE, accettata
+    if scelta == UN_ALTRA_CARTELLA:
+        accettata = _scegli_all_avvio() or accettata
+    # Al giro seguente la cartella si controlla di nuovo, e il mondo si ricarica in un Mondo nuovo.
+    return None, None, accettata
 
 
 def avvia_finestra(crash_precedente=None, finestre=None):
     """
     Prepara la cartella del mondo, poi crea, carica e fa avanzare il mondo, e apre la finestra fino
-    all'uscita. Restituisce uno degli ESITI: APERTA, ILLEGGIBILE se il salvataggio non si leggeva,
-    SENZA_CARTELLA o NON_SPOSTATI. crash_precedente è il resoconto del crash della volta prima, che la
-    vista dice all'apertura; finestre, se data, riceve la finestra appena nasce, per l'ascolto
-    dell'istanza unica.
+    all'uscita. Restituisce uno degli ESITI: APERTA, ILLEGGIBILE se il salvataggio non si leggeva e si è
+    scelto di uscire, SENZA_CARTELLA o NON_SPOSTATI. crash_precedente è il resoconto del crash della
+    volta prima, che la vista dice all'apertura; finestre, se data, riceve la finestra appena nasce, per
+    l'ascolto dell'istanza unica.
     """
     import wx
 
@@ -142,20 +189,20 @@ def avvia_finestra(crash_precedente=None, finestre=None):
 
     # Una wx.App sola per processo: quella delle prove, se c'è già.
     app = wx.GetApp() or wx.App(False)
-    esito, cartella_spostata = prepara_la_cartella()
-    if esito is not None:
-        return esito
-    messaggi = []
-    mondo = Mondo(notifica=messaggi.append)
-    nomi.collezioni()
-    messaggi.extend(f"Attenzione: {avviso}" for avviso in nomi.avvisi)
-    try:
-        origine = archivio.carica(mondo)
-    except archivio.SalvataggioIllegibile as errore:
-        # Il gioco si ferma qui: il suono aspetta di finire, come all'uscita, prima della spiegazione.
-        suoni.suona("salvataggio_illeggibile", sync=suoni.ATTESA_USCITA)
-        wx.MessageBox("\n".join(testi.salvataggio_illeggibile(errore)), "MESS", wx.OK | wx.ICON_ERROR)
-        return ILLEGGIBILE
+    accettata, origine, cartella_spostata = None, None, None
+    while origine is None:
+        esito, notizia, accettata = prepara_la_cartella(accettata)
+        if esito is not None:
+            return esito
+        # I dati accanto al programma si spostano una volta sola: la notizia resta anche se il giro si ripete.
+        cartella_spostata = notizia or cartella_spostata
+        nomi.collezioni()
+        messaggi = []
+        mondo = Mondo(notifica=messaggi.append)
+        messaggi.extend(f"Attenzione: {avviso}" for avviso in nomi.avvisi)
+        origine, esito, accettata = _carica_o_scegli(mondo, accettata)
+        if esito is not None:
+            return esito
     # L'avanzamento lo racconta la finestra, dal suo riepilogo in numeri.
     mondo.notifica = lambda *_args: None
     ultimo_prima = mondo.datetime_ultimo_run_reale
@@ -172,7 +219,7 @@ def avvia_finestra(crash_precedente=None, finestre=None):
     # Dalla tappa 14, a finestra comparsa: solo dall'eseguibile compilato, in un filo, e la finestra intanto risponde.
     wx.CallAfter(aggiornamento.controlla, finestra)
     app.MainLoop()
-    return True
+    return APERTA
 
 
 def _rete_per_gli_errori(finestra):

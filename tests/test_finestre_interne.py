@@ -98,7 +98,8 @@ FABBRICHE = {
     "Aggiornamento": lambda s: dialoghi.Aggiornamento(None, "1.94.6", "2.0.0", "Note."),
     # Dal 23 ottobre 2026, la cartella del mondo: la domanda col mondo già presente e l'avviso dell'avvio.
     "MondoGiaPresente": lambda s: dialoghi.MondoGiaPresente(None, "Nella cartella c'è già un mondo.", testi.IL_TUO),
-    "CartellaAssente": lambda s: dialoghi.CartellaAssente(None, "MESS non trova la cartella del mondo."),
+    "CartellaAssente": lambda s: dialoghi.CartellaAssente(None, "MESS non trova il mondo."),
+    "MondoIllegibile": lambda s: dialoghi.MondoIllegibile(None, "Il salvataggio c'è ma non si può leggere."),
     "ModelloTorneoDialogo": lambda s: gui_editor.ModelloTorneoDialogo(None, s.gestore.modello("modello_1"), formule.leggi()[0], s.gestore),
     "EditorModelli": lambda s: gui_editor.EditorModelli(None, s.gestore),
     "FaseDialogo": lambda s: gui_editor.FaseDialogo(None, {"tipo": formule.GIRONI, "partecipanti": 8, "gironi": 2, "promossi": 2, "finalina": False}, 0, False),

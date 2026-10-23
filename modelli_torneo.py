@@ -357,6 +357,15 @@ def problema(modello, formule_date=None):
 _CACHE = {}
 
 
+def azzera_cache():
+    """
+    I modelli di tutte le cartelle si rileggono dai file alla prossima richiesta: dal 23 ottobre 2026,
+    dopo che i dati sono passati in un'altra cartella del mondo, perché una cartella lasciata e poi
+    ripresa nella stessa sessione non mostri i modelli di prima.
+    """
+    _CACHE.clear()
+
+
 def nome_file(nome):
     """
     Il nome del file di un modello: il nome senza i caratteri che Windows vieta e senza punti e
