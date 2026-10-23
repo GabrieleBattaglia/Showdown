@@ -18,12 +18,26 @@ from costanti import VERSIONE
 
 APP = "MESS"
 API = "https://api.github.com/repos/GabrieleBattaglia/Showdown/releases/latest"
-# Le frasi di gestisci_aggiornamento che con la proposta nella finestra arrivano ancora a chi gioca.
+# Le frasi di gestisci_aggiornamento che con la proposta nella finestra arrivano ancora a chi gioca:
+# sono i tre esiti, e la finestra li riconosce dalla frase per dar loro il suono e l'icona.
+FRASE_NON_PRONTO = "ma il pacchetto non è ancora pronto: te la ripropongo a un prossimo avvio."
+FRASE_PRONTO = "Aggiornamento scaricato: MESS salva il mondo, si chiude per installarlo e si riapre da solo."
+FRASE_NON_RIUSCITO = "Aggiornamento non riuscito: continui con questa versione, e te lo ripropongo al prossimo avvio."
 FRASI = {
-    "ma il pacchetto non e' ancora pronto.": "ma il pacchetto non è ancora pronto: te la ripropongo a un prossimo avvio.",
-    "Aggiornamento pronto, il programma si chiude per applicarlo.": "Aggiornamento scaricato: MESS salva il mondo, si chiude per installarlo e si riapre da solo.",
-    "Aggiornamento non riuscito, si prosegue con questa versione.": "Aggiornamento non riuscito: continui con questa versione, e te lo ripropongo al prossimo avvio.",
+    "ma il pacchetto non e' ancora pronto.": FRASE_NON_PRONTO,
+    "Aggiornamento pronto, il programma si chiude per applicarlo.": FRASE_PRONTO,
+    "Aggiornamento non riuscito, si prosegue con questa versione.": FRASE_NON_RIUSCITO,
 }
+PRONTO = "pronto"
+NON_RIUSCITO = "non riuscito"
+NON_PRONTO = "non pronto"
+# La versione nuova arriva davanti alla frase del pacchetto non pronto, quindi le frasi si cercano in fondo al testo.
+ESITI = ((FRASE_PRONTO, PRONTO), (FRASE_NON_RIUSCITO, NON_RIUSCITO), (FRASE_NON_PRONTO, NON_PRONTO))
+
+
+def esito(testo):
+    """Quale esito dice un testo che gestisci_aggiornamento manda alla finestra: PRONTO, NON_RIUSCITO, NON_PRONTO, o None se non è un esito."""
+    return next((nome for frase, nome in ESITI if testo.endswith(frase)), None)
 
 
 def traduci(testo):

@@ -115,3 +115,17 @@ def test_lo_stderr_del_programma_compilato(tmp_path, monkeypatch):
     assert sys.stderr is None
     testo = _leggi(tmp_path / registro.FILE_DEGLI_ERRORI)
     assert "Un avviso di una libreria" in testo and "su due righe" in testo
+
+
+def test_il_registro_che_non_si_scrive_non_va_in_ricorsione(tmp_path, monkeypatch):
+    # Al posto del file del registro una cartella: ogni scrittura fallisce, e logging lo racconta su
+    # stderr, che nel programma compilato è il registro stesso.
+    (tmp_path / registro.FILE_DEGLI_ERRORI).mkdir()
+    monkeypatch.setattr(sys, "stderr", None)
+    registro.avvia(str(tmp_path))
+    assert sys.stderr.encoding == "utf-8" and not sys.stderr.isatty()
+    print("Un avviso di una libreria", file=sys.stderr)
+    registro.scrivi("MESS 2.0.0 si avvia.")
+    registro.problema(ValueError, ValueError("prova"), None)
+    registro.chiudi()
+    assert sys.stderr is None

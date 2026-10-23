@@ -64,7 +64,7 @@ def test_l_iscrizione_che_si_sovrappone_si_annulla_col_rimborso():
     # Dalla revisione della tappa 14 la preposizione articolata davanti al torneo: prima si leggeva "a Campionato italiano maschile".
     nome = iscrizioni.nome_completo(g1)
     assert f"{nome} è convocato al Campionato italiano maschile." in rapporto["notizie"]
-    assert any(voce.get("testo", "").startswith("Lascia Open maschile del sabato: è convocato al Campionato italiano maschile, ") for voce in g1.diario)
+    assert any(voce.get("testo", "").startswith("Lascia l'Open maschile del sabato: è convocato al Campionato italiano maschile, ") for voce in g1.diario)
     mondiale = next(ed for ed in mondo.calendario.edizioni if ed.nome == MONDIALE)
     assert iscrizioni.problema_iscrizione(mondo, mondiale.id, g1, poli) == "Al Campionato italiano maschile si entra per qualificazione, non con l'iscrizione."
 

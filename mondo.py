@@ -2220,7 +2220,11 @@ class Mondo:
         return poli_cpu < attivi / GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET
 
     def _notifica_rapporto(self, rapporto):
-        """Il riepilogo dell'avanzamento nella forma dell'interfaccia testuale."""
+        """
+        Il riepilogo dell'avanzamento, riga per riga, alla funzione notifica. Lo leggeva l'interfaccia
+        testuale, tolta con la tappa 14; la finestra fa il suo riepilogo dal rapporto, e qui la notifica
+        di solito non va da nessuna parte.
+        """
         for numero, testo in ((rapporto["guariti"], "guariti"), (rapporto["usciti"], "giocatori usciti prematuramente"),
                               (rapporto["morti"], "deceduti per età"), (rapporto["ritirati"], "ritirati per età"),
                               (rapporto["autoallenati"], "allenamenti da autonomi")):

@@ -113,8 +113,8 @@ def test_i_punti_della_classifica_e_i_tornei_giocati(chiusa):
 def test_i_diari(chiusa):
     mondo, a, b = chiusa["mondo"], chiusa["a"], chiusa["b"]
     tuo = mondo.giocatori[3].diario[0]["testo"]
-    assert tuo.startswith("Chiude Open maschile del martedì, sede 1, terzo su 8:") and "medaglia di bronzo" in tuo and "premio di" in tuo
-    assert b.diario[0]["testo"].startswith("Chiude Open maschile del martedì, sede 1: ")
+    assert tuo.startswith("Chiude l'Open maschile del martedì, sede 1, terzo su 8:") and "medaglia di bronzo" in tuo and "premio di" in tuo
+    assert b.diario[0]["testo"].startswith("Chiude l'Open maschile del martedì, sede 1: ")
     del_computer = mondo.giocatori[2].diario[0]
     assert del_computer["anno"] == 2026 and del_computer["tornei"] == 1 and del_computer["incontri"] >= 3
     assert a.diario[0]["anno"] == 2026 and a.diario[0]["ori"] == 1 and a.diario[0]["iscrizioni"] == 2

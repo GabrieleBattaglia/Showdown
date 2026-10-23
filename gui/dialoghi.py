@@ -2144,7 +2144,7 @@ class Aggiornamento(Lettura):
     Non adesso, che è il predefinito. Esc, e Invio nel testo, valgono Non adesso: aggiornare si
     sceglie solo con il suo pulsante. Con attesa, in secondi, il dialogo si chiude da solo come Non
     adesso allo scadere, e l'aggiornamento torna al prossimo avvio. Il codice di ShowModal è wx.ID_YES
-    per aggiornare, wx.ID_NO altrimenti.
+    per aggiornare, wx.ID_NO altrimenti; scaduta dice se il no è venuto dallo scadere dell'attesa.
     """
 
     def __init__(self, genitore, versione_attuale, versione_nuova, note, attesa=None, impostazioni=None):
@@ -2160,6 +2160,8 @@ class Aggiornamento(Lettura):
         self.bottoni[-1].Bind(wx.EVT_BUTTON, lambda event: self.chiudi(wx.ID_NO))
         self.bottoni[-1].SetDefault()
         self.SetEscapeId(wx.ID_NO)
+        # Vero se il dialogo si è chiuso da solo, allo scadere: la finestra le dà un suono diverso da Non adesso.
+        self.scaduta = False
         self._scadenza = wx.CallLater(round(attesa * 1000), self._scaduta) if attesa else None
 
     def _tasto(self, event):
@@ -2179,4 +2181,5 @@ class Aggiornamento(Lettura):
     def _scaduta(self):
         # Il dialogo può essere già chiuso, o distrutto.
         if self and self.IsModal():
+            self.scaduta = True
             self.EndModal(wx.ID_NO)

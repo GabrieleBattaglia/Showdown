@@ -394,7 +394,7 @@ def togli(mondo, id_edizione, g, poli):
     # trovava il tesserato di nuovo in attesa, lo riscriveva alla stessa edizione e la quota si pagava
     # di nuovo. Il ricordo dura fino al sorteggio dell'edizione.
     calendario.ricorda_tolta(g.id, ed.id)
-    mondo.annota(g, f"Non gioca più {ed.nome}: l'iscrizione è tolta.")
+    mondo.annota(g, f"Non gioca più {torneo_con_preposizione(ed.nome, None)}: l'iscrizione è tolta.")
     mondo.annota(poli, f"Toglie {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')}" + (f": rimborso di {scritta_in_euro(euro)}." if euro else "."))
     if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
         # Chi hai tolto non torna convocato: resta fra gli esclusi, come gli infortunati sostituiti.
@@ -436,7 +436,7 @@ def convoca(mondo, calendario, ed, g, rapporto=None):
             continue
         rimborsa(mondo, altra.togli(g.id))
         if tuo(mondo, g):
-            mondo.annota(g, f"Lascia {altra.nome}: è {accorda(g.sesso, 'convocato')} {torneo_con_preposizione(ed.nome)}, che ha la precedenza.")
+            mondo.annota(g, f"Lascia {torneo_con_preposizione(altra.nome, None)}: è {accorda(g.sesso, 'convocato')} {torneo_con_preposizione(ed.nome)}, che ha la precedenza.")
     ed.aggiungi(g.id, club_di(mondo, g), 0, QUALIFICATO)
     if tuo(mondo, g):
         mondo.annota(g, f"{accorda(g.sesso, 'Convocato')} {torneo_con_preposizione(ed.nome)}, dal {data_breve(ed.data_inizio)}.")
@@ -502,11 +502,11 @@ def togli_chi_ha_lasciato(mondo, ed):
         if poli is None or poli.is_cpu_controlled:
             continue
         if g is None:
-            testo = f"Il giocatore numero {gid} non gioca {ed.nome}: è uscito di scena prima del sorteggio"
+            testo = f"Il giocatore numero {gid} non gioca {torneo_con_preposizione(ed.nome, None)}: è uscito di scena prima del sorteggio"
         elif gid in morti:
-            testo = f"{nome_completo(g)} non gioca {ed.nome}: è {accorda(g.sesso, 'uscito')} di scena prima del sorteggio"
+            testo = f"{nome_completo(g)} non gioca {torneo_con_preposizione(ed.nome, None)}: è {accorda(g.sesso, 'uscito')} di scena prima del sorteggio"
         else:
-            testo = f"{nome_completo(g)} non gioca {ed.nome}: si è {accorda(g.sesso, 'ritirato')} dall'attività prima del sorteggio"
+            testo = f"{nome_completo(g)} non gioca {torneo_con_preposizione(ed.nome, None)}: si è {accorda(g.sesso, 'ritirato')} dall'attività prima del sorteggio"
         mondo.annota(poli, testo + (f", e la quota di {scritta_in_euro(euro)} torna." if euro else "."))
     return tolti
 

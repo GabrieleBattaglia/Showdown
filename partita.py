@@ -16,7 +16,7 @@ Il motore non stampa e non chiede nulla: le righe le consegna alla funzione most
 un tasto chiama la funzione pausa. Le passa chi lo usa; se non le passa, lavora in silenzio.
 Dal 2026-10-08, regola di Gabriele, ogni giocatore gioca al massimo un'amichevole per giorno
 simulato, perché ogni amichevole dà punti allenamento: la facciata la controlla prima di giocare,
-per la finestra e per l'interfaccia testuale, e alla registrazione segna il giorno nei due giocatori.
+per la finestra, e alla registrazione segna il giorno nei due giocatori.
 La cronaca su file può ricevere il momento reale e il giorno simulato dell'incontro, per chi la
 salva più tardi.
 Con la decisione D29, tappa 10, l'amichevole da assistere dal vivo si gioca e si registra subito come
@@ -302,8 +302,9 @@ class MotorePartita:
         Simula una partita fra due giocatori e ne restituisce il risultato, nel dizionario di
         sempre più seme, risultato ed eventi. Con modalità risultato si gioca in modalità
         essenziale; con console e file in modalità completa, con la cronaca. Senza torneo, ed
-        è l'amichevole dell'interfaccia testuale, vale la regola di un impegno al giorno, se si
-        registra; con il torneo l'incontro si registra come partita di torneo.
+        è un'amichevole, vale la regola di un impegno al giorno, se si registra; con il torneo
+        l'incontro si registra come partita di torneo. Dalla tappa 14, tolta l'interfaccia
+        testuale che la usava per le amichevoli, la chiamano soltanto le prove.
         """
         risposta = {
             'id_originale_g1': id_g1, 'id_originale_g2': id_g2, 'num_set_target': num_set_target,

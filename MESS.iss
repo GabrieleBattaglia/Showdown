@@ -52,6 +52,14 @@ Name: "italiano"; MessagesFile: "compiler:Languages\Italian.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
+[InstallDelete]
+; Prima di installare, via le cartelle del programma lasciate da una versione precedente. Un MESS
+; aggiornato da solo ha in _internal il manifesto dello zip: se restasse, al primo avvio
+; pulisci_residui cancellerebbe tutti i file nuovi che quel manifesto non elenca. I dati
+; dell'utente stanno fuori da _internal, accanto all'eseguibile, e restano dove sono.
+Type: filesandordirs; Name: "{app}\_internal"
+Type: filesandordirs; Name: "{app}\_internal_vecchio"
+
 [Files]
 ; Il pacchetto a cartella di PyInstaller, senza i dati che una prova avesse lasciato in dist, come fa zip_maker.py.
 ; Ogni motivo comincia con la barra rovesciata, che lo lega alla cartella dell'eseguibile: senza,

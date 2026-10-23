@@ -1048,7 +1048,8 @@ def test_il_manuale_che_manca_o_non_si_apre(finestra, suonati, monkeypatch, cart
     monkeypatch.setattr(finestra_modulo.os, "startfile", senza_browser, raising=False)
     finestra.manuale()
     assert finestra.vista.GetValue().startswith("Il manuale non si apre nel browser: Nessuna applicazione associata.")
-    assert suonati == ["novita_illeggibile", "novita_illeggibile"]
+    # Il manuale che manca ha il suo suono, diverso da quello delle novità che non si leggono.
+    assert suonati == ["manuale_mancante", "manuale_mancante"]
 
 
 # Il crash della volta prima, tappa 14.

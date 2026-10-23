@@ -12,18 +12,27 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 import datetime
 import random
 import sys
+import time
+import types
 
 import GBUtils
 import pytest
 import wx
+from aiuti_dal_vivo import CassaFinta, vieta_la_cassa_vera
+from aiuti_motore import giocatore
 
 import aggiornamento
 import archivio
+import partita_sonora as ps
 from costanti import FILE_MONDO, VERSIONE
-from gui import dialoghi
-from gui.finestra import RIPROVA_DELLA_CHIUSURA, FinestraPrincipale
+from gui import dal_vivo, dialoghi
+from gui import finestra as finestra_modulo
+from gui import tornei as gui_tornei
+from gui.dal_vivo import FinestraDalVivo
+from gui.finestra import LIMITE_DELLA_CHIUSURA, NON_INSTALLATO, RIPROVA_DELLA_CHIUSURA, FinestraPrincipale
 from modelli import Polisportiva
 from mondo import Mondo
+from partita import differita_singolare
 from utilita import adesso, adesso_utc
 
 
@@ -242,14 +251,21 @@ def test_la_proposta_che_scade_risponde_no(finestra, suonati):
         assert not finestra.proponi_l_aggiornamento("1.94.6", "2.0.0", "## Le novità\n\nIl manuale.", attesa=0.3)
     finally:
         guardia.Stop()
-    assert suonati == ["aggiornamento_disponibile", "annullato"]
-    assert finestra.barra.GetValue().splitlines()[3] == "aggiornamento rimandato" and finestra._modali == 0
+    # La proposta lasciata scadere ha il suo suono, diverso da Non adesso.
+    assert suonati == ["aggiornamento_disponibile", "aggiornamento_scaduto"]
+    assert finestra.barra.GetValue().splitlines()[3] == "aggiornamento rimandato: tempo scaduto" and finestra._modali == 0
+
+
+def test_non_adesso(finestra, suonati, monkeypatch):
+    monkeypatch.setattr(dialoghi.Aggiornamento, "ShowModal", lambda self: wx.ID_NO)
+    assert not finestra.proponi_l_aggiornamento("1.94.6", "2.0.0", "Note.", attesa=120)
+    assert suonati == ["aggiornamento_disponibile", "annullato"] and finestra.barra.GetValue().splitlines()[3] == "aggiornamento rimandato"
 
 
 def test_la_proposta_accettata(finestra, suonati, monkeypatch):
     monkeypatch.setattr(dialoghi.Aggiornamento, "ShowModal", lambda self: wx.ID_YES)
     assert finestra.proponi_l_aggiornamento("1.94.6", "2.0.0", "Note.", attesa=120)
-    assert suonati == ["aggiornamento_disponibile"] and finestra.barra.GetValue().splitlines()[3] == "scarico MESS 2.0.0"
+    assert suonati == ["aggiornamento_disponibile", "aggiornamento_scelto"] and finestra.barra.GetValue().splitlines()[3] == "scarico MESS 2.0.0"
 
 
 def test_l_avanzamento_nella_barra_di_stato(finestra):
@@ -261,12 +277,142 @@ def test_l_avanzamento_nella_barra_di_stato(finestra):
     assert all(len(riga) <= 40 for riga in righe)
 
 
-def test_l_esito_aspetta_l_ok(finestra, suonati, monkeypatch):
+def test_gli_esiti_dalle_frasi_vere_di_gbutils(compilato, monkeypatch):
+    # Il pacchetto non ancora pronto: GBUtils mette la versione davanti alla frase.
+    monkeypatch.setattr(GBUtils, "update_checker", lambda *_a, **_k: (True, "2.1.0", "", "Note."))
+    finestra = FinestraFinta()
+    aggiornamento.controlla(finestra, chiama_dopo=_subito).join(10)
+    non_pronto = finestra.chiamate[-1][1]
+    assert non_pronto == "Disponibile la versione 2.1.0, ma il pacchetto non è ancora pronto: te la ripropongo a un prossimo avvio."
+    # Lo scaricamento che non riesce.
+    monkeypatch.setattr(GBUtils, "update_checker", lambda *_a, **_k: (True, "2.1.0", "https://github.com/x/MESS.zip", "Note."))
+    monkeypatch.setattr(GBUtils, "perform_update", lambda *_a, **_k: False)
+    finestra = FinestraFinta()
+    aggiornamento.controlla(finestra, chiama_dopo=_subito).join(10)
+    non_riuscito = finestra.chiamate[-1][1]
+    assert [aggiornamento.esito(t) for t in (aggiornamento.FRASE_PRONTO, non_riuscito, non_pronto, "Un'altra frase.")] == [
+        aggiornamento.PRONTO, aggiornamento.NON_RIUSCITO, aggiornamento.NON_PRONTO, None]
+
+
+@pytest.mark.parametrize(("testo", "suono", "icona"), [
+    (aggiornamento.FRASE_PRONTO, "aggiornamento_esito", wx.ICON_INFORMATION),
+    (aggiornamento.FRASE_NON_RIUSCITO, "aggiornamento_non_riuscito", wx.ICON_ERROR),
+    (f"Disponibile la versione 2.1.0, {aggiornamento.FRASE_NON_PRONTO}", "aggiornamento_non_pronto", wx.ICON_ERROR),
+])
+def test_l_esito_aspetta_l_ok(finestra, suonati, monkeypatch, testo, suono, icona):
     messaggi = []
-    monkeypatch.setattr(wx, "MessageBox", lambda testo, titolo, *a, **k: messaggi.append((testo, titolo)))
-    finestra.avvisa_dell_aggiornamento("Aggiornamento non riuscito.")
-    assert messaggi == [("Aggiornamento non riuscito.", "Aggiornamento di MESS")]
-    assert suonati == ["aggiornamento_esito"] and finestra._modali == 0
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, titolo, stile, *a, **k: messaggi.append((testo, titolo, stile)))
+    finestra.avvisa_dell_aggiornamento(testo)
+    assert messaggi == [(testo, "Aggiornamento di MESS", wx.OK | icona)]
+    assert suonati == [suono] and finestra._modali == 0
+
+
+def _fino_a(condizione, secondi=5.0):
+    """
+    Fa girare un ciclo di eventi di wx finché la condizione è vera o finisce il tempo: i timer, come i
+    nuovi tentativi della chiusura, scattano soltanto in un ciclo che gira, non con wx.Yield.
+    """
+    fine = time.monotonic() + secondi
+    ciclo = wx.GUIEventLoop()
+
+    def guarda():
+        if condizione() or time.monotonic() > fine:
+            ciclo.Exit()
+        else:
+            wx.CallLater(20, guarda)
+
+    wx.CallLater(20, guarda)
+    attivo = wx.EventLoopActivator(ciclo)
+    try:
+        ciclo.Run()
+    finally:
+        del attivo
+    return condizione()
+
+
+def test_chiudi_per_aggiornare_nella_differita_non_svela_il_risultato(finestra, suonati, monkeypatch):
+    """
+    Una differita aperta dal pannello dei tornei mentre arriva la chiusura per aggiornare: la finestra
+    dal vivo esce come con Esc, il timer e il suono si fermano, il risultato resta da scoprire,
+    decisione D30, e la chiusura riprova da sola finché la finestra principale si chiude.
+    """
+    vieta_la_cassa_vera(monkeypatch)
+    casse = []
+    monkeypatch.setattr(ps, "Cassa", lambda: casse.append(CassaFinta()) or casse[-1])
+    differita = differita_singolare(giocatore(1, 12.0), giocatore(2, 13.0), {}, {}, {}, 3)
+    visti = []
+
+    def durante():
+        vivo = next(d for d in wx.GetTopLevelWindows() if isinstance(d, FinestraDalVivo) and d.IsModal())
+        vivo.al_prosegui()
+        visti.append((vivo.stato, vivo.timer.IsRunning(), casse[0].accese))
+        finestra.chiudi_per_aggiornare()
+        visti.append((vivo.uscita, vivo.timer.IsRunning(), casse[0].accese, vivo.GetReturnCode()))
+
+    guardia = _guardia()
+    wx.CallAfter(durante)
+    try:
+        ultimo, _velocita = gui_tornei.ascolta_e_ricorda(finestra, finestra.mondo, differita, 7, finestra.impostazioni, {1}, None, "torneo")
+    finally:
+        guardia.Stop()
+    assert visti == [(dal_vivo.SUONA, True, 1), (dal_vivo.CON_ESC, False, 0, wx.ID_CANCEL)]
+    assert ultimo is None and "differita_interrotta" in suonati and "risultato_svelato" not in suonati
+    # Il dialogo era aperto: la finestra principale non si è chiusa subito, ma al primo nuovo tentativo.
+    assert suonati[-1] == "differita_interrotta" and finestra._per_aggiornare
+    assert _fino_a(lambda: finestra.chiusa)
+    assert suonati[-1] == "uscita"
+    wx.Yield()
+    assert not finestra
+
+
+def test_chiudi_per_aggiornare_annulla_gli_altri_dialoghi(finestra, suonati):
+    lettura = dialoghi.Lettura(finestra, "Prova", "Un testo da leggere.")
+    guardia = _guardia()
+    wx.CallAfter(finestra.chiudi_per_aggiornare)
+    try:
+        assert lettura.ShowModal() == wx.ID_CANCEL
+    finally:
+        guardia.Stop()
+        lettura.Destroy()
+    assert not finestra.chiusa
+    assert _fino_a(lambda: finestra.chiusa) and suonati == ["uscita"]
+    wx.Yield()
+
+
+def test_chiudi_per_aggiornare_smette_di_riprovare_e_lo_dice(finestra, suonati, monkeypatch):
+    orologio = [1000.0]
+    monkeypatch.setattr(finestra_modulo, "time", types.SimpleNamespace(monotonic=lambda: orologio[0]))
+    rinviati = []
+    monkeypatch.setattr(wx, "CallLater", lambda millisecondi, funzione, *a, **k: rinviati.append((millisecondi, funzione)))
+    finestra._modali = 1
+    finestra.chiudi_per_aggiornare()
+    orologio[0] += LIMITE_DELLA_CHIUSURA - 1
+    finestra.chiudi_per_aggiornare()
+    assert rinviati == [(RIPROVA_DELLA_CHIUSURA, finestra.chiudi_per_aggiornare)] * 2
+    # Oltre il limite lo script di sostituzione ha rinunciato: MESS resta aperto, e lo dirà quando il messaggio si chiude.
+    orologio[0] += 2
+    finestra.chiudi_per_aggiornare()
+    assert rinviati[-1] == (RIPROVA_DELLA_CHIUSURA, finestra._di_che_non_si_e_installato)
+    assert not finestra.chiusa and not finestra._per_aggiornare and suonati == []
+    finestra._modali = 0
+    finestra._di_che_non_si_e_installato()
+    assert finestra.vista.GetValue() == NON_INSTALLATO and suonati == ["aggiornamento_non_riuscito"]
+    riga = finestra.barra.GetValue().splitlines()[3]
+    assert riga == "aggiornamento non installato" and len(riga) <= 40
+    assert len(rinviati) == 3 and not finestra.chiusa
+
+
+def test_chiudi_per_aggiornare_dice_il_salvataggio_non_riuscito(finestra, suonati, monkeypatch):
+    messaggi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, titolo, stile, *a, **k: messaggi.append((testo, titolo, stile)))
+    monkeypatch.setattr(FinestraPrincipale, "_salva_raccogliendo", lambda self: (False, ["Il disco è pieno."], []))
+    finestra.chiudi_per_aggiornare()
+    assert finestra.chiusa and suonati == ["uscita_senza_salvataggio"]
+    assert messaggi == [("Il mondo non si è salvato prima dell'aggiornamento. Il disco è pieno.\n"
+                         "Alla riapertura ritroverai il mondo dell'ultimo salvataggio riuscito. Con OK MESS si chiude e installa la versione nuova.",
+                         "Aggiornamento di MESS", wx.OK | wx.ICON_ERROR)]
+    wx.Yield()
+    assert not finestra
 
 
 def test_chiudi_per_aggiornare_salva_e_non_apre_il_riepilogo(finestra, suonati, cartella_di_prova, monkeypatch):

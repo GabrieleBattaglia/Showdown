@@ -62,11 +62,13 @@ della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, U
 
 import contextlib
 import os
+import time
 
 import wx
 from GBUtils import Donazione
 from GBwx import dentro_area_utile
 
+import aggiornamento
 import archivio
 import impostazioni as modulo_impostazioni
 import modelli_torneo
@@ -117,6 +119,13 @@ PAUSA_NOTIZIA_DELLO_STAFF = 1.0
 RIGHE_BARRA = 4
 # Ogni quanti millesimi la chiusura per l'aggiornamento riprova, finché un messaggio resta aperto.
 RIPROVA_DELLA_CHIUSURA = 200
+# Dopo quanti secondi la chiusura per l'aggiornamento smette di riprovare: lo script di sostituzione
+# aspetta la chiusura di MESS al massimo 30 secondi, e oltre si chiuderebbe per niente.
+LIMITE_DELLA_CHIUSURA = 25
+NON_INSTALLATO = ("L'aggiornamento non si è installato: MESS doveva chiudersi entro 30 secondi, ma un messaggio è rimasto aperto. "
+                  "Continui con questa versione, e l'aggiornamento te lo ripropongo al prossimo avvio.")
+# Il suono degli esiti dell'aggiornamento che non sono quello buono, lo scaricamento finito.
+SUONI_DEGLI_ESITI = {aggiornamento.NON_RIUSCITO: "aggiornamento_non_riuscito", aggiornamento.NON_PRONTO: "aggiornamento_non_pronto"}
 
 
 class FinestraPrincipale(wx.Frame):
@@ -130,6 +139,8 @@ class FinestraPrincipale(wx.Frame):
         self.crash_precedente = crash_precedente
         self.chiusa = False
         self._per_aggiornare = False
+        # Da quando, in secondi di time.monotonic, la finestra prova a chiudersi per l'aggiornamento.
+        self._chiusura_dal = None
         self.rapporto = rapporto
         self.rapporto_sessione = rapporto
         self._modali = 0
@@ -1191,17 +1202,17 @@ class FinestraPrincipale(wx.Frame):
         """
         Il manuale, manuale.html, nel browser predefinito, dalla tappa 14: la vista resta com'era, e la
         barra dice che il manuale è aperto. Se il file manca, o Windows non lo apre, lo dice la vista,
-        col suono delle novità che non si leggono: anche questo è un documento dell'aiuto che manca.
+        col suono suo del manuale che manca.
         """
         percorso = percorsi.risorsa("manuale.html")
         if not os.path.isfile(percorso):
             self.mostra(f"Il manuale non c'è: dovrebbe essere il file {percorso}. Reinstallare MESS lo rimette al suo posto.", "manuale mancante",
-                        "novita_illeggibile")
+                        "manuale_mancante")
             return
         try:
             os.startfile(percorso)  # noqa: S606 - il manuale si apre col browser che Windows associa all'HTML
         except OSError as errore:
-            self.mostra(f"Il manuale non si apre nel browser: {errore.strerror or errore}. È il file {percorso}.", "manuale non aperto", "novita_illeggibile")
+            self.mostra(f"Il manuale non si apre nel browser: {errore.strerror or errore}. È il file {percorso}.", "manuale non aperto", "manuale_mancante")
             return
         suoni.suona("manuale")
         self.ultimo_evento = "manuale nel browser"
@@ -1230,10 +1241,16 @@ class FinestraPrincipale(wx.Frame):
             # In coda: all'avvio può suonare ancora il motivo di MESS.
             suoni.in_coda("aggiornamento_disponibile")
             scelta = self._modale(dialogo)
+            scaduta = dialogo.scaduta
         finally:
             dialogo.Destroy()
+        # Aggiorna, Non adesso e la proposta lasciata scadere hanno ciascuno il suo suono.
         if scelta == wx.ID_YES:
+            suoni.suona("aggiornamento_scelto")
             self.ultimo_evento = f"scarico MESS {versione_nuova}"
+        elif scaduta:
+            suoni.suona("aggiornamento_scaduto")
+            self.ultimo_evento = "aggiornamento rimandato: tempo scaduto"
         else:
             suoni.suona("annullato")
             self.ultimo_evento = "aggiornamento rimandato"
@@ -1244,11 +1261,16 @@ class FinestraPrincipale(wx.Frame):
         """
         Un esito dell'aggiornamento, in un messaggio che aspetta l'OK: torna soltanto quando lo si è
         chiuso, perché i 30 secondi dello script di sostituzione partano dopo, non mentre lo si legge.
+        Il suono lo sceglie la frase: l'aggiornamento scaricato, quello non riuscito e il pacchetto
+        non ancora pronto hanno ciascuno il suo, e i due esiti cattivi l'icona dell'errore.
         """
+        esito = aggiornamento.esito(testo)
+        suono = SUONI_DEGLI_ESITI.get(esito, "aggiornamento_esito")
+        icona = wx.ICON_ERROR if esito in (aggiornamento.NON_RIUSCITO, aggiornamento.NON_PRONTO) else wx.ICON_INFORMATION
         self._modali += 1
         try:
-            suoni.in_coda("aggiornamento_esito")
-            wx.MessageBox(testo, "Aggiornamento di MESS", wx.OK | wx.ICON_INFORMATION, self)
+            suoni.in_coda(suono)
+            wx.MessageBox(testo, "Aggiornamento di MESS", wx.OK | icona, self)
         finally:
             self._modali -= 1
 
@@ -1267,19 +1289,45 @@ class FinestraPrincipale(wx.Frame):
         """
         GBUtils sta per sostituire MESS: la finestra salva il mondo e si chiude senza il riepilogo di
         fine sessione, che aspetterebbe l'OK mentre lo script di sostituzione aspetta al massimo 30
-        secondi. Un dialogo aperto si chiude prima, come annullato; un messaggio aperto, che non si
-        può chiudere da qui, si aspetta, e la chiusura riprova finché non è stato letto.
+        secondi. Un dialogo aperto si chiude prima: la partita dal vivo e la differita come con Esc,
+        che ferma il suono e la cronaca e non svela il risultato, decisione D30; gli altri come
+        annullati. Un messaggio aperto, che non si può chiudere da qui, si aspetta, e la chiusura
+        riprova finché non è stato letto, ma per LIMITE_DELLA_CHIUSURA secondi al massimo: dopo, lo
+        script ha rinunciato, o sta per farlo, e MESS resta aperto, e lo dice appena il messaggio si chiude.
         """
         if not self or self.chiusa:
             return
-        self._per_aggiornare = True
-        aperti = [d for d in wx.GetTopLevelWindows() if isinstance(d, wx.Dialog) and d.IsModal()]
-        for dialogo in aperti:
-            dialogo.EndModal(wx.ID_CANCEL)
-        if aperti or self._modali:
-            wx.CallLater(RIPROVA_DELLA_CHIUSURA, self.chiudi_per_aggiornare)
+        if not self._per_aggiornare:
+            self._per_aggiornare = True
+            self._chiusura_dal = time.monotonic()
+        if self._chiudi_i_dialoghi():
+            if time.monotonic() - self._chiusura_dal < LIMITE_DELLA_CHIUSURA:
+                wx.CallLater(RIPROVA_DELLA_CHIUSURA, self.chiudi_per_aggiornare)
+            else:
+                self._per_aggiornare = False
+                self._chiusura_dal = None
+                self._di_che_non_si_e_installato()
             return
         self.Close(force=True)
+
+    def _chiudi_i_dialoghi(self):
+        """Chiude i dialoghi modali aperti; vero se ce n'erano, o se resta aperto un messaggio, e la chiusura deve aspettare."""
+        aperti = [d for d in wx.GetTopLevelWindows() if isinstance(d, wx.Dialog) and d.IsModal()]
+        for dialogo in aperti:
+            if isinstance(dialogo, FinestraDalVivo):
+                dialogo.esci(CON_ESC)
+            else:
+                dialogo.EndModal(wx.ID_CANCEL)
+        return bool(aperti or self._modali)
+
+    def _di_che_non_si_e_installato(self):
+        """L'aggiornamento non si è installato perché un messaggio è rimasto aperto: la vista lo dice quando nessun messaggio e nessun dialogo è più aperto."""
+        if not self or self.chiusa:
+            return
+        if self._modali or any(isinstance(d, wx.Dialog) and d.IsModal() for d in wx.GetTopLevelWindows()):
+            wx.CallLater(RIPROVA_DELLA_CHIUSURA, self._di_che_non_si_e_installato)
+            return
+        self.mostra(NON_INSTALLATO, "aggiornamento non installato", "aggiornamento_non_riuscito")
 
     def porta_in_primo_piano(self):
         """Si è provato ad aprire MESS una seconda volta: questa finestra torna in primo piano, col suo suono, e l'altra copia si chiude."""
@@ -1297,7 +1345,7 @@ class FinestraPrincipale(wx.Frame):
         Alla chiusura il mondo si salva, e una finestra riassume la sessione; poi la finestra se ne va.
         Il suono del congedo aspetta di finire, fino a un massimo, prima del riepilogo: dopo, il
         programma si chiude, e lo troncherebbe. Quando si chiude per l'aggiornamento il riepilogo non
-        c'è, e un salvataggio non riuscito si scrive nel registro degli errori.
+        c'è; un salvataggio non riuscito si scrive nel registro degli errori e si dice in un messaggio.
         """
         self.chiusa = True
         self.timer.Stop()
@@ -1305,7 +1353,10 @@ class FinestraPrincipale(wx.Frame):
         suoni.suona("uscita" if riuscito else "uscita_senza_salvataggio", sync=suoni.ATTESA_USCITA)
         if self._per_aggiornare:
             if not riuscito:
-                registro.scrivi(" ".join(["Il mondo non si è salvato prima dell'aggiornamento.", *messaggi]))
+                perche = " ".join(["Il mondo non si è salvato prima dell'aggiornamento.", *messaggi])
+                registro.scrivi(perche)
+                wx.MessageBox(f"{perche}\nAlla riapertura ritroverai il mondo dell'ultimo salvataggio riuscito. Con OK MESS si chiude e installa la versione nuova.",
+                              "Aggiornamento di MESS", wx.OK | wx.ICON_ERROR, self)
         else:
             riepilogo = testi.chiusura(adesso() - self.inizio, self.comandi, messaggi, self.rapporto_sessione)
             if not riuscito:

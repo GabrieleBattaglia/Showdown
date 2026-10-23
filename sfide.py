@@ -653,7 +653,7 @@ def _proponi(mondo, cpu, poli, convocati, oggi, rapporto):
     mondo.annota(poli, f"{cpu.nome} lancia una sfida: si risponde entro il {ultimo}, prima dell'avanzamento seguente, e si gioca all'avanzamento che segue la risposta.")
 
 
-# Le sfide dell'utente, per i dialoghi del passo 3 e per l'interfaccia testuale.
+# Le sfide dell'utente, per i dialoghi della finestra.
 
 def _oggi(mondo):
     return _giorno(mondo.datetime_corrente_simulazione)

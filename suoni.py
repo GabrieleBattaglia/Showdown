@@ -49,9 +49,11 @@ tappa 13 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCo
 Con la tappa 14, il 2026-10-23, decisione D34, MESS diventa un programma da installare: arrivano il
 manuale nel browser, la finestra che torna in primo piano quando si apre una seconda copia, il crash
 della volta prima detto all'avvio e il gruppo dell'aggiornamento automatico, con la proposta e gli
-esiti. Sono cinque suoni nuovi, tutti mess_, entrati nella collezione con la V220. Il manuale che manca
-suona come le novità che non si leggono: è lo stesso guaio, un documento dell'aiuto che non c'è. Le
-parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+esiti. Sono cinque suoni nuovi, tutti mess_, entrati nella collezione con la V220. Con la seconda
+revisione della tappa ne arrivano altri cinque, nella V222: il pulsante Aggiorna, la proposta che
+scade senza risposta, l'aggiornamento non riuscito, il pacchetto non ancora pronto e il manuale che
+manca, che prima suonava come le novità che non si leggono; la quinta che sale resta all'esito buono.
+Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -103,6 +105,8 @@ GRUPPI = (
         "guida": "pokermachine_manuale",
         # Dalla tappa 14, Maiusc+F1: due pagine che si sfogliano, mentre il manuale si apre nel browser.
         "manuale": "mess_manuale",
+        # Il fruscio di una pagina e un tonfo sordo: il libro non c'è.
+        "manuale_mancante": "mess_manuale_mancante",
         "novita": "jingle_scoperta",
         "novita_illeggibile": "mess_novita_illeggibile",
         "informazioni": "mess_informazioni",
@@ -110,10 +114,15 @@ GRUPPI = (
         "caffe": "donazione",
         "caffe_paypal": "carillon_dolce",
     }),
-    # Dalla tappa 14, solo dall'eseguibile compilato: un pacco che arriva, e la quinta che sale degli esiti.
+    # Dalla tappa 14, solo dall'eseguibile compilato: un pacco che arriva, e la quinta che sale
+    # dell'esito buono. Dalla seconda revisione della tappa ogni scelta e ogni esito ha il suo suono.
     ("Applicazione, l'aggiornamento automatico", {
         "aggiornamento_disponibile": "mess_aggiornamento_disponibile",
+        "aggiornamento_scelto": "mess_aggiornamento_scelto",
+        "aggiornamento_scaduto": "mess_aggiornamento_scaduto",
         "aggiornamento_esito": "mess_aggiornamento_esito",
+        "aggiornamento_non_riuscito": "mess_aggiornamento_non_riuscito",
+        "aggiornamento_non_pronto": "mess_aggiornamento_non_pronto",
     }),
     ("Applicazione, le impostazioni", {
         "dialogo_aspetto": "scintillio_di_ghiaccio",
@@ -476,13 +485,18 @@ AZIONI = {
     "domanda": "una domanda di conferma, con Sì e No",
     "guida": "F1, la guida ai comandi, anche nella finestra dal vivo",
     "manuale": "Maiusc+F1, il manuale che si apre nel browser",
+    "manuale_mancante": "Maiusc+F1 quando il manuale manca o il browser non lo apre",
     "novita": "F2, le novità della versione",
-    "novita_illeggibile": "F2 quando il file delle novità non si legge, o Maiusc+F1 quando il manuale manca o non si apre",
+    "novita_illeggibile": "F2, quando il file delle novità non si legge",
     "informazioni": "F3, le informazioni con la versione e gli autori",
     "caffe": "Offrimi un caffè, nel menu Aiuto",
     "caffe_paypal": "Dona con PayPal, nell'invito al caffè",
     "aggiornamento_disponibile": "all'avvio, dal programma installato, è pronta una versione nuova e si apre la proposta di aggiornarsi",
-    "aggiornamento_esito": "un esito dell'aggiornamento automatico, come lo scaricamento finito prima che MESS si chiuda per installarlo",
+    "aggiornamento_scelto": "nella proposta dell'aggiornamento si preme Aggiorna, e comincia lo scaricamento",
+    "aggiornamento_scaduto": "la proposta dell'aggiornamento resta senza risposta e si chiude da sola, da riproporre al prossimo avvio",
+    "aggiornamento_esito": "l'aggiornamento scaricato, e MESS che si chiude per installarlo e riaprirsi",
+    "aggiornamento_non_riuscito": "l'aggiornamento non riesce: lo scaricamento si interrompe, o MESS non si chiude in tempo per installarlo",
+    "aggiornamento_non_pronto": "la versione nuova c'è, ma il suo pacchetto non è ancora pronto da scaricare",
     "dialogo_aspetto": "si apre il dialogo dell'aspetto, colori e caratteri, con Ctrl+P",
     "aspetto_predefiniti": "nel dialogo dell'aspetto, i valori tornano ai predefiniti",
     "aspetto_applicato": "l'aspetto confermato e applicato",

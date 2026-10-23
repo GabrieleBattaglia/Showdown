@@ -130,6 +130,8 @@ def test_la_data_del_ritmo_non_si_tocca_togliendo_o_annullando():
     del_club = [voce.get("testo", "") for voce in poli.diario]
     assert any(testo.startswith(f"Iscrive {nome} all'Open maschile del martedì, per ") for testo in del_club)
     assert any(testo.startswith(f"Toglie {nome} dall'Open maschile del martedì: rimborso di ") for testo in del_club)
+    # Dalla seconda revisione l'articolo anche nel diario del giocatore.
+    assert any(voce.get("testo") == "Non gioca più l'Open maschile del martedì: l'iscrizione è tolta." for voce in mondo.giocatori[1].diario)
     with pytest.raises(ValueError, match="non è iscritto all'Open maschile del martedì"):
         iscrizioni.togli(mondo, ed.id, mondo.giocatori[1], poli)
 

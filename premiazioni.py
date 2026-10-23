@@ -176,7 +176,7 @@ def chiudi_squadre(mondo, calendario, torneo, data, rapporto):
                 mondo.annota(poli, f"Coppa {COPPE_A_PAROLE[coppa]} {torneo_con_preposizione(nome)}.", data)
             continue
         tue.add(cid)
-        testo = f"Chiude {nome}, sede {torneo.sede}, {posto_a_parole(posto, 'f')} su {len(classifica)}: {vinti} incontri vinti su {giocati}"
+        testo = f"Chiude {torneo_con_preposizione(nome, None)}, sede {torneo.sede}, {posto_a_parole(posto, 'f')} su {len(classifica)}: {vinti} incontri vinti su {giocati}"
         if coppa:
             testo += f", coppa {COPPE_A_PAROLE[coppa]}"
             rapporto[f"tue_coppe_{coppa}"] += 1
@@ -185,7 +185,7 @@ def chiudi_squadre(mondo, calendario, torneo, data, rapporto):
         for gid in info.get("rosa", ()):
             g = mondo.giocatori.get(gid)
             if g is not None and g.appartenenza == poli.nome:
-                mondo.annota(g, f"Chiude {nome} con {poli.nome}, {posto_a_parole(posto, 'f')} su {len(classifica)}"
+                mondo.annota(g, f"Chiude {torneo_con_preposizione(nome, None)} con {poli.nome}, {posto_a_parole(posto, 'f')} su {len(classifica)}"
                              + (f": coppa {COPPE_A_PAROLE[coppa]}." if coppa else "."), data)
     if tue:
         rapporto["tuoi_tornei_conclusi"] += 1
@@ -221,7 +221,7 @@ def _medaglia_a_parole(medaglia):
 def _voce_del_tuo(mondo, g, torneo, posto, iscritti, giocati, vinti, medaglia, premio, poli, rapporto, mondiale):
     """La voce del diario del tuo tesserato col riassunto del torneo, le notizie e i contatori del riepilogo."""
     nome = torneo.modello["nome"]
-    testo = f"Chiude {nome}, sede {torneo.sede}, {posto_a_parole(posto, g.sesso)} su {iscritti}: {vinti} incontri vinti su {giocati}"
+    testo = f"Chiude {torneo_con_preposizione(nome, None)}, sede {torneo.sede}, {posto_a_parole(posto, g.sesso)} su {iscritti}: {vinti} incontri vinti su {giocati}"
     if medaglia:
         testo += f", {_medaglia_a_parole(medaglia)}"
         rapporto[f"tue_medaglie_{medaglia}"] += 1
@@ -244,7 +244,7 @@ def _voce_del_club(mondo, conto, torneo, data, importanza):
     nome = torneo.modello["nome"]
     medaglie = conto["medaglie"]
     if not poli.is_cpu_controlled:
-        testo = f"Chiude {nome}, sede {torneo.sede}"
+        testo = f"Chiude {torneo_con_preposizione(nome, None)}, sede {torneo.sede}"
         if conto["righe"]:
             testo += ": " + ", ".join(conto["righe"])
         if conto["premi"]:

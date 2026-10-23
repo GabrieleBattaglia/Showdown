@@ -161,6 +161,8 @@ def test_guida_novita_e_informazioni():
     novita = testi.novita("# Changelog\n\n## [1.3.0] - 2026-10-06\n\n### Un mondo nuovo\n\nIl file `mess_mondo.json` si firma.\n")
     assert novita.splitlines() == ["Changelog.", "Versione 1.3.0 del 2026-10-06.", "Un mondo nuovo.", "Il file mess_mondo.json si firma."]
     _accessibile(testi.informazioni())
+    # Dalla seconda revisione della tappa 14 F3 dice anche la licenza.
+    assert "MESS è software libero, con licenza GNU GPL versione 3" in testi.informazioni()
 
 
 def test_testi_del_mercato_e_delle_polisportive(mondo):

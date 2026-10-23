@@ -6,17 +6,17 @@ file alla radice e il manifesto di _internal: tutto il mestiere sta in crea_arch
 GBUtils, così la regola delle esclusioni è una sola per tutti i progetti (prontuario, fase 7). Qui
 restano i nomi di MESS: i file che nascono accanto all'eseguibile provandolo, cioè il mondo, le
 impostazioni, i modelli e le formule dei tornei copiati al primo avvio, le cronache e i salvataggi
-illeggibili; i registri .log li toglie già GBUtils.
+illeggibili; i registri .log li toglie già GBUtils, ma non il registro ruotato, MESS - Errori.log.1,
+che sta in FUORI come in MESS.iss.
 """
 
 import sys
-
-from GBUtils import crea_archivio_release
 
 FUORI = [
     "mess_mondo.json*",
     "mess_impostazioni.json",
     "formule.json",
+    "*.log.1",
     "tornei/",
     "cronache/",
     "salvataggi_illeggibili/",
@@ -24,6 +24,8 @@ FUORI = [
 
 
 def main():
+    from GBUtils import crea_archivio_release
+
     try:
         crea_archivio_release("MESS", escludi=FUORI)
     except (FileNotFoundError, OSError) as e:

@@ -1504,8 +1504,8 @@ def voce_aggregata(voce):
     return testo + "."
 
 
-# I tornei, tappa 12, punto 12.12: i testi minimi dell'interfaccia testuale, che serviranno anche alla
-# finestra del passo 3. Gli incontri dei tuoi ancora da ascoltare non dicono il risultato, risposta 18;
+# I tornei, tappa 12, punto 12.12: i testi minimi dei tornei, nati per l'interfaccia testuale, che la
+# tappa 14 ha tolto, e usati dalla finestra. Gli incontri dei tuoi ancora da ascoltare non dicono il risultato, risposta 18;
 # le classifiche dicono comunque chi va avanti.
 
 NOMI_DEL_TABELLONE = {2: "finale", 4: "semifinali", 8: "quarti", 16: "ottavi", 32: "sedicesimi", 64: "trentaduesimi"}
@@ -2423,6 +2423,7 @@ def informazioni():
         version.get_header() + ".",
         "MESS è un gioco gestionale dello showdown, il tennistavolo per ciechi, pensato da un giocatore cieco.",
         "Ideato da Gabriele Battaglia il 13 aprile 2015, portato in Python nel 2020 con l'aiuto di Gemini 2.5, rifatto dal 2026 con ClaudIA.",
+        "MESS è software libero, con licenza GNU GPL versione 3: puoi usarlo, studiarlo, modificarlo e ridistribuirlo alle sue condizioni.",
         "Il codice è su GitHub, nel repository GabrieleBattaglia/Showdown.",
     ])
 

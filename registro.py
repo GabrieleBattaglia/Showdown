@@ -27,6 +27,7 @@ import logging.handlers
 import os
 import re
 import sys
+import threading
 import traceback
 
 FILE_DEGLI_ERRORI = "MESS - Errori.log"
@@ -77,18 +78,35 @@ def _metti_da_parte(cartella, crash, dati):
 
 
 class _VersoIlRegistro:
-    """Uno stderr che scrive nel registro, riga per riga: per il programma compilato, che uno stderr non ce l'ha."""
+    """
+    Uno stderr che scrive nel registro, riga per riga: per il programma compilato, che uno stderr non
+    ce l'ha. Se il file del registro non si scrive, logging racconta l'errore proprio su stderr, cioè
+    di nuovo qui: dalla seconda revisione della tappa 14 quello che arriva mentre lo stesso filo sta
+    già scrivendo si perde, invece di andare in ricorsione fino al RecursionError. Ha encoding, come
+    gli stderr veri, per le librerie che lo leggono.
+    """
+
+    encoding = "utf-8"
+    errors = "replace"
 
     def __init__(self, registro):
         self._registro = registro
         self._resto = ""
+        self._filo = threading.local()
 
     def write(self, testo):
-        self._resto += str(testo)
-        *righe, self._resto = self._resto.split("\n")
-        for riga in righe:
-            if riga.strip():
-                self._registro.error(riga.rstrip())
+        testo = str(testo)
+        if getattr(self._filo, "dentro", False):
+            return len(testo)
+        self._filo.dentro = True
+        try:
+            self._resto += testo
+            *righe, self._resto = self._resto.split("\n")
+            for riga in righe:
+                if riga.strip():
+                    self._registro.error(riga.rstrip())
+        finally:
+            self._filo.dentro = False
         return len(testo)
 
     def flush(self):

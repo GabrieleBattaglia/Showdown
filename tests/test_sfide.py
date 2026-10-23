@@ -425,7 +425,7 @@ def test_la_coppa_si_gioca_e_da_le_coppe():
     assert any(n for incontro in tuoi for lato in incontro.differita["azioni_iniziali"] for n in lato)
     voce = mondo.calendario.albo.voci[-1]
     assert voce[1] == modelli_torneo.SQUADRE and len(voce[8]) == 4 and mondo.calendario.albo.club[voce[8][0]][0] == podio[0].nome
-    assert rapporto["tuoi_tornei_conclusi"] == 1 and any(v.get("testo", "").startswith("Chiude Coppa delle polisportive, sede 1") for v in c.diario)
+    assert rapporto["tuoi_tornei_conclusi"] == 1 and any(v.get("testo", "").startswith("Chiude la Coppa delle polisportive, sede 1") for v in c.diario)
     # I titolari hanno le gare a squadre e i punti allenamento per l'importanza 3.
     assert sum(mondo.giocatori[gid].gare_squadre_vinte + mondo.giocatori[gid].gare_squadre_perse for gid in range(1, 41)) > 0
     # La decisione 9 di Gabriele del 14 ottobre 2026: la coppa dà alla rosa la fedeltà della coppa, come una

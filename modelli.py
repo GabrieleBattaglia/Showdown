@@ -995,7 +995,7 @@ class Giocatore:
         return "\n".join(out)
 
     def _riga_contratto(self):
-        """Il contratto nella scheda dell'interfaccia testuale."""
+        """Il contratto nella scheda di __str__, rimasta per le prove dopo che la tappa 14 ha tolto l'interfaccia testuale."""
         if self.contratto_scadenza is None:
             return "Contratto: nessuno"
         riga = f"Contratto: {self.contratto_stipendio} euro al mese fino al {self.contratto_scadenza:%d/%m/%Y}"

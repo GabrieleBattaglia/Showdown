@@ -6,7 +6,8 @@ Nasce il 2026-10-02 dal motore di Terminal Beast, lore.py, secondo la decisione 
 Rispetto all'originale aggiunge l'articolo determinativo, le preposizioni articolate, gli
 aggettivi in -ico e in -cio e -gio, gli aggettivi preceduti da un avverbio e quelli seguiti
 da un complemento. Dalla revisione della tappa 14, il 2026-10-23, la preposizione davanti ai nomi dei
-tornei, articolata per quelli che riconosce.
+tornei, articolata per quelli che riconosce; dalla seconda revisione anche il solo articolo, e il
+genere e il numero del torneo per accordargli il participio.
 """
 
 # Aggettivi che non cambiano mai forma. Quelli che finiscono in a, in vocale accentata o in
@@ -230,6 +231,38 @@ PAROLE_DEI_TORNEI = {
 # gli articoli: "Il Trofeo dei Tigli" diventa "al Trofeo dei Tigli". Manca i, che si confonde col numero
 # romano di una prima edizione, come in "I Memorial Rossi".
 ARTICOLI_DEI_NOMI = {"il": 0, "lo": 1, "la": 2, "gli": 4, "le": 5}
+# Il genere e il numero che un articolo scritto in testa al nome dà al torneo, nell'ordine degli articoli.
+FORME_DEGLI_ARTICOLI = (("m", "s"), ("m", "s"), ("f", "s"), ("m", "p"), ("m", "p"), ("f", "p"))
+# La forma di un torneo il cui nome non si riconosce: il torneo, maschile singolare.
+FORMA_PREDEFINITA = ("m", "s")
+
+
+def _forma_delle_parole(minuscole):
+    """Il genere e il numero dalle prime parole del nome, già in minuscolo, se MESS le riconosce; altrimenti None. Quelle di due parole vengono prima."""
+    if not minuscole:
+        return None
+    return PAROLE_DEI_TORNEI.get(" ".join(minuscole[:2])) or PAROLE_DEI_TORNEI.get(minuscole[0])
+
+
+def _riconosci(nome):
+    """
+    Come comincia il nome di un torneo: la posizione del suo articolo fra gli articoli, il nome senza
+    l'articolo che vi fosse scritto, e il genere e il numero. Per un nome che non si riconosce
+    l'articolo è None, e anche la forma, salvo quella che dà un l' scritto in testa.
+    """
+    parole = nome.split()
+    minuscole = [parola.casefold().rstrip(",.;:") for parola in parole]
+    for apostrofo in ("'", chr(0x2019)):
+        if minuscole[0].startswith("l" + apostrofo) and len(parole[0]) > 2:
+            resto = nome.lstrip()[2:]
+            return 6, resto, _forma_delle_parole([parola.casefold().rstrip(",.;:") for parola in resto.split()])
+    if minuscole[0] in ARTICOLI_DEI_NOMI and len(parole) > 1:
+        indice = ARTICOLI_DEI_NOMI[minuscole[0]]
+        return indice, nome.lstrip()[len(parole[0]):].lstrip(), FORME_DEGLI_ARTICOLI[indice]
+    forma = _forma_delle_parole(minuscole)
+    if forma is None:
+        return None, nome, None
+    return _indice_articolo(Sostantivo(nome, *forma)), nome, forma
 
 
 def torneo_con_preposizione(nome, preposizione="a"):
@@ -239,27 +272,43 @@ def torneo_con_preposizione(nome, preposizione="a"):
     all'Open misto del mese, alla Coppa delle polisportive, dal Trofeo dei Tigli se il nome è "Il Trofeo
     dei Tigli". Un nome che non si riconosce, scritto dall'utente con l'editor dei tornei, resta com'è,
     con la preposizione semplice: a Showdown d'autunno; davanti a una a la preposizione a prende la d
-    eufonica, come la congiunzione e in elenco: ad Autunno in gara.
+    eufonica, come la congiunzione e in elenco: ad Autunno in gara. Con preposizione None, dalla
+    seconda revisione della tappa 14, il solo articolo, in minuscolo come a metà frase: "Chiude il
+    Campionato italiano maschile", "Lascia l'Open misto del mese"; il nome che non si riconosce resta
+    senza: "Chiude Showdown d'autunno".
     """
-    parole = nome.split()
-    if not parole:
-        return preposizione
-    minuscole = [parola.casefold().rstrip(",.;:") for parola in parole]
-    for apostrofo in ("'", chr(0x2019)):
-        if minuscole[0].startswith("l" + apostrofo) and len(parole[0]) > 2:
-            return unisci(_articolata(preposizione, 6), nome.lstrip()[2:])
-    if minuscole[0] in ARTICOLI_DEI_NOMI and len(parole) > 1:
-        resto = nome.lstrip()[len(parole[0]):].lstrip()
-        return unisci(_articolata(preposizione, ARTICOLI_DEI_NOMI[minuscole[0]]), resto)
-    forma = PAROLE_DEI_TORNEI.get(" ".join(minuscole[:2])) or PAROLE_DEI_TORNEI.get(minuscole[0])
-    if forma is None:
-        eufonica = preposizione == "a" and minuscole[0].startswith("a")
+    if not nome.split():
+        return preposizione or ""
+    indice, resto, _forma = _riconosci(nome)
+    if indice is None:
+        if preposizione is None:
+            return nome
+        eufonica = preposizione == "a" and nome.lstrip()[:1].casefold() == "a"
         return f"{'ad' if eufonica else preposizione} {nome}"
-    return con_determinativo(Sostantivo(nome, *forma), preposizione)
+    return unisci(_articolata(preposizione, indice), resto)
+
+
+def forma_del_torneo(nome):
+    """
+    Il genere e il numero di un torneo, per accordargli verbi e participi: dalle parole che MESS
+    riconosce in testa al nome, o dall'articolo scritto con l'editor dei tornei; maschile singolare,
+    il torneo, se il nome non si riconosce.
+    """
+    if not nome.split():
+        return FORMA_PREDEFINITA
+    return _riconosci(nome)[2] or FORMA_PREDEFINITA
+
+
+def accorda_al_torneo(nome, participio):
+    """Il verbo essere col participio, dal maschile singolare, accordati al torneo: è annullato, è annullata, sono annullate."""
+    forma = forma_del_torneo(nome)
+    return f"{'è' if forma[1] == 's' else 'sono'} {Aggettivo(participio).accorda(forma)}"
 
 
 def _articolata(preposizione, indice):
-    """La preposizione fusa con l'articolo che sta a quella posizione: il, lo, la, i, gli, le, l'."""
+    """La preposizione fusa con l'articolo che sta a quella posizione: il, lo, la, i, gli, le, l'; senza preposizione, l'articolo da solo."""
+    if preposizione is None:
+        return ARTICOLI[indice]
     if preposizione in PREPOSIZIONI:
         return PREPOSIZIONI[preposizione][indice]
     return f"{preposizione} {ARTICOLI[indice]}"

@@ -49,7 +49,7 @@ import premiazioni
 import sfide
 import tornei
 from costanti import CONSERVAZIONE_TORNEI_CONCLUSI_GIORNI, FATICA_RESIDUA_GIORNATA, GIOCATORI_AL_TAVOLO
-from grammatica import torneo_con_preposizione
+from grammatica import accorda_al_torneo, maiuscola, torneo_con_preposizione
 from motore import ESSENZIALE, SQUADRE, TAVOLINO, Incontro, Squadra, a_tavolino, formato_singolare
 from partita import MotorePartita, differita_singolare, differita_squadre
 from premiazioni import Albo
@@ -493,6 +493,8 @@ class Calendario:
     def _annulla(self, mondo, ed, rapporto):
         """L'annullamento sotto il minimo, risposta 19: le quote tornano, i tuoi lo sanno; il mondiale che non si disputa resta nell'albo."""
         rapporto["edizioni_annullate"] += 1
+        # L'articolo davanti al nome e il participio accordato: "La Coppa delle polisportive del 3 marzo è annullata".
+        annullata = f"{maiuscola(torneo_con_preposizione(ed.nome, None))} del {data_breve(ed.data_inizio)} {accorda_al_torneo(ed.nome, 'annullato')}"
         tuoi = []
         for iscritto in ed.iscritti:
             iscrizioni.rimborsa(mondo, iscritto)
@@ -500,15 +502,15 @@ class Calendario:
                 poli = iscrizioni.polisportiva_del_club(mondo, iscritto["club"])
                 if sfide.tua(poli):
                     tuoi.append(poli)
-                    mondo.annota(poli, f"{ed.nome} del {data_breve(ed.data_inizio)} è annullata: le qualificate erano meno di {ed.minimo}.")
+                    mondo.annota(poli, f"{annullata}: le qualificate erano meno di {ed.minimo}.")
                 continue
             g = mondo.giocatori.get(iscritto["id"])
             if g is not None and iscrizioni.tuo(mondo, g):
                 tuoi.append(g)
-                mondo.annota(g, f"{ed.nome} del {data_breve(ed.data_inizio)} è annullato: gli iscritti erano meno di {ed.minimo}, e la quota torna.")
+                mondo.annota(g, f"{annullata}: gli iscritti erano meno di {ed.minimo}, e la quota torna.")
         if tuoi:
             rapporto["tue_edizioni_annullate"] += 1
-            rapporto["notizie"].append(f"{ed.nome} del {data_breve(ed.data_inizio)} è annullato per pochi iscritti.")
+            rapporto["notizie"].append(f"{annullata} per pochi iscritti.")
         if ed.qualificazione != modelli_torneo.NESSUNA:
             self.albo.non_disputato(ed, ed.numero)
 
