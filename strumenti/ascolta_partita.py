@@ -475,7 +475,7 @@ def main():
     if not enter_escape("\rInvio per cominciare, Escape per uscire\r"):
         return 0
     time.sleep(SILENZIO_INIZIALE)
-    esiti = Annotazioni(percorsi.percorso(FILE_DEGLI_ESITI))
+    esiti = Annotazioni(percorsi.nel_programma(FILE_DEGLI_ESITI))
     for titolo, punti in gruppi:
         if not gruppo(titolo, len(punti), "suoni" if titolo == TITOLO_DEI_TIMBRI else "punti"):
             continue

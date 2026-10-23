@@ -8,11 +8,17 @@ restano i nomi di MESS: i file che nascono accanto all'eseguibile provandolo, ci
 impostazioni, i modelli e le formule dei tornei copiati al primo avvio, le cronache e i salvataggi
 illeggibili; i registri .log li toglie già GBUtils, ma non il registro ruotato, MESS - Errori.log.1,
 che sta in FUORI come in MESS.iss.
+Dal 2026-10-23, con la cartella del mondo, i dati nascono nella cartella Mondo accanto all'eseguibile,
+e accanto all'eseguibile resta il file che dice dove sta la cartella del mondo: tutti e due fuori
+dall'archivio, perché l'aggiornamento non porti il mondo di chi ha provato il pacchetto. I nomi della
+disposizione di prima restano fra le esclusioni, per un pacchetto provato con una versione vecchia.
 """
 
 import sys
 
 FUORI = [
+    "Mondo/",
+    "mess_cartella_del_mondo.json*",
     "mess_mondo.json*",
     "mess_impostazioni.json",
     "formule.json",

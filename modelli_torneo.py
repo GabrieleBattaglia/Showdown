@@ -21,7 +21,7 @@ controlla ogni campo e rifiuta quelli sconosciuti, invece di accettare tutto; a_
 dizionario nuovo, invece di quello dell'oggetto; due nomi uguali a parte le maiuscole non si
 sovrascrivono più; i file illeggibili non finiscono soltanto nel registro, ma in problemi(), che il
 mondo e la finestra leggono.
-I modelli stanno accanto al gioco, nella cartella tornei, un file JSON per modello, e non nel
+I modelli stanno nella cartella tornei, dentro la cartella del mondo dal 2026-10-23, un file JSON per modello, e non nel
 salvataggio, D9: ogni edizione aperta ne conserva una copia congelata, così l'editor cambia soltanto
 le edizioni future. Al primo uso, se la cartella manca o è vuota, si copiano i predefiniti che
 viaggiano col programma, in dati/tornei/modelli.
@@ -368,7 +368,7 @@ def nome_file(nome):
 
 
 class GestoreModelli:
-    """I modelli di torneo nella cartella tornei accanto al gioco, o in quella indicata."""
+    """I modelli di torneo nella cartella tornei della cartella del mondo, o in quella indicata."""
 
     def __init__(self, cartella=None):
         self._cartella = cartella

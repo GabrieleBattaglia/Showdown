@@ -4,8 +4,8 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 5 del piano, secondo la decisione D12, sul modello di Terminal
 Beast e di Tornello: i colori sono percentuali di rosso, verde e blu, da 0 a 100, e il valore
 predefinito è il verde su nero a 12 punti degli altri due programmi. Si salvano nel file
-mess_impostazioni.json accanto al programma, fuori da git come in Tornello, perché descrivono la
-macchina e non il mondo. Un file mancante o rovinato non ferma niente: valgono i predefiniti.
+mess_impostazioni.json, fuori da git come in Tornello. Dal 2026-10-23, per scelta di Gabriele, il file
+sta nella cartella del mondo, percorsi.py, e viaggia col mondo fra le macchine. Un file mancante o rovinato non ferma niente: valgono i predefiniti.
 Dal 2026-10-07, con la decisione D24, c'è anche il volume degli effetti sonori, da 0 a 100: a 50,
 il predefinito, i suoni sono come li ha pensati chi li ha fatti, e a zero tacciono.
 Dal 2026-10-08, con la decisione D29, c'è la velocità di gioco della partita dal vivo, da 1 a 8, e i
@@ -110,8 +110,15 @@ def carica():
 
 
 def salva(impostazioni):
-    """Salva le impostazioni; restituisce vero se è riuscito. Scrive prima un file temporaneo, come il mondo."""
-    percorso = percorsi.percorso(FILE_IMPOSTAZIONI)
+    """
+    Salva le impostazioni; restituisce vero se è riuscito. Scrive prima un file temporaneo, come il mondo.
+    Dal 23 ottobre 2026 anche la cartella del mondo che non si sa dove sia, percorsi.CartellaIllegibile, è
+    un salvataggio non riuscito, e non un errore imprevisto.
+    """
+    try:
+        percorso = percorsi.percorso(FILE_IMPOSTAZIONI)
+    except OSError:
+        return False
     temporaneo = percorso + ".tmp"
     try:
         with open(temporaneo, "w", encoding="utf-8", newline="\n") as f:

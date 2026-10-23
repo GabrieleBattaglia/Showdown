@@ -8,6 +8,13 @@ di Inno Setup cerca con AppMutex di MESS.iss, e ascolta su una pipe con nome di 
 e con una chiave; la seconda copia ci si presenta, le permette di venire in primo piano e si chiude.
 Sul filo passano solo byte JSON, mai oggetti di Python. La variabile d'ambiente MESS_ISTANZA cambia
 i nomi della pipe e del mutex, per le prove: così non parlano con il MESS che magari è aperto.
+Dal 2026-10-23, con la cartella del mondo scelta dal menu Impostazioni, MESS sa anche riaprirsi:
+quando si sceglie il mondo che la cartella nuova ha già, questa copia lancia la seguente e si chiude.
+La copia nuova parte con --attendi e il numero del processo di questa, e prima di presentarsi alla
+pipe aspetta che questa sia uscita, aspetta_l_uscita: altrimenti la troverebbe ancora aperta, la
+porterebbe in primo piano e si chiuderebbe lei. Da sorgente si riapre l'interprete di adesso con
+Showdown.py, dal programma compilato MESS.exe. Questa parte è di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -15,6 +22,8 @@ import ctypes
 import hashlib
 import json
 import os
+import subprocess
+import sys
 import threading
 from ctypes import wintypes
 from multiprocessing import AuthenticationError
@@ -24,6 +33,13 @@ from multiprocessing.connection import Client, Listener
 _ASFW_ANY = -1
 # Quante volte ferma() sblocca il filo dell'ascolto, a 50 ms l'una, prima di lasciarlo: due secondi al più.
 LIMITE_DEGLI_SBLOCCHI = 40
+# L'argomento della copia che si riapre, seguito dal numero del processo da aspettare, e quanti secondi
+# lo aspetta al più: dopo, si presenta lo stesso, e se la vecchia è ancora aperta la porta in primo piano.
+ATTENDI = "--attendi"
+ATTESA_DELLA_RIAPERTURA = 60
+# OpenProcess col solo diritto di aspettare il processo, e la risposta di WaitForSingleObject quando è finito.
+_SYNCHRONIZE = 0x00100000
+_WAIT_OBJECT_0 = 0
 
 
 def nome():
@@ -60,6 +76,50 @@ def manda(nome_della_pipe=None):
     except (OSError, EOFError):
         return False
     return True
+
+
+def da_attendere(argomenti):
+    """Il numero del processo da aspettare, dopo --attendi fra gli argomenti; None se non c'è o non è un numero."""
+    if ATTENDI not in argomenti:
+        return None
+    posto = argomenti.index(ATTENDI) + 1
+    if posto >= len(argomenti) or not argomenti[posto].isdigit():
+        return None
+    return int(argomenti[posto])
+
+
+def aspetta_l_uscita(pid, secondi=ATTESA_DELLA_RIAPERTURA):
+    """Aspetta che il processo pid sia uscito, al più per i secondi dati: vero se è uscito, o non c'era già più."""
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32.OpenProcess.restype = wintypes.HANDLE
+    kernel32.OpenProcess.argtypes = [wintypes.DWORD, wintypes.BOOL, wintypes.DWORD]
+    kernel32.WaitForSingleObject.restype = wintypes.DWORD
+    kernel32.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
+    kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
+    maniglia = kernel32.OpenProcess(_SYNCHRONIZE, False, pid)
+    if not maniglia:
+        return True
+    try:
+        return kernel32.WaitForSingleObject(maniglia, max(0, round(secondi * 1000))) == _WAIT_OBJECT_0
+    finally:
+        kernel32.CloseHandle(maniglia)
+
+
+def comando_di_riapertura(pid=None):
+    """La riga di comando della copia che si riapre dopo questa: MESS.exe dal programma compilato, l'interprete con Showdown.py da sorgente."""
+    import percorsi
+
+    pid = os.getpid() if pid is None else pid
+    if getattr(sys, "frozen", False):
+        return [sys.executable, ATTENDI, str(pid)]
+    return [sys.executable, os.path.join(percorsi.cartella_del_programma(), "Showdown.py"), ATTENDI, str(pid)]
+
+
+def riapri():
+    """Lancia la copia di MESS che si apre quando questa sarà uscita; OSError se non parte."""
+    import percorsi
+
+    subprocess.Popen(comando_di_riapertura(), cwd=percorsi.cartella_del_programma(), close_fds=True)  # noqa: S603 - il comando è MESS stesso
 
 
 class Ascolto:

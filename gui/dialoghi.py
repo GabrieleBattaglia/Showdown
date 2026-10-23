@@ -46,10 +46,15 @@ con le note della release, che allo scadere dell'attesa si chiude da sola come N
 ottobre 2026 tutti i dialoghi si aprono massimizzati, come la finestra principale, ed Esc preme il loro
 pulsante Chiudi, se ce l'hanno: le due regole stanno in _Dialogo.completa, da cui passano tutti, così
 valgono anche per i dialoghi che verranno. Anche questa parte è di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode). Con la cartella del mondo, chiesta da Gabriele lo stesso giorno, arrivano
+la finestra di Windows che sceglie una cartella, wx.DirDialog nativa e accessibile, la domanda quando la
+cartella scelta ha già un mondo e l'avviso dell'avvio quando la cartella non c'è, con le scelte di
+Riprova, di un'altra cartella e di Esci; anche questa parte è di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
+import os
 import time
 import webbrowser
 
@@ -2252,3 +2257,75 @@ class Aggiornamento(Lettura):
         if self and self.IsModal():
             self.scaduta = True
             self.EndModal(wx.ID_NO)
+
+
+# La cartella del mondo, richiesta di Gabriele del 23 ottobre 2026: la scelta con la finestra di Windows,
+# la domanda quando la cartella scelta ha già un mondo, e l'avviso dell'avvio quando la cartella non c'è.
+# I codici d'uscita delle scelte. Esci è un annullamento, come vuole la regola di Esc di tutti i dialoghi.
+USA_IL_MONDO_DELLA_CARTELLA = wx.ID_YES
+PORTA_IL_MIO_MONDO = wx.ID_NO
+RIPROVA = wx.ID_RETRY
+UN_ALTRA_CARTELLA = wx.ID_OPEN
+ESCI = wx.ID_CANCEL
+
+
+def scegli_cartella(genitore, titolo, partenza=""):
+    """
+    La finestra di Windows che sceglie una cartella, wx.DirDialog, nativa e accessibile: la cartella
+    scelta, o None se la si chiude con Annulla. Parte dalla cartella data, se c'è. Una funzione a sé,
+    perché le prove la sostituiscono: una finestra di Windows vera aspetterebbe per sempre.
+    """
+    dialogo = wx.DirDialog(genitore, titolo, partenza if partenza and os.path.isdir(partenza) else "", wx.DD_DEFAULT_STYLE | wx.DD_DIR_MUST_EXIST)
+    try:
+        return dialogo.GetPath() if dialogo.ShowModal() == wx.ID_OK else None
+    finally:
+        dialogo.Destroy()
+
+
+class _SceltaConTesto(_Dialogo):
+    """
+    Un testo da leggere, in un'area in sola lettura che ha il fuoco all'apertura, e una riga di
+    pulsanti, ciascuno col suo codice d'uscita; predefinita è il codice del pulsante di Invio, ed Esc
+    vale l'ultimo.
+    """
+
+    def __init__(self, genitore, titolo, testo, scelte, predefinita, impostazioni=None):
+        super().__init__(genitore, titolo)
+        self.testo = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2, value=testo), 1)
+        if impostazioni:
+            aspetto.applica(self.testo, impostazioni)
+        self.bottoni = self.pulsanti(*scelte, predefinito=False)
+        for bottone, (codice, _etichetta) in zip(self.bottoni, scelte, strict=True):
+            bottone.Bind(wx.EVT_BUTTON, lambda event, c=codice: self.chiudi(c))
+        self.bottoni[[codice for codice, _etichetta in scelte].index(predefinita)].SetDefault()
+        self.SetEscapeId(scelte[-1][0])
+        self.completa((560, 420))
+        wx.CallAfter(self._al_testo)
+
+    def _al_testo(self):
+        with contextlib.suppress(RuntimeError):
+            self.testo.SetInsertionPoint(0)
+            self.testo.SetFocus()
+
+
+class MondoGiaPresente(_SceltaConTesto):
+    """
+    La cartella scelta dal menu Impostazioni ha già un mondo: il testo dice quando è stato salvato
+    l'uno e l'altro e quale è il più recente, e il suo pulsante lo dice anche lui. Le scelte sono Usa
+    il mondo della cartella, Porta il mio mondo e Annulla, che è il predefinito e vale anche per Esc:
+    un Invio di troppo non deve spostare un mondo.
+    """
+
+    def __init__(self, genitore, testo, piu_recente, impostazioni=None):
+        usa = "&Usa il mondo della cartella" + (", il più recente" if piu_recente == testi.QUELLO_DELLA_CARTELLA else "")
+        porta = "&Porta il mio mondo" + (", il più recente" if piu_recente == testi.IL_TUO else "")
+        super().__init__(genitore, "Nella cartella c'è già un mondo", testo,
+                         ((USA_IL_MONDO_DELLA_CARTELLA, usa), (PORTA_IL_MIO_MONDO, porta), (wx.ID_CANCEL, "Annulla")), wx.ID_CANCEL, impostazioni)
+
+
+class CartellaAssente(_SceltaConTesto):
+    """L'avviso dell'avvio quando la cartella del mondo non c'è: Riprova, il predefinito, Scegli un'altra cartella ed Esci, che vale anche per Esc."""
+
+    def __init__(self, genitore, testo):
+        super().__init__(genitore, "MESS, la cartella del mondo non c'è", testo,
+                         ((RIPROVA, "&Riprova"), (UN_ALTRA_CARTELLA, "&Scegli un'altra cartella"), (ESCI, "&Esci")), RIPROVA)

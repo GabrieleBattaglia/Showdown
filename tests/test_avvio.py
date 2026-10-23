@@ -1,7 +1,7 @@
 """
 Le prove dell'avvio di MESS, Showdown.py, dalla tappa 14: l'interfaccia testuale, che le prove di prima
 recitavano con un copione, se n'è andata con cli.py. Qui main con l'istanza unica sostituita: un MESS
-già aperto fa chiudere subito questa copia, senza toccare il registro; l'avvio e l'uscita si scrivono
+già aperto fa chiudere subito questa copia, senza toccare il registro né la cartella del mondo; l'avvio e l'uscita si scrivono
 nel registro, che all'uscita si chiude, e l'ascolto si ferma; il crash della volta prima arriva alla
 finestra; un errore che ferma MESS si scrive nel registro e si dice in un messaggio che nomina il file,
 col suono dell'allarme. Poi la finestra: davanti a un salvataggio rovinato il gioco si ferma senza
@@ -17,6 +17,7 @@ import pytest
 import wx
 
 import istanza
+import percorsi
 import registro
 import Showdown
 from costanti import FILE_MONDO, FILE_MONDO_COPIA, VERSIONE
@@ -57,23 +58,25 @@ def _non_si_apre(*_argomenti, **_opzioni):
     pytest.fail("la finestra non doveva aprirsi")
 
 
-def test_un_mess_gia_aperto_fa_chiudere_questa_copia(monkeypatch, cartella_di_prova):
+def test_un_mess_gia_aperto_fa_chiudere_questa_copia(monkeypatch, cartella_di_prova, programma_di_prova):
     monkeypatch.setattr(istanza, "manda", lambda: True)
     monkeypatch.setattr(Showdown, "avvia_finestra", _non_si_apre)
-    assert Showdown.main() == 0
+    assert Showdown.main([]) == 0
     assert ASCOLTI == [] and list(cartella_di_prova.iterdir()) == []
+    assert [p.name for p in programma_di_prova.iterdir()] == [percorsi.FILE_DELLA_CARTELLA]
 
 
-def test_la_pipe_presa_da_una_copia_partita_insieme(monkeypatch, cartella_di_prova):
+def test_la_pipe_presa_da_una_copia_partita_insieme(monkeypatch, cartella_di_prova, programma_di_prova):
     risposte = iter([False, True])
     monkeypatch.setattr(istanza, "manda", lambda: next(risposte))
     monkeypatch.setattr(istanza, "Ascolto", lambda mostra: AscoltoFinto(mostra, attiva=False))
     monkeypatch.setattr(Showdown, "avvia_finestra", _non_si_apre)
-    assert Showdown.main() == 0
+    assert Showdown.main([]) == 0
     assert list(cartella_di_prova.iterdir()) == []
+    assert [p.name for p in programma_di_prova.iterdir()] == [percorsi.FILE_DELLA_CARTELLA]
 
 
-def test_l_avvio_e_l_uscita_nel_registro(monkeypatch, cartella_di_prova):
+def test_l_avvio_e_l_uscita_nel_registro(monkeypatch, programma_di_prova):
     ricevuti = []
 
     class FinestraFinta:
@@ -91,54 +94,65 @@ def test_l_avvio_e_l_uscita_nel_registro(monkeypatch, cartella_di_prova):
         ASCOLTI[0].mostra()
         finestre.append(aperta)
         ASCOLTI[0].mostra()
-        assert (cartella_di_prova / registro.FILE_DEL_CRASH).exists()
-        return True
+        assert (programma_di_prova / registro.FILE_DEL_CRASH).exists()
+        return Showdown.APERTA
 
     monkeypatch.setattr(Showdown, "avvia_finestra", finestra)
     monkeypatch.setattr(wx, "CallAfter", lambda funzione, *a, **k: funzione(*a, **k))
-    assert Showdown.main() == 0
+    assert Showdown.main([]) == 0
     assert ricevuti == [None] and aperta.chiamate == 1 and ASCOLTI[0].fermo
-    testo = (cartella_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
+    testo = (programma_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
     assert f"MESS {VERSIONE} si avvia." in testo and testo.rstrip().endswith("MESS si chiude.")
-    assert not (cartella_di_prova / registro.FILE_DEL_CRASH).exists()
+    assert not (programma_di_prova / registro.FILE_DEL_CRASH).exists()
 
 
-def test_il_salvataggio_illeggibile_da_il_codice_uno(monkeypatch):
-    monkeypatch.setattr(Showdown, "avvia_finestra", lambda *_a: False)
-    assert Showdown.main() == 1
+def test_il_salvataggio_illeggibile_da_il_codice_uno(monkeypatch, programma_di_prova):
+    monkeypatch.setattr(Showdown, "avvia_finestra", lambda *_a: Showdown.ILLEGGIBILE)
+    assert Showdown.main([]) == 1
+    registro.chiudi()
+    assert (programma_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8").rstrip().endswith("MESS si ferma: il salvataggio non si legge.")
 
 
-def test_il_crash_della_volta_prima_arriva_alla_finestra(monkeypatch, cartella_di_prova):
-    (cartella_di_prova / registro.FILE_DEL_CRASH).write_text("Fatal Python error: Aborted\n", encoding="utf-8")
+@pytest.mark.parametrize(("esito", "codice"), [(Showdown.SENZA_CARTELLA, 0), (Showdown.NON_SPOSTATI, 1)])
+def test_gli_esiti_della_cartella_del_mondo(monkeypatch, programma_di_prova, esito, codice):
+    # Dal 23 ottobre 2026: uscire perché la cartella del mondo non c'è è una scelta, i dati che non si spostano un guasto.
+    monkeypatch.setattr(Showdown, "avvia_finestra", lambda *_a: esito)
+    assert Showdown.main([]) == codice
+    registro.chiudi()
+    assert (programma_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8").rstrip().endswith(Showdown.ESITI[esito][1])
+
+
+def test_il_crash_della_volta_prima_arriva_alla_finestra(monkeypatch, programma_di_prova):
+    (programma_di_prova / registro.FILE_DEL_CRASH).write_text("Fatal Python error: Aborted\n", encoding="utf-8")
     ricevuti = []
-    monkeypatch.setattr(Showdown, "avvia_finestra", lambda crash_precedente, finestre: ricevuti.append(crash_precedente) or True)
-    assert Showdown.main() == 0
-    assert ricevuti == [str(cartella_di_prova / registro.FILE_DEL_CRASH_PRECEDENTE)]
+    monkeypatch.setattr(Showdown, "avvia_finestra", lambda crash_precedente, finestre: ricevuti.append(crash_precedente) or Showdown.APERTA)
+    assert Showdown.main([]) == 0
+    assert ricevuti == [str(programma_di_prova / registro.FILE_DEL_CRASH_PRECEDENTE)]
 
 
-def test_l_errore_fatale(app_wx, monkeypatch, cartella_di_prova, suonati, capsys):
+def test_l_errore_fatale(app_wx, monkeypatch, programma_di_prova, suonati, capsys):
     def guasto(*_argomenti):
         raise RuntimeError("guasto")
 
     messaggi = []
     monkeypatch.setattr(Showdown, "avvia_finestra", guasto)
     monkeypatch.setattr(wx, "MessageBox", lambda testo, titolo, *a, **k: messaggi.append((testo, titolo)))
-    assert Showdown.main() == 1
+    assert Showdown.main([]) == 1
     assert messaggi == [(f"MESS si è fermato per un errore imprevisto: RuntimeError, guasto. Il resoconto completo è nel file MESS - Errori.log, "
-                         f"nella cartella {cartella_di_prova}: allegalo quando chiedi aiuto.", "MESS si è fermato")]
+                         f"nella cartella {programma_di_prova}: allegalo quando chiedi aiuto.", "MESS si è fermato")]
     assert suonati == ["errore_imprevisto"] and ASCOLTI[0].fermo
-    testo = (cartella_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
+    testo = (programma_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8")
     assert "Traceback (most recent call last):" in testo and "RuntimeError: guasto" in testo and "MESS si ferma per un errore fatale." in testo
     # Da sorgente la traccia va anche sulla console, come prima.
     assert "RuntimeError: guasto" in capsys.readouterr().err
-    assert not (cartella_di_prova / registro.FILE_DEL_CRASH).exists()
+    assert not (programma_di_prova / registro.FILE_DEL_CRASH).exists()
 
 
 def test_il_salvataggio_rovinato_ferma_il_gioco(app_wx, monkeypatch, cartella_di_prova, suonati):
     (cartella_di_prova / FILE_MONDO).write_text("non è un salvataggio", encoding="utf-8")
     messaggi = []
     monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: messaggi.append(testo))
-    assert Showdown.avvia_finestra() is False
+    assert Showdown.avvia_finestra() == Showdown.ILLEGGIBILE
     assert len(messaggi) == 1 and "il gioco si ferma qui senza salvare nulla" in messaggi[0]
     assert suonati == ["salvataggio_illeggibile"]
     assert (cartella_di_prova / FILE_MONDO).read_text(encoding="utf-8") == "non è un salvataggio"

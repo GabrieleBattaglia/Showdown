@@ -26,3 +26,8 @@ mess_impostazioni.json
 /mess_mondo.json
 /mess_mondo.json.bak
 /salvataggi_illeggibili/
+# Dal 23 ottobre 2026, richiesta di Gabriele, tutti i dati del mondo stanno nella cartella del mondo, di
+# serie Mondo nella radice, e il file che dice dove sta è uno per macchina: fuori dal repository tutti e
+# due. Le voci qui sopra restano per i dati della disposizione di prima, finché la prima partenza non li sposta.
+/Mondo/
+/mess_cartella_del_mondo.json

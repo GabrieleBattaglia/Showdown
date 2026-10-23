@@ -60,6 +60,8 @@ oggi, l'unica che si conosce.
 Il formato 9, della tappa 14, del 2026-10-23, richiesta di Gabriele: ogni polisportiva ha il comune della
 sede. La migrazione dall'8 lo dà a tutte, anche a quelle dell'utente, estratto coi pesi della popolazione
 da un caso nato dal nome, come per le polisportive del computer che nascono, e il caso del mondo non si tocca.
+Dal 2026-10-23, richiesta di Gabriele, il salvataggio, la copia e i salvataggi illeggibili stanno nella cartella
+del mondo, che percorsi.py rilegge a ogni chiamata e che si sceglie dal menu Impostazioni, non più accanto al programma.
 """
 
 import contextlib

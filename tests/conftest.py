@@ -72,11 +72,38 @@ def pytest_configure(config):
 
 
 @pytest.fixture(autouse=True)
-def cartella_di_prova(tmp_path, monkeypatch):
-    """La cartella in cui il programma scrive, durante i test, è una cartella temporanea."""
+def cartella_di_prova(tmp_path, tmp_path_factory, monkeypatch):
+    """
+    La cartella del mondo, in cui il programma scrive, durante i test è una cartella temporanea, e
+    la restituisce. Dal 23 ottobre 2026 lo è anche la cartella del programma, dove stanno i registri e
+    il file che dice dove sta la cartella del mondo: una cartella temporanea a parte, così le prove che
+    guardano che cosa c'è nella cartella del mondo non vi trovano altro. Il file la nomina davvero, e
+    percorsi.cartella() lo legge come nel programma vero.
+    """
     import percorsi
-    monkeypatch.setattr(percorsi, "cartella", lambda: str(tmp_path))
+    programma = tmp_path_factory.mktemp("programma")
+    monkeypatch.setattr(percorsi, "cartella_del_programma", lambda: str(programma))
+    percorsi.imposta_cartella(str(tmp_path))
     return tmp_path
+
+
+@pytest.fixture(autouse=True)
+def nessuna_scelta_di_cartelle_vera(monkeypatch):
+    """
+    Dal 23 ottobre 2026 nessuna prova apre la finestra di Windows che sceglie una cartella: sul desktop
+    nascosto aspetterebbe per sempre qualcuno che non c'è. wx.DirDialog risponde Annulla da sé, e le
+    prove che scelgono una cartella sostituiscono gui.dialoghi.scegli_cartella.
+    """
+    import wx
+
+    monkeypatch.setattr(wx.DirDialog, "ShowModal", lambda self: wx.ID_CANCEL)
+
+
+@pytest.fixture
+def programma_di_prova(cartella_di_prova):
+    """La cartella del programma delle prove, accanto alla quale stanno i registri e il file della cartella del mondo."""
+    import percorsi
+    return Path(percorsi.cartella_del_programma())
 
 
 class Registro(list):

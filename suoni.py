@@ -59,6 +59,12 @@ installato, perché un messaggio è rimasto aperto oltre il limite della chiusur
 mess_aggiornamento_non_installato, nella V223, e mess_aggiornamento_non_riuscito resta allo
 scaricamento che non riesce.
 Le parti della tappa 14 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Con la cartella del mondo, chiesta da Gabriele il 23 ottobre 2026, arriva il suo gruppo, quattro suoni
+nuovi nella V225: la voce del menu Impostazioni e la scelta della cartella, i dati spostati, MESS che
+si riapre sul mondo della cartella, e l'avviso dell'avvio quando la cartella non c'è. La domanda col
+mondo già presente usa il suono delle domande; lo spostamento che non riesce, quello del salvataggio
+non riuscito, perché anche lì i dati non arrivano dove dovevano. Anche queste parti sono di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -153,6 +159,14 @@ GRUPPI = (
         # Gli annunci della cronaca, 1.79.0: il din don degli annunci di una stazione, e lo stesso rovesciato quando si salvano.
         "dialogo_annunci_cronaca": "mess_annunci_della_cronaca",
         "annunci_cronaca_salvati": "mess_annunci_salvati",
+    }),
+    # Dal 23 ottobre 2026, richiesta di Gabriele: la cartella del mondo, per portarlo fra le macchine. Un
+    # cassetto che si apre, un trasloco riuscito, un cambio di scena e una porta chiusa.
+    ("Applicazione, la cartella del mondo", {
+        "cartella_mondo": "mess_cartella_mondo",
+        "cartella_spostata": "mess_cartella_spostata",
+        "cartella_cambiata": "mess_cartella_cambiata",
+        "cartella_assente": "mess_cartella_assente",
     }),
     ("Mondo, i giocatori", {
         "dialogo_scheda_giocatore": "pokermachine_raddoppio_carta",
@@ -480,7 +494,7 @@ AZIONI = {
     "primo_piano": "si apre MESS mentre è già aperto, e la finestra aperta torna in primo piano",
     "salvataggio_riuscito": "il mondo salvato con Ctrl+S",
     "salvataggio_con_avviso": "il mondo salvato con Ctrl+S, ma con un avviso dell'archivio",
-    "salvataggio_non_riuscito": "un salvataggio che non riesce, con Ctrl+S o dopo un'operazione",
+    "salvataggio_non_riuscito": "un salvataggio che non riesce, con Ctrl+S o dopo un'operazione, e i dati del mondo che non si spostano nella cartella del mondo",
     "salvataggio_illeggibile": "all'avvio né il salvataggio né la sua copia si leggono, e il programma si ferma",
     "errore_imprevisto": "un errore imprevisto del programma, o un errore che lo ferma",
     "crash_precedente": "all'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto",
@@ -524,6 +538,10 @@ AZIONI = {
     "velocita_di_gioco_salvata": "la velocità di gioco confermata e salvata",
     "dialogo_annunci_cronaca": "si apre il dialogo degli annunci della cronaca",
     "annunci_cronaca_salvati": "gli annunci della cronaca confermati e salvati",
+    "cartella_mondo": "Cartella del mondo, nel menu Impostazioni, e all'avvio Scegli un'altra cartella: si apre la finestra di Windows che sceglie dove stanno il mondo e i dati di gioco",
+    "cartella_spostata": "il mondo e i dati di gioco spostati nella cartella scelta, e alla prima partenza di questa versione da accanto al programma alla cartella del mondo",
+    "cartella_cambiata": "si sceglie il mondo che la cartella nuova ha già, e MESS si chiude per riaprirsi su di lui",
+    "cartella_assente": "all'avvio la cartella del mondo non c'è, per esempio la penna non è collegata o il cloud non è pronto, e l'avviso chiede di riprovare, di sceglierne un'altra o di uscire",
     "dialogo_scheda_giocatore": "si apre la scelta del giocatore di cui leggere la scheda, con Ctrl+G",
     "scheda_giocatore": "la scheda di un giocatore",
     "dialogo_diario_giocatore": "si apre la scelta del giocatore di cui leggere il diario, con Ctrl+Shift+D",

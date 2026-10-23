@@ -1,5 +1,5 @@
 """
-MESS, il registro degli errori e dei crash: due file accanto al mondo, a misura limitata.
+MESS, il registro degli errori e dei crash: due file accanto al programma, a misura limitata.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nasce il 2026-10-23 con la tappa 14, decisione D34: nel pacchetto compilato la console non c'è, e
 un errore imprevisto non lascerebbe traccia da mandare a chi sviluppa. Sul modello di registro.py di
@@ -18,6 +18,10 @@ precedente; se neppure questo si può scrivere, resta in testa al file del crash
 in aggiunta, e l'uscita pulita lo riporta al solo resoconto invece di toglierlo, così il prossimo
 avvio riprova a metterlo da parte. È la lezione della 1.104.0 di MeTeOra.
 Senza avvia(), per esempio nelle prove, le funzioni non fanno niente.
+Dal 2026-10-23, con la cartella del mondo che si sceglie dal menu Impostazioni, i registri restano
+accanto al programma, nella cartella che Showdown.py passa ad avvia(), percorsi.cartella_del_programma():
+descrivono la macchina, non il mondo, e devono potersi scrivere anche quando la cartella del mondo
+non c'è, per esempio su una penna non collegata.
 """
 
 import contextlib

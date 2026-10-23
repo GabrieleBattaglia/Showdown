@@ -8,6 +8,10 @@
 ; sempre lo zip; si installa per utente, senza amministratore, perché MESS scrive il mondo accanto
 ; all'eseguibile e l'aggiornamento automatico sostituisce i file nella sua cartella; alla
 ; disinstallazione chiede se cancellare anche il mondo e le impostazioni.
+; 23/10/2026, richiesta di Gabriele: il mondo e i dati di gioco stanno nella cartella del mondo, di
+; serie la sottocartella Mondo accanto all'eseguibile, e accanto all'eseguibile restano il file che dice
+; dove sta, mess_cartella_del_mondo.json, e i registri. La disinstallazione toglie, se si risponde Sì,
+; la cartella Mondo e quel file, mai una cartella del mondo scelta altrove: quella è dell'utente.
 
 #ifndef Versione
   #error Manca la versione: si compila con python setup_maker.py
@@ -56,7 +60,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; Prima di installare, via le cartelle del programma lasciate da una versione precedente. Un MESS
 ; aggiornato da solo ha in _internal il manifesto dello zip: se restasse, al primo avvio
 ; pulisci_residui cancellerebbe tutti i file nuovi che quel manifesto non elenca. I dati
-; dell'utente stanno fuori da _internal, accanto all'eseguibile, e restano dove sono.
+; dell'utente stanno fuori da _internal, nella cartella Mondo o in quella scelta, e restano dove sono.
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\_internal_vecchio"
 
@@ -64,7 +68,7 @@ Type: filesandordirs; Name: "{app}\_internal_vecchio"
 ; Il pacchetto a cartella di PyInstaller, senza i dati che una prova avesse lasciato in dist, come fa zip_maker.py.
 ; Ogni motivo comincia con la barra rovesciata, che lo lega alla cartella dell'eseguibile: senza,
 ; formule.json toglierebbe anche _internal\dati\tornei\formule.json, le formule predefinite.
-Source: "dist\MESS\*"; DestDir: "{app}"; Excludes: "\mess_mondo.json*,\mess_impostazioni.json,\formule.json,\*.log,\*.log.1,\*.tmp,\tornei\*,\cronache\*,\salvataggi_illeggibili\*"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\MESS\*"; DestDir: "{app}"; Excludes: "\Mondo\*,\mess_cartella_del_mondo.json*,\mess_mondo.json*,\mess_impostazioni.json,\formule.json,\*.log,\*.log.1,\*.tmp,\tornei\*,\cronache\*,\salvataggi_illeggibili\*"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\MESS"; Filename: "{app}\MESS.exe"
@@ -75,15 +79,20 @@ Filename: "{app}\MESS.exe"; Description: "{cm:LaunchProgram,MESS}"; Flags: nowai
 
 [UninstallDelete]
 ; L'aggiornamento automatico può portare in _internal file che l'installatore non conosce: la
-; cartella del programma si toglie intera. I dati stanno fuori da _internal, accanto all'eseguibile.
+; cartella del programma si toglie intera. I dati stanno fuori da _internal, nella cartella Mondo.
 Type: filesandordirs; Name: "{app}\_internal"
 Type: filesandordirs; Name: "{app}\_internal_vecchio"
 
 [Code]
-// I dati di MESS: il mondo e la sua copia, le impostazioni, i modelli e le formule dei tornei,
-// le cronache, i salvataggi illeggibili e i registri.
+// I dati di MESS: la cartella Mondo, con il mondo e la sua copia, le impostazioni, i modelli e le
+// formule dei tornei, le cronache e i salvataggi illeggibili; il file che dice dove sta la cartella
+// del mondo e i registri. Una cartella del mondo scelta altrove non si tocca: il file che la nomina
+// non si legge nemmeno. Poi i dati che le versioni di prova scrivevano accanto all'eseguibile.
 procedure CancellaIDati(const Cartella: String);
 begin
+  DelTree(Cartella + '\Mondo', True, True, True);
+  DeleteFile(Cartella + '\mess_cartella_del_mondo.json');
+  DeleteFile(Cartella + '\mess_cartella_del_mondo.json.tmp');
   DeleteFile(Cartella + '\mess_mondo.json.gz');
   DeleteFile(Cartella + '\mess_mondo.json.gz.bak');
   DeleteFile(Cartella + '\mess_mondo.json');
@@ -106,8 +115,9 @@ procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if (CurUninstallStep = usPostUninstall) and not UninstallSilent then
   begin
-    if MsgBox('Cancello anche i dati di MESS? Il mondo, la sua copia di sicurezza, le impostazioni, i tornei e le cronache. ' +
-        'Con No restano nella cartella, e reinstallando MESS ritrovi il tuo mondo.', mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+    if MsgBox('Cancello anche i dati di MESS? La cartella Mondo, con il mondo, la sua copia di sicurezza, le impostazioni, i tornei e le cronache. ' +
+        'Con No restano nella cartella, e reinstallando MESS ritrovi il tuo mondo. Una cartella del mondo scelta altrove non si tocca mai.',
+        mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
       CancellaIDati(ExpandConstant('{app}'));
     // La cartella si toglie solo se è rimasta vuota.
     RemoveDir(ExpandConstant('{app}'));

@@ -9,7 +9,7 @@ registro dei dadi. Le chiamate sono i termini italiani della FISPIC.
 Le frasi seguono le regole di accessibilità del parco: intere, a tutta larghezza, senza separatori
 grafici e senza righe vuote; il genere si accorda con utilita.accorda. La cronaca non usa il caso:
 quando una frase ha più varianti, sceglie con il progressivo dell'evento.
-Una partita va in un file suo, nella cartella cronache accanto al programma, e gli eventi si possono
+Una partita va in un file suo, nella cartella cronache, dentro la cartella del mondo dal 2026-10-23, e gli eventi si possono
 salvare in JSON per i banchi d'ascolto della tappa 10. Il vecchio registro unico
 log_partite_showdown.txt non c'è più.
 """

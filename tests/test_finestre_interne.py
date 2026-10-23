@@ -24,6 +24,7 @@ import formule
 import gui
 import impostazioni
 import modelli_torneo
+import testi
 from gui import dal_vivo, dialoghi
 from gui import editor_tornei as gui_editor
 from gui import sfide as gui_sfide
@@ -95,6 +96,9 @@ FABBRICHE = {
     "Lettura": lambda s: dialoghi.Lettura(None, "Scheda di prova", "Un testo da leggere."),
     "Caffe": lambda s: dialoghi.Caffe(None, "Offrimi un caffè, se ti va."),
     "Aggiornamento": lambda s: dialoghi.Aggiornamento(None, "1.94.6", "2.0.0", "Note."),
+    # Dal 23 ottobre 2026, la cartella del mondo: la domanda col mondo già presente e l'avviso dell'avvio.
+    "MondoGiaPresente": lambda s: dialoghi.MondoGiaPresente(None, "Nella cartella c'è già un mondo.", testi.IL_TUO),
+    "CartellaAssente": lambda s: dialoghi.CartellaAssente(None, "MESS non trova la cartella del mondo."),
     "ModelloTorneoDialogo": lambda s: gui_editor.ModelloTorneoDialogo(None, s.gestore.modello("modello_1"), formule.leggi()[0], s.gestore),
     "EditorModelli": lambda s: gui_editor.EditorModelli(None, s.gestore),
     "FaseDialogo": lambda s: gui_editor.FaseDialogo(None, {"tipo": formule.GIRONI, "partecipanti": 8, "gironi": 2, "promossi": 2, "finalina": False}, 0, False),

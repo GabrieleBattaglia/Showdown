@@ -82,7 +82,9 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
                    # Dalla tappa 14 il manuale, che apre il browser e lascia la vista com'era: lo prova test_il_manuale_nel_browser.
                    finestra.manuale,
                    # Dalla tappa 14, issue 4, le voci del PUB, che aprirebbero la posta per davvero: le provano le prove del PUB.
-                   finestra.entra_al_pub, finestra.chiedi_aiuto_al_pub}
+                   finestra.entra_al_pub, finestra.chiedi_aiuto_al_pub,
+                   # Dal 23 ottobre 2026 la cartella del mondo, con la finestra di Windows: la provano le prove della cartella.
+                   finestra.scegli_la_cartella_del_mondo}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -1096,14 +1098,14 @@ def test_il_tic_della_probabilita(app_wx, suonati):
         dialogo.Destroy()
 
 
-def test_l_errore_imprevisto(finestra, suonati, monkeypatch, cartella_di_prova):
+def test_l_errore_imprevisto(finestra, suonati, monkeypatch, programma_di_prova):
     messaggi = []
     monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: messaggi.append(testo))
     finestra.errore_imprevisto(ValueError, ValueError("prova"))
     assert suonati == ["errore_imprevisto"]
     # Dalla tappa 14 il messaggio non rimanda più alla console, ma al registro accanto al programma.
     assert messaggi == [f"Il comando si è interrotto per un errore imprevisto: ValueError, prova. Il resoconto completo è nel file MESS - Errori.log, "
-                        f"nella cartella {cartella_di_prova}: allegalo quando chiedi aiuto."]
+                        f"nella cartella {programma_di_prova}: allegalo quando chiedi aiuto."]
     assert finestra._modali == 0
 
 
@@ -1231,7 +1233,7 @@ def test_entra_al_pub(finestra, suonati, mail_preparate):
     assert finestra.barra.GetValue().splitlines()[3] == "iscrizione al PUB annullata"
 
 
-def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, cartella_di_prova):
+def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, programma_di_prova):
     import GBUtils
 
     finestra._esegui(finestra.chiedi_aiuto_al_pub)
@@ -1272,29 +1274,29 @@ def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, cartella_di_prov
     assert "utente di Windows" not in mail["spiegazione"] + mail["passi"][-1][0]
     assert suonati == ["pub_aiuto"] and finestra.barra.GetValue().splitlines()[3] == "mail d'aiuto al PUB pronta"
     # Un registro vuoto non si allega; uno scritto sì, con la cartella in cui sta.
-    errori = cartella_di_prova / "MESS - Errori.log"
+    errori = programma_di_prova / "MESS - Errori.log"
     errori.write_text("", encoding="utf-8")
     finestra.chiedi_aiuto_al_pub()
     assert "Allega" not in mail_preparate[-1]["spiegazione"]
     errori.write_text("2026-10-23 08:00:00,000 MESS 2.0.0 si avvia.\n", encoding="utf-8")
     finestra.chiedi_aiuto_al_pub()
-    allega = (f"Allega alla mail anche il file MESS - Errori.log, che sta accanto al programma, nella cartella {cartella_di_prova}: aiuta a "
+    allega = (f"Allega alla mail anche il file MESS - Errori.log, che sta accanto al programma, nella cartella {programma_di_prova}: aiuta a "
               f"capire che cosa è andato storto.")
     # Il registro, a differenza del testo, può contenere percorsi col nome dell'utente di Windows: lo dicono la spiegazione e l'ultimo passo.
     riservatezza = "Il registro può contenere dei percorsi con il nome del tuo utente di Windows: controllalo prima di spedire."
     assert mail_preparate[-1]["spiegazione"].splitlines()[2:4] == [allega, riservatezza]
     assert mail_preparate[-1]["passi"][-1][0].startswith(f"Passo 4 di 4. {allega} {riservatezza} Poi spedisci la mail.")
     # Con il crash della volta prima, i file sono due.
-    (cartella_di_prova / "MESS - Crash precedente.log").write_text("Fatal Python error: Segmentation fault\n", encoding="utf-8")
+    (programma_di_prova / "MESS - Crash precedente.log").write_text("Fatal Python error: Segmentation fault\n", encoding="utf-8")
     finestra.chiedi_aiuto_al_pub()
     assert ("Allega alla mail anche i file MESS - Crash precedente.log e MESS - Errori.log, che stanno accanto al programma, nella cartella "
-            f"{cartella_di_prova}: aiutano a capire che cosa è andato storto.") in mail_preparate[-1]["spiegazione"]
+            f"{programma_di_prova}: aiutano a capire che cosa è andato storto.") in mail_preparate[-1]["spiegazione"]
     plurale = "I registri possono contenere dei percorsi con il nome del tuo utente di Windows: controllali prima di spedire."
     assert plurale in mail_preparate[-1]["spiegazione"].splitlines() and plurale in mail_preparate[-1]["passi"][-1][0]
     # Il resoconto che non si è potuto mettere da parte resta nel file del crash, e si allega quello.
-    (cartella_di_prova / "MESS - Crash precedente.log").unlink()
-    (cartella_di_prova / "MESS - Crash.log").write_text("Fatal Python error: Segmentation fault\n", encoding="utf-8")
-    finestra.crash_precedente = str(cartella_di_prova / "MESS - Crash.log")
+    (programma_di_prova / "MESS - Crash precedente.log").unlink()
+    (programma_di_prova / "MESS - Crash.log").write_text("Fatal Python error: Segmentation fault\n", encoding="utf-8")
+    finestra.crash_precedente = str(programma_di_prova / "MESS - Crash.log")
     finestra.chiedi_aiuto_al_pub()
     assert "anche i file MESS - Crash.log e MESS - Errori.log, che stanno" in mail_preparate[-1]["spiegazione"]
     mail_preparate.risposta = False
@@ -1346,12 +1348,12 @@ def test_la_finestra_della_mail_con_le_parole_di_mess(finestra, monkeypatch, inf
 
 # Il crash della volta prima, tappa 14.
 
-def test_il_crash_della_volta_prima_all_apertura(app_wx, mondo, suonati, monkeypatch, cartella_di_prova):
-    resoconto = cartella_di_prova / "MESS - Crash precedente.log"
+def test_il_crash_della_volta_prima_all_apertura(app_wx, mondo, suonati, monkeypatch, programma_di_prova):
+    resoconto = programma_di_prova / "MESS - Crash precedente.log"
     f = FinestraPrincipale(mondo, archivio.CARICATO, [], Mondo.rapporto_vuoto(adesso()), mondo.datetime_ultimo_run_reale, crash_precedente=str(resoconto))
     try:
         assert f.vista.GetValue().startswith(f"L'ultima volta MESS si è chiuso di colpo per un errore grave. Il resoconto è nel file MESS - Crash precedente.log, "
-                                             f"nella cartella {cartella_di_prova}: allegalo, insieme a MESS - Errori.log, quando chiedi aiuto.\nMESS, ")
+                                             f"nella cartella {programma_di_prova}: allegalo, insieme a MESS - Errori.log, quando chiedi aiuto.\nMESS, ")
         f.suoni_d_avvio()
         assert suonati == ["avvio", "crash_precedente"]
         # Staccato di un secondo dalla fine dell'avvio, come la notizia dello staff.

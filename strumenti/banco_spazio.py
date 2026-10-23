@@ -614,7 +614,7 @@ def main(argv=None):
     # prima del primo suono sta nella rassegna, dopo il via di ogni gruppo.
     if not enter_escape("\rInvio per cominciare, Escape per uscire\r"):
         return 0
-    risultati = Risultati(percorsi.percorso(FILE_DEI_RISULTATI))
+    risultati = Risultati(percorsi.nel_programma(FILE_DEI_RISULTATI))
     risultati.scrivi(f"Banco dello spazio, {time.strftime('%Y-%m-%d %H:%M')}, seme {seme}.")
     annotazioni = Annotazioni(risultati.percorso)
     finale = None

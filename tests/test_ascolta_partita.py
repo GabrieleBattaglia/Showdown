@@ -515,7 +515,7 @@ def _enter_escape_finta(risposte):
     return enter_escape
 
 
-def test_il_menu_di_fine_gruppo_scrive_una_riga_per_voce(gruppi, cassa, cartella_di_prova, suonati, monkeypatch, capsys):
+def test_il_menu_di_fine_gruppo_scrive_una_riga_per_voce(gruppi, cassa, programma_di_prova, suonati, monkeypatch, capsys):
     monkeypatch.setattr(ap, "prepara", lambda: gruppi)
     monkeypatch.setattr(ap, "enter_escape", _enter_escape_finta([True]))
     monkeypatch.setattr(ap.time, "sleep", lambda _secondi: None)
@@ -527,7 +527,8 @@ def test_il_menu_di_fine_gruppo_scrive_una_riga_per_voce(gruppi, cassa, cartella
     _tastiera(monkeypatch, ["\r", "\r"] * primo + ["c", "\r"] + ["\r", "\r"] * terzo + ["r"] + ["\r", "\r"] * terzo + ["\x1b"])
     assert ap.main() == 0
     assert len(cassa.suonati) == primo + 2 * terzo
-    righe = (cartella_di_prova / ap.FILE_DEGLI_ESITI).read_text(encoding="utf-8").splitlines()
+    # Le impressioni vanno accanto al programma, nella radice dei sorgenti, e non nella cartella del mondo.
+    righe = (programma_di_prova / ap.FILE_DEGLI_ESITI).read_text(encoding="utf-8").splitlines()
     assert len(righe) == 2
     assert righe[0].startswith(f"{gruppi[0][0]}, ") and righe[0].endswith(": la diagonale si sente bene")
     assert righe[1].startswith(f"{gruppi[2][0]}, ") and righe[1].endswith(": chiuso senza giudizio")
@@ -543,10 +544,10 @@ def test_il_menu_di_fine_gruppo_scrive_una_riga_per_voce(gruppi, cassa, cartella
     assert suonati == []
 
 
-def test_senza_il_via_non_suona_niente(gruppi, cassa, cartella_di_prova, monkeypatch, capsys):
+def test_senza_il_via_non_suona_niente(gruppi, cassa, programma_di_prova, monkeypatch, capsys):
     monkeypatch.setattr(ap, "prepara", lambda: gruppi)
     monkeypatch.setattr(ap, "enter_escape", _enter_escape_finta([False]))
     assert ap.main() == 0
     assert cassa.suonati == []
-    assert not (cartella_di_prova / ap.FILE_DEGLI_ESITI).exists()
+    assert not (programma_di_prova / ap.FILE_DEGLI_ESITI).exists()
     assert "\n\n" not in capsys.readouterr().out

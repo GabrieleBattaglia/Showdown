@@ -1,5 +1,5 @@
 """
-Le formule dei tornei di MESS: le fasi, la loro validazione e il file formule.json accanto al gioco.
+Le formule dei tornei di MESS: le fasi, la loro validazione e il file formule.json nella cartella del mondo.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-13 con la tappa 12, decisioni D9 e D13 e punto 3.2 del progetto: copiato da
 get_formulas_data, formulas_path e reset_formulas_cache di tournament_engine.py di Terminal Beast e
@@ -33,7 +33,7 @@ import shutil
 import percorsi
 
 NOME_FILE = "formule.json"
-# La copia predefinita, che viaggia col programma e si copia accanto al gioco al primo uso.
+# La copia predefinita, che viaggia col programma e si copia nella cartella del mondo al primo uso.
 RISORSA = os.path.join("dati", "tornei", NOME_FILE)
 GIRONI = "gironi"
 TABELLONE = "tabellone"
@@ -58,9 +58,9 @@ _CACHE = {}
 
 def percorso_formule():
     """
-    Il file delle formule accanto al gioco. Al primo uso, se manca, lo copia dalla risorsa che
+    Il file delle formule nella cartella del mondo. Al primo uso, se manca, lo copia dalla risorsa che
     viaggia col programma, come formulas_path di Terminal Beast; se la copia non riesce, legge la
-    risorsa stessa, e la prima scrittura lo creerà accanto al gioco.
+    risorsa stessa, e la prima scrittura lo creerà nella cartella del mondo.
     """
     percorso = percorsi.percorso(NOME_FILE)
     if not os.path.exists(percorso):
@@ -231,7 +231,7 @@ def formula(id_formula):
 
 def scrivi(formule):
     """
-    Scrive le formule accanto al gioco con la scrittura sicura, un file temporaneo e poi
+    Scrive le formule nella cartella del mondo con la scrittura sicura, un file temporaneo e poi
     os.replace, e azzera la cache. ValueError, senza scrivere niente, se una formula non va o
     due hanno lo stesso identificativo.
     """

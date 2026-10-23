@@ -18,7 +18,7 @@ import datetime
 from version import __version__
 
 VERSIONE = __version__
-# Il salvataggio del mondo, accanto al programma, e la sua copia di sicurezza.
+# Il salvataggio del mondo, nella cartella del mondo di percorsi.py, e la sua copia di sicurezza.
 # Dalla tappa 7 il mondo si salva compresso: lo stesso JSON firmato, otto volte più piccolo.
 FILE_MONDO = "mess_mondo.json.gz"
 FILE_MONDO_COPIA = FILE_MONDO + ".bak"

@@ -61,6 +61,16 @@ issue 4 il menu Aiuto ha anche Entra al PUB e Chiedi aiuto al PUB, il gruppo di 
 la mail con le funzioni comuni di GBUtils, nella finestra di GBwx che senza posta guida passo per
 passo, e quella d'aiuto chiede di allegare i file del registro che ci sono. Le parti della tappa 14
 sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2026-10-23, richiesta di Gabriele, il menu Impostazioni ha Cartella del mondo: la finestra di
+Windows sceglie dove stanno il mondo, le impostazioni, i tornei e le cronache, per portarli fra le
+macchine con una penna o con un cloud. Prima di tutto il mondo si salva. Se la cartella scelta non ha un
+mondo, i dati ci si spostano e MESS continua; se ne ha uno, una domanda dice quando è stato salvato
+l'uno e l'altro e quale è il più recente, e chiede quale tenere: con Usa il mondo della cartella i dati
+di adesso restano dove sono, e MESS si chiude senza salvare di nuovo e si riapre sul mondo della
+cartella; con Porta il mio mondo i dati della cartella vanno in una sua riserva, e i tuoi ci si
+spostano. All'apertura dopo lo spostamento dei dati che stavano accanto al programma, la vista lo
+dice in testa, col suo suono. I registri stanno accanto al programma, non nella cartella del mondo.
+Anche queste parti sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -73,7 +83,9 @@ from GBwx import dentro_area_utile
 
 import aggiornamento
 import archivio
+import cartella_del_mondo
 import impostazioni as modulo_impostazioni
+import istanza
 import modelli_torneo
 import percorsi
 import registro
@@ -85,6 +97,8 @@ from gui import aspetto
 from gui.dal_vivo import ALLA_FINE, CON_ESC, FinestraDalVivo
 from gui.dialoghi import (
     ASSISTI,
+    PORTA_IL_MIO_MONDO,
+    USA_IL_MONDO_DELLA_CARTELLA,
     Aggiornamento,
     AnnunciDellaCronaca,
     Aspetto,
@@ -97,6 +111,7 @@ from gui.dialoghi import (
     Lettura,
     Mercato,
     MercatoAllenatori,
+    MondoGiaPresente,
     NuovaPolisportiva,
     OpzioniAmichevole,
     PagaArretrati,
@@ -107,6 +122,7 @@ from gui.dialoghi import (
     Staff,
     VelocitaDiGioco,
     Vendite,
+    scegli_cartella,
 )
 from gui.editor_tornei import EditorFormule, EditorModelli
 from gui.sfide import LanciaSfida, SfideInArrivo, StoricoSfide
@@ -135,7 +151,7 @@ SUONI_DEGLI_ESITI = {aggiornamento.NON_RIUSCITO: "aggiornamento_non_riuscito", a
 
 
 class FinestraPrincipale(wx.Frame):
-    def __init__(self, mondo, origine, messaggi, rapporto, ultimo_prima, avvisi_all_avvio=False, crash_precedente=None):
+    def __init__(self, mondo, origine, messaggi, rapporto, ultimo_prima, avvisi_all_avvio=False, crash_precedente=None, cartella_spostata=None):
         super().__init__(None, title=TITOLO)
         self.mondo = mondo
         self.origine = origine
@@ -145,6 +161,10 @@ class FinestraPrincipale(wx.Frame):
         self.crash_precedente = crash_precedente
         self.chiusa = False
         self._per_aggiornare = False
+        # Dal 23 ottobre 2026: la riga dei dati spostati da accanto al programma alla cartella del mondo, se è
+        # successo a questo avvio; e il cambio di cartella che chiude MESS per riaprirlo sul mondo della cartella.
+        self.cartella_spostata = cartella_spostata
+        self._per_cambiare_cartella = False
         # Da quando, in secondi di time.monotonic, la finestra prova a chiudersi per l'aggiornamento.
         self._chiusura_dal = None
         self.rapporto = rapporto
@@ -182,6 +202,8 @@ class FinestraPrincipale(wx.Frame):
         apertura = testi.apertura(mondo, origine, messaggi, rapporto, ultimo_prima, adesso_utc())
         if self.problemi_all_avvio:
             apertura = f"{testi.calendario_illeggibile(self.problemi_all_avvio)}\n{apertura}"
+        if cartella_spostata:
+            apertura = f"{cartella_spostata}\n{apertura}"
         if crash_precedente:
             apertura = f"{testi.crash_precedente(crash_precedente)}\n{apertura}"
         self.mostra(apertura)
@@ -282,6 +304,8 @@ class FinestraPrincipale(wx.Frame):
                 ("&Effetti sonori...", None, self.cambia_effetti),
                 ("&Velocità di gioco...", None, self.cambia_velocita),
                 ("A&nnunci della cronaca...", None, self.cambia_annunci),
+                None,
+                ("Cartella del &mondo...", None, self.scegli_la_cartella_del_mondo),
             )),
             ("&Aiuto", (
                 ("&Guida ai comandi", "F1", lambda: self.mostra(testi.guida(self.voci_guida()), "guida ai comandi", "guida")),
@@ -338,7 +362,8 @@ class FinestraPrincipale(wx.Frame):
         e infine l'avvio di sempre. Se il mondo è avanzato mentre il programma era chiuso, segue il
         suono dell'avanzamento, quando il primo è finito. Dopo l'avvio suona una notizia sola, la più
         importante: dalla tappa 14 prima di tutte il crash della volta prima, staccato di un secondo
-        come la notizia dello staff.
+        come la notizia dello staff; dal 23 ottobre 2026, subito dopo, i dati spostati da accanto al
+        programma alla cartella del mondo, staccati allo stesso modo.
         """
         if self.origine == archivio.DALLA_COPIA:
             primo = "avvio_dalla_copia"
@@ -351,6 +376,8 @@ class FinestraPrincipale(wx.Frame):
         suoni.suona(primo)
         if self.crash_precedente:
             suoni.in_coda("crash_precedente", pausa=PAUSA_NOTIZIA_DELLO_STAFF)
+        elif self.cartella_spostata:
+            suoni.in_coda("cartella_spostata", pausa=PAUSA_NOTIZIA_DELLO_STAFF)
         elif self.problemi_all_avvio:
             suoni.in_coda("calendario_illeggibile")
         elif getattr(self.mondo, "staff_appena_nato", False):
@@ -371,7 +398,7 @@ class FinestraPrincipale(wx.Frame):
         self._modali += 1
         try:
             suoni.suona("errore_imprevisto")
-            wx.MessageBox(f"Il comando si è interrotto per un errore imprevisto: {tipo.__name__}, {valore}. {testi.resoconto_degli_errori(percorsi.cartella())}",
+            wx.MessageBox(f"Il comando si è interrotto per un errore imprevisto: {tipo.__name__}, {valore}. {testi.resoconto_degli_errori(percorsi.cartella_del_programma())}",
                           "Errore imprevisto", wx.OK | wx.ICON_ERROR, self)
         finally:
             self._modali -= 1
@@ -1083,7 +1110,7 @@ class FinestraPrincipale(wx.Frame):
         self.mostra(testi.classifica_mondiale(self.mondo, tuoi=tuoi_del_mondo(self.mondo)), "classifica nazionale", "classifica_mondiale")
 
     def editor_modelli(self):
-        """L'editor dei modelli di torneo: alla chiusura la vista dice che cosa è cambiato; il mondo non si tocca, perché i modelli stanno accanto al gioco."""
+        """L'editor dei modelli di torneo: alla chiusura la vista dice che cosa è cambiato; il mondo non si tocca, perché i modelli stanno fuori dal salvataggio."""
         suoni.suona("dialogo_editor_modelli")
         dialogo = EditorModelli(self)
         try:
@@ -1237,6 +1264,110 @@ class FinestraPrincipale(wx.Frame):
         finally:
             dialogo.Destroy()
 
+    # La cartella del mondo, richiesta di Gabriele del 23 ottobre 2026: si sceglie con la finestra di
+    # Windows, e i dati ci si spostano, oppure MESS si riapre sul mondo che la cartella ha già.
+
+    def scegli_la_cartella_del_mondo(self):
+        """
+        Cartella del mondo, nel menu Impostazioni: la finestra di Windows sceglie dove stanno il mondo, le
+        impostazioni, i tornei e le cronache. Se la cartella scelta ha già un mondo, una domanda chiede
+        quale tenere; altrimenti i dati ci si spostano e MESS continua. Finché si sceglie, il mondo non avanza.
+        """
+        try:
+            attuale = percorsi.cartella()
+        except OSError as errore:
+            # Il file che nomina la cartella del mondo si è rovinato a MESS aperto: lo sistema il prossimo avvio.
+            self.mostra(f"Non so più dove sia la cartella del mondo: {errore}. Riapri MESS, e all'avvio potrai sceglierla.",
+                        "cartella del mondo illeggibile", "cartella_assente")
+            return
+        ora = adesso()
+        self._modali += 1
+        try:
+            suoni.suona("cartella_mondo")
+            nuova = scegli_cartella(self, testi.TITOLO_DELLA_SCELTA, attuale)
+        finally:
+            self._modali -= 1
+        if nuova is None:
+            self._cartella_invariata()
+        elif percorsi.stessa(nuova, attuale):
+            self.mostra(testi.cartella_gia_del_mondo(attuale), "cartella del mondo invariata", "annullato")
+        elif cartella_del_mondo.intrecciate(attuale, nuova):
+            self.mostra(testi.cartelle_intrecciate(nuova, attuale), "cartella del mondo invariata", "annullato")
+        elif not cartella_del_mondo.ha_un_mondo(nuova):
+            self._porta_il_mondo(attuale, nuova, ora)
+        else:
+            scelta = self._quale_mondo(attuale, nuova, ora)
+            if scelta == USA_IL_MONDO_DELLA_CARTELLA:
+                self._usa_il_mondo_della_cartella(nuova)
+            elif scelta == PORTA_IL_MIO_MONDO:
+                self._porta_il_mondo(attuale, nuova, ora)
+            else:
+                self._cartella_invariata()
+
+    def _cartella_invariata(self):
+        suoni.suona("annullato")
+        self.ultimo_evento = "cartella del mondo invariata"
+        self.aggiorna_barra()
+
+    def _quale_mondo(self, attuale, nuova, ora):
+        """La domanda col suono delle domande quando la cartella scelta ha già un mondo: il codice della scelta, o wx.ID_CANCEL."""
+        tuo, suo = cartella_del_mondo.salvato(attuale), cartella_del_mondo.salvato(nuova)
+        testo = testi.mondo_gia_presente(attuale, tuo, nuova, suo, cartella_del_mondo.nome_della_riserva(nuova, ora))
+        dialogo = MondoGiaPresente(self, testo, testi.piu_recente(tuo[0], suo[0]), self.impostazioni)
+        try:
+            suoni.suona("domanda")
+            return self._modale(dialogo)
+        finally:
+            dialogo.Destroy()
+
+    def _porta_il_mondo(self, attuale, nuova, ora):
+        """
+        Il mondo si salva, poi i dati passano nella cartella nuova, e quelli che lei aveva in una sua riserva
+        datata; il file accanto al programma la nomina. Se qualcosa non riesce, niente è cambiato, e la vista
+        dice il perché col suono del salvataggio non riuscito.
+        """
+        riuscito, messaggi, _avvisi = self._salva_raccogliendo()
+        if not riuscito:
+            self.mostra(testi.mondo_non_salvato_per_la_cartella(messaggi), "cartella del mondo invariata", "salvataggio_non_riuscito")
+            return
+        try:
+            trasloco = cartella_del_mondo.cambia_cartella(nuova, ora)
+        except cartella_del_mondo.SpostamentoNonRiuscito as errore:
+            registro.scrivi(f"I dati del mondo non si sono spostati da {attuale} a {nuova}: {errore.motivo}.")
+            self.mostra(testi.cartella_non_spostata(errore, nuova, attuale), "mondo non spostato", "salvataggio_non_riuscito")
+            return
+        registro.scrivi(f"I dati del mondo sono passati da {attuale} a {nuova}.")
+        self.mostra(testi.cartella_spostata(trasloco, attuale), "cartella del mondo cambiata", "cartella_spostata")
+
+    def _usa_il_mondo_della_cartella(self, nuova):
+        """
+        Il mondo di adesso si salva dov'è e lì resta, intatto; il file accanto al programma nomina la cartella
+        nuova, e MESS lancia la copia che si riaprirà sul suo mondo, poi si chiude senza salvare di nuovo: il
+        salvataggio andrebbe ormai nella cartella nuova, sopra il suo mondo. Se la copia non parte, un messaggio
+        dice di riaprire MESS a mano.
+        """
+        riuscito, messaggi, _avvisi = self._salva_raccogliendo()
+        if not riuscito:
+            self.mostra(testi.mondo_non_salvato_per_la_cartella(messaggi), "cartella del mondo invariata", "salvataggio_non_riuscito")
+            return
+        try:
+            percorsi.imposta_cartella(nuova)
+        except OSError as errore:
+            self.mostra(testi.cartella_non_scritta(errore, nuova), "cartella del mondo invariata", "impostazioni_non_salvate")
+            return
+        self._per_cambiare_cartella = True
+        registro.scrivi(f"MESS si chiude per riaprirsi sul mondo della cartella {nuova}.")
+        try:
+            istanza.riapri()
+        except OSError as errore:
+            registro.scrivi(f"MESS non si è riaperto da solo: {errore}.")
+            self._modali += 1
+            try:
+                wx.MessageBox(testi.riapertura_non_riuscita(errore, nuova), "Cartella del mondo", wx.OK | wx.ICON_WARNING, self)
+            finally:
+                self._modali -= 1
+        self.Close(force=True)
+
     # Il PUB, il gruppo di supporto, issue 4: indirizzi, informazioni di sistema e mail vengono da
     # GBUtils V221, la finestra della mail da GBwx, le parole da testi. La finestra si apre sempre,
     # anche quando il programma di posta c'è, e senza posta guida un passo alla volta.
@@ -1255,7 +1386,7 @@ class FinestraPrincipale(wx.Frame):
         from GBUtils import informazioni_di_sistema
 
         suoni.suona("pub_aiuto")
-        mail = testi.mail_d_aiuto_al_pub(informazioni_di_sistema(","), self._registri_da_allegare(), percorsi.cartella())
+        mail = testi.mail_d_aiuto_al_pub(informazioni_di_sistema(","), self._registri_da_allegare(), percorsi.cartella_del_programma())
         self._mail_al_pub(mail, "mail d'aiuto al PUB pronta", "richiesta d'aiuto annullata")
 
     def _registri_da_allegare(self):
@@ -1270,7 +1401,7 @@ class FinestraPrincipale(wx.Frame):
         presenti = []
         for nome in dict.fromkeys(nomi):
             with contextlib.suppress(OSError):
-                if os.path.getsize(percorsi.percorso(nome)):
+                if os.path.getsize(percorsi.nel_programma(nome)):
                     presenti.append(nome)
         return presenti
 
@@ -1416,6 +1547,12 @@ class FinestraPrincipale(wx.Frame):
         """
         self.chiusa = True
         self.timer.Stop()
+        if self._per_cambiare_cartella:
+            # Il mondo si è appena salvato nella sua cartella, e il file accanto al programma nomina ormai l'altra:
+            # un salvataggio adesso finirebbe lì, sopra il mondo che MESS sta per riaprire. Niente riepilogo.
+            suoni.suona("cartella_cambiata", sync=suoni.ATTESA_USCITA)
+            self.Destroy()
+            return
         riuscito, messaggi, _avvisi = self._salva_raccogliendo()
         suoni.suona("uscita" if riuscito else "uscita_senza_salvataggio", sync=suoni.ATTESA_USCITA)
         if self._per_aggiornare:

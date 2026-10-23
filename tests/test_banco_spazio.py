@@ -722,7 +722,7 @@ def _voti_del_volume(prova):
     return {lettera: 5 if prova.indice(lettera) == piu_piano else prova.indice(lettera) + 1 for lettera in prova.lettere}
 
 
-def test_la_sessione_intera(banco, prove, cassa, cartella_di_prova, suonati, monkeypatch, capsys):
+def test_la_sessione_intera(banco, prove, cassa, programma_di_prova, suonati, monkeypatch, capsys):
     punti = banco[0]
     volume, cupezza, larghezza = prove
     monkeypatch.setattr(bs, "punti_del_banco", lambda: punti)
@@ -763,7 +763,7 @@ def test_la_sessione_intera(banco, prove, cassa, cartella_di_prova, suonati, mon
     # La larghezza chiusa senza giudizio tiene i voti, ma la sua scelta resta quella di oggi.
     assert larghezza.chiusa and not volume.chiusa and bs.scelta(larghezza) == bs.indice_di_oggi(larghezza.dimensione)
 
-    righe = (cartella_di_prova / bs.FILE_DEI_RISULTATI).read_text(encoding="utf-8").splitlines()
+    righe = (programma_di_prova / bs.FILE_DEI_RISULTATI).read_text(encoding="utf-8").splitlines()
     assert righe[0].startswith("Banco dello spazio, ") and righe[0].endswith(f", seme {SEME}.")
     titolo_v, titolo_c, titolo_l, titolo_f = volume.dimensione.titolo, cupezza.dimensione.titolo, larghezza.dimensione.titolo, bs.INSIEME.titolo
     voti_finale = ["4", "senza voto", "senza voto"]
@@ -874,24 +874,24 @@ def test_la_rivelazione_senza_preferenze_e_senza_voti(prove):
     assert bs.riga_della_scelta(larghezza) == f"Scelta, {larghezza.dimensione.titolo}: {larghezza.candidato(premiata).nome}."
 
 
-def test_senza_il_via_non_suona_niente(banco, prove, cassa, cartella_di_prova, monkeypatch, capsys):
+def test_senza_il_via_non_suona_niente(banco, prove, cassa, programma_di_prova, monkeypatch, capsys):
     monkeypatch.setattr(bs, "punti_del_banco", lambda: banco[0])
     monkeypatch.setattr(bs, "prepara", lambda _seme, _punti: prove)
     monkeypatch.setattr(bs, "enter_escape", _enter_escape_finta([False]))
     assert bs.main([]) == 0
     assert cassa.suonati == []
-    assert not (cartella_di_prova / bs.FILE_DEI_RISULTATI).exists()
+    assert not (programma_di_prova / bs.FILE_DEI_RISULTATI).exists()
     assert "\n\n" not in capsys.readouterr().out
 
 
-def test_un_seme_che_non_e_un_numero(cassa, cartella_di_prova, capsys):
+def test_un_seme_che_non_e_un_numero(cassa, programma_di_prova, capsys):
     assert bs.main(["quattro"]) == 1
     assert cassa.suonati == []
-    assert not (cartella_di_prova / bs.FILE_DEI_RISULTATI).exists()
+    assert not (programma_di_prova / bs.FILE_DEI_RISULTATI).exists()
     assert "Il seme dev'essere un numero intero" in capsys.readouterr().out
 
 
-def test_tutto_saltato_e_il_gruppo_finale_non_serve(banco, prove, cassa, cartella_di_prova, monkeypatch, capsys):
+def test_tutto_saltato_e_il_gruppo_finale_non_serve(banco, prove, cassa, programma_di_prova, monkeypatch, capsys):
     monkeypatch.setattr(bs, "punti_del_banco", lambda: banco[0])
     monkeypatch.setattr(bs, "prepara", functools.partial(lambda prove, _seme, _punti: prove, prove))
     monkeypatch.setattr(bs, "enter_escape", _enter_escape_finta([True]))
@@ -900,7 +900,7 @@ def test_tutto_saltato_e_il_gruppo_finale_non_serve(banco, prove, cassa, cartell
     _tastiera(monkeypatch, cassa, [])
     assert bs.main([]) == 0
     assert cassa.suonati == []
-    righe = (cartella_di_prova / bs.FILE_DEI_RISULTATI).read_text(encoding="utf-8").splitlines()
+    righe = (programma_di_prova / bs.FILE_DEI_RISULTATI).read_text(encoding="utf-8").splitlines()
     assert righe[1:] == [f"{p.dimensione.titolo}: gruppo saltato." for p in prove] + [
         f"{bs.INSIEME.titolo}: il gruppo non è servito, perché le scelte dei tre gruppi sono proprio lo spazio di oggi."]
     assert "Il gruppo finale non serve." in capsys.readouterr().out
