@@ -61,7 +61,7 @@ Il lungolinea che va in porta si sente sul suo lato fino all'angolo, dove gira i
 
 I blocchi avvengono soltanto sulle sponde: la paletta ferma la pallina contro la sponda, con un suono suo, e il controllo palla la porta al punto da cui parte il tiro, dal blocco stesso, dal centro o dall'altra sponda, secondo il colpo e la qualità del controllo del giocatore; la pallina sfuggita al controllo rotola via e si ferma a centrocampo. La cronaca dice il blocco sulla sponda e, al livello normale, dove il giocatore porta la pallina (issue 11). La scelta del tiro migliore dopo il blocco, che cambia gli esiti, è la issue 13.
 
-Lo schermo centrale dice quello che succede quasi sempre al tavolo: la pallina di Rossi batte sullo schermo e torna indietro, al posto di urta lo schermo e si ferma. Nella partita dal vivo, dopo l'urto, la pallina torna indietro rotolando piano verso chi l'ha tirata e si ferma da sola; l'arbitro fischia sempre all'urto, e a qualunque velocità di gioco, anche cambiata a metà punto, la recupera soltanto quando è ferma (issue 12). Gli esiti delle partite non cambiano.
+Lo schermo centrale, nella cronaca, dice quello che succede quasi sempre al tavolo: la pallina di Rossi batte sullo schermo e torna indietro, al posto di urta lo schermo e si ferma (issue 12). Nella partita dal vivo lo schermo si sente come prima, con il fischio dell'arbitro appena la pallina lo tocca. Gli esiti delle partite non cambiano.
 
 ## [1.94.6] - 2026-10-23
 
