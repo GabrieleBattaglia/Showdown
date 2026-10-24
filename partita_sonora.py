@@ -71,6 +71,11 @@ procedura dentro il volo di una pallina. Tolto il ritorno lo stesso giorno, dopo
 nessun volo corre più sotto la procedura, salvo il millesimo d'arrotondamento in cui la consegna e i
 colpi del riscaldamento cominciano: le azioni di ripiega e dei segmenti se ne vanno con lui, e le
 pieghe sono quelle di prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dalla issue 12, lo stesso giorno, per l'ascolto di confronto dello schermo, strumenti/ascolto_schermo.py:
+componi accetta un ritocco dei suoni posati, e sorgente_del_preset dà la sorgente di un preset qualunque
+con le regole di sorgente, così le versioni nuove dello schermo si compongono come la partita senza
+toccarla. La partita non li usa, e suona come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import collections
@@ -434,12 +439,21 @@ def sorgente(ruolo, variante=0):
     variante sceglie quale. Il livello è quello del preset per GUADAGNO_TIMBRI, con le cime
     arrotondate dal limitatore. KeyError se il preset manca.
     """
+    return sorgente_del_preset(SUONI[ruolo], variante, ruolo)
+
+
+def sorgente_del_preset(nome, variante=0, ruolo=None):
+    """
+    La sorgente mono di un preset qualunque, con le regole di sorgente: la usa l'ascolto di confronto
+    dello schermo, strumenti/ascolto_schermo.py, per i timbri candidati, che stanno in una collezione
+    sua. ruolo, se c'è, entra nel messaggio del KeyError.
+    """
     from GBUtils import Acusticator
 
-    nome = SUONI[ruolo]
     score, kind, adsr = Acusticator.preset(nome)
     if not score:
-        raise KeyError(f"Il preset {nome} del ruolo {ruolo} non c'è nella collezione.")
+        di_chi = f" del ruolo {ruolo}" if ruolo else ""
+        raise KeyError(f"Il preset {nome}{di_chi} non c'è nella collezione.")
     variante = variante % VARIANTI_RUMORE if kind in KIND_DI_RUMORE else 0
     chiave = (nome, variante)
     if chiave in _CACHE:
@@ -748,7 +762,7 @@ def posa(eventi):
     return posati
 
 
-def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo=None, pieghe=()):
+def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo=None, pieghe=(), ritocco=None):
     """
     Gli eventi dati composti in un buffer stereo per chi ascolta dalla testata della parte indicata:
     ogni suono posato, spazializzato e sommato al suo istante, esatto al campione. da è l'istante del
@@ -757,11 +771,16 @@ def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo
     anticipo il silenzio in testa si accorcia, e davanti al primo suono ne restano quei secondi, mai
     prima di da: è la ripartenza da fermi, che non fa aspettare chi ha premuto il tasto. Le pieghe
     accorciano o allungano i tratti di procedura, e ogni suono cade al secondo che gli danno.
+    ritocco, se c'è, riceve i suoni posati e restituisce quelli da comporre: lo usa soltanto l'ascolto
+    di confronto dello schermo, strumenti/ascolto_schermo.py, per provare versioni nuove di un suono
+    senza toccare la partita.
     """
     eventi = list(eventi)
     if da is not None:
         eventi = [e for e in eventi if e.t >= da - TOLLERANZA]
     posati = posa(eventi)
+    if ritocco is not None:
+        posati = list(ritocco(posati))
     if da is None:
         t0 = min([e.t for e in eventi[:1]] + [p.t for p in posati], default=0.0)
     else:
