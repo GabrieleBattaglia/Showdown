@@ -72,9 +72,9 @@ ancora. Ora nessuna piega cade dentro il volo di una pallina, anche se il volo �
 segmento di prima: l'azione non si piega mai, nemmeno quando la procedura le corre accanto. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Dalla issue 12, lo stesso giorno, per l'ascolto di confronto dello schermo, strumenti/ascolto_schermo.py:
-componi accetta un ritocco dei suoni posati, e sorgente_del_preset dà la sorgente di un preset qualunque
-con le regole di sorgente, così le versioni nuove dello schermo si compongono come la partita senza
-toccarla. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+sorgente_del_preset dà la sorgente di un preset qualunque con le regole di sorgente; il ritocco dei suoni
+posati che componi accettava per quell'ascolto se n'è andato con lui, a scelta fatta. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Dalla issue 12, la sera del 24 ottobre 2026: all'ascolto di confronto Gabriele ha scelto il legno col
 ritorno in sei punti su sei. Lo schermo contro suona l'urto sulla tavola di legno, mess_partita_schermo_legno,
 più forte e dalla metà strada fra il punto del tocco e il centro dello schermo, poi la ricaduta della
@@ -786,7 +786,7 @@ def posa(eventi):
     return posati
 
 
-def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo=None, pieghe=(), ritocco=None):
+def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo=None, pieghe=()):
     """
     Gli eventi dati composti in un buffer stereo per chi ascolta dalla testata della parte indicata:
     ogni suono posato, spazializzato e sommato al suo istante, esatto al campione. da è l'istante del
@@ -795,16 +795,11 @@ def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo
     anticipo il silenzio in testa si accorcia, e davanti al primo suono ne restano quei secondi, mai
     prima di da: è la ripartenza da fermi, che non fa aspettare chi ha premuto il tasto. Le pieghe
     accorciano o allungano i tratti di procedura, e ogni suono cade al secondo che gli danno.
-    ritocco, se c'è, riceve i suoni posati e restituisce quelli da comporre: lo usa soltanto l'ascolto
-    di confronto dello schermo, strumenti/ascolto_schermo.py, per provare versioni nuove di un suono
-    senza toccare la partita.
     """
     eventi = list(eventi)
     if da is not None:
         eventi = [e for e in eventi if e.t >= da - TOLLERANZA]
     posati = posa(eventi)
-    if ritocco is not None:
-        posati = list(ritocco(posati))
     if da is None:
         t0 = min([e.t for e in eventi[:1]] + [p.t for p in posati], default=0.0)
     else:
