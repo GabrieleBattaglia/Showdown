@@ -44,6 +44,11 @@ stesso posto, col ripiego di indice_della_persona; e la sfida al club che oggi h
 del lancio delle sfide, sfida_gia_rifiutata_oggi. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Lo stesso giorno, coi collegamenti della finestra, esce il mercato di prima, coi candidati, la scelta Mostra e i suoi
 quattro ordini: lo ha sostituito la finestra. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le verifiche della finestra: i massimi dei numeri dei filtri stanno qui, in MASSIMI_DEI_NUMERI, e
+valgono per le caselle della finestra e per la lettura, che prima accettava qualunque numero; gli avvisi della lettura
+citano i dati come il JSON del registro, sempre fra virgolette, e non più col repr di Python, a volte fra apici; gli
+allenatori ordinati per classe, a parità di classe, vanno dal più giovane, come nel mercato degli allenatori di prima.
+È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -229,6 +234,9 @@ CAMPI_FILTRI_ALLENATORI = ("tipo_allenatore", "visus", "posto_attuale", "stipend
 CAMPI_SOLO_GIOCATORI = ("in_vendita", "ritirati", "costo_massimo", "disponibili_oggi", "tratti", "indole", "valore_minimo", "stipendio_massimo",
                         "senza_acciacchi", "solo_ritirati_che_allenano", "solo_nuovi", "comprendi_usciti", "condizioni")
 CAMPI_SOLO_ALLENATORI = ("tipo_allenatore", "visus", "posto_attuale", "stipendio_capo_massimo", "senza_prelazione_altrui")
+# Il massimo di ogni numero dei filtri: quello delle caselle della finestra, e quello che la lettura accetta.
+MASSIMI_DEI_NUMERI = {"eta_massima": 120, "eta_minima": 120, "costo_massimo": 100_000_000, "valore_minimo": 100_000, "stipendio_massimo": 10_000_000,
+                      "mesi_contratto_massimi": 240, "stipendio_capo_massimo": 10_000_000}
 
 
 def _testo(valore):
@@ -724,16 +732,25 @@ def _scritto(valore):
     return isinstance(valore, str)
 
 
+def _fino_a(campo, intero=True):
+    """Il controllo di un numero dei filtri: da zero al suo massimo, intero, o per il valore minimo anche con la virgola."""
+    massimo = MASSIMI_DEI_NUMERI[campo]
+    if intero:
+        return lambda valore: _intero(valore, massimo)
+    return lambda valore: _numero(valore) and 0 <= valore <= massimo
+
+
 _CONTROLLI_DEI_FILTRI = {
     "allenatori": _booleano, "liberi": _booleano, "in_vendita": _booleano, "del_computer": _booleano, "tuoi": _booleano, "ritirati": _booleano,
-    "nome": _scritto, "sesso": _una_di("m", "f"), "classe_migliore": lambda v: _intero(v, modulo_classe.LIVELLI), "eta_massima": _intero,
-    "costo_massimo": _intero, "disponibili_oggi": _booleano, "ordine": lambda v: isinstance(v, str) and v in dict(ORDINI_GIOCATORI),
+    "nome": _scritto, "sesso": _una_di("m", "f"), "classe_migliore": lambda v: _intero(v, modulo_classe.LIVELLI), "eta_massima": _fino_a("eta_massima"),
+    "costo_massimo": _fino_a("costo_massimo"), "disponibili_oggi": _booleano, "ordine": lambda v: isinstance(v, str) and v in dict(ORDINI_GIOCATORI),
     "ordine_allenatori": lambda v: isinstance(v, str) and v in dict(ORDINI_ALLENATORI),
-    "classe_peggiore": lambda v: _intero(v, modulo_classe.LIVELLI), "eta_minima": _intero, "regione": _scritto, "provincia": _scritto, "comune": _scritto,
-    "polisportiva": _scritto, "tratti": _tratti_validi, "indole": _una_di(*INDOLI), "valore_minimo": lambda v: _numero(v) and v >= 0,
-    "stipendio_massimo": _intero, "mesi_contratto_massimi": _intero, "senza_acciacchi": _booleano, "solo_ritirati_che_allenano": _booleano,
-    "solo_nuovi": _booleano, "comprendi_usciti": _booleano, "condizioni": _condizioni_valide, "tipo_allenatore": _una_di(*staff.TIPI),
-    "visus": _una_di(*staff.VISUS), "posto_attuale": _una_di(*staff.RUOLI), "stipendio_capo_massimo": _intero, "senza_prelazione_altrui": _booleano,
+    "classe_peggiore": lambda v: _intero(v, modulo_classe.LIVELLI), "eta_minima": _fino_a("eta_minima"), "regione": _scritto, "provincia": _scritto,
+    "comune": _scritto, "polisportiva": _scritto, "tratti": _tratti_validi, "indole": _una_di(*INDOLI), "valore_minimo": _fino_a("valore_minimo", intero=False),
+    "stipendio_massimo": _fino_a("stipendio_massimo"), "mesi_contratto_massimi": _fino_a("mesi_contratto_massimi"), "senza_acciacchi": _booleano,
+    "solo_ritirati_che_allenano": _booleano, "solo_nuovi": _booleano, "comprendi_usciti": _booleano, "condizioni": _condizioni_valide,
+    "tipo_allenatore": _una_di(*staff.TIPI), "visus": _una_di(*staff.VISUS), "posto_attuale": _una_di(*staff.RUOLI),
+    "stipendio_capo_massimo": _fino_a("stipendio_capo_massimo"), "senza_prelazione_altrui": _booleano,
 }
 
 
@@ -749,6 +766,14 @@ def _unisci(parti):
     # testi importa questo modulo: si legge al momento, come in sfide.
     from testi import unisci
     return unisci([str(parte) for parte in parti])
+
+
+def _citato(valore):
+    """Un dato letto dal salvataggio, citato in un avviso come nel JSON del registro: i testi sempre fra virgolette."""
+    try:
+        return json.dumps(valore, ensure_ascii=False)
+    except (TypeError, ValueError):
+        return repr(valore)
 
 
 def problema_dei_filtri(dati):
@@ -770,7 +795,7 @@ def problema_dei_filtri(dati):
         return f"i campi non sono quelli di questa versione: {_unisci(parti)}"
     for campo, controllo in _CONTROLLI_DEI_FILTRI.items():
         if not controllo(dati[campo]):
-            return f"il campo {campo} ha un valore che non va, {dati[campo]!r}"
+            return f"il campo {campo} ha un valore che non va, {_citato(dati[campo])}"
     return None
 
 
@@ -871,7 +896,7 @@ def _preset_letti(voci, prossimo, avvisi):
         if numero is None:
             numero, nuovo = nuovo, nuovo + 1
             vecchio = voce.get("numero")
-            perche = f"ha lo stesso numero di un preset di prima, {vecchio}" if _numero_di_preset(vecchio) else f"non ha un numero valido, {vecchio!r}"
+            perche = f"ha lo stesso numero di un preset di prima, {vecchio}" if _numero_di_preset(vecchio) else f"non ha un numero valido, {_citato(vecchio)}"
             avvisi.append(Avviso(f"Il preset al posto {posto} della casella {perche}.", f"Riceve il numero {numero}.", voce))
         grezzo = voce.get("nome")
         nome, perche = _nome_riparato(grezzo, numero, nomi_usati)
@@ -879,7 +904,7 @@ def _preset_letti(voci, prossimo, avvisi):
         if grezzo is None:
             avvisi.append(Avviso(f"Al preset numero {numero} manca il nome.", f"Si chiama {nome}.", voce))
         elif perche:
-            avvisi.append(Avviso(f"Il nome del preset numero {numero}, {grezzo!r}, {_unisci(perche)}.", f"Diventa {nome}.", voce))
+            avvisi.append(Avviso(f"Il nome del preset numero {numero}, {_citato(grezzo)}, {_unisci(perche)}.", f"Diventa {nome}.", voce))
         problema = problema_dei_filtri(voce.get("filtri"))
         if problema is None:
             filtri = filtri_da_dizionario(voce["filtri"])
@@ -892,7 +917,7 @@ def _preset_letti(voci, prossimo, avvisi):
             avvisi.append(Avviso(f"Il preset {nome}, numero {numero}, ha dei dati che questa versione non conosce: {_unisci(in_piu)}.", "Si tolgono.", voce))
         preset.append(Preset(numero, nome, filtri))
     if not prossimo_valido:
-        avvisi.append(Avviso(f"Il numero del prossimo preset non è valido, {prossimo!r}.", f"Diventa {nuovo}.", prossimo))
+        avvisi.append(Avviso(f"Il numero del prossimo preset non è valido, {_citato(prossimo)}.", f"Diventa {nuovo}.", prossimo))
     elif prossimo <= max(usati, default=0):
         avvisi.append(Avviso(f"Il numero del prossimo preset, {prossimo}, è già di un preset.", f"Diventa {nuovo}.", prossimo))
     return preset, nuovo
@@ -926,7 +951,7 @@ def _porta_letta(porta, voce, numeri, avvisi):
         avvisi.append(Avviso(f"La porta {nome}, riapriva il preset numero {scelta}, che non c'è più.", rimedio, voce))
         scelta = chiave
     elif not (scelta is None or _numero_di_preset(scelta) or (isinstance(scelta, str) and scelta in _FILTRI_DI_SERIE)):
-        avvisi.append(Avviso(f"La porta {nome}, riapriva una voce della casella che non c'è, {scelta!r}.", rimedio, voce))
+        avvisi.append(Avviso(f"La porta {nome}, riapriva una voce della casella che non c'è, {_citato(scelta)}.", rimedio, voce))
         scelta = chiave
     problema = problema_dei_filtri(voce.get("attuali"))
     if problema is None:
@@ -1323,7 +1348,8 @@ def _allenatori(mondo, filtri):
         if all(prova(riga) for prova in prove):
             righe.append(riga)
     chiavi = {
-        "classe": lambda r: (r.persona.livello, r.persona.numero),
+        # A parità di classe, dal più giovane, come nel mercato degli allenatori di prima.
+        "classe": lambda r: (r.persona.livello, r.persona.eta(oggi), r.persona.numero),
         "eta_giovane": lambda r: (r.persona.eta(oggi), r.persona.numero),
         "eta_anziano": lambda r: (-r.persona.eta(oggi), r.persona.numero),
         "stipendio_basso": lambda r: (r.stipendio, r.persona.numero),

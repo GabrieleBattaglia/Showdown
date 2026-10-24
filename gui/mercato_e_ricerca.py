@@ -26,14 +26,25 @@ sull'elenco porta lì; Invio ed Esc nella scheda tornano all'elenco, sulla stess
 Un Invio che arriva entro la grazia dall'apertura, dall'Invio di prima o dalla fine di un dialogo interno si mangia,
 perché NVDA rimanda Invio come pressioni nuove; e la pressione di un pulsante entro mezzo secondo dalla sua pressione
 di prima, o dalla fine di un dialogo interno, si ignora: il passo della finestra ha misurato che il gancio dei tasti
-non arriva alla finestra da un pulsante. Le domande, gli esiti e gli avvisi si leggono in un campo dove si scorre col cursore, mai in un
-messaggio di Windows: le domande hanno Sì e No, col No già scelto. A mosse finite si oscura soltanto l'offerta, e
+non arriva alla finestra da un pulsante. Le domande, gli esiti e gli avvisi della finestra si leggono in un campo dove si scorre
+col cursore, non in un messaggio di Windows: le domande hanno Sì e No, col No già scelto; il lancio della sfida e la cifra, dialoghi
+di tutto il gioco, tengono i loro messaggi brevi. A mosse finite si oscura soltanto l'offerta, e
 Alt+O sulla scheda Risultati dice il perché col suo suono. L'amichevole si gioca scegliendo prima l'avversario qui, poi
 il proprio giocatore: la finestra si chiude e la partita la gioca la finestra principale. Assumi dello staff apre sugli
 allenatori liberi col posto già scelto, e non ricorda niente.
 Coi collegamenti dello stesso giorno la aprono Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O della finestra principale e Assumi
 dello staff, e chi la apre ne prende gli esiti con esiti_alla_fine, anche quando a chiuderla è stata la chiusura per
 l'aggiornamento, che chiude i dialoghi aperti: la porta si ricorda lo stesso.
+Dalle verifiche dello stesso giorno: ogni scheda è un riquadro col testo della sua linguetta, conto dei filtri compreso,
+perché NVDA, che delle pagine di wx non dice niente, lo dica quando il fuoco ci entra con Ctrl+Tab; l'elenco che prende
+il fuoco mentre un ricalcolo aspetta si rifà subito, prima che NVDA ne legga il nome e le righe, e lo stesso fa ogni
+dialogo interno, che ferma anche l'annuncio dei trovati, perché non arrivi sopra il dialogo; la casella dei preset
+lasciata su Salva filtri dall'elenco aperto torna sulla voce applicata; la Situazione resta su una riga sola, senza
+andare a capo a metà di un blocco di quaranta caratteri; anche all'apertura la scheda della persona si scrive col suo
+rimando; i suoni dell'apertura messi in fila si fermano alla chiusura; l'amichevole contro l'unico tuo giocatore che
+oggi gioca dice che serve un altro avversario, invece di dire che non gioca nessuno; i massimi dei numeri dei filtri
+vengono dal motore, che li controlla anche nella lettura. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import contextlib
@@ -109,15 +120,18 @@ SCELTE_DEI_FILTRI = {
     "visus": ("&Visus", VISUS, "filtro_visus"),
     "posto_attuale": ("&Posto attuale", POSTI_ATTUALI, "filtro_posto_attuale"),
 }
-# I numeri dei filtri: l'etichetta con la lettera, il massimo, e il suono di quando ci si ferma.
+# I numeri dei filtri: l'etichetta con la lettera, il massimo, che è quello del motore, e il suono di quando ci si ferma.
 NUMERI_DEI_FILTRI = {
-    "eta_massima": ("Età &massima in anni, zero per nessun limite", 120, "filtro_eta_allenatori"),
-    "eta_minima": ("Età m&inima in anni, zero per nessun limite", 120, "filtro_eta_minima"),
-    "costo_massimo": ("Costo massimo in euro, &zero per nessun limite", 100_000_000, "filtro_costo_massimo"),
-    "valore_minimo": ("Va&lore minimo in punti, zero per nessun limite", 100_000, "filtro_valore_minimo"),
-    "stipendio_massimo": ("&Stipendio massimo in euro al mese, zero per nessun limite", 10_000_000, "filtro_stipendio_massimo"),
-    "mesi_contratto_massimi": ("Mesi di contr&atto rimasti al massimo, zero per nessun limite", 240, "filtro_mesi_contratto"),
-    "stipendio_capo_massimo": ("&Stipendio chiesto da capo al massimo, zero per nessun limite", 10_000_000, "filtro_stipendio_capo"),
+    "eta_massima": ("Età &massima in anni, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["eta_massima"], "filtro_eta_allenatori"),
+    "eta_minima": ("Età m&inima in anni, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["eta_minima"], "filtro_eta_minima"),
+    "costo_massimo": ("Costo massimo in euro, &zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["costo_massimo"], "filtro_costo_massimo"),
+    "valore_minimo": ("Va&lore minimo in punti, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["valore_minimo"], "filtro_valore_minimo"),
+    "stipendio_massimo": ("&Stipendio massimo in euro al mese, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["stipendio_massimo"],
+                          "filtro_stipendio_massimo"),
+    "mesi_contratto_massimi": ("Mesi di contr&atto rimasti al massimo, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["mesi_contratto_massimi"],
+                               "filtro_mesi_contratto"),
+    "stipendio_capo_massimo": ("&Stipendio chiesto da capo al massimo, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["stipendio_capo_massimo"],
+                               "filtro_stipendio_capo"),
 }
 # I testi dei filtri: l'etichetta con la lettera, e il suono di quando ci si ferma; il nome non suona, perché NVDA dice le lettere.
 TESTI_DEI_FILTRI = {
@@ -214,7 +228,7 @@ class EsitiDellaFinestra:
         return not (self.giocatori or self.allenatori or self.sfide or self.amichevole or self.preset)
 
 
-# I testi da leggere: domande, esiti e avvisi in un campo dove si scorre col cursore, mai in un messaggio di Windows.
+# I testi da leggere: domande, esiti e avvisi della finestra in un campo dove si scorre col cursore, non in un messaggio di Windows.
 
 class Avviso(_SceltaConTesto):
     """Un avviso o un esito da leggere nel campo che ha il fuoco, col solo Chiudi; Esc, e Invio nel testo, chiudono."""
@@ -569,11 +583,15 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self._testo_dei_filtri_attivi = None
         self._vuoto = dialoghi._ElencoCheSiRestringe()
         self._controlli_dei_filtri = []
+        self._riquadri_delle_schede = []
+        # Il resto dei suoni dell'apertura, che aspetta il suo turno: alla chiusura si ferma.
+        self._fila = None
         self._costruisci()
         self._rifai_la_casella()
         self._scrivi_i_controlli()
+        # Il ricalcolo chiede la scheda col suo rimando, anche adesso: all'apertura il fuoco va sull'elenco, e la
+        # scheda, che costa una quarantina di millesimi, si scrive subito dopo, o appena prende il fuoco.
         self.ricalcola()
-        self.aggiorna_la_scheda()
         self._aggiorna_la_situazione()
         self._aggiorna_l_offerta()
         self.Bind(wx.EVT_CHAR_HOOK, self._tasto)
@@ -593,21 +611,30 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
     # La costruzione.
 
     def _pagina(self, nome):
-        pagina = wx.Panel(self.libro)
-        pagina.SetSizer(wx.BoxSizer(wx.VERTICAL))
-        self.libro.AddPage(pagina, nome)
-        return pagina
+        """
+        Una scheda: la pagina della Notebook, e dentro un riquadro grande quanto lei, col testo della linguetta, che fa
+        da genitore a tutti i suoi controlli. Restituisce il riquadro e il suo sizer. Dalla verifica con la lente di
+        NVDA: una pagina di wx, per Windows, è un riquadro senza ruolo, che NVDA non dice, e la linguetta è la stessa
+        per tutte le pagine, quindi con Ctrl+Tab NVDA diceva soltanto il controllo; un riquadro col nome, invece, NVDA
+        lo dice quando il fuoco ci entra, come i riquadri Luogo o Chi cercare.
+        """
+        pannello = wx.Panel(self.libro)
+        pannello.SetSizer(wx.BoxSizer(wx.VERTICAL))
+        self.libro.AddPage(pannello, nome)
+        scatola, sizer = self._riquadro(pannello, nome, pannello.GetSizer(), 1)
+        self._riquadri_delle_schede.append(scatola)
+        return scatola, sizer
 
     @staticmethod
-    def _riquadro(pagina, titolo, dove=None, proporzione=0):
+    def _riquadro(genitore, titolo, dove, proporzione=0):
         """
-        Un riquadro nativo, senza lettera, nel sizer dato o in quello della pagina: i suoi controlli nascono suoi figli,
-        come vuole wx, e NVDA lo dice quando ci si entra. Il passo della finestra ha misurato che le lettere rapide vanno
-        anche da dentro un riquadro, verso la pagina e verso Chiudi.
+        Un riquadro nativo, senza lettera, nel sizer dato: i suoi controlli nascono suoi figli, come vuole wx, e NVDA lo
+        dice quando ci si entra. Il passo della finestra ha misurato che le lettere rapide vanno anche da dentro un
+        riquadro, verso la pagina e verso Chiudi.
         """
-        scatola = wx.StaticBox(pagina, label=titolo)
+        scatola = wx.StaticBox(genitore, label=titolo)
         sizer = wx.StaticBoxSizer(scatola, wx.VERTICAL)
-        (dove or pagina.GetSizer()).Add(sizer, proporzione, wx.EXPAND | wx.ALL, 6)
+        dove.Add(sizer, proporzione, wx.EXPAND | wx.ALL, 6)
         return scatola, sizer
 
     @staticmethod
@@ -671,20 +698,22 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self.caselle, self.scelte, self.numeri, self.testi_dei_filtri, self.tratti = {}, {}, {}, {}, {}
         self.libro = wx.Notebook(self.pannello)
         self.aggiungi(self.libro, 1)
-        self._costruisci_i_risultati(self._pagina(NOMI_DELLE_SCHEDE[RISULTATI]))
-        self._costruisci_i_filtri(self._pagina(NOMI_DELLE_SCHEDE[FILTRI]))
-        self._costruisci_gli_altri_filtri(self._pagina(NOMI_DELLE_SCHEDE[ALTRI_FILTRI]))
-        self._costruisci_i_filtri_degli_allenatori(self._pagina(NOMI_DELLE_SCHEDE[FILTRI_ALLENATORI]))
+        self._costruisci_i_risultati(*self._pagina(NOMI_DELLE_SCHEDE[RISULTATI]))
+        self._costruisci_i_filtri(*self._pagina(NOMI_DELLE_SCHEDE[FILTRI]))
+        self._costruisci_gli_altri_filtri(*self._pagina(NOMI_DELLE_SCHEDE[ALTRI_FILTRI]))
+        self._costruisci_i_filtri_degli_allenatori(*self._pagina(NOMI_DELLE_SCHEDE[FILTRI_ALLENATORI]))
         riga = wx.BoxSizer(wx.HORIZONTAL)
         self.pulsante_chiudi = self._pulsante(self.pannello, riga, "&Chiudi", self.chiudi_la_finestra, wx.ID_CLOSE)
         self.sizer.Add(riga, 0, wx.ALIGN_RIGHT | wx.ALL, 4)
 
-    def _costruisci_i_risultati(self, pagina):
-        sizer = pagina.GetSizer()
+    def _costruisci_i_risultati(self, pagina, sizer):
         griglia = self._griglia(sizer)
         # Su più righe: wx toglie dal giro del Tab, e quindi anche dalla sua lettera, un campo a una riga in sola lettura.
-        self.situazione = self._campo(pagina, griglia, "&Situazione", lambda g: wx.TextCtrl(g, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
-        self.situazione.SetMinSize((-1, self.situazione.GetCharHeight() * 3))
+        # Senza andare a capo, dalla verifica con la lente di NVDA: il testo è una riga sola a blocchi di quaranta
+        # caratteri, e a capo a metà di un blocco il display braille lo spezzava; la riga in più è per la barra orizzontale.
+        self.situazione = self._campo(pagina, griglia, "&Situazione",
+                                      lambda g: wx.TextCtrl(g, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_DONTWRAP))
+        self.situazione.SetMinSize((-1, self.situazione.GetCharHeight() * 2))
         aspetto.applica(self.situazione, self.impostazioni)
         self.casella_preset = self._campo(pagina, griglia, "&Preset dei filtri", lambda g: wx.Choice(g))
         self.casella_preset.Bind(wx.EVT_CHOICE, self._al_preset)
@@ -697,6 +726,7 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         for tipo in (wx.EVT_LIST_ITEM_FOCUSED, wx.EVT_LIST_ITEM_SELECTED):
             self.elenco.Bind(tipo, self._alla_riga)
         self.elenco.Bind(wx.EVT_LIST_ITEM_ACTIVATED, lambda event: self.vai_alla_scheda())
+        self.elenco.Bind(wx.EVT_SET_FOCUS, self._elenco_col_fuoco)
         self.etichetta_scheda = wx.StaticText(pagina, label=testi.etichetta_della_scheda(None))
         sizer.Add(self.etichetta_scheda, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         self.scheda = wx.TextCtrl(pagina, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2)
@@ -712,12 +742,11 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self.pulsante_gestisci = self._pulsante(pagina, riga, "&Gestisci i preset...", self.gestisci_preset)
         sizer.Add(riga, 0, wx.ALL, 4)
 
-    def _costruisci_i_filtri(self, pagina):
-        sizer = pagina.GetSizer()
+    def _costruisci_i_filtri(self, pagina, sizer):
         griglia = self._griglia(sizer)
         self.campo_nome = self._testo(pagina, griglia, "nome")
         self._casella(pagina, sizer, "allenatori")
-        scatola, riquadro = self._riquadro(pagina, "Chi cercare")
+        scatola, riquadro = self._riquadro(pagina, "Chi cercare", sizer)
         for campo in ("liberi", "in_vendita", "del_computer", "tuoi", "ritirati"):
             self._casella(scatola, riquadro, campo)
         griglia = self._griglia(sizer)
@@ -743,10 +772,10 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self.pulsante_salva = self._pulsante(pagina, riga, "&Salva filtri...", lambda event: self.salva_filtri())
         sizer.Add(riga, 0, wx.ALL, 4)
 
-    def _costruisci_gli_altri_filtri(self, pagina):
+    def _costruisci_gli_altri_filtri(self, pagina, sizer):
         # Due colonne di riquadri, perché la pagina non diventi più alta dello schermo: l'ordine del Tab resta quello in cui nascono.
         colonne = wx.BoxSizer(wx.HORIZONTAL)
-        pagina.GetSizer().Add(colonne, 1, wx.EXPAND)
+        sizer.Add(colonne, 1, wx.EXPAND)
         sinistra, destra = wx.BoxSizer(wx.VERTICAL), wx.BoxSizer(wx.VERTICAL)
         colonne.Add(sinistra, 1, wx.EXPAND)
         colonne.Add(destra, 1, wx.EXPAND)
@@ -788,10 +817,9 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         riquadro.Add(riga, 0, wx.ALL, 2)
         riga = wx.BoxSizer(wx.HORIZONTAL)
         self.pulsante_azzera = self._pulsante(pagina, riga, "Azzera &questi filtri", lambda event: self.azzera_gli_altri_filtri())
-        pagina.GetSizer().Add(riga, 0, wx.ALL, 4)
+        sizer.Add(riga, 0, wx.ALL, 4)
 
-    def _costruisci_i_filtri_degli_allenatori(self, pagina):
-        sizer = pagina.GetSizer()
+    def _costruisci_i_filtri_degli_allenatori(self, pagina, sizer):
         griglia = self._griglia(sizer)
         self._scelta(pagina, griglia, "tipo_allenatore")
         self._scelta(pagina, griglia, "visus")
@@ -991,13 +1019,18 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         """
         Una voce della casella dei preset: un preset si applica intero, la voce in cima riprende i filtri fatti a mano;
         Salva filtri si apre soltanto scelto dall'elenco aperto, con Invio o col clic, mai con le frecce; la voce già
-        applicata non fa niente.
+        applicata non fa niente. Dalla verifica con la lente di NVDA: uscendo con Tab, Maiusc+Tab, Alt+lettera o
+        Ctrl+Tab dall'elenco aperto su Salva filtri, Windows manda prima l'uscita del fuoco, con la casella ancora
+        sulla voce di prima, e poi la scelta di Salva filtri, a elenco chiuso; la casella restava lì, e tornandoci NVDA
+        leggeva Salva filtri. Adesso torna in silenzio sulla voce applicata, come quando il fuoco la lascia.
         """
         posto = self.casella_preset.GetSelection()
         voce = self._voce_della_casella()
         if voce.tipo == mercato.VOCE_SALVA:
             if aperta(self.casella_preset):
                 self.salva_filtri()
+            elif not _stesso(dialoghi.controllo_col_fuoco(), self.casella_preset):
+                self._metti_la_casella(self._posto_applicato)
             return
         if posto == self._posto_applicato:
             return
@@ -1206,6 +1239,9 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
             testo = testi.linguetta(NOMI_DELLE_SCHEDE[pagina], mercato.quanti_impostati(self.filtri, campi))
             if self.libro.GetPageText(pagina) != testo:
                 self.libro.SetPageText(pagina, testo)
+                # Il riquadro della scheda dice lo stesso della linguetta: è il nome che NVDA legge entrando con Ctrl+Tab.
+                self._riquadri_delle_schede[pagina].SetLabel(testo)
+                self.libro.GetPage(pagina).Layout()
 
     def annuncia(self):
         """Il numero dei trovati alla voce e al display, al posto di quello di prima, anche con la lettura della cronaca spenta; prima, il ricalcolo che aspettava."""
@@ -1248,6 +1284,19 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         event.Skip()
         if self._scheda.in_attesa:
             self.aggiorna_la_scheda()
+
+    def _elenco_col_fuoco(self, event):
+        """
+        L'elenco prende il fuoco: il ricalcolo che aspettava si fa adesso, prima che NVDA ne legga il nome, coi trovati,
+        e le righe; l'annuncio dei trovati non serve più, perché NVDA li dice nel nome. Dalla verifica con la lente di
+        NVDA: con una freccia sulla casella dei preset e subito Tab, Alt+T, Maiusc+Tab o Ctrl+Tab, NVDA leggeva l'elenco
+        di prima, e mezzo secondo dopo l'elenco cambiava senza che lo rileggesse.
+        """
+        event.Skip()
+        if self._in_ricalcolo:
+            return
+        self._ricalcolo.subito()
+        self._annuncio.ferma()
 
     def vai_alla_scheda(self):
         """Invio sull'elenco, o il doppio clic: la scheda della riga, col fuoco all'inizio; con l'elenco vuoto, il tasto a vuoto."""
@@ -1379,14 +1428,34 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self._in_fila(seguenti)
 
     def _in_fila(self, eventi):
-        """I suoni uno dopo l'altro, ciascuno quando è finito il precedente: in_coda ne aspetta uno solo."""
+        """
+        I suoni uno dopo l'altro, ciascuno quando è finito il precedente: in_coda ne aspetta uno solo. Il resto aspetta
+        in self._fila, che la chiusura ferma: dalla verifica del comportamento, con Esc subito dopo l'apertura il suono
+        dell'elenco vuoto arrivava dopo quello della finestra chiusa.
+        """
+        self._fila = None
+        if self._chiusa:
+            return
         eventi = list(eventi)
         while eventi:
             suoni.in_coda(eventi.pop(0))
             if eventi and suoni.attesa() > 0:
                 resto = tuple(eventi)
-                self._pianifica(suoni.attesa() + 2 * suoni.PAUSA_IN_CODA, lambda resto=resto: self._in_fila(resto))
+                self._fila = self._pianifica(suoni.attesa() + 2 * suoni.PAUSA_IN_CODA, lambda resto=resto: self._in_fila(resto))
                 return
+
+    @contextlib.contextmanager
+    def _interno(self, dialogo, suono=None):
+        """
+        Un dialogo interno della finestra, come nella base; prima, il ricalcolo che aspettava si fa subito e l'annuncio
+        dei trovati si ferma. Dalla verifica con la lente di NVDA: con un filtro cambiato e subito Salva filtri, Gestisci,
+        un'offerta o un'altra azione, l'annuncio scattava dentro il dialogo e arrivava alla voce e al display sopra il
+        suo titolo e il suo testo.
+        """
+        self._ricalcolo.subito()
+        self._annuncio.ferma()
+        with super()._interno(dialogo, suono) as aperto:
+            yield aperto
 
     # Le azioni.
 
@@ -1549,7 +1618,13 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         avversario = r.persona
         tuoi = mercato.tuoi_per_l_amichevole(self.mondo, p, avversario)
         if not tuoi:
-            self.leggi(testi.nessuno_per_l_amichevole(self.mondo, adesso_utc(), poli=p), "nessun_giocatore_oggi", self.elenco)
+            # Dalla verifica del comportamento: se l'avversario scelto è proprio l'unico dei tuoi che oggi gioca, il
+            # testo non dice più che non gioca nessuno, ma che a lui serve un altro avversario, col suono di chi come
+            # avversario oggi non va.
+            if [g.id for g in mercato.tuoi_per_l_amichevole(self.mondo, p, None)] == [avversario.id]:
+                self.leggi(testi.unico_per_l_amichevole(avversario, p), mercato.NON_GIOCA_OGGI, self.elenco)
+            else:
+                self.leggi(testi.nessuno_per_l_amichevole(self.mondo, adesso_utc(), poli=p), "nessun_giocatore_oggi", self.elenco)
             return
         titolo = f"Amichevole contro {testi.nome_completo(avversario)}, il tuo giocatore di {p.nome}"
         with self._interno(SceltaGiocatore(self, self.mondo, titolo, "&Avanti", tuoi), "dialogo_amichevole") as dialogo:
@@ -1616,6 +1691,10 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self._chiusa = True
         for rimando in (self._ricalcolo, self._annuncio, self._scheda, self._suono_fermo):
             rimando.ferma()
+        fila, self._fila = self._fila, None
+        if fila is not None:
+            with contextlib.suppress(RuntimeError):
+                fila.Stop()
         self.annunci.svuota()
         if self.porta is not None:
             # I filtri vengono dai controlli e dai preset, e fanno sempre il giro del salvataggio: se non lo facessero, la porta riaprirebbe come prima.

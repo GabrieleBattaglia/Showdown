@@ -109,6 +109,10 @@ caselle dei filtri, ciascuna col suo timbro, che sale quando si spunta e scende 
 scelte, i numeri e i testi dei filtri con Azzera questi filtri; il posto da offrire e i tre perché nuovi del motore.
 SENZA_PRESET non c'è più, e le azioni dei suoni che la finestra ha preso dal mercato, dalla ricerca e dal mercato degli
 allenatori di prima dicono dove suonano adesso. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le verifiche della finestra, tre azioni dicono tutto quello che fanno: il club che ha già
+rifiutato oggi suona anche in Sfida il suo club, lo staff al completo come il posto occupato, e chi oggi non va come
+avversario dell'amichevole anche quando è l'unico dei tuoi che gioca. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import sys
@@ -831,7 +835,8 @@ AZIONI = {
     "filtri_azzerati": "nella scheda Altri filtri della finestra Mercato e ricerca, Azzera questi filtri li riporta ai valori di serie",
     "dialogo_posto_da_offrire": "nella finestra Mercato e ricerca l'offerta a un allenatore libero apre la scelta del posto dello staff da offrire",
     "offerta_non_possibile": "nella finestra Mercato e ricerca un'offerta che a quella persona non si può fare, come a un allenatore che allena già, a un ritirato, a chi è uscito di scena o a un tuo tesserato non in vendita",
-    "non_gioca_oggi": "nella finestra Mercato e ricerca Amichevole su chi oggi non può giocare: un allenatore, un ritirato, chi è uscito di scena, un infortunato o chi oggi ha già giocato",
+    "non_gioca_oggi": ("nella finestra Mercato e ricerca Amichevole su chi oggi non può giocare: un allenatore, un ritirato, chi è uscito di scena, un "
+                       "infortunato o chi oggi ha già giocato; o sull'unico tuo tesserato che oggi può giocare, che non affronta sé stesso"),
     "club_non_sfidabile": "nella finestra Mercato e ricerca Sfida il suo club su chi non gioca e non allena per una polisportiva del computer",
     "dialogo_cifra_ingaggio": "si apre il dialogo della cifra d'ingaggio di un libero",
     "probabilita_ingaggio": "la probabilità che il libero, o l'allenatore libero, accetti, mentre si scrive la cifra: più è alta, più è acuto",
@@ -924,7 +929,8 @@ AZIONI = {
     "staff_rinnovo_concordato": "l'allenatore accetta il rinnovo del contratto",
     "staff_rinnovo_rifiutato": "l'allenatore rifiuta il rinnovo, e si può riprovare un altro giorno",
     "staff_rinnovo_chiuso": "il terzo rifiuto del rinnovo, e l'allenatore non tratta più",
-    "staff_posto_occupato": "si vuole assumere per un posto dello staff già occupato",
+    "staff_posto_occupato": ("si vuole assumere per un posto dello staff già occupato, o, nella finestra Mercato e ricerca, si fa un'offerta a un "
+                             "allenatore libero con lo staff al completo"),
     "allenatore_in_prelazione": "si vuole assumere un allenatore in prelazione per un'altra tua polisportiva",
     "scheda_allenatore": "si apre la scheda di un allenatore, nello staff, o nella finestra Mercato e ricerca con Invio sull'elenco",
     "diario_allenatore": "si apre il diario di un allenatore",
@@ -985,7 +991,8 @@ AZIONI = {
     "dialogo_lancia_sfida": "si apre il lancio di una sfida a una polisportiva del computer, con Ctrl+W",
     "sfida_accettata_dall_avversario": "la polisportiva del computer accetta la tua sfida, che si gioca domani",
     "sfida_rifiutata_dall_avversario": "la polisportiva del computer rifiuta la tua sfida, e dice perché",
-    "sfida_gia_rifiutata_oggi": "nel lancio di una sfida la polisportiva scelta ha già rifiutato oggi, e si riprova domani",
+    "sfida_gia_rifiutata_oggi": ("nel lancio di una sfida la polisportiva scelta ha già rifiutato oggi, e si riprova domani; anche con Sfida il suo club "
+                                 "nella finestra Mercato e ricerca"),
     "nessuna_sfida_da_lanciare": "la tua polisportiva non ha più sfide da lanciare questo mese",
     "dialogo_sfide_in_arrivo": "si aprono le sfide in arrivo, a cui rispondere entro oggi, prima dell'avanzamento seguente, con Ctrl+Shift+F",
     "sfida_accettata": "accetti una sfida in arrivo, con la tua formazione",

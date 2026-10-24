@@ -14,7 +14,9 @@ misurato il passo della finestra il 24 ottobre 2026.
 gancio fa a mano l'evento wxEVT_CHAR_HOOK, che il gancio dei tasti di wx crea per un tasto vero e manda al
 controllo col fuoco, da cui sale fino alla finestra: Windows chiama quel gancio soltanto per i tasti veri, e
 nessuno dei tasti qui sopra lo raggiunge. Restituisce vero se qualcuno ha tenuto il tasto, senza lasciarlo andare.
-Il gancio vero, coi tasti veri e NVDA, si collauda a mano: collaudo.txt.
+Il gancio vero, coi tasti veri e NVDA, si collauda a mano, nel collaudo di gioco di Gabriele: collaudo.txt è uscito dal
+repository il 23 ottobre 2026, e torna con la tappa 15. Lo dicono le verifiche della finestra, lo stesso giorno. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import ctypes

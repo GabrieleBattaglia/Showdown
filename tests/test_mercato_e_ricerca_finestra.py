@@ -20,6 +20,11 @@ Coi collegamenti dello stesso giorno ci sono anche le prove del mercato degli al
 sostituito, da Ctrl+Maiusc+G e da Assumi: i liberi dal migliore coi loro filtri, l'ingaggio accettato e rifiutato col
 posto da offrire, la prelazione, la cassa vuota e le mosse finite, la scheda e il diario; e l'elenco che nasce vuoto.
 Col passo dei suoni dello stesso giorno ogni evento della finestra ha il suo preset, e le prove usano il registratore di sempre.
+Con le verifiche dello stesso giorno: ogni scheda è un riquadro col testo della linguetta, guardato anche coi nomi MSAA
+che legge NVDA; l'elenco che prende il fuoco si rifà subito; la casella lasciata su Salva filtri dall'elenco aperto torna
+sulla voce applicata; un dialogo interno fa il ricalcolo e ferma l'annuncio; la Situazione su una riga sola; la scheda
+col suo rimando anche all'apertura; i suoni in fila fermati alla chiusura; l'amichevole contro l'unico tuo che gioca; i
+massimi dei numeri del motore. Banco.apri fa partire i rimandi dell'apertura, salvo chi la vuole com'è.
 """
 
 import ctypes
@@ -27,6 +32,7 @@ import datetime
 import random
 import re
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
@@ -180,13 +186,18 @@ class Banco:
         self.messaggi = messaggi
         self.aperte = []
 
-    def apri(self, porta="mercato", posto=None, grazia=False, impostazioni_date=None):
-        """Una finestra, mostrata; senza grazia, come se fosse aperta da un po', così il primo Invio conta."""
+    def apri(self, porta="mercato", posto=None, grazia=False, impostazioni_date=None, rimandi=True):
+        """
+        Una finestra, mostrata; senza grazia, come se fosse aperta da un po', così il primo Invio conta. Con rimandi,
+        partono quelli dell'apertura, come la scheda della persona, che dalle verifiche si scrive col suo rimando.
+        """
         f = finestra_mr.MercatoERicerca(None, self.mondo, impostazioni_date or impostazioni.valide(None), porta, posto=posto, pianifica=self.pianifica,
                                         annunci=self.annunci)
         self.aperte.append(f)
         f.Show()
         tastiera.pompa()
+        if rimandi:
+            self.pianifica.scatta()
         if not grazia:
             f.ultimo_invio = float("-inf")
         return f
@@ -289,6 +300,14 @@ def _lettere_della_pagina(pagina):
         prima = fratelli[fratelli.index(controllo) - 1]
         lettere.append((controllo, _lettera(prima.GetLabel()) if isinstance(prima, wx.StaticText) else None))
     return lettere
+
+
+def _pagina_di(f, controllo):
+    """Il posto della scheda in cui sta il controllo, a qualunque profondità di riquadri."""
+    genitore = controllo.GetParent()
+    while genitore is not None and f.libro.FindPage(genitore) == wx.NOT_FOUND:
+        genitore = genitore.GetParent()
+    return f.libro.FindPage(genitore)
 
 
 def _fuoco_su(controllo):
@@ -711,7 +730,7 @@ def test_invio_in_un_filtro_porta_all_elenco_dei_risultati(banco):
     assert banco.suonati == ["scheda_risultati"] and all("ro" in testi.nome_completo(r.persona).casefold() for r in f.righe)
     # Anche dalle caselle, dalle scelte e da Filtri attivi; sull'elenco delle condizioni no.
     for controllo in (f.caselle["liberi"], f.scelte["indole"][0], f.filtri_attivi):
-        f.libro.SetSelection(f.libro.FindPage(controllo.GetGrandParent() if isinstance(controllo.GetParent(), wx.StaticBox) else controllo.GetParent()))
+        f.libro.SetSelection(_pagina_di(f, controllo))
         controllo.SetFocus()
         _invio(f, controllo)
         assert f.libro.GetSelection() == RISULTATI and _fuoco_su(f.elenco)
@@ -1016,7 +1035,9 @@ def test_gli_allenatori_liberi_dal_migliore_coi_loro_filtri(banco):
     mondo = banco.mondo
     liberi = [a for a in mondo.allenatori.values() if a.libero]
     assert banco.suonati[0] == "dialogo_mercato_allenatori" and f.GetDefaultItem() is None
-    assert [r.persona for r in f.righe] == sorted(liberi, key=lambda a: (a.livello, a.numero)) and all(r.allenatore for r in f.righe)
+    # Dalla classe migliore e, a parità di classe, dal più giovane, come nel mercato degli allenatori di prima.
+    oggi = mondo.datetime_corrente_simulazione
+    assert [r.persona for r in f.righe] == sorted(liberi, key=lambda a: (a.livello, a.eta(oggi), a.numero)) and all(r.allenatore for r in f.righe)
     assert f.etichetta_trovati.GetLabel() == "&" + testi.etichetta_trovati(len(liberi), True)
     assert f.elenco.testo(0) == testi.riga_trovato(f.righe[0], mondo, "classe", f.memoria)
     # La classe migliore o uguale: il migliore resta, e chi è peggiore di lui no.
@@ -1178,3 +1199,191 @@ def test_i_dialoghi_che_confermano_con_invio_contano_l_apertura_come_un_invio(ap
         ciclo = wx.GUIEventLoop()
         wx.CallLater(30, ciclo.Exit)
         ciclo.Run()
+
+
+# Dalle verifiche della finestra, il 24 ottobre 2026.
+
+ROLE_SYSTEM_GROUPING = 20
+
+
+def _genitori_msaa(maniglia):
+    """Nome e ruolo MSAA del controllo e dei suoi genitori, come li vede NVDA: con oleacc e IDispatch di pywin32."""
+    import pythoncom
+    oleacc = ctypes.WinDLL("oleacc")
+    oleacc.AccessibleObjectFromWindow.restype = ctypes.c_long
+    oleacc.AccessibleObjectFromWindow.argtypes = [ctypes.c_void_p, ctypes.c_ulong, ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    iid = ctypes.create_string_buffer(uuid.UUID("{00020400-0000-0000-C000-000000000046}").bytes_le, 16)
+    puntatore = ctypes.c_void_p()
+    assert oleacc.AccessibleObjectFromWindow(maniglia, 0xFFFFFFFC, iid, ctypes.byref(puntatore)) == 0 and puntatore.value
+    oggetto = pythoncom.ObjectFromAddress(puntatore.value, pythoncom.IID_IDispatch)
+    catena = []
+    while oggetto is not None and len(catena) < 12:
+        catena.append((oggetto.Invoke(-5003, 0, pythoncom.DISPATCH_PROPERTYGET, True, 0), oggetto.Invoke(-5006, 0, pythoncom.DISPATCH_PROPERTYGET, True, 0)))
+        try:
+            genitore = oggetto.Invoke(-5000, 0, pythoncom.DISPATCH_PROPERTYGET, True)
+        except pythoncom.com_error:
+            break
+        oggetto = genitore.QueryInterface(pythoncom.IID_IDispatch) if genitore is not None else None
+    return catena
+
+
+def test_ogni_scheda_e_un_riquadro_che_nvda_dice_col_testo_della_linguetta(banco):
+    # Dalla verifica con la lente di NVDA: la pagina di wx è un riquadro senza ruolo, che NVDA non dice, e con Ctrl+Tab
+    # NVDA diceva soltanto il controllo. Adesso ogni scheda è un riquadro col testo della linguetta, conto compreso.
+    f = banco.apri()
+    for posto in range(f.libro.GetPageCount()):
+        pagina = f.libro.GetPage(posto)
+        figli = list(pagina.GetChildren())
+        assert len(figli) == 1 and isinstance(figli[0], wx.StaticBox) and figli[0].GetLabel() == f.libro.GetPageText(posto)
+        assert all(figli[0].IsDescendant(c) for c in _focalizzabili(pagina))
+    # Il conto della linguetta cambia anche nel riquadro.
+    _spunta(f, "senza_acciacchi")
+    assert f.libro.GetPageText(ALTRI_FILTRI) == testi.linguetta("Altri filtri", 1) == f._riquadri_delle_schede[ALTRI_FILTRI].GetLabel()
+    # Come lo vede NVDA: dopo Ctrl+Tab, fra i genitori del controllo col fuoco c'è il raggruppamento col nome della scheda.
+    for _volta in range(2):
+        tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
+    assert f.libro.GetSelection() == ALTRI_FILTRI
+    assert (testi.linguetta("Altri filtri", 1), ROLE_SYSTEM_GROUPING) in _genitori_msaa(tastiera.user32.GetFocus())
+    tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
+    assert ("Filtri degli allenatori", ROLE_SYSTEM_GROUPING) in _genitori_msaa(tastiera.user32.GetFocus())
+
+
+@pytest.mark.parametrize("via", ["Tab", "Alt+T"])
+def test_l_elenco_che_prende_il_fuoco_si_rifa_prima_che_nvda_lo_legga(banco, via):
+    # Dalla verifica con la lente di NVDA: con una freccia sulla casella dei preset e subito il fuoco sull'elenco,
+    # NVDA leggeva il nome e le righe dell'elenco di prima, e il ricalcolo arrivava dopo, senza che li rileggesse.
+    f = banco.apri()
+    f.casella_preset.SetFocus()
+    tastiera.pompa()
+    prima = len(f.righe)
+    tastiera.premi(f.casella_preset, tastiera.VK_DOWN)
+    assert banco.pianifica.vive() == [0.35, 1.0] and len(f.righe) == prima
+    if via == "Tab":
+        tastiera.posta_tasto(tastiera.VK_TAB)
+    else:
+        tastiera.posta_alt("t")
+    assert _fuoco_su(f.elenco)
+    assert len(f.righe) > prima and len(f.righe) == len(mercato.cerca(banco.mondo, f.filtri))
+    assert f.etichetta_trovati.GetLabel() == "&" + testi.etichetta_trovati(len(f.righe))
+    # NVDA dice i trovati nel nome dell'elenco: l'annuncio non parte.
+    assert 1.0 not in banco.pianifica.vive()
+    banco.pianifica.scatta()
+    assert banco.annunci.detti == []
+
+
+@pytest.mark.parametrize("via", ["Tab", "Alt+T", "Ctrl+Tab"])
+def test_la_casella_lasciata_dall_elenco_aperto_su_salva_filtri_torna_sulla_voce_applicata(banco, via):
+    # Dalla verifica con la lente di NVDA: Windows manda prima l'uscita del fuoco, con la casella ancora sulla voce di
+    # prima, poi la scelta di Salva filtri a elenco chiuso; la casella restava lì, e NVDA, tornandoci, leggeva Salva filtri.
+    f = banco.apri()
+    casella = f.casella_preset
+    casella.SetFocus()
+    tastiera.pompa()
+    applicato = f._posto_applicato
+    banco.suonati.clear()
+    tastiera.user32.SendMessageW(casella.GetHandle(), 0x014F, 1, 0)
+    tastiera.pompa()
+    tastiera.posta_tasto(tastiera.VK_END, controllo=casella)
+    if via == "Tab":
+        tastiera.posta_tasto(tastiera.VK_TAB, controllo=casella)
+    elif via == "Alt+T":
+        tastiera.posta_alt("t", controllo=casella)
+    else:
+        tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True, controllo=casella)
+    tastiera.aspetta(lambda: not finestra_mr.aperta(casella) and not _fuoco_su(casella), 1.0)
+    tastiera.aspetta(lambda: False, 0.2)
+    assert not _fuoco_su(casella) and banco.dialoghi.aperti == []
+    assert casella.GetSelection() == applicato == f._posto_applicato and f.scelta == "mercato"
+    assert "mercato_scelta_cambiata" not in banco.suonati and "filtri_attuali_ripresi" not in banco.suonati
+
+
+def test_un_dialogo_interno_fa_il_ricalcolo_e_ferma_l_annuncio(banco):
+    # Dalla verifica con la lente di NVDA: con un filtro cambiato e subito un dialogo interno, l'annuncio dei trovati
+    # scattava dentro il dialogo e arrivava alla voce e al display sopra il suo titolo e il suo testo.
+    f = banco.apri("ricerca")
+    visti = []
+
+    def guarda(dialogo):
+        visti.append((type(dialogo).__name__, banco.pianifica.vive(), all("ro" in testi.nome_completo(r.persona).casefold() for r in f.righe)))
+        return wx.ID_CANCEL
+
+    f.campo_nome.SetValue("ro")
+    assert banco.pianifica.vive() == [0.35, 1.0]
+    banco.dialoghi.copione.append(guarda)
+    _pausa(f)
+    _clic(f.pulsante_salva)
+    # Dentro il dialogo l'elenco è già quello del nome scritto, e l'annuncio non aspetta più.
+    assert visti and visti[0][0] == "SalvaFiltri" and 1.0 not in visti[0][1] and visti[0][2]
+    # Una persona scelta, poi una casella, che annuncia dopo un secondo, e subito il diario.
+    _scegli_persona(f, f.righe[0].numero)
+    _spunta(f, "ritirati")
+    assert 1.0 in banco.pianifica.vive()
+    banco.dialoghi.copione.append(guarda)
+    _pausa(f)
+    _clic(f.pulsante_diario)
+    assert visti[-1][0] == "Lettura" and 1.0 not in visti[-1][1]
+    banco.pianifica.scatta()
+    assert banco.annunci.detti == []
+
+
+def test_la_situazione_resta_su_una_riga_sola(banco):
+    # Dalla verifica con la lente di NVDA: andava a capo a metà di un blocco di quaranta caratteri, e il display lo spezzava.
+    f = banco.apri()
+    assert f.situazione.HasFlag(wx.TE_DONTWRAP) and f.situazione.HasFlag(wx.TE_MULTILINE)
+    assert len(f.situazione.GetValue()) > 120 and f.situazione.GetNumberOfLines() == 1
+
+
+def test_la_scheda_si_scrive_col_suo_rimando_anche_all_apertura(banco):
+    # Dalla verifica del comportamento: la scheda costava una quarantina di millesimi all'apertura; adesso la scrive il
+    # suo rimando, e se prende il fuoco prima, la scrive subito.
+    f = banco.apri(rimandi=False)
+    assert banco.pianifica.vive() == [0.35] and f.scheda.GetValue() == ""
+    banco.pianifica.scatta()
+    assert f.scheda.GetValue() == testi.scheda_giocatore(f.riga().persona, banco.mondo)
+    g = banco.apri(rimandi=False)
+    g.scheda.SetFocus()
+    tastiera.pompa()
+    assert g.scheda.GetValue() == testi.scheda_giocatore(g.riga().persona, banco.mondo)
+
+
+def test_i_suoni_dell_apertura_in_fila_si_fermano_alla_chiusura(banco, monkeypatch):
+    # Dalla verifica del comportamento: con Esc subito dopo l'apertura, il suono dell'elenco vuoto arrivava dopo quello
+    # della finestra chiusa.
+    f = banco.apri()
+    # Un suono che dura: il seguente aspetta il suo turno nella fila della finestra.
+    monkeypatch.setattr(finestra_mr.suoni, "in_coda", lambda evento, **opzioni: banco.suonati.append(evento))
+    monkeypatch.setattr(finestra_mr.suoni, "attesa", lambda: 0.2)
+    banco.suonati.clear()
+    f._in_fila(["mosse_finite", "elenco_svuotato"])
+    assert banco.suonati == ["mosse_finite"] and f._fila is not None and f._fila.viva
+    f.chiudi_la_finestra()
+    assert f._fila is None
+    banco.pianifica.scatta()
+    assert banco.suonati == ["mosse_finite"]
+
+
+def test_l_amichevole_contro_l_unico_tuo_giocatore_che_oggi_gioca(banco, monkeypatch):
+    # Dalla verifica del comportamento: la finestra diceva che oggi non giocava nessuno dei tuoi, e invece lui gioca, ma
+    # non contro sé stesso.
+    p = banco.mondo.miapolisportiva_attiva
+    unico = banco.mondo.giocatori[p.tesserati[0]]
+    monkeypatch.setattr(mercato, "tuoi_per_l_amichevole", lambda mondo, poli, avversario: [g for g in (unico,) if g is not avversario])
+    f = banco.apri("ricerca")
+    _spunta(f, "tuoi")
+    _scegli_persona(f, unico.id)
+    _clic(f.pulsante_amichevole)
+    assert banco.dialoghi.letti[-1] == testi.unico_per_l_amichevole(unico, p) and banco.suonati[-1] == "non_gioca_oggi"
+    assert "Pat-Bologna" in banco.dialoghi.letti[-1] and "scegli un altro avversario" in banco.dialoghi.letti[-1]
+    # Con un altro avversario, il tuo giocatore è lui.
+    altro = next(r for r in f.righe if r.stato == mercato.DEL_COMPUTER and r.persona.puo_giocare_amichevole(banco.mondo.datetime_corrente_simulazione))
+    _pausa(f)
+    _scegli_persona(f, altro.numero)
+    scelti = []
+    banco.dialoghi.copione.append(lambda d: (scelti.append([g.id for g in d.tutti]), wx.ID_CANCEL)[1])
+    _clic(f.pulsante_amichevole)
+    assert banco.dialoghi.aperti[-1] == "SceltaGiocatore" and scelti == [[unico.id]]
+
+
+def test_i_massimi_dei_numeri_sono_quelli_del_motore(banco):
+    f = banco.apri()
+    assert {campo: numero.GetMax() for campo, numero in f.numeri.items()} == mercato.MASSIMI_DEI_NUMERI

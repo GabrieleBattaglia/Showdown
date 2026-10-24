@@ -10,6 +10,8 @@ Lo stesso giorno, con la finestra Mercato e ricerca, gli eventi che aspettano il
 Col passo dei suoni della finestra, i suoi sessantatré suoni della V232 in quattro gruppi: brevi, ben descritti e usati dal codice;
 le schede che si contano coi tocchi, le caselle che salgono quando si spuntano e scendono nello specchio, e la firma di MESS
 tolta dai quattro suoni della ricerca che non ci sono più.
+Con le verifiche della finestra, la firma degli altri programmi su apertura si controlla che resti, qualunque essa sia,
+perché la cambiano loro.
 """
 
 import ast
@@ -338,7 +340,8 @@ def test_la_firma_di_mess_esce_dai_suoni_della_ricerca_tolta():
     for preset in ("meteora_marcatori_trovato", "meteora_marcatori_non_trovato", "apertura", "meditimer_allarme_zittito"):
         assert preset not in suoni.EVENTI.values() and preset not in partita_sonora.SUONI.values()
         assert not firma.search(Acusticator.descrizione(preset)), preset
-    assert "Usato da: batnav, gabryscola, meteora, pokermachine, stellaterm, tornello." in Acusticator.descrizione("apertura")
+    # Dalla verifica del mondo e dei suoni: la firma degli altri programmi resta, qualunque essa sia, perché la cambiano loro.
+    assert re.search(r"Usato da: [^.]+\.", Acusticator.descrizione("apertura"))
 
 
 def _tastiera(monkeypatch, tasti):

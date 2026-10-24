@@ -88,6 +88,8 @@ preset e vale anche senza polisportiva attiva. È di Gabriele Battaglia (IZ4APU)
 Lo stesso giorno, coi collegamenti della finestra, escono i testi del mercato di prima, del suo riepilogo, della testata
 del mercato degli allenatori e dei risultati della ricerca che stampava nella vista; le domande delle offerte lavorano
 soltanto sulla riga della finestra. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le verifiche della finestra, unico_per_l_amichevole: l'avversario scelto è proprio l'unico dei tuoi
+che oggi gioca, e gli serve un altro avversario. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -3458,6 +3460,17 @@ def nessuno_per_l_amichevole(mondo, ora, poli=None, primo=None, tutte=False):
     prossimo = mondo.prossimo_avanzamento()
     quando = f"Il prossimo giorno simulato arriva fra {durata(prossimo - ora)}." if prossimo > ora else "Il prossimo giorno simulato arriva entro un minuto."
     return f"{chi}: ognuno gioca al massimo un incontro per giorno simulato, amichevole, torneo o sfida, e chi è infortunato o ritirato non gioca. {quando}"
+
+
+def unico_per_l_amichevole(g, poli):
+    """
+    Nella finestra Mercato e ricerca, l'avversario scelto per l'amichevole è proprio l'unico tesserato della polisportiva
+    che oggi può giocare: non affronta sé stesso, e come avversario se ne sceglie un altro. Dalla verifica del 24 ottobre
+    2026: prima il testo diceva che oggi non giocava nessuno.
+    """
+    unico, chi = ("l'unica tesserata", "lei") if g.sesso == "f" else ("l'unico tesserato", "lui")
+    return (f"Oggi {nome_completo(g)} è {unico} di {poli.nome} che può giocare un'amichevole, e non può giocare contro sé "
+            f"{accorda(g, 'stesso')}: scegli un altro avversario, e giocherà {chi}.")
 
 
 def cronaca_salvata(percorso, livello, nomi, tipo="amichevole"):

@@ -19,6 +19,8 @@ indulgente: i salvataggi rovinati che tornano ai filtri di serie con un avviso n
 invece di sparire, e una lettura che non solleva mai eccezioni e dà sempre qualcosa che si riscrive.
 Lo stesso giorno, col passo della finestra, il mondo delle prove sta in tests/aiuti_mercato.py, comune con quelle della
 finestra; e si provano il ripiego dopo un esito e il club che oggi ha già rifiutato una sfida.
+Lo stesso giorno, con le verifiche della finestra: gli avvisi citano i dati come il JSON del registro, la lettura rifiuta
+i numeri oltre il massimo delle caselle, e gli allenatori della stessa classe vanno dal più giovane.
 """
 
 import copy
@@ -255,6 +257,12 @@ def test_gli_allenatori_e_i_loro_filtri(mondo):
     giovani = mercato.cerca(mondo, mercato.Filtri(allenatori=True, liberi=True, ordine_allenatori="eta_giovane"))
     assert [r.persona.eta(ORA) for r in giovani] == sorted(r.persona.eta(ORA) for r in giovani)
     assert all(int(r.persona.eta_anni(ORA)) <= 40 for r in mercato.cerca(mondo, mercato.Filtri(allenatori=True, liberi=True, eta_massima=40)))
+    # Dalla verifica della finestra: a parità di classe il più giovane, come nel mercato degli allenatori di prima.
+    pari = sorted((a for a in mondo.allenatori.values() if a.libero), key=lambda a: a.numero)[:2]
+    pari[1].livello = pari[0].livello
+    pari[0].nascita, pari[1].nascita = ORA - datetime.timedelta(days=40 * 108), ORA - datetime.timedelta(days=30 * 108)
+    ordine = [r.persona for r in mercato.cerca(mondo, mercato.Filtri(allenatori=True, liberi=True)) if r.persona in pari]
+    assert ordine == [pari[1], pari[0]]
 
 
 # Quelli che non contano e quelli che si escludono a vicenda.
@@ -495,7 +503,7 @@ def test_salva_rinomina_elimina_e_sposta_i_preset():
         mercato.salva_preset(fdr, " ", mercato.Filtri())
     rotti = mercato.Filtri(liberi=True)
     rotti.sesso = ""
-    with pytest.raises(ValueError, match=r"^I filtri non sono validi: il campo sesso ha un valore che non va, ''$"):
+    with pytest.raises(ValueError, match=r'^I filtri non sono validi: il campo sesso ha un valore che non va, ""$'):
         mercato.salva_preset(fdr, "Rotti", rotti)
     assert [p.nome for p in fdr.preset] == ["Giovani mancini", "Altro"] and fdr.prossimo_preset == 3
     # La rinomina tiene posto, numero e filtri.
@@ -1085,13 +1093,13 @@ def test_un_preset_rovinato_si_ripara_invece_di_sparire(mondo, scritti):
     assert len(problemi) == 14 and problemi[:9] == [
         "Il preset al posto 10 della casella non si legge. Si toglie.",
         "Il preset al posto 2 della casella ha lo stesso numero di un preset di prima, 1. Riceve il numero 14.",
-        "Il nome del preset numero 14, 'DONNE LIBERE', lo usa già un'altra voce della casella. Diventa DONNE LIBERE (2).",
-        "Il preset al posto 3 della casella non ha un numero valido, '7'. Riceve il numero 15.",
+        "Il nome del preset numero 14, \"DONNE LIBERE\", lo usa già un'altra voce della casella. Diventa DONNE LIBERE (2).",
+        "Il preset al posto 3 della casella non ha un numero valido, \"7\". Riceve il numero 15.",
         "Al preset numero 15 manca il nome. Si chiama Preset 15.",
-        "Il nome del preset numero 5, '  Spazi\\tdentro  ', ha degli spazi in testa o in coda e ha dei caratteri di controllo. Diventa Spazi dentro.",
-        f"Il nome del preset numero 6, '{'x' * 60}', supera i 50 caratteri. Diventa {'x' * 50}.",
-        "Il nome del preset numero 8, 'I capi allenatori migliori', lo usa già un'altra voce della casella. Diventa I capi allenatori migliori (2).",
-        f"Il nome del preset numero 12, '{'Y' * 50}', lo usa già un'altra voce della casella. Diventa {'Y' * 46} (2).",
+        "Il nome del preset numero 5, \"  Spazi\\tdentro  \", ha degli spazi in testa o in coda e ha dei caratteri di controllo. Diventa Spazi dentro.",
+        f"Il nome del preset numero 6, \"{'x' * 60}\", supera i 50 caratteri. Diventa {'x' * 50}.",
+        "Il nome del preset numero 8, \"I capi allenatori migliori\", lo usa già un'altra voce della casella. Diventa I capi allenatori migliori (2).",
+        f"Il nome del preset numero 12, \"{'Y' * 50}\", lo usa già un'altra voce della casella. Diventa {'Y' * 46} (2).",
     ]
     assert problemi[9].startswith("I filtri del preset Senza filtri, numero 13, non sono validi: i campi non sono quelli di questa versione: mancano ")
     assert problemi[9].endswith(". Diventano quelli del preset di serie Tutti in attività, senza filtri, per numero.")
@@ -1150,6 +1158,9 @@ SBAGLI_DELLA_FINESTRA = {
     "un sesso vuoto invece di None": ("sesso", ""),
     "una regione None invece del vuoto": ("regione", None),
     "un'età con la virgola": ("eta_massima", 20.0),
+    # Dalla verifica del mondo: i numeri oltre il massimo delle caselle della finestra, che prima la lettura accettava.
+    "un'età oltre il massimo": ("eta_massima", mercato.MASSIMI_DEI_NUMERI["eta_massima"] + 1),
+    "un valore minimo oltre il massimo": ("valore_minimo", mercato.MASSIMI_DEI_NUMERI["valore_minimo"] + 0.5),
     "un tratto senza sì o no": ("tratti", {"mancino": None}),
     "una condizione senza numero": ("condizioni", (("valore", "maggiore", float("nan")),)),
     "un ordine che non esiste": ("ordine", "a_caso"),
@@ -1186,13 +1197,13 @@ def test_il_mondo_non_ricorda_filtri_che_non_si_rileggerebbero(mondo, sbaglio):
 
 def test_il_mondo_non_ricorda_preset_che_la_lettura_dovrebbe_riparare(mondo):
     for preset, prossimo, problema in (
-        ([mercato.Preset(1, "", mercato.Filtri())], 2, "Il nome del preset numero 1, '', non ha nessun carattere"),
+        ([mercato.Preset(1, "", mercato.Filtri())], 2, "Il nome del preset numero 1, \"\", non ha nessun carattere"),
         ([mercato.Preset(1, "Uno", mercato.Filtri()), mercato.Preset(2, "UNO", mercato.Filtri())], 3,
-         "Il nome del preset numero 2, 'UNO', lo usa già un'altra voce della casella"),
+         "Il nome del preset numero 2, \"UNO\", lo usa già un'altra voce della casella"),
         ([mercato.Preset(1, "Uno", mercato.Filtri()), mercato.Preset(1, "Due", mercato.Filtri())], 3,
          "Il preset al posto 2 della casella ha lo stesso numero di un preset di prima, 1"),
         ([mercato.Preset(4, "Uno", mercato.Filtri())], 4, "Il numero del prossimo preset, 4, è già di un preset"),
-        ([mercato.Preset(True, "Uno", mercato.Filtri())], 2, "Il preset al posto 1 della casella non ha un numero valido, True"),
+        ([mercato.Preset(True, "Uno", mercato.Filtri())], 2, "Il preset al posto 1 della casella non ha un numero valido, true"),
     ):
         copia = mercato.filtri_di_ricerca_del_mondo(mondo)
         copia.preset, copia.prossimo_preset = preset, prossimo
@@ -1214,7 +1225,7 @@ def test_il_salvataggio_non_scrive_filtri_che_non_si_rileggerebbero(mondo, carte
     mondo.notifica = messaggi.append
     assert archivio.salva(mondo) is False
     assert percorso.read_bytes() == prima
-    assert messaggi == ["Salvataggio non riuscito: I filtri attuali della porta Mercato, Ctrl+K, non sono validi: il campo sesso ha un valore che non va, ''. "
+    assert messaggi == ["Salvataggio non riuscito: I filtri attuali della porta Mercato, Ctrl+K, non sono validi: il campo sesso ha un valore che non va, \"\". "
                         "Il salvataggio precedente è rimasto com'era."]
     ricaricato = Mondo()
     archivio.carica(ricaricato)
