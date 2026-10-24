@@ -155,7 +155,7 @@ def test_le_frasi_del_goal_di_lungolinea_e_di_diagonale():
         assert C.frase(_volo_di_prova(colpo, "porta", True), nomi) == "Un veloce lungolinea si insacca nella porta di Rossi."
     assert C.frase(_volo_di_prova("lungolineadx", "porta", True), {1: C.Nome("Anna Neri", "f")}) == "Un veloce lungolinea si insacca nella porta di Anna Neri."
     for colpo in ("diagonalesx", "diagonaledx"):
-        assert C.frase(_volo_di_prova(colpo, "porta", False), nomi) == "Il diagonale prende preciso il punto G e finisce in goal."
+        assert C.frase(_volo_di_prova(colpo, "porta", False), nomi) == "La diagonale prende precisa il punto G e finisce in goal."
     # Gli altri goal tengono la frase di sempre; nella difesa irregolare la svolta non è un rimbalzo.
     assert C.frase(_volo_di_prova("bomba", "porta", False), nomi) == "La pallina corre dritta e punta alla porta di Rossi."
     assert C.frase(_volo_di_prova("lungolineasx", "paletta", True), nomi) == "La pallina corre dritta e arriva al centro di Rossi."
@@ -176,7 +176,7 @@ def test_la_cronaca_degli_incontri_dice_i_goal_con_le_parole_di_gabriele(partite
                 assert testo == f"Un veloce lungolinea si insacca nella porta di {nomi[ev.dati['verso']].testo}."
             else:
                 diagonali += 1
-                assert testo == "Il diagonale prende preciso il punto G e finisce in goal."
+                assert testo == "La diagonale prende precisa il punto G e finisce in goal."
         righe = C.componi(risultato.momenti, nomi)
         assert sum(1 for riga in righe if riga.startswith("Un veloce lungolinea si insacca")) == insaccati - prima
     assert insaccati >= 30 and diagonali >= 30

@@ -14,7 +14,7 @@ salvare in JSON per i banchi d'ascolto della tappa 10. Il vecchio registro unico
 log_partite_showdown.txt non c'è più.
 Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 10 e decisione D37: il volo del goal di
 lungolinea dice "Un veloce lungolinea si insacca nella porta di" e il nome di chi subisce, quello del
-goal di diagonale "Il diagonale prende preciso il punto G e finisce in goal", parole di Gabriele. È
+goal di diagonale "La diagonale prende precisa il punto G e finisce in goal", parole di Gabriele, al femminile come il resto della cronaca. È
 di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 11 e decisione D37: la fermata è il blocco
 sulla sponda, "Rossi blocca la pallina sulla sponda sinistra", e dal livello normale il controllo dice
@@ -396,7 +396,7 @@ def _volo(evento, nomi, livello):
     if ultima == "porta" and evento.colpo in _LUNGOLINEA:
         return f"Un veloce lungolinea si insacca nella porta di {_n(nomi, verso)}."
     if ultima == "porta" and evento.colpo in _DIAGONALI:
-        return "Il diagonale prende preciso il punto G e finisce in goal."
+        return "La diagonale prende precisa il punto G e finisce in goal."
     sponde = _sponde(evento.volo)
     corsa = ("La pallina corre dritta", "La pallina rimbalza sulla sponda", "La pallina tocca due sponde", "La pallina tocca tre sponde")[min(sponde, 3)]
     if ultima == "porta":
