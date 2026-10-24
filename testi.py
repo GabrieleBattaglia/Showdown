@@ -100,6 +100,10 @@ condizioni a parole, l'etichetta dei trovati di prima e la linguetta coi filtri 
 l'ambizione anche col numero, ambiziosa (57,3), quello che le regole confrontano, e così la riga ordinata per ambizione;
 la riga dell'allenatore ha in testa il dato dei sei ordini comuni, lo stipendio chiesto da capo anche per chi allena e il
 contratto coi mesi di contratto. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le verifiche del costruttore di regole: il perché di un testo fatto soltanto di apostrofi, trattini
+e spazi; e il campo Trovati dice in quale alternativa va la regola in preparazione soltanto quando conta, e prima
+contava un'alternativa in più quando aveva la o e il Valore vuoto. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import copy
@@ -1680,6 +1684,8 @@ def _perche_non_va(car, perche):
         return f"{_con_la_minuscola(car.nome)} va da 0 a {intero(car.massimo)}"
     if perche == modulo_regole.NON_E_UNA_CLASSE:
         return "una classe si scrive come nella scheda, per esempio G4, oppure col livello, da 1 per A1 a 100 per K0"
+    if perche == modulo_regole.SENZA_LETTERE:
+        return "il testo ha soltanto apostrofi, trattini o spazi, che il confronto non guarda: ci vuole almeno una lettera o una cifra"
     return "il valore non può avere a capo, tabulazioni o altri caratteri di controllo"
 
 
@@ -1775,8 +1781,14 @@ def riepilogo_dei_trovati(righe, filtri, preparazione, mondo):
     perche = perche_la_regola_non_conta(preparazione)
     if perche:
         righe_del_campo.append(perche)
+    # Dalla verifica delle regole: con la o e il Valore vuoto si diceva un'alternativa in più, che ancora non c'è. Una
+    # regola in preparazione che non conta non va in nessuna alternativa, e si contano soltanto quelle dell'elenco.
     posto, quante = mercato.alternativa_della_preparazione(filtri.regole, preparazione)
-    if quante > 1:
+    if regola is None:
+        quante = len(modulo_regole.alternative(filtri.regole))
+        if quante > 1:
+            righe_del_campo.append(f"Le regole formano {quante} alternative.")
+    elif quante > 1:
         righe_del_campo.append(f"Le regole formano {quante} alternative; la regola in preparazione va nell'alternativa {posto}.")
     miste = mercato.alternative_miste(contano.regole)
     if miste and len(modulo_regole.alternative(contano.regole)) == 1:

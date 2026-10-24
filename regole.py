@@ -16,6 +16,10 @@ delle caratteristiche, che legge il mondo, sta in mercato.py; leggi_classe arriv
 finestra se ne andrà intera.
 Lo stesso giorno, col cambio della finestra, ricerca.py se ne va davvero: qui restano tutte le regole della ricerca. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le verifiche del costruttore di regole: un testo fatto soltanto di apostrofi, trattini e spazi non
+è più un valore, perché la sua chiave di confronto è vuota e così contiene trovava tutti, e lo dice il suo perché; e
+nel nome o numero le sole cifre non badano agli zeri in testa, così è 012 trova il numero 12. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import unicodedata
@@ -62,7 +66,7 @@ NEGATIVI = frozenset(NEGAZIONI)
 # Il testo di una regola: da 1 a 50 caratteri, senza gli spazi in testa e in coda.
 LUNGHEZZA_MASSIMA_DEL_TESTO = 50
 # I perché di un valore che non si legge, per testi.py: vuoto, cifre che non sono cifre, il punto fuori dalle migliaia,
-# troppi decimali, fuori dalla misura, una classe che non esiste, un carattere di controllo.
+# troppi decimali, fuori dalla misura, una classe che non esiste, un carattere di controllo, un testo senza lettere né cifre.
 VUOTO = "vuoto"
 CIFRE = "cifre"
 PUNTO = "punto"
@@ -70,6 +74,7 @@ DECIMALI = "decimali"
 MISURA = "misura"
 NON_E_UNA_CLASSE = "classe"
 CONTROLLO = "controllo"
+SENZA_LETTERE = "senza_lettere"
 # La lettura di un valore scritto: il valore, oppure None col perché.
 Lettura = namedtuple("Lettura", "valore problema")
 
@@ -216,7 +221,8 @@ def leggi_valore(caratteristica, scritto):
     Il valore di una regola com'è nel controllo del Valore, letto per la caratteristica: Lettura col valore, oppure None
     e il perché, VUOTO compreso, per il campo vuoto o per nessun valore. Un numero, una classe o un testo arrivano
     scritti; una scelta come la sua chiave, o None; un sì o no come vero o falso, o None. I numeri vanno da zero al
-    massimo, con i decimali che la scheda scrive; i testi da 1 a 50 caratteri; mai caratteri di controllo.
+    massimo, con i decimali che la scheda scrive; i testi da 1 a 50 caratteri, con almeno qualcosa oltre ad apostrofi,
+    trattini e spazi, che il confronto non guarda; mai caratteri di controllo.
     """
     tipo = caratteristica.tipo
     if tipo == SCELTA:
@@ -245,6 +251,8 @@ def leggi_valore(caratteristica, scritto):
             return Lettura(None, NON_E_UNA_CLASSE)
     if len(testo) > LUNGHEZZA_MASSIMA_DEL_TESTO:
         return Lettura(None, MISURA)
+    if not luoghi.chiave_di_confronto(testo):
+        return Lettura(None, SENZA_LETTERE)
     return Lettura(testo, None)
 
 
@@ -256,8 +264,8 @@ def valore_valido(caratteristica, operatore, valore):
     """
     Vero se il valore va bene per la regola così com'è salvata, severo come la scrittura: quello che leggi_valore darebbe.
     Senza valore per i due operatori del dato; per gli altri un numero intero, o con al più i decimali della scheda, da
-    zero al massimo; un livello da 1 a 100; un testo senza spazi in testa e in coda, da 1 a 50 caratteri e senza
-    caratteri di controllo; la chiave di una voce; vero o falso.
+    zero al massimo; un livello da 1 a 100; un testo senza spazi in testa e in coda, da 1 a 50 caratteri, senza
+    caratteri di controllo e non fatto soltanto di apostrofi, trattini e spazi; la chiave di una voce; vero o falso.
     """
     if operatore in SENZA_VALORE:
         return valore is None
@@ -272,7 +280,7 @@ def valore_valido(caratteristica, operatore, valore):
         return _intero(valore) and 1 <= valore <= classe.LIVELLI
     if tipo == TESTO:
         return (isinstance(valore, str) and valore == valore.strip() and 1 <= len(valore) <= LUNGHEZZA_MASSIMA_DEL_TESTO
-                and not con_caratteri_di_controllo(valore))
+                and not con_caratteri_di_controllo(valore) and bool(luoghi.chiave_di_confronto(valore)))
     if tipo == SCELTA:
         return isinstance(valore, str) and valore in dict(voci(caratteristica))
     return isinstance(valore, bool)
@@ -306,7 +314,8 @@ def prova(caratteristica, operatore, valore):
     contesto, che lo ricorda, salvo per le caratteristiche che si leggono al volo. Chi non ha il dato non passa nessun
     confronto e passa ogni negativo: un negativo è il contrario esatto del suo positivo, così una regola e il suo
     contrario, uniti dalla o, trovano tutti. Per il nome o numero scritto con le sole cifre contiene e comincia con
-    guardano l'inizio del numero, è il numero esatto. ValueError per un operatore che la caratteristica non ha.
+    guardano l'inizio del numero, è il numero esatto, e gli zeri in testa non contano, come nel numero scritto dalla
+    scheda. ValueError per un operatore che la caratteristica non ha.
     """
     if operatore not in dict(operatori(caratteristica)):
         raise ValueError(f"L'operatore {operatore!r} non vale per {caratteristica.chiave}")
@@ -323,7 +332,9 @@ def prova(caratteristica, operatore, valore):
     # Soltanto le cifre da 0 a 9: un apice come ² per Python è una cifra, ma nessun numero comincia così.
     if caratteristica.cifre is not None and valore.isascii() and valore.isdigit():
         leggi = caratteristica.cifre
-        vero = (lambda d: d == valore) if positivo == "uguale" else (lambda d: d.startswith(valore))
+        # Dalla verifica delle regole: è 012 non trovava il 12. Soltanto zeri restano uno zero, che nessun numero ha.
+        cifre = valore.lstrip("0") or "0"
+        vero = (lambda d: d == cifre) if positivo == "uguale" else (lambda d: d.startswith(cifre))
     else:
         vero = _vero_se(caratteristica, positivo, valore)
     negativo = operatore in NEGATIVI

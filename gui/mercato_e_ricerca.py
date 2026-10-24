@@ -53,6 +53,13 @@ nascosto: la coppia di etichetta e controllo del Valore che non si vede perde la
 un'etichetta nascosta porta il fuoco al controllo dopo; SetLabel cambia il nome che NVDA legge; Set e SetSelection
 di una scelta non mandano eventi; i tasti dell'elenco delle regole, messi in coda come quelli veri, arrivano al suo
 gestore coi loro modificatori. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le verifiche del costruttore: dopo Canc, E ed O, che lasciano la scelta sulla stessa riga, il nome
+cambiato di quella riga va a Windows, perché NVDA scarta il fuoco ripetuto e non la leggeva; l'elenco che prende il fuoco
+segna sempre come detto il conto che NVDA legge nel suo nome, così dopo un Invio veloce l'annuncio di un conto tornato
+quello di prima non tace più; senza regole il collegamento nascosto torna alla e; con non ha il dato e ha il dato il
+Valore non si vede; il suono del valore scritto che aspettava tace dopo Invio, un dialogo interno o il cambio di scheda;
+e le lettere E e O che non cambiano niente hanno due suoni loro, la O sulla prima regola e il collegamento che c'è già,
+al posto del tasto a vuoto. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -752,9 +759,18 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         return mercato.caratteristica(self.preparazione.bersaglio, self.preparazione.caratteristica)
 
     def _scrivi_la_preparazione(self):
-        """I controlli della regola in preparazione: il collegamento soltanto con delle regole, e il Valore della caratteristica, scelta o campo."""
+        """
+        I controlli della regola in preparazione: il collegamento soltanto con delle regole, e il Valore della
+        caratteristica, scelta o campo, soltanto con un operatore che ne vuole uno. Dalle verifiche del costruttore: senza
+        regole il collegamento torna alla e, perché una o rimasta mentre era nascosto, dopo Canc o Azzera, tornava con la
+        prima regola nuova e apriva un'alternativa che nessuno aveva chiesto; con non ha il dato e ha il dato il Valore non
+        si vede, perché quello che ci si scrive non conta.
+        """
+        if not self.filtri.regole and self.preparazione.collegamento != mercato.E:
+            self.preparazione = dataclasses.replace(self.preparazione, collegamento=mercato.E)
         prep = self.preparazione
         car = self._caratteristica()
+        serve = prep.operatore not in modulo_regole.SENZA_VALORE
         self._applico = True
         try:
             cambiata = self._mostra_coppia(self.etichetta_collegamento, self.scelta_collegamento, bool(self.filtri.regole), "Co&llegamento")
@@ -766,8 +782,8 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
             self._metti_le_voci(self.scelta_operatore, self._operatori, prep.operatore)
             a_scelta = car.tipo in (modulo_regole.SCELTA, modulo_regole.SI_NO)
             etichetta = testi.etichetta_del_valore(car)
-            cambiata = self._mostra_coppia(self.etichetta_valore_scelto, self.valore_scelto, a_scelta, etichetta) or cambiata
-            cambiata = self._mostra_coppia(self.etichetta_valore_scritto, self.valore_scritto, not a_scelta, etichetta) or cambiata
+            cambiata = self._mostra_coppia(self.etichetta_valore_scelto, self.valore_scelto, a_scelta and serve, etichetta) or cambiata
+            cambiata = self._mostra_coppia(self.etichetta_valore_scritto, self.valore_scritto, not a_scelta and serve, etichetta) or cambiata
             if a_scelta:
                 self._voci_del_valore = list(voci_del_valore(car))
                 self._metti_le_voci(self.valore_scelto, self._voci_del_valore, prep.valore)
@@ -871,6 +887,10 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         if self._applico or operatore == self.preparazione.operatore:
             return
         prima = self._con_la_preparazione(operatore=operatore)
+        # Dalle verifiche del costruttore: con non ha il dato e ha il dato il Valore si nasconde, e con gli altri torna. Lo
+        # stato del valore si segna in silenzio, perché suona l'operatore, e il primo tasto scritto dopo non suona per niente.
+        self._scrivi_la_preparazione()
+        self._lascia_il_valore()
         suoni.suona("regola_operatore")
         self._dopo_la_mossa(prima)
 
@@ -914,6 +934,15 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         if stato != self._stato_suonato:
             self._stato_suonato = stato
             suoni.suona(SUONI_DEL_VALORE[stato])
+
+    def _lascia_il_valore(self):
+        """
+        Il suono del valore scritto che aspettava non serve più, perché sei passato ad altro, e lo stato del valore si segna
+        come suonato, in silenzio. Dalla verifica dei suoni del costruttore: dopo Invio, un dialogo interno o il cambio di
+        scheda il suono arrivava 350 millesimi dopo l'ultimo tasto, sopra la scheda nuova, il dialogo o il campo da correggere.
+        """
+        self._suono_fermo.ferma()
+        self._stato_suonato = self._stato_del_valore()
 
     def _all_ordine(self, event=None):
         ordine = self._ordini[self.scelta_ordine.GetSelection()][0]
@@ -1011,6 +1040,7 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self._scrivi_le_regole(min(posto, len(self.filtri.regole) - 1))
         self._scrivi_la_preparazione()
         suoni.suona("regola_tolta")
+        self._rileggi_la_regola_scelta(posto)
         self._dopo_la_mossa(prima)
 
     def sposta_la_regola(self, verso):
@@ -1029,19 +1059,38 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self._dopo_la_mossa(prima)
 
     def cambia_il_collegamento(self, collegamento):
-        """E ed O sull'elenco delle regole: il collegamento della regola scelta; la prima ha sempre la e, e suona il tasto a vuoto."""
+        """
+        E ed O sull'elenco delle regole: il collegamento della regola scelta. Dalle verifiche del costruttore, quando non
+        cambia niente ci sono due suoni loro, al posto del tasto a vuoto, che è di quando non c'è niente di scelto: la O
+        sulla prima regola, che ha sempre la e, e il collegamento che la regola ha già, anche la E sulla prima; e non
+        conta come mossa.
+        """
         posto = self._regola_scelta()
         if posto is None:
             return
         nuovi = mercato.cambia_il_collegamento(self.filtri, posto, collegamento)
         if nuovi is None:
-            suoni.suona("nessuna_selezione")
+            suoni.suona("collegamento_della_prima" if posto == 0 and collegamento == mercato.O else "collegamento_invariato")
             return
         prima = self._contano()
         self.filtri = nuovi
         self._scrivi_le_regole(posto)
         suoni.suona(SUONI_DEI_COLLEGAMENTI[collegamento])
+        self._rileggi_la_regola_scelta(posto)
         self._dopo_la_mossa(prima)
+
+    def _rileggi_la_regola_scelta(self, scelta_di_prima):
+        """
+        Dopo Canc, E ed O, quando l'elenco delle regole ha il fuoco e la scelta resta sulla stessa riga, che però dice
+        un'altra regola: dalla verifica con la lente di NVDA, il fuoco tornava sullo stesso oggetto, e NVDA, che scarta il
+        fuoco ripetuto, non leggeva la riga nuova. Il nome cambiato di quella riga, mandato a Windows, NVDA lo legge per
+        l'oggetto col fuoco, alla voce e al display. Se la scelta si sposta, basta il fuoco nuovo, e così niente si legge
+        due volte.
+        """
+        posto = self.regole.GetSelection()
+        if posto == wx.NOT_FOUND or posto != scelta_di_prima or not _stesso(dialoghi.controllo_col_fuoco(), self.regole):
+            return
+        wx.Accessible.NotifyEvent(wx.ACC_EVENT_OBJECT_NAMECHANGE, self.regole, wx.OBJID_CLIENT, posto + 1)
 
     # La casella dei preset.
 
@@ -1319,9 +1368,11 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         if self._in_ricalcolo:
             return
         self._ricalcolo.subito()
-        if self._annuncio.in_attesa:
-            self._annuncio.ferma()
-            self._ultimo_annuncio = self._testo_dell_annuncio()
+        # Dalla verifica del costruttore con la lente di NVDA: il conto che NVDA legge nel nome conta come detto anche
+        # quando l'annuncio non aspettava più, perché Invio nei Filtri o sulla casella l'aveva già fermato; prima l'ultimo
+        # annuncio restava quello vecchio, e un conto che tornava quello di prima non si annunciava.
+        self._annuncio.ferma()
+        self._ultimo_annuncio = self._testo_dell_annuncio()
 
     def vai_alla_scheda(self):
         """Invio sull'elenco, o il doppio clic: la scheda della riga, col fuoco all'inizio; con l'elenco vuoto, il tasto a vuoto."""
@@ -1405,22 +1456,35 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
             self._ai_risultati()
 
     def _valore_da_correggere(self):
-        """Invio nel Valore con un valore sbagliato: il fuoco resta lì, col suono del campo da correggere, e l'annuncio dice subito il perché."""
+        """
+        Invio nel Valore con un valore sbagliato: il fuoco resta lì, col suono del campo da correggere, e l'annuncio dice
+        subito il perché; il suono del valore scritto che aspettava, lo stesso errore detto due volte, tace.
+        """
+        self._lascia_il_valore()
         suoni.suona("campo_da_correggere")
         self.annuncia(forzato=True)
 
     def _ai_risultati(self):
-        """Invio nella scheda Filtri: subito il ricalcolo che aspettava, niente annuncio, e il fuoco sull'elenco della scheda Risultati."""
+        """
+        Invio nella scheda Filtri: subito il ricalcolo che aspettava, niente annuncio né suono del valore scritto, e il
+        fuoco sull'elenco della scheda Risultati.
+        """
         self._ricalcolo.subito()
         self._annuncio.ferma()
+        self._lascia_il_valore()
         if self.libro.GetSelection() != RISULTATI:
             self.libro.SetSelection(RISULTATI)
         self.elenco.SetFocus()
 
     def _scheda_cambiata(self, event):
-        """Il cambio di scheda, con Ctrl+Tab, Ctrl+Maiusc+Tab o con Invio nei filtri, che porta ai Risultati: il suono della scheda."""
+        """
+        Il cambio di scheda, con Ctrl+Tab, Ctrl+Maiusc+Tab o con Invio nei filtri, che porta ai Risultati: il suono della
+        scheda; lasciando i Filtri, il suono del valore scritto che aspettava tace.
+        """
         event.Skip()
         pagina = event.GetSelection()
+        if pagina != FILTRI:
+            self._lascia_il_valore()
         if 0 <= pagina < len(SUONI_DELLE_SCHEDE):
             suoni.suona(SUONI_DELLE_SCHEDE[pagina])
 
@@ -1487,10 +1551,11 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         Un dialogo interno della finestra, come nella base; prima, il ricalcolo che aspettava si fa subito e l'annuncio
         dei trovati si ferma. Dalla verifica con la lente di NVDA: con un filtro cambiato e subito Salva filtri, Gestisci,
         un'offerta o un'altra azione, l'annuncio scattava dentro il dialogo e arrivava alla voce e al display sopra il
-        suo titolo e il suo testo.
+        suo titolo e il suo testo. Dalla verifica dei suoni del costruttore, lo stesso per il suono del valore scritto.
         """
         self._ricalcolo.subito()
         self._annuncio.ferma()
+        self._lascia_il_valore()
         with super()._interno(dialogo, suono) as aperto:
             yield aperto
 

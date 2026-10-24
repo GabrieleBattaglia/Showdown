@@ -19,6 +19,8 @@ Col passo dei suoni del costruttore, lo stesso giorno, i sedici hanno il loro pr
 i suoni della finestra sono quaranta, in quattro gruppi; la caratteristica ha un tocco diverso per ogni tipo, le regole
 spostate su e giù sono l'una lo specchio dell'altra, e i quarantadue preset della V232 che il costruttore non usa più hanno
 perso la firma di MESS, nel nome e nella descrizione, restando nella collezione.
+Con le verifiche del costruttore, lo stesso giorno, i suoni della finestra sono quarantadue: l'elenco delle regole ha anche
+la O sulla prima regola e il collegamento che c'è già, nella V234, ciascuno col suo preset, al posto del tasto a vuoto.
 """
 
 import ast
@@ -282,7 +284,7 @@ def test_ogni_suono_del_codice_e_un_evento():
 
 
 # I quattro gruppi della finestra Mercato e ricerca: le schede e i preset, la regola in preparazione, l'elenco delle regole e
-# le azioni. Ventuno suoni sono della V232, sedici della V234, e tre, la regola aggiunta, quella tolta e le regole azzerate,
+# le azioni. Ventuno suoni sono della V232, diciotto della V234, e tre, la regola aggiunta, quella tolta e le regole azzerate,
 # vengono dai filtri del mercato di prima.
 GRUPPI_DELLA_FINESTRA = ("Mercato e ricerca, le schede e i preset", "Mercato e ricerca, la regola in preparazione",
                          "Mercato e ricerca, l'elenco delle regole", "Mercato e ricerca, le azioni")
@@ -291,6 +293,8 @@ EVENTI_DEL_COSTRUTTORE = ("collegamento_e", "collegamento_o", "regola_caratteris
                           "regola_caratteristica_testo", "regola_caratteristica_scelta", "regola_caratteristica_si_no", "regola_operatore",
                           "regola_valore_scelto", "regola_valore_tolto", "regola_valore_scritto", "regola_valore_da_correggere",
                           "regola_spostata_su", "regola_spostata_giu", "regola_al_bordo", "regole_al_limite")
+# I due eventi delle verifiche del costruttore, anche loro nella V234: le lettere E e O che non cambiano niente.
+EVENTI_DELLE_VERIFICHE = ("collegamento_della_prima", "collegamento_invariato")
 
 
 def _eventi_della_finestra():
@@ -301,9 +305,10 @@ def _eventi_della_finestra():
 def test_i_suoni_della_finestra_mercato_e_ricerca():
     # Il passo dei suoni della finestra unica, issue 8 e decisione D36: ogni evento nuovo ha il suo preset mess_, breve e
     # non a onda quadra, con la descrizione che dice l'evento, com'è fatto il suono e a che cosa va bene; e il codice lo
-    # fa suonare. I gruppi stanno subito dopo quello del mercato. Dal costruttore di regole i suoni sono quaranta.
+    # fa suonare. I gruppi stanno subito dopo quello del mercato. Dal costruttore di regole i suoni sono quaranta, e con le
+    # sue verifiche quarantadue.
     eventi = _eventi_della_finestra()
-    assert len(eventi) == 40 and set(EVENTI_DEL_COSTRUTTORE) <= set(eventi)
+    assert len(eventi) == 42 and set(EVENTI_DEL_COSTRUTTORE) | set(EVENTI_DELLE_VERIFICHE) <= set(eventi)
     titoli = [titolo for titolo, _gruppo in suoni.GRUPPI]
     inizio = titoli.index("Economia, il mercato") + 1
     assert tuple(titoli[inizio:inizio + len(GRUPPI_DELLA_FINESTRA)]) == GRUPPI_DELLA_FINESTRA
@@ -373,6 +378,18 @@ def test_le_regole_spostate_su_e_giu_sono_l_una_lo_specchio_dell_altra():
     assert rovesciate == [giu[0][i:i + 2] for i in range(0, len(giu[0]), 4)]
     _kind, figura = _figura(suoni.EVENTI["regola_spostata_su"])
     assert figura[-1][1] > figura[0][0]
+
+
+def test_le_lettere_e_ed_o_che_non_cambiano_niente_hanno_i_loro_suoni(suonati, capsys):
+    # Dalle verifiche del costruttore: la O sulla prima regola suonava il tasto a vuoto, che è di quando non c'è niente di
+    # scelto, e la lettera che dà il collegamento che c'è già suonava come il collegamento cambiato. Ora hanno un preset
+    # mess_ ciascuno, col nome dell'evento, nella famiglia dei collegamenti, e suonano senza avvisi.
+    for evento in EVENTI_DELLE_VERIFICHE:
+        assert suoni.EVENTI[evento] == f"mess_{evento}" and suoni.suona(evento) is True, evento
+        assert Acusticator.preset(suoni.EVENTI[evento])[1] == Acusticator.preset(suoni.EVENTI["collegamento_e"])[1], evento
+    assert suonati == list(EVENTI_DELLE_VERIFICHE) and capsys.readouterr().err == ""
+    usati = [suoni.EVENTI[evento] for evento in ("nessuna_selezione", "collegamento_e", "collegamento_o", "regola_al_bordo", *EVENTI_DELLE_VERIFICHE)]
+    assert len(set(usati)) == len(usati)
 
 
 # I quarantadue preset della V232 che il costruttore di regole non usa più: le due schede in più, le undici caselle dei

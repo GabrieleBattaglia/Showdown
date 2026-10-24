@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 355 suoni, 329 della finestra e 26 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 357 suoni, 331 della finestra e 26 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -21,7 +21,7 @@ F5, il fuoco va nella vista principale: spostamento_f5.
 F7, il fuoco va nella barra di stato: spostamento_f7.
 Un'operazione annullata, con Esc o con Annulla in un dialogo: meteora_annullamento.
 La chiusura della finestra Mercato e ricerca con degli esiti, compresi i preset, e quella delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente: terminata.
-Un pulsante premuto senza niente di scelto su cui lavorare: mess_tasto_a_vuoto.
+Un pulsante premuto senza niente di scelto su cui lavorare; nella scheda Filtri della finestra Mercato e ricerca anche Canc, Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole: mess_tasto_a_vuoto.
 Un valore da correggere in un campo, e il dialogo resta aperto: mess_campo_da_correggere.
 Un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre: espelli.
 Un elenco vuoto che torna a riempirsi mentre si scrive o si cambia un filtro: aggiunta_giocatore.
@@ -161,7 +161,7 @@ Nella scheda Filtri della finestra Mercato e ricerca il Valore a scelta della re
 Nella scheda Filtri della finestra Mercato e ricerca il Valore della regola in preparazione resta senza valore: la voce nessun valore, a ogni freccia, o il campo svuotato, quando ci si ferma: mess_valore_tolto.
 Nella scheda Filtri della finestra Mercato e ricerca il valore scritto nel Valore diventa buono, e la regola in preparazione conta, quando ci si ferma: mess_valore_scritto.
 Nella scheda Filtri della finestra Mercato e ricerca il valore scritto nel Valore diventa sbagliato, come un numero fuori misura, e la regola in preparazione non conta, quando ci si ferma: mess_valore_da_correggere.
-Finestra, mercato e ricerca, l'elenco delle regole, 7 suoni.
+Finestra, mercato e ricerca, l'elenco delle regole, 9 suoni.
 Nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola mette la regola in preparazione in fondo all'elenco delle regole: mess_filtro_aggiunto.
 Nella scheda Filtri della finestra Mercato e ricerca, Canc sull'elenco delle regole toglie la regola scelta: mess_filtro_tolto.
 Nella scheda Filtri della finestra Mercato e ricerca, Ctrl+Su sull'elenco delle regole sposta la regola scelta un posto più su: mess_regola_spostata_su.
@@ -169,6 +169,8 @@ Nella scheda Filtri della finestra Mercato e ricerca, Ctrl+Giù sull'elenco dell
 Nella scheda Filtri della finestra Mercato e ricerca, Ctrl+Su sulla prima regola, o Ctrl+Giù sull'ultima, che non si sposta oltre: mess_regola_al_bordo.
 Nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola con già 50 regole nell'elenco, e la regola in preparazione non entra: mess_regole_al_limite.
 Nella scheda Filtri della finestra Mercato e ricerca, Azzera toglie tutte le regole: mess_filtri_tutti_tolti.
+Nella scheda Filtri della finestra Mercato e ricerca, la lettera O sulla prima regola dell'elenco delle regole, che ha sempre la e e non apre un'alternativa: mess_collegamento_della_prima.
+Nella scheda Filtri della finestra Mercato e ricerca, la lettera E od O su una regola dell'elenco delle regole che ha già quel collegamento, compresa la E sulla prima, e niente cambia: mess_collegamento_invariato.
 Finestra, mercato e ricerca, le azioni, 4 suoni.
 Nella finestra Mercato e ricerca l'offerta a un allenatore libero apre la scelta del posto dello staff da offrire: mess_posto_da_offrire.
 Nella finestra Mercato e ricerca un'offerta che a quella persona non si può fare, come a un allenatore che allena già, a un ritirato, a chi è uscito di scena o a un tuo tesserato non in vendita: mess_offerta_non_possibile.

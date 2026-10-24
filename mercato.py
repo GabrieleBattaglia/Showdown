@@ -64,6 +64,12 @@ prima: i filtri con un campo per ogni controllo, le caselle di Chi cercare, i fi
 escludono, i due ordini, le condizioni con ricerca.py, che se ne va intero, e il formato 10 a schede, che la lettura
 riconosce soltanto per dire che è di prima. I nomi del costruttore perdono il loro _a_regole, e Tutti in attività, per
 numero, non dice più senza filtri. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le verifiche del costruttore di regole: Ctrl+Su e Ctrl+Giù scambiano le regole e lasciano i
+collegamenti al loro posto, così un riordino dentro un'alternativa non cambia i trovati e due mosse opposte riportano
+tutto com'era, anche in cima; Canc sulla prima regola di un'alternativa la fa aprire alla regola che la segue, come già
+nella prima; E ed O che non cambiano niente lo dicono con None, anche su una regola che ha già quel collegamento; e
+dalla seconda alternativa la ricerca guarda soltanto chi non è già passato. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -1262,7 +1268,10 @@ def conta_le_righe(righe):
 
 
 # Le mosse sull'elenco delle regole, pure: restituiscono filtri nuovi, con la e rimessa sulla prima regola, e non
-# cambiano quelli dati. Ogni regola tiene il suo collegamento quando si sposta.
+# cambiano quelli dati. Dalla verifica delle regole dello stesso giorno: quando una regola si sposta, i collegamenti
+# restano al loro posto e si scambiano soltanto le regole, così un riordino dentro un'alternativa non cambia i trovati,
+# fra due alternative la regola passa nell'altra, e Ctrl+Su seguito da Ctrl+Giù riporta tutto com'era; togliendo la
+# prima regola di un'alternativa, quella che la segue ne prende il posto e la apre.
 AL_LIMITE = "limite"
 
 
@@ -1280,14 +1289,25 @@ def aggiungi_la_regola(filtri, preparazione):
 
 
 def togli_la_regola(filtri, posto):
-    """Canc sulle Regole: i filtri senza la regola del posto, da zero; IndexError per un posto che non c'è."""
+    """
+    Canc sulle Regole: i filtri senza la regola del posto, da zero; IndexError per un posto che non c'è. Senza la prima
+    regola di un'alternativa, quella che la segue nella stessa alternativa prende la o e la apre: da A o (B e C), senza
+    B, resta A o C, come per la prima alternativa.
+    """
     if not 0 <= posto < len(filtri.regole):
         raise IndexError(posto)
-    return Filtri(con_la_prima_e(filtri.regole[:posto] + filtri.regole[posto + 1:]), filtri.ordine)
+    regole = list(filtri.regole)
+    tolta = regole.pop(posto)
+    if 0 < posto < len(regole) and tolta.collegamento == O and regole[posto].collegamento == E:
+        regole[posto] = replace(regole[posto], collegamento=O)
+    return Filtri(con_la_prima_e(regole), filtri.ordine)
 
 
 def sposta_la_regola(filtri, posto, verso):
-    """Ctrl+Su e Ctrl+Giù sulle Regole: i filtri con la regola spostata di un posto, su con -1 e giù con 1, e il posto nuovo; None al bordo."""
+    """
+    Ctrl+Su e Ctrl+Giù sulle Regole: i filtri con la regola scambiata con quella sopra, con -1, o sotto, con 1, e il posto
+    nuovo; None al bordo. I collegamenti restano al loro posto, e le alternative con loro.
+    """
     if verso not in (-1, 1):
         raise ValueError(f"Una regola si sposta di un posto, su o giù, non di {verso!r}.")
     if not 0 <= posto < len(filtri.regole):
@@ -1296,17 +1316,22 @@ def sposta_la_regola(filtri, posto, verso):
     if not 0 <= nuovo < len(filtri.regole):
         return None
     regole = list(filtri.regole)
-    regole[posto], regole[nuovo] = regole[nuovo], regole[posto]
+    spostata, scambiata = regole[posto], regole[nuovo]
+    regole[posto] = replace(scambiata, collegamento=spostata.collegamento)
+    regole[nuovo] = replace(spostata, collegamento=scambiata.collegamento)
     return Filtri(con_la_prima_e(regole), filtri.ordine), nuovo
 
 
 def cambia_il_collegamento(filtri, posto, collegamento):
-    """Le lettere E e O sulle Regole: i filtri col collegamento nuovo per la regola del posto; None per la prima, che ha sempre la e."""
+    """
+    Le lettere E e O sulle Regole: i filtri col collegamento nuovo per la regola del posto; None quando non cambia
+    niente, perché la prima regola ha sempre la e o perché la regola ha già quel collegamento.
+    """
     if collegamento not in COLLEGAMENTI:
         raise ValueError(f"Un collegamento è e oppure o, non {collegamento!r}.")
     if not 0 <= posto < len(filtri.regole):
         raise IndexError(posto)
-    if posto == 0:
+    if posto == 0 or filtri.regole[posto].collegamento == collegamento:
         return None
     regole = list(filtri.regole)
     regole[posto] = replace(regole[posto], collegamento=collegamento)
@@ -1444,9 +1469,17 @@ def cerca(mondo, filtri, memoria=None):
         if len(compilate) == 1:
             trovate.extend(_filtrate(candidate, compilate[0], memoria))
             continue
+        # Dalla verifica delle regole: ogni alternativa guarda soltanto chi non è già passato per quelle prima, così
+        # con tante alternative non si riscorrono tutti i candidati a ogni o.
         passate = set()
+        restano = candidate
         for prove in compilate:
-            passate.update(r.posto for r in _filtrate(candidate, prove, memoria))
+            nuove = _filtrate(restano, prove, memoria)
+            if nuove:
+                passate.update(r.posto for r in nuove)
+                restano = [r for r in restano if r.posto not in passate]
+                if not restano:
+                    break
         trovate.extend(r for r in candidate if r.posto in passate)
     trovate.sort(key=chiave_dell_ordine(filtri.ordine, memoria))
     return trovate

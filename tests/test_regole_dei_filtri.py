@@ -9,6 +9,9 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nascono il 24 ottobre 2026 sera col passo 1 del costruttore di regole. Lo stesso giorno, col cambio della finestra, il
 motore a schede esce, e con lui l'oracolo: restano le impronte dei preset di serie prese coi due motori, e le differenze
 volute dette dalle regole.
+Con le verifiche del costruttore, lo stesso giorno: Canc e gli spostamenti su ogni modo di collegare quattro regole, e
+sul mondo lo scenario della verifica; le lettere E e O che non cambiano niente; gli zeri in testa del numero; i testi di
+soli apostrofi, trattini e spazi; e tante alternative, che trovano l'unione di ognuna nello stesso ordine.
 """
 
 import dataclasses
@@ -105,6 +108,10 @@ def test_classi_testi_scelte_e_si_o_no():
         assert regole.leggi_valore(LIVELLO, sbagliata) == (None, regole.NON_E_UNA_CLASSE)
     assert regole.leggi_valore(NOME, "  ros ") == ("ros", None) and regole.leggi_valore(NOME, "x" * 50) == ("x" * 50, None)
     assert regole.leggi_valore(NOME, "x" * 51) == (None, regole.MISURA) and regole.leggi_valore(NOME, "a\nb") == (None, regole.CONTROLLO)
+    # Dalla verifica delle regole: un testo di soli apostrofi, trattini e spazi ha la chiave di confronto vuota, e contiene trovava tutti.
+    for senza_lettere in ("'", "-", "' -", chr(0x2019), "--"):
+        assert regole.leggi_valore(NOME, senza_lettere) == (None, regole.SENZA_LETTERE), senza_lettere
+    assert regole.leggi_valore(NOME, "d'") == ("d'", None) and regole.leggi_valore(NOME, "-7") == ("-7", None)
     assert regole.leggi_valore(SESSO, None) == (None, regole.VUOTO) and regole.leggi_valore(SESSO, "f") == ("f", None)
     with pytest.raises(ValueError):
         regole.leggi_valore(SESSO, "x")
@@ -120,6 +127,7 @@ def test_il_valore_salvato_e_severo():
     assert regole.valore_valido(COSTO, "manca", None) and not regole.valore_valido(COSTO, "manca", 3) and not regole.valore_valido(COSTO, "minore", None)
     assert regole.valore_valido(NOME, "contiene", "ros") and not regole.valore_valido(NOME, "contiene", " ros") and not regole.valore_valido(NOME, "contiene", "")
     assert not regole.valore_valido(NOME, "contiene", "a\tb") and not regole.valore_valido(NOME, "contiene", 5)
+    assert not regole.valore_valido(NOME, "contiene", "'") and not regole.valore_valido(NOME, "contiene", "- -") and regole.valore_valido(NOME, "contiene", "d'a")
     assert regole.valore_valido(SESSO, "uguale", "m") and not regole.valore_valido(SESSO, "uguale", "x") and not regole.valore_valido(SESSO, "uguale", ["m"])
     assert regole.valore_valido(MANCINO, "uguale", True) and not regole.valore_valido(MANCINO, "uguale", 1)
     assert regole.valore_valido(LIVELLO, "migliore", 1) and not regole.valore_valido(LIVELLO, "migliore", 0) and not regole.valore_valido(LIVELLO, "migliore", 101)
@@ -173,6 +181,9 @@ def test_i_testi_senza_maiuscole_accenti_e_apostrofi_e_le_cifre_del_numero():
     assert regole.prova(NOME, "contiene", "12")(riga, CONTESTO) and not regole.prova(NOME, "contiene", "23")(riga, CONTESTO)
     assert regole.prova(NOME, "uguale", "1234")(riga, CONTESTO) and not regole.prova(NOME, "uguale", "123")(riga, CONTESTO)
     assert regole.prova(NOME, "non_contiene", "23")(riga, CONTESTO) and regole.prova(NOME, "diverso", "123")(riga, CONTESTO)
+    # Dalla verifica delle regole: gli zeri in testa non contano, e soltanto zeri non trovano nessun numero.
+    assert regole.prova(NOME, "uguale", "01234")(riga, CONTESTO) and regole.prova(NOME, "comincia", "0012")(riga, CONTESTO)
+    assert not regole.prova(NOME, "contiene", "0")(riga, CONTESTO) and regole.prova(NOME, "non_contiene", "000")(riga, CONTESTO)
     # L'apostrofo tipografico, come lo mettono i programmi di scrittura, e il trattino valgono uno spazio.
     assert luoghi.chiave_di_confronto(f"Sant{chr(0x2019)}Angelo-Lodigiano") == "sant angelo lodigiano"
 
@@ -433,18 +444,23 @@ def test_le_mosse_sull_elenco_delle_regole():
     assert mercato.aggiungi_la_regola(filtri, mercato.Preparazione(mercato.E, G, "eta", "minore", "3,5")) == (filtri, regole.DECIMALI)
     pieni = mercato.Filtri(tuple(_regola(G, "eta", "minore", n) for n in range(mercato.LIMITE_DELLE_REGOLE)))
     assert mercato.aggiungi_la_regola(pieni, mercato.Preparazione(mercato.E, G, "eta", "minore", "3")) == (pieni, mercato.AL_LIMITE)
-    # Togliendo la prima, quella che sale in cima prende la e; spostando, ogni regola tiene il suo collegamento.
+    # Togliendo la prima, quella che sale in cima prende la e. Dalla verifica delle regole: spostando, si scambiano le regole
+    # e i collegamenti restano al loro posto; prima ogni regola teneva il suo, e in cima la o si perdeva.
     assert mercato.togli_la_regola(aggiunti, 0).regole == (dataclasses.replace(seconda, collegamento=mercato.E), terza)
     assert mercato.togli_la_regola(aggiunti, 2).regole == (prima, seconda)
     with pytest.raises(IndexError):
         mercato.togli_la_regola(aggiunti, 3)
     spostati, posto = mercato.sposta_la_regola(aggiunti, 2, -1)
-    assert spostati.regole == (prima, terza, seconda) and posto == 1
+    assert spostati.regole == (prima, dataclasses.replace(terza, collegamento=mercato.O), dataclasses.replace(seconda, collegamento=mercato.E)) and posto == 1
     in_cima, posto = mercato.sposta_la_regola(aggiunti, 1, -1)
-    assert in_cima.regole == (dataclasses.replace(seconda, collegamento=mercato.E), prima, terza) and posto == 0
+    assert in_cima.regole == (dataclasses.replace(seconda, collegamento=mercato.E), dataclasses.replace(prima, collegamento=mercato.O), terza) and posto == 0
+    assert mercato.sposta_la_regola(in_cima, 0, 1) == (aggiunti, 1)
     assert mercato.sposta_la_regola(aggiunti, 0, -1) is None and mercato.sposta_la_regola(aggiunti, 2, 1) is None
     cambiati = mercato.cambia_il_collegamento(aggiunti, 2, mercato.O)
     assert cambiati.regole[2].collegamento == mercato.O and mercato.cambia_il_collegamento(aggiunti, 0, mercato.O) is None
+    # Dalle verifiche: anche il collegamento che la regola ha già, e la e sulla prima, non cambiano niente.
+    assert mercato.cambia_il_collegamento(aggiunti, 2, mercato.E) is None and mercato.cambia_il_collegamento(aggiunti, 0, mercato.E) is None
+    assert mercato.cambia_il_collegamento(aggiunti, 1, mercato.O) is None
     # Salva filtri aggiunge la preparazione che conta, finché le regole sono meno di 50.
     pronta = mercato.Preparazione(mercato.E, G, "mancino", "uguale", True)
     assert mercato.filtri_per_salva_filtri(filtri, pronta) == (aggiunti, mercato.AGGIUNTA)
@@ -454,6 +470,60 @@ def test_le_mosse_sull_elenco_delle_regole():
     assert mercato.preparazione_della_ricerca_veloce(mercato.Preparazione(mercato.O, G, "nome", "contiene", "ros")) == mercato.Preparazione(valore="ros")
     assert mercato.preparazione_della_ricerca_veloce(mercato.Preparazione(mercato.E, G, "eta", "minore", "20")) == mercato.Preparazione()
     assert mercato.preparazione_della_ricerca_veloce(mercato.Preparazione(mercato.E, A, "nome", "contiene", "ros")) == mercato.Preparazione()
+
+
+def _gruppi(regole_date):
+    """Le alternative delle regole senza i collegamenti: che cosa vuole ognuna, nell'ordine dell'elenco."""
+    return [[(r.bersaglio, r.caratteristica, r.operatore, r.valore) for r in alternativa] for alternativa in regole.alternative(regole_date)]
+
+
+def test_canc_e_spostamenti_toccano_soltanto_le_regole_che_muovono():
+    # Dalla verifica delle regole: Canc sulla prima regola di un'alternativa dalla seconda in poi univa il resto di quella
+    # alternativa a quella di prima, e Ctrl+Su e Ctrl+Giù cambiavano la logica anche dentro un'alternativa, e in cima
+    # perdevano la o. Su quattro regole diverse, con ogni modo di collegarle: Canc toglie la regola dalla sua alternativa e
+    # lascia le altre come sono; uno scambio lascia le alternative della stessa misura, e le due regole si scambiano il
+    # posto, così dentro un'alternativa non cambia niente; e la mossa opposta riporta i filtri com'erano.
+    quattro = [_regola(G, "eta", "minore", n) for n in (20, 30, 40, 50)]
+    for collegamenti in itertools.product((mercato.E, mercato.O), repeat=3):
+        filtri = mercato.Filtri(tuple(dataclasses.replace(r, collegamento=c) for r, c in zip(quattro, (mercato.E, *collegamenti), strict=True)), "numero")
+        prima = _gruppi(filtri.regole)
+        for posto in range(4):
+            tolta = (G, "eta", "minore", quattro[posto].valore)
+            attese = [gruppo for gruppo in ([x for x in g if x != tolta] for g in prima) if gruppo]
+            assert _gruppi(mercato.togli_la_regola(filtri, posto).regole) == attese, (collegamenti, posto)
+        for posto in range(3):
+            giu, nuovo = mercato.sposta_la_regola(filtri, posto, 1)
+            assert nuovo == posto + 1 and mercato.sposta_la_regola(giu, nuovo, -1) == (filtri, posto), (collegamenti, posto)
+            a, b = (G, "eta", "minore", quattro[posto].valore), (G, "eta", "minore", quattro[posto + 1].valore)
+            assert _gruppi(giu.regole) == [[b if x == a else a if x == b else x for x in g] for g in prima], (collegamenti, posto)
+            if filtri.regole[posto + 1].collegamento == mercato.E:
+                assert sorted(map(sorted, _gruppi(giu.regole))) == sorted(map(sorted, prima)), (collegamenti, posto)
+
+
+def test_canc_e_spostamento_nella_seconda_alternativa_sul_mondo(mondo):
+    # Lo scenario della verifica: i liberi, oppure chi è in vendita da altri ed è donna. Canc su in vendita da altri lascia
+    # i liberi oppure le donne, e prima dava le libere; lo scambio delle due regole della seconda alternativa non cambia niente.
+    libero, in_vendita, donna = (_regola(G, "stato", "uguale", mercato.LIBERO), _regola(G, "stato", "uguale", mercato.IN_VENDITA, mercato.O),
+                                 _regola(G, "sesso", "uguale", "f"))
+    filtri = mercato.Filtri((libero, in_vendita, donna), "numero")
+    senza = mercato.togli_la_regola(filtri, 1)
+    assert senza.regole == (libero, dataclasses.replace(donna, collegamento=mercato.O))
+    liberi_o_donne = _ids(_cerca(mondo, libero)) | _ids(_cerca(mondo, donna))
+    assert _ids(mercato.cerca(mondo, senza)) == liberi_o_donne and liberi_o_donne != _ids(_cerca(mondo, libero, donna))
+    scambiate, posto = mercato.sposta_la_regola(filtri, 1, 1)
+    assert posto == 2 and _ids(mercato.cerca(mondo, scambiate)) == _ids(mercato.cerca(mondo, filtri))
+
+
+def test_tante_alternative_trovano_l_unione_di_ognuna_nello_stesso_ordine(mondo):
+    # Dalla verifica delle regole: dalla seconda alternativa la ricerca guarda soltanto chi non è già passato. Trova lo
+    # stesso elenco dell'unione di ogni alternativa cercata da sola, nello stesso ordine.
+    alternative = [_regola(G, "nome", "contiene", lettera, mercato.O) for lettera in "aeioursnt"]
+    alternative += [_regola(G, "eta", "minore", 25, mercato.O), _regola(G, "sesso", "uguale", "f", mercato.O), _regola(G, "costo", "manca", None, mercato.O)]
+    tutte = mercato.cerca(mondo, mercato.Filtri(mercato.con_la_prima_e(alternative), "valore_alto"))
+    unione = set().union(*(_ids(_cerca(mondo, r)) for r in alternative))
+    assert len(tutte) == len(unione) and _ids(tutte) == unione
+    ordinati = [r for r in _cerca(mondo, _regola(G, "numero", "maggiore", 0), ordine="valore_alto") if r.persona.id in unione]
+    assert _numeri(tutte) == _numeri(ordinati)
 
 
 def test_i_preset_di_serie_sono_fatti_di_regole_con_la_sola_e():

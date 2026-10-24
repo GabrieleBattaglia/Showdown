@@ -24,14 +24,21 @@ resta sul suo preset quando si guardano le caratteristiche; Invio nel Valore con
 con la regola in preparazione, riaperto da ogni porta.
 Col passo dei suoni del costruttore, lo stesso giorno, i sedici eventi nuovi hanno il loro preset, e le prove li sentono
 col registratore di sempre, senza più il preset finto.
+Con le verifiche del costruttore, lo stesso giorno: l'annuncio di un conto tornato quello di prima dopo un Invio veloce;
+il collegamento nascosto che torna alla e; il nome cambiato della riga delle regole dopo Canc, E ed O, ascoltato con gli
+eventi MSAA che riceve NVDA; il suono del valore scritto che tace quando si passa ad altro; il Valore nascosto con non ha
+il dato e ha il dato; le lettere E e O che non cambiano niente; il testo di soli apostrofi; e il campo Trovati che conta
+soltanto le alternative che ci sono.
 """
 
 import ctypes
 import datetime
+import os
 import random
 import re
 import sys
 import uuid
+from ctypes import wintypes
 from pathlib import Path
 
 import pytest
@@ -1079,9 +1086,16 @@ def test_aggiungi_azzera_canc_e_spostamento_delle_regole(banco):
     assert _righe_delle_regole(f)[2] == "e stato: è in vendita da altri"
     tastiera.posta_tasto(ord("O"))
     assert f.filtri.regole[2].collegamento == O and banco.suonati[-1] == "collegamento_o"
+    # Dalle verifiche del costruttore: la lettera che dà il collegamento che c'è già non cambia niente, col suo suono, e la O
+    # sulla prima ha il suo, al posto del tasto a vuoto.
+    filtri_di_prima = f.filtri
+    tastiera.posta_tasto(ord("O"))
+    assert f.filtri is filtri_di_prima and banco.suonati[-1] == "collegamento_invariato"
     f.regole.SetSelection(0)
     tastiera.posta_tasto(ord("O"))
-    assert f.filtri.regole[0].collegamento == E and banco.suonati[-1] == "nessuna_selezione"
+    assert f.filtri.regole[0].collegamento == E and banco.suonati[-1] == "collegamento_della_prima"
+    tastiera.posta_tasto(ord("E"))
+    assert f.filtri is filtri_di_prima and banco.suonati[-1] == "collegamento_invariato"
     # Ctrl+Su e Ctrl+Giù: la regola si sposta e la scelta la segue; al bordo il suo suono. La prima ha sempre la e.
     tastiera.posta_tasto(tastiera.VK_UP, ctrl=True)
     assert banco.suonati[-1] == "regola_al_bordo"
@@ -1143,15 +1157,21 @@ def test_la_e_lega_prima_della_o(banco):
     _caratteristica(f, "eta")
     _operatore(f, "minore_uguale")
     banco.pianifica.scatta()
-    assert "Le regole formano 2 alternative; la regola in preparazione va nell'alternativa 2." in f.campo_trovati.GetValue().splitlines()
+    # Dalla verifica delle regole: col Valore vuoto la regola in preparazione non va in nessuna alternativa, e si contano
+    # soltanto quelle dell'elenco.
+    assert "Le regole formano 2 alternative." in f.campo_trovati.GetValue().splitlines()
     _valore(f, "99")
     banco.pianifica.scatta()
+    assert "Le regole formano 2 alternative; la regola in preparazione va nell'alternativa 2." in f.campo_trovati.GetValue().splitlines()
     assert {r.persona.id for r in f.righe} == liberi_donne | {gid for gid in in_vendita if mondo.giocatori[gid].eta_anni <= 99}
-    # Con la o, ne apre una terza.
+    # Con la o, ne apre una terza; col Valore vuoto, prima si contava anche lei.
     _collegamento(f, O)
     assert banco.suonati[-1] == "collegamento_o"
     banco.pianifica.scatta()
     assert "Le regole formano 3 alternative; la regola in preparazione va nell'alternativa 3." in f.campo_trovati.GetValue().splitlines()
+    _valore(f, "")
+    banco.pianifica.scatta()
+    assert "Le regole formano 2 alternative." in f.campo_trovati.GetValue().splitlines()
 
 
 def test_il_campo_trovati_si_rifa_a_ogni_mossa_e_tiene_la_riga_del_cursore(banco):
@@ -1771,3 +1791,237 @@ def test_la_scheda_raggiunta_col_ricalcolo_in_attesa_e_gia_nuova(banco):
     scheda = f.scheda.GetValue()
     banco.pianifica.scatta()
     assert f.scheda.GetValue() == scheda and not banco.annunci.detti
+
+
+# Dalle verifiche del costruttore di regole, il 24 ottobre 2026 sera.
+
+OBJID_CLIENT = -4
+NOMI_DEGLI_EVENTI_MSAA = {0x8005: "focus", 0x8006: "selection", 0x800C: "namechange"}
+WINEVENTPROC = ctypes.WINFUNCTYPE(None, wintypes.HANDLE, wintypes.DWORD, wintypes.HWND, wintypes.LONG, wintypes.LONG, wintypes.DWORD, wintypes.DWORD)
+
+
+class AscoltoMsaa:
+    """
+    Gli eventi MSAA di un controllo, quelli che riceve NVDA, con SetWinEventHook fuori contesto, che li consegna nel filo
+    che pompa i messaggi: il fuoco, la selezione e il nome cambiato, ciascuno con l'oggetto e il figlio. Come li ha
+    misurati la verifica del costruttore con la lente di NVDA.
+    """
+
+    def __init__(self, maniglia):
+        self.maniglia = maniglia
+        self.eventi = []
+        self._funzione = WINEVENTPROC(self._arrivato)
+        self._user32 = ctypes.WinDLL("user32", use_last_error=True)
+        self._user32.SetWinEventHook.restype = wintypes.HANDLE
+        self._user32.SetWinEventHook.argtypes = [wintypes.UINT, wintypes.UINT, wintypes.HMODULE, WINEVENTPROC, wintypes.DWORD, wintypes.DWORD,
+                                                 wintypes.UINT]
+        self._user32.UnhookWinEvent.argtypes = [wintypes.HANDLE]
+        self._gancio = self._user32.SetWinEventHook(0x8005, 0x800C, None, self._funzione, os.getpid(), 0, 0)
+        assert self._gancio
+
+    def _arrivato(self, _gancio, evento, maniglia, oggetto, figlio, _filo, _tempo):
+        if maniglia == self.maniglia and evento in NOMI_DEGLI_EVENTI_MSAA:
+            self.eventi.append((NOMI_DEGLI_EVENTI_MSAA[evento], oggetto, figlio))
+
+    def prendi(self):
+        tastiera.pompa()
+        eventi, self.eventi = self.eventi, []
+        return eventi
+
+    def chiudi(self):
+        self._user32.UnhookWinEvent(self._gancio)
+
+
+def test_dopo_canc_e_ed_o_nvda_rilegge_la_riga_sotto_il_cursore(banco):
+    # Dalla verifica con la lente di NVDA: dopo Canc, E ed O la scelta resta sulla stessa riga, che però dice un'altra
+    # regola, e il fuoco torna sullo stesso figlio dell'elenco, che NVDA scarta come ripetuto: Gabriele sentiva soltanto il
+    # suono. Ora la riga manda il suo nome cambiato, che NVDA legge per l'oggetto col fuoco; Ctrl+Su e Ctrl+Giù portano il
+    # fuoco su un altro figlio, che NVDA legge, e il nome non serve.
+    f = banco.apri("ricerca")
+    _con_le_regole(f)
+    _aggiungi(f, G, "stato", "uguale", mercato.LIBERO)
+    _aggiungi(f, G, "sesso", "uguale", "f")
+    _aggiungi(f, G, "stato", "uguale", mercato.IN_VENDITA, O)
+    f.regole.SetFocus()
+    f.regole.SetSelection(2)
+    tastiera.pompa()
+    ascolto = AscoltoMsaa(f.regole.GetHandle())
+
+    def mossa(fare):
+        _pausa(f)
+        ascolto.prendi()
+        fare()
+        eventi = ascolto.prendi()
+        return [e for e in eventi if e[0] == "namechange"], [e for e in eventi if e[0] == "focus"]
+
+    try:
+        nomi, _fuochi = mossa(lambda: tastiera.posta_tasto(ord("E")))
+        assert nomi == [("namechange", OBJID_CLIENT, 3)] and _righe_delle_regole(f)[2] == "e stato: è in vendita da altri"
+        assert _nome_msaa(f.regole.GetHandle()) == "Regole" and banco.suonati[-1] == "collegamento_e"
+        # La E sulla regola che ha già la e non cambia niente: niente da rileggere.
+        nomi, _fuochi = mossa(lambda: tastiera.posta_tasto(ord("E")))
+        assert nomi == [] and banco.suonati[-1] == "collegamento_invariato"
+        f.regole.SetSelection(0)
+        tastiera.pompa()
+        nomi, fuochi = mossa(lambda: tastiera.posta_tasto(tastiera.VK_DOWN, ctrl=True))
+        assert nomi == [] and ("focus", OBJID_CLIENT, 2) in fuochi and f.regole.GetSelection() == 1
+        nomi, _fuochi = mossa(lambda: tastiera.posta_tasto(tastiera.VK_DELETE))
+        assert nomi == [("namechange", OBJID_CLIENT, 2)] and f.regole.GetSelection() == 1 and banco.suonati[-1] == "regola_tolta"
+        # Canc sull'ultima: la scelta sale di una riga, il fuoco nuovo basta.
+        nomi, fuochi = mossa(lambda: tastiera.posta_tasto(tastiera.VK_DELETE))
+        assert nomi == [] and ("focus", OBJID_CLIENT, 1) in fuochi and len(f.filtri.regole) == 1
+        # Canc sull'unica: resta la riga che dice come si aggiungono, e NVDA la legge.
+        nomi, _fuochi = mossa(lambda: tastiera.posta_tasto(tastiera.VK_DELETE))
+        assert nomi == [("namechange", OBJID_CLIENT, 1)] and _righe_delle_regole(f) == [testi.NESSUNA_REGOLA]
+        # Senza il fuoco sull'elenco delle regole niente nome cambiato: lo leggerebbe soltanto chi ci entra dopo.
+        f.pulsante_azzera.SetFocus()
+        tastiera.pompa()
+        nomi, _fuochi = mossa(lambda: f._rileggi_la_regola_scelta(0))
+        assert nomi == []
+    finally:
+        ascolto.chiudi()
+
+
+def test_dopo_un_invio_veloce_il_conto_tornato_quello_di_prima_si_annuncia(banco):
+    # Dalla verifica con la lente di NVDA: Invio nei Filtri prima dell'annuncio lo fermava, e l'elenco che prendeva il fuoco
+    # non segnava il conto che NVDA legge nel suo nome; tornati al conto di prima, l'annuncio taceva.
+    f = banco.apri("ricerca")
+    banco.pianifica.scatta()
+    tutti = len(f.righe)
+    assert f._ultimo_annuncio == f"Trovati: {tutti} giocatori"
+    f.valore_scritto.SetValue(f.righe[3].persona.cognome[:4])
+    _invio(f, f.valore_scritto)
+    assert _fuoco_su(f.elenco) and len(f.righe) < tutti and banco.annunci.detti == []
+    assert f._ultimo_annuncio == _nome_msaa(f.elenco.GetHandle()) == testi.annuncio_dei_trovati(f.righe, f._contano(), f.preparazione)
+    banco.pianifica.scatta()
+    f.libro.SetSelection(FILTRI)
+    f.valore_scritto.SetFocus()
+    tastiera.pompa()
+    f.valore_scritto.SetValue("")
+    banco.pianifica.scatta()
+    assert len(f.righe) == tutti and banco.annunci.detti == [([f"Trovati: {tutti} giocatori"], True)]
+    # Lo stesso con Invio sulla casella dei preset, che porta all'elenco.
+    f.libro.SetSelection(RISULTATI)
+    f.casella_preset.SetFocus()
+    tastiera.pompa()
+    tastiera.premi(f.casella_preset, tastiera.VK_DOWN)
+    _invio(f, f.casella_preset)
+    assert _fuoco_su(f.elenco) and f._ultimo_annuncio == _nome_msaa(f.elenco.GetHandle())
+
+
+def test_senza_regole_il_collegamento_nascosto_torna_alla_e(banco):
+    # Dalla verifica con la lente di NVDA: una o rimasta nel Collegamento mentre era nascosto, dopo Canc sull'unica regola,
+    # tornava con la prima regola nuova, e la regola seguente apriva un'alternativa che nessuno aveva chiesto.
+    f = banco.apri("ricerca")
+    _con_le_regole(f, _stato(mercato.LIBERO))
+    _collegamento(f, O)
+    f.libro.SetSelection(FILTRI)
+    f.regole.SetFocus()
+    f.regole.SetSelection(0)
+    tastiera.pompa()
+    _pausa(f)
+    tastiera.posta_tasto(tastiera.VK_DELETE)
+    assert f.filtri.regole == () and not f.scelta_collegamento.IsShown() and f.preparazione.collegamento == E
+    _aggiungi(f, G, "sesso", "uguale", "f")
+    assert f.scelta_collegamento.IsShown() and f.scelta_collegamento.GetStringSelection() == "e, insieme" and f.preparazione.collegamento == E
+    # Lo stesso con Azzera, e la porta non ricorda la o.
+    _collegamento(f, O)
+    _pausa(f)
+    f.azzera()
+    assert f.filtri.regole == () and f.preparazione.collegamento == E
+    f.chiudi_la_finestra()
+    assert mercato.stato_della_porta(banco.mondo, "ricerca").preparazione.collegamento == E
+
+
+def test_il_suono_del_valore_scritto_tace_quando_passi_ad_altro(banco):
+    # Dalla verifica dei suoni: il suono del valore scritto partiva 350 millesimi dopo l'ultimo tasto anche dopo Invio, sopra
+    # la scheda Risultati, dopo il campo da correggere, lo stesso errore detto due volte, e dentro i dialoghi.
+    f = banco.apri("mercato")
+
+    def del_valore():
+        return [s for s in banco.suonati if s.startswith("regola_valore")]
+
+    f.libro.SetSelection(FILTRI)
+    f.valore_scritto.SetFocus()
+    f.valore_scritto.SetValue("ro")
+    banco.suonati.clear()
+    _invio(f, f.valore_scritto)
+    banco.pianifica.scatta()
+    assert "scheda_risultati" in banco.suonati and del_valore() == []
+    # Invio con un valore sbagliato: il campo da correggere, e basta.
+    f.libro.SetSelection(FILTRI)
+    _caratteristica(f, "eta")
+    f.valore_scritto.SetFocus()
+    f.valore_scritto.SetValue("vent")
+    banco.suonati.clear()
+    _invio(f, f.valore_scritto)
+    banco.pianifica.scatta()
+    assert banco.suonati == ["campo_da_correggere"]
+    # Un dialogo interno, Salva filtri: dentro, il suono non aspetta più.
+    f.valore_scritto.SetValue("20")
+    dentro = []
+    banco.dialoghi.copione.append(lambda dialogo: dentro.append(f._suono_fermo.in_attesa) or wx.ID_CANCEL)
+    banco.suonati.clear()
+    _pausa(f)
+    _clic(f.pulsante_salva)
+    banco.pianifica.scatta()
+    assert dentro == [False] and del_valore() == []
+    # Il cambio di scheda, che lascia i Filtri.
+    f.libro.SetSelection(FILTRI)
+    f.valore_scritto.SetFocus()
+    f.valore_scritto.SetValue("2,5")
+    banco.suonati.clear()
+    f.libro.SetSelection(RISULTATI)
+    banco.pianifica.scatta()
+    assert banco.suonati == ["scheda_risultati"]
+    # Restando nel Valore, invece, il suono arriva quando ti fermi.
+    f.libro.SetSelection(FILTRI)
+    f.valore_scritto.SetFocus()
+    f.valore_scritto.SetValue("30")
+    banco.pianifica.scatta()
+    assert del_valore() == ["regola_valore_scritto"]
+
+
+def test_con_non_ha_il_dato_e_ha_il_dato_il_valore_non_si_vede(banco):
+    # Dalle verifiche: col Valore visibile NVDA lo leggeva, quello che ci si scriveva non contava e nessuno lo diceva, e il
+    # primo tasto scritto dopo suonava il valore buono senza motivo.
+    f = banco.apri("ricerca")
+    f.libro.SetSelection(FILTRI)
+    _caratteristica(f, "costo")
+    f.valore_scritto.SetValue("abc")
+    banco.pianifica.scatta()
+    _operatore(f, "manca")
+    assert not f.valore_scritto.IsShown() and not f.valore_scelto.IsShown() and "&" not in f.etichetta_valore_scritto.GetLabel()
+    assert "".join(lettera for _c, lettera in _lettere_della_pagina(f.libro.GetPage(FILTRI))) == "tlbaogzrps"
+    assert f._contano().regole[-1] == mercato.Regola(E, G, "costo", "manca", None)
+    f.scelta_operatore.SetFocus()
+    tastiera.pompa()
+    tastiera.posta_tasto(tastiera.VK_TAB)
+    assert _fuoco_su(f.pulsante_aggiungi)
+    _operatore(f, "presente")
+    assert not f.valore_scritto.IsShown()
+    # Tornando a un operatore col valore, il Valore torna col suo testo, e lo stato cambia in silenzio: suona l'operatore.
+    banco.suonati.clear()
+    _operatore(f, "minore")
+    assert f.valore_scritto.IsShown() and f.valore_scritto.GetValue() == "abc" and banco.suonati == ["regola_operatore"]
+    f.valore_scritto.SetValue("abcd")
+    banco.pianifica.scatta()
+    assert not [s for s in banco.suonati if s.startswith("regola_valore")]
+    # Una scelta che può mancare, la regione: anche lì il Valore a scelta si nasconde.
+    _caratteristica(f, "regione")
+    assert f.valore_scelto.IsShown()
+    _operatore(f, "manca")
+    assert not f.valore_scelto.IsShown() and not f.valore_scritto.IsShown()
+
+
+def test_un_testo_di_soli_apostrofi_non_conta(banco):
+    # Dalla verifica delle regole: con un apostrofo o un trattino la chiave di confronto era vuota, e contiene trovava tutti.
+    f = banco.apri("ricerca")
+    banco.pianifica.scatta()
+    tutti = len(f.righe)
+    f.valore_scritto.SetValue("'")
+    banco.pianifica.scatta()
+    assert len(f.righe) == tutti and f._contano() == f.filtri
+    assert ("La regola in preparazione non conta: il testo ha soltanto apostrofi, trattini o spazi, che il confronto non guarda: ci vuole "
+            "almeno una lettera o una cifra.") in f.campo_trovati.GetValue().splitlines()
+    assert banco.suonati[-1] == "regola_valore_da_correggere"

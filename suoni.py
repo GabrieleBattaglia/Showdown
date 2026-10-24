@@ -127,6 +127,11 @@ regole, dove arrivano dal mercato la regola aggiunta, quella tolta e le regole a
 bordo e il limite delle 50. SENZA_PRESET non c'è più. I due suoni del bersaglio prendono il suo nome, mess_bersaglio_allenatori
 e mess_bersaglio_giocatori, e i quarantadue della V232 che il costruttore non usa più perdono la firma di MESS, nel nome e
 nella descrizione, e restano nella collezione. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le verifiche del costruttore, l'elenco delle regole ha due suoni ancora, anche loro nella V234: la O
+sulla prima regola, che ha sempre la e, mess_collegamento_della_prima, e la lettera che dà a una regola il collegamento che
+ha già, mess_collegamento_invariato, che prima suonavano il tasto a vuoto o il collegamento come se cambiasse. Il tasto a
+vuoto dice anche i tasti dell'elenco delle regole e Azzera senza regole. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -355,7 +360,8 @@ GRUPPI = (
         "regola_valore_da_correggere": "mess_valore_da_correggere",
     }),
     # L'elenco delle regole: la regola aggiunta, quella tolta e tutte le regole azzerate hanno i suoni dei filtri del mercato
-    # di prima, e gli altri, della V234, sono della loro famiglia, sul do diesis e in onda triangolare.
+    # di prima, e gli altri, della V234, sono della loro famiglia, sul do diesis e in onda triangolare; con le verifiche del
+    # costruttore, la O sulla prima regola e il collegamento che c'è già, che non cambiano niente.
     ("Mercato e ricerca, l'elenco delle regole", {
         "regola_aggiunta": "mess_filtro_aggiunto",
         "regola_tolta": "mess_filtro_tolto",
@@ -364,6 +370,8 @@ GRUPPI = (
         "regola_al_bordo": "mess_regola_al_bordo",
         "regole_al_limite": "mess_regole_al_limite",
         "regole_azzerate": "mess_filtri_tutti_tolti",
+        "collegamento_della_prima": "mess_collegamento_della_prima",
+        "collegamento_invariato": "mess_collegamento_invariato",
     }),
     # Il posto da offrire a un allenatore, e i tre perché nuovi del motore, imparentati con quelli che c'erano.
     ("Mercato e ricerca, le azioni", {
@@ -655,7 +663,8 @@ AZIONI = {
     "lavoro_concluso": ("la chiusura della finestra Mercato e ricerca con degli esiti, compresi i preset, e quella delle vendite, degli arretrati, della "
                         "sala allenamento, dei contratti, dello staff, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei "
                         "tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente"),
-    "nessuna_selezione": "un pulsante premuto senza niente di scelto su cui lavorare",
+    "nessuna_selezione": ("un pulsante premuto senza niente di scelto su cui lavorare; nella scheda Filtri della finestra Mercato e ricerca anche Canc, "
+                          "Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole"),
     "campo_da_correggere": "un valore da correggere in un campo, e il dialogo resta aperto",
     "elenco_svuotato": "un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre",
     "elenco_ripopolato": "un elenco vuoto che torna a riempirsi mentre si scrive o si cambia un filtro",
@@ -803,6 +812,10 @@ AZIONI = {
     "regole_al_limite": ("nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola con già 50 regole nell'elenco, e la regola in "
                          "preparazione non entra"),
     "regole_azzerate": "nella scheda Filtri della finestra Mercato e ricerca, Azzera toglie tutte le regole",
+    "collegamento_della_prima": ("nella scheda Filtri della finestra Mercato e ricerca, la lettera O sulla prima regola dell'elenco delle regole, che "
+                                 "ha sempre la e e non apre un'alternativa"),
+    "collegamento_invariato": ("nella scheda Filtri della finestra Mercato e ricerca, la lettera E od O su una regola dell'elenco delle regole che "
+                               "ha già quel collegamento, compresa la E sulla prima, e niente cambia"),
     "dialogo_posto_da_offrire": "nella finestra Mercato e ricerca l'offerta a un allenatore libero apre la scelta del posto dello staff da offrire",
     "offerta_non_possibile": "nella finestra Mercato e ricerca un'offerta che a quella persona non si può fare, come a un allenatore che allena già, a un ritirato, a chi è uscito di scena o a un tuo tesserato non in vendita",
     "non_gioca_oggi": ("nella finestra Mercato e ricerca Amichevole su chi oggi non può giocare: un allenatore, un ritirato, chi è uscito di scena, un "
