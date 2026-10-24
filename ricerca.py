@@ -20,6 +20,9 @@ Lo stesso giorno, coi collegamenti della finestra, escono la ricerca che stampav
 prima, coi loro resti: gli ambiti, compreso quello dei risultati della ricerca precedente, cerca e cerca_con_filtri.
 Restano i criteri, le condizioni e la prova di un filtro, per le condizioni e i tratti della finestra. È di Gabriele
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+La sera dello stesso giorno, col motore del costruttore di regole, leggi_classe passa in regole.py, da cui questo modulo
+la riprende: il modulo intero se ne andrà col cambio della finestra. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import classe
@@ -32,6 +35,9 @@ from costanti import (
     INDOLI,
     NOME_ATTR_TO_DISPLAY_MAP,
 )
+from regole import leggi_classe
+
+# La lettura della classe scritta, leggi_classe, sta in regole.py dal costruttore di regole: qui resta per le condizioni di oggi.
 
 NUMERO = "numero"
 TESTO = "testo"
@@ -91,23 +97,6 @@ def nome_condizione(criterio, condizione):
 def leggi_numero(testo):
     """Un numero scritto con la virgola o con il punto; ValueError se non è un numero."""
     return float(str(testo).strip().replace(",", "."))
-
-
-def leggi_classe(testo):
-    """
-    Il livello di una classe scritta come nella scheda, G4 o g4, oppure col numero del livello, 64:
-    da 1 per A1 a 100 per K0. ValueError se non è una classe.
-    """
-    scritto = str(testo).strip().upper()
-    if len(scritto) == 2 and scritto[0] in classe.LETTERE and scritto[1].isdigit():
-        livello = classe.LETTERE.index(scritto[0]) * 10 + int(scritto[1])
-    elif scritto.isdigit():
-        livello = int(scritto)
-    else:
-        raise ValueError(f"Non è una classe: {testo!r}")
-    if not 1 <= livello <= classe.LIVELLI:
-        raise ValueError(f"Non è una classe: {testo!r}")
-    return livello
 
 
 def leggi_criterio(criterio, g, oggi=None):

@@ -17,6 +17,12 @@ temporanea, che alla fine si cancella, e il caso del mondo si rimette com'era. I
 quando lo si chiede.
 Lo stesso giorno, coi preset dei filtri, le ricerche pronte che misura sono i dodici preset di serie, e le aperture
 partono dallo stato di serie di ogni porta. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+La sera dello stesso giorno, col motore del costruttore di regole, il mondo ha anche l'1% dei ritirati uscito di scena,
+e banco_delle_regole fa le stesse misure con le regole: le aperture delle porte con la memoria nuova, che costruisce
+tutte le righe, la ricerca veloce sul Mercato un tasto alla volta, i preset di serie, le regole a mano e tutti i 41
+ordini sulle due liste insieme. L'obiettivo di 300 ms vale per le aperture di Ctrl+K, Ctrl+Maiusc+G e Ctrl+F; quella di
+Ctrl+O si confronta col motore di prima, e non deve andare peggio. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/banco_mercato.py
     python strumenti/banco_mercato.py --attivi 20000 --volte 5 --rapporto
@@ -122,15 +128,21 @@ def costruisci_mondo(attivi, seme, scrivi=print):
             g.ultimo_impegno = oggi
         mondo.nuovi_giocatori_sessione = sorted(mondo.giocatori)[-max(1, len(mondo.giocatori) // 100):]
         # Qualche ritirato che allena, come nel mondo vero: un allenatore nato dal giocatore.
-        for g in sorted((g for g in mondo.giocatori.values() if g.ritirato), key=lambda g: g.id)[:20]:
+        ritirati_del_mondo = sorted((g for g in mondo.giocatori.values() if g.ritirato), key=lambda g: g.id)
+        for g in ritirati_del_mondo[:20]:
             mondo._ex_giocatore_allenatore(g, None, oggi, rng=rng)
+        # E l'1% dei ritirati uscito di scena nella sessione, che il motore delle regole scorre insieme a tutti gli altri.
+        for g in ritirati_del_mondo[20:20 + max(1, len(ritirati_del_mondo) // 100)]:
+            mondo._ids_morti_processati_sessione.add(g.id)
     finally:
         random.setstate(stato)
     liberi_dello_staff = sum(1 for a in mondo.allenatori.values() if a.libero)
     in_vendita = sum(len(p.in_vendita) for p in mondo.polisportive.values())
     secondi = f"{time.perf_counter() - inizio:.1f}".replace(".", ",")
-    scrivi(f"Mondo a regime del seme {seme}: {len(mondo.giocatori)} giocatori, {attivi} in attività, {ritirati} ritirati, {polisportive} polisportive del computer "
-           f"e 2 tue, {in_vendita} giocatori in vendita, {len(mondo.allenatori)} allenatori di cui {liberi_dello_staff} liberi; costruito in {secondi} secondi.")
+    usciti = len(mondo._ids_morti_processati_sessione)
+    scrivi(f"Mondo a regime del seme {seme}: {len(mondo.giocatori)} giocatori, {attivi} in attività, {ritirati} ritirati di cui {usciti} usciti di scena, "
+           f"{polisportive} polisportive del computer e 2 tue, {in_vendita} giocatori in vendita, {len(mondo.allenatori)} allenatori di cui {liberi_dello_staff} "
+           f"liberi; costruito in {secondi} secondi.")
     return mondo
 
 
@@ -208,6 +220,115 @@ def banco(mondo, volte=5, scrivi=print):
     return {"misure": misure, "piu_lento": piu_lento, "apertura_lenta": apertura_lenta, "freddo_lento": freddo_lento}
 
 
+# Il motore del costruttore di regole, dalla sera del 24 ottobre 2026: le stesse misure con le regole. L'obiettivo di
+# 300 ms vale per le aperture di Ctrl+K, Ctrl+Maiusc+G e Ctrl+F; quella di Ctrl+O, che ordina per classe tutti quelli
+# che oggi giocano, non deve andare peggio del motore di prima. Le regole a mano: il nome, cioè Ctrl+F sul Mercato, le
+# alternative, i limiti col dato che manca, i luoghi, i tratti, le caratteristiche di gioco e le due liste insieme.
+PORTE_DA_300_MS = ("mercato", "allenatori", "ricerca")
+_G = mercato.GIOCATORI
+_A = mercato.ALLENATORI
+_IN_ATTIVITA = mercato.Regola(mercato.E, _G, "stato", "uguale", mercato.IN_ATTIVITA)
+
+
+def _o(regola):
+    return mercato.Regola(mercato.O, *(getattr(regola, campo) for campo in ("bersaglio", "caratteristica", "operatore", "valore")))
+
+
+def _e(bersaglio, chiave, operatore, valore):
+    return mercato.Regola(mercato.E, bersaglio, chiave, operatore, valore)
+
+
+REGOLE_A_MANO = (
+    ("in attività, donne fino a 25 anni", (_IN_ATTIVITA, _e(_G, "sesso", "uguale", "f"), _e(_G, "eta", "minore_uguale", 25))),
+    ("in attività, classe fra D0 e F0", (_IN_ATTIVITA, _e(_G, "classe", "migliore_uguale", 50), _e(_G, "classe", "peggiore_uguale", 30))),
+    ("in attività, nome che contiene ros", (_IN_ATTIVITA, _e(_G, "nome", "contiene", "ros"))),
+    ("in attività, numero che comincia con 12", (_IN_ATTIVITA, _e(_G, "nome", "comincia", "12"))),
+    ("in attività, in Lombardia", (_IN_ATTIVITA, _e(_G, "regione", "uguale", "Lombardia"))),
+    ("in attività, comune che contiene san", (_IN_ATTIVITA, _e(_G, "comune", "contiene", "san"))),
+    ("in attività, mancini con talento", (_IN_ATTIVITA, _e(_G, "mancino", "uguale", True), _e(_G, "talento", "uguale", True))),
+    ("in attività, bomba centrale maggiore di 12 e valore maggiore di 150", (_IN_ATTIVITA, _e(_G, "bomba_base", "maggiore", 12.0), _e(_G, "valore", "maggiore", 150.0))),
+    ("in attività, stipendio fino a 2.000 euro, o senza stipendio", (_IN_ATTIVITA, _e(_G, "stipendio", "minore_uguale", 2000), _o(_IN_ATTIVITA),
+                                                                     _e(_G, "stipendio", "manca", None))),
+    ("in attività, senza infortunati né acciaccati", (_IN_ATTIVITA, _e(_G, "acciaccato", "uguale", False))),
+    ("in attività, mesi di contratto al massimo 6", (_IN_ATTIVITA, _e(_G, "mesi_contratto", "minore_uguale", 6))),
+    ("sul mercato, costo fino a 5.000 euro", (_e(_G, "stato", "uguale", mercato.SUL_MERCATO), _e(_G, "costo", "minore_uguale", 5000))),
+    ("ritirati che allenano", (_e(_G, "allena", "uguale", True),)),
+    ("ritirati o usciti di scena", (_e(_G, "stato", "uguale", mercato.RITIRATO), _o(_e(_G, "stato", "uguale", mercato.USCITO)))),
+    ("tre alternative: liberi, tuoi, mancini del computer", (_e(_G, "stato", "uguale", mercato.LIBERO), _o(_e(_G, "stato", "uguale", mercato.TUO)),
+                                                            _o(_e(_G, "stato", "uguale", mercato.DEL_COMPUTER)), _e(_G, "mancino", "uguale", True))),
+    ("in attività e allenatori uomini vedenti", (_IN_ATTIVITA, _o(_e(_A, "sesso", "uguale", "m")), _e(_A, "visus", "uguale", staff.VEDENTE))),
+)
+# Le due liste insieme, per gli ordini: chi è in attività, o un allenatore di qualunque stato.
+TUTTI_E_GLI_ALLENATORI = (_IN_ATTIVITA, _o(_e(_A, "stato", "uguale", mercato.LIBERO)), _o(_e(_A, "stato", "uguale", mercato.DEL_COMPUTER)),
+                          _o(_e(_A, "stato", "uguale", mercato.TUO)))
+
+
+def ricalcolo_a_regole(mondo, filtri, preparazione, memoria):
+    """
+    Quello che la finestra del costruttore fa dopo una mossa: le regole che contano, la ricerca, le prime righe
+    dell'elenco, l'etichetta, il campo Trovati e l'annuncio. Restituisce le righe.
+    """
+    contano = mercato.con_la_preparazione(filtri, preparazione)
+    righe = mercato.cerca_a_regole(mondo, contano, memoria)
+    for riga in righe[:RIGHE_VISIBILI]:
+        testi.riga_trovato(riga, mondo, contano.ordine, memoria)
+    testi.trovati(righe, contano)
+    testi.riepilogo_dei_trovati(righe, filtri, preparazione, mondo)
+    testi.annuncio_dei_trovati(righe, contano, preparazione)
+    return righe
+
+
+def banco_delle_regole(mondo, volte=5, scrivi=print):
+    """
+    Le misure del motore delle regole sul mondo dato: le aperture delle quattro porte a freddo, con la memoria nuova
+    che costruisce tutte le righe; Ctrl+F sul Mercato, cioè il nome scritto nella preparazione, a caldo; i preset di
+    serie e le regole a mano, a freddo e a caldo; tutti gli ordini sulle due liste insieme, a caldo. Restituisce un
+    dizionario dal nome della misura alla mediana, al peggiore e alle righe, con le aperture da 300 ms e il ricalcolo a caldo più lento.
+    """
+    misure = {}
+
+    def misura(nome, funzione, ripetizioni=volte):
+        mediana, peggiore, righe = _tempi(funzione, ripetizioni)
+        misure[nome] = (mediana, peggiore, len(righe) if righe is not None else 0)
+        scrivi(f"{nome}: {misure[nome][2]} righe, mediana {millisecondi(mediana)}, peggiore {millisecondi(peggiore)}")
+
+    scrivi("Le regole: le aperture delle porte, a freddo, con una memoria nuova che costruisce tutte le righe.")
+    for porta in mercato.PORTE:
+        stato_della_porta = mercato.stato_di_serie_a_regole(porta)
+        misura(f"regole, apertura di {porta}", lambda s=stato_della_porta: (testi.situazione(mondo),
+                                                                            ricalcolo_a_regole(mondo, s.attuali, s.preparazione, mercato.Memoria(mondo)))[1])
+    memoria = mercato.Memoria(mondo)
+    stato_del_mercato = mercato.stato_di_serie_a_regole("mercato")
+    ricalcolo_a_regole(mondo, stato_del_mercato.attuali, stato_del_mercato.preparazione, memoria)
+    scrivi("Le regole: la ricerca veloce sul Mercato, il nome scritto un tasto alla volta, a caldo.")
+    for scritto in ("r", "ro", "ros", "rossi", "12"):
+        preparazione = mercato.Preparazione(mercato.E, _G, "nome", "contiene", scritto)
+        misura(f"regole, Mercato e nome {scritto}", lambda p=preparazione: ricalcolo_a_regole(mondo, stato_del_mercato.attuali, p, memoria))
+    scrivi("Le regole: i preset di serie e le regole a mano, a freddo e a caldo.")
+    vuota = mercato.Preparazione()
+    prove = [(nome, mercato.filtri_di_serie_a_regole(chiave)) for chiave, nome in mercato.PRESET_DI_SERIE]
+    prove += [(nome, mercato.FiltriARegole(regole)) for nome, regole in REGOLE_A_MANO]
+    for nome, filtri in prove:
+        misura(f"regole, {nome}, a freddo", lambda f=filtri: ricalcolo_a_regole(mondo, f, vuota, mercato.Memoria(mondo)), max(1, volte // 2))
+        misura(f"regole, {nome}, a caldo", lambda f=filtri: ricalcolo_a_regole(mondo, f, vuota, memoria))
+    scrivi("Le regole: tutti gli ordini, sui giocatori in attività e su tutti gli allenatori insieme, a caldo.")
+    for chiave, nome in mercato.ORDINI:
+        misura(f"regole, ordine {nome}", lambda k=chiave: ricalcolo_a_regole(mondo, mercato.FiltriARegole(TUTTI_E_GLI_ALLENATORI, k), vuota, memoria),
+               max(1, volte // 2))
+    a_caldo = {nome: valori for nome, valori in misure.items() if not nome.endswith(", a freddo") and "apertura" not in nome}
+    piu_lento = max(a_caldo.items(), key=lambda voce: voce[1][0])
+    aperture = {porta: misure[f"regole, apertura di {porta}"] for porta in mercato.PORTE}
+    for porta in mercato.PORTE:
+        mediana = aperture[porta][0]
+        if porta in PORTE_DA_300_MS:
+            esito = f"{'sotto' if mediana < OBIETTIVO else 'sopra'} l'obiettivo di {millisecondi(OBIETTIVO)}"
+        else:
+            esito = "da confrontare col motore di prima: non deve andare peggio"
+        scrivi(f"Le regole, l'apertura di {porta}: mediana {millisecondi(mediana)}, {esito}.")
+    scrivi(f"Le regole, il ricalcolo a caldo più lento: {piu_lento[0]}, mediana {millisecondi(piu_lento[1][0])}.")
+    return {"misure": misure, "aperture": aperture, "piu_lento": piu_lento}
+
+
 def main():
     parser = argparse.ArgumentParser(description="I tempi del motore della finestra Mercato e ricerca di MESS, su un mondo a regime, in sola lettura.")
     parser.add_argument("--attivi", type=int, default=20000, help="i giocatori in attività del mondo a regime, 20000 se non indicato, come nello studio")
@@ -232,7 +353,11 @@ def main():
         # Come il programma dopo il caricamento: la memoria del mondo si mette da parte per la raccolta dei
         # cicli, che altrimenti ogni tanto la ripasserebbe tutta, e il ricalcolo che la incontra durerebbe il doppio.
         archivio.congela_la_memoria()
-        banco(mondo, argomenti.volte, scrivi)
+        prima = banco(mondo, argomenti.volte, scrivi)
+        regole = banco_delle_regole(mondo, argomenti.volte, scrivi)
+        vecchia, nuova = prima["misure"]["apertura di amichevole"][0], regole["aperture"]["amichevole"][0]
+        scrivi(f"L'apertura di amichevole: {millisecondi(vecchia)} col motore di prima, {millisecondi(nuova)} con le regole, "
+               f"{'non peggio' if nuova <= vecchia * 1.1 else 'peggio'} di prima.")
     finally:
         random.setstate(stato)
         percorsi.cartella, percorsi.cartella_del_programma = vere

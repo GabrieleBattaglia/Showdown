@@ -80,6 +80,13 @@ di Gabriele: quello che non si legge torna ai filtri di serie, un preset si ripa
 ogni riparazione va nel registro degli errori, col dato originale in JSON. Col magnate di D35, nel formato 11, il
 blocco andrà dentro ogni magnate, e alla conversione al primo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
 5.5, UltraCode).
+La sera dello stesso giorno, col motore del costruttore di regole chiesto da Gabriele, il formato 10 avrà ancora un'altra
+forma, sempre senza cambiare numero: il 24 ottobre sera i mondi di Gabriele, quello in gioco e le sue copie, sono tutti
+del formato 9. I preset e i filtri attuali di ogni porta saranno regole con un ordine, e ogni porta avrà la sua regola in
+preparazione. Qui c'è già la costante storica dello stato delle porte in quella forma, filtri_di_ricerca_del_formato_10_a_regole,
+che le prove confrontano coi preset di serie del motore nuovo; la lettura che ripara e riconosce i filtri a schede sta
+in mercato.py. La migrazione dal 9 e la lettura passano alla forma nuova col cambio della finestra, che oggi salva
+ancora i filtri a schede. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -618,6 +625,32 @@ def filtri_di_ricerca_del_formato_10():
     """
     porte = {porta: {"scelta": scelta, "attuali": {**FILTRI_VUOTI_DEL_FORMATO_10, "tratti": {}, "condizioni": [], **filtri}}
              for porta, (scelta, filtri) in PORTE_DEL_FORMATO_10.items()}
+    return {"preset": [], "prossimo_preset": 1, "porte": porte}
+
+
+# Lo stesso stato delle porte nella forma del costruttore di regole, costante storica della sera del 24 ottobre 2026:
+# per ogni porta il preset di serie, le sue regole, il suo ordine e il bersaglio della regola in preparazione, che è su
+# Nome o numero, contiene, e vuota. Col cambio della finestra la migrazione dal 9 darà questa, al posto di quella a schede.
+PORTE_DEL_FORMATO_10_A_REGOLE = {
+    "mercato": ("mercato", [("giocatori", "stato", "uguale", "sul_mercato")], "valore_alto", "giocatori"),
+    "allenatori": ("allenatori_liberi", [("allenatori", "stato", "uguale", "libero")], "classe", "allenatori"),
+    "ricerca": ("tutti_in_attivita", [("giocatori", "stato", "uguale", "in_attivita")], "numero", "giocatori"),
+    "amichevole": ("avversari_amichevole", [("giocatori", "disponibile", "uguale", True)], "classe", "giocatori"),
+}
+
+
+def filtri_di_ricerca_del_formato_10_a_regole():
+    """
+    I filtri della finestra Mercato e ricerca di un mondo che arriva dal formato 9, nella forma del costruttore di regole:
+    nessun preset, il prossimo col numero 1, e ogni porta sul suo preset di serie, con le sue regole come filtri attuali e
+    la regola in preparazione di serie. Ogni volta un documento nuovo.
+    """
+    porte = {}
+    for porta, (scelta, regole, ordine, bersaglio) in PORTE_DEL_FORMATO_10_A_REGOLE.items():
+        attuali = {"regole": [{"collegamento": "e", "bersaglio": chi, "caratteristica": caratteristica, "operatore": operatore, "valore": valore}
+                              for chi, caratteristica, operatore, valore in regole], "ordine": ordine}
+        preparazione = {"collegamento": "e", "bersaglio": bersaglio, "caratteristica": "nome", "operatore": "contiene", "valore": ""}
+        porte[porta] = {"scelta": scelta, "attuali": attuali, "preparazione": preparazione}
     return {"preset": [], "prossimo_preset": 1, "porte": porte}
 
 

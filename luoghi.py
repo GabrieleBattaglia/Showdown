@@ -19,6 +19,10 @@ Dal 24 ottobre 2026, con la issue 8 e la decisione D36, i filtri di luogo della 
 ricerca: l'elenco delle regioni, quello delle province, anche di una regione sola, la regione di una
 provincia e i comuni che contengono il testo scritto, senza badare a maiuscole e accenti come la ricerca
 della fondazione. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+La sera dello stesso giorno, col costruttore di regole della finestra, la chiave di confronto diventa pubblica,
+chiave_di_confronto, perché le regole sui testi, come il nome o numero, il comune e la polisportiva, confrontano
+senza badare a maiuscole, accenti e apostrofi come la ricerca dei comuni. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -42,7 +46,7 @@ _tabella = {}
 avvisi = []
 
 
-def _chiave(testo):
+def chiave_di_confronto(testo):
     """Il testo come lo confronta la ricerca: senza maiuscole né accenti, con apostrofi e trattini come spazi, Forlì come forli, Sant'Angelo come sant angelo."""
     scomposto = unicodedata.normalize("NFD", testo.casefold())
     semplice = "".join(c for c in scomposto if not unicodedata.combining(c))
@@ -78,9 +82,9 @@ def _carica():
                     cumulati.append(totale)
                     dove[comune] = (provincia, regione)
                     popolazione[comune] = abitanti
-    per_popolazione = sorted(comuni, key=lambda comune: (-popolazione[comune], _chiave(comune)))
+    per_popolazione = sorted(comuni, key=lambda comune: (-popolazione[comune], chiave_di_confronto(comune)))
     _tabella.update(comuni=comuni, cumulati=cumulati, totale=totale, dove=dove, abitanti=popolazione, massimo=max(popolazione.values(), default=0),
-                    per_popolazione=per_popolazione, chiavi={comune: _chiave(comune) for comune in comuni})
+                    per_popolazione=per_popolazione, chiavi={comune: chiave_di_confronto(comune) for comune in comuni})
     return _tabella
 
 
@@ -120,12 +124,12 @@ def provincia_e_regione(comune):
 
 def regioni():
     """Le regioni della collezione, in ordine alfabetico senza badare ad accenti e apostrofi."""
-    return sorted({regione for _provincia, regione in _carica()["dove"].values()}, key=_chiave)
+    return sorted({regione for _provincia, regione in _carica()["dove"].values()}, key=chiave_di_confronto)
 
 
 def province(regione=None):
     """Le province della collezione, in ordine alfabetico; con una regione, soltanto le sue."""
-    return sorted({provincia for provincia, sua in _carica()["dove"].values() if regione is None or sua == regione}, key=_chiave)
+    return sorted({provincia for provincia, sua in _carica()["dove"].values() if regione is None or sua == regione}, key=chiave_di_confronto)
 
 
 def regione_della_provincia(provincia):
@@ -139,7 +143,7 @@ def comuni_che_contengono(testo):
     apostrofi, come la ricerca della fondazione: forl trova Forlì e Forlimpopoli. Un insieme, perché chi
     filtra migliaia di persone lo calcola una volta sola.
     """
-    cercato = _chiave(testo)
+    cercato = chiave_di_confronto(testo)
     return {comune for comune, chiave in _carica()["chiavi"].items() if cercato in chiave}
 
 
@@ -186,7 +190,7 @@ def coincide(testo, comune):
     Dalla revisione della tappa 14, perché la fondazione chieda conferma quando la sede scelta
     nell'elenco non è quella scritta nel campo.
     """
-    return bool(comune) and _chiave(testo) == _chiave(comune)
+    return bool(comune) and chiave_di_confronto(testo) == chiave_di_confronto(comune)
 
 
 def candidati(testo):
@@ -197,7 +201,7 @@ def candidati(testo):
     ogni gruppo dal più popoloso. Senza testo, tutti, dal più popoloso.
     """
     tabella = _carica()
-    cercato = _chiave(testo)
+    cercato = chiave_di_confronto(testo)
     if not cercato:
         return list(tabella["per_popolazione"])
     gruppi = ([], [], [], [])

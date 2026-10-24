@@ -4,7 +4,8 @@ mondo a regime piccolo misura tutte le porte, le ricerche pronte, i filtri a man
 errori, e lascia il caso del mondo com'era.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nasce il 24 ottobre 2026 col passo 2 della proposta della issue 8. Lo stesso giorno le ricerche pronte diventano
-i dodici preset di serie.
+i dodici preset di serie. La sera, col motore del costruttore di regole, il banco misura anche le regole, su un mondo
+che ha anche gli usciti di scena, e le aperture di Ctrl+K, Ctrl+Maiusc+G e Ctrl+F stanno sotto i 300 ms.
 """
 
 import random
@@ -35,3 +36,22 @@ def test_il_banco_misura_tutto_su_un_mondo_piccolo():
     assert misure["apertura di mercato"][2] > 0 and misure["apertura di allenatori"][2] > 0
     assert esito["piu_lento"][1][0] < bm.OBIETTIVO
     assert any(riga.startswith("Il ricalcolo a caldo più lento: ") for riga in righe)
+
+
+def test_il_banco_misura_il_motore_delle_regole_coi_ritirati_e_gli_usciti():
+    random.seed(5)
+    mondo = bm.costruisci_mondo(300, 31, lambda riga: None)
+    ritirati = sum(1 for g in mondo.giocatori.values() if g.ritirato)
+    assert mondo._ids_morti_processati_sessione and mondo._ids_morti_processati_sessione < {g.id for g in mondo.giocatori.values() if g.ritirato}
+    righe = []
+    esito = bm.banco_delle_regole(mondo, 1, righe.append)
+    misure = esito["misure"]
+    assert set(esito["aperture"]) == set(mercato.PORTE) and esito["aperture"]["mercato"][2] > 0 and esito["aperture"]["allenatori"][2] > 0
+    assert all(f"regole, {nome}, a caldo" in misure for _chiave, nome in mercato.PRESET_DI_SERIE)
+    assert all(f"regole, {nome}, a caldo" in misure for nome, _regole in bm.REGOLE_A_MANO)
+    assert all(f"regole, ordine {nome}" in misure for _chiave, nome in mercato.ORDINI)
+    assert misure["regole, ritirati o usciti di scena, a caldo"][2] == ritirati
+    assert misure["regole, ordine numero, dal più basso"][2] == len(mondo.giocatori) - ritirati + len(mondo.allenatori)
+    assert misure["regole, Mercato e nome rossi"][2] <= misure["regole, Mercato e nome r"][2] <= esito["aperture"]["mercato"][2]
+    assert all(esito["aperture"][porta][0] < bm.OBIETTIVO for porta in bm.PORTE_DA_300_MS) and esito["piu_lento"][1][0] < bm.OBIETTIVO
+    assert any(riga.startswith("Le regole, il ricalcolo a caldo più lento: ") for riga in righe)

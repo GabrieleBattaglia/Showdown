@@ -90,6 +90,11 @@ del mercato degli allenatori e dei risultati della ricerca che stampava nella vi
 soltanto sulla riga della finestra. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Lo stesso giorno, con le verifiche della finestra, unico_per_l_amichevole: l'avversario scelto è proprio l'unico dei tuoi
 che oggi gioca, e gli serve un altro avversario. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+La sera dello stesso giorno, col motore del costruttore di regole, le sue parole: la riga di una regola, col bersaglio
+soltanto dove serve e Alternativa 2 al posto della o; il valore con la sua unità e i testi fra virgolette; l'etichetta
+del Valore di ogni caratteristica; il perché di una regola in preparazione che non conta; l'etichetta dei trovati, che
+mescola giocatori e allenatori, l'annuncio e il campo Trovati, una riga per informazione; la linguetta della scheda
+Filtri con le regole. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -110,6 +115,7 @@ import modelli_torneo
 import palmares
 import percorsi
 import registro
+import regole as modulo_regole
 import ricerca
 import sfide
 import staff
@@ -1702,6 +1708,217 @@ def riepilogo_mercato_e_ricerca(p, mondo, giocatori=(), allenatori=(), sfide_lan
 def evento_mercato_e_ricerca(giocatori=(), allenatori=(), sfide_lanciate=(), preset=()):
     """Il fatto della finestra nella barra di stato: mercato e ricerca: 3 esiti."""
     return f"mercato e ricerca: {conta(len(giocatori) + len(allenatori) + len(sfide_lanciate) + len(preset), 'esito', 'esiti')}"
+
+
+# Le parole del costruttore di regole, D36 della sera del 24 ottobre 2026: le righe dell'elenco delle regole, il
+# valore, l'etichetta del Valore, il conto dei trovati con l'annuncio e il campo Trovati, e il perché di una regola in
+# preparazione che non conta.
+
+NESSUNA_REGOLA = "Nessuna regola: si aggiungono con Aggiungi regola, Canc le toglie, Ctrl+Su e Ctrl+Giù le spostano."
+
+
+def _con_la_minuscola(nome):
+    return nome[:1].lower() + nome[1:]
+
+
+def valore_a_parole(car, valore):
+    """
+    Il valore di una regola a parole: il numero all'italiana con la sua unità, 20 anni, 1.000 euro, 150,5, e il numero
+    di una persona senza il punto delle migliaia; la classe col suo codice; il testo fra virgolette, perché si senta dove
+    comincia e dove finisce; il nome della voce scelta; sì o no.
+    """
+    tipo = car.tipo
+    if tipo == modulo_regole.NUMERO:
+        if car.chiave == "numero":
+            testo = str(valore)
+        elif car.decimali and valore != int(valore):
+            testo = numero(valore, car.decimali)
+        else:
+            testo = intero(valore)
+        if car.unita:
+            singolare, plurale = car.unita
+            testo += f" {singolare if valore == 1 else plurale}"
+        return testo
+    if tipo == modulo_regole.CLASSE:
+        return classe.codice(valore)
+    if tipo == modulo_regole.TESTO:
+        return f'"{valore}"'
+    if tipo == modulo_regole.SCELTA:
+        return modulo_regole.nome_della_voce(car, valore)
+    return "sì" if valore else "no"
+
+
+def _regola_senza_bersaglio(regola, car):
+    """La caratteristica, coi due punti, l'operatore e il valore: età: minore o uguale a 20 anni; per un sì o no soltanto il sì o il no."""
+    nome = _con_la_minuscola(car.nome)
+    if regola.operatore in modulo_regole.SENZA_VALORE:
+        return f"{nome}: {modulo_regole.nome_dell_operatore(car, regola.operatore)}"
+    if car.tipo == modulo_regole.SI_NO:
+        return f"{nome}: {valore_a_parole(car, regola.valore)}"
+    return f"{nome}: {modulo_regole.nome_dell_operatore(car, regola.operatore)} {valore_a_parole(car, regola.valore)}"
+
+
+def regola_a_parole(regola, posto, regole):
+    """
+    Una riga dell'elenco delle regole, per la regola al posto dato fra le regole, da zero. Il bersaglio si dice nella
+    prima regola di ogni alternativa e dove cambia: Giocatori, stato: è sul mercato; poi e età: minore o uguale a 20 anni.
+    Con più alternative, la regola che ne apre una comincia con Alternativa 2, al posto della o, che come parola non
+    compare mai: la e lega prima della o, e le righe lo devono far sentire.
+    """
+    car = mercato.caratteristica(regola.bersaglio, regola.caratteristica)
+    corpo = _regola_senza_bersaglio(regola, car)
+    bersaglio = mercato.NOMI_DEI_BERSAGLI[regola.bersaglio]
+    dove = [(numero_dell_alternativa, dentro, alternativa) for numero_dell_alternativa, alternativa in enumerate(modulo_regole.alternative(regole), 1)
+            for dentro in range(len(alternativa))]
+    numero_dell_alternativa, dentro, alternativa = dove[posto]
+    if dentro == 0:
+        if numero_dell_alternativa == 1:
+            return f"{bersaglio}, {corpo}"
+        return f"Alternativa {numero_dell_alternativa}: {bersaglio.lower()}, {corpo}"
+    if alternativa[dentro - 1].bersaglio != regola.bersaglio:
+        return f"e {bersaglio.lower()}, {corpo}"
+    return f"e {corpo}"
+
+
+def etichetta_del_valore(car):
+    """L'etichetta del Valore, che NVDA legge come suo nome, con la lettera e quello che si scrive: &Valore, anni compiuti, da 0 a 120."""
+    return f"&Valore, {car.etichetta}" if car.etichetta else "&Valore"
+
+
+def _perche_non_va(car, perche):
+    """Perché il valore della regola in preparazione non va, senza il punto."""
+    if perche is None:
+        return "il Valore è su nessun valore" if car.tipo in (modulo_regole.SCELTA, modulo_regole.SI_NO) else "il Valore è vuoto"
+    if perche == modulo_regole.CIFRE:
+        return "un numero si scrive con le cifre, col punto soltanto fra le migliaia e la virgola per i decimali"
+    if perche == modulo_regole.PUNTO:
+        return "il punto separa le migliaia: i decimali vanno dopo la virgola, come 150,5"
+    if perche == modulo_regole.DECIMALI:
+        if not car.decimali:
+            return f"{_con_la_minuscola(car.nome)} si scrive senza decimali"
+        return f"{_con_la_minuscola(car.nome)} si scrive al più con {conta(car.decimali, 'decimale', 'decimali')}, come nella scheda"
+    if perche == modulo_regole.MISURA:
+        if car.tipo == modulo_regole.TESTO:
+            return f"il testo va da 1 a {modulo_regole.LUNGHEZZA_MASSIMA_DEL_TESTO} caratteri"
+        return f"{_con_la_minuscola(car.nome)} va da 0 a {intero(car.massimo)}"
+    if perche == modulo_regole.NON_E_UNA_CLASSE:
+        return "una classe si scrive come nella scheda, per esempio G4, oppure col livello, da 1 per A1 a 100 per K0"
+    return "il valore non può avere a capo, tabulazioni o altri caratteri di controllo"
+
+
+def perche_la_regola_non_conta(preparazione):
+    """Perché la regola in preparazione non conta, in una frase per il campo Trovati e per l'annuncio; None se conta."""
+    regola, perche = mercato.regola_pronta(preparazione)
+    if regola is not None:
+        return None
+    car = mercato.caratteristica(preparazione.bersaglio, preparazione.caratteristica)
+    return f"La regola in preparazione non conta: {_perche_non_va(car, perche)}."
+
+
+def regola_non_pronta(preparazione):
+    """L'avviso di Aggiungi regola con una regola vuota o sbagliata, col perché; None se la regola si può aggiungere."""
+    regola, perche = mercato.regola_pronta(preparazione)
+    if regola is not None:
+        return None
+    car = mercato.caratteristica(preparazione.bersaglio, preparazione.caratteristica)
+    return f"La regola non si aggiunge: {_perche_non_va(car, perche)}."
+
+
+def regola_non_aggiunta(preparazione, perche):
+    """L'avviso di Aggiungi regola, col perché di mercato.aggiungi_la_regola: al limite delle regole, o quello della regola in preparazione."""
+    if perche == mercato.AL_LIMITE:
+        return f"La regola non si aggiunge: le regole sono già {mercato.LIMITE_DELLE_REGOLE}, e per aggiungerne un'altra se ne toglie una con Canc."
+    return regola_non_pronta(preparazione)
+
+
+def preparazione_nel_preset(preparazione, esito):
+    """
+    Che cosa Salva filtri fa della regola in preparazione, per il suo dialogo, con l'esito di mercato.filtri_per_salva_filtri:
+    entra come ultima regola, resta fuori perché le regole sono al limite o perché ha un valore sbagliato; None col Valore vuoto.
+    """
+    if esito == mercato.AGGIUNTA:
+        return "La regola in preparazione entra nel preset, come ultima regola."
+    if esito == mercato.FUORI:
+        return f"La regola in preparazione resta fuori dal preset: le regole sono già {mercato.LIMITE_DELLE_REGOLE}."
+    _regola, perche = mercato.regola_pronta(preparazione)
+    if perche is None:
+        return None
+    car = mercato.caratteristica(preparazione.bersaglio, preparazione.caratteristica)
+    return f"La regola in preparazione resta fuori dal preset: {_perche_non_va(car, perche)}."
+
+
+def _conto_dei_trovati(righe):
+    """Quanti giocatori e allenatori a parole: 120 giocatori, 1 allenatore, 120 giocatori e 3 allenatori; nessuno."""
+    giocatori, allenatori = mercato.conta_le_righe(righe)
+    parti = []
+    if giocatori:
+        parti.append(f"{intero(giocatori)} {'giocatore' if giocatori == 1 else 'giocatori'}")
+    if allenatori:
+        parti.append(f"{intero(allenatori)} {'allenatore' if allenatori == 1 else 'allenatori'}")
+    return unisci(parti) or "nessuno"
+
+
+def trovati(righe, filtri):
+    """
+    L'etichetta dell'elenco dei trovati, che NVDA legge come suo nome, con la lettera: &Trovati: 120 giocatori, 12
+    allenatori, 120 giocatori e 3 allenatori; senza regole, nessuno, senza regole. filtri sono quelli che contano.
+    """
+    if not filtri.regole:
+        return "&Trovati: nessuno, senza regole"
+    return f"&Trovati: {_conto_dei_trovati(righe)}"
+
+
+def annuncio_dei_trovati(righe, filtri, preparazione):
+    """
+    L'annuncio alla voce e al display dopo l'ultima mossa: Trovati: 120 giocatori, e il perché della regola in
+    preparazione quando ha un valore sbagliato; il Valore vuoto lo dice il campo Trovati, perché dopo ogni cambio di
+    caratteristica il Valore è vuoto, e ripeterlo a ogni annuncio sarebbe rumore. filtri sono quelli che contano.
+    """
+    testo = trovati(righe, filtri).replace("&", "")
+    _regola, perche = mercato.regola_pronta(preparazione)
+    if perche is not None:
+        testo += f". {perche_la_regola_non_conta(preparazione)}"
+    return testo
+
+
+def riepilogo_dei_trovati(righe, filtri, preparazione, mondo):
+    """
+    Il campo Trovati, una riga per informazione: il conto, con la regola in preparazione se conta, o nessuno perché non ci
+    sono regole; il perché la regola in preparazione non conta; in quale alternativa va, quando le alternative sono più
+    d'una; le alternative che mescolano giocatori e allenatori; l'ordine che gli allenatori non hanno; il costo senza
+    polisportiva attiva. filtri sono quelli dell'elenco delle regole, righe le trovate con la preparazione se conta.
+    """
+    contano = mercato.con_la_preparazione(filtri, preparazione)
+    regola, _perche = mercato.regola_pronta(preparazione)
+    if not contano.regole:
+        righe_del_campo = ["Nessuno, perché non ci sono regole."]
+    else:
+        conto = _conto_dei_trovati(righe)
+        righe_del_campo = [f"{conto[0].upper()}{conto[1:]}{', con la regola in preparazione' if regola is not None else ''}."]
+    perche = perche_la_regola_non_conta(preparazione)
+    if perche:
+        righe_del_campo.append(perche)
+    posto, quante = mercato.alternativa_della_preparazione(filtri.regole, preparazione)
+    if quante > 1:
+        righe_del_campo.append(f"Le regole formano {quante} alternative; la regola in preparazione va nell'alternativa {posto}.")
+    miste = mercato.alternative_miste(contano.regole)
+    if miste and len(modulo_regole.alternative(contano.regole)) == 1:
+        righe_del_campo.append("Le regole mescolano giocatori e allenatori: non trovano nessuno.")
+    else:
+        righe_del_campo.extend(f"L'alternativa {numero_dell_alternativa} mescola giocatori e allenatori: non trova nessuno." for numero_dell_alternativa in miste)
+    giocatori, allenatori = mercato.conta_le_righe(righe)
+    if allenatori and contano.ordine not in mercato.ORDINI_COMUNI:
+        dove = "sono in ordine di classe" if not giocatori else "vanno in fondo, in ordine di classe"
+        righe_del_campo.append(f"Gli allenatori non hanno il dato dell'ordine, {mercato.nome_dell_ordine_a_regole(contano.ordine)}: {dove}.")
+    costo = any(r.bersaglio == mercato.GIOCATORI and r.caratteristica == "costo" for r in contano.regole) or contano.ordine in mercato.ORDINI_DEL_COSTO
+    if costo and mondo.miapolisportiva_attiva is None:
+        righe_del_campo.append("Senza polisportiva attiva i liberi non hanno un costo, perché l'ingaggio dipende dalla gloria di chi offre.")
+    return "\n".join(righe_del_campo)
+
+
+def linguetta_dei_filtri(quante):
+    """La linguetta e il riquadro della scheda Filtri, con le regole dell'elenco: Filtri, 2 regole; Filtri, nessuna regola."""
+    return f"Filtri, {conta(quante, 'regola', 'regole')}" if quante else "Filtri, nessuna regola"
 
 
 def riga_arretrati(g):
