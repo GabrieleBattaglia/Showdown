@@ -1593,6 +1593,13 @@ NESSUNA_REGOLA = "Nessuna regola: si aggiungono con Aggiungi regola, Canc le tog
 NESSUN_VALORE = "nessun valore"
 
 
+def domanda_cambio_di_bersaglio(quante, bersaglio):
+    """La domanda, col No già scelto, quando si cambia bersaglio con delle regole: giocatori e allenatori non si mescolano."""
+    nuovo = "agli allenatori" if bersaglio == mercato.ALLENATORI else "ai giocatori"
+    regole = "la regola" if quante == 1 else f"le {quante} regole"
+    return f"Passare {nuovo} toglie {regole} di adesso, perché giocatori e allenatori non si mescolano. Continuare?"
+
+
 def domanda_azzera_le_regole(quante):
     """La domanda di Azzera, col No già scelto, quando le regole sono più d'una."""
     return f"Togliere tutte le {quante} regole? Per toglierne una sola, Canc sull'elenco delle regole."
@@ -1744,10 +1751,10 @@ def _conto_dei_trovati(righe):
 def trovati(righe, filtri):
     """
     L'etichetta dell'elenco dei trovati, che NVDA legge come suo nome, con la lettera: &Trovati: 120 giocatori, 12
-    allenatori, 120 giocatori e 3 allenatori; senza regole, nessuno, senza regole. filtri sono quelli che contano.
+    allenatori; senza regole, tutti, con senza regole in coda. filtri sono quelli che contano.
     """
     if not filtri.regole:
-        return "&Trovati: nessuno, senza regole"
+        return f"&Trovati: {_conto_dei_trovati(righe)}, senza regole"
     return f"&Trovati: {_conto_dei_trovati(righe)}"
 
 
@@ -1774,7 +1781,7 @@ def riepilogo_dei_trovati(righe, filtri, preparazione, mondo):
     contano = mercato.con_la_preparazione(filtri, preparazione)
     regola, _perche = mercato.regola_pronta(preparazione)
     if not contano.regole:
-        righe_del_campo = ["Nessuno, perché non ci sono regole."]
+        righe_del_campo = [f"Tutti, perché non ci sono regole: {_conto_dei_trovati(righe)}."]
     else:
         conto = _conto_dei_trovati(righe)
         righe_del_campo = [f"{conto[0].upper()}{conto[1:]}{', con la regola in preparazione' if regola is not None else ''}."]

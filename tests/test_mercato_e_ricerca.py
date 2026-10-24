@@ -122,7 +122,12 @@ def test_le_voci_dello_stato_scelgono_chi_cercare(mondo):
     assert _ids(tuoi) == set(range(1, 10)) and all(r.stato == mercato.TUO for r in tuoi)
     assert _ids(_cerca(mondo, _stato(mercato.RITIRATO))) == set(range(40, 45))
     assert _ids(_cerca(mondo, _stato(mercato.USCITO))) == {45}
-    assert mercato.cerca(mondo, mercato.Filtri()) == []
+    # Senza regole si trovano tutti quelli del bersaglio, risposta di Gabriele del 24 ottobre sera.
+    memoria = mercato.Memoria(mondo)
+    tutti = mercato.cerca(mondo, mercato.Filtri(), memoria)
+    assert len(tutti) == len(memoria.righe_di(mercato.GIOCATORI)) and not any(r.allenatore for r in tutti)
+    allenatori = mercato.cerca(mondo, mercato.Filtri(), memoria, mercato.ALLENATORI)
+    assert allenatori and len(allenatori) == len(memoria.righe_di(mercato.ALLENATORI)) and all(r.allenatore for r in allenatori)
     tutte = _cerca(mondo, _stato(mercato.IN_ATTIVITA), _stato(mercato.RITIRATO, collegamento=O), _stato(mercato.USCITO, collegamento=O))
     assert len(tutte) == len(_ids(tutte)) == len(mondo.giocatori)
 

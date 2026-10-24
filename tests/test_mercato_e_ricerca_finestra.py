@@ -895,8 +895,8 @@ def test_invio_sull_elenco_porta_alla_scheda_e_invio_o_esc_tornano(banco):
     f.elenco.SetFocus()
     _invio(f, f.elenco)
     assert f.scheda.GetValue() == testi.scheda_allenatore(f.riga().persona, banco.mondo) and banco.suonati[-1] == "scheda_allenatore"
-    # Con l'elenco vuoto Invio suona il tasto a vuoto.
-    _con_le_regole(f)
+    # Con l'elenco vuoto Invio suona il tasto a vuoto: senza regole si trovano tutti, quindi una regola che non trova nessuno.
+    _con_le_regole(f, mercato.Regola(E, G, "nome", "contiene", "zzqqzz"))
     f.elenco.SetFocus()
     _invio(f, f.elenco)
     assert banco.suonati[-1] == "nessuna_selezione"
@@ -1045,8 +1045,10 @@ def test_il_bersaglio_tiene_la_caratteristica_o_torna_sullo_stato(banco):
     _valore(f, "40")
     banco.suonati.clear()
     _bersaglio(f, A)
-    # L'età c'è anche per gli allenatori: resta, col suo operatore e il suo valore.
-    assert f.preparazione == mercato.Preparazione(E, A, "eta", "minore_uguale", "40") and banco.suonati == ["bersaglio_allenatori"]
+    # L'età c'è anche per gli allenatori: resta, col suo operatore e il suo valore. Le regole della porta erano dei
+    # giocatori, e giocatori e allenatori non si mescolano: la domanda, e al sì le regole se ne vanno.
+    assert f.preparazione == mercato.Preparazione(E, A, "eta", "minore_uguale", "40") and banco.suonati == ["domanda", "bersaglio_allenatori"]
+    assert f.filtri.regole == ()
     assert [k for k, _n in f._caratteristiche] == list(mercato.CATALOGO[A]) and f.scelta_caratteristica.GetStringSelection() == "Età"
     _caratteristica(f, "visus")
     _bersaglio(f, G)
@@ -1177,21 +1179,20 @@ def test_la_e_lega_prima_della_o(banco):
 def test_il_campo_trovati_si_rifa_a_ogni_mossa_e_tiene_la_riga_del_cursore(banco):
     f = banco.apri("mercato")
     assert f.campo_trovati.GetValue() == f"{len(f.righe)} giocatori.\nLa regola in preparazione non conta: il Valore è vuoto."
-    _bersaglio(f, A)
-    _caratteristica(f, "visus")
-    _valore(f, staff.VEDENTE)
+    _caratteristica(f, "sesso")
+    _valore(f, "f")
     _collegamento(f, O)
     banco.pianifica.scatta()
     righe = f.campo_trovati.GetValue().splitlines()
     assert righe[0].endswith(", con la regola in preparazione.") and righe[1] == "Le regole formano 2 alternative; la regola in preparazione va nell'alternativa 2."
-    assert any(r.allenatore for r in f.righe) and any(not r.allenatore for r in f.righe)
-    assert f.etichetta_trovati.GetLabel() == testi.trovati(f.righe, f._contano()) and " e " in f.etichetta_trovati.GetLabel()
+    # Giocatori e allenatori non si mescolano, risposta di Gabriele del 24 ottobre sera.
+    assert f.righe and not any(r.allenatore for r in f.righe)
+    assert f.etichetta_trovati.GetLabel() == testi.trovati(f.righe, f._contano())
     # Il cursore sulla seconda riga ci resta quando il campo si riscrive.
     f.campo_trovati.SetInsertionPoint(f.campo_trovati.XYToPosition(0, 1))
     _scegli_voce(f.scelta_ordine, [k for k, _n in f._ordini].index("bomba_base"))
     banco.pianifica.scatta()
     assert f.campo_trovati.PositionToXY(f.campo_trovati.GetInsertionPoint())[2] == 1
-    assert "Gli allenatori non hanno il dato dell'ordine" in f.campo_trovati.GetValue()
 
 
 def test_il_valore_toglie_i_caratteri_di_controllo(banco):

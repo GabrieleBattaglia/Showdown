@@ -865,6 +865,14 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         if self._applico or bersaglio == self.preparazione.bersaglio:
             return
         prima = self._contano()
+        # Risposta di Gabriele del 24 ottobre sera: giocatori e allenatori non si mescolano, quindi con delle regole il
+        # cambio di bersaglio le toglie, dopo la domanda col No già scelto; al No il bersaglio resta quello di prima.
+        if self.filtri.regole:
+            if not self._conferma(testi.domanda_cambio_di_bersaglio(len(self.filtri.regole), bersaglio)):
+                self._metti(self.scelta_bersaglio, BERSAGLI_DELLA_SCELTA, self.preparazione.bersaglio)
+                return
+            self.filtri = mercato.Filtri((), self.filtri.ordine)
+            self._scrivi_le_regole()
         self.preparazione = mercato.con_il_bersaglio(self.preparazione, bersaglio)
         self._scrivi_la_preparazione()
         self._stato_suonato = self._stato_del_valore()
@@ -1267,7 +1275,7 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self._ricalcolo.ferma()
         r = self.riga()
         contano = self._contano()
-        self.righe = mercato.cerca(self.mondo, contano, self.memoria)
+        self.righe = mercato.cerca(self.mondo, contano, self.memoria, self.preparazione.bersaglio)
         self._ordine_delle_righe = contano.ordine
         posto = mercato.indice_della_persona(self.righe, r.numero, r.allenatore, ripiego) if r is not None else (0 if self.righe else None)
         self._in_ricalcolo = True

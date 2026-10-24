@@ -357,8 +357,9 @@ def test_dopo_un_esito_le_righe_cambiano_stato(mondo):
     assert libero.id in _ids(_cerca(mondo, _regola(G, "stato", "uguale", mercato.TUO), memoria=memoria))
 
 
-def test_senza_regole_non_si_trova_nessuno_e_i_bersagli(mondo):
-    assert mercato.cerca(mondo, mercato.Filtri()) == []
+def test_senza_regole_si_trovano_tutti_e_i_bersagli(mondo):
+    # Risposta di Gabriele del 24 ottobre sera: senza regole, tutti quelli del bersaglio.
+    assert len(mercato.cerca(mondo, mercato.Filtri())) == len(mercato.Memoria(mondo).righe_di(G))
     donne_g = _cerca(mondo, _regola(G, "sesso", "uguale", "f"))
     assert donne_g and not any(r.allenatore for r in donne_g)
     donne_a = _cerca(mondo, _regola(A, "sesso", "uguale", "f"))

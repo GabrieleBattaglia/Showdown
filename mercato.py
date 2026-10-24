@@ -1460,13 +1460,17 @@ def chiave_dell_ordine(ordine, memoria):
     return chiave
 
 
-def cerca(mondo, filtri, memoria=None):
+def cerca(mondo, filtri, memoria=None, bersaglio=GIOCATORI):
     """
     Le righe trovate dalle regole dei filtri, nell'ordine scelto. Per ogni bersaglio una riga passa se la accetta
-    un'alternativa che non mescola i bersagli; senza regole non si trova nessuno. Le righe le dà la memoria della
-    finestra, e senza se ne usa una nuova. I filtri sono quelli che contano, con la preparazione se va: con_la_preparazione.
+    un'alternativa che non mescola i bersagli. Senza regole si trovano tutti quelli del bersaglio dato, risposta di
+    Gabriele del 24 ottobre sera; con le regole il bersaglio è il loro, uno solo, perché la finestra non le mescola. Le
+    righe le dà la memoria della finestra, e senza se ne usa una nuova. I filtri sono quelli che contano, con la
+    preparazione se va: con_la_preparazione.
     """
     memoria = memoria if memoria is not None else Memoria(mondo)
+    if not filtri.regole:
+        return sorted(memoria.righe_di(bersaglio), key=chiave_dell_ordine(filtri.ordine, memoria))
     alternative = modulo_regole.alternative(filtri.regole)
     trovate = []
     for bersaglio in BERSAGLI:

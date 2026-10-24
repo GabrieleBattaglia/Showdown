@@ -424,7 +424,7 @@ def test_i_trovati_l_annuncio_e_il_campo_trovati(mondo):
     contano = mercato.con_la_preparazione(serie, ros)
     con_ros = mercato.cerca(mondo, contano)
     assert testi.riepilogo_dei_trovati(con_ros, serie, ros, mondo).splitlines()[0] == f"{len(con_ros)} giocatori, con la regola in preparazione."
-    assert testi.riepilogo_dei_trovati([], mercato.Filtri(), vuota, mondo).splitlines()[0] == "Nessuno, perché non ci sono regole."
+    assert testi.riepilogo_dei_trovati([], mercato.Filtri(), vuota, mondo).splitlines()[0] == "Tutti, perché non ci sono regole: nessuno."
     # Le alternative, quelle che mescolano i bersagli, gli allenatori in un ordine che non hanno, il costo senza polisportiva attiva.
     due = mercato.Filtri((_regola(G, "stato", "uguale", mercato.LIBERO), _regola(A, "stato", "uguale", mercato.LIBERO, mercato.O)), "valore_alto")
     o_preparazione = mercato.Preparazione(mercato.O, A, "sesso", "uguale", "f")
