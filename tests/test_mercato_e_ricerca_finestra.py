@@ -22,6 +22,8 @@ tasto ripetuto, Ctrl+Su e Ctrl+Giù, E ed O sull'elenco delle regole e il limite
 esempio; il conto dei trovati e l'annuncio a ogni mossa, soltanto se dice qualcosa di nuovo; la casella dei preset che
 resta sul suo preset quando si guardano le caratteristiche; Invio nel Valore con un valore sbagliato; e il preset salvato,
 con la regola in preparazione, riaperto da ogni porta.
+Col passo dei suoni del costruttore, lo stesso giorno, i sedici eventi nuovi hanno il loro preset, e le prove li sentono
+col registratore di sempre, senza più il preset finto.
 """
 
 import ctypes
@@ -161,18 +163,6 @@ class Messaggi(list):
 @pytest.fixture
 def mondo():
     return mondo_del_mercato()
-
-
-@pytest.fixture(autouse=True)
-def suoni_senza_preset_annotati(monkeypatch):
-    """
-    I sedici eventi del costruttore di regole aspettano il loro preset in suoni.SENZA_PRESET, dove tacciono senza passare
-    dal registratore del conftest: qui hanno un preset finto, così il registratore li annota come gli altri, e le prove
-    sentono che suonano dove devono.
-    """
-    import suoni
-    for evento in suoni.SENZA_PRESET:
-        monkeypatch.setitem(suoni.EVENTI, evento, f"senza_preset_{evento}")
 
 
 @pytest.fixture

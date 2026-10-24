@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 339 suoni, 313 della finestra e 26 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 355 suoni, 329 della finestra e 26 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -125,13 +125,10 @@ Finestra, polisportive, le notizie dei tuoi tesserati, 3 suoni.
 Nell'avanzamento un tuo tesserato diventa una bandiera del club: mess_fanfara_della_bandiera.
 Nell'avanzamento un tuo tesserato si ritira: mess_scarpe_al_chiodo.
 Nell'avanzamento un tuo tesserato muore o lascia lo showdown: mess_il_silenzio.
-Finestra, economia, il mercato, 7 suoni.
+Finestra, economia, il mercato, 4 suoni.
 Si apre la finestra Mercato e ricerca dal mercato, con Ctrl+K: mess_mercato_aperto.
 Nella finestra Mercato e ricerca la casella dei preset applica un preset intero, a ogni freccia: mess_mercato_mostra.
 Nella finestra Mercato e ricerca cambia l'ordine dell'elenco, con Ordina per: mess_mercato_ordine.
-Nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola mette la regola in preparazione in fondo all'elenco delle regole: mess_filtro_aggiunto.
-Nella scheda Filtri della finestra Mercato e ricerca, Canc sull'elenco delle regole toglie la regola scelta: mess_filtro_tolto.
-Nella scheda Filtri della finestra Mercato e ricerca, Azzera toglie tutte le regole: mess_filtri_tutti_tolti.
 Nella finestra Mercato e ricerca Invio sull'elenco porta alla scheda del giocatore, e nella sala allenamento, nei contratti e nel pannello dei tornei la scheda del giocatore scelto: carta_girata.
 Finestra, mercato e ricerca, le schede e i preset, 15 suoni.
 Nella finestra Mercato e ricerca il passaggio alla scheda Risultati, con Ctrl+Tab o Ctrl+Maiusc+Tab, o con Invio nella scheda Filtri, che porta all'elenco: mess_scheda_risultati.
@@ -149,9 +146,29 @@ Nella gestione dei preset Sposta giù porta il preset scelto un posto più giù:
 Nella gestione dei preset Sposta su sul primo preset, o Sposta giù sull'ultimo, che non si sposta oltre: mess_preset_al_bordo.
 Nella finestra Mercato e ricerca Invio o Esc nel campo della scheda della persona riportano il fuoco all'elenco, sulla stessa riga: mess_ritorno_all_elenco.
 La finestra Mercato e ricerca si chiude senza esiti da riassumere, come offerte, sfide o preset, e la vista resta com'era: mess_finestra_senza_esiti.
-Finestra, mercato e ricerca, il bersaglio, 2 suoni.
-Nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione passa agli allenatori: mess_casella_allenatori_spuntata.
-Nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione torna ai giocatori: mess_casella_allenatori_tolta.
+Finestra, mercato e ricerca, la regola in preparazione, 14 suoni.
+Nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione passa agli allenatori: mess_bersaglio_allenatori.
+Nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione torna ai giocatori: mess_bersaglio_giocatori.
+Nella scheda Filtri della finestra Mercato e ricerca il collegamento della regola in preparazione passa alla e, a ogni freccia, o la lettera E sull'elenco delle regole lega con la e la regola scelta a quella di sopra: mess_collegamento_e.
+Nella scheda Filtri della finestra Mercato e ricerca il collegamento della regola in preparazione passa alla o, a ogni freccia, o la lettera O sull'elenco delle regole fa cominciare dalla regola scelta un'alternativa nuova: mess_collegamento_o.
+Nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa a una che si misura con un numero, come l'età, il costo o una caratteristica di gioco, a ogni freccia: mess_caratteristica_numero.
+Nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa alla classe, a ogni freccia: mess_caratteristica_classe.
+Nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa a una che si scrive, come il nome o numero, il comune o la polisportiva, a ogni freccia: mess_caratteristica_testo.
+Nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa a una che si sceglie da un elenco, come lo stato, il sesso, la regione o l'indole, a ogni freccia: mess_caratteristica_scelta.
+Nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa a una che è sì o no, come la disponibilità oggi per un'amichevole, mancino o nuovo arrivato, a ogni freccia: mess_caratteristica_si_no.
+Nella scheda Filtri della finestra Mercato e ricerca cambia l'operatore della regola in preparazione, come uguale a, minore o uguale a, contiene o non ha il dato, a ogni freccia: mess_regola_operatore.
+Nella scheda Filtri della finestra Mercato e ricerca il Valore a scelta della regola in preparazione passa a una voce, a ogni freccia: mess_valore_scelto.
+Nella scheda Filtri della finestra Mercato e ricerca il Valore della regola in preparazione resta senza valore: la voce nessun valore, a ogni freccia, o il campo svuotato, quando ci si ferma: mess_valore_tolto.
+Nella scheda Filtri della finestra Mercato e ricerca il valore scritto nel Valore diventa buono, e la regola in preparazione conta, quando ci si ferma: mess_valore_scritto.
+Nella scheda Filtri della finestra Mercato e ricerca il valore scritto nel Valore diventa sbagliato, come un numero fuori misura, e la regola in preparazione non conta, quando ci si ferma: mess_valore_da_correggere.
+Finestra, mercato e ricerca, l'elenco delle regole, 7 suoni.
+Nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola mette la regola in preparazione in fondo all'elenco delle regole: mess_filtro_aggiunto.
+Nella scheda Filtri della finestra Mercato e ricerca, Canc sull'elenco delle regole toglie la regola scelta: mess_filtro_tolto.
+Nella scheda Filtri della finestra Mercato e ricerca, Ctrl+Su sull'elenco delle regole sposta la regola scelta un posto più su: mess_regola_spostata_su.
+Nella scheda Filtri della finestra Mercato e ricerca, Ctrl+Giù sull'elenco delle regole sposta la regola scelta un posto più giù: mess_regola_spostata_giu.
+Nella scheda Filtri della finestra Mercato e ricerca, Ctrl+Su sulla prima regola, o Ctrl+Giù sull'ultima, che non si sposta oltre: mess_regola_al_bordo.
+Nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola con già 50 regole nell'elenco, e la regola in preparazione non entra: mess_regole_al_limite.
+Nella scheda Filtri della finestra Mercato e ricerca, Azzera toglie tutte le regole: mess_filtri_tutti_tolti.
 Finestra, mercato e ricerca, le azioni, 4 suoni.
 Nella finestra Mercato e ricerca l'offerta a un allenatore libero apre la scelta del posto dello staff da offrire: mess_posto_da_offrire.
 Nella finestra Mercato e ricerca un'offerta che a quella persona non si può fare, come a un allenatore che allena già, a un ritirato, a chi è uscito di scena o a un tuo tesserato non in vendita: mess_offerta_non_possibile.

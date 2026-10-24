@@ -781,7 +781,7 @@ def indice_della_persona(righe, numero, allenatori=False, ripiego=0):
 
 # Le azioni sulle righe: che cosa si può fare, o perché no. Sono funzioni pure, che non cambiano niente:
 # i divieti sono quelli del mondo e delle sfide. Il motivo è la chiave del suono che dice il perché: quelle
-# di oggi, e tre nuove della proposta, che aspettano i loro suoni.
+# di prima, e tre nuove della proposta, coi loro suoni della V232 di GBUtils.
 Possibile = namedtuple("Possibile", "azione problema motivo")
 INGAGGIO = "ingaggio"
 ACQUISTO = "acquisto"

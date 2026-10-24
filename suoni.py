@@ -120,6 +120,13 @@ bersaglio, bersaglio_allenatori e bersaglio_giocatori, e i tre suoni delle condi
 regola_aggiunta, regola_tolta e regole_azzerate, tutti coi loro preset; i sedici eventi nuovi del costruttore tornano ad
 aspettare il loro in SENZA_PRESET, dove tacciono senza avvisi. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
 5.5, UltraCode).
+Lo stesso giorno, col passo dei suoni del costruttore di regole, i sedici eventi che aspettavano hanno il loro preset, tutti
+mess_ e nella V234, in due gruppi nuovi: la regola in preparazione, col bersaglio, il collegamento, un timbro per ciascuno
+dei cinque tipi di caratteristica, l'operatore e il valore, scelto, tolto, scritto bene o da correggere; e l'elenco delle
+regole, dove arrivano dal mercato la regola aggiunta, quella tolta e le regole azzerate, con le regole spostate, quella al
+bordo e il limite delle 50. SENZA_PRESET non c'è più. I due suoni del bersaglio prendono il suo nome, mess_bersaglio_allenatori
+e mess_bersaglio_giocatori, e i quarantadue della V232 che il costruttore non usa più perdono la firma di MESS, nel nome e
+nella descrizione, e restano nella collezione. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -302,13 +309,9 @@ GRUPPI = (
     ("Economia, il mercato", {
         # La saracinesca che si alza: la stessa che si abbassa quando le mosse del giorno finiscono.
         "dialogo_mercato": "mess_mercato_aperto",
-        # Dalla finestra Mercato e ricerca il preset applicato e Ordina per, a ogni freccia: un tocco minimo; la regola aggiunta,
-        # quella tolta e tutte le regole azzerate hanno i suoni dei filtri del mercato di prima.
+        # Dalla finestra Mercato e ricerca il preset applicato e Ordina per, a ogni freccia: un tocco minimo.
         "mercato_scelta_cambiata": "mess_mercato_mostra",
         "mercato_ordine_cambiato": "mess_mercato_ordine",
-        "regola_aggiunta": "mess_filtro_aggiunto",
-        "regola_tolta": "mess_filtro_tolto",
-        "regole_azzerate": "mess_filtri_tutti_tolti",
         "mercato_scheda_giocatore": "carta_girata",
     }),
     # Dal 24 ottobre 2026 la finestra Mercato e ricerca, issue 8 e decisione D36, coi suoni della V232, tutti mess_. Le schede
@@ -331,11 +334,36 @@ GRUPPI = (
         "ritorno_all_elenco": "mess_ritorno_all_elenco",
         "finestra_chiusa_senza_esiti": "mess_finestra_senza_esiti",
     }),
-    # Il bersaglio della regola in preparazione, coi due suoni della casella Allenatori di prima: sale verso gli
-    # allenatori e scende, nello specchio, tornando ai giocatori.
-    ("Mercato e ricerca, il bersaglio", {
-        "bersaglio_allenatori": "mess_casella_allenatori_spuntata",
-        "bersaglio_giocatori": "mess_casella_allenatori_tolta",
+    # La regola in preparazione, a ogni freccia, coi suoni della V234 salvo il bersaglio, che ha quelli della casella
+    # Allenatori di prima: sale verso gli allenatori e scende, nello specchio, tornando ai giocatori. Il collegamento suona
+    # anche quando le lettere E e O lo cambiano a una regola fatta; la caratteristica ha un tocco minimo per ognuno dei cinque
+    # tipi, con una figura sua; il valore scritto suona quando ci si ferma, e soltanto se diventa buono, da correggere o vuoto.
+    ("Mercato e ricerca, la regola in preparazione", {
+        "bersaglio_allenatori": "mess_bersaglio_allenatori",
+        "bersaglio_giocatori": "mess_bersaglio_giocatori",
+        "collegamento_e": "mess_collegamento_e",
+        "collegamento_o": "mess_collegamento_o",
+        "regola_caratteristica_numero": "mess_caratteristica_numero",
+        "regola_caratteristica_classe": "mess_caratteristica_classe",
+        "regola_caratteristica_testo": "mess_caratteristica_testo",
+        "regola_caratteristica_scelta": "mess_caratteristica_scelta",
+        "regola_caratteristica_si_no": "mess_caratteristica_si_no",
+        "regola_operatore": "mess_regola_operatore",
+        "regola_valore_scelto": "mess_valore_scelto",
+        "regola_valore_tolto": "mess_valore_tolto",
+        "regola_valore_scritto": "mess_valore_scritto",
+        "regola_valore_da_correggere": "mess_valore_da_correggere",
+    }),
+    # L'elenco delle regole: la regola aggiunta, quella tolta e tutte le regole azzerate hanno i suoni dei filtri del mercato
+    # di prima, e gli altri, della V234, sono della loro famiglia, sul do diesis e in onda triangolare.
+    ("Mercato e ricerca, l'elenco delle regole", {
+        "regola_aggiunta": "mess_filtro_aggiunto",
+        "regola_tolta": "mess_filtro_tolto",
+        "regola_spostata_su": "mess_regola_spostata_su",
+        "regola_spostata_giu": "mess_regola_spostata_giu",
+        "regola_al_bordo": "mess_regola_al_bordo",
+        "regole_al_limite": "mess_regole_al_limite",
+        "regole_azzerate": "mess_filtri_tutti_tolti",
     }),
     # Il posto da offrire a un allenatore, e i tre perché nuovi del motore, imparentati con quelli che c'erano.
     ("Mercato e ricerca, le azioni", {
@@ -601,25 +629,6 @@ GRUPPI = (
 )
 EVENTI = {evento: preset for _titolo, gruppo in GRUPPI for evento, preset in gruppo.items()}
 
-# Gli eventi del costruttore di regole della finestra Mercato e ricerca, D36 della sera del 24 ottobre 2026, che il codice
-# fa già suonare e che aspettano il loro preset: il passo dei suoni li porta nella collezione di GBUtils e nella mappa qui
-# sopra, ciascuno con la sua azione detta a parole, e li toglie da qui. Finché ci stanno, tacciono senza avvisi.
-SENZA_PRESET = frozenset({
-    # Il collegamento della regola in preparazione, e quello di una regola fatta, con le lettere E e O sull'elenco delle regole.
-    "collegamento_e", "collegamento_o",
-    # La caratteristica scelta, un timbro per ciascuno dei cinque tipi.
-    "regola_caratteristica_numero", "regola_caratteristica_classe", "regola_caratteristica_testo", "regola_caratteristica_scelta",
-    "regola_caratteristica_si_no",
-    # L'operatore scelto, a ogni freccia.
-    "regola_operatore",
-    # Il Valore: una voce scelta, nessun valore, e un valore scritto che diventa buono o da correggere, quando ci si ferma.
-    "regola_valore_scelto", "regola_valore_tolto", "regola_valore_scritto", "regola_valore_da_correggere",
-    # Una regola spostata su o giù con Ctrl+Su e Ctrl+Giù, e quella al bordo, che non si sposta.
-    "regola_spostata_su", "regola_spostata_giu", "regola_al_bordo",
-    # Aggiungi regola con le regole già al limite di 50.
-    "regole_al_limite",
-})
-
 # Ogni evento detto a parole: l'azione che lo fa suonare. La legge l'elenco dei suoni per Acu_Maker,
 # suoni_di_mess.txt, scritto da strumenti/elenco_suoni.py; una prova controlla che ogni evento abbia
 # la sua.
@@ -745,9 +754,6 @@ AZIONI = {
     "dialogo_mercato": "si apre la finestra Mercato e ricerca dal mercato, con Ctrl+K",
     "mercato_scelta_cambiata": "nella finestra Mercato e ricerca la casella dei preset applica un preset intero, a ogni freccia",
     "mercato_ordine_cambiato": "nella finestra Mercato e ricerca cambia l'ordine dell'elenco, con Ordina per",
-    "regola_aggiunta": "nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola mette la regola in preparazione in fondo all'elenco delle regole",
-    "regola_tolta": "nella scheda Filtri della finestra Mercato e ricerca, Canc sull'elenco delle regole toglie la regola scelta",
-    "regole_azzerate": "nella scheda Filtri della finestra Mercato e ricerca, Azzera toglie tutte le regole",
     "mercato_scheda_giocatore": "nella finestra Mercato e ricerca Invio sull'elenco porta alla scheda del giocatore, e nella sala allenamento, nei contratti e nel pannello dei tornei la scheda del giocatore scelto",
     "scheda_risultati": "nella finestra Mercato e ricerca il passaggio alla scheda Risultati, con Ctrl+Tab o Ctrl+Maiusc+Tab, o con Invio nella scheda Filtri, che porta all'elenco",
     "scheda_filtri": "nella finestra Mercato e ricerca il passaggio alla scheda Filtri, con Ctrl+Tab o Ctrl+Maiusc+Tab",
@@ -766,6 +772,37 @@ AZIONI = {
     "finestra_chiusa_senza_esiti": "la finestra Mercato e ricerca si chiude senza esiti da riassumere, come offerte, sfide o preset, e la vista resta com'era",
     "bersaglio_allenatori": "nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione passa agli allenatori",
     "bersaglio_giocatori": "nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione torna ai giocatori",
+    "collegamento_e": ("nella scheda Filtri della finestra Mercato e ricerca il collegamento della regola in preparazione passa alla e, a ogni "
+                       "freccia, o la lettera E sull'elenco delle regole lega con la e la regola scelta a quella di sopra"),
+    "collegamento_o": ("nella scheda Filtri della finestra Mercato e ricerca il collegamento della regola in preparazione passa alla o, a ogni "
+                       "freccia, o la lettera O sull'elenco delle regole fa cominciare dalla regola scelta un'alternativa nuova"),
+    "regola_caratteristica_numero": ("nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa a "
+                                     "una che si misura con un numero, come l'età, il costo o una caratteristica di gioco, a ogni freccia"),
+    "regola_caratteristica_classe": "nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa alla classe, a ogni freccia",
+    "regola_caratteristica_testo": ("nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa a una "
+                                    "che si scrive, come il nome o numero, il comune o la polisportiva, a ogni freccia"),
+    "regola_caratteristica_scelta": ("nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa a "
+                                     "una che si sceglie da un elenco, come lo stato, il sesso, la regione o l'indole, a ogni freccia"),
+    "regola_caratteristica_si_no": ("nella scheda Filtri della finestra Mercato e ricerca la caratteristica della regola in preparazione passa a una "
+                                    "che è sì o no, come la disponibilità oggi per un'amichevole, mancino o nuovo arrivato, a ogni freccia"),
+    "regola_operatore": ("nella scheda Filtri della finestra Mercato e ricerca cambia l'operatore della regola in preparazione, come uguale a, "
+                         "minore o uguale a, contiene o non ha il dato, a ogni freccia"),
+    "regola_valore_scelto": "nella scheda Filtri della finestra Mercato e ricerca il Valore a scelta della regola in preparazione passa a una voce, a ogni freccia",
+    "regola_valore_tolto": ("nella scheda Filtri della finestra Mercato e ricerca il Valore della regola in preparazione resta senza valore: la "
+                            "voce nessun valore, a ogni freccia, o il campo svuotato, quando ci si ferma"),
+    "regola_valore_scritto": ("nella scheda Filtri della finestra Mercato e ricerca il valore scritto nel Valore diventa buono, e la regola in "
+                              "preparazione conta, quando ci si ferma"),
+    "regola_valore_da_correggere": ("nella scheda Filtri della finestra Mercato e ricerca il valore scritto nel Valore diventa sbagliato, come un "
+                                    "numero fuori misura, e la regola in preparazione non conta, quando ci si ferma"),
+    "regola_aggiunta": "nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola mette la regola in preparazione in fondo all'elenco delle regole",
+    "regola_tolta": "nella scheda Filtri della finestra Mercato e ricerca, Canc sull'elenco delle regole toglie la regola scelta",
+    "regola_spostata_su": "nella scheda Filtri della finestra Mercato e ricerca, Ctrl+Su sull'elenco delle regole sposta la regola scelta un posto più su",
+    "regola_spostata_giu": "nella scheda Filtri della finestra Mercato e ricerca, Ctrl+Giù sull'elenco delle regole sposta la regola scelta un posto più giù",
+    "regola_al_bordo": ("nella scheda Filtri della finestra Mercato e ricerca, Ctrl+Su sulla prima regola, o Ctrl+Giù sull'ultima, che non si "
+                        "sposta oltre"),
+    "regole_al_limite": ("nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola con già 50 regole nell'elenco, e la regola in "
+                         "preparazione non entra"),
+    "regole_azzerate": "nella scheda Filtri della finestra Mercato e ricerca, Azzera toglie tutte le regole",
     "dialogo_posto_da_offrire": "nella finestra Mercato e ricerca l'offerta a un allenatore libero apre la scelta del posto dello staff da offrire",
     "offerta_non_possibile": "nella finestra Mercato e ricerca un'offerta che a quella persona non si può fare, come a un allenatore che allena già, a un ritirato, a chi è uscito di scena o a un tuo tesserato non in vendita",
     "non_gioca_oggi": ("nella finestra Mercato e ricerca Amichevole su chi oggi non può giocare: un allenatore, un ritirato, chi è uscito di scena, un "
@@ -1005,8 +1042,7 @@ def suona(evento, sync=False, volume=None, semitoni=0.0, fattore=None):
         return False
     preset = EVENTI.get(evento)
     if preset is None:
-        if evento not in SENZA_PRESET:
-            print(f"MESS: evento sonoro sconosciuto, {evento}", file=sys.stderr)
+        print(f"MESS: evento sonoro sconosciuto, {evento}", file=sys.stderr)
         return False
     try:
         return _riproduci(evento, preset, sync, fattore, semitoni)

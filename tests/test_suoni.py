@@ -15,6 +15,10 @@ perché la cambiano loro.
 La sera dello stesso giorno, col costruttore di regole, i suoni della finestra restano ventuno, in tre gruppi: le due
 schede, i preset e il bersaglio, che sale verso gli allenatori e scende nello specchio; e i sedici eventi nuovi tornano ad
 aspettare il loro preset in SENZA_PRESET, nuovi, usati dal codice, e muti senza avvisi.
+Col passo dei suoni del costruttore, lo stesso giorno, i sedici hanno il loro preset della V234 e SENZA_PRESET non c'è più:
+i suoni della finestra sono quaranta, in quattro gruppi; la caratteristica ha un tocco diverso per ogni tipo, le regole
+spostate su e giù sono l'una lo specchio dell'altra, e i quarantadue preset della V232 che il costruttore non usa più hanno
+perso la firma di MESS, nel nome e nella descrizione, restando nella collezione.
 """
 
 import ast
@@ -273,24 +277,20 @@ def test_ogni_evento_e_usato_nel_codice():
 def test_ogni_suono_del_codice_e_un_evento():
     trovati = _suoni_nel_codice()
     assert len(trovati) > 100
-    sconosciuti = sorted({(file, s) for file, s in trovati if s not in suoni.EVENTI and s not in suoni.SENZA_PRESET})
+    sconosciuti = sorted({(file, s) for file, s in trovati if s not in suoni.EVENTI})
     assert not sconosciuti, f"suoni che non sono eventi della mappa: {sconosciuti}"
 
 
-def test_gli_eventi_senza_preset_sono_nuovi_usati_e_tacciono(suonati, capsys):
-    # Dal costruttore di regole della finestra Mercato e ricerca: i sedici eventi che aspettano il loro preset non sono già
-    # nella mappa, il codice li fa suonare tutti, e tacciono senza avvisi, mentre un evento sconosciuto lo dice.
-    assert len(suoni.SENZA_PRESET) == 16 and not suoni.SENZA_PRESET & set(suoni.EVENTI)
-    codice = "".join(_codice(p) for p in _sorgenti() if p.name != "suoni.py")
-    assert not [evento for evento in suoni.SENZA_PRESET if f'"{evento}"' not in codice]
-    for evento in sorted(suoni.SENZA_PRESET):
-        assert suoni.suona(evento) is False
-    assert suonati == [] and capsys.readouterr().err == ""
-
-
-# I tre gruppi della finestra Mercato e ricerca, coi loro ventuno suoni della V232: dal costruttore di regole le schede
-# sono due, e delle caselle dei filtri resta soltanto il bersaglio.
-GRUPPI_DELLA_FINESTRA = ("Mercato e ricerca, le schede e i preset", "Mercato e ricerca, il bersaglio", "Mercato e ricerca, le azioni")
+# I quattro gruppi della finestra Mercato e ricerca: le schede e i preset, la regola in preparazione, l'elenco delle regole e
+# le azioni. Ventuno suoni sono della V232, sedici della V234, e tre, la regola aggiunta, quella tolta e le regole azzerate,
+# vengono dai filtri del mercato di prima.
+GRUPPI_DELLA_FINESTRA = ("Mercato e ricerca, le schede e i preset", "Mercato e ricerca, la regola in preparazione",
+                         "Mercato e ricerca, l'elenco delle regole", "Mercato e ricerca, le azioni")
+# Gli eventi del costruttore di regole che fino alla V234 aspettavano il loro preset, in SENZA_PRESET.
+EVENTI_DEL_COSTRUTTORE = ("collegamento_e", "collegamento_o", "regola_caratteristica_numero", "regola_caratteristica_classe",
+                          "regola_caratteristica_testo", "regola_caratteristica_scelta", "regola_caratteristica_si_no", "regola_operatore",
+                          "regola_valore_scelto", "regola_valore_tolto", "regola_valore_scritto", "regola_valore_da_correggere",
+                          "regola_spostata_su", "regola_spostata_giu", "regola_al_bordo", "regole_al_limite")
 
 
 def _eventi_della_finestra():
@@ -301,9 +301,9 @@ def _eventi_della_finestra():
 def test_i_suoni_della_finestra_mercato_e_ricerca():
     # Il passo dei suoni della finestra unica, issue 8 e decisione D36: ogni evento nuovo ha il suo preset mess_, breve e
     # non a onda quadra, con la descrizione che dice l'evento, com'è fatto il suono e a che cosa va bene; e il codice lo
-    # fa suonare. I gruppi stanno subito dopo quello del mercato.
+    # fa suonare. I gruppi stanno subito dopo quello del mercato. Dal costruttore di regole i suoni sono quaranta.
     eventi = _eventi_della_finestra()
-    assert len(eventi) == 21
+    assert len(eventi) == 40 and set(EVENTI_DEL_COSTRUTTORE) <= set(eventi)
     titoli = [titolo for titolo, _gruppo in suoni.GRUPPI]
     inizio = titoli.index("Economia, il mercato") + 1
     assert tuple(titoli[inizio:inizio + len(GRUPPI_DELLA_FINESTRA)]) == GRUPPI_DELLA_FINESTRA
@@ -344,6 +344,61 @@ def test_il_bersaglio_sale_verso_gli_allenatori_e_scende_nello_specchio():
     assert [q[:2] for q in rovesciate] == [giu[0][i:i + 2] for i in range(0, len(giu[0]), 4)]
     _kind, figura = _figura(suoni.EVENTI["bersaglio_allenatori"])
     assert figura[-1][1] > figura[0][0]
+
+
+def test_i_suoni_del_costruttore_di_regole(suonati, capsys):
+    # Il passo dei suoni del costruttore: i sedici eventi che aspettavano hanno il loro preset mess_ della V234, col nome
+    # dell'evento, SENZA_PRESET non c'è più, e suonano davvero, senza avvisi. Ogni tipo di caratteristica ha un tocco
+    # minimo, sotto il decimo di secondo, con una figura sua.
+    from gui import mercato_e_ricerca
+
+    assert not hasattr(suoni, "SENZA_PRESET")
+    for evento in EVENTI_DEL_COSTRUTTORE:
+        nome = evento.replace("regola_caratteristica_", "caratteristica_").replace("regola_valore_", "valore_")
+        assert suoni.EVENTI[evento] == f"mess_{nome}", evento
+        assert suoni.suona(evento) is True, evento
+    assert suonati == list(EVENTI_DEL_COSTRUTTORE) and capsys.readouterr().err == ""
+    tipi = [suoni.EVENTI[evento] for evento in mercato_e_ricerca.SUONI_DEI_TIPI.values()]
+    assert len(tipi) == 5 == len({json.dumps(_figura(preset)) for preset in tipi})
+    for preset in tipi:
+        assert sum(float(d) for d in Acusticator.preset(preset)[0][1::4]) < 0.1, preset
+
+
+def test_le_regole_spostate_su_e_giu_sono_l_una_lo_specchio_dell_altra():
+    # Ctrl+Su e Ctrl+Giù sull'elenco delle regole: lo stesso suono al contrario, con le scivolate rovesciate; su sale.
+    su, giu = (Acusticator.preset(suoni.EVENTI[evento]) for evento in ("regola_spostata_su", "regola_spostata_giu"))
+    assert su[1] == giu[1] and su[2] == giu[2]
+    quartine_su = [su[0][i:i + 4] for i in range(0, len(su[0]), 4)]
+    rovesciate = [[".".join(reversed(str(n).split("."))), d] for n, d, _pn, _v in reversed(quartine_su)]
+    assert rovesciate == [giu[0][i:i + 2] for i in range(0, len(giu[0]), 4)]
+    _kind, figura = _figura(suoni.EVENTI["regola_spostata_su"])
+    assert figura[-1][1] > figura[0][0]
+
+
+# I quarantadue preset della V232 che il costruttore di regole non usa più: le due schede in più, le undici caselle dei
+# filtri che non sono il bersaglio, spuntate e tolte, le diciassette scelte, numeri e testi, e Azzera questi filtri.
+_CASELLE_DI_PRIMA = ("liberi", "in_vendita", "del_computer", "tuoi", "ritirati", "disponibili_oggi", "senza_acciacchi", "ritirati_che_allenano",
+                     "solo_nuovi", "usciti", "senza_prelazione")
+_FILTRI_DI_PRIMA = ("classe_peggiore", "regione", "provincia", "tratto_si", "tratto_no", "tratto_indifferente", "indole", "visus", "posto_attuale",
+                    "eta_minima", "costo_massimo", "valore_minimo", "stipendio_massimo", "mesi_contratto", "stipendio_capo", "comune", "polisportiva")
+ORFANI_DELLA_V232 = ("scheda_altri_filtri", "scheda_filtri_allenatori",
+                     *(f"casella_{c}_{verso}" for c in _CASELLE_DI_PRIMA for verso in ("spuntata", "tolta")),
+                     *(f"filtro_{f}" for f in _FILTRI_DI_PRIMA), "filtri_azzerati")
+
+
+def test_i_suoni_della_finestra_a_schede_perdono_la_firma_di_mess():
+    # La regola di Gabriele: un'app che smette di usare un preset ne toglie la firma, dal nome e dalla descrizione, e il
+    # preset resta nella collezione, che è di tutti. I due della casella Allenatori, che suonano il bersaglio, hanno preso
+    # il suo nome.
+    assert len(ORFANI_DELLA_V232) == len(set(ORFANI_DELLA_V232)) == 42
+    nomi = set(Acusticator.list())
+    usati = set(suoni.EVENTI.values()) | set(partita_sonora.SUONI.values())
+    firma = re.compile(r"Usato da: [^.]*\bmess\b")
+    for nome in ORFANI_DELLA_V232:
+        assert nome in nomi and f"mess_{nome}" not in nomi and nome not in usati, nome
+        descrizione = Acusticator.descrizione(nome)
+        assert descrizione and "MESS" not in descrizione and "Mercato e ricerca" not in descrizione and not firma.search(descrizione), nome
+    assert not {"mess_casella_allenatori_spuntata", "mess_casella_allenatori_tolta"} & nomi
 
 
 def test_la_firma_di_mess_esce_dai_suoni_della_ricerca_tolta():
