@@ -1,18 +1,18 @@
 {
- "nota": "Issue 8, D36: col formato 10 il mondo conserva lo stato dei filtri di ogni porta d'ingresso della finestra Mercato e ricerca; tolto il campo e rimesso il formato 9, le impronte dei mondi tornano identiche",
+ "nota": "Issue 8, D36: il formato 10 conserva i preset dei filtri di Gabriele e, per ogni porta d'ingresso della finestra Mercato e ricerca, la voce scelta coi filtri attuali; tolto il campo e rimesso il formato 9, le impronte dei mondi tornano identiche",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "c79c36b778e2b9f5f1a15cad4e3f1eab71432327fbbac1d3fed1d76e3e0e50fc",
+  "sha256": "2e46d4a3e50d47c7e3ffb2fec247e656dbf297af02a70d0a36a8851f11a24825",
   "vivi": 674,
   "attivi": 674,
   "tesserati": 603,
   "polisportive": 41
  },
  "mondo_a_regime": {
-  "sha256": "0447e94265e3b3c164fa426eabaec0746c330e6e97f6504e48ad6cededdf4446",
+  "sha256": "c47eae7e3d9e2fcb5ed51399f49bfc5d7cf781b75da56381f3e48fd51dbda505",
   "vivi": 1659,
   "attivi": 1259,
   "tesserati": 1078,

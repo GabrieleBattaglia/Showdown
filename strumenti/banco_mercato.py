@@ -15,6 +15,8 @@ peggiore di più prove. A mondo pronto la memoria si mette da parte per la racco
 dopo il caricamento con archivio.congela_la_memoria. Non scrive niente nel progetto: le cartelle del programma e del mondo si spostano in una
 temporanea, che alla fine si cancella, e il caso del mondo si rimette com'era. Il rapporto si scrive solo
 quando lo si chiede.
+Lo stesso giorno, coi preset dei filtri, le ricerche pronte che misura sono i dodici preset di serie, e le aperture
+partono dallo stato di serie di ogni porta. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/banco_mercato.py
     python strumenti/banco_mercato.py --attivi 20000 --volte 5 --rapporto
@@ -156,7 +158,7 @@ def _tempi(funzione, volte):
 
 def banco(mondo, volte=5, scrivi=print):
     """
-    Le misure del motore sul mondo dato: le aperture delle quattro porte, a freddo; le ricerche pronte e i
+    Le misure del motore sul mondo dato: le aperture delle quattro porte, a freddo; i preset di serie e i
     filtri a mano, a freddo e a caldo; tutti gli ordini, a caldo; il costo di una riga. Restituisce un
     dizionario dal nome della misura alla mediana, al peggiore e alle righe trovate, e il più lento dei
     ricalcoli a caldo e delle aperture.
@@ -170,14 +172,14 @@ def banco(mondo, volte=5, scrivi=print):
 
     scrivi("Le aperture delle porte, a freddo: una memoria nuova a ogni prova.")
     for porta in mercato.PORTE:
-        filtri = mercato.stato_predefinito(porta).filtri
+        filtri = mercato.stato_di_serie(porta).attuali
         misura(f"apertura di {porta}", lambda f=filtri: (testi.situazione(mondo), ricalcolo(mondo, f, mercato.Memoria(mondo)))[1])
-    scrivi("Le ricerche pronte, a freddo e a caldo.")
+    scrivi("I preset di serie, che erano le ricerche pronte, a freddo e a caldo.")
     memoria = mercato.Memoria(mondo)
-    prove = [(nome, mercato.filtri_della_pronta(chiave)) for chiave, nome in mercato.PRONTE[1:]]
+    prove = [(nome, mercato.filtri_di_serie(chiave)) for chiave, nome in mercato.PRESET_DI_SERIE]
     prove += [(nome, mercato.Filtri(**campi)) for nome, campi in FILTRI_A_MANO]
     for posto, (nome, filtri) in enumerate(prove):
-        if posto == len(mercato.PRONTE) - 1:
+        if posto == len(mercato.PRESET_DI_SERIE):
             scrivi("I filtri a mano, a freddo e a caldo.")
         misura(f"{nome}, a freddo", lambda f=filtri: ricalcolo(mondo, f, mercato.Memoria(mondo)), max(1, volte // 2))
         misura(f"{nome}, a caldo", lambda f=filtri: ricalcolo(mondo, f, memoria))

@@ -31,11 +31,22 @@ soltanto il valore di riferimento, vanno in fondo invece di costare sempre il 10
 limite, come un libero coi mesi di contratto, resta nell'elenco in modo dichiarato, e Filtri attivi lo dice,
 come dice chi va in fondo anche negli ordini per stipendio e per mesi di contratto. È di Gabriele Battaglia
 (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le scelte di Gabriele dopo la prova del prototipo, i preset dei filtri: i suoi, con un nome e
+un numero che non cambia; le ricerche pronte diventano i dodici preset di serie, che non si cancellano, e Torna ai tuoi
+filtri lascia il posto alla voce Filtri attuali, non salvati, in cima alla casella; ogni porta d'ingresso ricorda la
+voce scelta e i filtri attuali, e Assumi apre sempre sugli allenatori liberi. Il nome, il salvataggio con la
+sostituzione, la rinomina, l'eliminazione e lo spostamento dei preset stanno qui, e passano nel mondo, che li salva
+nello stesso formato 10. I campi dei filtri si dividono in tre gruppi, uno per scheda della finestra. La scrittura
+resta severa, e la lettura diventa indulgente: preset e porte si leggono separati, un preset non si toglie ma si
+ripara, e quello che non si legge torna ai filtri di serie con un avviso, che l'archivio scrive nel registro degli
+errori col dato originale, invece di far rifiutare il mondo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import copy
 import json
 import math
+import unicodedata
 from collections import namedtuple
 from dataclasses import dataclass, field, fields
 
@@ -265,10 +276,15 @@ class Filtri:
 
 
 _PREDEFINITI = Filtri()
-# I campi di Altri filtri, nell'ordine in cui Filtri attivi li scrive.
-CAMPI_ALTRI = ("classe_peggiore", "eta_minima", "regione", "provincia", "comune", "polisportiva", "tratti", "indole", "valore_minimo", "stipendio_massimo",
-               "mesi_contratto_massimi", "senza_acciacchi", "solo_ritirati_che_allenano", "solo_nuovi", "comprendi_usciti", "condizioni",
-               "tipo_allenatore", "visus", "posto_attuale", "stipendio_capo_massimo", "senza_prelazione_altrui")
+# I campi dei filtri in tre gruppi, uno per scheda della finestra, nell'ordine dei controlli: la scheda Filtri, coi
+# controlli più usati e, accanto ai loro opposti, la classe peggiore e l'età minima; Altri filtri; i Filtri degli
+# allenatori. Insieme sono tutti i campi, ciascuno una volta sola; le linguette delle ultime due schede dicono quanti
+# dei loro sono impostati, e Azzera questi filtri li rimette a nessun filtro.
+CAMPI_FILTRI = ("nome", "allenatori", "liberi", "in_vendita", "del_computer", "tuoi", "ritirati", "sesso", "classe_migliore", "classe_peggiore",
+                "eta_massima", "eta_minima", "costo_massimo", "disponibili_oggi", "ordine", "ordine_allenatori")
+CAMPI_ALTRI_FILTRI = ("regione", "provincia", "comune", "polisportiva", "tratti", "indole", "valore_minimo", "stipendio_massimo", "mesi_contratto_massimi",
+                      "senza_acciacchi", "solo_ritirati_che_allenano", "solo_nuovi", "comprendi_usciti", "condizioni")
+CAMPI_FILTRI_ALLENATORI = ("tipo_allenatore", "visus", "posto_attuale", "stipendio_capo_massimo", "senza_prelazione_altrui")
 # I campi che contano soltanto per i giocatori, e quelli che contano soltanto per gli allenatori: agli
 # altri non si applicano, e Filtri attivi dice che non contano.
 CAMPI_SOLO_GIOCATORI = ("in_vendita", "ritirati", "costo_massimo", "disponibili_oggi", "tratti", "indole", "valore_minimo", "stipendio_massimo",
@@ -289,10 +305,10 @@ def impostato(filtri, campo):
     return valore != getattr(_PREDEFINITI, campo)
 
 
-def quanti_altri_filtri(filtri):
-    """Quanti filtri di Altri filtri sono impostati, per l'etichetta del pulsante: ogni tratto e ogni condizione contano uno."""
+def quanti_impostati(filtri, campi):
+    """Quanti filtri del gruppo di campi sono impostati, per la linguetta della sua scheda: ogni tratto e ogni condizione contano uno."""
     quanti = 0
-    for campo in CAMPI_ALTRI:
+    for campo in campi:
         if campo in ("tratti", "condizioni"):
             quanti += len(getattr(filtri, campo))
         elif impostato(filtri, campo):
@@ -300,10 +316,10 @@ def quanti_altri_filtri(filtri):
     return quanti
 
 
-def azzera_altri(filtri):
-    """I filtri con quelli di Altri filtri tutti a nessun filtro, come Azzera questi filtri; gli altri restano."""
+def azzera(filtri, campi):
+    """I filtri coi campi del gruppo a nessun filtro, come Azzera questi filtri: gli altri restano, e i filtri dati non cambiano."""
     nuovi = filtri.copia()
-    for campo in CAMPI_ALTRI:
+    for campo in campi:
         setattr(nuovi, campo, copy.deepcopy(getattr(_PREDEFINITI, campo)))
     return nuovi
 
@@ -421,10 +437,10 @@ def restano(filtri, attiva=None):
     return trovati
 
 
-# Le ricerche pronte: ognuna imposta le caselle, i filtri, l'ordine e il nome, e azzera tutto il resto.
-TORNA_AI_TUOI = "torna_ai_tuoi"
-PRONTE = (
-    (TORNA_AI_TUOI, "Torna ai tuoi filtri"),
+# I preset di serie: le ricerche pronte della proposta, nella casella dei preset dopo quelli di Gabriele, e non si
+# cancellano. Ognuno imposta le caselle, i filtri, l'ordine e il nome, e tutto il resto a nessun filtro. Torna ai tuoi
+# filtri, la tredicesima ricerca pronta, lascia il posto alla voce Filtri attuali, non salvati, in cima alla casella.
+PRESET_DI_SERIE = (
     ("mercato", "Mercato: liberi e in vendita da altri, dal valore più alto"),
     ("tutti_in_attivita", "Tutti in attività, senza filtri, per numero"),
     ("piu_forti", "I più forti in attività, dal valore più alto"),
@@ -440,7 +456,7 @@ PRONTE = (
 )
 _IN_ATTIVITA = {"liberi": True, "in_vendita": True, "del_computer": True, "tuoi": True}
 _STAFF_IMPIEGATO = {"allenatori": True, "del_computer": True, "tuoi": True, "ordine_allenatori": "classe"}
-_FILTRI_DELLE_PRONTE = {
+_FILTRI_DI_SERIE = {
     "mercato": {"liberi": True, "in_vendita": True, "ordine": "valore_alto"},
     "tutti_in_attivita": {**_IN_ATTIVITA, "ordine": "numero"},
     "piu_forti": {**_IN_ATTIVITA, "ordine": "valore_alto"},
@@ -450,91 +466,295 @@ _FILTRI_DELLE_PRONTE = {
     "avversari_amichevole": {**_IN_ATTIVITA, "disponibili_oggi": True, "ordine": "classe"},
     "piu_titolati": {**_IN_ATTIVITA, "ordine": "punti_nazionali"},
     "allenatori_liberi": {"allenatori": True, "liberi": True, "ordine_allenatori": "classe"},
+    # I capi e gli assistenti migliori guardano soltanto chi ha quel posto: niente liberi, scelta di Gabriele.
     "capi_migliori": {**_STAFF_IMPIEGATO, "posto_attuale": staff.CAPO},
     "assistenti_migliori": {**_STAFF_IMPIEGATO, "posto_attuale": staff.ASSISTENTE},
     "nuovi_arrivati": {**_IN_ATTIVITA, "solo_nuovi": True, "ordine": "valore_alto"},
 }
-# Le porte d'ingresso della finestra, ciascuna con la sua ricerca pronta: Ctrl+K, Ctrl+Maiusc+G, che vale
-# anche per Assumi dello staff, Ctrl+F e Ctrl+O.
+# I filtri che prende un preset di Gabriele che non si legge: quelli di Tutti in attività, senza filtri.
+SERIE_DEI_FILTRI_ILLEGGIBILI = "tutti_in_attivita"
+# Le porte d'ingresso della finestra, ciascuna col suo preset di serie: Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O, coi
+# nomi per esteso degli avvisi del registro. Assumi dello staff non è una porta: apre sempre sugli allenatori liberi,
+# filtri_di_serie("allenatori_liberi"), col posto già scelto, e non ricorda niente.
 PORTE = ("mercato", "allenatori", "ricerca", "amichevole")
-PRONTA_DELLA_PORTA = {"mercato": "mercato", "allenatori": "allenatori_liberi", "ricerca": "tutti_in_attivita", "amichevole": "avversari_amichevole"}
+PRESET_DELLA_PORTA = {"mercato": "mercato", "allenatori": "allenatori_liberi", "ricerca": "tutti_in_attivita", "amichevole": "avversari_amichevole"}
+NOMI_DELLE_PORTE = {"mercato": "Mercato, Ctrl+K", "allenatori": "Mercato degli allenatori, Ctrl+Maiusc+G", "ricerca": "Cerca giocatori, Ctrl+F",
+                    "amichevole": "Amichevole, Ctrl+O"}
+# Le due voci della casella che non sono preset: in cima i filtri fatti a mano, in fondo Salva filtri, che si apre
+# soltanto con Invio. Le voci della casella, coi loro tipi: la scelta è None per le due voci, il numero per un preset
+# di Gabriele, la chiave per un preset di serie.
+NOME_DEI_FILTRI_ATTUALI = "Filtri attuali, non salvati"
+NOME_DI_SALVA_FILTRI = "Salva filtri..."
+VOCE_ATTUALI = "attuali"
+VOCE_TUA = "tua"
+VOCE_DI_SERIE = "di_serie"
+VOCE_SALVA = "salva"
+Voce = namedtuple("Voce", "tipo scelta nome")
+# Il nome di un preset di Gabriele: da 1 a 50 caratteri, senza gli spazi in testa e in coda.
+LUNGHEZZA_MASSIMA_DEL_NOME = 50
+_NOMI_RISERVATI = frozenset(nome.casefold() for nome in (NOME_DEI_FILTRI_ATTUALI, NOME_DI_SALVA_FILTRI, *dict(PRESET_DI_SERIE).values()))
 
 
-def nome_della_pronta(chiave):
-    return dict(PRONTE)[chiave]
+def nome_del_preset_di_serie(chiave):
+    return dict(PRESET_DI_SERIE)[chiave]
 
 
-def filtri_della_pronta(chiave):
-    """I filtri di una ricerca pronta, tutto il resto a nessun filtro; KeyError per Torna ai tuoi filtri, che non ne ha di suoi."""
-    return Filtri(**copy.deepcopy(_FILTRI_DELLE_PRONTE[chiave]))
+def filtri_di_serie(chiave):
+    """I filtri di un preset di serie, tutto il resto a nessun filtro; KeyError per una chiave che non c'è."""
+    return Filtri(**copy.deepcopy(_FILTRI_DI_SERIE[chiave]))
+
+
+@dataclass
+class Preset:
+    """Un preset di Gabriele: il numero, che non cambia mai ed è quello che le porte ricordano; il nome della casella; i filtri."""
+    numero: int
+    nome: str
+    filtri: Filtri
 
 
 @dataclass
 class StatoDellaPorta:
     """
-    Lo stato dei filtri di una porta d'ingresso, che il mondo ricorda: i filtri di adesso; la ricerca pronta
-    da cui vengono, None se li hai fatti a mano; e gli ultimi filtri fatti a mano prima delle ricerche
-    pronte, None se non ce ne sono, che Torna ai tuoi filtri rimette.
+    Quello che una porta d'ingresso ricorda della finestra: la voce della casella scelta, None per Filtri attuali, non
+    salvati, la chiave di un preset di serie o il numero di un preset di Gabriele; e i filtri attuali, quelli fatti a
+    mano, che la voce in cima alla casella tiene anche mentre si scorrono i preset.
     """
-    filtri: Filtri
-    pronta: str | None = None
-    a_mano: Filtri | None = None
+    scelta: str | int | None
+    attuali: Filtri
 
     def copia(self):
         return copy.deepcopy(self)
 
 
-def stato_predefinito(porta):
-    """Lo stato di una porta mai usata, e quello di un mondo convertito: i filtri della sua ricerca pronta."""
-    pronta = PRONTA_DELLA_PORTA[porta]
-    return StatoDellaPorta(filtri_della_pronta(pronta), pronta)
+@dataclass
+class FiltriDiRicerca:
+    """
+    I filtri della finestra Mercato e ricerca che il mondo ricorda e salva: i preset di Gabriele, nell'ordine della
+    casella; il numero del prossimo preset, che non torna mai indietro, così il numero di un preset eliminato non passa
+    a un altro, e una porta che lo ricordava non riapre il preset sbagliato; lo stato di ogni porta d'ingresso. Col
+    magnate di D35, nel formato 11, ogni magnate avrà il suo.
+    """
+    preset: list = field(default_factory=list)
+    prossimo_preset: int = 1
+    porte: dict = field(default_factory=dict)
+
+    def copia(self):
+        return copy.deepcopy(self)
+
+
+def stato_di_serie(porta):
+    """Lo stato di una porta mai usata, e di un mondo che arriva dal formato 9: il suo preset di serie, coi suoi filtri come filtri attuali."""
+    chiave = PRESET_DELLA_PORTA[porta]
+    return StatoDellaPorta(chiave, filtri_di_serie(chiave))
+
+
+def filtri_di_ricerca_di_serie():
+    """I filtri di ricerca di un mondo nuovo: nessun preset, il primo col numero 1, e ogni porta sul suo preset di serie."""
+    return FiltriDiRicerca([], 1, {porta: stato_di_serie(porta) for porta in PORTE})
+
+
+def filtri_di_ricerca_del_mondo(mondo):
+    """
+    Una copia dei filtri di ricerca del mondo, che la finestra cambia senza toccarlo: preset e porte passano nel mondo
+    con ricorda_i_preset e ricorda_la_porta. Il mondo li tiene a None finché non servono, e allora valgono quelli di serie.
+    """
+    filtri_di_ricerca = mondo.filtri_di_ricerca
+    return filtri_di_ricerca.copia() if filtri_di_ricerca is not None else filtri_di_ricerca_di_serie()
 
 
 def stato_della_porta(mondo, porta):
-    """Una copia dello stato della porta che il mondo ricorda, o di quello predefinito: la finestra la cambia senza toccare il mondo."""
-    stato = mondo.filtri_di_ricerca.get(porta)
-    return stato.copia() if stato is not None else stato_predefinito(porta)
+    """Una copia dello stato della porta che il mondo ricorda, o di quello di serie; KeyError per una porta che non esiste."""
+    if porta not in PORTE:
+        raise KeyError(porta)
+    filtri_di_ricerca = mondo.filtri_di_ricerca
+    return filtri_di_ricerca.porte[porta].copia() if filtri_di_ricerca is not None else stato_di_serie(porta)
+
+
+def _numero_di_preset(valore):
+    """Vero per il numero di un preset di Gabriele: un intero da 1 in su, e non vero o falso, che per Python sono 1 e 0."""
+    return isinstance(valore, int) and not isinstance(valore, bool) and valore >= 1
+
+
+def preset_col_numero(filtri_di_ricerca, numero):
+    """Il preset di Gabriele con quel numero, o None."""
+    if not _numero_di_preset(numero):
+        return None
+    return next((p for p in filtri_di_ricerca.preset if p.numero == numero), None)
+
+
+def preset_col_nome(filtri_di_ricerca, nome):
+    """Il preset di Gabriele con quel nome, senza badare alle maiuscole né agli spazi in testa e in coda, o None."""
+    cercato = nome.strip().casefold()
+    return next((p for p in filtri_di_ricerca.preset if p.nome.casefold() == cercato), None)
+
+
+def filtri_della_voce(filtri_di_ricerca, scelta, attuali):
+    """
+    I filtri di una voce della casella, in una copia: i filtri attuali per la voce in cima, scelta None; quelli del
+    preset di serie della chiave, o del preset di Gabriele del numero. È anche così che una porta riapre la finestra,
+    con la scelta e i filtri attuali del suo stato. KeyError per un preset che non c'è.
+    """
+    if scelta is None:
+        return attuali.copia()
+    if _numero_di_preset(scelta):
+        preset = preset_col_numero(filtri_di_ricerca, scelta)
+        if preset is None:
+            raise KeyError(scelta)
+        return preset.filtri.copia()
+    return filtri_di_serie(scelta)
+
+
+def voci_della_casella(filtri_di_ricerca):
+    """Le voci della casella dei preset, in ordine: Filtri attuali, non salvati; i preset di Gabriele; i preset di serie; Salva filtri."""
+    return [Voce(VOCE_ATTUALI, None, NOME_DEI_FILTRI_ATTUALI), *(Voce(VOCE_TUA, p.numero, p.nome) for p in filtri_di_ricerca.preset),
+            *(Voce(VOCE_DI_SERIE, chiave, nome) for chiave, nome in PRESET_DI_SERIE), Voce(VOCE_SALVA, None, NOME_DI_SALVA_FILTRI)]
+
+
+def posto_della_scelta(voci, scelta):
+    """Il posto nelle voci della casella della voce scelta: 0 per Filtri attuali, scelta None; None per un preset che fra le voci non c'è."""
+    tipo = VOCE_ATTUALI if scelta is None else VOCE_TUA if _numero_di_preset(scelta) else VOCE_DI_SERIE
+    return next((posto for posto, voce in enumerate(voci) if voce.tipo == tipo and voce.scelta == scelta), None)
+
+
+def _con_caratteri_di_controllo(testo):
+    """Vero se il testo ha un a capo, una tabulazione o un altro carattere di controllo, che nella casella non si leggerebbe."""
+    return any(unicodedata.category(c) in ("Cc", "Zl", "Zp") for c in testo)
+
+
+def problema_del_nome(filtri_di_ricerca, nome, numero=None):
+    """
+    Perché il nome non va per un preset di Gabriele, o None se va. Conta senza gli spazi in testa e in coda: da 1 a 50
+    caratteri, senza a capo, tabulazioni o altri caratteri di controllo, e, senza badare alle maiuscole, diverso dalle
+    voci di serie della casella, cioè i preset di serie, Filtri attuali, non salvati e Salva filtri. Il nome di un tuo
+    preset, quando si salva, non è un problema, perché Salva filtri chiede se sostituirne i filtri; lo è quando si
+    rinomina il preset del numero dato con il nome di un altro dei tuoi.
+    """
+    pulito = nome.strip()
+    if not 1 <= len(pulito) <= LUNGHEZZA_MASSIMA_DEL_NOME:
+        return f"Il nome del preset deve avere da 1 a {LUNGHEZZA_MASSIMA_DEL_NOME} caratteri."
+    if _con_caratteri_di_controllo(pulito):
+        return "Il nome del preset non può avere a capo, tabulazioni o altri caratteri di controllo."
+    if pulito.casefold() in _NOMI_RISERVATI:
+        return f"{pulito} è il nome di una voce di serie della casella dei preset: se ne sceglie un altro."
+    if numero is not None:
+        altro = preset_col_nome(filtri_di_ricerca, pulito)
+        if altro is not None and altro.numero != numero:
+            return f"Esiste già un preset che si chiama {altro.nome}."
+    return None
+
+
+def _filtri_dopo_il_giro(filtri):
+    """I filtri dopo il giro del salvataggio, nel JSON e nei controlli della lettura: quello che si scrive deve rileggersi. ValueError se non va."""
+    try:
+        dati = json.loads(json.dumps(filtri_a_dizionario(filtri)))
+    except (TypeError, ValueError, AttributeError) as e:
+        raise ValueError(f"I filtri non si possono scrivere: {e}") from e
+    problema = problema_dei_filtri(dati)
+    if problema is not None:
+        raise ValueError(f"I filtri non sono validi: {problema}")
+    return filtri_da_dizionario(dati)
+
+
+def _preset_dal_numero(filtri_di_ricerca, numero):
+    preset = preset_col_numero(filtri_di_ricerca, numero)
+    if preset is None:
+        raise KeyError(numero)
+    return preset
+
+
+def salva_preset(filtri_di_ricerca, nome, filtri):
+    """
+    Salva i filtri come preset di Gabriele, nei filtri di ricerca della finestra. Se un tuo preset ha già quel nome,
+    senza badare alle maiuscole, ne sostituisce i filtri, e quel preset tiene nome, posto e numero: Salva filtri lo ha
+    già chiesto, con il No già scelto. Altrimenti un preset nuovo, in fondo ai tuoi, col prossimo numero. Restituisce il
+    preset e vero se ha sostituito. ValueError, col perché, se il nome non va o se i filtri non si rileggerebbero.
+    """
+    problema = problema_del_nome(filtri_di_ricerca, nome)
+    if problema is not None:
+        raise ValueError(problema)
+    salvati = _filtri_dopo_il_giro(filtri)
+    esistente = preset_col_nome(filtri_di_ricerca, nome)
+    if esistente is not None:
+        esistente.filtri = salvati
+        return esistente, True
+    preset = Preset(filtri_di_ricerca.prossimo_preset, nome.strip(), salvati)
+    filtri_di_ricerca.prossimo_preset += 1
+    filtri_di_ricerca.preset.append(preset)
+    return preset, False
+
+
+def rinomina_preset(filtri_di_ricerca, numero, nome):
+    """Il preset del numero prende il nome nuovo, e tiene posto, numero e filtri; KeyError se non c'è, ValueError, col perché, se il nome non va."""
+    preset = _preset_dal_numero(filtri_di_ricerca, numero)
+    problema = problema_del_nome(filtri_di_ricerca, nome, numero)
+    if problema is not None:
+        raise ValueError(problema)
+    preset.nome = nome.strip()
+    return preset
+
+
+def elimina_preset(filtri_di_ricerca, numero):
+    """
+    Toglie il preset del numero, e lo restituisce; KeyError se non c'è. Le porte che lo riaprivano tornano al loro
+    preset di serie e tengono i filtri attuali; il suo numero non passa più a nessun altro.
+    """
+    preset = _preset_dal_numero(filtri_di_ricerca, numero)
+    filtri_di_ricerca.preset = [p for p in filtri_di_ricerca.preset if p is not preset]
+    for porta, stato in list(filtri_di_ricerca.porte.items()):
+        if _numero_di_preset(stato.scelta) and stato.scelta == numero:
+            filtri_di_ricerca.porte[porta] = StatoDellaPorta(PRESET_DELLA_PORTA[porta], stato.attuali)
+    return preset
+
+
+def sposta_preset(filtri_di_ricerca, numero, verso):
+    """Sposta il preset del numero di un posto, su con verso -1 e giù con 1; falso, e niente cambia, se è già al bordo. KeyError se non c'è."""
+    if verso not in (-1, 1):
+        raise ValueError(f"Un preset si sposta di un posto, su o giù, non di {verso!r}.")
+    preset = _preset_dal_numero(filtri_di_ricerca, numero)
+    posto = next(i for i, p in enumerate(filtri_di_ricerca.preset) if p is preset)
+    nuovo = posto + verso
+    if not 0 <= nuovo < len(filtri_di_ricerca.preset):
+        return False
+    elenco = filtri_di_ricerca.preset
+    elenco[posto], elenco[nuovo] = elenco[nuovo], elenco[posto]
+    return True
+
+
+def ricorda_i_preset(mondo, filtri_di_ricerca):
+    """
+    Il mondo ricorda i preset di Gabriele e il prossimo numero dai filtri di ricerca della finestra, dopo ogni
+    operazione sui preset, e li salva con sé; lo stato delle porte resta quello del mondo, salvo le porte che riaprivano
+    un preset che non c'è più, che tornano al loro preset di serie. Tutto fa prima il giro del salvataggio: ValueError,
+    col perché, se qualcosa non si rileggerebbe, e il mondo resta com'era.
+    """
+    nuovi = filtri_di_ricerca_del_mondo(mondo)
+    nuovi.preset = filtri_di_ricerca.preset
+    nuovi.prossimo_preset = filtri_di_ricerca.prossimo_preset
+    numeri = {getattr(p, "numero", None) for p in nuovi.preset}
+    for porta, stato in list(nuovi.porte.items()):
+        if _numero_di_preset(stato.scelta) and stato.scelta not in numeri:
+            nuovi.porte[porta] = StatoDellaPorta(PRESET_DELLA_PORTA[porta], stato.attuali)
+    mondo.filtri_di_ricerca = _giro_del_salvataggio(nuovi)
 
 
 def ricorda_la_porta(mondo, porta, stato):
     """
-    Il mondo ricorda lo stato della porta, che si salva con lui; KeyError per una porta che non esiste. Lo stato
-    fa prima il giro del salvataggio, e il mondo ricorda quello che ne torna: uno stato che la lettura
-    rifiuterebbe, come un sesso vuoto invece di None o un'età con la virgola, dà ValueError e il mondo resta
-    com'era. Dalla verifica del 24 ottobre 2026: prima entrava, si salvava, e al caricamento dopo il mondo
-    intero, file e copia, non si apriva più.
+    Il mondo ricorda lo stato della porta, alla chiusura della finestra, e lo salva con sé; KeyError per una porta che
+    non esiste. Lo stato fa prima il giro del salvataggio, e il mondo ricorda quello che ne torna: uno stato che la
+    lettura dovrebbe riparare, come un sesso vuoto invece di None, un'età con la virgola o un preset che non c'è, dà
+    ValueError, col perché, e il mondo resta com'era. Dalla verifica del 24 ottobre 2026: prima entrava, si salvava, e
+    al caricamento dopo il mondo intero, file e copia, non si apriva più.
     """
     if porta not in PORTE:
         raise KeyError(porta)
-    mondo.filtri_di_ricerca[porta] = _giro_del_salvataggio(stato, f"Filtri della porta {porta}")
+    nuovi = filtri_di_ricerca_del_mondo(mondo)
+    nuovi.porte[porta] = stato
+    mondo.filtri_di_ricerca = _giro_del_salvataggio(nuovi)
 
 
-def fatti_a_mano(filtri):
-    """Lo stato di filtri cambiati a mano: non vengono da una ricerca pronta, e Torna ai tuoi filtri sparisce."""
-    return StatoDellaPorta(filtri.copia())
-
-
-def con_la_pronta(stato, chiave):
-    """
-    Lo stato dopo una ricerca pronta. Torna ai tuoi filtri rimette gli ultimi fatti a mano; le altre ne
-    impostano i filtri e ricordano quelli fatti a mano che c'erano, o quelli ricordati prima, se i filtri di
-    adesso venivano già da una ricerca pronta. ValueError se Torna ai tuoi filtri non ha niente da rimettere.
-    """
-    if chiave == TORNA_AI_TUOI:
-        if stato.a_mano is None:
-            raise ValueError("Non ci sono filtri fatti a mano da rimettere.")
-        return StatoDellaPorta(stato.a_mano.copia())
-    a_mano = stato.filtri if stato.pronta is None else stato.a_mano
-    return StatoDellaPorta(filtri_della_pronta(chiave), chiave, a_mano.copia() if a_mano is not None else None)
-
-
-def pronte_disponibili(stato):
-    """Le ricerche pronte del menu, coppie di chiave e nome: Torna ai tuoi filtri soltanto dopo una ricerca pronta, se prima c'erano filtri fatti a mano."""
-    return [(chiave, nome) for chiave, nome in PRONTE if chiave != TORNA_AI_TUOI or stato.a_mano is not None]
-
-
-# Lo stato delle porte nel salvataggio, dal formato 10 dell'archivio: ogni campo dei filtri col suo controllo,
-# perché un salvataggio che non torna si rifiuta, come per ogni altra parte del mondo.
+# I filtri di ricerca nel salvataggio, dal formato 10 dell'archivio. Si scrivono severi: quello che si scrive deve
+# rileggersi uguale, senza riparazioni. Si leggono indulgenti, scelta di Gabriele del 24 ottobre 2026: quello che non si
+# legge torna ai filtri di serie, con un avviso nel registro degli errori, invece di far rifiutare il mondo.
 
 def _intero(valore, massimo=None):
     return isinstance(valore, int) and not isinstance(valore, bool) and valore >= 0 and (massimo is None or valore <= massimo)
@@ -586,61 +806,255 @@ def filtri_a_dizionario(filtri):
     return dati
 
 
-def filtri_da_dizionario(dati, chi):
-    """I filtri letti dal salvataggio, ogni campo controllato; ValueError, con chi davanti, se un campo manca, avanza o non va."""
-    if not isinstance(dati, dict) or set(dati) != set(_CONTROLLI_DEI_FILTRI):
-        raise ValueError(f"{chi}: i campi dei filtri non sono quelli di questa versione")
+def _unisci(parti):
+    # testi importa questo modulo: si legge al momento, come in sfide.
+    from testi import unisci
+    return unisci([str(parte) for parte in parti])
+
+
+def problema_dei_filtri(dati):
+    """
+    Perché i filtri letti dal salvataggio non vanno, o None se vanno: ci vogliono tutti i campi di questa versione, e
+    soltanto loro, ciascuno col suo controllo. È tutto o niente, regola di Gabriele: dei filtri che non vanno non si
+    tengono i campi buoni.
+    """
+    if not isinstance(dati, dict):
+        return "non sono un elenco di campi"
+    mancano = [campo for campo in _CONTROLLI_DEI_FILTRI if campo not in dati]
+    in_piu = [campo for campo in dati if campo not in _CONTROLLI_DEI_FILTRI]
+    if mancano or in_piu:
+        parti = []
+        if mancano:
+            parti.append(f"{'manca' if len(mancano) == 1 else 'mancano'} {_unisci(mancano)}")
+        if in_piu:
+            parti.append(f"{'avanza' if len(in_piu) == 1 else 'avanzano'} {_unisci(in_piu)}")
+        return f"i campi non sono quelli di questa versione: {_unisci(parti)}"
     for campo, controllo in _CONTROLLI_DEI_FILTRI.items():
         if not controllo(dati[campo]):
-            raise ValueError(f"{chi}: il campo {campo} dei filtri non è valido: {dati[campo]!r}")
+            return f"il campo {campo} ha un valore che non va, {dati[campo]!r}"
+    return None
+
+
+def filtri_da_dizionario(dati):
+    """I filtri letti dal salvataggio, ogni campo controllato; ValueError, col perché di problema_dei_filtri, se non vanno."""
+    problema = problema_dei_filtri(dati)
+    if problema is not None:
+        raise ValueError(f"I filtri non sono validi: {problema}")
     return Filtri(**{**dati, "tratti": dict(dati["tratti"]), "condizioni": tuple(tuple(condizione) for condizione in dati["condizioni"])})
 
 
-def stato_a_dizionario(stato):
-    return {"filtri": filtri_a_dizionario(stato.filtri), "pronta": stato.pronta, "a_mano": filtri_a_dizionario(stato.a_mano) if stato.a_mano is not None else None}
+def filtri_di_ricerca_a_dizionario(filtri_di_ricerca):
+    """I filtri di ricerca come dizionario del salvataggio JSON: i preset in ordine, il prossimo numero e le porte."""
+    return {
+        "preset": [{"numero": p.numero, "nome": p.nome, "filtri": filtri_a_dizionario(p.filtri)} for p in filtri_di_ricerca.preset],
+        "prossimo_preset": filtri_di_ricerca.prossimo_preset,
+        "porte": {porta: {"scelta": stato.scelta, "attuali": filtri_a_dizionario(stato.attuali)} for porta, stato in filtri_di_ricerca.porte.items()},
+    }
 
 
-def stato_da_dizionario(dati, chi):
-    """Lo stato di una porta letto dal salvataggio; ValueError se non va."""
-    if not isinstance(dati, dict) or set(dati) != {"filtri", "pronta", "a_mano"}:
-        raise ValueError(f"{chi}: lo stato dei filtri non è valido")
-    pronta = dati["pronta"]
-    # Prima il tipo: un elenco non si cerca fra le chiavi, e il messaggio sarebbe quello inglese di Python.
-    if pronta is not None and (not isinstance(pronta, str) or pronta not in _FILTRI_DELLE_PRONTE):
-        raise ValueError(f"{chi}: la ricerca pronta {pronta!r} non esiste")
-    a_mano = filtri_da_dizionario(dati["a_mano"], f"{chi}, filtri fatti a mano") if dati["a_mano"] is not None else None
-    return StatoDellaPorta(filtri_da_dizionario(dati["filtri"], chi), pronta, a_mano)
+# Un avviso della lettura: che cosa non va, che cosa fa la lettura, e il dato originale, che il registro scrive in JSON
+# perché, se serve, preset e filtri si possano ricostruire a mano.
+Avviso = namedtuple("Avviso", "problema rimedio originale")
 
 
-def _giro_del_salvataggio(stato, chi):
-    """Lo stato dopo il giro del salvataggio, nel JSON e nei controlli della lettura: quello che si scrive deve rileggersi. ValueError se non va."""
+def testo_per_il_registro(avviso):
+    """La riga del registro degli errori per un avviso della lettura, col dato originale in JSON."""
     try:
-        testo = json.dumps(stato_a_dizionario(stato))
-    except (TypeError, ValueError) as e:
-        raise ValueError(f"{chi}: lo stato dei filtri non si può scrivere: {e}") from e
-    return stato_da_dizionario(json.loads(testo), chi)
+        originale = json.dumps(avviso.originale, ensure_ascii=False)
+    except (TypeError, ValueError):
+        originale = repr(avviso.originale)
+    return f"Lettura del mondo, filtri di Mercato e ricerca. {avviso.problema} {avviso.rimedio} Il dato originale, in JSON: {originale}"
 
 
-def porte_a_dizionario(mondo):
+def _nome_riparato(grezzo, numero, usati):
     """
-    Lo stato di tutte le porte d'ingresso, per il salvataggio: quelle mai usate col loro stato predefinito. Ogni
-    stato fa il giro del salvataggio anche qui, per chi lo mettesse nel mondo senza ricorda_la_porta: con uno
-    che non va, ValueError, e archivio.salva lascia il salvataggio di prima com'era, invece di scriverne uno
-    che non si apre.
+    Il nome di un preset letto dal salvataggio, riparato se serve, e i perché della riparazione: senza un nome diventa
+    Preset e il suo numero; perde gli spazi in testa e in coda e i caratteri di controllo; si accorcia a 50 caratteri;
+    se lo usa già, senza badare alle maiuscole, un preset di prima o una voce di serie, prende un numero fra parentesi,
+    (2), (3), restando entro i 50 caratteri. usati sono i nomi già dati, in minuscolo per il confronto.
     """
-    return {porta: stato_a_dizionario(_giro_del_salvataggio(stato_della_porta(mondo, porta), f"Filtri della porta {porta}")) for porta in PORTE}
+    perche = []
+    nome = grezzo.strip() if isinstance(grezzo, str) else ""
+    if isinstance(grezzo, str) and nome and nome != grezzo:
+        perche.append("ha degli spazi in testa o in coda")
+    if _con_caratteri_di_controllo(nome):
+        nome = " ".join("".join(" " if unicodedata.category(c) in ("Cc", "Zl", "Zp") else c for c in nome).split())
+        perche.append("ha dei caratteri di controllo")
+    if not nome:
+        nome = f"Preset {numero}"
+        if grezzo is not None:
+            perche.append("non ha nessun carattere" if isinstance(grezzo, str) else "non è un testo")
+    if len(nome) > LUNGHEZZA_MASSIMA_DEL_NOME:
+        nome = nome[:LUNGHEZZA_MASSIMA_DEL_NOME].rstrip()
+        perche.append(f"supera i {LUNGHEZZA_MASSIMA_DEL_NOME} caratteri")
+    if nome.casefold() in usati:
+        volta = 2
+        while True:
+            coda = f" ({volta})"
+            candidato = nome[:LUNGHEZZA_MASSIMA_DEL_NOME - len(coda)].rstrip() + coda
+            if candidato.casefold() not in usati:
+                break
+            volta += 1
+        nome = candidato
+        perche.append("lo usa già un'altra voce della casella")
+    return nome, perche
 
 
-def porte_predefinite():
-    """Lo stato predefinito di tutte le porte, nella forma del salvataggio; nel formato 10 è anche quello della costante storica con cui l'archivio converte un mondo del 9."""
-    return {porta: stato_a_dizionario(stato_predefinito(porta)) for porta in PORTE}
+def _preset_letti(voci, prossimo, avvisi):
+    """
+    I preset di Gabriele letti dal salvataggio, e il prossimo numero. Un preset non si toglie mai, salvo una voce che
+    non è nemmeno un dizionario: senza un numero valido, o con quello di un preset di prima, ne riceve uno nuovo; il nome
+    si ripara con _nome_riparato; dei filtri che non si leggono diventano quelli di Tutti in attività, senza filtri. Il
+    prossimo numero è almeno il più alto più uno.
+    """
+    if not isinstance(voci, list):
+        avvisi.append(Avviso("I tuoi preset dei filtri non si leggono.", "La casella dei preset riparte senza.", voci))
+        voci = []
+    letti = []
+    for posto, voce in enumerate(voci, 1):
+        if isinstance(voce, dict):
+            letti.append((posto, voce))
+        else:
+            avvisi.append(Avviso(f"Il preset al posto {posto} della casella non si legge.", "Si toglie.", voce))
+    usati = set()
+    numeri = []
+    for _posto, voce in letti:
+        numero = voce.get("numero")
+        buono = _numero_di_preset(numero) and numero not in usati
+        numeri.append(numero if buono else None)
+        if buono:
+            usati.add(numero)
+    prossimo_valido = _numero_di_preset(prossimo)
+    nuovo = max(prossimo if prossimo_valido else 1, max(usati, default=0) + 1)
+    nomi_usati = set(_NOMI_RISERVATI)
+    preset = []
+    for (posto, voce), numero in zip(letti, numeri, strict=True):
+        if numero is None:
+            numero, nuovo = nuovo, nuovo + 1
+            vecchio = voce.get("numero")
+            perche = f"ha lo stesso numero di un preset di prima, {vecchio}" if _numero_di_preset(vecchio) else f"non ha un numero valido, {vecchio!r}"
+            avvisi.append(Avviso(f"Il preset al posto {posto} della casella {perche}.", f"Riceve il numero {numero}.", voce))
+        grezzo = voce.get("nome")
+        nome, perche = _nome_riparato(grezzo, numero, nomi_usati)
+        nomi_usati.add(nome.casefold())
+        if grezzo is None:
+            avvisi.append(Avviso(f"Al preset numero {numero} manca il nome.", f"Si chiama {nome}.", voce))
+        elif perche:
+            avvisi.append(Avviso(f"Il nome del preset numero {numero}, {grezzo!r}, {_unisci(perche)}.", f"Diventa {nome}.", voce))
+        problema = problema_dei_filtri(voce.get("filtri"))
+        if problema is None:
+            filtri = filtri_da_dizionario(voce["filtri"])
+        else:
+            filtri = filtri_di_serie(SERIE_DEI_FILTRI_ILLEGGIBILI)
+            avvisi.append(Avviso(f"I filtri del preset {nome}, numero {numero}, non sono validi: {problema}.",
+                                 f"Diventano quelli del preset di serie {nome_del_preset_di_serie(SERIE_DEI_FILTRI_ILLEGGIBILI)}.", voce))
+        in_piu = [chiave for chiave in voce if chiave not in ("numero", "nome", "filtri")]
+        if in_piu:
+            avvisi.append(Avviso(f"Il preset {nome}, numero {numero}, ha dei dati che questa versione non conosce: {_unisci(in_piu)}.", "Si tolgono.", voce))
+        preset.append(Preset(numero, nome, filtri))
+    if not prossimo_valido:
+        avvisi.append(Avviso(f"Il numero del prossimo preset non è valido, {prossimo!r}.", f"Diventa {nuovo}.", prossimo))
+    elif prossimo <= max(usati, default=0):
+        avvisi.append(Avviso(f"Il numero del prossimo preset, {prossimo}, è già di un preset.", f"Diventa {nuovo}.", prossimo))
+    return preset, nuovo
 
 
-def porte_da_dizionario(dati):
-    """Lo stato delle porte letto dal salvataggio, una per porta; ValueError se manca una porta, se ce n'è una di troppo o se uno stato non va."""
-    if not isinstance(dati, dict) or set(dati) != set(PORTE):
-        raise ValueError(f"Mondo: le porte dei filtri di ricerca non sono quelle attese: {sorted(dati) if isinstance(dati, dict) else dati!r}")
-    return {porta: stato_da_dizionario(dati[porta], f"Filtri della porta {porta}") for porta in PORTE}
+_MANCA = object()
+
+
+def _porta_letta(porta, voce, numeri, avvisi):
+    """
+    Lo stato di una porta letto dal salvataggio: se non si legge, o se riapriva un preset che non c'è più, la porta
+    torna al suo preset di serie; dei filtri attuali che non si leggono diventano quelli del preset di serie della porta.
+    """
+    nome = NOMI_DELLE_PORTE[porta]
+    chiave = PRESET_DELLA_PORTA[porta]
+    rimedio = f"Torna al suo preset di serie, {nome_del_preset_di_serie(chiave)}."
+    if voce is _MANCA:
+        avvisi.append(Avviso(f"Manca lo stato della porta {nome}.", rimedio, None))
+        return stato_di_serie(porta)
+    if not isinstance(voce, dict):
+        avvisi.append(Avviso(f"Lo stato della porta {nome}, non si legge.", rimedio, voce))
+        return stato_di_serie(porta)
+    in_piu = [campo for campo in voce if campo not in ("scelta", "attuali")]
+    if in_piu:
+        avvisi.append(Avviso(f"Lo stato della porta {nome}, ha dei dati che questa versione non conosce: {_unisci(in_piu)}.", "Si tolgono.", voce))
+    scelta = voce.get("scelta", _MANCA)
+    if scelta is _MANCA:
+        avvisi.append(Avviso(f"La porta {nome}, non dice quale voce della casella riaprire.", rimedio, voce))
+        scelta = chiave
+    elif _numero_di_preset(scelta) and scelta not in numeri:
+        avvisi.append(Avviso(f"La porta {nome}, riapriva il preset numero {scelta}, che non c'è più.", rimedio, voce))
+        scelta = chiave
+    elif not (scelta is None or _numero_di_preset(scelta) or (isinstance(scelta, str) and scelta in _FILTRI_DI_SERIE)):
+        avvisi.append(Avviso(f"La porta {nome}, riapriva una voce della casella che non c'è, {scelta!r}.", rimedio, voce))
+        scelta = chiave
+    problema = problema_dei_filtri(voce.get("attuali"))
+    if problema is None:
+        return StatoDellaPorta(scelta, filtri_da_dizionario(voce["attuali"]))
+    if scelta is None:
+        scelta = chiave
+    avvisi.append(Avviso(f"I filtri attuali della porta {nome}, non sono validi: {problema}.",
+                         f"Diventano quelli del suo preset di serie, {nome_del_preset_di_serie(chiave)}.", voce))
+    return StatoDellaPorta(scelta, filtri_di_serie(chiave))
+
+
+def _porte_lette(dati, numeri, avvisi):
+    """Lo stato delle porte letto dal salvataggio, ognuna per sé: una porta che non si legge non tocca le altre, né i preset."""
+    if not isinstance(dati, dict):
+        avvisi.append(Avviso("Lo stato delle porte d'ingresso non si legge.", "Ogni porta torna al suo preset di serie.", dati))
+        return {porta: stato_di_serie(porta) for porta in PORTE}
+    in_piu = [porta for porta in dati if porta not in PORTE]
+    if in_piu:
+        avvisi.append(Avviso(f"Ci sono porte d'ingresso che questa versione non conosce: {_unisci(in_piu)}.", "Si tolgono.",
+                             {porta: dati[porta] for porta in in_piu}))
+    return {porta: _porta_letta(porta, dati.get(porta, _MANCA), numeri, avvisi) for porta in PORTE}
+
+
+def filtri_di_ricerca_da_dizionario(dati):
+    """
+    I filtri di ricerca letti dal salvataggio, e gli avvisi di quello che non si leggeva, nell'ordine in cui si sono
+    trovati. Non solleva mai eccezioni, scelta di Gabriele: quello che non si legge torna ai filtri di serie, e il mondo
+    si apre lo stesso. Preset e porte si leggono separati, così delle porte rovinate non tolgono i preset; un preset
+    non si toglie mai, salvo una voce che non è nemmeno un dizionario, e si ripara.
+    """
+    avvisi = []
+    if not isinstance(dati, dict):
+        avvisi.append(Avviso("I filtri e i preset della finestra Mercato e ricerca non si leggono.", "Tornano quelli di serie, senza i tuoi preset.", dati))
+        return filtri_di_ricerca_di_serie(), avvisi
+    in_piu = [chiave for chiave in dati if chiave not in ("preset", "prossimo_preset", "porte")]
+    if in_piu:
+        avvisi.append(Avviso(f"I filtri della finestra Mercato e ricerca hanno dei dati che questa versione non conosce: {_unisci(in_piu)}.", "Si tolgono.",
+                             {chiave: dati[chiave] for chiave in in_piu}))
+    preset, prossimo = _preset_letti(dati.get("preset"), dati.get("prossimo_preset"), avvisi)
+    porte = _porte_lette(dati.get("porte"), {p.numero for p in preset}, avvisi)
+    return FiltriDiRicerca(preset, prossimo, porte), avvisi
+
+
+def _giro_del_salvataggio(filtri_di_ricerca):
+    """
+    I filtri di ricerca dopo il giro del salvataggio, nel JSON e nella lettura: quello che si scrive deve rileggersi
+    senza nessuna riparazione. ValueError, col primo problema, se non va.
+    """
+    try:
+        testo = json.dumps(filtri_di_ricerca_a_dizionario(filtri_di_ricerca))
+    except (TypeError, ValueError, AttributeError) as e:
+        raise ValueError(f"I filtri della finestra Mercato e ricerca non si possono scrivere: {e}") from e
+    letti, avvisi = filtri_di_ricerca_da_dizionario(json.loads(testo))
+    if avvisi:
+        # Senza il punto finale, come gli altri errori del salvataggio, che archivio.salva continua.
+        raise ValueError(avvisi[0].problema.removesuffix("."))
+    return letti
+
+
+def filtri_di_ricerca_da_salvare(mondo):
+    """
+    I filtri di ricerca del mondo per il salvataggio, quelli di serie se il mondo non li ha. Fanno il giro del
+    salvataggio anche qui, per chi li mettesse nel mondo senza ricorda_i_preset e ricorda_la_porta: con qualcosa che non
+    si rileggerebbe, ValueError, e archivio.salva lascia il salvataggio di prima com'era, invece di scriverne uno da riparare.
+    """
+    filtri_di_ricerca = mondo.filtri_di_ricerca if mondo.filtri_di_ricerca is not None else filtri_di_ricerca_di_serie()
+    return filtri_di_ricerca_a_dizionario(_giro_del_salvataggio(filtri_di_ricerca))
 
 
 class Memoria:

@@ -55,6 +55,9 @@ giorno, idea di Gabriele, così al mercato restano sempre dei liberi da cercare 
 Dal 24 ottobre 2026, con la issue 8 e la decisione D36, il mondo tiene lo stato dei filtri della finestra
 unica Mercato e ricerca, uno per ogni porta d'ingresso, scelta di Gabriele: lo legge e lo scrive mercato.py,
 e col magnate di D35 andrà per magnate. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con i preset dei filtri scelti da Gabriele dopo la prova del prototipo, quello stato diventa un
+oggetto solo, i preset con le porte, che il mondo tiene a None finché la finestra non lo cambia. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -325,9 +328,9 @@ class Mondo:
         self.staff_appena_nato = False
         # L'ora vera dell'ultimo avanzamento, per la riserva dei nuovi allenatori all'utente; None fuori dal programma.
         self._ora_reale = None
-        # Dalla issue 8, D36, lo stato dei filtri della finestra Mercato e ricerca per ogni porta d'ingresso, come
-        # mercato.StatoDellaPorta: una porta che non c'è ha il suo stato predefinito, quello della sua ricerca pronta.
-        self.filtri_di_ricerca = {}
+        # Dalla issue 8, D36, i preset dei filtri della finestra Mercato e ricerca e lo stato di ogni porta d'ingresso,
+        # un mercato.FiltriDiRicerca; None finché non servono, e allora valgono quelli di serie.
+        self.filtri_di_ricerca = None
 
     # Probabilità, ricerche, diari.
 

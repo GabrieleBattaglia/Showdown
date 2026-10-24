@@ -75,6 +75,8 @@ stipendio e per mesi di contratto, oltre che per costo; le condizioni si scrivon
 punti, Ambizione, da 0 a 100: maggiore di 50; e nel prezzo sul valore di mercato un tesserato del computer
 non costa più il 100%, perché il suo prezzo vero è nascosto. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, coi campi dei filtri divisi in tre gruppi, uno per scheda della finestra, Filtri attivi li scrive
+nell'ordine di prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -1593,7 +1595,8 @@ def filtri_attivi(f, mondo):
     non_contano = dict(mercato.non_contano(f, attiva))
     restano = dict(mercato.restano(f, attiva))
     righe = [_chi_cercare(f)]
-    campi = ("nome", "sesso", "classe_migliore", "eta_massima", "costo_massimo", "disponibili_oggi", *mercato.CASELLE_SOLO_GIOCATORI, *mercato.CAMPI_ALTRI)
+    campi = ("nome", "sesso", "classe_migliore", "eta_massima", "costo_massimo", "disponibili_oggi", *mercato.CASELLE_SOLO_GIOCATORI, "classe_peggiore", "eta_minima",
+             *mercato.CAMPI_ALTRI_FILTRI, *mercato.CAMPI_FILTRI_ALLENATORI)
     for campo in campi:
         if campo in mercato.CASELLE_SOLO_GIOCATORI and not f.allenatori:
             continue

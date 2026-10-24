@@ -63,6 +63,8 @@ I blocchi avvengono soltanto sulle sponde: la paletta ferma la pallina contro la
 
 Lo schermo centrale dice quello che succede quasi sempre al tavolo: la pallina di Rossi batte sullo schermo e torna indietro, al posto di urta lo schermo e si ferma. Nella partita dal vivo, dopo l'urto, la pallina torna indietro rotolando piano verso chi l'ha tirata e si ferma da sola; l'arbitro fischia sempre all'urto, e a qualunque velocità di gioco, anche cambiata a metà punto, la recupera soltanto quando è ferma (issue 12). Gli esiti delle partite non cambiano.
 
+La finestra Mercato e ricerca ha i preset dei filtri, e il mondo li conserva nel formato 10: i tuoi, ciascuno col suo nome, le dodici ricerche pronte come preset di serie, che non si cancellano, e per ogni porta d'ingresso, Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O, l'ultima voce scelta coi filtri attuali, non salvati (issue 8). Un preset o dei filtri che non si leggono non fanno rifiutare il mondo: tornano ai filtri di serie, un preset si ripara invece di sparire, e il registro degli errori annota ogni riparazione col dato di prima.
+
 ## [1.94.6] - 2026-10-23
 
 Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.

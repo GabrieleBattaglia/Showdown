@@ -72,6 +72,14 @@ Con le verifiche dello stesso giorno lo stato che la migrazione dal 9 dà alle p
 10, come lo stipendio della 1.50.0, e non viene più dal mercato di oggi: quando i filtri cambieranno forma, col magnate,
 un mondo del formato 9 diventerà sempre un documento del formato 10 vero, che la migrazione seguente sa leggere.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le scelte di Gabriele dopo la prova del prototipo, il formato 10 cambia forma senza cambiare
+numero, perché nessun mondo vero lo ha ancora: conserva i preset dei filtri di Gabriele, col numero del prossimo, e per
+ogni porta la voce della casella scelta coi filtri attuali, non salvati. Dopo la migrazione dal 9 non c'è nessun
+preset, il prossimo ha il numero 1 e ogni porta sta sul suo preset di serie. La lettura di quel blocco non rifiuta più il mondo, scelta
+di Gabriele: quello che non si legge torna ai filtri di serie, un preset si ripara invece di sparire, e a mondo pronto
+ogni riparazione va nel registro degli errori, col dato originale in JSON. Col magnate di D35, nel formato 11, il
+blocco andrà dentro ogni magnate, e alla conversione al primo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
+5.5, UltraCode).
 """
 
 import contextlib
@@ -93,6 +101,7 @@ import economia
 import luoghi
 import mercato
 import percorsi
+import registro
 import staff
 import tratti
 import valore
@@ -267,8 +276,8 @@ def componi(mondo):
             # Dalla tappa 13, formato 8: gli allenatori, in ordine di numero, e il contatore.
             "allenatori": [a.a_dizionario() for _numero, a in sorted(mondo.allenatori.items())],
             "prossimo_allenatore": mondo.prossimo_allenatore,
-            # Dalla issue 8, formato 10: lo stato dei filtri di ogni porta d'ingresso della finestra Mercato e ricerca.
-            "filtri_di_ricerca": mercato.porte_a_dizionario(mondo),
+            # Dalla issue 8, formato 10: i preset dei filtri della finestra Mercato e ricerca e lo stato di ogni porta d'ingresso.
+            "filtri_di_ricerca": mercato.filtri_di_ricerca_da_salvare(mondo),
         },
     }
 
@@ -582,7 +591,7 @@ def _dal_formato_8(documento):
     documento["formato"] = 9
 
 
-# I filtri del formato 10 a nessun filtro, e la ricerca pronta di ogni porta coi suoi filtri, costanti storiche del
+# I filtri del formato 10 a nessun filtro, e il preset di serie di ogni porta coi suoi filtri, costanti storiche del
 # 24 ottobre 2026: la migrazione dal 9 non legge il mercato di oggi, che col magnate di D35 cambierà forma.
 FILTRI_VUOTI_DEL_FORMATO_10 = {
     "allenatori": False, "liberi": False, "in_vendita": False, "del_computer": False, "tuoi": False, "ritirati": False, "nome": "", "sesso": None,
@@ -601,18 +610,23 @@ PORTE_DEL_FORMATO_10 = {
 }
 
 
-def porte_predefinite_del_formato_10():
-    """Lo stato predefinito di ogni porta nel formato 10, nella forma del salvataggio, da quelle costanti: ogni volta un documento nuovo."""
-    return {porta: {"filtri": {**FILTRI_VUOTI_DEL_FORMATO_10, "tratti": {}, "condizioni": [], **filtri}, "pronta": pronta, "a_mano": None}
-            for porta, (pronta, filtri) in PORTE_DEL_FORMATO_10.items()}
+def filtri_di_ricerca_del_formato_10():
+    """
+    I filtri della finestra Mercato e ricerca di un mondo che arriva dal formato 9, nella forma del salvataggio, da quelle
+    costanti: nessun preset, il prossimo col numero 1, e ogni porta sul suo preset di serie, coi filtri di quel preset
+    come filtri attuali. Ogni volta un documento nuovo.
+    """
+    porte = {porta: {"scelta": scelta, "attuali": {**FILTRI_VUOTI_DEL_FORMATO_10, "tratti": {}, "condizioni": [], **filtri}}
+             for porta, (scelta, filtri) in PORTE_DEL_FORMATO_10.items()}
+    return {"preset": [], "prossimo_preset": 1, "porte": porte}
 
 
 def _dal_formato_9(documento):
     """
-    Dal formato 9 al 10, con la issue 8 e la decisione D36: ogni porta d'ingresso della finestra Mercato e ricerca
-    riceve il suo stato predefinito, quello della sua ricerca pronta, come se la finestra non si fosse mai aperta.
+    Dal formato 9 al 10, con la issue 8 e la decisione D36: nessun preset dei filtri, e ogni porta d'ingresso della
+    finestra Mercato e ricerca sul suo preset di serie, come se la finestra non si fosse mai aperta.
     """
-    documento["mondo"].setdefault("filtri_di_ricerca", porte_predefinite_del_formato_10())
+    documento["mondo"].setdefault("filtri_di_ricerca", filtri_di_ricerca_del_formato_10())
     documento["formato"] = 10
 
 
@@ -678,8 +692,9 @@ def costruisci(documento, mondo):
         for g in giocatori.values():
             if g.classe_migliore == CLASSE_MIGLIORE_DA_CALCOLARE:
                 g.classe_migliore = modulo_classe.punteggio(g)
-        # Dalla issue 8, formato 10: i filtri delle porte della finestra Mercato e ricerca, ogni campo controllato.
-        filtri_di_ricerca = mercato.porte_da_dizionario(dati["filtri_di_ricerca"])
+        # Dalla issue 8, formato 10: i preset e le porte della finestra Mercato e ricerca. È la sola lettura indulgente,
+        # scelta di Gabriele del 24 ottobre 2026: quello che non si legge torna ai filtri di serie, con un avviso.
+        filtri_di_ricerca, avvisi_dei_filtri = mercato.filtri_di_ricerca_da_dizionario(dati.get("filtri_di_ricerca"))
     except KeyError as e:
         raise ErroreSalvataggio(f"manca il dato {e}") from e
     except (TypeError, ValueError, AttributeError) as e:
@@ -700,6 +715,9 @@ def costruisci(documento, mondo):
     if da_far_nascere:
         mondo.fai_nascere_lo_staff()
     mondo.aggiorna_fattori_staff()
+    # A mondo pronto, e soltanto per il salvataggio che si usa davvero, ogni riparazione dei filtri va nel registro.
+    for avviso in avvisi_dei_filtri:
+        registro.scrivi(mercato.testo_per_il_registro(avviso))
 
 
 def _allenatori_da_json(valore, giocatori):

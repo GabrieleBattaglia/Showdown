@@ -12,9 +12,15 @@ predefinito, e il salvataggio con uno stato che non va, che si rifiuta. Con le v
 mondo che non ricorda e non scrive uno stato che poi rifiuterebbe, e ogni stato che il motore produce che si salva
 e si rilegge; la migrazione dal 9 con la sua costante storica; i tesserati del computer in fondo al prezzo sul
 valore di mercato; chi va in fondo negli ordini per stipendio e mesi di contratto, e chi resta coi limiti.
+Lo stesso giorno, coi preset dei filtri: i dodici preset di serie al posto delle ricerche pronte, i tre gruppi di campi, la
+casella dei preset, le regole del nome, il salvataggio con la sostituzione, la rinomina, l'eliminazione e lo spostamento,
+il mondo che ricorda preset e porte; nel formato 10 nuovo il giro del salvataggio, la migrazione dal 9, e la lettura
+indulgente: i salvataggi rovinati che tornano ai filtri di serie con un avviso nel registro, il preset che si ripara
+invece di sparire, e una lettura che non solleva mai eccezioni e dà sempre qualcosa che si riscrive.
 """
 
 import copy
+import dataclasses
 import datetime
 import gzip
 import json
@@ -28,6 +34,7 @@ import classe
 import economia
 import luoghi
 import mercato
+import registro
 import staff
 import testi
 from costanti import ANNO_SIMULAZIONE_GIORNI, FILE_MONDO, LIMITE_MOVIMENTI_PER_TICK
@@ -405,70 +412,185 @@ def test_chi_non_ha_il_dato_di_un_limite_resta_e_filtri_attivi_lo_dice(mondo):
         "Nell'ordine per costo va in fondo chi non ha un costo: i tesserati del computer, il cui prezzo vero è nascosto.")
 
 
-# Le ricerche pronte e le porte d'ingresso.
+# I preset di serie, i gruppi di campi, la casella e i preset di Gabriele.
 
-def test_le_tredici_ricerche_pronte(mondo):
-    assert len(mercato.PRONTE) == 13 and mercato.PRONTE[0][0] == mercato.TORNA_AI_TUOI
-    for chiave, _nome in mercato.PRONTE[1:]:
-        filtri = mercato.filtri_della_pronta(chiave)
+def test_i_dodici_preset_di_serie(mondo):
+    assert len(mercato.PRESET_DI_SERIE) == 12 and len(set(dict(mercato.PRESET_DI_SERIE).values())) == 12
+    for chiave, _nome in mercato.PRESET_DI_SERIE:
+        filtri = mercato.filtri_di_serie(chiave)
         assert mercato.caselle_che_contano(filtri), chiave
         assert mercato.contraddizioni(filtri) == [] and mercato.non_contano(filtri, mondo.miapolisportiva_attiva) == [], chiave
         assert filtri.ordine_scelto in dict(mercato.ORDINI_ALLENATORI if filtri.allenatori else mercato.ORDINI_GIOCATORI), chiave
         mercato.cerca(mondo, filtri)
-    assert mercato.filtri_della_pronta("mercato") == mercato.Filtri(liberi=True, in_vendita=True)
-    assert mercato.filtri_della_pronta("giovani_migliori").eta_massima == mercato.ETA_DEI_GIOVANI == 20
-    avversari = mercato.filtri_della_pronta("avversari_amichevole")
+    assert mercato.filtri_di_serie("mercato") == mercato.Filtri(liberi=True, in_vendita=True)
+    assert mercato.filtri_di_serie("giovani_migliori").eta_massima == mercato.ETA_DEI_GIOVANI == 20
+    avversari = mercato.filtri_di_serie("avversari_amichevole")
     assert avversari.disponibili_oggi and avversari.tuoi and avversari.ordine == "classe"
-    capi = mercato.cerca(mondo, mercato.filtri_della_pronta("capi_migliori"))
+    # I capi e gli assistenti migliori guardano soltanto chi ha quel posto, niente liberi.
+    capi = mercato.cerca(mondo, mercato.filtri_di_serie("capi_migliori"))
     assert [r.persona.numero for r in capi] == [_cpu(mondo).staff[0]]
+    assistenti = mercato.cerca(mondo, mercato.filtri_di_serie("assistenti_migliori"))
+    assert [r.persona.numero for r in assistenti] == [mondo.miapolisportiva_attiva.staff[1]]
+    # Torna ai tuoi filtri non c'è più: lo sostituisce la voce Filtri attuali, non salvati.
     with pytest.raises(KeyError):
-        mercato.filtri_della_pronta(mercato.TORNA_AI_TUOI)
+        mercato.filtri_di_serie("torna_ai_tuoi")
+    primo = mercato.filtri_di_serie("giovani_migliori")
+    primo.tratti["mancino"] = True
+    assert mercato.filtri_di_serie("giovani_migliori").tratti == {}
+    assert set(mercato.PRESET_DELLA_PORTA) == set(mercato.NOMI_DELLE_PORTE) == set(mercato.PORTE) == {"mercato", "allenatori", "ricerca", "amichevole"}
+    assert set(mercato.PRESET_DELLA_PORTA.values()) <= set(dict(mercato.PRESET_DI_SERIE))
 
 
-def test_torna_ai_tuoi_filtri_rimette_quelli_fatti_a_mano(mondo):
-    stato = mercato.stato_predefinito("ricerca")
-    assert stato.pronta == "tutti_in_attivita" and stato.a_mano is None
-    assert mercato.TORNA_AI_TUOI not in dict(mercato.pronte_disponibili(stato))
-    # Dalla pronta d'ingresso a un'altra non c'è niente fatto a mano da rimettere.
-    stato = mercato.con_la_pronta(stato, "piu_forti")
-    assert stato.a_mano is None and mercato.TORNA_AI_TUOI not in dict(mercato.pronte_disponibili(stato))
-    a_mano = mercato.Filtri(liberi=True, sesso="f", eta_massima=25)
-    stato = mercato.con_la_pronta(mercato.fatti_a_mano(a_mano), "mercato")
-    assert stato.filtri == mercato.filtri_della_pronta("mercato") and stato.a_mano == a_mano
-    stato = mercato.con_la_pronta(stato, "piu_titolati")
-    assert stato.a_mano == a_mano and mercato.pronte_disponibili(stato)[0] == (mercato.TORNA_AI_TUOI, "Torna ai tuoi filtri")
-    tornato = mercato.con_la_pronta(stato, mercato.TORNA_AI_TUOI)
-    assert tornato.filtri == a_mano and tornato.pronta is None and tornato.a_mano is None
-    with pytest.raises(ValueError):
-        mercato.con_la_pronta(tornato, mercato.TORNA_AI_TUOI)
-    a_mano.sesso = "m"
-    assert stato.a_mano.sesso == "f" and tornato.filtri.sesso == "f"
+def test_i_tre_gruppi_sono_tutti_i_campi_una_volta_sola():
+    gruppi = mercato.CAMPI_FILTRI + mercato.CAMPI_ALTRI_FILTRI + mercato.CAMPI_FILTRI_ALLENATORI
+    assert sorted(gruppi) == sorted(campo.name for campo in dataclasses.fields(mercato.Filtri)) and len(set(gruppi)) == len(gruppi)
+    assert set(mercato.CAMPI_FILTRI_ALLENATORI) == set(mercato.CAMPI_SOLO_ALLENATORI)
 
 
-def test_ogni_porta_d_ingresso_ha_il_suo_stato_nel_mondo(mondo):
-    assert mercato.PORTE == ("mercato", "allenatori", "ricerca", "amichevole")
-    for porta in mercato.PORTE:
-        stato = mercato.stato_della_porta(mondo, porta)
-        assert stato == mercato.stato_predefinito(porta) and stato.filtri == mercato.filtri_della_pronta(mercato.PRONTA_DELLA_PORTA[porta])
-    assert mercato.stato_della_porta(mondo, "allenatori").filtri.allenatori
-    cambiato = mercato.fatti_a_mano(mercato.Filtri(liberi=True, sesso="f"))
-    mercato.ricorda_la_porta(mondo, "mercato", cambiato)
-    cambiato.filtri.sesso = "m"
-    assert mercato.stato_della_porta(mondo, "mercato").filtri.sesso == "f"
-    assert mercato.stato_della_porta(mondo, "ricerca") == mercato.stato_predefinito("ricerca")
-    letto = mercato.stato_della_porta(mondo, "mercato")
-    letto.filtri.sesso = "m"
-    assert mondo.filtri_di_ricerca["mercato"].filtri.sesso == "f"
-    with pytest.raises(KeyError):
-        mercato.ricorda_la_porta(mondo, "altrove", cambiato)
-
-
-def test_altri_filtri_si_contano_e_si_azzerano():
+def test_i_filtri_di_un_gruppo_si_contano_e_si_azzerano():
     filtri = mercato.Filtri(liberi=True, sesso="f", classe_peggiore=40, tratti={"mancino": True, "talento": False}, comune=" ",
                             condizioni=(("valore", "maggiore", 3),), visus=staff.VEDENTE)
-    assert mercato.quanti_altri_filtri(filtri) == 5
-    azzerati = mercato.azzera_altri(filtri)
-    assert mercato.quanti_altri_filtri(azzerati) == 0 and azzerati.sesso == "f" and azzerati.liberi and filtri.tratti == {"mancino": True, "talento": False}
+    # Ogni tratto e ogni condizione contano uno; un testo di soli spazi non conta.
+    assert mercato.quanti_impostati(filtri, mercato.CAMPI_ALTRI_FILTRI) == 3
+    assert mercato.quanti_impostati(filtri, mercato.CAMPI_FILTRI_ALLENATORI) == 1
+    assert mercato.quanti_impostati(filtri, mercato.CAMPI_FILTRI) == 3
+    azzerati = mercato.azzera(filtri, mercato.CAMPI_ALTRI_FILTRI)
+    assert mercato.quanti_impostati(azzerati, mercato.CAMPI_ALTRI_FILTRI) == 0 and azzerati.comune == ""
+    assert azzerati.sesso == "f" and azzerati.liberi and azzerati.classe_peggiore == 40 and azzerati.visus == staff.VEDENTE
+    assert filtri.tratti == {"mancino": True, "talento": False} and filtri.condizioni == (("valore", "maggiore", 3),)
+    assert mercato.azzera(filtri, mercato.CAMPI_FILTRI_ALLENATORI).visus is None
+
+
+def test_la_casella_dei_preset():
+    fdr = mercato.filtri_di_ricerca_di_serie()
+    voci = mercato.voci_della_casella(fdr)
+    assert len(voci) == 14 and voci[0] == mercato.Voce(mercato.VOCE_ATTUALI, None, "Filtri attuali, non salvati")
+    assert voci[-1] == mercato.Voce(mercato.VOCE_SALVA, None, "Salva filtri...")
+    assert [(voce.tipo, voce.scelta, voce.nome) for voce in voci[1:-1]] == [(mercato.VOCE_DI_SERIE, chiave, nome) for chiave, nome in mercato.PRESET_DI_SERIE]
+    mercato.salva_preset(fdr, "Giovani mancini", mercato.Filtri(liberi=True, tratti={"mancino": True}))
+    mercato.salva_preset(fdr, "Donne", mercato.Filtri(liberi=True, sesso="f"))
+    voci = mercato.voci_della_casella(fdr)
+    assert len(voci) == 16 and voci[1:3] == [mercato.Voce(mercato.VOCE_TUA, 1, "Giovani mancini"), mercato.Voce(mercato.VOCE_TUA, 2, "Donne")]
+    assert voci[3].scelta == "mercato" and voci[-1].tipo == mercato.VOCE_SALVA
+    assert mercato.posto_della_scelta(voci, None) == 0 and mercato.posto_della_scelta(voci, 2) == 2 and mercato.posto_della_scelta(voci, "mercato") == 3
+    assert mercato.posto_della_scelta(voci, 9) is None and mercato.posto_della_scelta(voci, True) is None and mercato.posto_della_scelta(voci, "inventata") is None
+    attuali = mercato.Filtri(tuoi=True)
+    assert mercato.filtri_della_voce(fdr, None, attuali) == attuali and mercato.filtri_della_voce(fdr, None, attuali) is not attuali
+    dal_preset = mercato.filtri_della_voce(fdr, 2, attuali)
+    dal_preset.sesso = "m"
+    assert fdr.preset[1].filtri.sesso == "f" and mercato.filtri_della_voce(fdr, "piu_forti", attuali) == mercato.filtri_di_serie("piu_forti")
+    for scelta in (9, "inventata", True):
+        with pytest.raises(KeyError):
+            mercato.filtri_della_voce(fdr, scelta, attuali)
+
+
+@pytest.mark.parametrize("nome, problema", [
+    ("", "Il nome del preset deve avere da 1 a 50 caratteri."),
+    ("   ", "Il nome del preset deve avere da 1 a 50 caratteri."),
+    ("x" * 51, "Il nome del preset deve avere da 1 a 50 caratteri."),
+    ("Prima riga\nseconda", "Il nome del preset non può avere a capo, tabulazioni o altri caratteri di controllo."),
+    ("Con\tla tabulazione", "Il nome del preset non può avere a capo, tabulazioni o altri caratteri di controllo."),
+    ("filtri ATTUALI, non salvati", "filtri ATTUALI, non salvati è il nome di una voce di serie della casella dei preset: se ne sceglie un altro."),
+    (" salva filtri... ", "salva filtri... è il nome di una voce di serie della casella dei preset: se ne sceglie un altro."),
+    ("I CAPI ALLENATORI MIGLIORI", "I CAPI ALLENATORI MIGLIORI è il nome di una voce di serie della casella dei preset: se ne sceglie un altro."),
+])
+def test_le_regole_del_nome_di_un_preset(nome, problema):
+    assert mercato.problema_del_nome(mercato.filtri_di_ricerca_di_serie(), nome) == problema
+
+
+def test_un_nome_gia_usato_si_sostituisce_salvando_ma_non_rinominando():
+    fdr = mercato.filtri_di_ricerca_di_serie()
+    assert mercato.problema_del_nome(fdr, " " + "x" * 50 + " ") is None and mercato.problema_del_nome(fdr, "Salva filtri") is None
+    mercato.salva_preset(fdr, "Giovani", mercato.Filtri(liberi=True))
+    mercato.salva_preset(fdr, "Vecchi", mercato.Filtri(ritirati=True))
+    # Salvando, il nome di un tuo preset non è un problema: Salva filtri chiede se sostituirne i filtri.
+    assert mercato.problema_del_nome(fdr, "GIOVANI") is None
+    # Rinominando sì, salvo per il preset stesso, che può cambiare soltanto le maiuscole.
+    assert mercato.problema_del_nome(fdr, " giovani ", 2) == "Esiste già un preset che si chiama Giovani."
+    assert mercato.problema_del_nome(fdr, "GIOVANI", 1) is None
+
+
+def test_salva_rinomina_elimina_e_sposta_i_preset():
+    fdr = mercato.filtri_di_ricerca_di_serie()
+    filtri = mercato.Filtri(liberi=True, sesso="f")
+    preset, sostituito = mercato.salva_preset(fdr, "  Giovani mancini ", filtri)
+    assert (preset.numero, preset.nome, sostituito, fdr.prossimo_preset) == (1, "Giovani mancini", False, 2)
+    filtri.sesso = "m"
+    assert preset.filtri.sesso == "f"
+    mercato.salva_preset(fdr, "Altro", mercato.Filtri(tuoi=True))
+    # Lo stesso nome, senza badare alle maiuscole: si sostituiscono i filtri, e il preset tiene nome, posto e numero.
+    stesso, sostituito = mercato.salva_preset(fdr, "GIOVANI MANCINI", mercato.Filtri(ritirati=True))
+    assert sostituito and stesso is fdr.preset[0] and (stesso.numero, stesso.nome) == (1, "Giovani mancini")
+    assert stesso.filtri == mercato.Filtri(ritirati=True) and fdr.prossimo_preset == 3 and len(fdr.preset) == 2
+    with pytest.raises(ValueError, match=r"^Il nome del preset deve avere da 1 a 50 caratteri\.$"):
+        mercato.salva_preset(fdr, " ", mercato.Filtri())
+    rotti = mercato.Filtri(liberi=True)
+    rotti.sesso = ""
+    with pytest.raises(ValueError, match=r"^I filtri non sono validi: il campo sesso ha un valore che non va, ''$"):
+        mercato.salva_preset(fdr, "Rotti", rotti)
+    assert [p.nome for p in fdr.preset] == ["Giovani mancini", "Altro"] and fdr.prossimo_preset == 3
+    # La rinomina tiene posto, numero e filtri.
+    assert mercato.rinomina_preset(fdr, 1, " giovani MANCINI ") is fdr.preset[0] and fdr.preset[0].nome == "giovani MANCINI"
+    with pytest.raises(ValueError, match=r"^Esiste già un preset che si chiama Altro\.$"):
+        mercato.rinomina_preset(fdr, 1, "ALTRO")
+    with pytest.raises(KeyError):
+        mercato.rinomina_preset(fdr, 9, "Nuovo")
+    # Lo spostamento, e il bordo che non sposta.
+    assert mercato.sposta_preset(fdr, 2, -1) and [p.numero for p in fdr.preset] == [2, 1]
+    assert not mercato.sposta_preset(fdr, 2, -1) and not mercato.sposta_preset(fdr, 1, 1) and [p.numero for p in fdr.preset] == [2, 1]
+    assert mercato.sposta_preset(fdr, 2, 1) and [p.numero for p in fdr.preset] == [1, 2]
+    with pytest.raises(ValueError):
+        mercato.sposta_preset(fdr, 1, 2)
+    with pytest.raises(KeyError):
+        mercato.sposta_preset(fdr, True, 1)
+    # L'eliminazione: le porte che lo riaprivano tornano al loro preset di serie, coi filtri attuali, e il numero non torna.
+    fdr.porte["mercato"] = mercato.StatoDellaPorta(1, mercato.Filtri(liberi=True))
+    fdr.porte["ricerca"] = mercato.StatoDellaPorta(2, mercato.Filtri(tuoi=True))
+    assert mercato.elimina_preset(fdr, 1).nome == "giovani MANCINI" and [p.numero for p in fdr.preset] == [2]
+    assert fdr.porte["mercato"] == mercato.StatoDellaPorta("mercato", mercato.Filtri(liberi=True)) and fdr.porte["ricerca"].scelta == 2
+    assert mercato.salva_preset(fdr, "Terzo", mercato.Filtri(liberi=True))[0].numero == 3
+    with pytest.raises(KeyError):
+        mercato.elimina_preset(fdr, 1)
+
+
+def test_il_mondo_ricorda_preset_e_porte(mondo):
+    assert mondo.filtri_di_ricerca is None and mercato.filtri_di_ricerca_del_mondo(mondo) == mercato.filtri_di_ricerca_di_serie()
+    for porta in mercato.PORTE:
+        stato = mercato.stato_della_porta(mondo, porta)
+        chiave = mercato.PRESET_DELLA_PORTA[porta]
+        assert stato == mercato.stato_di_serie(porta) == mercato.StatoDellaPorta(chiave, mercato.filtri_di_serie(chiave))
+    assert mercato.stato_della_porta(mondo, "allenatori").attuali.allenatori
+    with pytest.raises(KeyError):
+        mercato.stato_della_porta(mondo, "altrove")
+    # La finestra cambia la sua copia; il mondo cambia soltanto con ricorda_i_preset.
+    copia = mercato.filtri_di_ricerca_del_mondo(mondo)
+    mercato.salva_preset(copia, "Donne libere", mercato.Filtri(liberi=True, sesso="f"))
+    assert mondo.filtri_di_ricerca is None
+    mercato.ricorda_i_preset(mondo, copia)
+    assert [(p.numero, p.nome) for p in mondo.filtri_di_ricerca.preset] == [(1, "Donne libere")] and mondo.filtri_di_ricerca.prossimo_preset == 2
+    copia.preset[0].filtri.sesso = "m"
+    assert mondo.filtri_di_ricerca.preset[0].filtri.sesso == "f"
+    # La porta ricorda la voce scelta e i filtri attuali; le altre restano di serie.
+    mercato.ricorda_la_porta(mondo, "mercato", mercato.StatoDellaPorta(1, mercato.Filtri(tuoi=True)))
+    assert mercato.stato_della_porta(mondo, "mercato") == mercato.StatoDellaPorta(1, mercato.Filtri(tuoi=True))
+    assert mercato.stato_della_porta(mondo, "ricerca") == mercato.stato_di_serie("ricerca")
+    letto = mercato.stato_della_porta(mondo, "mercato")
+    letto.attuali.sesso = "m"
+    assert mondo.filtri_di_ricerca.porte["mercato"].attuali.sesso is None
+    assert mercato.filtri_della_voce(mondo.filtri_di_ricerca, letto.scelta, letto.attuali).sesso == "f"
+    # Il preset eliminato nella finestra: la porta che lo riapriva torna al suo preset di serie, coi suoi filtri attuali.
+    copia = mercato.filtri_di_ricerca_del_mondo(mondo)
+    mercato.elimina_preset(copia, 1)
+    mercato.ricorda_i_preset(mondo, copia)
+    assert mondo.filtri_di_ricerca.preset == [] and mondo.filtri_di_ricerca.prossimo_preset == 2
+    assert mercato.stato_della_porta(mondo, "mercato") == mercato.StatoDellaPorta("mercato", mercato.Filtri(tuoi=True))
+    # Una porta non ricorda un preset che non c'è, né una porta che non esiste; il mondo resta com'era.
+    prima = mondo.filtri_di_ricerca.copia()
+    with pytest.raises(ValueError, match=r"^La porta Mercato, Ctrl\+K, riapriva il preset numero 1, che non c'è più$"):
+        mercato.ricorda_la_porta(mondo, "mercato", mercato.StatoDellaPorta(1, mercato.Filtri()))
+    with pytest.raises(KeyError):
+        mercato.ricorda_la_porta(mondo, "altrove", mercato.StatoDellaPorta(None, mercato.Filtri()))
+    assert mondo.filtri_di_ricerca == prima
 
 
 # La memoria della finestra.
@@ -644,8 +766,8 @@ def test_la_situazione_in_blocchi_di_quaranta_caratteri(mondo):
 
 
 def test_il_testo_dei_filtri_attivi(mondo):
-    assert testi.filtri_attivi(mercato.filtri_della_pronta("mercato"), mondo) == "Chi cercare: giocatori liberi e in vendita da altri."
-    assert testi.filtri_attivi(mercato.filtri_della_pronta("allenatori_liberi"), mondo) == "Chi cercare: allenatori liberi."
+    assert testi.filtri_attivi(mercato.filtri_di_serie("mercato"), mondo) == "Chi cercare: giocatori liberi e in vendita da altri."
+    assert testi.filtri_attivi(mercato.filtri_di_serie("allenatori_liberi"), mondo) == "Chi cercare: allenatori liberi."
     filtri = mercato.Filtri(liberi=True, ritirati=True, nome=" ros ", sesso="f", classe_migliore=30, eta_massima=20, costo_massimo=5000, disponibili_oggi=True,
                             regione="Lombardia", tratti={"talento": False, "mancino": True}, condizioni=(("bomba_base", "maggiore", 10.0),),
                             visus=staff.VEDENTE, ordine="costo_basso")
@@ -699,129 +821,315 @@ def test_l_etichetta_dei_trovati_e_il_riepilogo_unico(mondo):
     assert testi.evento_mercato_e_ricerca([("a", True)], (), ["b"]) == "mercato e ricerca: 2 esiti"
 
 
-# Il salvataggio, formato 10.
+# Il salvataggio, formato 10: i preset e le porte.
 
-def test_ogni_ricerca_pronta_va_e_torna_dal_dizionario():
-    for chiave in mercato.PRONTE[1:]:
-        filtri = mercato.filtri_della_pronta(chiave[0])
-        assert mercato.filtri_da_dizionario(json.loads(json.dumps(mercato.filtri_a_dizionario(filtri))), "Prova") == filtri
+A_MANO = {"liberi": True, "in_vendita": True, "del_computer": True, "tuoi": True, "ritirati": True, "nome": "ros", "sesso": "f", "classe_migliore": 40,
+          "eta_massima": 30, "costo_massimo": 5000, "disponibili_oggi": True, "ordine": "bomba_base", "ordine_allenatori": "eta_anziano",
+          "classe_peggiore": 60, "eta_minima": 18, "regione": "Lombardia", "provincia": "Milano", "comune": "mil", "polisportiva": "team",
+          "tratti": {tratto: posto % 2 == 0 for posto, tratto in enumerate(mercato.TRATTI)}, "valore_minimo": 120.5, "stipendio_massimo": 900,
+          "mesi_contratto_massimi": 12, "senza_acciacchi": True, "solo_ritirati_che_allenano": True, "solo_nuovi": True, "comprendi_usciti": True,
+          "condizioni": (("bomba_base", "maggiore", 10.5), ("ambizione", "minore", 50)), "tipo_allenatore": staff.EX, "visus": staff.VEDENTE,
+          "posto_attuale": staff.CAPO, "stipendio_capo_massimo": 2000, "senza_prelazione_altrui": True}
 
 
-def test_lo_stato_delle_porte_va_e_torna_dal_salvataggio(mondo, cartella_di_prova):
-    a_mano = mercato.Filtri(liberi=True, tuoi=True, nome="ros", sesso="f", classe_migliore=40, eta_massima=30, costo_massimo=5000, regione="Lombardia",
-                            tratti={"mancino": True, "talento": False}, indole=mondo.giocatori[3].indole, valore_minimo=120.5,
-                            condizioni=(("bomba_base", "maggiore", 10.5),), ordine="bomba_base")
-    ricerca = mercato.con_la_pronta(mercato.fatti_a_mano(a_mano), "piu_titolati")
-    allenatori = mercato.fatti_a_mano(mercato.Filtri(allenatori=True, liberi=True, visus=staff.VEDENTE, posto_attuale=staff.CAPO, ordine_allenatori="eta_anziano"))
-    mercato.ricorda_la_porta(mondo, "ricerca", ricerca)
-    mercato.ricorda_la_porta(mondo, "allenatori", allenatori)
+@pytest.fixture
+def scritti(monkeypatch):
+    """Le righe che il registro degli errori riceve."""
+    righe = []
+    monkeypatch.setattr(registro, "scrivi", righe.append)
+    return righe
+
+
+def _con_i_preset(m):
+    """Il mondo con due preset di Gabriele, il 2 e il 3 dopo che l'1 è stato eliminato, e una porta per ogni voce della casella."""
+    fdr = mercato.filtri_di_ricerca_del_mondo(m)
+    mercato.salva_preset(fdr, "Da togliere", mercato.Filtri(liberi=True))
+    mercato.salva_preset(fdr, "Donne libere", mercato.Filtri(liberi=True, sesso="f", eta_massima=25))
+    mercato.salva_preset(fdr, "Allenatori vedenti", mercato.Filtri(allenatori=True, liberi=True, visus=staff.VEDENTE, posto_attuale=staff.CAPO,
+                                                                   ordine_allenatori="eta_anziano"))
+    mercato.elimina_preset(fdr, 1)
+    mercato.ricorda_i_preset(m, fdr)
+    mercato.ricorda_la_porta(m, "mercato", mercato.StatoDellaPorta(2, mercato.Filtri(liberi=True, sesso="f")))
+    mercato.ricorda_la_porta(m, "allenatori", mercato.StatoDellaPorta(3, mercato.Filtri(allenatori=True, tuoi=True)))
+    mercato.ricorda_la_porta(m, "ricerca", mercato.StatoDellaPorta(None, mercato.Filtri(**{**A_MANO, "indole": m.giocatori[3].indole})))
+    mercato.ricorda_la_porta(m, "amichevole", mercato.StatoDellaPorta("piu_forti", mercato.Filtri(tuoi=True, nome="ros")))
+    return m
+
+
+def test_ogni_preset_di_serie_va_e_torna_dal_dizionario():
+    for chiave, _nome in mercato.PRESET_DI_SERIE:
+        filtri = mercato.filtri_di_serie(chiave)
+        assert mercato.filtri_da_dizionario(json.loads(json.dumps(mercato.filtri_a_dizionario(filtri)))) == filtri
+
+
+def test_preset_e_porte_vanno_e_tornano_dal_salvataggio(mondo, cartella_di_prova, scritti):
+    _con_i_preset(mondo)
     assert archivio.salva(mondo)
     letto = archivio.leggi(cartella_di_prova / FILE_MONDO)
-    assert letto["formato"] == archivio.FORMATO == 10 and set(letto["mondo"]["filtri_di_ricerca"]) == set(mercato.PORTE)
+    blocco = letto["mondo"]["filtri_di_ricerca"]
+    assert letto["formato"] == archivio.FORMATO == 10 and set(blocco) == {"preset", "prossimo_preset", "porte"} and set(blocco["porte"]) == set(mercato.PORTE)
+    assert [(p["numero"], p["nome"]) for p in blocco["preset"]] == [(2, "Donne libere"), (3, "Allenatori vedenti")] and blocco["prossimo_preset"] == 4
+    assert {porta: stato["scelta"] for porta, stato in blocco["porte"].items()} == {"mercato": 2, "allenatori": 3, "ricerca": None, "amichevole": "piu_forti"}
     ricaricato = Mondo()
     archivio.carica(ricaricato)
-    assert ricaricato.filtri_di_ricerca == {"mercato": mercato.stato_predefinito("mercato"), "allenatori": allenatori, "ricerca": ricerca,
-                                            "amichevole": mercato.stato_predefinito("amichevole")}
-    tornato = mercato.con_la_pronta(mercato.stato_della_porta(ricaricato, "ricerca"), mercato.TORNA_AI_TUOI)
-    assert tornato.filtri == a_mano and tornato.filtri.condizioni == (("bomba_base", "maggiore", 10.5),)
+    assert ricaricato.filtri_di_ricerca == mondo.filtri_di_ricerca and scritti == []
+    ricerca = mercato.stato_della_porta(ricaricato, "ricerca")
+    assert ricerca.attuali.condizioni == (("bomba_base", "maggiore", 10.5), ("ambizione", "minore", 50)) and ricerca.attuali.indole == mondo.giocatori[3].indole
+    assert mercato.filtri_della_voce(ricaricato.filtri_di_ricerca, 3, ricerca.attuali).visus == staff.VEDENTE
 
 
-def test_un_mondo_del_formato_9_riceve_lo_stato_predefinito_di_ogni_porta(mondo, cartella_di_prova):
-    mercato.ricorda_la_porta(mondo, "mercato", mercato.fatti_a_mano(mercato.Filtri(liberi=True)))
+def test_un_mondo_del_formato_9_riceve_i_filtri_di_serie(mondo, cartella_di_prova, scritti):
+    _con_i_preset(mondo)
     vecchio = archivio.componi(mondo)
     vecchio["formato"] = 9
     del vecchio["mondo"]["filtri_di_ricerca"]
     aggiornato = copy.deepcopy(vecchio)
     archivio.MIGRAZIONI[9](aggiornato)
-    # La migrazione aggiunge soltanto lo stato dei filtri, dalla costante storica, e nient'altro cambia.
-    assert aggiornato["formato"] == 10 and aggiornato["mondo"].pop("filtri_di_ricerca") == archivio.porte_predefinite_del_formato_10()
+    # La migrazione aggiunge soltanto i filtri di serie, dalla costante storica, e nient'altro cambia.
+    assert aggiornato["formato"] == 10 and aggiornato["mondo"].pop("filtri_di_ricerca") == archivio.filtri_di_ricerca_del_formato_10()
     assert aggiornato["mondo"] == vecchio["mondo"]
-    # Finché il formato è 10, la costante storica e lo stato predefinito di oggi coincidono; ogni volta è un documento nuovo.
+    # Finché il formato è 10, la costante storica e i filtri di serie di oggi coincidono; ogni volta è un documento nuovo.
     if archivio.FORMATO == 10:
-        assert archivio.porte_predefinite_del_formato_10() == mercato.porte_predefinite()
-    primo = archivio.porte_predefinite_del_formato_10()
-    primo["mercato"]["filtri"]["tratti"]["mancino"] = True
-    primo["mercato"]["filtri"]["condizioni"].append(["valore", "maggiore", 3])
-    assert archivio.porte_predefinite_del_formato_10()["mercato"]["filtri"]["tratti"] == {} and archivio.FILTRI_VUOTI_DEL_FORMATO_10["condizioni"] == []
+        assert archivio.filtri_di_ricerca_del_formato_10() == mercato.filtri_di_ricerca_a_dizionario(mercato.filtri_di_ricerca_di_serie())
+    primo = archivio.filtri_di_ricerca_del_formato_10()
+    primo["preset"].append({"numero": 1})
+    primo["porte"]["mercato"]["attuali"]["tratti"]["mancino"] = True
+    primo["porte"]["mercato"]["attuali"]["condizioni"].append(["valore", "maggiore", 3])
+    secondo = archivio.filtri_di_ricerca_del_formato_10()
+    assert secondo["preset"] == [] and secondo["porte"]["mercato"]["attuali"]["tratti"] == {} and archivio.FILTRI_VUOTI_DEL_FORMATO_10["condizioni"] == []
     percorso = cartella_di_prova / FILE_MONDO
     with gzip.open(percorso, "wt", encoding="utf-8") as f:
         f.write(json.dumps({**vecchio, "firma": archivio.firma(vecchio)}))
     ricaricato = Mondo()
     archivio.carica(ricaricato)
-    assert ricaricato.filtri_di_ricerca == {porta: mercato.stato_predefinito(porta) for porta in mercato.PORTE}
+    assert ricaricato.filtri_di_ricerca == mercato.filtri_di_ricerca_di_serie() and scritti == []
     assert archivio.salva(ricaricato) and archivio.leggi(percorso)["formato"] == archivio.FORMATO
     assert set(archivio.MIGRAZIONI) == set(range(1, archivio.FORMATO))
 
 
-def _guasta(campo, valore, porta="mercato", dove="filtri"):
-    def guasto(porte):
-        porte[porta][dove][campo] = valore
+def _blocco(m):
+    return m["filtri_di_ricerca"]
+
+
+def _metti(valore, *chiavi):
+    def guasto(m):
+        cosa = _blocco(m)
+        for chiave in chiavi[:-1]:
+            cosa = cosa[chiave]
+        cosa[chiavi[-1]] = valore
     return guasto
 
 
 def _togli(*chiavi):
-    def guasto(porte):
-        cosa = porte
+    def guasto(m):
+        cosa = m
         for chiave in chiavi[:-1]:
             cosa = cosa[chiave]
         del cosa[chiavi[-1]]
     return guasto
 
 
+def _porta_di_serie(porta):
+    def atteso(f):
+        f.porte[porta] = mercato.stato_di_serie(porta)
+    return atteso
+
+
+def _attuali_di_serie(porta):
+    def atteso(f):
+        stato = f.porte[porta]
+        stato.attuali = mercato.filtri_di_serie(mercato.PRESET_DELLA_PORTA[porta])
+        if stato.scelta is None:
+            stato.scelta = mercato.PRESET_DELLA_PORTA[porta]
+    return atteso
+
+
+def _scelta_di_serie(*porte):
+    def atteso(f):
+        for porta in porte:
+            f.porte[porta].scelta = mercato.PRESET_DELLA_PORTA[porta]
+    return atteso
+
+
+def _filtri_del_preset_di_serie(posto):
+    def atteso(f):
+        f.preset[posto].filtri = mercato.filtri_di_serie(mercato.SERIE_DEI_FILTRI_ILLEGGIBILI)
+    return atteso
+
+
+def _tutto_di_serie(f):
+    serie = mercato.filtri_di_ricerca_di_serie()
+    f.preset, f.prossimo_preset, f.porte = serie.preset, serie.prossimo_preset, serie.porte
+
+
+def _senza_i_preset(f):
+    f.preset = []
+    _scelta_di_serie("mercato", "allenatori")(f)
+
+
+def _niente(_f):
+    pass
+
+
+# Ogni guasto, con quello che la lettura ne fa: la parte rovinata torna alla serie, e il resto non si tocca.
 GUASTI = {
-    "una porta in meno": _togli("amichevole"),
-    "una porta in più": lambda porte: porte.update(altrove=porte["mercato"]),
-    "un campo in meno": _togli("ricerca", "filtri", "sesso"),
-    "un campo in più": _guasta("volante", True),
-    "un sesso che non esiste": _guasta("sesso", "x"),
-    "un ordine che non esiste": _guasta("ordine", "a_caso"),
-    "un ordine dei giocatori agli allenatori": _guasta("ordine_allenatori", "valore_alto", "allenatori"),
-    "un tratto che non esiste": _guasta("tratti", {"volante": True}),
-    "un tratto senza sì o no": _guasta("tratti", {"mancino": None}),
-    "una condizione sulla classe": _guasta("condizioni", [["classe", "maggiore", 3]]),
-    "una condizione monca": _guasta("condizioni", [["valore", "maggiore"]]),
-    "una classe oltre K0": _guasta("classe_migliore", 101),
-    "un'età negativa": _guasta("eta_massima", -1),
-    "un costo con la virgola": _guasta("costo_massimo", 10.5),
-    "una casella scritta": _guasta("liberi", "sì"),
-    "un valore vero o falso": _guasta("valore_minimo", True),
-    "un nome che è un numero": _guasta("nome", 5),
-    "un'indole che non esiste": _guasta("indole", "furiosa"),
-    "un visus che non esiste": _guasta("visus", "miope"),
-    "una ricerca pronta che non esiste": lambda porte: porte["ricerca"].update(pronta="inventata"),
-    "una ricerca pronta in un elenco": lambda porte: porte["ricerca"].update(pronta=["mercato"]),
-    "Torna ai tuoi filtri come pronta": lambda porte: porte["ricerca"].update(pronta=mercato.TORNA_AI_TUOI),
-    "filtri fatti a mano che non vanno": lambda porte: porte["ricerca"].update(a_mano={"liberi": True}),
-    "lo stato senza la pronta": _togli("ricerca", "pronta"),
-    "le porte in un elenco": None,
+    "una porta in meno": (_togli("filtri_di_ricerca", "porte", "amichevole"), _porta_di_serie("amichevole")),
+    "una porta in più": (lambda m: _blocco(m)["porte"].update(altrove=_blocco(m)["porte"]["mercato"]), _niente),
+    "un campo in meno": (_togli("filtri_di_ricerca", "porte", "ricerca", "attuali", "sesso"), _attuali_di_serie("ricerca")),
+    "un campo in più": (_metti(True, "porte", "mercato", "attuali", "volante"), _attuali_di_serie("mercato")),
+    "un sesso che non esiste": (_metti("x", "porte", "mercato", "attuali", "sesso"), _attuali_di_serie("mercato")),
+    "un ordine che non esiste": (_metti("a_caso", "porte", "mercato", "attuali", "ordine"), _attuali_di_serie("mercato")),
+    "un ordine dei giocatori agli allenatori": (_metti("valore_alto", "porte", "allenatori", "attuali", "ordine_allenatori"), _attuali_di_serie("allenatori")),
+    "un tratto che non esiste": (_metti({"volante": True}, "preset", 0, "filtri", "tratti"), _filtri_del_preset_di_serie(0)),
+    "un tratto senza sì o no": (_metti({"mancino": None}, "preset", 1, "filtri", "tratti"), _filtri_del_preset_di_serie(1)),
+    "una condizione sulla classe": (_metti([["classe", "maggiore", 3]], "porte", "mercato", "attuali", "condizioni"), _attuali_di_serie("mercato")),
+    "una condizione monca": (_metti([["valore", "maggiore"]], "preset", 0, "filtri", "condizioni"), _filtri_del_preset_di_serie(0)),
+    "una classe oltre K0": (_metti(101, "porte", "ricerca", "attuali", "classe_migliore"), _attuali_di_serie("ricerca")),
+    "un'età negativa": (_metti(-1, "porte", "amichevole", "attuali", "eta_massima"), _attuali_di_serie("amichevole")),
+    "un costo con la virgola": (_metti(10.5, "porte", "mercato", "attuali", "costo_massimo"), _attuali_di_serie("mercato")),
+    "una casella scritta": (_metti("sì", "preset", 0, "filtri", "liberi"), _filtri_del_preset_di_serie(0)),
+    "un valore vero o falso": (_metti(True, "preset", 1, "filtri", "valore_minimo"), _filtri_del_preset_di_serie(1)),
+    "un nome che è un numero": (_metti(5, "porte", "ricerca", "attuali", "nome"), _attuali_di_serie("ricerca")),
+    "un'indole che non esiste": (_metti("furiosa", "preset", 0, "filtri", "indole"), _filtri_del_preset_di_serie(0)),
+    "un visus che non esiste": (_metti("miope", "preset", 1, "filtri", "visus"), _filtri_del_preset_di_serie(1)),
+    "un preset di serie che non esiste": (_metti("inventata", "porte", "amichevole", "scelta"), _scelta_di_serie("amichevole")),
+    "una scelta in un elenco": (_metti(["mercato"], "porte", "amichevole", "scelta"), _scelta_di_serie("amichevole")),
+    "un preset che non c'è più": (_metti(7, "porte", "mercato", "scelta"), _scelta_di_serie("mercato")),
+    "una scelta vero o falso": (_metti(True, "porte", "allenatori", "scelta"), _scelta_di_serie("allenatori")),
+    "lo stato senza la scelta": (_togli("filtri_di_ricerca", "porte", "ricerca", "scelta"), _scelta_di_serie("ricerca")),
+    "le porte in un elenco": (lambda m: _blocco(m).update(porte=list(_blocco(m)["porte"].values())), lambda f: f.porte.update(mercato.filtri_di_ricerca_di_serie().porte)),
+    "i preset in un dizionario": (lambda m: _blocco(m).update(preset={str(p["numero"]): p for p in _blocco(m)["preset"]}), _senza_i_preset),
+    "tutto in un elenco": (lambda m: m.update(filtri_di_ricerca=[]), _tutto_di_serie),
+    "il blocco che manca": (_togli("filtri_di_ricerca"), _tutto_di_serie),
 }
 
 
 @pytest.mark.parametrize("guasto", list(GUASTI))
-def test_uno_stato_dei_filtri_che_non_va_fa_rifiutare_il_salvataggio(mondo, guasto):
+def test_un_salvataggio_rovinato_torna_ai_filtri_di_serie_con_un_avviso(mondo, guasto, scritti):
+    _con_i_preset(mondo)
+    rovina, atteso = GUASTI[guasto]
     contenuto = archivio.componi(mondo)
-    if GUASTI[guasto] is None:
-        contenuto["mondo"]["filtri_di_ricerca"] = list(contenuto["mondo"]["filtri_di_ricerca"].values())
-    else:
-        GUASTI[guasto](contenuto["mondo"]["filtri_di_ricerca"])
+    rovina(contenuto["mondo"])
     nuovo = Mondo()
-    with pytest.raises(archivio.ErroreSalvataggio):
-        archivio.costruisci(contenuto, nuovo)
-    assert nuovo.filtri_di_ricerca == {} and nuovo.giocatori == {}
-    senza = archivio.componi(mondo)
-    del senza["mondo"]["filtri_di_ricerca"]
-    with pytest.raises(archivio.ErroreSalvataggio, match="manca il dato"):
-        archivio.costruisci(senza, Mondo())
+    archivio.costruisci(contenuto, nuovo)
+    # Il mondo si apre lo stesso, tutto intero; soltanto la parte rovinata torna alla serie.
+    previsto = mondo.filtri_di_ricerca.copia()
+    atteso(previsto)
+    assert nuovo.filtri_di_ricerca == previsto and set(nuovo.giocatori) == {g["id"] for g in contenuto["mondo"]["giocatori"]}
+    # Ogni riparazione va nel registro, col dato originale; quello che si è letto si salva e si rilegge senza riparazioni.
+    assert scritti and all(riga.startswith("Lettura del mondo, filtri di Mercato e ricerca. ") and " Il dato originale, in JSON: " in riga for riga in scritti)
+    assert all("\n" not in riga for riga in scritti)
+    assert mercato.filtri_di_ricerca_da_dizionario(json.loads(json.dumps(mercato.filtri_di_ricerca_da_salvare(nuovo)))) == (previsto, [])
 
 
-def test_una_ricerca_pronta_scritta_male_si_rifiuta_in_italiano(mondo):
+def test_gli_avvisi_vanno_nel_registro_soltanto_per_il_mondo_che_si_apre(mondo, scritti):
+    _con_i_preset(mondo)
     contenuto = archivio.componi(mondo)
-    contenuto["mondo"]["filtri_di_ricerca"]["ricerca"]["pronta"] = ["mercato"]
-    with pytest.raises(archivio.ErroreSalvataggio, match=r"Filtri della porta ricerca: la ricerca pronta \['mercato'\] non esiste"):
+    contenuto["mondo"]["filtri_di_ricerca"]["porte"]["mercato"]["scelta"] = 7
+    contenuto["mondo"]["polisportiva_attiva"] = "Inesistente"
+    with pytest.raises(archivio.ErroreSalvataggio):
         archivio.costruisci(contenuto, Mondo())
+    assert scritti == []
+    contenuto["mondo"]["polisportiva_attiva"] = "Pat-Bologna"
+    archivio.costruisci(contenuto, Mondo())
+    assert scritti == ["Lettura del mondo, filtri di Mercato e ricerca. La porta Mercato, Ctrl+K, riapriva il preset numero 7, che non c'è più. "
+                       "Torna al suo preset di serie, Mercato: liberi e in vendita da altri, dal valore più alto. Il dato originale, in JSON: "
+                       + json.dumps(contenuto["mondo"]["filtri_di_ricerca"]["porte"]["mercato"], ensure_ascii=False)]
 
 
-# Dalla verifica del formato 10: lo stato che il mondo ricorda e scrive deve rileggersi.
+def test_un_preset_rovinato_si_ripara_invece_di_sparire(mondo, scritti):
+    _con_i_preset(mondo)
+    contenuto = archivio.componi(mondo)
+    blocco = contenuto["mondo"]["filtri_di_ricerca"]
+    buono = blocco["preset"][0]
+    blocco["preset"] = [
+        {**buono, "numero": 1, "nome": "Donne libere"},
+        {**buono, "numero": 1, "nome": "DONNE LIBERE"},
+        {**buono, "numero": "7", "nome": None},
+        {**buono, "numero": 5, "nome": "  Spazi\tdentro  "},
+        {**buono, "numero": 6, "nome": "x" * 60},
+        {**buono, "numero": 8, "nome": "I capi allenatori migliori"},
+        {**buono, "numero": 9, "nome": "y" * 50},
+        {**buono, "numero": 12, "nome": "Y" * 50},
+        {**buono, "numero": 13, "nome": "Senza filtri", "filtri": {"liberi": True}, "volante": 1},
+        "un preset che non è un dizionario",
+    ]
+    blocco["prossimo_preset"] = 2
+    nuovo = Mondo()
+    archivio.costruisci(contenuto, nuovo)
+    fdr = nuovo.filtri_di_ricerca
+    assert [(p.numero, p.nome) for p in fdr.preset] == [
+        (1, "Donne libere"), (14, "DONNE LIBERE (2)"), (15, "Preset 15"), (5, "Spazi dentro"), (6, "x" * 50), (8, "I capi allenatori migliori (2)"),
+        (9, "y" * 50), (12, "Y" * 46 + " (2)"), (13, "Senza filtri")]
+    assert fdr.prossimo_preset == 16 and all(len(p.nome) <= 50 for p in fdr.preset)
+    assert all(p.filtri == mercato.filtri_da_dizionario(buono["filtri"]) for p in fdr.preset[:-1])
+    assert fdr.preset[-1].filtri == mercato.filtri_di_serie("tutti_in_attivita")
+    # Le porte si leggono dopo i preset: il 2 non c'è più, e la porta degli allenatori, che riapriva il 3, nemmeno.
+    assert fdr.porte["mercato"].scelta == "mercato" and fdr.porte["allenatori"].scelta == "allenatori_liberi"
+    problemi = [riga.split(" Il dato originale, in JSON: ")[0].removeprefix("Lettura del mondo, filtri di Mercato e ricerca. ") for riga in scritti]
+    assert len(problemi) == 14 and problemi[:9] == [
+        "Il preset al posto 10 della casella non si legge. Si toglie.",
+        "Il preset al posto 2 della casella ha lo stesso numero di un preset di prima, 1. Riceve il numero 14.",
+        "Il nome del preset numero 14, 'DONNE LIBERE', lo usa già un'altra voce della casella. Diventa DONNE LIBERE (2).",
+        "Il preset al posto 3 della casella non ha un numero valido, '7'. Riceve il numero 15.",
+        "Al preset numero 15 manca il nome. Si chiama Preset 15.",
+        "Il nome del preset numero 5, '  Spazi\\tdentro  ', ha degli spazi in testa o in coda e ha dei caratteri di controllo. Diventa Spazi dentro.",
+        f"Il nome del preset numero 6, '{'x' * 60}', supera i 50 caratteri. Diventa {'x' * 50}.",
+        "Il nome del preset numero 8, 'I capi allenatori migliori', lo usa già un'altra voce della casella. Diventa I capi allenatori migliori (2).",
+        f"Il nome del preset numero 12, '{'Y' * 50}', lo usa già un'altra voce della casella. Diventa {'Y' * 46} (2).",
+    ]
+    assert problemi[9].startswith("I filtri del preset Senza filtri, numero 13, non sono validi: i campi non sono quelli di questa versione: mancano ")
+    assert problemi[9].endswith(". Diventano quelli del preset di serie Tutti in attività, senza filtri, per numero.")
+    assert problemi[10:] == [
+        "Il preset Senza filtri, numero 13, ha dei dati che questa versione non conosce: volante. Si tolgono.",
+        "Il numero del prossimo preset, 2, è già di un preset. Diventa 16.",
+        "La porta Mercato, Ctrl+K, riapriva il preset numero 2, che non c'è più. Torna al suo preset di serie, Mercato: liberi e in vendita da altri, dal valore più alto.",
+        "La porta Mercato degli allenatori, Ctrl+Maiusc+G, riapriva il preset numero 3, che non c'è più. Torna al suo preset di serie, Gli allenatori liberi migliori.",
+    ]
+    # Nel registro c'è il preset com'era, per ricostruirlo a mano.
+    assert scritti[1].endswith(json.dumps(blocco["preset"][1], ensure_ascii=False))
+    assert scritti[0].endswith(json.dumps("un preset che non è un dizionario", ensure_ascii=False))
+
+
+def test_il_testo_per_il_registro_ha_il_dato_originale_in_json():
+    avviso = mercato.Avviso("Lo stato della porta Amichevole, Ctrl+O, non si legge.", "Torna al suo preset di serie.", {"scelta": "città", "numero": 3})
+    assert mercato.testo_per_il_registro(avviso) == ("Lettura del mondo, filtri di Mercato e ricerca. Lo stato della porta Amichevole, Ctrl+O, non si legge. "
+                                                     "Torna al suo preset di serie. Il dato originale, in JSON: {\"scelta\": \"città\", \"numero\": 3}")
+    assert mercato.testo_per_il_registro(mercato.Avviso("P.", "R.", {1, 2})).endswith("Il dato originale, in JSON: {1, 2}")
+
+
+def test_la_lettura_non_solleva_mai_eccezioni_e_quello_che_legge_si_riscrive(mondo):
+    _con_i_preset(mondo)
+    buono = mercato.filtri_di_ricerca_da_salvare(mondo)
+    caso = random.Random(2410)
+    valori = (None, 0, -1, 1, 2, 3, 1.5, float("nan"), True, False, "", "x", "mercato", [], [1], {}, {"a": 1}, ["valore", "maggiore", 3])
+
+    def nodi(dato, percorso=()):
+        yield percorso
+        figli = dato.items() if isinstance(dato, dict) else enumerate(dato) if isinstance(dato, list) else ()
+        for chiave, figlio in figli:
+            yield from nodi(figlio, (*percorso, chiave))
+
+    percorsi = list(nodi(buono))
+    for _ in range(400):
+        dati = copy.deepcopy(buono)
+        for _volta in range(caso.randint(1, 3)):
+            percorso = caso.choice(percorsi)
+            cosa = dati
+            try:
+                for chiave in percorso[:-1]:
+                    cosa = cosa[chiave]
+                if percorso:
+                    cosa[percorso[-1]] = copy.deepcopy(caso.choice(valori))
+                else:
+                    dati = copy.deepcopy(caso.choice(valori))
+            except (KeyError, IndexError, TypeError):
+                continue
+        letti, _avvisi = mercato.filtri_di_ricerca_da_dizionario(dati)
+        assert mercato.filtri_di_ricerca_da_dizionario(json.loads(json.dumps(mercato.filtri_di_ricerca_a_dizionario(letti)))) == (letti, [])
+
+
+# Dalla verifica del formato 10: quello che il mondo ricorda e scrive deve rileggersi, senza riparazioni.
 
 SBAGLI_DELLA_FINESTRA = {
     "un sesso vuoto invece di None": ("sesso", ""),
@@ -834,62 +1142,91 @@ SBAGLI_DELLA_FINESTRA = {
 
 
 @pytest.mark.parametrize("sbaglio", list(SBAGLI_DELLA_FINESTRA))
-def test_il_mondo_non_ricorda_uno_stato_che_non_si_rileggerebbe(mondo, sbaglio):
+def test_il_mondo_non_ricorda_filtri_che_non_si_rileggerebbero(mondo, sbaglio):
     campo, valore = SBAGLI_DELLA_FINESTRA[sbaglio]
     filtri = mercato.Filtri(liberi=True)
     setattr(filtri, campo, valore)
-    # Il mondo non lo ricorda: né da solo, né come filtri fatti a mano dietro una ricerca pronta.
-    with pytest.raises(ValueError, match=f"^Filtri della porta mercato: il campo {campo} dei filtri non è valido"):
-        mercato.ricorda_la_porta(mondo, "mercato", mercato.fatti_a_mano(filtri))
-    with pytest.raises(ValueError, match=r"^Filtri della porta amichevole, filtri fatti a mano: "):
-        mercato.ricorda_la_porta(mondo, "amichevole", mercato.con_la_pronta(mercato.fatti_a_mano(filtri), "piu_forti"))
-    assert mondo.filtri_di_ricerca == {}
-    mercato.ricorda_la_porta(mondo, "mercato", mercato.fatti_a_mano(mercato.Filtri(liberi=True)))
+    # Né come filtri attuali di una porta, né come preset: il mondo resta com'era.
+    with pytest.raises(ValueError, match=rf"^I filtri attuali della porta Mercato, Ctrl\+K, non sono validi: il campo {campo} ha un valore che non va, "):
+        mercato.ricorda_la_porta(mondo, "mercato", mercato.StatoDellaPorta(None, filtri))
+    assert mondo.filtri_di_ricerca is None
+    copia = mercato.filtri_di_ricerca_del_mondo(mondo)
+    with pytest.raises(ValueError, match=rf"^I filtri non sono validi: il campo {campo} ha un valore che non va, "):
+        mercato.salva_preset(copia, "Sbagliato", filtri)
+    assert copia.preset == [] and copia.prossimo_preset == 1
+    # Un preset messo nella copia senza salva_preset: ricorda_i_preset lo rifiuta.
+    copia.preset.append(mercato.Preset(1, "Sbagliato", filtri))
+    copia.prossimo_preset = 2
+    with pytest.raises(ValueError, match=rf"^I filtri del preset Sbagliato, numero 1, non sono validi: il campo {campo} ha un valore che non va, "):
+        mercato.ricorda_i_preset(mondo, copia)
+    assert mondo.filtri_di_ricerca is None
+    mercato.ricorda_la_porta(mondo, "mercato", mercato.StatoDellaPorta(None, mercato.Filtri(liberi=True)))
     with pytest.raises(ValueError):
-        mercato.ricorda_la_porta(mondo, "mercato", mercato.fatti_a_mano(filtri))
-    assert mondo.filtri_di_ricerca == {"mercato": mercato.fatti_a_mano(mercato.Filtri(liberi=True))}
+        mercato.ricorda_la_porta(mondo, "mercato", mercato.StatoDellaPorta(None, filtri))
+    assert mondo.filtri_di_ricerca.porte["mercato"] == mercato.StatoDellaPorta(None, mercato.Filtri(liberi=True))
     # Un valore che il JSON non sa scrivere si rifiuta allo stesso modo, in italiano.
-    with pytest.raises(ValueError, match=r"^Filtri della porta ricerca: lo stato dei filtri non si può scrivere: "):
-        mercato.ricorda_la_porta(mondo, "ricerca", mercato.fatti_a_mano(mercato.Filtri(nome={"ros"})))
+    with pytest.raises(ValueError, match=r"^I filtri della finestra Mercato e ricerca non si possono scrivere: "):
+        mercato.ricorda_la_porta(mondo, "ricerca", mercato.StatoDellaPorta(None, mercato.Filtri(nome={"ros"})))
 
 
-def test_il_salvataggio_non_scrive_uno_stato_che_non_si_rileggerebbe(mondo, cartella_di_prova):
+def test_il_mondo_non_ricorda_preset_che_la_lettura_dovrebbe_riparare(mondo):
+    for preset, prossimo, problema in (
+        ([mercato.Preset(1, "", mercato.Filtri())], 2, "Il nome del preset numero 1, '', non ha nessun carattere"),
+        ([mercato.Preset(1, "Uno", mercato.Filtri()), mercato.Preset(2, "UNO", mercato.Filtri())], 3,
+         "Il nome del preset numero 2, 'UNO', lo usa già un'altra voce della casella"),
+        ([mercato.Preset(1, "Uno", mercato.Filtri()), mercato.Preset(1, "Due", mercato.Filtri())], 3,
+         "Il preset al posto 2 della casella ha lo stesso numero di un preset di prima, 1"),
+        ([mercato.Preset(4, "Uno", mercato.Filtri())], 4, "Il numero del prossimo preset, 4, è già di un preset"),
+        ([mercato.Preset(True, "Uno", mercato.Filtri())], 2, "Il preset al posto 1 della casella non ha un numero valido, True"),
+    ):
+        copia = mercato.filtri_di_ricerca_del_mondo(mondo)
+        copia.preset, copia.prossimo_preset = preset, prossimo
+        with pytest.raises(ValueError) as errore:
+            mercato.ricorda_i_preset(mondo, copia)
+        assert str(errore.value) == problema and mondo.filtri_di_ricerca is None
+
+
+def test_il_salvataggio_non_scrive_filtri_che_non_si_rileggerebbero(mondo, cartella_di_prova, scritti):
     assert archivio.salva(mondo)
     percorso = cartella_di_prova / FILE_MONDO
     prima = percorso.read_bytes()
-    # Uno stato messo nel mondo senza ricorda_la_porta: il salvataggio si rifiuta, e quello di prima resta com'era.
+    # Filtri messi nel mondo senza ricorda_la_porta: il salvataggio si rifiuta, e quello di prima resta com'era.
     filtri = mercato.Filtri(liberi=True)
     filtri.sesso = ""
-    mondo.filtri_di_ricerca["mercato"] = mercato.fatti_a_mano(filtri)
+    mondo.filtri_di_ricerca = mercato.filtri_di_ricerca_di_serie()
+    mondo.filtri_di_ricerca.porte["mercato"] = mercato.StatoDellaPorta(None, filtri)
     messaggi = []
     mondo.notifica = messaggi.append
     assert archivio.salva(mondo) is False
     assert percorso.read_bytes() == prima
-    assert messaggi == ["Salvataggio non riuscito: Filtri della porta mercato: il campo sesso dei filtri non è valido: ''. Il salvataggio precedente è rimasto com'era."]
+    assert messaggi == ["Salvataggio non riuscito: I filtri attuali della porta Mercato, Ctrl+K, non sono validi: il campo sesso ha un valore che non va, ''. "
+                        "Il salvataggio precedente è rimasto com'era."]
     ricaricato = Mondo()
     archivio.carica(ricaricato)
-    assert ricaricato.filtri_di_ricerca == {porta: mercato.stato_predefinito(porta) for porta in mercato.PORTE}
+    assert ricaricato.filtri_di_ricerca == mercato.filtri_di_ricerca_di_serie() and scritti == []
 
 
-def test_ogni_stato_che_il_motore_produce_si_salva_e_si_rilegge(mondo, cartella_di_prova):
-    a_mano = mercato.Filtri(liberi=True, in_vendita=True, del_computer=True, tuoi=True, ritirati=True, nome="ros", sesso="f", classe_migliore=40, eta_massima=30,
-                            costo_massimo=5000, disponibili_oggi=True, ordine="bomba_base", ordine_allenatori="eta_anziano", classe_peggiore=60, eta_minima=18,
-                            regione="Lombardia", provincia="Milano", comune="mil", polisportiva="team",
-                            tratti={tratto: posto % 2 == 0 for posto, tratto in enumerate(mercato.TRATTI)}, indole=mondo.giocatori[3].indole,
-                            valore_minimo=120.5, stipendio_massimo=900, mesi_contratto_massimi=12, senza_acciacchi=True, solo_ritirati_che_allenano=True,
-                            solo_nuovi=True, comprendi_usciti=True, condizioni=(("bomba_base", "maggiore", 10.5), ("ambizione", "minore", 50)),
-                            tipo_allenatore=staff.EX, visus=staff.VEDENTE, posto_attuale=staff.CAPO, stipendio_capo_massimo=2000, senza_prelazione_altrui=True)
-    stati = [mercato.stato_predefinito(porta) for porta in mercato.PORTE] + [mercato.fatti_a_mano(a_mano), mercato.fatti_a_mano(mercato.azzera_altri(a_mano))]
-    for chiave, _nome in mercato.PRONTE[1:]:
-        dalla_pronta = mercato.con_la_pronta(mercato.fatti_a_mano(a_mano), chiave)
-        stati += [dalla_pronta, mercato.con_la_pronta(mercato.con_la_pronta(dalla_pronta, "piu_forti"), mercato.TORNA_AI_TUOI),
-                  mercato.fatti_a_mano(mercato.azzera_altri(mercato.filtri_della_pronta(chiave)))]
-    # Quattro stati per salvataggio, uno per porta.
-    for primo in range(0, len(stati), len(mercato.PORTE)):
-        gruppo = dict(zip(mercato.PORTE, stati[primo:primo + len(mercato.PORTE)], strict=False))
-        for porta, stato in gruppo.items():
-            mercato.ricorda_la_porta(mondo, porta, stato)
+def test_ogni_stato_che_il_motore_produce_si_salva_e_si_rilegge(mondo, cartella_di_prova, scritti):
+    a_mano = mercato.Filtri(**{**A_MANO, "indole": mondo.giocatori[3].indole})
+    fdr = mercato.filtri_di_ricerca_del_mondo(mondo)
+    # Un preset per ogni preset di serie, per i filtri fatti a mano e per ciascuno dei tre gruppi azzerato.
+    for chiave, nome in mercato.PRESET_DI_SERIE:
+        mercato.salva_preset(fdr, f"Come {nome}"[:50], mercato.filtri_di_serie(chiave))
+    mercato.salva_preset(fdr, "A mano", a_mano)
+    for gruppo, campi in (("filtri", mercato.CAMPI_FILTRI), ("altri", mercato.CAMPI_ALTRI_FILTRI), ("allenatori", mercato.CAMPI_FILTRI_ALLENATORI)):
+        mercato.salva_preset(fdr, f"A mano senza i {gruppo}", mercato.azzera(a_mano, campi))
+    mercato.rinomina_preset(fdr, 2, "Rinominato")
+    mercato.sposta_preset(fdr, 3, -1)
+    mercato.elimina_preset(fdr, 4)
+    mercato.ricorda_i_preset(mondo, fdr)
+    scelte = [None, *(chiave for chiave, _nome in mercato.PRESET_DI_SERIE), *(p.numero for p in fdr.preset)]
+    # Quattro porte per salvataggio, ciascuna con una scelta diversa e i filtri attuali fatti a mano o di serie.
+    for primo in range(0, len(scelte), len(mercato.PORTE)):
+        gruppo = dict(zip(mercato.PORTE, scelte[primo:primo + len(mercato.PORTE)], strict=False))
+        for posto, (porta, scelta) in enumerate(gruppo.items()):
+            attuali = a_mano if posto % 2 == 0 else mercato.filtri_di_serie(mercato.PRESET_DELLA_PORTA[porta])
+            mercato.ricorda_la_porta(mondo, porta, mercato.StatoDellaPorta(scelta, attuali))
         assert archivio.salva(mondo)
         ricaricato = Mondo()
         archivio.carica(ricaricato)
-        assert {porta: ricaricato.filtri_di_ricerca[porta] for porta in gruppo} == gruppo
+        assert ricaricato.filtri_di_ricerca == mondo.filtri_di_ricerca and scritti == []

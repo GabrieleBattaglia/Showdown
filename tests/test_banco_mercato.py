@@ -3,7 +3,8 @@ Test del banco dei tempi della finestra Mercato e ricerca, strumenti/banco_merca
 mondo a regime piccolo misura tutte le porte, le ricerche pronte, i filtri a mano e gli ordini senza
 errori, e lascia il caso del mondo com'era.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
-Nasce il 24 ottobre 2026 col passo 2 della proposta della issue 8.
+Nasce il 24 ottobre 2026 col passo 2 della proposta della issue 8. Lo stesso giorno le ricerche pronte diventano
+i dodici preset di serie.
 """
 
 import random
@@ -29,7 +30,7 @@ def test_il_banco_misura_tutto_su_un_mondo_piccolo():
     esito = bm.banco(mondo, 1, righe.append)
     misure = esito["misure"]
     assert {f"apertura di {porta}" for porta in mercato.PORTE} <= set(misure)
-    assert all(f"{nome}, a caldo" in misure for _chiave, nome in mercato.PRONTE[1:])
+    assert all(f"{nome}, a caldo" in misure for _chiave, nome in mercato.PRESET_DI_SERIE)
     assert all(f"ordine {nome}" in misure for _chiave, nome in mercato.ORDINI_GIOCATORI)
     assert misure["apertura di mercato"][2] > 0 and misure["apertura di allenatori"][2] > 0
     assert esito["piu_lento"][1][0] < bm.OBIETTIVO
