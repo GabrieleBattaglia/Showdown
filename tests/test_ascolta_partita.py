@@ -10,7 +10,8 @@ lo strumento, che con la fase dei timbri compone con partita_sonora: il gruppo d
 ogni suono della partita da solo, con l'azione, il preset e la descrizione, da dove viene nella
 partita, i fischi dall'arbitro e gli esiti dalla testata di chi ascolta; i punti scelti si
 compongono senza suonare e senza scrivere, nessun buffer supera il margine, i punti sono quelli
-dichiarati e sempre gli stessi, con la fanfara del goal e il cicalino del fallo, e la cronaca dice
+dichiarati e sempre gli stessi, con la fanfara del goal e il cicalino del fallo, dalla issue 12 con la
+pallina che dallo schermo torna indietro, e la cronaca dice
 dove comincia il suono; i tasti e il menu di fine gruppo funzionano con una tastiera finta da
 copione, e lo strumento non scrive righe vuote di suo.
 """
@@ -36,6 +37,7 @@ import percorsi
 import suoni
 from motore import eventi as E
 from motore.eventi import Evento, Tappa
+from motore.regia import RITARDO_DELLA_RICADUTA
 from motore.tavolo import centro_porta, posizione_arbitro, vista
 
 # I messaggi del menu di collaudo_comune, che dopo di sé lascia una riga vuota.
@@ -374,6 +376,16 @@ def test_i_punti_sono_quelli_dichiarati(punti):
     assert punto.candidato.momento.esito.causa.startswith("out") and _ruoli(punto)["terra"] == 1
     punto = per_chiave["schermo_centrale"][0]
     assert punto.candidato.momento.esito.causa == "schermo_contro" and _ruoli(punto)["schermo"] == 1
+    # Dalla issue 12 la pallina batte sullo schermo e torna indietro: la versione scelta da Gabriele il 24 ottobre
+    # sera, poco dopo l'urto la ricaduta e un rotolamento suo, dal punto da cui si è sentito l'urto, e il fischio
+    # nell'istante dell'urto.
+    posati = ps.componi(resa.azione(punto.candidato.momento.eventi), punto.ascoltatore).posati
+    (urto,) = [p for p in posati if p.ruolo == "schermo"]
+    (ricaduta,) = [p for p in posati if p.ruolo == "ricaduta"]
+    assert ricaduta.t == pytest.approx(urto.t + RITARDO_DELLA_RICADUTA, abs=1e-9) and ricaduta.posizioni[0] == pytest.approx(urto.posizioni[0])
+    ritorni = [p for p in posati if p.ruolo == "rotolamento" and p.t == pytest.approx(ricaduta.t, abs=1e-9)]
+    assert len(ritorni) == 1 and ritorni[0].posizioni[0] == pytest.approx(urto.posizioni[0])
+    assert any(p.ruolo == "fischio_singolo" and p.t == pytest.approx(urto.t, abs=1e-3) for p in posati)
     # Il fallo che fa un rumore suo, con il suo suono e il titolo giusto.
     punto = per_chiave["rumore"][0]
     causa = punto.candidato.momento.esito.causa
