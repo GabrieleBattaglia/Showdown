@@ -13,6 +13,10 @@ termini italiani della FISPIC, i punti e una frase per la cronaca, dove {chi} è
 Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 10 e decisione D37: la tappa svolta, muta,
 dove il lungolinea che va verso la porta lascia il suo lato nell'angolo di chi difende e gira verso
 la tasca. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 12 e decisione D37: nello schermo contro la
+pallina batte sullo schermo e torna indietro, con le parole di Gabriele, invece di urtarlo e fermarsi;
+il ritorno è un volo che finisce nella tappa fermo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import dataclasses
@@ -159,7 +163,8 @@ CAUSE = {
     "battuta_a_vuoto": _c("battuta", "15.3.6", "servizio_irregolare", 1, "{chi} manca la pallina, e il colpo a vuoto si sente"),
     "battuta_doppio_tocco": _c("battuta", "15.3.1", "servizio_irregolare", 1, "{chi} tocca due volte la pallina in battuta"),
     # L'attacco: schermo centrale e out.
-    "schermo_contro": _c("attacco", "15.4.2", "schermo_centrale", 1, "la pallina di {chi} urta lo schermo e si ferma"),
+    # Dalla issue 12 la pallina batte sullo schermo e torna indietro, parole di Gabriele; prima si fermava.
+    "schermo_contro": _c("attacco", "15.4.2", "schermo_centrale", 1, "la pallina di {chi} batte sullo schermo e torna indietro"),
     "schermo_sopra": _c("attacco", "15.4.1", "schermo_centrale", 1, "la pallina di {chi} passa sopra lo schermo"),
     "out_sponda": _c("attacco", "15.7.1", "out", 1, "la pallina di {chi} salta la sponda e finisce a terra"),
     "out_volo": _c("attacco", "15.7.1", "out", 1, "la pallina di {chi} vola fuori dal tavolo"),
