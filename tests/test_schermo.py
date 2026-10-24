@@ -10,10 +10,15 @@ composto senza suonarlo lo schermo suona una volta sola, e dall'urto la pallina 
 schermo, anche dopo il cicalino del fallo. Le invarianti vedono uno schermo senza ritorno e un ritorno
 sbagliato. Gli esiti sono quelli della modalità essenziale con gli stessi semi, e il dado della
 partita non tira niente di nuovo: l'impronta del motore la guarda tests/test_identita_motore.py.
+Dalle verifiche, sempre il 24 ottobre: a ogni velocità di gioco quello che segue il punto aspetta che la
+pallina sia ferma, e fino a velocità 4 la pausa fra i punti resta quella di sempre; le invarianti vedono
+il recupero addosso alla pallina che rotola, e nella partita dal vivo nessuna piega della procedura cade
+dentro il ritorno, nemmeno se la velocità cambia a punto già composto.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import dataclasses
+import itertools
 import math
 import random
 
@@ -28,28 +33,29 @@ from costanti import META_TAVOLO
 from motore import cronaca as C
 from motore import eventi as E
 from motore.eventi import CAUSE, Evento, Tappa
-from motore.incontro import COMPLETO, ESSENZIALE, SINGOLARE_3, SQUADRE, simula_incontro
+from motore.incontro import COMPLETO, ESSENZIALE, SINGOLARE_3, SQUADRE, Incontro, simula_incontro
 from motore.regia import FRENATA_DEL_RITORNO, RITORNO_DALLO_SCHERMO, Regia, controlla_invarianti
 from motore.squadre import Squadra
+from motore.taratura import TARATURA
 from motore.tavolo import LARGHEZZA_TAVOLO, MARGINE_GIOCO, distanza_di, lato_di, vista
 
 INCONTRI = 30
 GARE_A_SQUADRE = 3
 
 
-def _partite(dettaglio):
-    """Trenta singolari e tre gare a squadre con semi fissi, nella modalità indicata, con i nomi della cronaca."""
+def _partite(dettaglio, velocita=1.0):
+    """Trenta singolari e tre gare a squadre con semi fissi, nella modalità e alla velocità di gioco indicate, con i nomi della cronaca."""
     rng = random.Random(12)
     partite = []
     for seme in range(INCONTRI):
         a = giocatore(1, valore=rng.uniform(8, 30), mancino=rng.random() < 0.2, giocorapido=rng.random() < 0.3, cognome="Rossi", nome="Mario")
         b = giocatore(2, valore=rng.uniform(8, 30), ambidestro=rng.random() < 0.3, sesso="f", cognome="Bianchi", nome="Anna")
-        partite.append((simula_incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=dettaglio), C.nomi_dei_giocatori([a, b])))
+        partite.append((simula_incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=dettaglio, velocita=velocita), C.nomi_dei_giocatori([a, b])))
     for seme in range(GARE_A_SQUADRE):
         a = Squadra("Leoni", tuple(giocatore(i, valore=rng.uniform(8, 30), sesso=s) for i, s in ((1, "m"), (2, "m"), (3, "f"))))
         b = Squadra("Tigri", tuple(giocatore(i, valore=rng.uniform(8, 30), sesso=s) for i, s in ((11, "f"), (12, "f"), (13, "m"))))
         nomi = C.nomi_dei_giocatori([*a.giocatori, *b.giocatori], squadre=(a, b))
-        partite.append((simula_incontro(a, b, SQUADRE, seme=300 + seme, dettaglio=dettaglio), nomi))
+        partite.append((simula_incontro(a, b, SQUADRE, seme=300 + seme, dettaglio=dettaglio, velocita=velocita), nomi))
     return partite
 
 
@@ -168,6 +174,88 @@ def test_il_recupero_parte_da_dove_la_pallina_si_ferma(partite):
             fermo = ritorno.volo[-1]
             assert ripresa.pos == (round(fermo.x, 1), round(fermo.y, 1)) and ripresa.dati == {"da": "tavolo"}
     assert recuperi >= 40
+
+
+@pytest.mark.parametrize("velocita", [4.0, 8.0])
+def test_a_ogni_velocita_quello_che_segue_il_punto_aspetta_la_pallina_ferma(velocita):
+    """
+    Dalle verifiche: il ritorno è azione e resta a tempo reale, mentre la pausa fra i punti si accorcia
+    con la velocità di gioco, e da velocità 5 l'arbitro recuperava la pallina mentre rotolava ancora. Ora
+    il primo evento dopo il punto, il recupero o quello che viene prima, aspetta che sia ferma; il punto
+    si assegna sempre subito dopo la chiamata. A velocità 4, la predefinita, la pausa basta sempre e
+    resta quella di sempre.
+    """
+    pausa = TARATURA.PAUSA_FRA_PUNTI / velocita
+    visti = attese = recuperi = 0
+    for risultato, _nomi in _partite(COMPLETO, velocita):
+        eventi = risultato.eventi
+        assert controlla_invarianti(eventi) == []
+        for _andata, ritorno, fallo, indice in _schermi(risultato):
+            j = next(k for k in range(indice, len(eventi)) if eventi[k].tipo == E.PUNTO)
+            if j + 1 == len(eventi):
+                continue
+            punto, seguente, fermo = eventi[j], eventi[j + 1], ritorno.volo[-1].t
+            visti += 1
+            assert punto.t == pytest.approx(fallo.t + max(TARATURA.FISCHIO_SINGOLO, TARATURA.RITARDO_CHIAMATA / velocita) + TARATURA.DURATA_CHIAMATA / velocita, abs=2e-3)
+            assert seguente.t == pytest.approx(max(punto.t + pausa, fermo), abs=2e-3)
+            attese += fermo > punto.t + pausa + 2e-3
+            recupero = next((e for e in eventi[j:] if e.tipo == E.RECUPERO), None)
+            if recupero is not None:
+                recuperi += 1
+                assert recupero.t >= fermo - 1e-3
+    assert visti >= 50 and recuperi >= 40
+    if velocita <= 4.0:
+        assert attese == 0
+    else:
+        assert attese >= 0.8 * visti
+
+
+def test_le_invarianti_vedono_il_recupero_addosso_alla_pallina_che_rotola():
+    andata = _volo(1, 1.0, [Tappa(1.0, 60.0, 30.0, 600.0, "partenza"), Tappa(1.25, 62.0, 181.0, 590.0, "schermo")])
+    fermo = 1.25 + 100.0 / FRENATA_DEL_RITORNO
+    ritorno = _volo(2, 1.25, [Tappa(1.25, 62.0, 181.0, 100.0, "partenza"), Tappa(fermo, 63.0, 98.0, 0.0, "fermo")], dati={"ritorno": True})
+    punto = Evento(n=5, t=1.75, tipo=E.PUNTO, fase=E.GIOCO, punti=1, a_chi="B", esito="fallo", causa="schermo_contro")
+    recupero = Evento(n=6, t=2.4, tipo=E.RECUPERO, fase=E.GIOCO, durata=0.3, dati={"da": "tavolo"})
+    sequenza = [andata, ritorno, _fallo(3, 1.25, (62.0, 181.0)), _fischio(4, 1.25), punto]
+    assert any("prima che si fermi la pallina tornata dallo schermo" in p for p in controlla_invarianti([*sequenza, recupero]))
+    assert controlla_invarianti([*sequenza, dataclasses.replace(recupero, t=round(fermo, 3))]) == []
+    # Il punto si assegna mentre la pallina rotola ancora: va bene.
+    assert controlla_invarianti(sequenza) == []
+
+
+@pytest.mark.parametrize("composta", [1.0, 6.0])
+def test_nella_partita_dal_vivo_nessuna_piega_cade_dentro_il_ritorno(composta):
+    """
+    Dalle verifiche: se chi ascolta alza la velocità a punto già composto, la procedura si ripiega, ma
+    mai dentro il volo della pallina. Ripiegato a velocità 8, il ritorno dura nel buffer il suo tempo
+    reale, e il primo suono del segmento che segue, che parte dalla fine di quello di prima come fino a
+    fine set, arriva quando la pallina è ferma. Composto a 1 il ritorno finisce prima del punto, sotto
+    la chiamata; composto a 6 corre oltre il punto, nella pausa che sta nel segmento dopo.
+    """
+    adesso = 8.0
+    casi = oltre_il_punto = 0
+    rng = random.Random(3)
+    for seme in range(14):
+        a, b = giocatore(1, valore=rng.uniform(8, 30)), giocatore(2, valore=rng.uniform(8, 30))
+        cronologia = ps.Cronologia(Incontro(a, b, SINGOLARE_3, seme=seme, dettaglio=COMPLETO, velocita=composta))
+        segmenti = []
+        while (segmento := cronologia.prossimo(composta)) is not None:
+            segmenti.append(segmento)
+        for prima, dopo in itertools.pairwise(segmenti):
+            for ritorno in [e for e in prima.eventi if _e_ritorno(e)]:
+                urto, fermo = ritorno.t, ritorno.volo[-1].t
+                assert ps.secondi_del_buffer(fermo, urto, prima.pieghe(adesso)) == pytest.approx(fermo - urto, abs=1e-9)
+                resta = (fermo - urto) - ps.secondi_del_buffer(prima.fine, urto, prima.pieghe(adesso))
+                if not dopo.udibili:
+                    continue
+                casi += 1
+                oltre_il_punto += fermo > prima.fine + 1e-3
+                assert ps.secondi_del_buffer(dopo.udibili[0].t, prima.fine, dopo.pieghe(adesso)) >= resta - 1e-3
+    assert casi >= 20
+    if composta > 4.0:
+        assert oltre_il_punto >= 0.5 * casi
+    else:
+        assert oltre_il_punto == 0
 
 
 def test_tolto_il_ritorno_la_scena_e_quella_di_prima(partite, partite_senza_ritorno):

@@ -8,7 +8,8 @@ controllo resta più breve della pallina trattenuta. Le palle morte si fermano a
 giocatori. Il blocco ha il suo suono, mess_partita_blocco, al suo istante e sulla sua sponda nel buffer
 composto, e il suono del controllo si sposta con la pallina; la cronaca dice il blocco sulla sponda e
 dove il giocatore porta la pallina. Gli esiti sono quelli della modalità essenziale con gli stessi
-semi, che la regia non tocca; l'impronta del motore la guarda tests/test_identita_motore.py.
+semi, che la regia non tocca; l'impronta del motore la guarda tests/test_identita_motore.py. Dalle
+verifiche, sempre il 24 ottobre: la frase della pallina sfuggita dice che rotola via fino a centrocampo.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -25,7 +26,7 @@ from test_identita_motore import _risultato_in_json
 import partita_sonora as ps
 from motore import cronaca as C
 from motore import eventi as E
-from motore.eventi import Evento
+from motore.eventi import CAUSE, Evento
 from motore.incontro import COMPLETO, ESSENZIALE, SINGOLARE_3, SQUADRE, Incontro, simula_incontro
 from motore.regia import (
     AL_CENTRO,
@@ -386,6 +387,16 @@ def test_la_cronaca_del_blocco_e_del_trasporto():
     # Senza trasporto, come prima della issue 11, il controllo riuscito si legge soltanto al livello tecnico.
     vecchio = Evento(n=8, t=1.0, tipo=E.CONTROLLO, fase=E.GIOCO, durata=0.8, chi=1, parte="A", pos=(6.0, 25.0), lato="sinistra", esito="riuscito", dati={"valore": 0.8})
     assert C.frase(vecchio, nomi) is None and C.frase(vecchio, nomi, C.TECNICA).startswith("Rossi controlla la pallina.")
+
+
+def test_la_cronaca_della_pallina_sfuggita_dice_che_rotola_via(partite):
+    # Dalle verifiche: dal blocco la pallina sfuggita rotola via fino a centrocampo, e si sente; la frase non dice più che resta ferma.
+    assert CAUSE["pallina_ferma"].frase == "la pallina sfugge a {chi}, rotola via e si ferma a centrocampo, senza suono"
+    nomi = {1: C.Nome("Carella", "m")}
+    morta = Evento(n=4, t=2.0, tipo=E.PALLA_MORTA, fase=E.GIOCO, chi=1, parte="A", causa="pallina_ferma")
+    assert C.frase(morta, nomi) == "Fischio: palla morta, la pallina sfugge a Carella, rotola via e si ferma a centrocampo, senza suono."
+    for risultato, nomi_incontro in partite:
+        assert not any("resta ferma" in riga for riga in C.componi(risultato.momenti, nomi_incontro))
 
 
 def test_la_cronaca_degli_incontri_dice_blocchi_e_trasporti(partite):

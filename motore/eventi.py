@@ -17,6 +17,9 @@ Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 12 e decisione D37:
 pallina batte sullo schermo e torna indietro, con le parole di Gabriele, invece di urtarlo e fermarsi;
 il ritorno è un volo che finisce nella tappa fermo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
 Opus 5.5, UltraCode).
+Dalle verifiche della issue 11, il 24 ottobre 2026, decisione D37: la frase della pallina che sfugge al
+controllo dice che rotola via e si ferma a centrocampo, come fa dalla issue 11, invece di restare ferma
+accanto a chi l'ha persa. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import dataclasses
@@ -190,7 +193,7 @@ CAUSE = {
     # La palla morta, nessun punto, si ripete il servizio.
     "colpo_debole": _c("palla_morta", "16.1", "palla_morta", 0, "il colpo di {chi} è troppo debole e la pallina si ferma prima di arrivare all'avversario"),
     "ribattuta_lenta": _c("palla_morta", "16.1", "palla_morta", 0, "la ribattuta di {chi} si ferma prima dello schermo"),
-    "pallina_ferma": _c("palla_morta", "16.2", "palla_morta", 0, "la pallina sfugge a {chi} e resta ferma, senza suono"),
+    "pallina_ferma": _c("palla_morta", "16.2", "palla_morta", 0, "la pallina sfugge a {chi}, rotola via e si ferma a centrocampo, senza suono"),
     "limite_tecnico": _c("palla_morta", "simulatore", "palla_morta", 0, "lo scambio non finisce più, e l'arbitro lo ferma"),
     # Le rotture, nessun punto, si ripete il servizio.
     "paletta_rotta": _c("rottura", "15.9.3", "si_ripete", 0, "la paletta di {chi} si rompe"),
