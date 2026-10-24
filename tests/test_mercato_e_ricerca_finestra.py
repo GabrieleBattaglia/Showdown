@@ -19,6 +19,7 @@ Azzera; la chiusura con e senza esiti; e nessun messaggio di Windows.
 Coi collegamenti dello stesso giorno ci sono anche le prove del mercato degli allenatori di prima, che la finestra ha
 sostituito, da Ctrl+Maiusc+G e da Assumi: i liberi dal migliore coi loro filtri, l'ingaggio accettato e rifiutato col
 posto da offrire, la prelazione, la cassa vuota e le mosse finite, la scheda e il diario; e l'elenco che nasce vuoto.
+Col passo dei suoni dello stesso giorno ogni evento della finestra ha il suo preset, e le prove usano il registratore di sempre.
 """
 
 import ctypes
@@ -40,7 +41,6 @@ import impostazioni
 import mercato
 import mondo as modulo_mondo
 import staff
-import suoni
 import testi
 from costanti import LIMITE_MOVIMENTI_PER_TICK, MESI_DI_INGAGGIO
 from gui import dialoghi
@@ -168,13 +168,6 @@ def dialoghi_finti(monkeypatch):
     return finti
 
 
-@pytest.fixture
-def suonati_tutti(suonati, monkeypatch):
-    """I suoni della finestra, anche quelli che aspettano il loro preset: per le prove hanno un preset finto."""
-    monkeypatch.setattr(suoni, "EVENTI", {**suoni.EVENTI, **{evento: f"senza_preset_{evento}" for evento in suoni.SENZA_PRESET}})
-    return suonati
-
-
 class Banco:
     """Il banco di una prova: il mondo, i rimandi, gli annunci, i dialoghi finti, i suoni e le finestre aperte."""
 
@@ -200,8 +193,8 @@ class Banco:
 
 
 @pytest.fixture
-def banco(app_wx, mondo, dialoghi_finti, suonati_tutti, messaggi):
-    b = Banco(mondo, Pianifica(), Annunci(), dialoghi_finti, suonati_tutti, messaggi)
+def banco(app_wx, mondo, dialoghi_finti, suonati, messaggi):
+    b = Banco(mondo, Pianifica(), Annunci(), dialoghi_finti, suonati, messaggi)
     yield b
     for f in reversed(b.aperte):
         f.Destroy()

@@ -7,6 +7,9 @@ probabilità d'ingaggio, il motore vero con la scheda audio finta, e la scelta d
 avanzamento del mondo, con il testo della barra di stato che lo accompagna.
 Dal 2026-10-24, col collaudo di gioco, i nove suoni della V229, ciascuno col suo preset breve salvo l'errore fatale, e la descrizione del calendario non ripristinato, che non promette più il calendario di prima. Con le verifiche, le azioni che dicono tutte le loro situazioni.
 Lo stesso giorno, con la finestra Mercato e ricerca, gli eventi che aspettano il loro preset: nuovi, usati dal codice, e muti senza avvisi.
+Col passo dei suoni della finestra, i suoi sessantatré suoni della V232 in quattro gruppi: brevi, ben descritti e usati dal codice;
+le schede che si contano coi tocchi, le caselle che salgono quando si spuntano e scendono nello specchio, e la firma di MESS
+tolta dai quattro suoni della ricerca che non ci sono più.
 """
 
 import ast
@@ -264,20 +267,78 @@ def test_ogni_evento_e_usato_nel_codice():
 def test_ogni_suono_del_codice_e_un_evento():
     trovati = _suoni_nel_codice()
     assert len(trovati) > 100
-    # Gli eventi della finestra Mercato e ricerca che aspettano il preset sono eventi anche loro, senza ancora la mappa.
-    sconosciuti = sorted({(file, s) for file, s in trovati if s not in suoni.EVENTI and s not in suoni.SENZA_PRESET})
+    sconosciuti = sorted({(file, s) for file, s in trovati if s not in suoni.EVENTI})
     assert not sconosciuti, f"suoni che non sono eventi della mappa: {sconosciuti}"
 
 
-def test_gli_eventi_senza_preset_sono_nuovi_usati_e_tacciono(suonati, capsys):
-    # Dalla finestra Mercato e ricerca: gli eventi che aspettano il loro preset non sono già nella mappa, il codice li
-    # fa suonare tutti, e tacciono senza avvisi, mentre un evento sconosciuto lo dice.
-    assert not suoni.SENZA_PRESET & set(suoni.EVENTI)
+# I quattro gruppi della finestra Mercato e ricerca, coi loro sessantatré suoni della V232.
+GRUPPI_DELLA_FINESTRA = ("Mercato e ricerca, le schede e i preset", "Mercato e ricerca, le caselle dei filtri",
+                         "Mercato e ricerca, le scelte e i numeri dei filtri", "Mercato e ricerca, le azioni")
+
+
+def _eventi_della_finestra():
+    gruppi = dict(suoni.GRUPPI)
+    return {evento: preset for titolo in GRUPPI_DELLA_FINESTRA for evento, preset in gruppi[titolo].items()}
+
+
+def test_i_suoni_della_finestra_mercato_e_ricerca():
+    # Il passo dei suoni della finestra unica, issue 8 e decisione D36: ogni evento nuovo ha il suo preset mess_, breve e
+    # non a onda quadra, con la descrizione che dice l'evento, com'è fatto il suono e a che cosa va bene; e il codice lo
+    # fa suonare. I gruppi stanno subito dopo quello del mercato.
+    eventi = _eventi_della_finestra()
+    assert len(eventi) == 63
+    titoli = [titolo for titolo, _gruppo in suoni.GRUPPI]
+    inizio = titoli.index("Economia, il mercato") + 1
+    assert tuple(titoli[inizio:inizio + 4]) == GRUPPI_DELLA_FINESTRA
     codice = "".join(_codice(p) for p in _sorgenti() if p.name != "suoni.py")
-    assert not [evento for evento in suoni.SENZA_PRESET if f'"{evento}"' not in codice]
-    for evento in sorted(suoni.SENZA_PRESET):
-        assert suoni.suona(evento) is False
-    assert suonati == [] and capsys.readouterr().err == ""
+    for evento, preset in eventi.items():
+        assert preset.startswith("mess_"), evento
+        score, kind, _adsr = Acusticator.preset(preset)
+        assert kind != 2 and sum(float(d) for d in score[1::4]) < 0.5, evento
+        descrizione = Acusticator.descrizione(preset)
+        assert descrizione.startswith("MESS, ") and "; " in descrizione and ". Va bene per " in descrizione, evento
+        assert f'"{evento}"' in codice, evento
+
+
+def test_le_schede_si_contano_coi_tocchi():
+    # Ogni scheda ha tanti tocchi quanto è il suo posto, nella stessa onda, e il suono sta dal lato della sua linguetta.
+    from gui import mercato_e_ricerca
+
+    lati = []
+    for posto, evento in enumerate(mercato_e_ricerca.SUONI_DELLE_SCHEDE):
+        score, kind, _adsr = Acusticator.preset(suoni.EVENTI[evento])
+        note = [i for i in range(0, len(score), 4) if score[i] != "p"]
+        assert kind == 3 and len(note) == posto + 1, evento
+        assert len({score[i + 2] for i in note}) == 1, evento
+        lati.append(score[2])
+    assert lati == sorted(lati) and lati[0] < 0 < lati[-1]
+
+
+def test_le_caselle_salgono_quando_si_spuntano_e_scendono_nello_specchio():
+    # Un timbro per casella: spuntata sale, tolta è lo stesso suono al contrario, con le scivolate rovesciate, e scende.
+    from gui import mercato_e_ricerca
+
+    timbri = set()
+    for campo, (_etichetta, spuntata, tolta) in mercato_e_ricerca.CASELLE_DEI_FILTRI.items():
+        su, giu = (Acusticator.preset(suoni.EVENTI[evento]) for evento in (spuntata, tolta))
+        assert su[1] == giu[1] and su[2] == giu[2], campo
+        quartine_su = [su[0][i:i + 4] for i in range(0, len(su[0]), 4)]
+        rovesciate = [[".".join(reversed(str(n).split("."))), d, pn, v] for n, d, pn, v in reversed(quartine_su)]
+        assert [q[:2] for q in rovesciate] == [giu[0][i:i + 2] for i in range(0, len(giu[0]), 4)], campo
+        kind, figura = _figura(suoni.EVENTI[spuntata])
+        assert figura[-1][1] > figura[0][0], campo
+        timbri.add((kind, json.dumps(_sequenza(suoni.EVENTI[spuntata]))))
+    assert len(timbri) == len(mercato_e_ricerca.CASELLE_DEI_FILTRI)
+
+
+def test_la_firma_di_mess_esce_dai_suoni_della_ricerca_tolta():
+    # I quattro suoni della ricerca che stampava nella vista e di Risultati della ricerca non sono più di MESS, e la
+    # loro descrizione non lo dice più; gli altri programmi che li usano restano.
+    firma = re.compile(r"Usato da: [^.]*\bmess\b")
+    for preset in ("meteora_marcatori_trovato", "meteora_marcatori_non_trovato", "apertura", "meditimer_allarme_zittito"):
+        assert preset not in suoni.EVENTI.values() and preset not in partita_sonora.SUONI.values()
+        assert not firma.search(Acusticator.descrizione(preset)), preset
+    assert "Usato da: batnav, gabryscola, meteora, pokermachine, stellaterm, tornello." in Acusticator.descrizione("apertura")
 
 
 def _tastiera(monkeypatch, tasti):

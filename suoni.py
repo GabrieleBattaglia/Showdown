@@ -102,6 +102,13 @@ collezione tacciono senza avvisi. È di Gabriele Battaglia (IZ4APU) & ClaudIA (C
 Lo stesso giorno, coi collegamenti della finestra, escono da MESS i quattro suoni della ricerca che stampava nella vista
 e di Risultati della ricerca, che non c'è più, e la finestra chiusa senza esiti aspetta il suo preset. È di Gabriele
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, col passo dei suoni della finestra, i sessantatré eventi che aspettavano il preset hanno il loro, tutti
+mess_ e nella V232, in quattro gruppi nuovi: le quattro schede, con tanti tocchi quanto è il loro posto, la casella e le
+operazioni dei preset, il ritorno dalla scheda della persona all'elenco e la finestra chiusa senza esiti; le dodici
+caselle dei filtri, ciascuna col suo timbro, che sale quando si spunta e scende nello specchio quando si toglie; le
+scelte, i numeri e i testi dei filtri con Azzera questi filtri; il posto da offrire e i tre perché nuovi del motore.
+SENZA_PRESET non c'è più, e le azioni dei suoni che la finestra ha preso dal mercato, dalla ricerca e dal mercato degli
+allenatori di prima dicono dove suonano adesso. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -284,7 +291,8 @@ GRUPPI = (
     ("Economia, il mercato", {
         # La saracinesca che si alza: la stessa che si abbassa quando le mosse del giorno finiscono.
         "dialogo_mercato": "mess_mercato_aperto",
-        # Scattano a ogni freccia su Mostra e Ordina per: un tocco minimo.
+        # Dalla finestra Mercato e ricerca il preset applicato e Ordina per, a ogni freccia: un tocco minimo; le condizioni
+        # sulle caratteristiche hanno i suoni dei filtri del mercato di prima.
         "mercato_scelta_cambiata": "mess_mercato_mostra",
         "mercato_ordine_cambiato": "mess_mercato_ordine",
         "dialogo_filtro_mercato": "mess_filtro_dialogo",
@@ -292,6 +300,84 @@ GRUPPI = (
         "filtro_tolto": "mess_filtro_tolto",
         "filtri_tutti_tolti": "mess_filtri_tutti_tolti",
         "mercato_scheda_giocatore": "carta_girata",
+    }),
+    # Dal 24 ottobre 2026 la finestra Mercato e ricerca, issue 8 e decisione D36, coi suoni della V232, tutti mess_. Le schede
+    # hanno tanti tocchi quanto è il loro posto, dal lato della linguetta; i preset si ripongono in una cartellina, e la
+    # finestra chiusa senza esiti accosta appena la saracinesca del mercato.
+    ("Mercato e ricerca, le schede e i preset", {
+        "scheda_risultati": "mess_scheda_risultati",
+        "scheda_filtri": "mess_scheda_filtri",
+        "scheda_altri_filtri": "mess_scheda_altri_filtri",
+        "scheda_filtri_allenatori": "mess_scheda_filtri_allenatori",
+        "filtri_attuali_ripresi": "mess_filtri_attuali_ripresi",
+        "dialogo_salva_filtri": "mess_salva_filtri",
+        "dialogo_rinomina_preset": "mess_rinomina_preset",
+        "dialogo_gestisci_preset": "mess_gestisci_preset",
+        "preset_salvato": "mess_preset_salvato",
+        "preset_sostituito": "mess_preset_sostituito",
+        "preset_rinominato": "mess_preset_rinominato",
+        "preset_eliminato": "mess_preset_eliminato",
+        "preset_spostato_su": "mess_preset_spostato_su",
+        "preset_spostato_giu": "mess_preset_spostato_giu",
+        "preset_non_si_sposta": "mess_preset_al_bordo",
+        "ritorno_all_elenco": "mess_ritorno_all_elenco",
+        "finestra_chiusa_senza_esiti": "mess_finestra_senza_esiti",
+    }),
+    # Un timbro per casella, che sale quando si spunta e scende, nello specchio, quando si toglie.
+    ("Mercato e ricerca, le caselle dei filtri", {
+        "casella_allenatori_spuntata": "mess_casella_allenatori_spuntata",
+        "casella_allenatori_tolta": "mess_casella_allenatori_tolta",
+        "casella_liberi_spuntata": "mess_casella_liberi_spuntata",
+        "casella_liberi_tolta": "mess_casella_liberi_tolta",
+        "casella_in_vendita_spuntata": "mess_casella_in_vendita_spuntata",
+        "casella_in_vendita_tolta": "mess_casella_in_vendita_tolta",
+        "casella_del_computer_spuntata": "mess_casella_del_computer_spuntata",
+        "casella_del_computer_tolta": "mess_casella_del_computer_tolta",
+        "casella_tuoi_spuntata": "mess_casella_tuoi_spuntata",
+        "casella_tuoi_tolta": "mess_casella_tuoi_tolta",
+        "casella_ritirati_spuntata": "mess_casella_ritirati_spuntata",
+        "casella_ritirati_tolta": "mess_casella_ritirati_tolta",
+        "casella_disponibili_oggi_spuntata": "mess_casella_disponibili_oggi_spuntata",
+        "casella_disponibili_oggi_tolta": "mess_casella_disponibili_oggi_tolta",
+        "casella_senza_acciacchi_spuntata": "mess_casella_senza_acciacchi_spuntata",
+        "casella_senza_acciacchi_tolta": "mess_casella_senza_acciacchi_tolta",
+        "casella_solo_ritirati_che_allenano_spuntata": "mess_casella_ritirati_che_allenano_spuntata",
+        "casella_solo_ritirati_che_allenano_tolta": "mess_casella_ritirati_che_allenano_tolta",
+        "casella_solo_nuovi_spuntata": "mess_casella_solo_nuovi_spuntata",
+        "casella_solo_nuovi_tolta": "mess_casella_solo_nuovi_tolta",
+        "casella_comprendi_usciti_spuntata": "mess_casella_usciti_spuntata",
+        "casella_comprendi_usciti_tolta": "mess_casella_usciti_tolta",
+        "casella_senza_prelazione_altrui_spuntata": "mess_casella_senza_prelazione_spuntata",
+        "casella_senza_prelazione_altrui_tolta": "mess_casella_senza_prelazione_tolta",
+    }),
+    # Le scelte suonano a ogni freccia, con tocchi minimi fratelli di quelli del mercato degli allenatori di prima; i
+    # numeri e i testi quando ci si ferma.
+    ("Mercato e ricerca, le scelte e i numeri dei filtri", {
+        "filtro_classe_peggiore": "mess_filtro_classe_peggiore",
+        "filtro_regione": "mess_filtro_regione",
+        "filtro_provincia": "mess_filtro_provincia",
+        "filtro_tratto_si": "mess_filtro_tratto_si",
+        "filtro_tratto_no": "mess_filtro_tratto_no",
+        "filtro_tratto_indifferente": "mess_filtro_tratto_indifferente",
+        "filtro_indole": "mess_filtro_indole",
+        "filtro_visus": "mess_filtro_visus",
+        "filtro_posto_attuale": "mess_filtro_posto_attuale",
+        "filtro_eta_minima": "mess_filtro_eta_minima",
+        "filtro_costo_massimo": "mess_filtro_costo_massimo",
+        "filtro_valore_minimo": "mess_filtro_valore_minimo",
+        "filtro_stipendio_massimo": "mess_filtro_stipendio_massimo",
+        "filtro_mesi_contratto": "mess_filtro_mesi_contratto",
+        "filtro_stipendio_capo": "mess_filtro_stipendio_capo",
+        "filtro_comune": "mess_filtro_comune",
+        "filtro_polisportiva": "mess_filtro_polisportiva",
+        "filtri_azzerati": "mess_filtri_azzerati",
+    }),
+    # Il posto da offrire a un allenatore, e i tre perché nuovi del motore, imparentati con quelli che c'erano.
+    ("Mercato e ricerca, le azioni", {
+        "dialogo_posto_da_offrire": "mess_posto_da_offrire",
+        "offerta_non_possibile": "mess_offerta_non_possibile",
+        "non_gioca_oggi": "mess_non_gioca_oggi",
+        "club_non_sfidabile": "mess_club_non_sfidabile",
     }),
     ("Economia, le offerte", {
         "dialogo_cifra_ingaggio": "mess_cifra_ingaggio",
@@ -435,7 +521,7 @@ GRUPPI = (
         "allenatore_in_prelazione": "mess_allenatore_in_prelazione",
         "scheda_allenatore": "mess_scheda_allenatore",
         "diario_allenatore": "mess_diario_allenatore",
-        # Scattano a ogni freccia sui campi del mercato: tocchi minimi; l'età quando ci si ferma.
+        # Scattano a ogni freccia sui campi della finestra Mercato e ricerca: tocchi minimi; l'età quando ci si ferma.
         "staff_posto_scelto": "mess_staff_posto_scelto",
         "filtro_classe_allenatori": "mess_filtro_classe_allenatori",
         "filtro_eta_allenatori": "mess_filtro_eta_allenatori",
@@ -554,41 +640,6 @@ GRUPPI = (
 )
 EVENTI = {evento: preset for _titolo, gruppo in GRUPPI for evento, preset in gruppo.items()}
 
-# Gli eventi della finestra Mercato e ricerca, issue 8 e decisione D36, che il codice fa già suonare e che aspettano
-# il loro preset: il passo dei suoni, dopo le risposte di Gabriele, li porta nella collezione di GBUtils e nella mappa
-# qui sopra, ciascuno con la sua azione detta a parole, e li toglie da qui. Finché ci stanno, tacciono senza avvisi.
-SENZA_PRESET = frozenset({
-    # Le quattro schede della finestra, col cambio di scheda, Ctrl+Tab e Ctrl+Maiusc+Tab.
-    "scheda_risultati", "scheda_filtri", "scheda_altri_filtri", "scheda_filtri_allenatori",
-    # La casella dei preset: la voce Filtri attuali, non salvati, ripresa scorrendo.
-    "filtri_attuali_ripresi",
-    # I dialoghi dei preset e il posto da offrire a un allenatore, che si aprono.
-    "dialogo_salva_filtri", "dialogo_rinomina_preset", "dialogo_gestisci_preset", "dialogo_posto_da_offrire",
-    # I preset salvati, sostituiti, rinominati, eliminati e spostati, e quello al bordo che non si sposta.
-    "preset_salvato", "preset_sostituito", "preset_rinominato", "preset_eliminato", "preset_spostato_su", "preset_spostato_giu", "preset_non_si_sposta",
-    # Invio o Esc nella scheda della persona, che tornano all'elenco.
-    "ritorno_all_elenco",
-    # Le caselle dei filtri, spuntate e tolte, ciascuna col suo timbro.
-    "casella_allenatori_spuntata", "casella_allenatori_tolta", "casella_liberi_spuntata", "casella_liberi_tolta",
-    "casella_in_vendita_spuntata", "casella_in_vendita_tolta", "casella_del_computer_spuntata", "casella_del_computer_tolta",
-    "casella_tuoi_spuntata", "casella_tuoi_tolta", "casella_ritirati_spuntata", "casella_ritirati_tolta",
-    "casella_disponibili_oggi_spuntata", "casella_disponibili_oggi_tolta", "casella_senza_acciacchi_spuntata", "casella_senza_acciacchi_tolta",
-    "casella_solo_ritirati_che_allenano_spuntata", "casella_solo_ritirati_che_allenano_tolta", "casella_solo_nuovi_spuntata", "casella_solo_nuovi_tolta",
-    "casella_comprendi_usciti_spuntata", "casella_comprendi_usciti_tolta", "casella_senza_prelazione_altrui_spuntata", "casella_senza_prelazione_altrui_tolta",
-    # Le scelte dei filtri, a ogni freccia: le altre, sesso, classe migliore, tipo e ordine, hanno già il loro suono.
-    "filtro_classe_peggiore", "filtro_regione", "filtro_provincia", "filtro_tratto_si", "filtro_tratto_no", "filtro_tratto_indifferente", "filtro_indole",
-    "filtro_visus", "filtro_posto_attuale",
-    # I numeri e i testi dei filtri, quando ci si ferma: l'età massima ha già il suo.
-    "filtro_eta_minima", "filtro_costo_massimo", "filtro_comune", "filtro_polisportiva", "filtro_valore_minimo", "filtro_stipendio_massimo",
-    "filtro_mesi_contratto", "filtro_stipendio_capo",
-    # Azzera questi filtri, nella scheda Altri filtri.
-    "filtri_azzerati",
-    # I perché del motore: un'offerta non possibile per questa persona, chi oggi non gioca, il club che non si sfida.
-    "offerta_non_possibile", "non_gioca_oggi", "club_non_sfidabile",
-    # La finestra chiusa senza esiti, che lascia la vista com'era.
-    "finestra_chiusa_senza_esiti",
-})
-
 # Ogni evento detto a parole: l'azione che lo fa suonare. La legge l'elenco dei suoni per Acu_Maker,
 # suoni_di_mess.txt, scritto da strumenti/elenco_suoni.py; una prova controlla che ogni evento abbia
 # la sua.
@@ -673,7 +724,7 @@ AZIONI = {
     "nuovi_arrivati": "i nuovi arrivati della sessione, con Ctrl+Shift+N",
     "ritirati_sessione": "i ritirati della sessione, con Ctrl+Shift+R",
     "usciti_sessione": "gli usciti di scena nella sessione, con Ctrl+Shift+U",
-    "dialogo_ricerca": "si apre la ricerca dei giocatori, con Ctrl+F",
+    "dialogo_ricerca": "si apre la finestra Mercato e ricerca per cercare, con Ctrl+F, sulla scheda Filtri",
     "data_e_avanzamento": "la data simulata e il prossimo avanzamento, con Ctrl+D",
     "riepilogo_avanzamento": "il riepilogo dell'ultimo avanzamento del mondo, con Ctrl+Shift+A",
     "nessun_avanzamento": "il riepilogo dell'avanzamento quando il mondo non è ancora avanzato",
@@ -711,16 +762,79 @@ AZIONI = {
     "tuo_tesserato_bandiera": "nell'avanzamento un tuo tesserato diventa una bandiera del club",
     "tuo_tesserato_ritirato": "nell'avanzamento un tuo tesserato si ritira",
     "tuo_tesserato_uscito_di_scena": "nell'avanzamento un tuo tesserato muore o lascia lo showdown",
-    "dialogo_mercato": "si apre il mercato, con Ctrl+K",
-    "mercato_scelta_cambiata": "nel mercato cambia la scelta di chi mostrare",
-    "mercato_ordine_cambiato": "nel mercato cambia l'ordine dell'elenco",
-    "dialogo_filtro_mercato": "nel mercato si apre la ricerca per aggiungere un filtro",
-    "filtro_aggiunto": "nel mercato un filtro aggiunto",
-    "filtro_tolto": "nel mercato un filtro tolto",
-    "filtri_tutti_tolti": "nel mercato tutti i filtri tolti",
-    "mercato_scheda_giocatore": "nel mercato, nella sala allenamento, nei contratti e nel pannello dei tornei, la scheda del giocatore scelto",
+    "dialogo_mercato": "si apre la finestra Mercato e ricerca dal mercato, con Ctrl+K",
+    "mercato_scelta_cambiata": "nella finestra Mercato e ricerca la casella dei preset applica un preset intero, a ogni freccia",
+    "mercato_ordine_cambiato": "nella finestra Mercato e ricerca cambia l'ordine dell'elenco, con Ordina per",
+    "dialogo_filtro_mercato": "nella finestra Mercato e ricerca si apre Aggiungi una condizione, sulle caratteristiche",
+    "filtro_aggiunto": "nella finestra Mercato e ricerca una condizione sulle caratteristiche aggiunta",
+    "filtro_tolto": "nella finestra Mercato e ricerca una condizione sulle caratteristiche tolta",
+    "filtri_tutti_tolti": "nella finestra Mercato e ricerca Togli tutte le condizioni",
+    "mercato_scheda_giocatore": "nella finestra Mercato e ricerca Invio sull'elenco porta alla scheda del giocatore, e nella sala allenamento, nei contratti e nel pannello dei tornei la scheda del giocatore scelto",
+    "scheda_risultati": "nella finestra Mercato e ricerca il passaggio alla scheda Risultati, con Ctrl+Tab o Ctrl+Maiusc+Tab, o con Invio in un filtro, che porta all'elenco",
+    "scheda_filtri": "nella finestra Mercato e ricerca il passaggio alla scheda Filtri, con Ctrl+Tab o Ctrl+Maiusc+Tab",
+    "scheda_altri_filtri": "nella finestra Mercato e ricerca il passaggio alla scheda Altri filtri, con Ctrl+Tab o Ctrl+Maiusc+Tab",
+    "scheda_filtri_allenatori": "nella finestra Mercato e ricerca il passaggio alla scheda Filtri degli allenatori, con Ctrl+Tab o Ctrl+Maiusc+Tab",
+    "filtri_attuali_ripresi": "nella finestra Mercato e ricerca la casella dei preset torna sulla voce Filtri attuali, non salvati, e con lei i filtri fatti a mano",
+    "dialogo_salva_filtri": "si apre Salva filtri, nella finestra Mercato e ricerca, con Invio sulla sua voce della casella dei preset, scegliendola dall'elenco aperto o col pulsante Salva filtri della scheda Filtri",
+    "dialogo_rinomina_preset": "si apre Rinomina il preset, col pulsante Rinomina della gestione dei preset",
+    "dialogo_gestisci_preset": "si apre Gestisci i preset, nella finestra Mercato e ricerca, per rinominare, eliminare e spostare i tuoi preset",
+    "preset_salvato": "Salva filtri salva un preset nuovo, in fondo ai tuoi",
+    "preset_sostituito": "Salva filtri col nome di un tuo preset, e dopo il Sì il preset prende i filtri nuovi, col suo nome e il suo posto",
+    "preset_rinominato": "un tuo preset dei filtri rinominato, nella gestione dei preset",
+    "preset_eliminato": "un tuo preset dei filtri eliminato, nella gestione dei preset, dopo il Sì alla domanda",
+    "preset_spostato_su": "nella gestione dei preset Sposta su porta il preset scelto un posto più su",
+    "preset_spostato_giu": "nella gestione dei preset Sposta giù porta il preset scelto un posto più giù",
+    "preset_non_si_sposta": "nella gestione dei preset Sposta su sul primo preset, o Sposta giù sull'ultimo, che non si sposta oltre",
+    "ritorno_all_elenco": "nella finestra Mercato e ricerca Invio o Esc nel campo della scheda della persona riportano il fuoco all'elenco, sulla stessa riga",
+    "finestra_chiusa_senza_esiti": "la finestra Mercato e ricerca si chiude senza esiti da riassumere, come offerte, sfide o preset, e la vista resta com'era",
+    "casella_allenatori_spuntata": "nella finestra Mercato e ricerca si spunta la casella Allenatori invece dei giocatori, e l'elenco passa agli allenatori",
+    "casella_allenatori_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Allenatori invece dei giocatori, e l'elenco torna ai giocatori",
+    "casella_liberi_spuntata": "nella finestra Mercato e ricerca si spunta la casella Liberi",
+    "casella_liberi_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Liberi",
+    "casella_in_vendita_spuntata": "nella finestra Mercato e ricerca si spunta la casella In vendita da altri, solo per i giocatori",
+    "casella_in_vendita_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella In vendita da altri, solo per i giocatori",
+    "casella_del_computer_spuntata": "nella finestra Mercato e ricerca si spunta la casella Tesserati del computer",
+    "casella_del_computer_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Tesserati del computer",
+    "casella_tuoi_spuntata": "nella finestra Mercato e ricerca si spunta la casella Tuoi tesserati",
+    "casella_tuoi_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Tuoi tesserati",
+    "casella_ritirati_spuntata": "nella finestra Mercato e ricerca si spunta la casella Ritirati, solo per i giocatori",
+    "casella_ritirati_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Ritirati, solo per i giocatori",
+    "casella_disponibili_oggi_spuntata": "nella finestra Mercato e ricerca si spunta la casella Disponibili oggi per un'amichevole",
+    "casella_disponibili_oggi_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Disponibili oggi per un'amichevole",
+    "casella_senza_acciacchi_spuntata": "nella finestra Mercato e ricerca si spunta la casella Escludi infortunati e acciaccati",
+    "casella_senza_acciacchi_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Escludi infortunati e acciaccati",
+    "casella_solo_ritirati_che_allenano_spuntata": "nella finestra Mercato e ricerca si spunta la casella Solo i ritirati che allenano",
+    "casella_solo_ritirati_che_allenano_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Solo i ritirati che allenano",
+    "casella_solo_nuovi_spuntata": "nella finestra Mercato e ricerca si spunta la casella Solo i nuovi arrivati della sessione",
+    "casella_solo_nuovi_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Solo i nuovi arrivati della sessione",
+    "casella_comprendi_usciti_spuntata": "nella finestra Mercato e ricerca si spunta la casella Comprendi gli usciti di scena",
+    "casella_comprendi_usciti_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Comprendi gli usciti di scena",
+    "casella_senza_prelazione_altrui_spuntata": "nella finestra Mercato e ricerca si spunta la casella Escludi chi è in prelazione per altri",
+    "casella_senza_prelazione_altrui_tolta": "nella finestra Mercato e ricerca si toglie la spunta alla casella Escludi chi è in prelazione per altri",
+    "filtro_classe_peggiore": "nella finestra Mercato e ricerca cambia la classe peggiore, a ogni freccia",
+    "filtro_regione": "nella finestra Mercato e ricerca cambia la regione, a ogni freccia",
+    "filtro_provincia": "nella finestra Mercato e ricerca cambia la provincia, a ogni freccia",
+    "filtro_tratto_si": "nella finestra Mercato e ricerca uno dei nove tratti, come mancino, passa a Sì, a ogni freccia",
+    "filtro_tratto_no": "nella finestra Mercato e ricerca uno dei nove tratti passa a No, a ogni freccia",
+    "filtro_tratto_indifferente": "nella finestra Mercato e ricerca uno dei nove tratti torna Indifferente, a ogni freccia",
+    "filtro_indole": "nella finestra Mercato e ricerca cambia l'indole, a ogni freccia",
+    "filtro_visus": "nella finestra Mercato e ricerca cambia il visus degli allenatori, a ogni freccia",
+    "filtro_posto_attuale": "nella finestra Mercato e ricerca cambia il posto attuale degli allenatori, capo o assistente, a ogni freccia",
+    "filtro_eta_minima": "nella finestra Mercato e ricerca cambia l'età minima, quando ci si ferma",
+    "filtro_costo_massimo": "nella finestra Mercato e ricerca cambia il costo massimo, quando ci si ferma",
+    "filtro_valore_minimo": "nella finestra Mercato e ricerca cambia il valore minimo, quando ci si ferma",
+    "filtro_stipendio_massimo": "nella finestra Mercato e ricerca cambia lo stipendio massimo al mese dei giocatori, quando ci si ferma",
+    "filtro_mesi_contratto": "nella finestra Mercato e ricerca cambia il massimo dei mesi di contratto rimasti, quando ci si ferma",
+    "filtro_stipendio_capo": "nella finestra Mercato e ricerca cambia lo stipendio chiesto da capo allenatore al massimo, quando ci si ferma",
+    "filtro_comune": "nella finestra Mercato e ricerca cambia la parte del nome del comune, quando si smette di scrivere",
+    "filtro_polisportiva": "nella finestra Mercato e ricerca cambia la parte del nome della polisportiva, quando si smette di scrivere",
+    "filtri_azzerati": "nella scheda Altri filtri della finestra Mercato e ricerca, Azzera questi filtri li riporta ai valori di serie",
+    "dialogo_posto_da_offrire": "nella finestra Mercato e ricerca l'offerta a un allenatore libero apre la scelta del posto dello staff da offrire",
+    "offerta_non_possibile": "nella finestra Mercato e ricerca un'offerta che a quella persona non si può fare, come a un allenatore che allena già, a un ritirato, a chi è uscito di scena o a un tuo tesserato non in vendita",
+    "non_gioca_oggi": "nella finestra Mercato e ricerca Amichevole su chi oggi non può giocare: un allenatore, un ritirato, chi è uscito di scena, un infortunato o chi oggi ha già giocato",
+    "club_non_sfidabile": "nella finestra Mercato e ricerca Sfida il suo club su chi non gioca e non allena per una polisportiva del computer",
     "dialogo_cifra_ingaggio": "si apre il dialogo della cifra d'ingaggio di un libero",
-    "probabilita_ingaggio": "la probabilità che il libero, o l'allenatore del mercato degli allenatori, accetti, mentre si scrive la cifra: più è alta, più è acuto",
+    "probabilita_ingaggio": "la probabilità che il libero, o l'allenatore libero, accetti, mentre si scrive la cifra: più è alta, più è acuto",
     "dialogo_cifra_offerta_d_acquisto": "si apre il dialogo della cifra da offrire per un tesserato di un'altra polisportiva",
     "ingaggio_accettato": "il libero accetta l'ingaggio",
     "ingaggio_rifiutato": "il libero rifiuta l'ingaggio",
@@ -745,8 +859,8 @@ AZIONI = {
     "stipendi_non_pagati": "al primo del mese la cassa non basta per gli stipendi",
     "tuoi_tesserati_partiti": "tuoi tesserati se ne vanno per gli stipendi non pagati",
     "tuo_tesserato_venduto": "un tuo tesserato in vendita è stato comprato",
-    "dialogo_amichevole": "si apre la scelta del tuo giocatore per un'amichevole, con Ctrl+O",
-    "dialogo_avversario": "si apre la scelta dell'avversario dell'amichevole",
+    "dialogo_amichevole": "si apre la scelta del tuo giocatore per un'amichevole, dopo l'avversario scelto nella finestra Mercato e ricerca",
+    "dialogo_avversario": "si apre la finestra Mercato e ricerca per scegliere l'avversario dell'amichevole, con Ctrl+O",
     "dialogo_opzioni_amichevole": "si apre il dialogo delle opzioni dell'amichevole",
     "nessun_giocatore_oggi": "oggi nessuno può giocare un'amichevole",
     "amichevole_vinta": "l'amichevole la vince il tuo tesserato",
@@ -802,7 +916,7 @@ AZIONI = {
     "tuoi_contratti_scaduti": "nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero",
     "tuo_tesserato_infortunato_in_seduta": "nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento",
     "dialogo_staff": "si apre il dialogo dello staff della polisportiva, con Ctrl+H",
-    "dialogo_mercato_allenatori": "si apre il mercato degli allenatori, con Ctrl+Shift+G o con Assumi nel dialogo dello staff",
+    "dialogo_mercato_allenatori": "si apre la finestra Mercato e ricerca sugli allenatori, con Ctrl+Shift+G o con Assumi nel dialogo dello staff",
     "dialogo_cifra_ingaggio_allenatore": "si apre il dialogo della cifra d'ingaggio di un allenatore",
     "allenatore_assunto": "l'allenatore accetta l'ingaggio ed entra nello staff",
     "allenatore_rifiuta": "l'allenatore rifiuta l'ingaggio",
@@ -812,13 +926,13 @@ AZIONI = {
     "staff_rinnovo_chiuso": "il terzo rifiuto del rinnovo, e l'allenatore non tratta più",
     "staff_posto_occupato": "si vuole assumere per un posto dello staff già occupato",
     "allenatore_in_prelazione": "si vuole assumere un allenatore in prelazione per un'altra tua polisportiva",
-    "scheda_allenatore": "si apre la scheda di un allenatore",
+    "scheda_allenatore": "si apre la scheda di un allenatore, nello staff, o nella finestra Mercato e ricerca con Invio sull'elenco",
     "diario_allenatore": "si apre il diario di un allenatore",
-    "staff_posto_scelto": "nel mercato degli allenatori cambia il posto da offrire",
-    "filtro_classe_allenatori": "nel mercato degli allenatori cambia la classe minima",
-    "filtro_eta_allenatori": "nel mercato degli allenatori cambia l'età massima, quando ci si ferma",
-    "filtro_tipo_allenatori": "nel mercato degli allenatori cambia il tipo, ex giocatori o nati allenatori",
-    "filtro_sesso_allenatori": "nel mercato degli allenatori cambia il sesso",
+    "staff_posto_scelto": "nella finestra Mercato e ricerca cambia il posto da offrire a un allenatore libero",
+    "filtro_classe_allenatori": "nella finestra Mercato e ricerca cambia la classe migliore, a ogni freccia",
+    "filtro_eta_allenatori": "nella finestra Mercato e ricerca cambia l'età massima, quando ci si ferma",
+    "filtro_tipo_allenatori": "nella finestra Mercato e ricerca cambia il tipo di allenatore, ex giocatori o nati allenatori, a ogni freccia",
+    "filtro_sesso_allenatori": "nella finestra Mercato e ricerca cambia il sesso, a ogni freccia",
     "tuo_staff_partito": "nell'avanzamento un allenatore del tuo staff se ne va per lo stipendio non pagato",
     "tuo_staff_scaduto": "nell'avanzamento il contratto di un allenatore del tuo staff scade senza rinnovo, e lui torna libero",
     "tuo_staff_uscito": "nell'avanzamento un allenatore del tuo staff smette di allenare, muore o lascia il mondo dello showdown",
@@ -955,9 +1069,7 @@ def suona(evento, sync=False, volume=None, semitoni=0.0, fattore=None):
         return False
     preset = EVENTI.get(evento)
     if preset is None:
-        # Un evento della finestra Mercato e ricerca che aspetta il suo preset tace senza avvisi.
-        if evento not in SENZA_PRESET:
-            print(f"MESS: evento sonoro sconosciuto, {evento}", file=sys.stderr)
+        print(f"MESS: evento sonoro sconosciuto, {evento}", file=sys.stderr)
         return False
     try:
         return _riproduci(evento, preset, sync, fattore, semitoni)

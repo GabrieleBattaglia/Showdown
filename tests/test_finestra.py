@@ -11,6 +11,7 @@ le verifiche del collaudo di gioco, la voce rimessa in pari anche dall'avanzamen
 Dal 2026-10-24, coi collegamenti della finestra Mercato e ricerca, le quattro porte che la aprono, la vista che
 riassume i suoi esiti, compresi i preset, o resta com'era, l'amichevole scelta lì, e Ctrl+Maiusc+G a mosse finite
 come Ctrl+K; la ricerca che stampava nella vista e Risultati della ricerca non ci sono più.
+Col passo dei suoni dello stesso giorno ogni evento della finestra ha il suo preset, e le prove usano il registratore di sempre.
 """
 
 import datetime
@@ -423,13 +424,6 @@ def test_cambia_polisportiva(finestra, monkeypatch):
 # e alla chiusura la vista riassume i suoi esiti, e il mondo si salva, oppure resta com'era.
 
 @pytest.fixture
-def suonati_tutti(suonati, monkeypatch):
-    """I suoni, anche quelli della finestra Mercato e ricerca che aspettano il loro preset: per le prove ne hanno uno finto."""
-    monkeypatch.setattr(suoni, "EVENTI", {**suoni.EVENTI, **{evento: f"senza_preset_{evento}" for evento in suoni.SENZA_PRESET}})
-    return suonati
-
-
-@pytest.fixture
 def salvataggi(monkeypatch):
     """I mondi salvati, in ordine: il salvataggio vero si fa lo stesso."""
     fatti = []
@@ -460,7 +454,7 @@ def _risponde_come_chi_accetta(monkeypatch):
     return letti
 
 
-def test_le_quattro_porte_aprono_la_finestra_mercato_e_ricerca(finestra, suonati_tutti, salvataggi, monkeypatch):
+def test_le_quattro_porte_aprono_la_finestra_mercato_e_ricerca(finestra, suonati, salvataggi, monkeypatch):
     mondo = finestra.mondo
     aperte = []
 
@@ -473,13 +467,13 @@ def test_le_quattro_porte_aprono_la_finestra_mercato_e_ricerca(finestra, suonati
     for comando, porta, suono in ((finestra.mercato, "mercato", "dialogo_mercato"), (finestra.mercato_allenatori, "allenatori", "dialogo_mercato_allenatori"),
                                   (finestra.cerca, "ricerca", "dialogo_ricerca"), (finestra.amichevole, "amichevole", "dialogo_avversario")):
         finestra.vista.ChangeValue("Il testo di prima.")
-        suonati_tutti.clear()
+        suonati.clear()
         finestra._esegui(comando)
         # Il suono dell'apertura lo suona la finestra, e l'elenco che nasce vuoto il suo, come quello degli allenatori in un mondo che non ne ha.
         # Chiusa senza esiti, la vista resta com'era, col suono della finestra chiusa senza esiti, e il mondo non si salva.
         vuoto = ["elenco_svuotato"] if porta == "allenatori" and not mondo.allenatori else []
         assert aperte[-1] == (porta, "Mercato e ricerca di Club Di Prova")
-        assert suonati_tutti == [suono, *vuoto, "finestra_chiusa_senza_esiti"], porta
+        assert suonati == [suono, *vuoto, "finestra_chiusa_senza_esiti"], porta
         assert finestra.vista.GetValue() == "Il testo di prima."
     assert len(aperte) == 4 and salvataggi == []
     # La porta si ricorda anche quando a chiudere la finestra è qualcun altro, come la chiusura per l'aggiornamento:
@@ -491,7 +485,7 @@ def test_le_quattro_porte_aprono_la_finestra_mercato_e_ricerca(finestra, suonati
     assert salvataggi == []
 
 
-def test_dalla_finestra_un_acquisto_che_la_vista_riassume_e_il_mondo_salva(finestra, suonati_tutti, salvataggi, monkeypatch, cartella_di_prova):
+def test_dalla_finestra_un_acquisto_che_la_vista_riassume_e_il_mondo_salva(finestra, suonati, salvataggi, monkeypatch, cartella_di_prova):
     mondo = finestra.mondo
     poli = mondo.miapolisportiva_attiva
     cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(mondo.datetime_corrente_simulazione)]
@@ -514,12 +508,12 @@ def test_dalla_finestra_un_acquisto_che_la_vista_riassume_e_il_mondo_salva(fines
         return wx.ID_CLOSE
 
     monkeypatch.setattr(gui_mercato.MercatoERicerca, "ShowModal", compra)
-    suonati_tutti.clear()
+    suonati.clear()
     finestra.mercato()
     # Chi è in vendita si compra al prezzo chiesto, dopo la domanda; l'esito si legge nella finestra, e alla chiusura la vista lo riassume.
     assert mondo.giocatori[11].appartenenza == poli.nome
     assert letti[0].startswith(f"Comprare {_nome(mondo.giocatori[11])} da {cpu.nome} per 500 euro?")
-    assert suonati_tutti == ["dialogo_mercato", "domanda", "acquisto_fatto", "lavoro_concluso"]
+    assert suonati == ["dialogo_mercato", "domanda", "acquisto_fatto", "lavoro_concluso"]
     righe = finestra.vista.GetValue().splitlines()
     assert righe[:2] == ["Mercato e ricerca di Club Di Prova: 1 offerta ai giocatori, 1 riuscita.", letti[1]]
     assert righe[-1] == testi.info_mercato(poli, mondo) and finestra.ultimo_evento == "mercato e ricerca: 1 esito"
@@ -528,7 +522,7 @@ def test_dalla_finestra_un_acquisto_che_la_vista_riassume_e_il_mondo_salva(fines
     assert salvati[11]["appartenenza"] == poli.nome
 
 
-def test_i_preset_sono_esiti_e_l_amichevole_si_gioca_col_riepilogo_davanti(finestra, suonati_tutti, salvataggi, monkeypatch):
+def test_i_preset_sono_esiti_e_l_amichevole_si_gioca_col_riepilogo_davanti(finestra, suonati, salvataggi, monkeypatch):
     mondo = finestra.mondo
     poli = mondo.miapolisportiva_attiva
 
@@ -540,12 +534,12 @@ def test_i_preset_sono_esiti_e_l_amichevole_si_gioca_col_riepilogo_davanti(fines
     monkeypatch.setattr(gui_mercato.MercatoERicerca, "ShowModal", un_preset)
     finestra.cerca()
     assert finestra.vista.GetValue().startswith("Mercato e ricerca di Club Di Prova: 1 operazione sui preset.\nPreset salvato: Giovani mancini.\n")
-    assert suonati_tutti[-1] == "lavoro_concluso" and finestra.ultimo_evento == "mercato e ricerca: 1 esito" and salvataggi == [mondo]
+    assert suonati[-1] == "lavoro_concluso" and finestra.ultimo_evento == "mercato e ricerca: 1 esito" and salvataggi == [mondo]
     # Senza polisportiva attiva Ctrl+K apre lo stesso, per cercare, e il riepilogo non dice né cassa né mosse.
     mondo.miapolisportiva_attiva = None
-    suonati_tutti.clear()
+    suonati.clear()
     finestra.mercato()
-    assert suonati_tutti[:2] == ["dialogo_mercato", "nessuna_polisportiva_attiva"]
+    assert suonati[:2] == ["dialogo_mercato", "nessuna_polisportiva_attiva"]
     assert finestra.vista.GetValue() == "Mercato e ricerca: 1 operazione sui preset.\nPreset salvato: Giovani mancini."
     mondo.miapolisportiva_attiva = poli
     # Un'amichevole scelta nella finestra la gioca la finestra principale, col riepilogo della finestra davanti.

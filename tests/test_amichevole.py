@@ -15,6 +15,7 @@ Dallo stesso giorno il menu Partite ha anche le due voci di Gioca tutte le amich
 Lo stesso giorno, coi collegamenti della finestra Mercato e ricerca, l'avversario si sceglie prima, nell'elenco della
 finestra aperta da Ctrl+O sugli avversari di oggi, e poi il tuo giocatore, fra i tuoi che oggi giocano, lui escluso: le
 risposte scritte scelgono l'avversario nella finestra vera e premono Amichevole.
+Col passo dei suoni della finestra si sente anche la sua chiusura senza esiti, dopo le opzioni annullate.
 """
 
 import datetime
@@ -380,7 +381,8 @@ def test_un_amichevole_al_giorno_nella_finestra(finestra, suonati, monkeypatch):
     scelte = Scelte(monkeypatch, 2, 3, annulla_opzioni=True)
     finestra.amichevole()
     assert scelte.elenchi == [_disponibili(mondo), [2]] and scelte.elenchi[0] == sorted(gid for gid in mondo.giocatori if gid not in (5, 9))
-    assert suonati[-2:] == ["dialogo_opzioni_amichevole", "annullato"]
+    # Le opzioni annullate lasciano aperta la finestra, che poi si chiude senza esiti, col suo suono.
+    assert suonati[-3:] == ["dialogo_opzioni_amichevole", "annullato", "finestra_chiusa_senza_esiti"]
     assert mondo.giocatori[2].partitevinte + mondo.giocatori[2].partiteperse == 0
     # Se oggi non può giocare nessuno dei tuoi, la vista lo dice.
     mondo.giocatori[2].ultimo_impegno = mondo.datetime_corrente_simulazione

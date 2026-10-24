@@ -10,6 +10,7 @@ posto scelto: le offerte agli allenatori vanno fra gli esiti dello staff, il res
 vista riassume dopo lo staff, e un'amichevole scelta lì chiude lo staff e si gioca. Le prove del mercato degli
 allenatori di prima, coi filtri, l'ingaggio accettato e rifiutato, le mosse finite, la prelazione, la scheda e il
 diario, stanno con quelle della finestra, in tests/test_mercato_e_ricerca_finestra.py.
+Col passo dei suoni dello stesso giorno ogni evento della finestra ha il suo preset, e le prove usano il registratore di sempre.
 """
 
 import datetime
@@ -81,13 +82,6 @@ def staff_aperto(app_wx, mondo):
     dialogo.Destroy()
 
 
-@pytest.fixture
-def suonati_tutti(suonati, monkeypatch):
-    """I suoni, anche quelli della finestra Mercato e ricerca che aspettano il loro preset: per le prove ne hanno uno finto."""
-    monkeypatch.setattr(suoni, "EVENTI", {**suoni.EVENTI, **{evento: f"senza_preset_{evento}" for evento in suoni.SENZA_PRESET}})
-    return suonati
-
-
 def _assumi(mondo, posto=0, indice=0):
     """Mette nello staff dell'utente, al posto dato, il libero all'indice dato dell'ordine del mercato."""
     poli = mondo.miapolisportiva_attiva
@@ -153,20 +147,20 @@ def test_dallo_staff_al_mercato_e_ritorno(staff_aperto, mondo, messaggi, suonati
     assert d.esiti_della_finestra.amichevole == amichevole and d.GetReturnCode() == wx.ID_CANCEL
 
 
-def test_assumi_apre_la_finestra_sugli_allenatori_liberi_col_posto_scelto(staff_aperto, mondo, suonati_tutti, monkeypatch):
+def test_assumi_apre_la_finestra_sugli_allenatori_liberi_col_posto_scelto(staff_aperto, mondo, suonati, monkeypatch):
     d = staff_aperto
     viste = []
 
     def nella_finestra(finestra):
         # La finestra è figlia dello staff, sulla porta di Assumi, e suona lei la sua apertura; lo staff non suona niente.
-        viste.append((finestra.porta, finestra.posto, finestra.filtri == mercato.filtri_di_serie("allenatori_liberi"), list(suonati_tutti)))
+        viste.append((finestra.porta, finestra.posto, finestra.filtri == mercato.filtri_di_serie("allenatori_liberi"), list(suonati)))
         finestra.esiti.allenatori.append(("Assunto per prova.", "assunto"))
         finestra.chiudi_la_finestra()
         return wx.ID_CLOSE
 
     monkeypatch.setattr(gui_mercato.MercatoERicerca, "ShowModal", nella_finestra)
     d.elenco.SetSelection(2)
-    suonati_tutti.clear()
+    suonati.clear()
     prima = mercato.filtri_di_ricerca_del_mondo(mondo)
     d.assumi()
     assert viste == [(None, 2, True, ["dialogo_mercato_allenatori"])]
