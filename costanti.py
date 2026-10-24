@@ -11,6 +11,9 @@ infortuni e valore complessivo; i numeri regolabili del motore stanno in motore/
 Se ne sono andate le costanti del vecchio motore: il limite dei 17 punti, i margini, le soglie
 scalate, la resistenza a gradini, la mappa delle difese e il registro unico delle partite.
 Le parti nuove sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal collaudo di gioco, il 24 ottobre 2026, c'è il raggio delle classi degli avversari di Gioca tutte le
+amichevoli, 15 livelli in su o in giù, scelto da Gabriele. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -602,6 +605,9 @@ DISTACCO_PIU_DEBOLE = 25.0
 PA_FATTORE_AMICHEVOLE = 0.494
 PA_FATTORE_TORNEO = 3.172
 PA_FATTORE_SFIDA = 0.986
+# Gioca tutte le amichevoli, richiesta di Gabriele del 24 ottobre 2026: l'avversario di ciascuno dei tuoi ha la classe
+# entro tanti livelli dalla sua, in su o in giù, 15 su una scala di 100, da A1 a K0.
+RAGGIO_CLASSI_AMICHEVOLI = 15
 # Il costo dei punti, tarato sul valore: il costo marginale di una caratteristica è
 # COSTO_PER_PUNTO_PESATO per il suo peso nel valore, per lo sconto, diviso l'efficacia, per
 # exp(CRESCITA_DEL_COSTO per il livello relativo). Dal livello zero al tetto il costo cresce di

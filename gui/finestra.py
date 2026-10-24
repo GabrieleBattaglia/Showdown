@@ -93,6 +93,13 @@ la finestra dal vivo lo restituisce come il risultato. È di Gabriele Battaglia 
 Opus 5.5, UltraCode). Con le verifiche dello stesso collaudo quel messaggio parla dei file di prima, che
 possono essere soltanto dei modelli, e la voce Mercato si rimette in pari anche quando un errore ferma a
 metà l'avanzamento del mondo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Con la richiesta di Gabriele dello stesso collaudo il menu Partite ha, subito dopo Amichevole, Gioca tutte le amichevoli
+di, col nome della polisportiva attiva, e Gioca tutte le amichevoli di tutte le tue polisportive: ogni tesserato che oggi
+può giocare ne gioca una contro un avversario scelto a caso, con la classe entro 15 livelli dalla sua e di un'altra
+polisportiva, senza la finestra dal vivo; il mondo si salva, e la vista riassume ogni incontro in una riga, coi totali in
+fondo. Ogni evento nuovo ha il suo suono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Con la verifica, quando nessuna delle tue polisportive ha tesserati, la seconda voce lo dice come la prima, col suono della
+rosa vuota, e non rimanda al giorno simulato dopo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -312,6 +319,9 @@ class FinestraPrincipale(wx.Frame):
             )),
             ("Pa&rtite", (
                 ("&Amichevole...", "Ctrl+O", self.amichevole),
+                # Le amichevoli in serie, richiesta di Gabriele del 24 ottobre 2026: la prima voce dice il nome della polisportiva attiva.
+                (self._voce_delle_amichevoli_dell_attiva(), None, self.amichevoli_dell_attiva),
+                ("Gioca tutte le amichevoli di tutte le tue &polisportive", None, self.amichevoli_di_tutte),
                 None,
                 ("&Lancia una sfida...", "Ctrl+W", self.lancia_sfida),
                 ("Sfide in a&rrivo...", "Ctrl+Shift+F", self.sfide_in_arrivo),
@@ -381,7 +391,9 @@ class FinestraPrincipale(wx.Frame):
         """Le voci dei menu per la guida: titoli e testi senza le e commerciali, tasti con i nomi italiani."""
         voci = []
         for titolo, elenco in self.voci_menu():
-            comandi = [(testo.replace("&", "").rstrip("."), tasto.replace("Shift", "Maiusc") if tasto else None) for testo, tasto, _c in filter(None, elenco)]
+            # La e commerciale doppia è quella di un nome, come nella voce delle amichevoli della polisportiva attiva: resta, una.
+            comandi = [(testo.replace("&&", "\x00").replace("&", "").replace("\x00", "&").rstrip("."), tasto.replace("Shift", "Maiusc") if tasto else None)
+                       for testo, tasto, _c in filter(None, elenco)]
             voci.append((titolo.replace("&", ""), comandi))
         return voci
 
@@ -470,7 +482,8 @@ class FinestraPrincipale(wx.Frame):
         """
         Rimette in pari la voce Mercato: non disponibile quando la polisportiva attiva ha finito le mosse
         di mercato, e NVDA la legge così, di nuovo disponibile appena le mosse tornano o cambia la
-        polisportiva attiva. Senza polisportiva attiva resta disponibile.
+        polisportiva attiva. Senza polisportiva attiva resta disponibile. Dal 24 ottobre 2026 anche la
+        voce delle amichevoli in serie della polisportiva attiva, che ne dice il nome.
         """
         if not self or self.chiusa:
             return
@@ -478,6 +491,10 @@ class FinestraPrincipale(wx.Frame):
         disponibile = not self._mercato_chiuso()
         if voce.IsEnabled() != disponibile:
             voce.Enable(disponibile)
+        voce = self.voci_del_menu[self.amichevoli_dell_attiva]
+        testo = self._voce_delle_amichevoli_dell_attiva()
+        if voce.GetItemLabel() != testo:
+            voce.SetItemLabel(testo)
 
     def _all_apertura_del_menu(self, event):
         """
@@ -1090,6 +1107,77 @@ class FinestraPrincipale(wx.Frame):
             self.impostazioni = modulo_impostazioni.valide({**self.impostazioni, "velocita_gioco": velocita})
             modulo_impostazioni.salva(self.impostazioni)
         return uscita
+
+    # Le amichevoli in serie, Gioca tutte le amichevoli, richiesta di Gabriele del 24 ottobre 2026, dal collaudo di gioco.
+
+    def _voce_delle_amichevoli_dell_attiva(self):
+        """
+        Il testo della voce delle amichevoli in serie della polisportiva attiva, col suo nome, e la e commerciale di un nome
+        raddoppiata, perché il menu non la prenda per la lettera della voce; senza polisportiva attiva, della polisportiva attiva.
+        """
+        p = self.mondo.miapolisportiva_attiva
+        if p is None:
+            return "&Gioca tutte le amichevoli della polisportiva attiva"
+        return f"&Gioca tutte le amichevoli di {p.nome.replace('&', '&&')}"
+
+    def amichevoli_dell_attiva(self):
+        """
+        Gioca tutte le amichevoli della polisportiva attiva: ogni suo tesserato che oggi può giocare ne gioca una contro un
+        avversario scelto a caso nel raggio delle classi, come in _amichevoli_in_serie. Senza polisportiva attiva, o senza
+        tesserati, la vista lo dice come per l'amichevole.
+        """
+        p = self._attiva()
+        if p is None:
+            return
+        if not self._rosa_attiva(p):
+            self.mostra(f"{p.nome} non ha tesserati da far giocare.", "nessun tesserato", "rosa_vuota")
+            return
+        self._amichevoli_in_serie([p], tutte=False)
+
+    def amichevoli_di_tutte(self):
+        """
+        Gioca tutte le amichevoli di tutte le tue polisportive, nell'ordine dei nomi, come in _amichevoli_in_serie. Se nessuna
+        ha tesserati la vista lo dice come per la polisportiva attiva, col nome quando la tua è una sola: il giorno dopo non serve.
+        """
+        mie = sorted((p for p in self.mondo.polisportive.values() if not p.is_cpu_controlled), key=lambda p: p.nome.casefold())
+        if not mie:
+            self.mostra("Non hai ancora nessuna polisportiva: fondane una con Ctrl+N.", "nessuna polisportiva", "nessuna_polisportiva_tua")
+            return
+        if not any(self._rosa_attiva(p) for p in mie):
+            testo = f"{mie[0].nome} non ha tesserati da far giocare." if len(mie) == 1 else "Nessuna delle tue polisportive ha tesserati da far giocare."
+            self.mostra(testo, "nessun tesserato", "rosa_vuota")
+            return
+        self._amichevoli_in_serie(mie, tutte=True)
+
+    def _amichevoli_in_serie(self, polisportive, tutte):
+        """
+        Le amichevoli in serie delle polisportive date, regola di Gabriele del 24 ottobre 2026: per ogni tesserato che oggi
+        può giocare, nell'ordine dei numeri, l'avversario si sceglie a caso fra chi oggi può giocare, con la classe entro 15
+        livelli dalla sua e di un'altra polisportiva, con MotorePartita.amichevoli_in_serie. Si gioca senza la finestra dal
+        vivo, al meglio dei set delle ultime opzioni dell'amichevole; poi il mondo si salva, e la vista riassume ogni incontro
+        in una riga, con i totali in fondo. Se oggi nessuno dei tuoi può giocare, la vista dice perché, col suo suono. Gli
+        incontri si giocano in pochi millesimi: il suono dell'esito aspetta la fine di quello dell'avvio.
+        """
+        motore = MotorePartita(self.mondo)
+        gruppi = motore.da_far_giocare(polisportive)
+        if not any(tesserati for _p, tesserati in gruppi):
+            testo = testi.nessuno_per_l_amichevole(self.mondo, adesso_utc(), poli=polisportive[0], tutte=tutte)
+            self.mostra(testo, "nessuno gioca oggi", "nessuno_per_le_amichevoli_in_serie")
+            return
+        set_al_meglio = self.impostazioni["amichevole_set"]
+        suoni.suona("amichevoli_in_serie")
+        serie = motore.amichevoli_in_serie(gruppi, set_al_meglio)
+        giocate = bool(testi.amichevoli_giocate(serie))
+        self._aspetta_il_suono()
+        self._concludi(testi.riepilogo_amichevoli_in_serie(serie, self.mondo, set_al_meglio, tutte), testi.evento_amichevoli_in_serie(serie),
+                       "amichevoli_in_serie_finite" if giocate else "nessun_avversario_nel_raggio", giocate)
+
+    @staticmethod
+    def _aspetta_il_suono():
+        """Aspetta che finisca il suono in corso, più la pausa della coda, perché il prossimo non gli si sovrapponga."""
+        resta = suoni.attesa()
+        if resta > 0:
+            time.sleep(resta + suoni.PAUSA_IN_CODA)
 
     def salva_cronaca(self):
         """

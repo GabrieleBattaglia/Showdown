@@ -1,0 +1,27 @@
+Ascolto dello schermo centrale, 2026-10-24 13:01, seme 108209.
+Schermo centrale, le coppie, coppia 1: uguali.
+Schermo centrale, le coppie, coppia 2: uguali.
+Schermo centrale, le coppie, coppia 3: uguali.
+Schermo centrale, le coppie, coppia 4: uguali.
+Schermo centrale, le coppie, coppia 5: uguali.
+Schermo centrale, le coppie, coppia 6: uguali.
+Schermo centrale, le coppie, coppia 7: uguali.
+Schermo centrale, le coppie, coppia 8: uguali.
+Schermo centrale, le coppie, coppia 9: uguali.
+Schermo centrale, le coppie, coppia 10: uguali.
+Schermo centrale, le coppie, 2026-10-24 13:05: test superato, nessun commento
+Schermo centrale, le coppie, coppia 1, un lungolinea destro di Seno, dell'avversario: la prima era senza ritorno, quella di prima; la seconda era col ritorno della pallina dopo l'urto, la versione nuova; per te erano uguali.
+Schermo centrale, le coppie, coppia 2, una bomba centrale di Farnese, del tuo giocatore: era una coppia di controllo, con due versioni identiche campione per campione, tutte e due senza ritorno, quella di prima; per te erano uguali.
+Schermo centrale, le coppie, coppia 3, un lungolinea sinistro di Mazza, del tuo giocatore: la prima era senza ritorno, quella di prima; la seconda era col ritorno della pallina dopo l'urto, la versione nuova; per te erano uguali.
+Schermo centrale, le coppie, coppia 4, una singola sponda destra di Cardini, dell'avversario: la prima era senza ritorno, quella di prima; la seconda era col ritorno della pallina dopo l'urto, la versione nuova; per te erano uguali.
+Schermo centrale, le coppie, coppia 5, una singola sponda destra di Cardini, dell'avversario: era una coppia di controllo, con due versioni identiche campione per campione, tutte e due col ritorno della pallina dopo l'urto, la versione nuova; per te erano uguali.
+Schermo centrale, le coppie, coppia 6, una diagonale sinistra di Cesaretti, del tuo giocatore: era una coppia di controllo, con due versioni identiche campione per campione, tutte e due senza ritorno, quella di prima; per te erano uguali.
+Schermo centrale, le coppie, coppia 7, una diagonale sinistra di Bertolassi, dell'avversario: era una coppia di controllo, con due versioni identiche campione per campione, tutte e due col ritorno della pallina dopo l'urto, la versione nuova; per te erano uguali.
+Schermo centrale, le coppie, coppia 8, una diagonale sinistra di Bertolassi, dell'avversario: la prima era col ritorno della pallina dopo l'urto, la versione nuova; la seconda era senza ritorno, quella di prima; per te erano uguali.
+Schermo centrale, le coppie, coppia 9, una diagonale sinistra di Cesaretti, del tuo giocatore: la prima era col ritorno della pallina dopo l'urto, la versione nuova; la seconda era senza ritorno, quella di prima; per te erano uguali.
+Schermo centrale, le coppie, coppia 10, una bomba centrale di Farnese, del tuo giocatore: la prima era col ritorno della pallina dopo l'urto, la versione nuova; la seconda era senza ritorno, quella di prima; per te erano uguali.
+Riepilogo, coppie diverse: 6 coppie; hai scelto il ritorno 0 volte, senza ritorno 0 volte, uguali 6 volte, senza scelta 0 volte.
+Riepilogo, coppie diverse tirate dal tuo giocatore: 3 coppie; il ritorno 0 volte, senza ritorno 0 volte, uguali 3 volte, senza scelta 0 volte.
+Riepilogo, coppie diverse tirate dall'avversario: 3 coppie; il ritorno 0 volte, senza ritorno 0 volte, uguali 3 volte, senza scelta 0 volte.
+Riepilogo, coppie uguali di controllo: 4 coppie; hai detto uguali 4 volte, la prima 0 volte, la seconda 0 volte, senza scelta 0 volte.
+Riepilogo, l'ordine: in tutte le coppie hai scelto la prima 0 volte e la seconda 0 volte.
