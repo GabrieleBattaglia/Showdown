@@ -16,12 +16,17 @@ le pause fra i punti, i time-out e i cambi campo. L'azione invece resta sempre a
 i controlli, l'attesa del battitore dopo il fischio, la pallina che si ferma e i colpi del
 riscaldamento. A velocità 1, la predefinita, i tempi sono quelli di sempre, numero per numero.
 controlla_invarianti verifica una sequenza di eventi: la usano le prove e il banco.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 10 e decisione D37: il lungolinea che va
+verso la porta corre sul suo lato fino all'angolo di chi difende, e lì gira in silenzio verso la
+tasca, con la tappa svolta; prima era una retta lunga dal lato al centro della porta, che passava al
+centro già all'altezza dello schermo. Gli esiti non cambiano, e neanche le estrazioni della scena.
+È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import itertools
 import math
 
-from costanti import COLPI_DELLO_SCAMBIO, LARGHEZZA_TAVOLO, LUNGHEZZA_TAVOLO, META_TAVOLO, RAGGIO_AREA_PORTA
+from costanti import COLPI_DELLO_SCAMBIO, LARGHEZZA_TAVOLO, LUNGHEZZA_TAVOLO, META_TAVOLO, RAGGIO_AREA_PORTA, RAGGIO_CURVE
 from motore import eventi as E
 from motore.eventi import CAUSE, ErroreMotore, Evento, Tappa
 from motore.tavolo import (
@@ -44,6 +49,8 @@ from motore.tavolo import (
 )
 
 _NUMERI_SERVIZIO = {1: "primo_servizio", 2: "secondo_servizio", 3: "terzo_servizio"}
+# I lungolinea, che verso la porta corrono sul loro lato fino all'angolo, issue 10.
+LUNGOLINEA = frozenset(("lungolineasx", "lungolineadx"))
 _FISCHI = {E.SINGOLO: "FISCHIO_SINGOLO", E.DOPPIO: "FISCHIO_DOPPIO", E.LUNGO: "FISCHIO_LUNGO", E.TRIPLO: "FISCHIO_TRIPLO"}
 
 
@@ -451,6 +458,7 @@ class Regia:
         difensore = parata.chi.id
         zona = parata.zona
         causa = parata.causa
+        verso_la_porta = parata.esito == "goal" or (parata.esito == "fallo" and causa == "difesa_irregolare")
         if p.tipo == "battuta":
             # L'arrivo vero della battuta è già stato scelto alla ripresa, insieme alla partenza.
             u, v = self._arrivo_battuta_locale
@@ -464,15 +472,19 @@ class Regia:
             else:
                 sponde = self._sponde(chi, p.colpo)
                 v0 = self._velocita(chi, self.tar.COLPI[p.colpo].velocita)
-            arrivo = self._arrivo_dopo_la_parata(parata, self._punto_parata(difensore, zona))
-            if parata.esito == "goal" or (parata.esito == "fallo" and causa == "difesa_irregolare"):
+            punto = self._punto_parata(difensore, zona)
+            arrivo = self._arrivo_dopo_la_parata(parata, punto)
+            if verso_la_porta:
                 sponde = self._sponde_compatibili(sponde, pos, arrivo)
         tipo_arrivo = "paletta"
         if parata.esito == "goal":
             tipo_arrivo = "porta"
         elif parata.esito == "fallo" and causa in ("body_touch", "body_touch_pieno"):
             tipo_arrivo = "corpo"
-        volo = self._volo(pos, arrivo, sponde, v0, tipo_arrivo)
+        if p.tipo == "colpo" and not ribattuta and p.colpo in LUNGOLINEA and verso_la_porta:
+            volo = self._volo_lungolinea_in_porta(pos, punto, arrivo, v0, difensore, tipo_arrivo)
+        else:
+            volo = self._volo(pos, arrivo, sponde, v0, tipo_arrivo)
         dati = {"verso": difensore}
         if ribattuta:
             dati["ribattuta"] = True
@@ -508,6 +520,25 @@ class Regia:
             d = self._uniforme(5.0, 25.0)
             return arrivo[0], d if parte_dif == "A" else LUNGHEZZA_TAVOLO - d
         return arrivo
+
+    def _volo_lungolinea_in_porta(self, partenza, punto, arrivo, v0, difensore, tipo_arrivo):
+        """
+        Il lungolinea che va verso la porta, in goal o nella difesa irregolare, issue 10: corre dritto
+        sul suo lato fino all'angolo di chi difende, alla x della parata portata dentro la curva, e lì
+        gira in silenzio, con la tappa svolta, verso l'arrivo vicino alla tasca. Dopo la svolta
+        rallenta come dopo una sponda. Il punto e l'arrivo sono quelli già estratti: nessuna
+        estrazione nuova, così il resto della scena non cambia.
+        """
+        t = self.tar
+        fondo = FONDO_A if self.campo[difensore].parte == "A" else FONDO_B
+        if punto[0] < CENTRO_X:
+            x = min(punto[0], SPONDA_SINISTRA_A + RAGGIO_CURVE)
+        else:
+            x = max(punto[0], SPONDA_DESTRA_A - RAGGIO_CURVE)
+        corsa = traiettoria(partenza, (x, fondo), (), v0, self.t, t.DECELERAZIONE, t.PERDITA_PER_SPONDA, "svolta")
+        svolta = corsa[-1]
+        giro = traiettoria((x, fondo), arrivo, (), svolta.v * (1.0 - t.PERDITA_PER_SPONDA), svolta.t, t.DECELERAZIONE, t.PERDITA_PER_SPONDA, tipo_arrivo)
+        return corsa + giro[1:]
 
     def _sponde_compatibili(self, sponde, partenza, arrivo):
         """Le sponde del colpo, se il volo verso la porta le può ancora toccare; altrimenti un tiro diretto."""
@@ -880,6 +911,13 @@ def _dentro(pos):
     return -1e-6 <= x <= LARGHEZZA_TAVOLO + 1e-6 and -1e-6 <= y <= LUNGHEZZA_TAVOLO + 1e-6
 
 
+def _in_un_angolo(tappa):
+    """Vero se la tappa sta sul fondo, dentro la curva di un angolo: entro RAGGIO_CURVE dalla sponda."""
+    sul_fondo = abs(tappa.y - FONDO_A) < 1e-6 or abs(tappa.y - FONDO_B) < 1e-6
+    vicino_alla_sponda = min(tappa.x - SPONDA_SINISTRA_A, SPONDA_DESTRA_A - tappa.x) <= RAGGIO_CURVE + 1e-6
+    return sul_fondo and vicino_alla_sponda
+
+
 def _controlla_volo(ev):
     problemi = []
     volo = ev.volo
@@ -899,4 +937,6 @@ def _controlla_volo(ev):
             problemi.append(f"Evento {ev.n}: un rimbalzo non sta su una sponda.")
         if tappa.tipo in ("curva",) and not (tappa.y < FONDO_A + 30 or tappa.y > FONDO_B - 30):
             problemi.append(f"Evento {ev.n}: una curva lontana dagli angoli.")
+        if tappa.tipo == "svolta" and (not _in_un_angolo(tappa) or tappa == volo[-1]):
+            problemi.append(f"Evento {ev.n}: una svolta fuori da un angolo, o che chiude il volo.")
     return problemi

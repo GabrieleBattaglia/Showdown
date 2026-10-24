@@ -12,6 +12,10 @@ quando una frase ha più varianti, sceglie con il progressivo dell'evento.
 Una partita va in un file suo, nella cartella cronache, dentro la cartella del mondo dal 2026-10-23, e gli eventi si possono
 salvare in JSON per i banchi d'ascolto della tappa 10. Il vecchio registro unico
 log_partite_showdown.txt non c'è più.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 10 e decisione D37: il volo del goal di
+lungolinea dice "Un veloce lungolinea si insacca nella porta di" e il nome di chi subisce, quello del
+goal di diagonale "Il diagonale prende preciso il punto G e finisce in goal", parole di Gabriele. È
+di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import json
@@ -122,7 +126,13 @@ def _chi_subisce(evento):
 
 
 def _sponde(volo):
+    """I rimbalzi del volo, sulle sponde e sulle curve; la svolta muta del lungolinea non è un rimbalzo."""
     return sum(1 for tappa in volo if tappa.tipo in ("sponda", "curva"))
+
+
+# I goal di lungolinea e di diagonale hanno una frase loro, con le parole di Gabriele, D37.
+_LUNGOLINEA = frozenset(("lungolineasx", "lungolineadx"))
+_DIAGONALI = frozenset(("diagonalesx", "diagonaledx"))
 
 
 # Le frasi, evento per evento.
@@ -375,6 +385,10 @@ def _volo(evento, nomi, livello):
         return None
     if dati.get("ribattuta"):
         return f"Palla facile per {_n(nomi, verso)}."
+    if ultima == "porta" and evento.colpo in _LUNGOLINEA:
+        return f"Un veloce lungolinea si insacca nella porta di {_n(nomi, verso)}."
+    if ultima == "porta" and evento.colpo in _DIAGONALI:
+        return "Il diagonale prende preciso il punto G e finisce in goal."
     sponde = _sponde(evento.volo)
     corsa = ("La pallina corre dritta", "La pallina rimbalza sulla sponda", "La pallina tocca due sponde", "La pallina tocca tre sponde")[min(sponde, 3)]
     if ultima == "porta":

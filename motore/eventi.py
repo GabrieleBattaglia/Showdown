@@ -10,6 +10,9 @@ volo di una pallina è una tupla di tappe, ciascuna con istante, posizione, velo
 il suono di un colpo diagonale può spostarsi da un orecchio all'altro mentre la pallina viaggia.
 Le cause seguono il regolamento IBSA 2025-2028, con l'articolo, la chiamata dell'arbitro nei
 termini italiani della FISPIC, i punti e una frase per la cronaca, dove {chi} è chi commette.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 10 e decisione D37: la tappa svolta, muta,
+dove il lungolinea che va verso la porta lascia il suo lato nell'angolo di chi difende e gira verso
+la tasca. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import dataclasses
@@ -30,7 +33,10 @@ class Tappa(NamedTuple):
 
 
 # I tipi delle tappe. Le ultime sette chiudono l'azione: il loro suono appartiene all'evento che segue.
-TAPPE = ("partenza", "sponda", "curva", "sotto_schermo", "base_schermo", "schermo", "sopra_schermo", "tavola_contatto",
+# La svolta è muta: il lungolinea che va verso la porta corre sul suo lato fino all'angolo, e lì
+# segue la curva senza urtarla e gira verso la tasca, issue 10. Non è un rimbalzo, e la cronaca
+# non la conta fra le sponde.
+TAPPE = ("partenza", "sponda", "curva", "svolta", "sotto_schermo", "base_schermo", "schermo", "sopra_schermo", "tavola_contatto",
          "fuori", "terra", "soffitto", "corpo", "paletta", "porta", "fermo", "mano_battitore", "arrivo")
 TAPPE_TERMINALI = frozenset(("schermo", "porta", "terra", "soffitto", "corpo", "paletta", "fermo"))
 # Le tappe che possono stare fuori dal tavolo.
