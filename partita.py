@@ -47,10 +47,17 @@ dei tuoi tesserati si fotografano i giocatori, così il gemello in differita, gi
 dà gli stessi punti dell'incontro registrato, perché la modalità essenziale e la completa coincidono a
 parità di seme. La gara a squadre delle sfide e della coppa entra nella carriera con registra_squadre,
 punto 8.7: i titolari prendono la gara, i punti e l'esperienza, le riserve metà dell'esperienza.
+Dal collaudo di gioco, il 24 ottobre 2026, richiesta di Gabriele, ci sono le amichevoli in serie di Gioca
+tutte le amichevoli: per ogni tuo tesserato che oggi può giocare, nell'ordine dei numeri, l'avversario si
+sceglie a caso fra chi oggi può giocare, con la classe entro 15 livelli dalla sua, in su o in giù, e
+fuori dalla sua polisportiva; l'incontro si gioca e si registra come le altre amichevoli, quindi nessuno
+gioca due volte. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import random
+from collections import namedtuple
 
+import classe
 import esperienza
 import infortuni
 import valore
@@ -70,6 +77,7 @@ from costanti import (
     PA_PARTITA_BASE,
     PA_PER_SET_VINTO,
     PA_VITTORIA,
+    RAGGIO_CLASSI_AMICHEVOLI,
 )
 from modelli import CAMPI_AGGREGATA_GIOCATORE, Giocatore, annota_aggregata
 from motore import COMPLETO, ESSENZIALE, RITIRO, SQUADRE, TARATURA, TAVOLINO, Incontro, Squadra, formato_singolare
@@ -87,6 +95,12 @@ PA_FATTORE = {esperienza.AMICHEVOLE: PA_FATTORE_AMICHEVOLE, esperienza.TORNEO: P
 CAMPI_FOTOGRAFIA = ("id", "nome", "cognome", "sesso", "eta", "temperamento", "esperienza", "costanza", "intensita", "mancino", "ambidestro",
                     "giocorapido", "cambiovelocita", "infortunato", "infortunio_sede", "acciacco_sede", *ATTRIBUTI_INVECCHIABILI)
 FORMATO_SQUADRE = "squadre"
+# Una voce delle amichevoli in serie: il tuo giocatore e il livello della sua classe, da 1 per A1 a 100 per K0; poi
+# l'avversario, il livello della sua classe, il risultato e i punti allenamento presi dai due. Senza nessun avversario nel
+# raggio, avversario e risultato sono None. Con gia_giocato vero il tuo giocatore aveva già giocato nella serie, da avversario
+# di un tuo tesserato di un'altra polisportiva: l'avversario, il risultato e i punti sono quelli di quell'incontro.
+VoceDellaSerie = namedtuple("VoceDellaSerie", "tuo livello_tuo avversario livello_avversario risultato punti_tuo punti_avversario gia_giocato",
+                            defaults=(None, None, None, 0.0, 0.0, False))
 
 
 def _silenzio(*_args, **_kwargs):
@@ -420,6 +434,72 @@ class MotorePartita:
     def gioca_squadre(self, squadra_a, squadra_b, seme=None, dettaglio=ESSENZIALE):
         """Una gara a squadre giocata senza registrarla, come negli strumenti; la registrazione nella carriera è registra_squadre."""
         return Incontro(squadra_a, squadra_b, SQUADRE, seme=seme, dettaglio=dettaglio, taratura=self.taratura).gioca()
+
+    # Le amichevoli in serie, Gioca tutte le amichevoli, richiesta di Gabriele del 24 ottobre 2026.
+
+    def da_far_giocare(self, polisportive):
+        """
+        Per ogni polisportiva data, nel suo ordine, la coppia della polisportiva e dei suoi tesserati che oggi possono
+        giocare un'amichevole, in ordine di numero: quelli che le amichevoli in serie fanno giocare.
+        """
+        return [(p, self.disponibili(self.giocatori[gid] for gid in p.tesserati if gid in self.giocatori)) for p in polisportive]
+
+    @staticmethod
+    def _livello(g, livelli):
+        """Il livello della classe del giocatore, da 1 per A1 a 100 per K0, ricordato in livelli: nella serie si calcola una volta sola."""
+        if g.id not in livelli:
+            livelli[g.id] = classe.classe(g).livello
+        return livelli[g.id]
+
+    def avversari_nel_raggio(self, tuo, polisportiva, livelli=None):
+        """
+        Gli avversari possibili di un tuo giocatore nelle amichevoli in serie, in ordine di numero: chi oggi può giocare
+        un'amichevole, con la classe entro RAGGIO_CLASSI_AMICHEVOLI livelli dalla sua, in su o in giù, e non è della sua
+        polisportiva. livelli ricorda il livello della classe di chi si è già guardato.
+        """
+        livelli = {} if livelli is None else livelli
+        mio = self._livello(tuo, livelli)
+        compagni = set(polisportiva.tesserati)
+        return [g for g in self.disponibili(self.giocatori.values())
+                if g.id != tuo.id and g.id not in compagni and g.appartenenza != polisportiva.nome
+                and abs(self._livello(g, livelli) - mio) <= RAGGIO_CLASSI_AMICHEVOLI]
+
+    def amichevoli_in_serie(self, gruppi, set_al_meglio=3, caso=random):
+        """
+        Le amichevoli in serie: per ogni polisportiva dei gruppi di da_far_giocare, e per ogni suo tesserato nell'ordine dei
+        numeri, l'avversario si sceglie a caso, con caso.choice, fra quelli di avversari_nel_raggio, e l'amichevole si gioca e
+        si registra come quelle della finestra, coi punti allenamento e l'impegno del giorno dei due. Così nessun avversario
+        gioca due volte, e nessuno dei tuoi: chi ha già giocato nella serie, da avversario di un tuo tesserato di un'altra
+        polisportiva, non gioca di nuovo, e la sua voce dice quell'incontro. Restituisce, per ogni polisportiva, la coppia
+        della polisportiva e delle sue voci, una VoceDellaSerie per ogni tesserato dei gruppi.
+        """
+        oggi = self.mondo.datetime_corrente_simulazione
+        livelli = {}
+        # Per il numero di chi ha fatto da avversario nella serie, la voce del suo incontro.
+        da_avversario = {}
+        serie = []
+        for p, tesserati in gruppi:
+            voci = []
+            for tuo in tesserati:
+                if not tuo.puo_giocare_amichevole(oggi):
+                    v = da_avversario.get(tuo.id)
+                    if v is not None:
+                        voci.append(VoceDellaSerie(tuo, v.livello_avversario, v.tuo, v.livello_tuo, v.risultato, v.punti_avversario, v.punti_tuo, True))
+                    continue
+                livello_tuo = self._livello(tuo, livelli)
+                candidati = self.avversari_nel_raggio(tuo, p, livelli)
+                if not candidati:
+                    voci.append(VoceDellaSerie(tuo, livello_tuo))
+                    continue
+                avversario = caso.choice(candidati)
+                prima_tuo, prima_avversario = tuo.punti_allenamento, avversario.punti_allenamento
+                risultato = self.gioca_amichevole(tuo.id, avversario.id, set_al_meglio)
+                v = VoceDellaSerie(tuo, livello_tuo, avversario, livelli[avversario.id], risultato, tuo.punti_allenamento - prima_tuo,
+                                   avversario.punti_allenamento - prima_avversario)
+                voci.append(v)
+                da_avversario[avversario.id] = v
+            serie.append((p, voci))
+        return serie
 
     # La registrazione nel mondo.
 
