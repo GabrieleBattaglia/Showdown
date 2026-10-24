@@ -13,6 +13,9 @@ ogni sponda toglie una parte della velocità.
 La vista ribalta per il giocatore lontano sinistra e destra, come chiede la decisione D11, in un
 punto solo: il pan va da -1, tutto a sinistra, a 1, tutto a destra, e la distanza si misura da un
 punto d'ascolto 40 cm dietro il centro della testata di chi ascolta. Qui non c'è il caso.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 10: l'arrivo chiude sempre il volo, anche
+quando il suo tipo è quello di un rimbalzo, e la regia può chiudere un tratto con la svolta muta del
+lungolinea. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import itertools
@@ -155,7 +158,10 @@ def traiettoria(partenza, arrivo, sponde, v0, t0, decelerazione, perdita_per_spo
     t, v = t0, v0
     rimaste = list(sponde)
     while True:
-        if rimaste:
+        # L'arrivo chiude il volo qualunque sia il suo tipo: un arrivo di tipo curva o sponda,
+        # trattato come un rimbalzo, farebbe ripartire il ciclo senza fine.
+        all_arrivo = not rimaste
+        if not all_arrivo:
             immagine = xa
             for sponda in reversed(rimaste):
                 immagine = 2.0 * sponda - immagine
@@ -179,10 +185,9 @@ def traiettoria(partenza, arrivo, sponde, v0, t0, decelerazione, perdita_per_spo
         t += durata
         x, y = fine
         tappe.append(Tappa(t, x, y, v, tipo_fine))
-        if tipo_fine in ("sponda", "curva"):
-            v *= 1.0 - perdita_per_sponda
-        else:
+        if all_arrivo:
             break
+        v *= 1.0 - perdita_per_sponda
     return tuple(tappe)
 
 

@@ -12,6 +12,15 @@ quando una frase ha più varianti, sceglie con il progressivo dell'evento.
 Una partita va in un file suo, nella cartella cronache, dentro la cartella del mondo dal 2026-10-23, e gli eventi si possono
 salvare in JSON per i banchi d'ascolto della tappa 10. Il vecchio registro unico
 log_partite_showdown.txt non c'è più.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 10 e decisione D37: il volo del goal di
+lungolinea dice "Un veloce lungolinea si insacca nella porta di" e il nome di chi subisce, quello del
+goal di diagonale "La diagonale prende precisa il punto G e finisce in goal", parole di Gabriele, al femminile come il resto della cronaca. È
+di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 11 e decisione D37: la fermata è il blocco
+sulla sponda, "Rossi blocca la pallina sulla sponda sinistra", e dal livello normale il controllo dice
+dove il giocatore porta la pallina prima del tiro: la tiene dove l'ha bloccata, la sposta lungo la
+sponda, la porta al centro o sull'altra sponda. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import json
@@ -23,6 +32,7 @@ import percorsi
 from costanti import CARTELLA_CRONACHE, NOME_ATTR_TO_DISPLAY_MAP, SEDI_INFORTUNIO
 from motore import eventi as E
 from motore.eventi import CAUSE, CHIAMATE
+from motore.regia import AL_CENTRO, ALTRA_SPONDA
 from motore.tavolo import lato_di
 from utilita import MESI, accorda
 
@@ -103,6 +113,8 @@ def _altra(parte):
 _LATI = {"sinistra": "a sinistra", "centro": "al centro", "destra": "a destra"}
 _DAL_LATO = {"sx": "dalla sinistra", "centro": "dal centro", "dx": "dalla destra"}
 _ALLA = {"sinistra": "alla sinistra", "centro": "al centro", "destra": "alla destra"}
+# Sotto questi centimetri lungo la sponda la pallina resta dove è stata bloccata, issue 11.
+_SPOSTAMENTO_MINIMO = 3.0
 _FISCHI = {E.SINGOLO: "Fischio", E.DOPPIO: "Doppio fischio", E.LUNGO: "Fischio lungo", E.TRIPLO: "Triplice fischio"}
 _SERVIZI = {1: "Primo", 2: "Secondo", 3: "Terzo"}
 
@@ -122,7 +134,13 @@ def _chi_subisce(evento):
 
 
 def _sponde(volo):
+    """I rimbalzi del volo, sulle sponde e sulle curve; la svolta muta del lungolinea non è un rimbalzo."""
     return sum(1 for tappa in volo if tappa.tipo in ("sponda", "curva"))
+
+
+# I goal di lungolinea e di diagonale hanno una frase loro, con le parole di Gabriele, D37.
+_LUNGOLINEA = frozenset(("lungolineasx", "lungolineadx"))
+_DIAGONALI = frozenset(("diagonalesx", "diagonaledx"))
 
 
 # Le frasi, evento per evento.
@@ -375,6 +393,10 @@ def _volo(evento, nomi, livello):
         return None
     if dati.get("ribattuta"):
         return f"Palla facile per {_n(nomi, verso)}."
+    if ultima == "porta" and evento.colpo in _LUNGOLINEA:
+        return f"Un veloce lungolinea si insacca nella porta di {_n(nomi, verso)}."
+    if ultima == "porta" and evento.colpo in _DIAGONALI:
+        return "La diagonale prende precisa il punto G e finisce in goal."
     sponde = _sponde(evento.volo)
     corsa = ("La pallina corre dritta", "La pallina rimbalza sulla sponda", "La pallina tocca due sponde", "La pallina tocca tre sponde")[min(sponde, 3)]
     if ultima == "porta":
@@ -391,11 +413,12 @@ def _parata(evento, nomi, livello):
     esito = evento.esito
     di_cosa = "" if evento.dritto is None else (" di dritto" if evento.dritto else " di rovescio")
     if esito == "fermata":
+        # Il blocco della issue 11 sta sempre su una sponda; al centro restano soltanto eventi scritti prima.
         if evento.lato == "centro":
             testo = f"{chi} para al centro{di_cosa} e ferma la pallina"
         else:
-            testo = f"{chi} chiude {_LATI[evento.lato]}{di_cosa} e ferma la pallina"
-        return testo + (", ma non è una fermata pulita." if evento.causa == "sporca" else ".")
+            testo = f"{chi} blocca la pallina sulla sponda {evento.lato}{di_cosa}"
+        return testo + (", ma non è un blocco pulito." if evento.causa == "sporca" else ".")
     if esito == "ribattuta":
         return f"{chi} para{di_cosa}, ma la pallina torna indietro piano."
     if esito == "goal":
@@ -411,16 +434,43 @@ def _cambio_mano(evento, nomi, livello):
 
 
 def _controllo(evento, nomi, livello):
+    """
+    Il controllo palla. Dalla issue 11, dal livello normale, dove il giocatore porta la pallina prima
+    del tiro: Rossi porta la pallina al centro; dopo un recupero, Rossi la riprende e la porta al centro.
+    """
     if livello == SINTETICA:
         return None
     chi = _n(nomi, evento.chi)
     if evento.esito == "sfuggita":
         return f"La pallina sfugge a {chi}."
+    dove = _dove_la_porta(evento)
     if evento.esito == "recupero":
-        return f"{chi} la riprende."
+        if dove is None or dove[0] == "tiene":
+            return f"{chi} la riprende."
+        return f"{chi} la riprende e la {dove[0]} {dove[1]}."
+    if evento.esito == "riuscito" and dove is not None:
+        return f"{chi} {dove[0]} la pallina {dove[1]}."
     if evento.esito == "riuscito" and livello == TECNICA:
         return f"{chi} controlla la pallina."
     return None
+
+
+def _dove_la_porta(evento):
+    """
+    Dove il controllo porta la pallina, issue 11, come verbo e complemento: la tiene dove l'ha
+    bloccata, la sposta lungo la sponda, la porta al centro o sull'altra sponda; None se non la porta.
+    """
+    dati = evento.dati or {}
+    porta_a, trasporto = dati.get("porta_a"), dati.get("trasporto")
+    if porta_a is None or evento.pos is None:
+        return None
+    if trasporto == AL_CENTRO:
+        return "porta", "al centro"
+    if trasporto == ALTRA_SPONDA:
+        return "porta", f"sulla sponda {lato_di(porta_a[0], evento.parte or 'A')}"
+    if abs(porta_a[1] - evento.pos[1]) < _SPOSTAMENTO_MINIMO:
+        return "tiene", "dove l'ha bloccata"
+    return "sposta", f"lungo la sponda {evento.lato}"
 
 
 def _colpo(evento, nomi, livello):

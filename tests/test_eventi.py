@@ -110,7 +110,8 @@ def test_lati_e_distanze_visti_da_chi_agisce(incontri):
             if evento.tipo == E.PARATA and evento.esito == "fermata":
                 assert evento.distanza <= 40
             if evento.tipo == E.COLPO:
-                assert 25 <= evento.distanza <= 40
+                # Dalla issue 11 si tira anche dal punto del blocco, o da uno vicino sulla stessa sponda.
+                assert 15 <= evento.distanza <= 45
 
 
 def test_la_battuta_regolare_tocca_una_sponda_prima_dello_schermo(incontri):

@@ -10,6 +10,16 @@ volo di una pallina è una tupla di tappe, ciascuna con istante, posizione, velo
 il suono di un colpo diagonale può spostarsi da un orecchio all'altro mentre la pallina viaggia.
 Le cause seguono il regolamento IBSA 2025-2028, con l'articolo, la chiamata dell'arbitro nei
 termini italiani della FISPIC, i punti e una frase per la cronaca, dove {chi} è chi commette.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 10 e decisione D37: la tappa svolta, muta,
+dove il lungolinea che va verso la porta lascia il suo lato nell'angolo di chi difende e gira verso
+la tasca. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 12 e decisione D37: nello schermo contro la
+pallina batte sullo schermo e torna indietro, con le parole di Gabriele, invece di urtarlo e fermarsi;
+il ritorno è un volo che finisce nella tappa fermo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
+Dalle verifiche della issue 11, il 24 ottobre 2026, decisione D37: la frase della pallina che sfugge al
+controllo dice che rotola via e si ferma a centrocampo, come fa dalla issue 11, invece di restare ferma
+accanto a chi l'ha persa. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import dataclasses
@@ -30,7 +40,10 @@ class Tappa(NamedTuple):
 
 
 # I tipi delle tappe. Le ultime sette chiudono l'azione: il loro suono appartiene all'evento che segue.
-TAPPE = ("partenza", "sponda", "curva", "sotto_schermo", "base_schermo", "schermo", "sopra_schermo", "tavola_contatto",
+# La svolta è muta: il lungolinea che va verso la porta corre sul suo lato fino all'angolo, e lì
+# segue la curva senza urtarla e gira verso la tasca, issue 10. Non è un rimbalzo, e la cronaca
+# non la conta fra le sponde.
+TAPPE = ("partenza", "sponda", "curva", "svolta", "sotto_schermo", "base_schermo", "schermo", "sopra_schermo", "tavola_contatto",
          "fuori", "terra", "soffitto", "corpo", "paletta", "porta", "fermo", "mano_battitore", "arrivo")
 TAPPE_TERMINALI = frozenset(("schermo", "porta", "terra", "soffitto", "corpo", "paletta", "fermo"))
 # Le tappe che possono stare fuori dal tavolo.
@@ -153,7 +166,8 @@ CAUSE = {
     "battuta_a_vuoto": _c("battuta", "15.3.6", "servizio_irregolare", 1, "{chi} manca la pallina, e il colpo a vuoto si sente"),
     "battuta_doppio_tocco": _c("battuta", "15.3.1", "servizio_irregolare", 1, "{chi} tocca due volte la pallina in battuta"),
     # L'attacco: schermo centrale e out.
-    "schermo_contro": _c("attacco", "15.4.2", "schermo_centrale", 1, "la pallina di {chi} urta lo schermo e si ferma"),
+    # Dalla issue 12 la pallina batte sullo schermo e torna indietro, parole di Gabriele; prima si fermava.
+    "schermo_contro": _c("attacco", "15.4.2", "schermo_centrale", 1, "la pallina di {chi} batte sullo schermo e torna indietro"),
     "schermo_sopra": _c("attacco", "15.4.1", "schermo_centrale", 1, "la pallina di {chi} passa sopra lo schermo"),
     "out_sponda": _c("attacco", "15.7.1", "out", 1, "la pallina di {chi} salta la sponda e finisce a terra"),
     "out_volo": _c("attacco", "15.7.1", "out", 1, "la pallina di {chi} vola fuori dal tavolo"),
@@ -179,7 +193,7 @@ CAUSE = {
     # La palla morta, nessun punto, si ripete il servizio.
     "colpo_debole": _c("palla_morta", "16.1", "palla_morta", 0, "il colpo di {chi} è troppo debole e la pallina si ferma prima di arrivare all'avversario"),
     "ribattuta_lenta": _c("palla_morta", "16.1", "palla_morta", 0, "la ribattuta di {chi} si ferma prima dello schermo"),
-    "pallina_ferma": _c("palla_morta", "16.2", "palla_morta", 0, "la pallina sfugge a {chi} e resta ferma, senza suono"),
+    "pallina_ferma": _c("palla_morta", "16.2", "palla_morta", 0, "la pallina sfugge a {chi}, rotola via e si ferma a centrocampo, senza suono"),
     "limite_tecnico": _c("palla_morta", "simulatore", "palla_morta", 0, "lo scambio non finisce più, e l'arbitro lo ferma"),
     # Le rotture, nessun punto, si ripete il servizio.
     "paletta_rotta": _c("rottura", "15.9.3", "si_ripete", 0, "la paletta di {chi} si rompe"),

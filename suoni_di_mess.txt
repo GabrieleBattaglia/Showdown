@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 322 suoni, 297 della finestra e 25 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 323 suoni, 297 della finestra e 26 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -326,15 +326,16 @@ Nell'avanzamento finisce un torneo dei tuoi, senza medaglie: mess_torneo_conclus
 Nell'avanzamento l'iscrizione automatica iscrive tuoi atleti a un torneo: mess_iscrizioni_automatiche.
 Nell'avanzamento un torneo con tuoi iscritti si annulla per pochi iscritti, e la quota torna: mess_edizione_annullata.
 Nell'avanzamento finisce un campionato italiano: mess_mondiale_concluso.
-Partita dal vivo, i suoni dell'incontro, 25 suoni.
+Partita dal vivo, i suoni dell'incontro, 26 suoni.
 Il fischio singolo dell'arbitro, ai falli e alle riprese del gioco: mess_partita_fischio_singolo.
 La battuta, la paletta che colpisce la pallina al servizio: mess_partita_battuta.
 Il secondo tocco della battuta col doppio tocco: mess_partita_secondo_tocco.
 Il colpo a vuoto in battuta, la paletta che manca la pallina e batte sul tavolo: mess_partita_colpo_a_vuoto.
 La pallina che rotola, il sonaglio dei pallini, una capriola per giro: mess_partita_rotolamento.
 La pallina che sbatte sulla sponda o sulla curva di un angolo: mess_partita_sponda.
-La parata, la pallina che si ferma sulla paletta: mess_partita_parata.
-Il controllo, la pallina fermata e scossa con la paletta prima del colpo: mess_partita_controllo.
+La parata che non blocca la pallina, la ribattuta che la rimanda indietro piano o la difesa che finisce in fallo: mess_partita_parata.
+Il blocco, la paletta che ferma di botto la pallina contro la sponda: mess_partita_blocco.
+Il controllo, la pallina bloccata, scossa con la paletta e portata dove parte il colpo: mess_partita_controllo.
 Il colpo d'attacco dello scambio: mess_partita_colpo.
 La pallina che colpisce il corpo di chi difende, il body touch: mess_partita_corpo.
 Il goal, la pallina che cade nella tasca della porta: mess_partita_goal.
