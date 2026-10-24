@@ -12,7 +12,7 @@ Lo studio, sui 142 schermi contro dei 932 punti dei trenta incontri di strumenti
 composti dalla testata di A senza suonarli, metà tirati da A e metà da B. L'urto di oggi cade a 2 cm
 dallo schermo, dalla parte di chi tira, a 223 o 228 cm dal punto d'ascolto: volume 0,40 e taglio della
 cupezza fra 4700 e 4900 Hz; il pan è quello della pallina, da -0,9 a 0,9. Il fischio singolo parte
-nello stesso campione dell'urto, dall'arbitro, a pan -1, o 1 dopo il cambio campo, a 249 cm, con volume
+nello stesso millesimo dell'urto, dall'arbitro, a pan -1, o 1 dopo il cambio campo, a 249 cm, con volume
 0,38 e taglio 4300 Hz: urto e fischio vengono dalla stessa distanza, ugualmente incupiti, e quando la
 pallina tocca dalla parte dell'arbitro anche dalla stessa direzione. Con la ponderazione A, nei primi
 100 ms dopo l'urto, l'urto sta da 7 a 9 dB sotto il fischio, che dura 320 ms contro i suoi 102, e da 7
@@ -28,25 +28,27 @@ Le versioni, con le lettere da A a F mescolate in ogni punto. Oggi: lo schermo d
 Netto: un urto nuovo, chiaro e secco, dalla metà strada fra il punto dell'urto e il centro dello
 schermo, perché la tavola risuona tutta e perché si stacchi dal fischio, che viene dal lato; il fischio
 resta nello stesso istante del tocco. Netto col ritorno: lo stesso urto, poi la pallina ricade sul
-tavolo, 70 ms dopo, e torna rotolando verso chi l'ha tirata. Legno col ritorno e plastica col ritorno:
-il ritorno con un urto di timbro diverso, una tavola di legno più grave e rimbombante, o una lastra di
-plastica dura, più chiara. I tre urti nuovi si sentono forti uguali, da 2 a 3 dB sopra il fischio nei
-primi 100 ms, cioè una decina di dB più di oggi, e da 4 a 5 sopra il colpo del tuo giocatore; il picco
-più alto dei punti sta intorno a 0,7, sotto il tetto della partita, 0,8. Il ritorno riparte con il
-35% della velocità dell'urto, fra 150 e 250 cm/s, 175 in mediana, nella direzione del colpo specchiata
-dallo schermo, e si ferma dopo una strada fra 120 e 150 cm, fra 30 e 65 cm dalla linea di chi ha
-tirato, in un secondo e mezzo circa; il suo rotolamento è quello della partita, col guadagno 2,5 volte
-più alto. Così sta 19 dB sotto il fischio invece di 35, da 18 a 24 sotto il cicalino invece che da 30
-a 39, e dopo il cicalino rotola ancora per 0,74 secondi, 14 dB più forte del ritorno tolto e 11 sotto
-il rotolamento del colpo. I numeri cambiano di un decibel da una sessione all'altra, perché i rumori
-dei preset nascono senza seme.
+tavolo, 70 ms dopo, nel punto da cui si è sentito l'urto, e da lì torna rotolando verso chi l'ha
+tirata. Legno col ritorno e plastica col ritorno: il ritorno con un urto di timbro diverso, una tavola
+di legno più grave e rimbombante, o una lastra di plastica dura, più chiara. I tre urti nuovi si
+sentono forti uguali, da 2 a 3 dB sopra il fischio nei primi 100 ms, cioè una decina di dB più di
+oggi, e sopra il colpo del tuo giocatore da 3 a 5 dB in mediana, da mezzo a 7 nei singoli punti; il
+picco più alto dei punti sta intorno a 0,7, sotto il tetto della partita, 0,8. Il ritorno riparte con
+il 35% della velocità dell'urto, fra 150 e 250 cm/s, 175 in mediana, nella direzione del colpo
+specchiata dallo schermo, e si ferma dopo una strada fra 120 e 150 cm, fra 30 e 65 cm dalla linea di
+chi ha tirato, in un secondo e mezzo circa; il suo rotolamento è quello della partita, col guadagno
+2,5 volte più alto. Così sta 19 dB sotto il fischio invece di 35, da 16 a 23 sotto il cicalino invece
+che da 30 a 39, e dopo il cicalino rotola ancora per 0,74 secondi, 14 dB più forte del ritorno tolto
+e 11 sotto il rotolamento del colpo. I numeri cambiano di un decibel da una sessione all'altra, perché
+i rumori dei preset nascono senza seme.
 I timbri candidati sono preset nel formato della collezione di Acusticator, scritti qui in TIMBRI e
 non in GBUtils: lo strumento li mette in una collezione sua, in un file temporaneo, che Acusticator
 cerca prima di quella condivisa, e partita_sonora.sorgente_del_preset li sintetizza come le altre
 sorgenti della partita. Le versioni le compone partita_sonora.componi col suo ritocco dei suoni
 posati: al posto dell'urto di oggi quello nuovo, col suo guadagno e la sua posizione, e poi, se c'è, il
-ritorno, un volo che la partita non conosce, con la ricaduta e il rotolamento. Fino all'urto le versioni
-di un punto sono identiche campione per campione, fischio e cicalino compresi.
+ritorno, un volo che la partita non conosce, con la ricaduta e il rotolamento, che partono da quella
+stessa posizione. Fino all'urto le versioni di un punto sono identiche campione per campione, fischio
+e cicalino compresi.
 I punti sono quelli dell'ascolto della partita: il mondo in memoria col seme fisso e gli incontri
 giocati dal motore in modalità completa. Lo strumento sceglie, per ogni parte, i tre schermi contro più
 brevi, con al più tre colpi di scambio e colpi diversi, e li compone senza file WAV, dal fischio del via
@@ -174,8 +176,8 @@ TIMBRI = {
     },
 }
 RICADUTA = "ascolto_schermo_ricaduta"
-# Il ritorno: la pallina ricade sul tavolo poco dopo l'urto e torna rotolando verso chi l'ha tirata,
-# nella direzione del colpo specchiata dallo schermo, per una strada fra queste distanze, in cm, e si
+# Il ritorno: la pallina ricade sul tavolo poco dopo l'urto, nel punto da cui si è sentito l'urto, e
+# torna rotolando verso chi l'ha tirata, nella direzione del colpo specchiata dallo schermo, per una strada fra queste distanze, in cm, e si
 # ferma fra 30 e 65 cm dalla linea di chi ha tirato. Riparte con questa parte della velocità che aveva
 # all'urto, dentro questi limiti, in cm/s, e rallenta sempre allo stesso modo fino a fermarsi, così
 # rotola ancora quando il fischio e il cicalino del fallo sono finiti. Il suo rotolamento ha questo
@@ -285,36 +287,46 @@ def volo_dello_schermo(eventi):
 
 # Le versioni.
 
-def ritorno(volo):
+def punto_dell_urto(urto, versione):
+    """
+    Il punto da cui si sente l'urto della versione: dove la pallina tocca lo schermo o, se la versione
+    lo vuole, la metà strada fra lì e il centro dello schermo. Da lì riparte anche il ritorno.
+    """
+    x = (urto.x + CENTRO_X) / 2.0 if versione.verso_il_centro else urto.x
+    return x, urto.y
+
+
+def ritorno(volo, partenza):
     """
     Il volo della pallina che, dopo l'urto, ricade sul tavolo e torna verso chi l'ha tirata: comincia
-    RITARDO_DELLA_RICADUTA dopo l'urto, nella direzione del colpo specchiata dallo schermo, e rotola
-    per una strada di STRADA_DEL_RITORNO fino a fermarsi. Il caso viene dal numero del volo, così lo
-    stesso punto torna sempre uguale. È un evento VOLO che la partita non conosce: vive soltanto qui.
+    RITARDO_DELLA_RICADUTA dopo l'urto, dalla partenza, il punto da cui si è sentito l'urto, nella
+    direzione del colpo specchiata dallo schermo, e rotola per una strada di STRADA_DEL_RITORNO fino a
+    fermarsi. Il caso viene dal numero del volo, così lo stesso punto torna sempre uguale. È un evento
+    VOLO che la partita non conosce: vive soltanto qui.
     """
     urto, prima = volo.volo[-1], volo.volo[-2]
+    x0, y0 = partenza
     dx, dy = urto.x - prima.x, urto.y - prima.y
     lunghezza = math.hypot(dx, dy)
     caso = random.Random(volo.n)
     strada = caso.uniform(*STRADA_DEL_RITORNO)
-    x = min(LARGHEZZA_TAVOLO - MARGINE_GIOCO, max(MARGINE_GIOCO, urto.x + strada * dx / lunghezza))
-    y = urto.y - strada * dy / lunghezza
-    strada = math.hypot(x - urto.x, y - urto.y)
+    x = min(LARGHEZZA_TAVOLO - MARGINE_GIOCO, max(MARGINE_GIOCO, x0 + strada * dx / lunghezza))
+    y = y0 - strada * dy / lunghezza
+    strada = math.hypot(x - x0, y - y0)
     v0 = min(VELOCITA_DEL_RITORNO[1], max(VELOCITA_DEL_RITORNO[0], RIMBALZO * urto.v))
     t0 = urto.t + RITARDO_DELLA_RICADUTA
-    tappe = traiettoria((urto.x, urto.y), (x, y), (), v0, t0, v0 * v0 / (2.0 * strada), 0.0, "fermo")
+    tappe = traiettoria((x0, y0), (x, y), (), v0, t0, v0 * v0 / (2.0 * strada), 0.0, "fermo")
     return dataclasses.replace(volo, n=volo.n + SCARTO_DEL_NUMERO, t=t0, durata=tappe[-1].t - t0, pos=(round(x, 1), round(y, 1)), volo=tappe,
                                colpo=None, dati={"ritorno": True})
 
 
-def posati_del_ritorno(volo):
+def posati_del_ritorno(volo, partenza):
     """
-    I suoni del ritorno: la ricaduta sul tavolo, dove la pallina ha urtato, e il rotolamento verso chi
-    l'ha tirata, quello della partita col guadagno in più del ritorno.
+    I suoni del ritorno: la ricaduta sul tavolo, dalla partenza, il punto da cui si è sentito l'urto, e
+    il rotolamento da lì verso chi l'ha tirata, quello della partita col guadagno in più del ritorno.
     """
-    indietro = ritorno(volo)
-    urto = volo.volo[-1]
-    ricaduta = ps.Posato("ricaduta", indietro.t, ps.sorgente_del_preset(RICADUTA), np.array([0.0]), [(urto.x, urto.y)], None, indietro.n)
+    indietro = ritorno(volo, partenza)
+    ricaduta = ps.Posato("ricaduta", indietro.t, ps.sorgente_del_preset(RICADUTA), np.array([0.0]), [tuple(partenza)], None, indietro.n)
     rotolamento = [dataclasses.replace(p, guadagni=p.guadagni * GUADAGNO_DEL_RITORNO) if p.ruolo == "rotolamento" else p
                    for p in ps.posati_del_volo(indietro)]
     return [ricaduta, *rotolamento]
@@ -323,24 +335,23 @@ def posati_del_ritorno(volo):
 def ritocco(volo, versione):
     """
     La funzione che partita_sonora.componi applica ai suoni posati del punto per farne la versione: al
-    posto dell'urto di oggi quello della versione, col suo guadagno e, se la versione lo vuole, dalla
-    metà strada fra il punto dell'urto e il centro dello schermo; poi, se c'è, il ritorno. Il resto
-    del punto, fischio e cicalino compresi, resta com'è, campione per campione.
+    posto dell'urto di oggi quello della versione, col suo guadagno, dal punto_dell_urto; poi, se c'è,
+    il ritorno, che riparte da quello stesso punto, così la pallina torna da dove si è sentita battere.
+    Il resto del punto, fischio e cicalino compresi, resta com'è, campione per campione.
     """
     urto = volo.volo[-1]
+    dove = punto_dell_urto(urto, versione)
 
     def applica(posati):
         nuovi = []
         for p in posati:
             if p.ruolo == "schermo" and abs(p.t - urto.t) <= ps.TOLLERANZA:
-                x = (urto.x + CENTRO_X) / 2.0 if versione.verso_il_centro else p.posizioni[0][0]
                 mono = ps.sorgente_del_preset(versione.urto, p.variante)
-                nuovi.append(ps.Posato("schermo", p.t, mono, np.array([0.0]), [(x, p.posizioni[0][1])], np.array([versione.guadagno]), p.evento,
-                                       p.variante))
+                nuovi.append(ps.Posato("schermo", p.t, mono, np.array([0.0]), [dove], np.array([versione.guadagno]), p.evento, p.variante))
             else:
                 nuovi.append(p)
         if versione.ritorno:
-            nuovi.extend(posati_del_ritorno(volo))
+            nuovi.extend(posati_del_ritorno(volo, dove))
         return nuovi
 
     return applica

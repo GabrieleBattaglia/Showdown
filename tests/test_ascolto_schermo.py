@@ -4,8 +4,8 @@ senza mai suonare: la cassa di Acusticator è sostituita da un registratore, e q
 la chiamasse, fa fallire la prova. I punti sono schermi contro brevi, tre tirati dal giocatore di chi
 ascolta e tre dall'avversario. Le versioni: fino all'urto identiche campione per campione a quella di
 oggi, fischio compreso; l'urto nuovo sta più in alto di quello di oggi rispetto al fischio, e i tre urti
-nuovi si sentono forti uguali; il ritorno ricade dopo l'urto e torna verso chi ha tirato fino a
-fermarsi nella sua metà; i timbri candidati restano fuori dalla collezione di GBUtils. Le lettere: sei
+nuovi si sentono forti uguali; il ritorno ricade dopo l'urto, nel punto da cui l'urto si sente, e da
+lì torna verso chi ha tirato fino a fermarsi nella sua metà; i timbri candidati restano fuori dalla collezione di GBUtils. Le lettere: sei
 per punto, le cinque versioni e una ripetuta identica, che cambia da un punto all'altro; tutte lunghe
 uguali e allo stesso livello, sotto il tetto; mescolate e ripetute col seme. Poi la sessione intera con
 una tastiera finta da copione: il via, il silenzio prima della prima lettera, la rassegna, la scelta
@@ -282,22 +282,44 @@ def test_il_ritorno_torna_verso_chi_ha_tirato(prova):
     for punto in _punti(prova):
         volo, _composto, _urto_i = _urto(punto)
         urto = volo.volo[-1]
-        indietro = asc.ritorno(volo)
+        # Il ritorno parte dal punto da cui si sente l'urto, a metà fra quello vero e il centro dello schermo.
+        dove = asc.punto_dell_urto(urto, asc.PER_CHIAVE["netto_ritorno"])
+        assert dove == ((urto.x + CENTRO_X) / 2.0, urto.y)
+        indietro = asc.ritorno(volo, dove)
         partenza, fermo = indietro.volo[0], indietro.volo[-1]
-        assert partenza.t == pytest.approx(urto.t + asc.RITARDO_DELLA_RICADUTA) and (partenza.x, partenza.y) == (urto.x, urto.y)
+        assert partenza.t == pytest.approx(urto.t + asc.RITARDO_DELLA_RICADUTA) and (partenza.x, partenza.y) == dove
         assert fermo.tipo == "fermo" and fermo.v == pytest.approx(0.0, abs=1e-3)
         assert asc.VELOCITA_DEL_RITORNO[0] <= partenza.v <= asc.VELOCITA_DEL_RITORNO[1]
-        strada = math.hypot(fermo.x - urto.x, fermo.y - urto.y)
+        strada = math.hypot(fermo.x - dove[0], fermo.y - dove[1])
         assert strada <= asc.STRADA_DEL_RITORNO[1] + 1e-6 and strada > 80.0
         # Verso chi ha tirato, dalla sua parte, e si ferma fra 25 e 70 cm dalla sua linea.
         linea = fermo.y if punto.parte == "A" else LUNGHEZZA_TAVOLO - fermo.y
         assert 25.0 <= linea <= 70.0, linea
         # Lo stesso punto torna sempre uguale; i suoni: la ricaduta e il rotolamento, più forte di quello della partita.
-        assert asc.ritorno(volo).volo == indietro.volo
-        ricaduta, rotolamento = asc.posati_del_ritorno(volo)
-        assert ricaduta.ruolo == "ricaduta" and ricaduta.t == partenza.t and ricaduta.posizioni == [(urto.x, urto.y)]
+        assert asc.ritorno(volo, dove).volo == indietro.volo
+        ricaduta, rotolamento = asc.posati_del_ritorno(volo, dove)
+        assert ricaduta.ruolo == "ricaduta" and ricaduta.t == partenza.t and ricaduta.posizioni == [dove]
         (della_partita,) = ps.posati_del_volo(indietro)
         assert rotolamento.ruolo == "rotolamento" and np.allclose(rotolamento.guadagni, della_partita.guadagni * asc.GUADAGNO_DEL_RITORNO)
+
+
+def test_il_ritorno_riparte_da_dove_si_sente_l_urto(prova):
+    """Nelle versioni col ritorno la ricaduta e il rotolamento partono dal punto dell'urto che si sente, anche quando è verso il centro."""
+    col_ritorno = [v for v in asc.VERSIONI if v.ritorno]
+    assert col_ritorno and all(v.verso_il_centro for v in col_ritorno)
+    for punto in _punti(prova):
+        volo, _composto, _urto_i = _urto(punto)
+        for versione in col_ritorno:
+            posati = asc.componi_versione(punto.candidato, versione).posati
+            (schermo,) = [p for p in posati if p.ruolo == "schermo"]
+            (ricaduta,) = [p for p in posati if p.ruolo == "ricaduta"]
+            (indietro,) = [p for p in posati if p.ruolo == "rotolamento" and p.evento == volo.n + asc.SCARTO_DEL_NUMERO]
+            assert schermo.posizioni == [asc.punto_dell_urto(volo.volo[-1], versione)]
+            assert ricaduta.posizioni == schermo.posizioni, versione.chiave
+            assert indietro.posizioni[0] == pytest.approx(schermo.posizioni[0], abs=1e-6), versione.chiave
+            # Per chi ascolta, l'urto, la ricaduta e la partenza del rotolamento hanno lo stesso pan: niente salti di lato.
+            pan = [float(ps.SPAZIO.campi(p.posizioni[:1], asc.ASCOLTATORE)[0][0]) for p in (schermo, ricaduta, indietro)]
+            assert max(pan) - min(pan) < 1e-6, (versione.chiave, pan)
 
 
 def test_i_timbri_candidati_restano_fuori_da_gbutils():
