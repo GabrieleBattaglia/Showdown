@@ -52,6 +52,9 @@ l'utente invece può tesserarli subito.
 Dalla tappa 12, il 2026-10-13, con la issue 1 e D32: il computer fonda polisportive contando soltanto
 i giocatori in attività e soltanto le sue polisportive, e i giocatori nuovi sono da due a nove al
 giorno, idea di Gabriele, così al mercato restano sempre dei liberi da cercare e tesserare.
+Dal 24 ottobre 2026, con la issue 8 e la decisione D36, il mondo tiene lo stato dei filtri della finestra
+unica Mercato e ricerca, uno per ogni porta d'ingresso, scelta di Gabriele: lo legge e lo scrive mercato.py,
+e col magnate di D35 andrà per magnate. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -322,6 +325,9 @@ class Mondo:
         self.staff_appena_nato = False
         # L'ora vera dell'ultimo avanzamento, per la riserva dei nuovi allenatori all'utente; None fuori dal programma.
         self._ora_reale = None
+        # Dalla issue 8, D36, lo stato dei filtri della finestra Mercato e ricerca per ogni porta d'ingresso, come
+        # mercato.StatoDellaPorta: una porta che non c'è ha il suo stato predefinito, quello della sua ricerca pronta.
+        self.filtri_di_ricerca = {}
 
     # Probabilità, ricerche, diari.
 

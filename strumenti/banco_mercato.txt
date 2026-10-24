@@ -1,0 +1,122 @@
+Banco della finestra Mercato e ricerca di MESS 2.0.0, 2026-10-24 10:22, sulla macchina GabryBat, Python 3.14.5. I tempi assoluti cambiano da una macchina all'altra; l'obiettivo della proposta vale per il Gigante.
+Mondo a regime del seme 31: 26666 giocatori, 20000 in attività, 6666 ritirati, 1200 polisportive del computer e 2 tue, 181 giocatori in vendita, 2920 allenatori di cui 27 liberi; costruito in 39,6 secondi.
+Le aperture delle porte, a freddo: una memoria nuova a ogni prova.
+apertura di mercato: 2164 righe, mediana 15,0 ms, peggiore 17,0 ms
+apertura di allenatori: 27 righe, mediana 0,4 ms, peggiore 0,7 ms
+apertura di ricerca: 20000 righe, mediana 77,7 ms, peggiore 82,0 ms
+apertura di amichevole: 19000 righe, mediana 183,5 ms, peggiore 190,9 ms
+Le ricerche pronte, a freddo e a caldo.
+Mercato: liberi e in vendita da altri, dal valore più alto, a freddo: 2164 righe, mediana 16,8 ms, peggiore 17,1 ms
+Mercato: liberi e in vendita da altri, dal valore più alto, a caldo: 2164 righe, mediana 12,4 ms, peggiore 15,1 ms
+Tutti in attività, senza filtri, per numero, a freddo: 20000 righe, mediana 77,9 ms, peggiore 78,2 ms
+Tutti in attività, senza filtri, per numero, a caldo: 20000 righe, mediana 46,5 ms, peggiore 75,6 ms
+I più forti in attività, dal valore più alto, a freddo: 20000 righe, mediana 90,9 ms, peggiore 91,2 ms
+I più forti in attività, dal valore più alto, a caldo: 20000 righe, mediana 53,3 ms, peggiore 55,6 ms
+I giovani migliori, fino a 20 anni, dal valore più alto, a freddo: 1547 righe, mediana 88,1 ms, peggiore 90,7 ms
+I giovani migliori, fino a 20 anni, dal valore più alto, a caldo: 1547 righe, mediana 49,4 ms, peggiore 54,3 ms
+I liberi più convenienti, dagli euro d'ingaggio per punto di valore, a freddo: 1984 righe, mediana 15,3 ms, peggiore 15,4 ms
+I liberi più convenienti, dagli euro d'ingaggio per punto di valore, a caldo: 1984 righe, mediana 10,5 ms, peggiore 10,7 ms
+Gli affari in vendita da altri, dal prezzo sul valore di mercato, a freddo: 180 righe, mediana 1,3 ms, peggiore 1,4 ms
+Gli affari in vendita da altri, dal prezzo sul valore di mercato, a caldo: 180 righe, mediana 0,6 ms, peggiore 1,0 ms
+Avversari per un'amichevole oggi, dalla classe migliore, a freddo: 19000 righe, mediana 178,8 ms, peggiore 181,4 ms
+Avversari per un'amichevole oggi, dalla classe migliore, a caldo: 19000 righe, mediana 66,8 ms, peggiore 140,2 ms
+I più titolati in attività, dai punti della classifica nazionale, a freddo: 20000 righe, mediana 89,0 ms, peggiore 89,1 ms
+I più titolati in attività, dai punti della classifica nazionale, a caldo: 20000 righe, mediana 54,4 ms, peggiore 56,2 ms
+Gli allenatori liberi migliori, a freddo: 27 righe, mediana 0,7 ms, peggiore 0,9 ms
+Gli allenatori liberi migliori, a caldo: 27 righe, mediana 0,4 ms, peggiore 0,5 ms
+I capi allenatori migliori, a freddo: 967 righe, mediana 2,5 ms, peggiore 2,7 ms
+I capi allenatori migliori, a caldo: 967 righe, mediana 2,3 ms, peggiore 2,4 ms
+Gli assistenti migliori, a freddo: 1926 righe, mediana 2,6 ms, peggiore 2,6 ms
+Gli assistenti migliori, a caldo: 1926 righe, mediana 2,4 ms, peggiore 2,5 ms
+I nuovi arrivati della sessione, dal valore più alto, a freddo: 191 righe, mediana 76,1 ms, peggiore 77,2 ms
+I nuovi arrivati della sessione, dal valore più alto, a caldo: 191 righe, mediana 39,7 ms, peggiore 41,6 ms
+I filtri a mano, a freddo e a caldo.
+tutti, donne fino a 25 anni, a freddo: 1560 righe, mediana 78,2 ms, peggiore 78,9 ms
+tutti, donne fino a 25 anni, a caldo: 1560 righe, mediana 44,9 ms, peggiore 48,5 ms
+tutti, classe migliore o uguale a E0, a freddo: 9993 righe, mediana 175,3 ms, peggiore 175,7 ms
+tutti, classe migliore o uguale a E0, a caldo: 9993 righe, mediana 51,4 ms, peggiore 61,9 ms
+tutti, classe fra D0 e F0, a freddo: 8545 righe, mediana 178,3 ms, peggiore 178,8 ms
+tutti, classe fra D0 e F0, a caldo: 8545 righe, mediana 54,8 ms, peggiore 57,2 ms
+tutti, cognome che contiene ros, a freddo: 510 righe, mediana 81,4 ms, peggiore 83,0 ms
+tutti, cognome che contiene ros, a caldo: 510 righe, mediana 46,4 ms, peggiore 48,2 ms
+tutti, numero che comincia con 12, a freddo: 2578 righe, mediana 82,9 ms, peggiore 84,5 ms
+tutti, numero che comincia con 12, a caldo: 2578 righe, mediana 42,8 ms, peggiore 46,9 ms
+tutti, in Lombardia, a freddo: 2557 righe, mediana 82,1 ms, peggiore 85,1 ms
+tutti, in Lombardia, a caldo: 2557 righe, mediana 48,2 ms, peggiore 50,2 ms
+tutti, comune che contiene san, a freddo: 941 righe, mediana 78,1 ms, peggiore 79,4 ms
+tutti, comune che contiene san, a caldo: 941 righe, mediana 42,3 ms, peggiore 45,7 ms
+tutti, mancini con talento, a freddo: 95 righe, mediana 77,5 ms, peggiore 77,7 ms
+tutti, mancini con talento, a caldo: 95 righe, mediana 41,3 ms, peggiore 44,3 ms
+tutti, bomba centrale maggiore di 12 e valore maggiore di 150, a freddo: 920 righe, mediana 86,7 ms, peggiore 89,8 ms
+tutti, bomba centrale maggiore di 12 e valore maggiore di 150, a caldo: 920 righe, mediana 51,8 ms, peggiore 53,5 ms
+tutti, valore minimo 150 e stipendio massimo 2.000 euro, a freddo: 11055 righe, mediana 90,0 ms, peggiore 91,4 ms
+tutti, valore minimo 150 e stipendio massimo 2.000 euro, a caldo: 11055 righe, mediana 55,6 ms, peggiore 59,7 ms
+tutti, senza infortunati né acciaccati, a freddo: 20000 righe, mediana 97,0 ms, peggiore 97,7 ms
+tutti, senza infortunati né acciaccati, a caldo: 20000 righe, mediana 60,0 ms, peggiore 64,4 ms
+tutti, mesi di contratto al massimo 6, a freddo: 1988 righe, mediana 84,8 ms, peggiore 86,9 ms
+tutti, mesi di contratto al massimo 6, a caldo: 1988 righe, mediana 54,8 ms, peggiore 57,2 ms
+liberi e in vendita, costo massimo 5.000 euro, a freddo: 2080 righe, mediana 17,9 ms, peggiore 18,3 ms
+liberi e in vendita, costo massimo 5.000 euro, a caldo: 2080 righe, mediana 13,6 ms, peggiore 13,9 ms
+tesserati del computer, ordine per prezzo sul valore di mercato, a freddo: 18000 righe, mediana 81,2 ms, peggiore 84,0 ms
+tesserati del computer, ordine per prezzo sul valore di mercato, a caldo: 18000 righe, mediana 41,7 ms, peggiore 45,7 ms
+tutti e i ritirati, disponibili oggi, a freddo: 19000 righe, mediana 109,2 ms, peggiore 110,5 ms
+tutti e i ritirati, disponibili oggi, a caldo: 19000 righe, mediana 70,8 ms, peggiore 77,9 ms
+ritirati che allenano, a freddo: 20 righe, mediana 13,3 ms, peggiore 14,0 ms
+ritirati che allenano, a caldo: 20 righe, mediana 12,1 ms, peggiore 12,8 ms
+ritirati e usciti di scena, a freddo: 6666 righe, mediana 13,5 ms, peggiore 13,7 ms
+ritirati e usciti di scena, a caldo: 6666 righe, mediana 14,3 ms, peggiore 15,1 ms
+tutti, otto filtri insieme, a freddo: 169 righe, mediana 82,3 ms, peggiore 82,9 ms
+tutti, otto filtri insieme, a caldo: 169 righe, mediana 45,1 ms, peggiore 49,3 ms
+allenatori di tutti, uomini vedenti, a freddo: 1124 righe, mediana 2,9 ms, peggiore 3,2 ms
+allenatori di tutti, uomini vedenti, a caldo: 1124 righe, mediana 2,5 ms, peggiore 2,5 ms
+Tutti gli ordini dei giocatori in attività e degli allenatori, a caldo.
+ordine valore, dal più alto: 20000 righe, mediana 51,5 ms, peggiore 52,4 ms
+ordine valore, dal più basso: 20000 righe, mediana 55,6 ms, peggiore 58,3 ms
+ordine classe, dalla migliore: 20000 righe, mediana 52,6 ms, peggiore 54,2 ms
+ordine età, dal più giovane: 20000 righe, mediana 55,8 ms, peggiore 57,0 ms
+ordine età, dal più anziano: 20000 righe, mediana 52,3 ms, peggiore 54,9 ms
+ordine costo, dal più basso: 20000 righe, mediana 53,4 ms, peggiore 54,3 ms
+ordine costo, dal più alto: 20000 righe, mediana 54,1 ms, peggiore 55,5 ms
+ordine euro per punto di valore, dal più basso: 20000 righe, mediana 56,3 ms, peggiore 57,9 ms
+ordine prezzo sul valore di mercato, dal più basso: 20000 righe, mediana 64,4 ms, peggiore 65,6 ms
+ordine stipendio, dal più basso: 20000 righe, mediana 53,4 ms, peggiore 55,5 ms
+ordine punti della classifica nazionale, dal più alto: 20000 righe, mediana 57,2 ms, peggiore 57,8 ms
+ordine punti dell'ultimo anno, dal più alto: 20000 righe, mediana 60,5 ms, peggiore 61,2 ms
+ordine esperienza, dalla più alta: 20000 righe, mediana 55,7 ms, peggiore 58,3 ms
+ordine ambizione, dalla più alta: 20000 righe, mediana 56,5 ms, peggiore 58,5 ms
+ordine punti allenamento, dal più alto: 20000 righe, mediana 56,4 ms, peggiore 57,6 ms
+ordine mesi di contratto rimasti, dai meno: 20000 righe, mediana 60,9 ms, peggiore 62,3 ms
+ordine numero, dal più basso: 20000 righe, mediana 48,0 ms, peggiore 49,9 ms
+ordine Precisione, dalla più alta: 20000 righe, mediana 58,5 ms, peggiore 59,4 ms
+ordine Resistenza, dalla più alta: 20000 righe, mediana 59,7 ms, peggiore 61,0 ms
+ordine Forza, dalla più alta: 20000 righe, mediana 60,0 ms, peggiore 60,7 ms
+ordine Chiusura sinistra, dalla più alta: 20000 righe, mediana 60,1 ms, peggiore 60,9 ms
+ordine Blocco sinistro, dalla più alta: 20000 righe, mediana 58,6 ms, peggiore 59,9 ms
+ordine Blocco destro, dalla più alta: 20000 righe, mediana 58,5 ms, peggiore 58,6 ms
+ordine Chiusura destra, dalla più alta: 20000 righe, mediana 57,2 ms, peggiore 58,9 ms
+ordine Battuta sinistra, dalla più alta: 20000 righe, mediana 53,7 ms, peggiore 55,3 ms
+ordine Lungolinea sinistro, dalla più alta: 20000 righe, mediana 56,8 ms, peggiore 57,1 ms
+ordine Diagonale sinistra, dalla più alta: 20000 righe, mediana 52,6 ms, peggiore 53,5 ms
+ordine Singola sponda sinistra, dalla più alta: 20000 righe, mediana 60,8 ms, peggiore 67,6 ms
+ordine Doppia sponda sinistra, dalla più alta: 20000 righe, mediana 59,0 ms, peggiore 61,1 ms
+ordine Tripla sponda sinistra, dalla più alta: 20000 righe, mediana 57,2 ms, peggiore 60,1 ms
+ordine Bomba centrale, dalla più alta: 20000 righe, mediana 60,8 ms, peggiore 63,4 ms
+ordine Tripla sponda destra, dalla più alta: 20000 righe, mediana 61,5 ms, peggiore 63,2 ms
+ordine Doppia sponda destra, dalla più alta: 20000 righe, mediana 59,0 ms, peggiore 59,6 ms
+ordine Singola sponda destra, dalla più alta: 20000 righe, mediana 59,9 ms, peggiore 62,1 ms
+ordine Diagonale destra, dalla più alta: 20000 righe, mediana 63,6 ms, peggiore 66,2 ms
+ordine Lungolinea destro, dalla più alta: 20000 righe, mediana 67,7 ms, peggiore 69,2 ms
+ordine Battuta destra, dalla più alta: 20000 righe, mediana 59,7 ms, peggiore 61,4 ms
+ordine Difesa, dalla più alta: 20000 righe, mediana 61,5 ms, peggiore 65,3 ms
+ordine Controllo palla, dalla più alta: 20000 righe, mediana 60,5 ms, peggiore 61,8 ms
+ordine Tenuta paletta, dalla più alta: 20000 righe, mediana 58,4 ms, peggiore 60,4 ms
+ordine Attacco, dalla più alta: 20000 righe, mediana 59,8 ms, peggiore 62,1 ms
+ordine degli allenatori classe, dalla migliore: 2920 righe, mediana 3,0 ms, peggiore 3,2 ms
+ordine degli allenatori età, dal più giovane: 2920 righe, mediana 2,9 ms, peggiore 2,9 ms
+ordine degli allenatori età, dal più anziano: 2920 righe, mediana 3,7 ms, peggiore 4,3 ms
+ordine degli allenatori stipendio chiesto da capo, dal più basso: 2920 righe, mediana 2,5 ms, peggiore 2,5 ms
+ordine degli allenatori numero, dal più basso: 2920 righe, mediana 2,2 ms, peggiore 2,2 ms
+Una riga dell'elenco costa 5 microsecondi; su 1000 righe la lunghezza va da 108 a 251 caratteri, mediana 198.
+Il ricalcolo a caldo più lento: tutti e i ritirati, disponibili oggi, a caldo, mediana 70,8 ms, sotto l'obiettivo di 300,0 ms.
+L'apertura più lenta: apertura di amichevole, mediana 183,5 ms, sotto l'obiettivo di 300,0 ms.
+Il primo ricalcolo a freddo più lento: Avversari per un'amichevole oggi, dalla classe migliore, a freddo, mediana 178,8 ms, sotto l'obiettivo di 300,0 ms.

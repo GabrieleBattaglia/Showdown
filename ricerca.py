@@ -12,6 +12,10 @@ tratti rari dell'allenamento. Per questo ogni criterio legge il giocatore insiem
 simulata del giorno. La classe si scrive come si legge nella scheda, per esempio G4, oppure con il
 numero del livello, 64, e si cerca migliore o peggiore di quella: la scala scende, e migliore
 vuol dire un livello più piccolo.
+Dal 24 ottobre 2026, con la issue 8 e la decisione D36, la prova di un filtro e la lettura di un criterio
+sono pubbliche, prova e leggi_criterio, perché il motore della finestra unica Mercato e ricerca, in
+mercato.py, le usa per le condizioni e per i tratti. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import classe
@@ -149,7 +153,12 @@ def codice_classe(livello):
     return classe.codice(int(livello))
 
 
-def _prova(criterio, condizione, valore, oggi=None):
+def leggi_criterio(criterio, g, oggi=None):
+    """Il valore del criterio per il giocatore, il giorno dato: un numero, un testo, il sesso, oppure vero o falso."""
+    return _CRITERI[criterio][2](g, oggi)
+
+
+def prova(criterio, condizione, valore, oggi=None):
     """La prova di un filtro, da fare su un giocatore il giorno dato: vera se il giocatore lo soddisfa."""
     _nome, tipo, leggi = _CRITERI[criterio]
     if condizione not in dict(CONDIZIONI[tipo]):
@@ -178,8 +187,8 @@ def cerca_con_filtri(mondo, ambito, filtri):
     di criterio, condizione e valore, in ordine di numero. Senza filtri, tutto l'ambito.
     """
     oggi = getattr(mondo, "datetime_corrente_simulazione", None)
-    prove = [_prova(criterio, condizione, valore, oggi) for criterio, condizione, valore in filtri]
-    return [gid for gid in ids_ambito(mondo, ambito) if all(prova(mondo.giocatori[gid]) for prova in prove)]
+    prove = [prova(criterio, condizione, valore, oggi) for criterio, condizione, valore in filtri]
+    return [gid for gid in ids_ambito(mondo, ambito) if all(controllo(mondo.giocatori[gid]) for controllo in prove)]
 
 
 def cerca(mondo, ambito, criterio, condizione, valore=None):

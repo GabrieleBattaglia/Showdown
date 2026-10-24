@@ -15,6 +15,11 @@ dal loro nome; quelle dell'utente lo scelgono alla fondazione, cercandolo per no
 dice, accanto a ogni comune, la sua popolazione in percentuale su quella del più popoloso. La ricerca
 e la percentuale stanno qui, senza wx, così si collaudano da sole. Le parti della tappa 14 sono di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
+Dal 24 ottobre 2026, con la issue 8 e la decisione D36, i filtri di luogo della finestra unica Mercato e
+ricerca: l'elenco delle regioni, quello delle province, anche di una regione sola, la regione di una
+provincia e i comuni che contengono
+il testo scritto, senza badare a maiuscole e accenti come la ricerca della fondazione. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -112,6 +117,31 @@ def comune_a_caso():
 def provincia_e_regione(comune):
     """La provincia e la regione del comune, o None se non è nella collezione."""
     return _carica()["dove"].get(comune)
+
+
+def regioni():
+    """Le regioni della collezione, in ordine alfabetico senza badare ad accenti e apostrofi."""
+    return sorted({regione for _provincia, regione in _carica()["dove"].values()}, key=_chiave)
+
+
+def province(regione=None):
+    """Le province della collezione, in ordine alfabetico; con una regione, soltanto le sue."""
+    return sorted({provincia for provincia, sua in _carica()["dove"].values() if regione is None or sua == regione}, key=_chiave)
+
+
+def regione_della_provincia(provincia):
+    """La regione in cui sta la provincia, o None se non è nella collezione."""
+    return next((regione for sua, regione in _carica()["dove"].values() if sua == provincia), None)
+
+
+def comuni_che_contengono(testo):
+    """
+    I comuni della collezione il cui nome contiene il testo scritto, senza badare a maiuscole, accenti e
+    apostrofi, come la ricerca della fondazione: forl trova Forlì e Forlimpopoli. Un insieme, perché chi
+    filtra migliaia di persone lo calcola una volta sola.
+    """
+    cercato = _chiave(testo)
+    return {comune for comune, chiave in _carica()["chiavi"].items() if cercato in chiave}
 
 
 def dove_a_parole(comune):

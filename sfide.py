@@ -36,6 +36,10 @@ La rosa della Coppa delle polisportive, punto 8.8: all'apertura delle iscrizioni
 polisportive con più gloria che convocano una squadra valida per i giorni della coppa, fino al tetto,
 e ognuna iscrive la sua rosa, fino a sei, che in quei giorni resta impegnata; per ogni incontro i
 titolari sono i tre migliori sani della rosa, nell'ordine della formazione per le tue.
+Dal 24 ottobre 2026, con la issue 8 e la decisione D36, i divieti del lancio che non dipendono dalla
+formazione stanno da soli in problema_bersaglio, perché la finestra unica Mercato e ricerca dice prima di
+aprire il lancio se il club di una persona trovata si può sfidare. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -684,8 +688,12 @@ def bersagli(mondo, poli, memoria=None):
     return righe
 
 
-def problema_lancio(mondo, poli, nome_bersaglio, ids):
-    """Perché la tua polisportiva non può lanciare la sfida con questa formazione, in una frase, oppure None."""
+def problema_bersaglio(mondo, poli, nome_bersaglio):
+    """
+    Perché oggi la tua polisportiva non può sfidare quella col nome dato, prima della formazione, in una
+    frase, oppure None: una tua polisportiva, le sfide da lanciare, un bersaglio del computer che oggi
+    non ha già rifiutato. Con None per nome, nessun bersaglio.
+    """
     if not tua(poli):
         return "Le sfide si lanciano da una tua polisportiva."
     if disponibili(mondo, poli) <= 0:
@@ -695,7 +703,12 @@ def problema_lancio(mondo, poli, nome_bersaglio, ids):
         return "Si sfidano soltanto le polisportive del computer."
     if mondo.sfide.rifiutata_oggi(poli.nome, bersaglio.nome, _oggi(mondo)):
         return f"{bersaglio.nome} ha già rifiutato oggi: si può riprovare domani."
-    return problema_formazione(mondo, poli, ids, giorno_del_gioco(mondo))
+    return None
+
+
+def problema_lancio(mondo, poli, nome_bersaglio, ids):
+    """Perché la tua polisportiva non può lanciare la sfida con questa formazione, in una frase, oppure None."""
+    return problema_bersaglio(mondo, poli, nome_bersaglio) or problema_formazione(mondo, poli, ids, giorno_del_gioco(mondo))
 
 
 def lancia(mondo, poli, nome_bersaglio, ids):

@@ -64,6 +64,12 @@ domanda di una spesa piccola hanno i decimali che servono a vederli salire, da 1
 dicono più da 144,4 a 144,4; tutti_al_massimo parla soltanto di chi si allena e ha almeno un punto da
 spendere, con le forme accordate di tutti_infortunati. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Dal 24 ottobre 2026, con la issue 8 e la decisione D36, i testi della finestra unica Mercato e ricerca: la riga
+del giocatore trovato, che dopo nome, classe ed età completa porta il dato dell'ordine scelto, poi valore,
+stipendio, stato e costo, contratto, tratti, regione e numero; quella dell'allenatore, con l'età completa e la
+regione; la Situazione, in blocchi di circa quaranta caratteri come le righe di stato; il testo di Filtri
+attivi, con i filtri che non contano e quelli che si escludono a vicenda; l'etichetta dei trovati e il
+riepilogo unico della chiusura. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -84,6 +90,7 @@ import modelli_torneo
 import palmares
 import percorsi
 import registro
+import ricerca
 import sfide
 import staff
 import tornei
@@ -784,28 +791,48 @@ def nome_allenatore(a):
     return f"{nome_completo(a)}, {a.codice}"
 
 
-def riga_allenatore(a, mondo):
+def eta_completa_allenatore(a, oggi):
+    """L'età completa di un allenatore il giorno dato, come quella dei giocatori della issue 7: 52:3:7."""
+    return formatta_eta_sim(a.eta(oggi), formato_breve=True, separatore=":")
+
+
+def regione_del_comune(comune):
+    """La regione del comune di provenienza, vuota se il comune non è nella collezione."""
+    dove = luoghi.provincia_e_regione(comune)
+    return dove[1] if dove else ""
+
+
+def riga_allenatore(a, mondo, ordine=None):
     """
     Una riga per gli elenchi degli allenatori: nome, classe, età, tipo, e dove allena o quanto chiede da
     capo; la prelazione e la riserva di due ore, se ci sono. La riserva si confronta con l'ora vera di adesso:
     fino alla revisione del 22 ottobre 2026 si guardava l'ora dell'ultimo avanzamento, e la riga diceva
-    riservato a te fino a un'ora già passata.
+    riservato a te fino a un'ora già passata. Dalla issue 8, per la finestra Mercato e ricerca, l'età è
+    completa, in anni, mesi e giorni come quella dei giocatori della issue 7, e in fondo c'è la regione. Con
+    l'ordine scelto, il suo dato viene subito dopo l'età: ordinando per stipendio, quanto chiede un libero;
+    per numero, il numero dell'allenatore.
     """
     oggi = mondo.datetime_corrente_simulazione
     if a.tipo == staff.EX:
         tipo = "ex giocatrice" if a.sesso == "f" else "ex giocatore"
     else:
         tipo = "nata allenatrice" if a.sesso == "f" else "nato allenatore"
-    riga = f"{nome_allenatore(a)}, {int(a.eta_anni(oggi))} anni, {tipo}, {a.visus}"
     if a.polisportiva:
-        riga += f", {staff.nome_del_ruolo(a)} di {a.polisportiva}"
+        impiego = f"{staff.nome_del_ruolo(a)} di {a.polisportiva}"
     else:
-        riga += f", chiede {euro(staff.stipendio_richiesto(a, staff.CAPO))} al mese da capo e {euro(staff.stipendio_richiesto(a, staff.ASSISTENTE))} da assistente"
+        impiego = f"chiede {euro(staff.stipendio_richiesto(a, staff.CAPO))} al mese da capo e {euro(staff.stipendio_richiesto(a, staff.ASSISTENTE))} da assistente"
+    testa = [nome_allenatore(a), eta_completa_allenatore(a, oggi)]
+    coda = [tipo, a.visus, impiego]
+    if ordine == "stipendio_basso" and not a.polisportiva:
+        testa.append(coda.pop())
+    elif ordine == "numero":
+        testa.append(f"numero {a.numero}")
     if a.prelazione:
-        riga += f", in prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}"
+        coda.append(f"in prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}")
     if a.riservato_fino is not None and a.riservato_fino > adesso_utc():
-        riga += f", {'riservata' if a.sesso == 'f' else 'riservato'} a te fino alle {in_ora_locale(a.riservato_fino):%H:%M}"
-    return riga
+        coda.append(f"{'riservata' if a.sesso == 'f' else 'riservato'} a te fino alle {in_ora_locale(a.riservato_fino):%H:%M}")
+    coda.append(regione_del_comune(a.luogo))
+    return ", ".join(parte for parte in testa + coda if parte)
 
 
 def scheda_allenatore(a, mondo):
@@ -1245,8 +1272,7 @@ def riga_mercato(c):
     else:
         costo = f"{accorda(g, 'tesserato')} con {c.polisportiva.nome}, valore di mercato {euro(c.costo)}"
     if c.tipo != mercato.LIBERO and contratti.ha_contratto(g):
-        mese = mese_e_anno(g.contratto_scadenza)
-        costo += f", contratto fino {'ad' if mese[0] in 'aeiou' else 'a'} {mese}"
+        costo += f", {_contratto_in_riga(g)}"
     tratti = "".join(", " + t for t in tratti_speciali(g))
     return f"{nome_completo(g)}, {codice_classe(g)}, {eta_completa(g)}, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(c.stipendio)}, {costo}{tratti}, ID {g.id}"
 
@@ -1319,6 +1345,286 @@ def riepilogo_mercato(p, mondo, esiti):
         righe.extend(testo for testo, _riuscita in esiti)
     righe.append(info_mercato(p, mondo))
     return "\n".join(righe)
+
+
+# La finestra unica Mercato e ricerca, issue 8 e decisione D36.
+
+# Il pezzo della riga che l'ordine scelto porta subito dopo l'età, togliendolo dal suo posto; gli altri
+# ordini aggiungono lì il loro dato, e classe ed età stanno già in testa.
+_PARTE_DELL_ORDINE = {"valore_alto": "valore", "valore_basso": "valore", "costo_basso": "stato", "costo_alto": "stato", "stipendio_basso": "stipendio",
+                      "mesi_contratto": "contratto", "numero": "id"}
+
+
+def _contratto_in_riga(g):
+    """Il contratto in una riga d'elenco, contratto fino ad aprile 2097, oppure vuoto per chi non ne ha."""
+    if not contratti.ha_contratto(g):
+        return ""
+    mese = mese_e_anno(g.contratto_scadenza)
+    return f"contratto fino {'ad' if mese[0] in 'aeiou' else 'a'} {mese}"
+
+
+def _stato_e_costo(r):
+    """Lo stato del giocatore di una riga della finestra, col costo, e dopo lo stato l'infortunio, come in stato."""
+    g = r.persona
+    if r.stato == mercato.LIBERO:
+        testo = f"chiede {euro(r.costo)} d'ingaggio" if r.costo is not None else accorda(g, "libero")
+    elif r.stato == mercato.IN_VENDITA:
+        testo = f"in vendita da {r.polisportiva.nome} a {euro(r.prezzo)}"
+    elif r.stato == mercato.DEL_COMPUTER:
+        testo = f"{accorda(g, 'tesserato')} con {r.polisportiva.nome}, valore di mercato {euro(r.costo)}"
+    elif r.stato == mercato.TUO:
+        dove = f"in vendita da {r.polisportiva.nome} a {euro(r.prezzo)}" if r.prezzo is not None else f"di {r.polisportiva.nome}"
+        testo = f"{accorda(g, 'tuo')}, {dove}"
+    elif r.stato == mercato.RITIRATO:
+        testo = accorda(g, "ritirato")
+    else:
+        testo = f"{accorda(g, 'uscito')} di scena"
+    if g.infortunato and g.infortunio_fine_datetime:
+        testo += f", {infortunio(g)}"
+    return testo
+
+
+def _dato_dell_ordine(r, ordine, mondo, memoria):
+    """Il dato che l'ordine aggiunge dopo l'età, quando non sposta un pezzo della riga: vuoto se non ce n'è."""
+    g = r.persona
+    if ordine in mercato.CARATTERISTICHE:
+        return f"{nome_caratteristica(ordine).lower()} {numero(g._get_valore_totale(ordine))}"
+    if ordine == "euro_per_punto":
+        quanto = mercato.euro_per_punto(r)
+        # Sotto i dieci euro con due decimali: chi costa un euro non sembri gratis.
+        return "" if quanto is None else f"{numero(quanto, 2 if quanto < 10 else 1)} euro per punto di valore"
+    if ordine == "prezzo_sul_mercato":
+        quota = mercato.prezzo_sul_mercato(r, memoria)
+        if quota is None:
+            return ""
+        return "costa meno dell'1% del valore di mercato" if quota < 0.01 else f"costa {con_articolo('il', percento(quota * 100))} del valore di mercato"
+    dati = {
+        "punti_nazionali": lambda: f"classifica nazionale {numero(g.punti_mondiali)} punti",
+        "punti_anno": lambda: f"ultimo anno {numero(palmares.punti_dell_anno(g, mondo.datetime_corrente_simulazione.date()))} punti",
+        "esperienza": lambda: f"esperienza {numero(g.esperienza)}",
+        "ambizione": lambda: f"ambizione {numero(g.ambizione, 0)}",
+        "punti_allenamento": lambda: f"punti allenamento {punti(g.punti_allenamento)}",
+    }
+    return dati[ordine]() if ordine in dati else ""
+
+
+def riga_trovato(r, mondo, ordine=None, memoria=None):
+    """
+    Una persona trovata dalla finestra Mercato e ricerca, in una riga dell'elenco. Il giocatore parte come
+    nella issue 7, nome e cognome, classe ed età completa; poi il dato dell'ordine scelto, tolto dal suo
+    posto; poi valore, stipendio, stato e costo con l'infortunio, contratto, tratti, regione, e il numero in
+    fondo. Così i primi quaranta caratteri dicono chi è, la classe, l'età e il dato che si cerca. Gli stati
+    nuovi sono tua, di Pat-Bologna; tua, in vendita da Pat-Milano a 1 euro; ritirata; uscita di scena. In
+    testa non c'è la posizione: x di y lo dice NVDA. L'allenatore ha la riga di riga_allenatore. La memoria
+    è quella della finestra, per la classe e il valore di mercato.
+    """
+    if r.allenatore:
+        return riga_allenatore(r.persona, mondo, ordine)
+    g = r.persona
+    memoria = memoria if memoria is not None else mercato.Memoria(mondo)
+    parti = {
+        "valore": f"valore {numero(g.indice_collettivo_valore)}",
+        "stipendio": f"stipendio {euro(r.stipendio)}" if r.stipendio is not None else "",
+        "stato": _stato_e_costo(r),
+        "contratto": _contratto_in_riga(g),
+        "tratti": ", ".join(tratti_speciali(g)),
+        "regione": regione_del_comune(g.luogo),
+        "id": f"ID {g.id}",
+    }
+    testa = [nome_completo(g), memoria.codice(g), eta_completa(g)]
+    spostata = _PARTE_DELL_ORDINE.get(ordine)
+    testa.append(parti.pop(spostata) if spostata else _dato_dell_ordine(r, ordine, mondo, memoria))
+    return ", ".join(parte for parte in (*testa, *parti.values()) if parte)
+
+
+def etichetta_trovati(quanti, allenatori=False):
+    """L'etichetta dell'elenco, che NVDA legge come suo nome: Trovati: 2.180 giocatori."""
+    nome = ("allenatore" if quanti == 1 else "allenatori") if allenatori else ("giocatore" if quanti == 1 else "giocatori")
+    return f"Trovati: {intero(quanti)} {nome}"
+
+
+def a_blocchi(parti, larghezza=LARGHEZZA_BARRA):
+    """
+    Le parti di una riga che si riscrive, separate dalle virgole e chiuse dal punto, raccolte in blocchi di
+    circa quaranta caratteri per il display braille, come le righe di stato. Ogni blocco tiene le parti
+    intere che ci stanno con almeno uno spazio dopo, e finisce con gli spazi che servono perché il seguente
+    cominci al carattere 41, 81 e così via; una parte più lunga di un blocco ne occupa più d'uno.
+    """
+    blocchi = []
+    corrente = ""
+    for posto, parte in enumerate(parti):
+        pezzo = parte + ("." if posto == len(parti) - 1 else ",")
+        if corrente and len(corrente) + 1 + len(pezzo) > larghezza - 1:
+            blocchi.append(corrente)
+            corrente = pezzo
+        else:
+            corrente = f"{corrente} {pezzo}" if corrente else pezzo
+    pieni = [blocco.ljust(-(-(len(blocco) + 1) // larghezza) * larghezza) for blocco in blocchi]
+    return "".join([*pieni, corrente])
+
+
+def _staff_in_breve(p):
+    """Lo staff della polisportiva in poche parole, per la Situazione: staff: manca il capo."""
+    vuoti = [posto for posto in range(staff.POSTI) if not p.staff[posto]]
+    if not vuoti:
+        return "staff al completo"
+    if len(vuoti) == staff.POSTI:
+        return "staff tutto da assumere"
+    nomi = ["il capo" if posto == 0 else f"l'{NOMI_DEI_POSTI[posto].lower()}" for posto in vuoti]
+    return f"staff: {'manca' if len(nomi) == 1 else 'mancano'} {unisci(nomi)}"
+
+
+def situazione(mondo):
+    """
+    La Situazione in testa alla finestra Mercato e ricerca, che si riscrive dopo ogni esito: prima le mosse,
+    poi le sfide da lanciare, la cassa, la gloria, la polisportiva attiva, i tesserati e lo staff, in blocchi
+    di circa quaranta caratteri. Unisce info_mercato e info_mercato_allenatori.
+    """
+    p = mondo.miapolisportiva_attiva
+    if p is None:
+        return "Nessuna polisportiva attiva: puoi solo cercare."
+    return a_blocchi([f"Mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}", f"sfide da lanciare {sfide.disponibili(mondo, p)}",
+                      f"cassa {euro(p.cassa)}", f"gloria {p.gloria}", p.nome, f"tesserati {len(p.tesserati)} su {p.maxtesserati}", _staff_in_breve(p)])
+
+
+# Le caselle di Chi cercare a parole, per i giocatori e per gli allenatori; i gruppi nelle contraddizioni e in fondo agli ordini per costo.
+_CHI_DEI_GIOCATORI = {"liberi": "liberi", "in_vendita": "in vendita da altri", "del_computer": "tesserati del computer", "tuoi": "tuoi tesserati", "ritirati": "ritirati"}
+_CHI_DEGLI_ALLENATORI = {"liberi": "liberi", "del_computer": "che allenano per il computer", "tuoi": "del tuo staff"}
+_GRUPPI = {"liberi": "i liberi", "in_vendita": "chi è in vendita da altri", "del_computer": "i tesserati del computer", "tuoi": "i tuoi tesserati",
+           "ritirati": "i ritirati", "usciti": "gli usciti di scena"}
+_GRUPPI_IN_FONDO = {"liberi": "i liberi, che senza polisportiva attiva non hanno un costo", "tuoi": "i tuoi tesserati che non sono in vendita da un'altra tua polisportiva",
+                    "ritirati": "i ritirati", "usciti": "gli usciti di scena"}
+_PERCHE_NON_CONTA = {"allenatori": "per gli allenatori", "giocatori": "per i giocatori", "senza_attiva": "senza polisportiva attiva"}
+
+
+def _righe_del_campo(f, campo):
+    """Un campo dei filtri a parole, senza il punto: nessuna riga se non è impostato, una per tratto e per condizione."""
+    valore = getattr(f, campo)
+    if campo == "tratti":
+        return [f"{ricerca.nome_criterio(tratto)}: {'sì' if valore[tratto] else 'no'}" for tratto in mercato.TRATTI if tratto in valore]
+    if campo == "condizioni":
+        return [f"{ricerca.nome_criterio(criterio)} {ricerca.nome_condizione(criterio, condizione)} {punti(numero_scritto)}"
+                for criterio, condizione, numero_scritto in valore]
+    if not mercato.impostato(f, campo):
+        return []
+    testi_dei_campi = {
+        "in_vendita": lambda: "In vendita da altri",
+        "ritirati": lambda: "Ritirati",
+        "nome": lambda: f"Nome, cognome o numero: {valore.strip()}",
+        "sesso": lambda: f"Sesso: {'uomini' if valore == 'm' else 'donne'}",
+        "classe_migliore": lambda: f"Classe migliore o uguale a {classe.codice(valore)}",
+        "eta_massima": lambda: f"Età massima: {conta(valore, 'anno', 'anni')}",
+        "costo_massimo": lambda: f"Costo massimo: {euro(valore)}",
+        "disponibili_oggi": lambda: "Disponibili oggi per un'amichevole",
+        "classe_peggiore": lambda: f"Classe peggiore o uguale a {classe.codice(valore)}",
+        "eta_minima": lambda: f"Età minima: {conta(valore, 'anno', 'anni')}",
+        "regione": lambda: f"Regione: {valore}",
+        "provincia": lambda: f"Provincia: {valore}",
+        "comune": lambda: f"Comune che contiene: {valore.strip()}",
+        "polisportiva": lambda: f"Polisportiva che contiene: {valore.strip()}",
+        "indole": lambda: f"Indole: {INDOLI[valore]['nome']}",
+        "valore_minimo": lambda: f"Valore minimo: {punti(valore)}",
+        "stipendio_massimo": lambda: f"Stipendio massimo: {euro(valore)}",
+        "mesi_contratto_massimi": lambda: f"Mesi di contratto rimasti al massimo: {valore}",
+        "senza_acciacchi": lambda: "Senza infortunati e acciaccati",
+        "solo_ritirati_che_allenano": lambda: "Solo i ritirati che allenano",
+        "solo_nuovi": lambda: "Solo i nuovi arrivati della sessione",
+        "comprendi_usciti": lambda: "Comprendi gli usciti di scena",
+        "tipo_allenatore": lambda: f"Tipo: {'ex giocatori' if valore == staff.EX else 'nati allenatori'}",
+        "visus": lambda: f"Visus: {valore}",
+        "posto_attuale": lambda: f"Posto attuale: {'capo' if valore == staff.CAPO else 'assistente'}",
+        "stipendio_capo_massimo": lambda: f"Stipendio chiesto da capo al massimo: {euro(valore)}",
+        "senza_prelazione_altrui": lambda: "Senza chi è in prelazione per altri",
+    }
+    return [testi_dei_campi[campo]()] if campo in testi_dei_campi else []
+
+
+def _chi_cercare(f):
+    """La prima riga di Filtri attivi: chi si cerca, con le caselle che contano."""
+    gruppi = mercato.caselle_che_contano(f)
+    if gruppi:
+        nomi = _CHI_DEGLI_ALLENATORI if f.allenatori else _CHI_DEI_GIOCATORI
+        return f"Chi cercare: {'allenatori' if f.allenatori else 'giocatori'} {unisci([nomi[g] for g in gruppi])}."
+    if f.comprendi_usciti and not f.allenatori:
+        return "Chi cercare: nessuna casella spuntata, soltanto gli usciti di scena."
+    per_gli_allenatori = " che valga per gli allenatori" if f.allenatori and any(getattr(f, c) for c in mercato.CASELLE_SOLO_GIOCATORI) else ""
+    return f"Chi cercare: nessuna casella spuntata{per_gli_allenatori}, e non si trova nessuno."
+
+
+def _contraddizione(codice, dati):
+    if codice == "disponibili":
+        return f"Disponibili oggi esclude {unisci([_GRUPPI[g] for g in dati])}."
+    if codice == "allenano":
+        return f"Solo i ritirati che allenano esclude {unisci([_GRUPPI[g] for g in dati])}."
+    if codice == "allenano_senza_ritirati":
+        return "Solo i ritirati che allenano vuole spuntata la casella Ritirati: senza, non trova nessuno."
+    if codice == "classi":
+        return f"Classe migliore o uguale a {classe.codice(dati[0])} e peggiore o uguale a {classe.codice(dati[1])} si escludono."
+    if codice == "eta":
+        return f"Età minima di {conta(dati[0], 'anno', 'anni')} ed età massima di {conta(dati[1], 'anno', 'anni')} si escludono."
+    if codice == "tratti":
+        return f"{ricerca.nome_criterio(dati[0])} e {ricerca.nome_criterio(dati[1]).lower()} si escludono: nessuno li ha insieme."
+    if codice == "polisportiva":
+        return f"Polisportiva che contiene esclude {unisci([_GRUPPI[g] for g in dati])}, che non hanno una polisportiva."
+    if codice == "posto":
+        return "Posto attuale esclude gli allenatori liberi, che non hanno un posto."
+    return f"Provincia e regione si escludono: la provincia {dati[0]} sta in {dati[1]}."
+
+
+def filtri_attivi(f, mondo):
+    """
+    Il testo del campo Filtri attivi, un filtro per riga, compresi quelli dei controlli della finestra: prima
+    chi si cerca, poi i filtri impostati, ciascuno col perché se per chi si cerca non conta, poi quelli che si
+    escludono a vicenda e, negli ordini per costo, chi va in fondo perché non ha un costo.
+    """
+    attiva = mondo.miapolisportiva_attiva
+    non_contano = dict(mercato.non_contano(f, attiva))
+    righe = [_chi_cercare(f)]
+    campi = ("nome", "sesso", "classe_migliore", "eta_massima", "costo_massimo", "disponibili_oggi", *mercato.CASELLE_SOLO_GIOCATORI, *mercato.CAMPI_ALTRI)
+    for campo in campi:
+        if campo in mercato.CASELLE_SOLO_GIOCATORI and not f.allenatori:
+            continue
+        perche = non_contano.get(campo)
+        righe.extend(f"{riga}, non conta {_PERCHE_NON_CONTA[perche]}." if perche else f"{riga}." for riga in _righe_del_campo(f, campo))
+    righe.extend(_contraddizione(codice, dati) for codice, dati in mercato.contraddizioni(f))
+    gruppi = mercato.in_fondo(f, attiva)
+    if gruppi:
+        righe.append(f"Nell'ordine per costo va in fondo chi non ha un costo: {unisci([_GRUPPI_IN_FONDO[g] for g in gruppi])}.")
+    return "\n".join(righe)
+
+
+def riepilogo_mercato_e_ricerca(p, mondo, giocatori=(), allenatori=(), sfide_lanciate=()):
+    """
+    Il riepilogo della finestra Mercato e ricerca alla chiusura, che unisce quelli del mercato dei giocatori
+    e dello staff: le offerte ai giocatori e agli allenatori, con le riuscite, e le sfide lanciate; poi un
+    esito per riga, cassa, gloria, tesserati e mosse, e lo staff quando ci sono offerte agli allenatori. None
+    senza esiti, perché la vista non si tocca. giocatori sono coppie di testo e riuscita, allenatori coppie di
+    testo ed esito, assunto o rifiutato, come nei dialoghi di oggi; sfide_lanciate i testi dei lanci.
+    """
+    if not (giocatori or allenatori or sfide_lanciate):
+        return None
+    parti = []
+    if giocatori:
+        riuscite = sum(1 for _testo, riuscita in giocatori if riuscita)
+        parti.append(f"{conta(len(giocatori), 'offerta', 'offerte')} ai giocatori, {conta(riuscite, 'riuscita', 'riuscite')}")
+    if allenatori:
+        assunti = sum(1 for _testo, esito in allenatori if esito == "assunto")
+        parti.append(f"{conta(len(allenatori), 'offerta', 'offerte')} agli allenatori, {conta(assunti, 'riuscita', 'riuscite')}")
+    if sfide_lanciate:
+        parti.append(conta(len(sfide_lanciate), "sfida lanciata", "sfide lanciate"))
+    righe = [f"Mercato e ricerca di {p.nome}: {'; '.join(parti)}."]
+    righe.extend(testo for testo, _riuscita in giocatori)
+    righe.extend(testo for testo, _esito in allenatori)
+    righe.extend(sfide_lanciate)
+    righe.append(info_mercato(p, mondo))
+    if allenatori:
+        righe.extend(righe_dello_staff(p, mondo)[1:])
+    return "\n".join(righe)
+
+
+def evento_mercato_e_ricerca(giocatori=(), allenatori=(), sfide_lanciate=()):
+    """Il fatto della finestra nella barra di stato: mercato e ricerca: 3 esiti."""
+    return f"mercato e ricerca: {conta(len(giocatori) + len(allenatori) + len(sfide_lanciate), 'esito', 'esiti')}"
 
 
 def riga_arretrati(g):
