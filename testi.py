@@ -77,6 +77,10 @@ non costa più il 100%, perché il suo prezzo vero è nascosto. È di Gabriele B
 (Claude Opus 5.5, UltraCode).
 Lo stesso giorno, coi campi dei filtri divisi in tre gruppi, uno per scheda della finestra, Filtri attivi li scrive
 nell'ordine di prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la finestra, i suoi testi: le linguette delle schede dei filtri coi filtri impostati,
+l'etichetta e la scheda della persona, i preset come esiti e le loro domande, le condizioni a parole, e le domande
+delle offerte che valgono anche sulla riga della finestra; il riepilogo della chiusura conta anche le operazioni sui
+preset e vale anche senza polisportiva attiva. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -1301,9 +1305,15 @@ def _firmera(g, p):
     return f"con {p.nome} per {contratti.durata_proposta(g)} mesi a {euro(economia.stipendio(g))} al mese"
 
 
+def _giocatore_di(c):
+    """Il giocatore di un candidato del mercato di prima, o di una riga della finestra Mercato e ricerca: le domande valgono per tutti e due."""
+    return c.persona if isinstance(c, mercato.Riga) else c.giocatore
+
+
 def domanda_acquisto(c, p, mondo):
-    return (f"Comprare {nome_completo(c.giocatore)} da {c.polisportiva.nome} per {euro(c.costo)}? "
-            f"Firmerà {_firmera(c.giocatore, p)}. Userai {_mossa(p, mondo)}.")
+    g = _giocatore_di(c)
+    return (f"Comprare {nome_completo(g)} da {c.polisportiva.nome} per {euro(c.costo)}? "
+            f"Firmerà {_firmera(g, p)}. Userai {_mossa(p, mondo)}.")
 
 
 def posizione_in_rosa(posto, quanti):
@@ -1316,14 +1326,16 @@ def posizione_in_rosa(posto, quanti):
 
 
 def domanda_offerta_d_acquisto(c, importo, p, mondo):
-    posto, quanti = mondo.posizione_in_rosa(c.giocatore)
-    return (f"Offrire {euro(importo)} a {c.polisportiva.nome} per {nome_completo(c.giocatore)}? {posizione_in_rosa(posto, quanti)}, "
-            f"e se passa firmerà {_firmera(c.giocatore, p)}. Userai {_mossa(p, mondo)}.")
+    g = _giocatore_di(c)
+    posto, quanti = mondo.posizione_in_rosa(g)
+    return (f"Offrire {euro(importo)} a {c.polisportiva.nome} per {nome_completo(g)}? {posizione_in_rosa(posto, quanti)}, "
+            f"e se passa firmerà {_firmera(g, p)}. Userai {_mossa(p, mondo)}.")
 
 
 def domanda_ingaggio(c, importo, probabilita, p, mondo):
-    return (f"Offrire a {nome_completo(c.giocatore)} un ingaggio di {euro(importo)}, per tesserarsi con {p.nome}? "
-            f"Accetta {con_articolo('al', percento(probabilita))}. {proposta_di_contratto(c.giocatore, mondo)} Userai {_mossa(p, mondo)}.")
+    g = _giocatore_di(c)
+    return (f"Offrire a {nome_completo(g)} un ingaggio di {euro(importo)}, per tesserarsi con {p.nome}? "
+            f"Accetta {con_articolo('al', percento(probabilita))}. {proposta_di_contratto(g, mondo)} Userai {_mossa(p, mondo)}.")
 
 
 def esito_ingaggio(g, p, accetta, importo, probabilita):
@@ -1450,6 +1462,73 @@ def etichetta_trovati(quanti, allenatori=False):
     return f"Trovati: {intero(quanti)} {nome}"
 
 
+def condizione_a_parole(criterio, condizione, valore):
+    """
+    Una condizione sulle caratteristiche, in Filtri attivi e nell'elenco delle condizioni: il nome coi due punti, come
+    per i tratti, perché un nome con la sua scala, come Ambizione, da 0 a 100, non si confonda con la condizione.
+    """
+    return f"{ricerca.nome_criterio(criterio)}: {ricerca.nome_condizione(criterio, condizione)} {punti(valore)}"
+
+
+# I testi fissi della finestra Mercato e ricerca.
+NESSUNA_CONDIZIONE = "Nessuna condizione: si aggiungono con Aggiungi una condizione."
+NESSUN_PRESET = "Non hai ancora preset: si salvano con Salva filtri."
+ELENCO_VUOTO_SENZA_SCHEDA = "L'elenco è vuoto: nessuna scheda da leggere."
+
+
+def titolo_mercato_e_ricerca(p):
+    """Il titolo della finestra: Mercato e ricerca di Pat-Bologna, o soltanto Mercato e ricerca senza polisportiva attiva."""
+    return f"Mercato e ricerca di {p.nome}" if p is not None else "Mercato e ricerca"
+
+
+def linguetta(nome, quanti):
+    """La linguetta di una scheda dei filtri, che dice quanti dei suoi filtri sono impostati: Altri filtri, 2 attivi."""
+    return f"{nome}, {conta(quanti, 'attivo', 'attivi')}" if quanti else nome
+
+
+def etichetta_della_scheda(r):
+    """L'etichetta del campo con la scheda della persona, con la lettera, che NVDA legge come suo nome: Sc&heda di Anna Neri; senza nessuno, Sc&heda."""
+    return f"Sc&heda di {nome_completo(r.persona)}" if r is not None else "Sc&heda"
+
+
+def scheda_della_riga(r, mondo):
+    """La scheda della persona di una riga della finestra: quella dell'allenatore o quella del giocatore; senza nessuno, che l'elenco è vuoto."""
+    if r is None:
+        return ELENCO_VUOTO_SENZA_SCHEDA
+    return scheda_allenatore(r.persona, mondo) if r.allenatore else scheda_giocatore(r.persona, mondo)
+
+
+def mosse_finite(p):
+    """Perché a mosse finite l'offerta non si fa, in una frase."""
+    return f"Per oggi {p.nome} ha finito le mosse di mercato."
+
+
+def domanda_sostituzione_preset(nome):
+    return f"Esiste già il preset {nome}: sostituirne i filtri con questi?"
+
+
+def domanda_eliminazione_preset(nome):
+    return f"Eliminare il preset {nome}? Le porte che lo riaprivano torneranno al loro preset di serie."
+
+
+def esito_preset_salvato(nome, sostituito=False):
+    """Un preset salvato, fra gli esiti della finestra: Preset salvato: Giovani mancini."""
+    return f"Preset {nome}: filtri sostituiti con quelli attuali." if sostituito else f"Preset salvato: {nome}."
+
+
+def esito_preset_rinominato(vecchio, nuovo):
+    return f"Preset {vecchio} rinominato {nuovo}."
+
+
+def esito_preset_eliminato(nome):
+    return f"Preset eliminato: {nome}."
+
+
+def esito_preset_spostato(nome, posto, quanti):
+    """Un preset spostato, fra gli esiti: dove è finito fra quelli di Gabriele, una riga sola anche dopo più spostamenti."""
+    return f"Preset {nome} spostato al posto {posto} di {quanti} fra i tuoi."
+
+
 def a_blocchi(parti, larghezza=LARGHEZZA_BARRA):
     """
     Le parti di una riga che si riscrive, separate dalle virgole e chiuse dal punto, raccolte in blocchi di
@@ -1515,9 +1594,7 @@ def _righe_del_campo(f, campo):
     if campo == "tratti":
         return [f"{ricerca.nome_criterio(tratto)}: {'sì' if valore[tratto] else 'no'}" for tratto in mercato.TRATTI if tratto in valore]
     if campo == "condizioni":
-        # Il nome coi due punti, come per i tratti: un nome con la sua scala, come Ambizione, da 0 a 100, non si confonde con la condizione.
-        return [f"{ricerca.nome_criterio(criterio)}: {ricerca.nome_condizione(criterio, condizione)} {punti(numero_scritto)}"
-                for criterio, condizione, numero_scritto in valore]
+        return [condizione_a_parole(*condizione) for condizione in valore]
     if not mercato.impostato(f, campo):
         return []
     testi_dei_campi = {
@@ -1617,15 +1694,17 @@ def filtri_attivi(f, mondo):
     return "\n".join(righe)
 
 
-def riepilogo_mercato_e_ricerca(p, mondo, giocatori=(), allenatori=(), sfide_lanciate=()):
+def riepilogo_mercato_e_ricerca(p, mondo, giocatori=(), allenatori=(), sfide_lanciate=(), preset=()):
     """
     Il riepilogo della finestra Mercato e ricerca alla chiusura, che unisce quelli del mercato dei giocatori
-    e dello staff: le offerte ai giocatori e agli allenatori, con le riuscite, e le sfide lanciate; poi un
-    esito per riga, cassa, gloria, tesserati e mosse, e lo staff quando ci sono offerte agli allenatori. None
-    senza esiti, perché la vista non si tocca. giocatori sono coppie di testo e riuscita, allenatori coppie di
-    testo ed esito, assunto o rifiutato, come nei dialoghi di oggi; sfide_lanciate i testi dei lanci.
+    e dello staff: le offerte ai giocatori e agli allenatori, con le riuscite, le sfide lanciate e le operazioni
+    sui preset; poi un esito per riga, cassa, gloria, tesserati e mosse, e lo staff quando ci sono offerte agli
+    allenatori. None senza esiti, perché la vista non si tocca. giocatori sono coppie di testo e riuscita,
+    allenatori coppie di testo ed esito, assunto o rifiutato, come nei dialoghi di oggi; sfide_lanciate i testi
+    dei lanci, preset quelli delle operazioni sui preset. Senza polisportiva attiva, p None, si possono soltanto
+    cercare e salvare preset: niente nome, cassa e mosse.
     """
-    if not (giocatori or allenatori or sfide_lanciate):
+    if not (giocatori or allenatori or sfide_lanciate or preset):
         return None
     parti = []
     if giocatori:
@@ -1636,19 +1715,24 @@ def riepilogo_mercato_e_ricerca(p, mondo, giocatori=(), allenatori=(), sfide_lan
         parti.append(f"{conta(len(allenatori), 'offerta', 'offerte')} agli allenatori, {conta(assunti, 'riuscita', 'riuscite')}")
     if sfide_lanciate:
         parti.append(conta(len(sfide_lanciate), "sfida lanciata", "sfide lanciate"))
-    righe = [f"Mercato e ricerca di {p.nome}: {'; '.join(parti)}."]
+    if preset:
+        parti.append(conta(len(preset), "operazione sui preset", "operazioni sui preset"))
+    di = f" di {p.nome}" if p is not None else ""
+    righe = [f"Mercato e ricerca{di}: {'; '.join(parti)}."]
     righe.extend(testo for testo, _riuscita in giocatori)
     righe.extend(testo for testo, _esito in allenatori)
     righe.extend(sfide_lanciate)
-    righe.append(info_mercato(p, mondo))
-    if allenatori:
-        righe.extend(righe_dello_staff(p, mondo)[1:])
+    righe.extend(preset)
+    if p is not None:
+        righe.append(info_mercato(p, mondo))
+        if allenatori:
+            righe.extend(righe_dello_staff(p, mondo)[1:])
     return "\n".join(righe)
 
 
-def evento_mercato_e_ricerca(giocatori=(), allenatori=(), sfide_lanciate=()):
+def evento_mercato_e_ricerca(giocatori=(), allenatori=(), sfide_lanciate=(), preset=()):
     """Il fatto della finestra nella barra di stato: mercato e ricerca: 3 esiti."""
-    return f"mercato e ricerca: {conta(len(giocatori) + len(allenatori) + len(sfide_lanciate), 'esito', 'esiti')}"
+    return f"mercato e ricerca: {conta(len(giocatori) + len(allenatori) + len(sfide_lanciate) + len(preset), 'esito', 'esiti')}"
 
 
 def riga_arretrati(g):

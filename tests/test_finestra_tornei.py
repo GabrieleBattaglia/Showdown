@@ -10,6 +10,7 @@ all'avvio e nella barra una volta sola; la sfida in attesa col nome di chi sfida
 dell'avanzamento con le notizie dei tornei.
 Dal 2026-10-24, col collaudo di gioco, il ripristino fermo a metà, che nel messaggio nomina la cartella dei file già messi da parte.
 Con le verifiche li chiama file, perché fermo fra i modelli non ci sono le formule.
+Dal passo della finestra Mercato e ricerca, lo stesso giorno, la pressione ripetuta la guarda la base dei dialoghi, e l'orologio delle prove è il suo.
 """
 
 import datetime
@@ -99,7 +100,8 @@ def test_il_menu_tornei_e_la_guida(finestra):
 def test_il_calendario_dalla_finestra_iscrive_e_salva(finestra, suonati, cartella_di_prova, monkeypatch):
     mondo = finestra.mondo
     istanti = iter(range(100, 200))
-    monkeypatch.setattr(gui_tornei.time, "monotonic", lambda: float(next(istanti)))
+    # La pressione ripetuta la guarda la base dei dialoghi, dal 24 ottobre 2026.
+    monkeypatch.setattr(dialoghi.time, "monotonic", lambda: float(next(istanti)))
 
     def iscrivi(self):
         self.elenco.SetSelection(next(i for i, (tipo, ed) in enumerate(self.voci) if tipo == "aperta" and ed.nome == "Open maschile del martedì"))

@@ -17,6 +17,8 @@ casella dei preset, le regole del nome, il salvataggio con la sostituzione, la r
 il mondo che ricorda preset e porte; nel formato 10 nuovo il giro del salvataggio, la migrazione dal 9, e la lettura
 indulgente: i salvataggi rovinati che tornano ai filtri di serie con un avviso nel registro, il preset che si ripara
 invece di sparire, e una lettura che non solleva mai eccezioni e dà sempre qualcosa che si riscrive.
+Lo stesso giorno, col passo della finestra, il mondo delle prove sta in tests/aiuti_mercato.py, comune con quelle della
+finestra; e si provano il ripiego dopo un esito e il club che oggi ha già rifiutato una sfida.
 """
 
 import copy
@@ -28,6 +30,7 @@ import random
 import re
 
 import pytest
+from aiuti_mercato import ORA, mondo_del_mercato
 
 import archivio
 import classe
@@ -40,45 +43,11 @@ import testi
 from costanti import ANNO_SIMULAZIONE_GIORNI, FILE_MONDO, LIMITE_MOVIMENTI_PER_TICK
 from mondo import Mondo
 
-ORA = datetime.datetime(2026, 10, 6, 18, 0)
-
 
 @pytest.fixture
 def mondo():
-    """
-    Un mondo di 120 giocatori: due polisportive tue, Pat-Bologna attiva con cinque tesserati e Pat-Milano con
-    quattro, due del computer con dodici e otto; in vendita uno del computer, uno di Pat-Milano a 1 euro e uno
-    di Pat-Bologna; cinque ritirati, uno uscito di scena; sei allenatori, uno nello staff del computer, uno
-    nel tuo, gli altri liberi.
-    """
-    random.seed(808)
-    m = Mondo()
-    m.datetime_corrente_simulazione = ORA
-    m.crea_giocatori_casuali(120, ORA, annuncia=False)
-    m.nuovi_giocatori_sessione = list(range(100, 121))
-    mia = m.fonda_polisportiva("Pat-Bologna", luogo="Bologna")
-    altra = m.fonda_polisportiva("Pat-Milano", attiva=False, luogo="Milano")
-    cpu = [m.polisportive[m.crea_polisportiva_cpu(ORA)] for _ in range(2)]
-    for gid in range(1, 6):
-        m._entra(mia, m.giocatori[gid])
-    for gid in range(6, 10):
-        m._entra(altra, m.giocatori[gid])
-    for gid in range(10, 22):
-        m._entra(cpu[0], m.giocatori[gid])
-    for gid in range(22, 30):
-        m._entra(cpu[1], m.giocatori[gid])
-    cpu[0].in_vendita[10] = 3000
-    altra.in_vendita[6] = 1
-    mia.in_vendita[1] = 500
-    for gid in range(40, 45):
-        m.giocatori[gid].ritirato = True
-    m._ids_morti_processati_sessione.add(45)
-    m.giocatori[45].ritirato = True
-    rng = random.Random(9)
-    allenatori = [m._nasce_un_allenatore(ORA, rng) for _ in range(6)]
-    m.assumi_allenatore(cpu[0], allenatori[0], 0, ORA)
-    m.assumi_allenatore(mia, allenatori[1], 1, ORA)
-    return m
+    """Il mondo di tests/aiuti_mercato.py, comune alle prove della finestra: 120 giocatori, due tue polisportive e due del computer, sei allenatori."""
+    return mondo_del_mercato()
 
 
 def _cpu(m, posto=0):
@@ -619,6 +588,10 @@ def test_dopo_un_ricalcolo_resta_la_stessa_persona(mondo):
     righe = _cerca(mondo, liberi=True)
     assert mercato.indice_della_persona(righe, righe[3].persona.id) == 3
     assert mercato.indice_della_persona(righe, 9999) == 0 and mercato.indice_della_persona([], 1) is None
+    # Dopo un esito, chi non c'è più lascia la scelta allo stesso posto, entro le righe.
+    assert mercato.indice_della_persona(righe, 9999, ripiego=2) == 2
+    assert mercato.indice_della_persona(righe, 9999, ripiego=len(righe) + 5) == len(righe) - 1
+    assert mercato.indice_della_persona(righe, righe[3].persona.id, ripiego=1) == 3
 
 
 # Le azioni sulle righe.
@@ -691,6 +664,12 @@ def test_amichevole_e_sfida_possibili(mondo):
     assert mercato.sfida_possibile(mondo, mia, mercato.cerca(mondo, mercato.Filtri(allenatori=True, del_computer=True))[0]).problema is None
     assert mercato.sfida_possibile(mondo, mia, _riga(mondo, 2)) == (mercato.SFIDA, "Si sfidano soltanto le polisportive del computer.", mercato.CLUB_NON_SFIDABILE)
     assert mercato.sfida_possibile(mondo, mia, _riga(mondo, libero)).motivo == mercato.CLUB_NON_SFIDABILE
+    # Il club che oggi ha già rifiutato ha il suono del lancio delle sfide, dal passo della finestra.
+    club = _riga(mondo, 11).polisportiva
+    mondo.sfide.rifiutata_oggi = lambda nome, bersaglio, oggi: (nome, bersaglio, oggi) == (mia.nome, club.nome, ORA.date())
+    azione, problema, motivo = mercato.sfida_possibile(mondo, mia, _riga(mondo, 11))
+    assert (azione, motivo) == (mercato.SFIDA, "sfida_gia_rifiutata_oggi") and "ha già rifiutato oggi" in problema
+    del mondo.sfide.rifiutata_oggi
     mia.sfide_da_lanciare = 0
     assert mercato.sfida_possibile(mondo, mia, _riga(mondo, 11)).motivo == "nessuna_sfida_da_lanciare"
     assert cpu0.nome in {r.polisportiva.nome for r in _cerca(mondo, del_computer=True)}
@@ -819,6 +798,42 @@ def test_l_etichetta_dei_trovati_e_il_riepilogo_unico(mondo):
                          "Primo esito.", "Secondo esito.", "Assunto.", "Sfida lanciata."]
     assert righe[5] == testi.info_mercato(mia, mondo) and righe[6:] == testi.righe_dello_staff(mia, mondo)[1:]
     assert testi.evento_mercato_e_ricerca([("a", True)], (), ["b"]) == "mercato e ricerca: 2 esiti"
+    # Dal passo della finestra: le operazioni sui preset sono esiti anche loro, e il riepilogo vale anche senza polisportiva attiva.
+    preset = [testi.esito_preset_salvato("Giovani mancini"), testi.esito_preset_rinominato("Giovani mancini", "Giovani")]
+    assert testi.riepilogo_mercato_e_ricerca(mia, mondo, preset=preset).splitlines() == [
+        "Mercato e ricerca di Pat-Bologna: 2 operazioni sui preset.", "Preset salvato: Giovani mancini.", "Preset Giovani mancini rinominato Giovani.",
+        testi.info_mercato(mia, mondo)]
+    assert testi.riepilogo_mercato_e_ricerca(None, mondo, preset=preset[:1]) == "Mercato e ricerca: 1 operazione sui preset.\nPreset salvato: Giovani mancini."
+    assert testi.evento_mercato_e_ricerca(preset=preset) == "mercato e ricerca: 2 esiti"
+
+
+def test_i_testi_della_finestra(mondo):
+    mia = mondo.miapolisportiva_attiva
+    assert testi.titolo_mercato_e_ricerca(mia) == "Mercato e ricerca di Pat-Bologna" and testi.titolo_mercato_e_ricerca(None) == "Mercato e ricerca"
+    assert testi.linguetta("Altri filtri", 0) == "Altri filtri" and testi.linguetta("Altri filtri", 1) == "Altri filtri, 1 attivo"
+    assert testi.linguetta("Filtri degli allenatori", 3) == "Filtri degli allenatori, 3 attivi"
+    r = _riga(mondo, 11)
+    assert testi.etichetta_della_scheda(r) == f"Sc&heda di {testi.nome_completo(r.persona)}" and testi.etichetta_della_scheda(None) == "Sc&heda"
+    assert testi.scheda_della_riga(r, mondo) == testi.scheda_giocatore(r.persona, mondo)
+    allenatore = mercato.cerca(mondo, mercato.Filtri(allenatori=True, liberi=True))[0]
+    assert testi.scheda_della_riga(allenatore, mondo) == testi.scheda_allenatore(allenatore.persona, mondo)
+    assert testi.scheda_della_riga(None, mondo) == testi.ELENCO_VUOTO_SENZA_SCHEDA
+    assert testi.mosse_finite(mia) == "Per oggi Pat-Bologna ha finito le mosse di mercato."
+    assert testi.condizione_a_parole("ambizione", "maggiore", 50) == "Ambizione, da 0 a 100: maggiore di 50"
+    assert testi.domanda_sostituzione_preset("Giovani") == "Esiste già il preset Giovani: sostituirne i filtri con questi?"
+    assert testi.domanda_eliminazione_preset("Giovani").startswith("Eliminare il preset Giovani? Le porte che lo riaprivano")
+    assert testi.esito_preset_salvato("Giovani", sostituito=True) == "Preset Giovani: filtri sostituiti con quelli attuali."
+    assert testi.esito_preset_eliminato("Giovani") == "Preset eliminato: Giovani."
+    assert testi.esito_preset_spostato("Giovani", 1, 3) == "Preset Giovani spostato al posto 1 di 3 fra i tuoi."
+    for testo in (testi.NESSUNA_CONDIZIONE, testi.NESSUN_PRESET, testi.ELENCO_VUOTO_SENZA_SCHEDA):
+        _accessibile(testo)
+    # Le domande delle offerte valgono anche sulla riga della finestra, come sul candidato del mercato di prima.
+    in_vendita = _riga(mondo, 10)
+    assert testi.domanda_acquisto(in_vendita, mia, mondo).startswith(f"Comprare {testi.nome_completo(in_vendita.persona)} da {in_vendita.polisportiva.nome} per 3.000 euro?")
+    del_computer = _riga(mondo, 11)
+    assert testi.domanda_offerta_d_acquisto(del_computer, 900, mia, mondo).startswith(f"Offrire 900 euro a {del_computer.polisportiva.nome} per {testi.nome_completo(del_computer.persona)}?")
+    libero = next(r for r in _cerca(mondo, liberi=True))
+    assert testi.domanda_ingaggio(libero, 450, 50.0, mia, mondo).startswith(f"Offrire a {testi.nome_completo(libero.persona)} un ingaggio di 450 euro, per tesserarsi con Pat-Bologna?")
 
 
 # Il salvataggio, formato 10: i preset e le porte.

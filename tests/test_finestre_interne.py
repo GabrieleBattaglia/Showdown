@@ -8,11 +8,14 @@ apertura; senza Chiudi, deve chiuderlo come Annulla, o come Non adesso nella pro
 dell'aggiornamento. La partita dal vivo tiene il suo Esc, che esce senza svelare il risultato. La rassegna sa
 quali dialoghi ci sono: un dialogo nuovo che non ci sta fa fallire la prova, finché non lo si aggiunge
 a FABBRICHE. Un Chiudi wx.ID_CLOSE o qualunque, come in un dialogo futuro, risponde a Esc anche lui.
+Dal 24 ottobre 2026 ci sono anche la finestra Mercato e ricerca e i suoi dialoghi interni, con i testi da leggere
+delle domande, che a Esc valgono No, e degli avvisi.
 """
 
 import importlib
 import pkgutil
 import random
+import types
 
 import pytest
 import wx
@@ -23,10 +26,12 @@ from aiuti_motore import giocatore
 import formule
 import gui
 import impostazioni
+import mercato
 import modelli_torneo
 import testi
 from gui import dal_vivo, dialoghi
 from gui import editor_tornei as gui_editor
+from gui import mercato_e_ricerca as gui_mercato
 from gui import sfide as gui_sfide
 from gui import tornei as gui_tornei
 from motore import COMPLETO, SINGOLARE_3, Incontro, cronaca
@@ -112,6 +117,15 @@ FABBRICHE = {
     "PannelloTornei": lambda s: gui_tornei.PannelloTornei(None, s.mondo),
     "AlboDOro": lambda s: gui_tornei.AlboDOro(None, s.mondo),
     "FinestraDalVivo": _dal_vivo,
+    # Dal 24 ottobre 2026, la finestra Mercato e ricerca e i suoi dialoghi interni, coi testi da leggere.
+    "MercatoERicerca": lambda s: gui_mercato.MercatoERicerca(None, s.mondo, impostazioni.valide(None), "mercato"),
+    "SalvaFiltri": lambda s: gui_mercato.SalvaFiltri(None, mercato.filtri_di_ricerca_di_serie(), "Giovani mancini"),
+    "RinominaPreset": lambda s: gui_mercato.RinominaPreset(None, mercato.filtri_di_ricerca_di_serie(), mercato.Preset(1, "Giovani mancini", mercato.Filtri())),
+    "GestisciPreset": lambda s: gui_mercato.GestisciPreset(None, types.SimpleNamespace(filtri_di_ricerca=mercato.filtri_di_ricerca_di_serie(), impostazioni=None)),
+    "PostoDaOffrire": lambda s: gui_mercato.PostoDaOffrire(None, s.mondo, s.club),
+    "Condizione": lambda s: gui_mercato.Condizione(None),
+    "Avviso": lambda s: gui_mercato.Avviso(None, "Avviso", "Un testo da leggere."),
+    "Domanda": lambda s: gui_mercato.Domanda(None, "Domanda", "Una domanda da leggere?"),
 }
 
 

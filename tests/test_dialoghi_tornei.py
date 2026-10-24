@@ -11,6 +11,7 @@ l'albo nel suo dialogo; gli editor con le scelte dei giorni, che rifiutano col m
 chiudono da soli; il lancio e la risposta alle sfide con la formazione; la casella della sala; la
 scheda, l'acciacco nella formazione; le notizie e il suono unico dell'avanzamento.
 Dal 2026-10-24, col collaudo di gioco, ciascuno col suo suono: Iscrivi e Togli sull'edizione prevista e su quella già cominciata, Togli sulla coppa, il modello e il file delle formule che non si scrivono, il rilancio a chi ha già rifiutato oggi e la sfida in arrivo che non vale più. Con le verifiche anche i ripieghi di Iscrivi e Togli dopo il sorteggio.
+Dal passo della finestra Mercato e ricerca, lo stesso giorno, la pressione ripetuta la guarda la base dei dialoghi, e l'orologio delle prove è il suo.
 """
 
 import datetime
@@ -66,7 +67,8 @@ def orologio(monkeypatch):
         adesso[0] += 1.0
         return adesso[0]
 
-    monkeypatch.setattr(gui_tornei.time, "monotonic", leggi)
+    # La pressione ripetuta la guarda la base dei dialoghi, dal 24 ottobre 2026.
+    monkeypatch.setattr(dialoghi.time, "monotonic", leggi)
     return adesso
 
 
@@ -122,7 +124,7 @@ def test_la_pressione_ripetuta_si_ignora(calendario, suonati, orologio, monkeypa
     ed = _scegli_edizione(dialogo, "Open maschile del martedì", datetime.date(2026, 10, 6))
     # Un tasto tenuto giù: due pressioni a un decimo l'una dall'altra.
     tempi = iter([10.0, 10.1, 10.2])
-    monkeypatch.setattr(gui_tornei.time, "monotonic", lambda: next(tempi))
+    monkeypatch.setattr(dialoghi.time, "monotonic", lambda: next(tempi))
     _scegli(dialogo.elenco_iscrivibili, dialogo.iscrivibili, 1)
     dialogo.iscrivi()
     _scegli(dialogo.elenco_iscrivibili, dialogo.iscrivibili, 2)

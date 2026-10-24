@@ -6,6 +6,7 @@ ogni evento è usato nel codice e ogni suono del codice è un evento. Poi il vol
 probabilità d'ingaggio, il motore vero con la scheda audio finta, e la scelta del suono di un
 avanzamento del mondo, con il testo della barra di stato che lo accompagna.
 Dal 2026-10-24, col collaudo di gioco, i nove suoni della V229, ciascuno col suo preset breve salvo l'errore fatale, e la descrizione del calendario non ripristinato, che non promette più il calendario di prima. Con le verifiche, le azioni che dicono tutte le loro situazioni.
+Lo stesso giorno, con la finestra Mercato e ricerca, gli eventi che aspettano il loro preset: nuovi, usati dal codice, e muti senza avvisi.
 """
 
 import ast
@@ -263,8 +264,20 @@ def test_ogni_evento_e_usato_nel_codice():
 def test_ogni_suono_del_codice_e_un_evento():
     trovati = _suoni_nel_codice()
     assert len(trovati) > 100
-    sconosciuti = sorted({(file, s) for file, s in trovati if s not in suoni.EVENTI})
+    # Gli eventi della finestra Mercato e ricerca che aspettano il preset sono eventi anche loro, senza ancora la mappa.
+    sconosciuti = sorted({(file, s) for file, s in trovati if s not in suoni.EVENTI and s not in suoni.SENZA_PRESET})
     assert not sconosciuti, f"suoni che non sono eventi della mappa: {sconosciuti}"
+
+
+def test_gli_eventi_senza_preset_sono_nuovi_usati_e_tacciono(suonati, capsys):
+    # Dalla finestra Mercato e ricerca: gli eventi che aspettano il loro preset non sono già nella mappa, il codice li
+    # fa suonare tutti, e tacciono senza avvisi, mentre un evento sconosciuto lo dice.
+    assert not suoni.SENZA_PRESET & set(suoni.EVENTI)
+    codice = "".join(_codice(p) for p in _sorgenti() if p.name != "suoni.py")
+    assert not [evento for evento in suoni.SENZA_PRESET if f'"{evento}"' not in codice]
+    for evento in sorted(suoni.SENZA_PRESET):
+        assert suoni.suona(evento) is False
+    assert suonati == [] and capsys.readouterr().err == ""
 
 
 def _tastiera(monkeypatch, tasti):

@@ -10,7 +10,8 @@ al display; Scheda lavora sulla riga col fuoco anche dopo Ctrl+Spazio; Esc, batt
 la finestra come Chiudi. La ricerca per iniziali si prova anche da sola, sui nomi, e le cartelle temporanee
 tornano com'erano. Quando la barra verticale dell'elenco virtuale compare o sparisce, per un filtro o per la
 finestra che cambia misura, la colonna resta larga quanto l'elenco e la barra orizzontale non compare: lo ha
-trovato la verifica del prototipo, il 24 ottobre 2026.
+trovato la verifica del prototipo, il 24 ottobre 2026. Dal passo della finestra, lo stesso giorno, l'elenco virtuale
+viene da gui/elenco_virtuale.py e la tastiera simulata da strumenti/tastiera_simulata.py.
 """
 
 import ctypes
@@ -25,6 +26,7 @@ import wx
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 
 import prova_elenco_virtuale as prova
+import tastiera_simulata as tastiera
 
 import mercato
 import percorsi
@@ -329,7 +331,7 @@ def test_si_apre_massimizzata_e_esc_la_chiude_come_chiudi(app_wx, mondo_e_poli, 
 
     def dentro():
         visto["massimizzata"] = dialogo.IsMaximized()
-        prova.posta_esc(dialogo.elenco)
+        tastiera.posta_esc(dialogo.elenco)
 
     rete = wx.CallLater(3000, lambda: dialogo.IsModal() and dialogo.EndModal(NON_CHIUSA))
     wx.CallAfter(dentro)

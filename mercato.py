@@ -41,6 +41,9 @@ resta severa, e la lettura diventa indulgente: preset e porte si leggono separat
 ripara, e quello che non si legge torna ai filtri di serie con un avviso, che l'archivio scrive nel registro degli
 errori col dato originale, invece di far rifiutare il mondo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
 Opus 5.5, UltraCode).
+Lo stesso giorno, col passo della finestra: dopo un esito la scelta resta sulla stessa persona o, se non c'è più, sullo
+stesso posto, col ripiego di indice_della_persona; e la sfida al club che oggi ha già rifiutato ha il motivo col suono
+del lancio delle sfide, sfida_gia_rifiutata_oggi. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -1406,11 +1409,16 @@ def cerca(mondo, filtri, memoria=None):
     return _giocatori(mondo, filtri, memoria if memoria is not None else Memoria(mondo))
 
 
-def indice_della_persona(righe, numero, allenatori=False):
-    """Dopo un ricalcolo, il posto della stessa persona, cercata per numero: 0 se non c'è più, None se l'elenco è vuoto."""
+def indice_della_persona(righe, numero, allenatori=False, ripiego=0):
+    """
+    Dopo un ricalcolo, il posto della stessa persona, cercata per numero; None se l'elenco è vuoto. Se non c'è più,
+    il posto di ripiego, entro le righe: la prima dopo un filtro, lo stesso posto di prima dopo un esito, come
+    l'ingaggio che toglie un libero dall'elenco e lascia la scelta sul seguente.
+    """
     if not righe:
         return None
-    return next((i for i, r in enumerate(righe) if r.allenatore == allenatori and r.numero == numero), 0)
+    trovato = next((i for i, r in enumerate(righe) if r.allenatore == allenatori and r.numero == numero), None)
+    return trovato if trovato is not None else min(max(ripiego, 0), len(righe) - 1)
 
 
 # Le azioni sulle righe: che cosa si può fare, o perché no. Sono funzioni pure, che non cambiano niente:
@@ -1543,7 +1551,8 @@ def sfida_possibile(mondo, poli, riga):
     """
     Se oggi la polisportiva può sfidare il club della persona della riga, o perché no, come Possibile: il club
     è quello di un tesserato del computer, o di un allenatore che allena per il computer. I divieti sono quelli
-    di sfide.problema_bersaglio; il motivo dice se le sfide sono finite o se il club non si può sfidare.
+    di sfide.problema_bersaglio; il motivo dice se le sfide sono finite, se il club ha già rifiutato oggi, col
+    suono del lancio di sfide, o se il club non si può sfidare.
     """
     if poli is None:
         return _senza_attiva("le sfide le lancia la polisportiva attiva")
@@ -1551,5 +1560,8 @@ def sfida_possibile(mondo, poli, riga):
     problema = sfide.problema_bersaglio(mondo, poli, club.nome if club is not None else None)
     if problema is None:
         return Possibile(SFIDA, None, None)
-    finite = sfide.tua(poli) and sfide.disponibili(mondo, poli) <= 0
-    return Possibile(SFIDA, problema, "nessuna_sfida_da_lanciare" if finite else CLUB_NON_SFIDABILE)
+    if sfide.tua(poli) and sfide.disponibili(mondo, poli) <= 0:
+        return Possibile(SFIDA, problema, "nessuna_sfida_da_lanciare")
+    if club is not None and club.is_cpu_controlled and mondo.sfide.rifiutata_oggi(poli.nome, club.nome, mondo.datetime_corrente_simulazione.date()):
+        return Possibile(SFIDA, problema, "sfida_gia_rifiutata_oggi")
+    return Possibile(SFIDA, problema, CLUB_NON_SFIDABILE)

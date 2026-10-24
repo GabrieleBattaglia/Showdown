@@ -65,6 +65,8 @@ Lo schermo centrale dice quello che succede quasi sempre al tavolo: la pallina d
 
 La finestra Mercato e ricerca ha i preset dei filtri, e il mondo li conserva nel formato 10: i tuoi, ciascuno col suo nome, le dodici ricerche pronte come preset di serie, che non si cancellano, e per ogni porta d'ingresso, Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O, l'ultima voce scelta coi filtri attuali, non salvati (issue 8). Un preset o dei filtri che non si leggono non fanno rifiutare il mondo: tornano ai filtri di serie, un preset si ripara invece di sparire, e il registro degli errori annota ogni riparazione col dato di prima.
 
+La finestra Mercato e ricerca ha quattro schede native, Risultati, Filtri, Altri filtri e Filtri degli allenatori, che si cambiano con Ctrl+Tab, ciascuna col suo suono e con una lettera per ogni controllo; la casella dei preset applica ogni preset mentre la si scorre e apre Salva filtri soltanto con Invio, la scheda della persona si legge col cursore sotto l'elenco, i trovati si rifanno dopo 350 millesimi e la voce e il display li dicono dopo un secondo, e domande, esiti e avvisi si leggono in un campo da scorrere, mai in un messaggio di Windows (issue 8). La scelta del giocatore, la cifra e le opzioni dell'amichevole non rispondono più a un Invio tenuto giù subito dopo la loro apertura, così un Invio di troppo non fa partire un'amichevole che nessuno ha scelto.
+
 ## [1.94.6] - 2026-10-23
 
 Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.

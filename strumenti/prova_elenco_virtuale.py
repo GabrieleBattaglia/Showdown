@@ -50,6 +50,10 @@ Le cose da provare con NVDA e il display:
 4. Ctrl+Spazio: toglie la selezione dalla riga; che cosa dice NVDA, e se Scheda poi mostra ancora quella riga.
 5. Una riga lunga: con Righe lunghe spuntata, se la riga arriva intera alla voce e al display, fino a "fine della riga di N caratteri"; Scheda la mostra intera in un messaggio, per confronto.
 6. Il nome dell'elenco: dopo un filtro, tornando sull'elenco con Alt+T o col Tab, se NVDA dice il numero nuovo dei trovati.
+Dal passo della finestra, lo stesso 24 ottobre 2026, l'elenco virtuale con la sua ricerca per iniziali sta in
+gui/elenco_virtuale.py, da cui lo prende anche la finestra Mercato e ricerca, e la tastiera simulata in
+strumenti/tastiera_simulata.py, da cui la prendono anche le prove: qui restano il ListBox del ripiego, le righe
+lunghe e le misure.
 """
 
 import argparse
@@ -69,6 +73,7 @@ if str(RADICE) not in sys.path:
 
 import mondi_sintetici  # noqa: E402
 import wx  # noqa: E402
+from tastiera_simulata import VK_DOWN, VK_END, VK_HOME, VK_NEXT, VK_PRIOR, VK_SPACE, aspetta, batti, pompa, premi  # noqa: E402
 
 import annunci as modulo_annunci  # noqa: E402
 import impostazioni as modulo_impostazioni  # noqa: E402
@@ -79,6 +84,7 @@ import testi  # noqa: E402
 from costanti import ATTRIBUTI_BASE_CON_ALLENABILI, NOME_ATTR_TO_DISPLAY_MAP  # noqa: E402
 from economia import valore_di_mercato  # noqa: E402
 from gui import dialoghi  # noqa: E402
+from gui.elenco_virtuale import ATTESA_DELLE_LETTERE, ElencoVirtuale, RicercaPerIniziali  # noqa: E402
 from modelli import Polisportiva  # noqa: E402
 
 # Il mondo di prova dello studio della issue 8: ventimila attivi, un terzo di ritirati, una polisportiva del
@@ -90,9 +96,6 @@ QUOTA_IN_VENDITA = 0.01
 NOME_DELLA_PROVA = "Polisportiva della prova"
 # Il filtro aspetta 350 millesimi dopo l'ultimo tasto, il ritardo che hanno già i dialoghi di MESS.
 RITARDO_DEL_FILTRO = dialoghi.RITARDO_DEL_SUONO_AL_VOLO
-# Entro quanti secondi le lettere iniziali battute di seguito si sommano: un secondo lascia il tempo della
-# seconda lettera anche mentre NVDA legge la riga trovata con la prima. Si cambia con --attesa.
-ATTESA_DELLE_LETTERE = 1.0
 # Il tetto delle righe della variante --listbox, quello del ripiego di D36.
 TETTO_DEL_LISTBOX = 500
 # Le righe lunghe passano questo numero di caratteri.
@@ -176,133 +179,8 @@ def riga_lunga(c):
     return f"{corpo}{len(corpo) + len(finale) + cifre}{finale}"
 
 
-# La ricerca per lettere iniziali.
-
-class RicercaPerIniziali:
-    """
-    La ricerca per lettere iniziali di un elenco, come la fa Windows, sui nomi già preparati, in minuscolo. Le
-    lettere battute entro attesa secondi l'una dall'altra si sommano e si cerca il nome che comincia così, a
-    partire dalla riga col fuoco; la stessa lettera ripetuta cerca invece il nome seguente che comincia con
-    quella lettera, a giro. Il primo carattere parte sempre dalla riga dopo quella col fuoco.
-    """
-
-    def __init__(self, attesa=ATTESA_DELLE_LETTERE):
-        self.attesa = attesa
-        self.testo = ""
-        self._ultima = float("-inf")
-
-    def in_corso(self, adesso):
-        """Vero se una ricerca è aperta: c'è del testo, e l'ultima lettera è arrivata entro l'attesa."""
-        return bool(self.testo) and adesso - self._ultima < self.attesa
-
-    def cerca(self, carattere, nomi, quante, da, adesso):
-        """L'indice della riga da scegliere fra le prime quante di nomi, partendo da da, la riga col fuoco o -1; None se nessun nome comincia così."""
-        if not self.in_corso(adesso):
-            self.testo = ""
-        self._ultima = adesso
-        self.testo += carattere.casefold()
-        if not quante:
-            return None
-        if len(set(self.testo)) == 1:
-            cercato, partenza = self.testo[0], da + 1
-        else:
-            cercato, partenza = self.testo, max(da, 0)
-        for passo in range(quante):
-            indice = (partenza + passo) % quante
-            if nomi[indice].startswith(cercato):
-                return indice
-        return None
-
-
-# I due elenchi, con gli stessi metodi.
-
-class ElencoVirtuale(wx.ListCtrl):
-    """
-    L'elenco virtuale nativo: a una colonna larga quanto l'elenco, senza intestazione, a selezione singola.
-    Windows chiede il testo di una riga quando la mostra o quando qualcuno lo legge; la riga si scrive
-    allora, con riga(indice), e si tiene fino al ricalcolo. In richieste il numero delle domande di Windows,
-    in scritte quello delle righe scritte davvero.
-    """
-
-    def __init__(self, genitore, riga):
-        super().__init__(genitore, style=wx.LC_REPORT | wx.LC_VIRTUAL | wx.LC_SINGLE_SEL | wx.LC_NO_HEADER)
-        self._riga = riga
-        self._righe = []
-        self.richieste = 0
-        self.scritte = 0
-        self._larghezza_data = None
-        self.InsertColumn(0, "")
-        self.Bind(wx.EVT_SIZE, self._misura_cambiata)
-
-    def OnGetItemText(self, item, col):
-        self.richieste += 1
-        if not 0 <= item < len(self._righe):
-            return ""
-        testo = self._righe[item]
-        if testo is None:
-            testo = self._righe[item] = self._riga(item)
-            self.scritte += 1
-        return testo
-
-    @property
-    def mostrate(self):
-        return len(self._righe)
-
-    def mostra(self, quante, posto):
-        """quante righe, dimenticando quelle scritte, con la scelta su posto, o sulla prima riga se posto non c'è."""
-        self._righe = [None] * quante
-        self.SetItemCount(quante)
-        if quante:
-            self.scegli(posto if 0 <= posto < quante else 0)
-        self.Refresh()
-        self.adatta_colonna()
-
-    def riscrivi(self):
-        """Le righe si riscrivono alla prossima domanda di Windows, con le stesse persone."""
-        self._righe = [None] * len(self._righe)
-        self.Refresh()
-
-    def col_fuoco(self):
-        return self.GetFocusedItem()
-
-    def scegli(self, indice):
-        """Fuoco e selezione sulla riga, in un colpo solo, e la riga in vista."""
-        stato = wx.LIST_STATE_SELECTED | wx.LIST_STATE_FOCUSED
-        self.SetItemState(indice, stato, stato)
-        self.EnsureVisible(indice)
-
-    def testo(self, indice):
-        return self.OnGetItemText(indice, 0)
-
-    def adatta_colonna(self):
-        """
-        La colonna larga quanto l'elenco, senza misurare le righe, mai due volte la stessa larghezza. Si dà
-        col messaggio di Windows e non con SetColumnWidth di wx 3.3, che prima che la finestra si mostri tiene
-        da parte le larghezze e alla prima apparizione le rifà una per una, ridisegnando ogni volta, e dopo
-        ridisegna due volte ogni larghezza nuova: sul PC Gigante, con 2.000 righe, l'apertura costava da 310 a
-        480 millesimi in 15 ridisegni, contro i 55 col messaggio. Quando l'elenco cambia misura, la larghezza
-        arriva dopo, con _misura_cambiata, e all'apertura costa un ridisegno della pagina in più: sul Gigante,
-        il 24 ottobre 2026, una trentina di millesimi, e 116 domande di Windows invece di 78.
-        """
-        larghezza = self.GetClientSize().width
-        if larghezza > 0 and larghezza != self._larghezza_data:
-            self._larghezza_data = larghezza
-            user32.SendMessageW(self.GetHandle(), LVM_SETCOLUMNWIDTH, 0, larghezza)
-
-    def _misura_cambiata(self, event):
-        event.Skip()
-        # La nuova misura arriva anche mentre l'elenco aggiorna ancora le sue barre, quando compare o sparisce
-        # quella verticale, per un filtro o per la finestra che cambia misura: la larghezza data lì dentro la
-        # supera il calcolo di prima, che lascia la barra orizzontale con la colonna larga quanto l'elenco, e
-        # le frecce sinistra e destra farebbero scorrere l'elenco di lato. La stessa larghezza ridata dopo,
-        # Windows la ignora; e da wx non si distingue quando l'elenco è a metà. Si dà quando ha finito.
-        wx.CallAfter(self._adatta_dopo)
-
-    def _adatta_dopo(self):
-        # Se nel frattempo l'elenco si è chiuso, non c'è più niente da adattare.
-        with contextlib.suppress(RuntimeError):
-            self.adatta_colonna()
-
+# I due elenchi, con gli stessi metodi: quello virtuale, ElencoVirtuale, viene da gui/elenco_virtuale.py, con la
+# ricerca per lettere iniziali, RicercaPerIniziali; il ripiego di D36 sta qui.
 
 class ElencoNativo(wx.ListBox):
     """L'elenco nativo di oggi, il ripiego di D36: le prime tetto righe, scritte tutte a ogni ricalcolo."""
@@ -361,7 +239,6 @@ class ProvaElenco(dialoghi._Dialogo):
         self.nativo = nativo
         self.impostazioni = modulo_impostazioni.valide(None)
         self.annunci = annunci if annunci is not None else modulo_annunci.Annunci(lambda secondi, funzione: wx.CallLater(max(1, round(secondi * 1000)), funzione))
-        self.lettere = RicercaPerIniziali(attesa_lettere)
         self.eventi = []
         self.ultima_riga = -1
         self.righe_lunghe = False
@@ -385,8 +262,12 @@ class ProvaElenco(dialoghi._Dialogo):
             self.elenco = self.aggiungi(ElencoNativo(self.pannello, self.testo_della_riga, tetto), 1)
             self.elenco.Bind(wx.EVT_LISTBOX, lambda event: self._evento("selezionata", event.GetSelection(), event))
             self.elenco.Bind(wx.EVT_LISTBOX_DCLICK, self.scheda)
+            # Il ListBox fa la sua ricerca per iniziali con quella del prototipo; l'elenco virtuale ha la sua.
+            self.lettere = RicercaPerIniziali(attesa_lettere)
+            self.elenco.Bind(wx.EVT_CHAR, self._lettera)
         else:
-            self.elenco = self.aggiungi(ElencoVirtuale(self.pannello, self.testo_della_riga), 1)
+            self.elenco = self.aggiungi(ElencoVirtuale(self.pannello, self.testo_della_riga, attesa=attesa_lettere), 1)
+            self.lettere = self.elenco.lettere
             for tipo, nome in ((wx.EVT_LIST_ITEM_DESELECTED, "deselezionata"), (wx.EVT_LIST_ITEM_FOCUSED, "fuoco"), (wx.EVT_LIST_ITEM_SELECTED, "selezionata")):
                 self.elenco.Bind(tipo, lambda event, nome=nome: self._evento(nome, event.GetIndex(), event))
             self.elenco.Bind(wx.EVT_LIST_ITEM_ACTIVATED, self.scheda)
@@ -398,7 +279,6 @@ class ProvaElenco(dialoghi._Dialogo):
         self.campo.Bind(wx.EVT_TEXT, self.filtra_fra_poco)
         self.campo.Bind(wx.EVT_TEXT_ENTER, self._invio_nel_campo)
         self.lunghe.Bind(wx.EVT_CHECKBOX, self._righe_lunghe_cambiate)
-        self.elenco.Bind(wx.EVT_CHAR, self._lettera)
         self.Bind(wx.EVT_CHAR_HOOK, self._tasto)
         self.ricalcola()
         self.misure["ricalcoli"].clear()
@@ -443,6 +323,7 @@ class ProvaElenco(dialoghi._Dialogo):
         self.nomi = [self.nomi_di_tutti[i] for i in indici]
         self.posti = {c.giocatore.id: posto for posto, c in enumerate(self.visibili)}
         self.lettere.testo = ""
+        self.elenco.nomi = self.nomi
         self.elenco.mostra(len(self.visibili), self.posti.get(scelto, 0))
         self.ultima_riga = self.elenco.col_fuoco()
         self.etichetta_trovati.SetLabel(self.testo_dei_trovati(con_la_lettera=True))
@@ -490,9 +371,9 @@ class ProvaElenco(dialoghi._Dialogo):
 
     def _lettera(self, event):
         """
-        Le lettere iniziali le cerca il prototipo, e il tasto non arriva all'elenco, così Windows non fa la sua
-        ricerca. Lo Spazio è una lettera soltanto dentro una ricerca aperta; altrimenti, come Ctrl+Spazio e
-        gli altri tasti, va all'elenco.
+        Le lettere iniziali del ListBox le cerca il prototipo, e il tasto non arriva all'elenco, così Windows non
+        fa la sua ricerca. Lo Spazio è una lettera soltanto dentro una ricerca aperta; altrimenti, come Ctrl+Spazio
+        e gli altri tasti, va all'elenco. L'elenco virtuale le cerca da sé, allo stesso modo.
         """
         codice = event.GetUnicodeKey()
         if codice == wx.WXK_NONE or codice < 32 or codice == 127 or event.ControlDown() or event.AltDown():
@@ -549,102 +430,12 @@ class ProvaElenco(dialoghi._Dialogo):
         return frase + f"; righe scritte {testi.intero(self.elenco.scritte)}."
 
 
-# La tastiera simulata e le misure sul desktop nascosto.
+# Le misure sul desktop nascosto, con la tastiera simulata di strumenti/tastiera_simulata.py.
 
 # user32 in una copia tutta sua, con le firme che servono qui: il prototipo è soltanto per Windows.
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 user32.SendMessageW.restype = ctypes.c_ssize_t
 user32.SendMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
-user32.PostMessageW.restype = wintypes.BOOL
-user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
-user32.GetKeyboardState.restype = wintypes.BOOL
-user32.GetKeyboardState.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
-user32.SetKeyboardState.restype = wintypes.BOOL
-user32.SetKeyboardState.argtypes = [ctypes.POINTER(ctypes.c_ubyte)]
-user32.MapVirtualKeyW.restype = wintypes.UINT
-user32.MapVirtualKeyW.argtypes = [wintypes.UINT, wintypes.UINT]
-WM_KEYDOWN, WM_KEYUP, WM_CHAR = 0x0100, 0x0101, 0x0102
-VK_SPACE, VK_PRIOR, VK_NEXT, VK_END, VK_HOME, VK_UP, VK_DOWN = 0x20, 0x21, 0x22, 0x23, 0x24, 0x26, 0x28
-VK_ESCAPE, VK_CONTROL, VK_LCONTROL = 0x1B, 0x11, 0xA2
-# I tasti estesi, che senza il bit 24 di lParam wx leggerebbe come quelli del tastierino.
-ESTESI = frozenset({VK_PRIOR, VK_NEXT, VK_END, VK_HOME, VK_UP, VK_DOWN})
-
-
-def pompa(volte=500):
-    """Smista i messaggi e gli eventi in attesa, anche fuori da un ciclo di wx."""
-    ciclo = wx.EventLoopBase.GetActive()
-    attivatore = None
-    if ciclo is None:
-        ciclo = wx.GUIEventLoop()
-        attivatore = wx.EventLoopActivator(ciclo)
-    applicazione = wx.GetApp()
-    try:
-        for _ in range(volte):
-            if ciclo.Pending():
-                ciclo.Dispatch()
-            elif applicazione.HasPendingEvents():
-                applicazione.ProcessPendingEvents()
-            else:
-                break
-    finally:
-        del attivatore
-
-
-def aspetta(condizione, secondi=2.0):
-    """Smista i messaggi finché condizione() è vera, al più per tanti secondi; restituisce l'ultimo valore."""
-    fine = time.monotonic() + secondi
-    while not condizione() and time.monotonic() < fine:
-        pompa()
-        time.sleep(0.01)
-    return condizione()
-
-
-def _lparam(vk, su=False):
-    lparam = 1 | ((user32.MapVirtualKeyW(vk, 0) & 0xFF) << 16)
-    if vk in ESTESI:
-        lparam |= 1 << 24
-    if su:
-        lparam |= (1 << 30) | (1 << 31)
-    return lparam
-
-
-def premi(controllo, vk, ctrl=False):
-    """
-    Un tasto al controllo, come dalla tastiera ma dentro il processo: lo stato dei tasti del filo dice Ctrl
-    se serve, e i messaggi vanno al controllo con SendMessage. Niente arriva allo schermo vero.
-    """
-    hwnd = controllo.GetHandle()
-    prima = (ctypes.c_ubyte * 256)()
-    user32.GetKeyboardState(prima)
-    stato = (ctypes.c_ubyte * 256)(*prima)
-    if ctrl:
-        stato[VK_CONTROL] = stato[VK_LCONTROL] = 0x80
-    stato[vk] = 0x80
-    try:
-        user32.SetKeyboardState(stato)
-        user32.SendMessageW(hwnd, WM_KEYDOWN, vk, _lparam(vk))
-        if vk == VK_SPACE:
-            user32.SendMessageW(hwnd, WM_CHAR, 0x20, _lparam(vk))
-        pompa()
-        stato[vk] = 0
-        user32.SetKeyboardState(stato)
-        user32.SendMessageW(hwnd, WM_KEYUP, vk, _lparam(vk, su=True))
-        pompa()
-    finally:
-        user32.SetKeyboardState(prima)
-
-
-def batti(controllo, carattere):
-    """Un carattere al controllo, come un tasto battuto: la lettera arriva con WM_CHAR."""
-    user32.SendMessageW(controllo.GetHandle(), WM_CHAR, ord(carattere), 1)
-    pompa()
-
-
-def posta_esc(controllo):
-    """Esc nella coda dei messaggi del controllo, come dalla tastiera: lo prende il ciclo che gira, anche quello di ShowModal."""
-    hwnd = controllo.GetHandle()
-    user32.PostMessageW(hwnd, WM_KEYDOWN, VK_ESCAPE, _lparam(VK_ESCAPE))
-    user32.PostMessageW(hwnd, WM_KEYUP, VK_ESCAPE, _lparam(VK_ESCAPE, su=True))
 
 
 class LVITEMW(ctypes.Structure):
@@ -653,7 +444,6 @@ class LVITEMW(ctypes.Structure):
                 ("iGroupId", ctypes.c_int), ("cColumns", wintypes.UINT), ("puColumns", ctypes.c_void_p), ("piColFmt", ctypes.c_void_p), ("iGroup", ctypes.c_int))
 
 
-LVM_SETCOLUMNWIDTH = 0x1000 + 30
 LVM_GETITEMTEXTW = 0x1000 + 115
 LB_GETTEXTLEN = 0x018A
 

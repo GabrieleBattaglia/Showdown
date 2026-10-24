@@ -61,6 +61,12 @@ niente dice che ha tutto al massimo, invece di dire per tutti e due che nessuno 
 Con le verifiche dello stesso collaudo quell'avviso parla soltanto di chi si allena e ha almeno un punto da
 spendere, al femminile e al singolare come quello degli infortunati.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la finestra Mercato e ricerca della decisione D36, due regole passano nella base di tutti i
+dialoghi. Un dialogo che conferma con Invio, la scelta del giocatore, la cifra e le opzioni dell'amichevole, conta
+la sua apertura come un Invio, e ignora gli Invio che arrivano entro la grazia: NVDA rimanda Invio come pressioni
+nuove, e un Invio tenuto giù sulla voce di menu sceglieva il primo giocatore e giocava un'amichevole che nessuno
+aveva scelto. E la pressione di un pulsante che si ripete entro mezzo secondo, un tasto tenuto giù, si ignora con
+_ripetuta, che arriva dal calendario dei tornei. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -111,6 +117,9 @@ MODI_DI_SEGUIRE = ((ASSISTI, "Assisti"), (VAI_ALLA_FINE, "Vai alla fine"))
 LIVELLI_DI_CRONACA = ((cronaca.SINTETICA, "Sintetica"), (cronaca.NORMALE, "Normale"), (cronaca.TECNICA, "Tecnica"))
 # Il testo del pulsante che Esc preme, senza la lettera sottolineata: &Chiudi e C&hiudi valgono uguale.
 ETICHETTA_CHIUDI = "Chiudi"
+# Due pressioni dello stesso pulsante più vicine di così sono un tasto tenuto giù: la seconda si ignora. Viene dal
+# calendario dei tornei, dove NVDA manda le ripetizioni come pressioni nuove.
+RIPETIZIONE_IGNORATA = 0.5
 
 
 def controllo_col_fuoco():
@@ -132,7 +141,14 @@ def pulsante_chiudi(finestra):
 
 
 class _Dialogo(wx.Dialog):
-    """La base dei dialoghi: pannello che scorre, sizer verticale, apertura massimizzata, chiusura con Esc."""
+    """
+    La base dei dialoghi: pannello che scorre, sizer verticale, apertura massimizzata, chiusura con Esc. Un dialogo
+    con GRAZIA_ALL_APERTURA vera conta l'apertura come un Invio, e ignora gli Invio che arrivano entro la grazia
+    dall'apertura o dall'Invio di prima, ovunque sia il fuoco: è per i dialoghi in cui Invio conferma, dalla
+    finestra Mercato e ricerca.
+    """
+
+    GRAZIA_ALL_APERTURA = False
 
     def __init__(self, genitore, titolo):
         super().__init__(genitore, title=titolo, style=STILE_ADATTABILE)
@@ -181,6 +197,24 @@ class _Dialogo(wx.Dialog):
         chiudi = pulsante_chiudi(self)
         if chiudi is not None and self.GetEscapeId() == wx.ID_ANY:
             self.SetEscapeId(chiudi.GetId())
+        if self.GRAZIA_ALL_APERTURA:
+            # L'ultimo legame del gancio dei tasti, quindi wx lo chiama per primo, prima di ogni altro e prima del pulsante predefinito.
+            self.ultimo_invio = _adesso()
+            self.Bind(wx.EVT_CHAR_HOOK, self._grazia_dell_invio)
+
+    def _grazia_dell_invio(self, event):
+        """Un Invio entro la grazia dall'apertura o dall'Invio di prima si mangia; ogni altro tasto prosegue. Una prova sola per tasto."""
+        if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.HasAnyModifiers() and invio_da_ignorare(self, event):
+            return
+        event.Skip()
+
+    def _ripetuta(self, nome):
+        """Vero se il pulsante del nome dato è stato premuto meno di mezzo secondo fa: è un tasto tenuto giù, e la pressione si ignora."""
+        adesso_monotono = time.monotonic()
+        pressioni = self.__dict__.setdefault("_pressioni", {})
+        prima = pressioni.get(nome)
+        pressioni[nome] = adesso_monotono
+        return prima is not None and adesso_monotono - prima < RIPETIZIONE_IGNORATA
 
     def invio_su(self, controllo, azione):
         """
@@ -303,7 +337,12 @@ class _ElencoCheSiRestringe:
 
 
 class SceltaGiocatore(_Dialogo):
-    """La scelta di un giocatore: un campo per il numero o il nome e l'elenco, che si restringe mentre si scrive."""
+    """
+    La scelta di un giocatore: un campo per il numero o il nome e l'elenco, che si restringe mentre si scrive. Invio
+    nel campo sceglie il primo: dal 24 ottobre 2026 l'apertura conta come un Invio, e un Invio tenuto giù non sceglie.
+    """
+
+    GRAZIA_ALL_APERTURA = True
 
     def __init__(self, genitore, mondo, titolo="Scheda del giocatore", pulsante="&Mostra la scheda", giocatori=None):
         super().__init__(genitore, titolo)
@@ -751,8 +790,11 @@ class Cifra(_Dialogo):
     nota dopo il campo segue la cifra, come la probabilità che un giocatore accetti un ingaggio.
     La nota è un testo che lo screen reader non legge quando cambia: se il dialogo riceve anche la
     probabilità, a ogni ritocco della cifra, quando ci si ferma, un tic la fa sentire con la sua
-    altezza, più acuto quanto più è probabile che il giocatore accetti.
+    altezza, più acuto quanto più è probabile che il giocatore accetti. Dal 24 ottobre 2026 l'apertura conta come un
+    Invio, e un Invio tenuto giù non conferma la cifra.
     """
+
+    GRAZIA_ALL_APERTURA = True
 
     def __init__(self, genitore, titolo, spiegazione, etichetta, iniziale, massimo, nota=None, probabilita=None):
         super().__init__(genitore, titolo)
@@ -2049,8 +2091,11 @@ class OpzioniAmichevole(_Dialogo):
     Con la decisione D29 i modi di seguirla sono due: Assisti, la partita dal vivo, e Vai alla fine,
     il risultato con la cronaca intera sotto. I predefiniti sono quelli scelti da Gabriele: 3 set,
     Assisti, normale; dall'8 ottobre 2026 il dialogo riparte dalle ultime scelte, che riceve in
-    iniziali come terna di set, modo e livello. In risultato restano le tre scelte.
+    iniziali come terna di set, modo e livello. In risultato restano le tre scelte. Dal 24 ottobre 2026 l'apertura
+    conta come un Invio, e un Invio tenuto giù non fa partire l'incontro.
     """
+
+    GRAZIA_ALL_APERTURA = True
 
     def __init__(self, genitore, mondo, primo, secondo, iniziali=None):
         super().__init__(genitore, "Opzioni dell'amichevole")

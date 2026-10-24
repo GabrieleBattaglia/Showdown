@@ -38,11 +38,12 @@ un'edizione prevista, iscrizioni_non_ancora_aperte, o già cominciata, iscrizion
 Coppa delle polisportive, coppa_solo_con_la_rosa. Con le verifiche dello stesso collaudo anche i due
 ripieghi che dicono il sorteggio già fatto, il rifiuto di Iscrivi e quello di Togli su un'edizione che il
 calendario non ha ancora tolto, suonano iscrizioni_chiuse. È di Gabriele Battaglia (IZ4APU) & ClaudIA
-(Claude Opus 5.5, UltraCode).
+(Claude Opus 5.5, UltraCode). Lo stesso giorno, con la finestra Mercato e ricerca, la pressione ripetuta dei
+pulsanti di Iscrivi e Togli si ignora con la regola che passa nella base dei dialoghi, _ripetuta, uguale per tutti.
+È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
-import time
 
 import wx
 
@@ -61,8 +62,6 @@ from gui.dialoghi import Lettura, _Dialogo
 from partita import risultato_della_differita
 from utilita import adesso
 
-# Due pressioni dello stesso pulsante più vicine di così sono un tasto tenuto giù: la seconda si ignora.
-RIPETIZIONE_IGNORATA = 0.5
 # I giorni del calendario che guarda avanti, oltre alle edizioni aperte.
 GIORNI_AVANTI = 30
 APERTE, PROSSIME, IN_CORSO = "aperte", "prossime", "in_corso"
@@ -182,7 +181,6 @@ class CalendarioTornei(_Dialogo):
         self.voci = []
         self.iscrivibili = []
         self.iscritti = []
-        self._pressioni = {}
         self.info = wx.StaticText(self.pannello, label="")
         self.sizer.Add(self.info, 0, wx.ALL, 8)
         self.etichetta("&Mostra")
@@ -340,14 +338,7 @@ class CalendarioTornei(_Dialogo):
             return None
         return voci[indice]
 
-    # I pulsanti.
-
-    def _ripetuta(self, nome):
-        """Vero se il pulsante è stato premuto meno di mezzo secondo fa: è un tasto tenuto giù, e la pressione si ignora."""
-        adesso_monotono = time.monotonic()
-        prima = self._pressioni.get(nome)
-        self._pressioni[nome] = adesso_monotono
-        return prima is not None and adesso_monotono - prima < RIPETIZIONE_IGNORATA
+    # I pulsanti: la pressione ripetuta entro mezzo secondo la ignora _ripetuta, che dal 24 ottobre 2026 sta nella base dei dialoghi.
 
     def _suono_del_rifiuto(self, ed, g):
         """

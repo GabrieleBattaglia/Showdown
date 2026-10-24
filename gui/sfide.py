@@ -25,7 +25,9 @@ rifiuto di un lancio, che qui non parte; nelle sfide in arrivo la sfida che non 
 aspetta più una risposta, chi sfida ha chiuso o non ha più una squadra valida, ha il suo,
 sfida_non_piu_valida, ad Accetta, a Rifiuta e mentre si cambia la formazione, e l'avviso riporta il
 cursore sulla sfida; prima suonava come la formazione che non va, o come un campo da correggere. È di
-Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode). Lo stesso giorno, con la finestra Mercato e
+ricerca, il lancio di una sfida si apre anche con la polisportiva da sfidare già scelta, quella del club di chi si
+è trovato. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import wx
@@ -161,10 +163,12 @@ class LanciaSfida(_Dialogo):
     polisportive del computer con la forza della loro squadra di domani, la gloria e l'ultima sfida, la
     formazione e i pulsanti Lancia, Scheda della polisportiva e Chiudi, nessuno predefinito: si lancia
     soltanto con Alt+L, decisione 10 di Gabriele del 14 ottobre 2026. Il computer risponde subito, e
-    l'esito arriva in un messaggio col suo suono; in esiti restano i messaggi, per la vista.
+    l'esito arriva in un messaggio col suo suono; in esiti restano i messaggi, per la vista. Dal 24 ottobre 2026
+    bersaglio, il nome di una polisportiva, la sceglie già nell'elenco: è la sfida al club di chi si è trovato nella
+    finestra Mercato e ricerca; se non c'è fra quelle da sfidare, la scelta resta sulla prima.
     """
 
-    def __init__(self, genitore, mondo, poli, impostazioni=None):
+    def __init__(self, genitore, mondo, poli, impostazioni=None, bersaglio=None):
         super().__init__(genitore, f"Lancia una sfida, {poli.nome}")
         self.mondo = mondo
         self.poli = poli
@@ -183,6 +187,10 @@ class LanciaSfida(_Dialogo):
         lancia.Bind(wx.EVT_BUTTON, self.lancia)
         scheda.Bind(wx.EVT_BUTTON, self.scheda)
         self.aggiorna(0)
+        if bersaglio is not None:
+            posto = next((i for i, b in enumerate(self.bersagli) if b["nome"] == bersaglio), None)
+            if posto is not None:
+                self.elenco.SetSelection(posto)
         self.completa((640, 640))
         self.elenco.SetFocus()
 

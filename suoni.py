@@ -91,6 +91,9 @@ al massimo anche con l'allenamento completo e con Allena tutti, l'incontro finit
 l'errore imprevisto senza finestra mentre MESS si chiude; le iscrizioni chiuse suonano col loro suono
 anche nei due ripieghi del calendario, Iscrivi e Togli dopo il sorteggio. È di Gabriele Battaglia (IZ4APU)
 & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la finestra Mercato e ricerca della decisione D36, arrivano gli eventi della finestra che
+aspettano il loro preset, in SENZA_PRESET: il codice li fa già suonare, e finché il passo dei suoni non li porta nella
+collezione tacciono senza avvisi. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -538,6 +541,39 @@ GRUPPI = (
 )
 EVENTI = {evento: preset for _titolo, gruppo in GRUPPI for evento, preset in gruppo.items()}
 
+# Gli eventi della finestra Mercato e ricerca, issue 8 e decisione D36, che il codice fa già suonare e che aspettano
+# il loro preset: il passo dei suoni, dopo le risposte di Gabriele, li porta nella collezione di GBUtils e nella mappa
+# qui sopra, ciascuno con la sua azione detta a parole, e li toglie da qui. Finché ci stanno, tacciono senza avvisi.
+SENZA_PRESET = frozenset({
+    # Le quattro schede della finestra, col cambio di scheda, Ctrl+Tab e Ctrl+Maiusc+Tab.
+    "scheda_risultati", "scheda_filtri", "scheda_altri_filtri", "scheda_filtri_allenatori",
+    # La casella dei preset: la voce Filtri attuali, non salvati, ripresa scorrendo.
+    "filtri_attuali_ripresi",
+    # I dialoghi dei preset e il posto da offrire a un allenatore, che si aprono.
+    "dialogo_salva_filtri", "dialogo_rinomina_preset", "dialogo_gestisci_preset", "dialogo_posto_da_offrire",
+    # I preset salvati, sostituiti, rinominati, eliminati e spostati, e quello al bordo che non si sposta.
+    "preset_salvato", "preset_sostituito", "preset_rinominato", "preset_eliminato", "preset_spostato_su", "preset_spostato_giu", "preset_non_si_sposta",
+    # Invio o Esc nella scheda della persona, che tornano all'elenco.
+    "ritorno_all_elenco",
+    # Le caselle dei filtri, spuntate e tolte, ciascuna col suo timbro.
+    "casella_allenatori_spuntata", "casella_allenatori_tolta", "casella_liberi_spuntata", "casella_liberi_tolta",
+    "casella_in_vendita_spuntata", "casella_in_vendita_tolta", "casella_del_computer_spuntata", "casella_del_computer_tolta",
+    "casella_tuoi_spuntata", "casella_tuoi_tolta", "casella_ritirati_spuntata", "casella_ritirati_tolta",
+    "casella_disponibili_oggi_spuntata", "casella_disponibili_oggi_tolta", "casella_senza_acciacchi_spuntata", "casella_senza_acciacchi_tolta",
+    "casella_solo_ritirati_che_allenano_spuntata", "casella_solo_ritirati_che_allenano_tolta", "casella_solo_nuovi_spuntata", "casella_solo_nuovi_tolta",
+    "casella_comprendi_usciti_spuntata", "casella_comprendi_usciti_tolta", "casella_senza_prelazione_altrui_spuntata", "casella_senza_prelazione_altrui_tolta",
+    # Le scelte dei filtri, a ogni freccia: le altre, sesso, classe migliore, tipo e ordine, hanno già il loro suono.
+    "filtro_classe_peggiore", "filtro_regione", "filtro_provincia", "filtro_tratto_si", "filtro_tratto_no", "filtro_tratto_indifferente", "filtro_indole",
+    "filtro_visus", "filtro_posto_attuale",
+    # I numeri e i testi dei filtri, quando ci si ferma: l'età massima ha già il suo.
+    "filtro_eta_minima", "filtro_costo_massimo", "filtro_comune", "filtro_polisportiva", "filtro_valore_minimo", "filtro_stipendio_massimo",
+    "filtro_mesi_contratto", "filtro_stipendio_capo",
+    # Azzera questi filtri, nella scheda Altri filtri.
+    "filtri_azzerati",
+    # I perché del motore: un'offerta non possibile per questa persona, chi oggi non gioca, il club che non si sfida.
+    "offerta_non_possibile", "non_gioca_oggi", "club_non_sfidabile",
+})
+
 # Ogni evento detto a parole: l'azione che lo fa suonare. La legge l'elenco dei suoni per Acu_Maker,
 # suoni_di_mess.txt, scritto da strumenti/elenco_suoni.py; una prova controlla che ogni evento abbia
 # la sua.
@@ -900,7 +936,9 @@ def suona(evento, sync=False, volume=None, semitoni=0.0, fattore=None):
         return False
     preset = EVENTI.get(evento)
     if preset is None:
-        print(f"MESS: evento sonoro sconosciuto, {evento}", file=sys.stderr)
+        # Un evento della finestra Mercato e ricerca che aspetta il suo preset tace senza avvisi.
+        if evento not in SENZA_PRESET:
+            print(f"MESS: evento sonoro sconosciuto, {evento}", file=sys.stderr)
         return False
     try:
         return _riproduci(evento, preset, sync, fattore, semitoni)
