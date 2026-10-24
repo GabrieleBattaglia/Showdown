@@ -747,3 +747,17 @@ def test_ogni_stato_che_il_motore_produce_si_salva_e_si_rilegge(mondo, cartella_
         ricaricato = Mondo()
         archivio.carica(ricaricato)
         assert ricaricato.filtri_di_ricerca == mondo.filtri_di_ricerca and scritti == []
+
+
+def test_svuota_il_valore_riporta_gli_operatori_senza_valore():
+    # Dal controllo finale del 24 ottobre 2026: con "non ha il dato" o "ha il dato" la regola in preparazione contava
+    # ancora dopo Aggiungi regola, un preset o la riapertura, perché svuotare il valore non la toglieva.
+    for operatore in ("manca", "presente"):
+        prep = mercato.Preparazione(caratteristica="costo", operatore=operatore, valore=None)
+        assert mercato.regola_pronta(prep)[0] is not None
+        vuota = mercato.svuota_il_valore(prep)
+        assert vuota.operatore not in ("manca", "presente") and mercato.regola_pronta(vuota) == (None, None)
+    # Gli altri operatori restano, e perdono soltanto il valore.
+    prep = mercato.Preparazione(caratteristica="costo", operatore="minore", valore="5000")
+    vuota = mercato.svuota_il_valore(prep)
+    assert vuota.operatore == "minore" and mercato.regola_pronta(vuota) == (None, None)

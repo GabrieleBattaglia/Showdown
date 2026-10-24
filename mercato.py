@@ -1203,8 +1203,17 @@ def con_la_preparazione(filtri, preparazione):
 
 
 def svuota_il_valore(preparazione):
-    """La preparazione col Valore vuoto, come dopo Aggiungi regola o all'apertura con un preset: il resto resta com'è."""
-    return replace(preparazione, valore=valore_vuoto(caratteristica(preparazione.bersaglio, preparazione.caratteristica)))
+    """
+    La preparazione col Valore vuoto, come dopo Aggiungi regola o all'apertura con un preset: il resto resta com'è,
+    salvo gli operatori senza valore, "non ha il dato" e "ha il dato", che tornano al primo operatore della
+    caratteristica; altrimenti la regola in preparazione conterebbe ancora, senza un valore che lo mostri. Dal
+    controllo finale del costruttore di regole, 24 ottobre 2026.
+    """
+    car = caratteristica(preparazione.bersaglio, preparazione.caratteristica)
+    operatore = preparazione.operatore
+    if operatore in modulo_regole.SENZA_VALORE:
+        operatore = modulo_regole.operatori(car)[0][0]
+    return replace(preparazione, operatore=operatore, valore=valore_vuoto(car))
 
 
 def con_la_caratteristica(preparazione, chiave):
