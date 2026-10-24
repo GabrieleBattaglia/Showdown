@@ -59,6 +59,12 @@ Dalla tappa 12, il 2026-10-14, punti 7.4 e 8.9 del progetto: il ritiro di chi si
 ha il suo suono, la chiamata dell'arbitro, e una fermata sua, così chi ascolta col fuoco su Prosegui
 lo sente prima del triplice fischio; la gara a squadre delle sfide e della coppa si ascolta come il
 singolare, e il cambio al tavolo della rotazione ha un suono breve suo, dalla parte di chi entra.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 11 e decisione D37: il blocco, che la regia
+mette sempre contro una sponda, ha il suo suono, mess_partita_blocco, la paletta che ferma di botto la
+pallina, e la parata resta alla ribattuta e alle parate che finiscono in fallo. Il controllo che porta
+la pallina dove parte il colpo si sposta con lei: resta scosso sul punto del blocco per la presa, poi
+va in linea retta fino alla partenza del colpo, con gli stessi campioni e lo stesso guadagno. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import collections
@@ -149,6 +155,8 @@ SUONI = {
     "rotolamento": "mess_partita_rotolamento",
     "sponda": "mess_partita_sponda",
     "parata": "mess_partita_parata",
+    # La issue 11: il blocco contro la sponda, con la V230.
+    "blocco": "mess_partita_blocco",
     "controllo": "mess_partita_controllo",
     "colpo": "mess_partita_colpo",
     "corpo": "mess_partita_corpo",
@@ -179,8 +187,9 @@ AZIONI = {
     "colpo_a_vuoto": "il colpo a vuoto in battuta, la paletta che manca la pallina e batte sul tavolo",
     "rotolamento": "la pallina che rotola, il sonaglio dei pallini, una capriola per giro",
     "sponda": "la pallina che sbatte sulla sponda o sulla curva di un angolo",
-    "parata": "la parata, la pallina che si ferma sulla paletta",
-    "controllo": "il controllo, la pallina fermata e scossa con la paletta prima del colpo",
+    "parata": "la parata che non blocca la pallina, la ribattuta che la rimanda indietro piano o la difesa che finisce in fallo",
+    "blocco": "il blocco, la paletta che ferma di botto la pallina contro la sponda",
+    "controllo": "il controllo, la pallina bloccata, scossa con la paletta e portata dove parte il colpo",
     "colpo": "il colpo d'attacco dello scambio",
     "corpo": "la pallina che colpisce il corpo di chi difende, il body touch",
     "goal": "il goal, la pallina che cade nella tasca della porta",
@@ -586,7 +595,10 @@ def suoni_fermi(e):
     if tipo in (E.COLPO, E.RISCALDAMENTO_COLPO):
         return [] if causa == "paletta_caduta" else [("colpo", 0.0)]
     if tipo == E.PARATA:
-        return [] if esito == "goal" or causa in CAUSE_SENZA_PARATA else [("parata", 0.0)]
+        if esito == "goal" or causa in CAUSE_SENZA_PARATA:
+            return []
+        # Il blocco, issue 11: la fermata ha il suo suono, contro la sponda.
+        return [("blocco" if esito == "fermata" else "parata", 0.0)]
     if tipo == E.FALLO:
         return ([("paletta_caduta", 0.0)] if causa == "paletta_caduta" else []) + [("fallo", ritardo_dell_esito("fallo"))]
     if tipo == E.GOAL:
@@ -696,7 +708,16 @@ def posati_dell_evento(e, varianti=None, causa=None):
               for ruolo, ritardo in suoni_fermi(e)]
     if e.tipo == E.CONTROLLO:
         variante = varianti("controllo")
-        posati.append(_fermo("controllo", e.t, e.pos, e.n, variante, in_fila("controllo", max(e.durata, 0.15), variante), GUADAGNO_CONTROLLO))
+        durata = max(e.durata, 0.15)
+        mono = in_fila("controllo", durata, variante)
+        dati = e.dati or {}
+        porta_a = dati.get("porta_a")
+        if porta_a is None or tuple(porta_a) == tuple(e.pos):
+            posati.append(_fermo("controllo", e.t, e.pos, e.n, variante, mono, GUADAGNO_CONTROLLO))
+        else:
+            # La issue 11: la pallina resta scossa dove è stata bloccata, poi la paletta la porta in linea retta alla partenza del colpo.
+            presa = min(float(dati.get("presa", 0.0)), durata)
+            posati.append(Posato("controllo", e.t, mono, np.array([0.0, presa, durata]), [e.pos, e.pos, tuple(porta_a)], np.full(3, GUADAGNO_CONTROLLO), e.n, variante))
     elif e.tipo == E.FISCHIO:
         # Il fischio dura quanto il suo preset, non quanto il tempo che il motore gli dà prima della chiamata.
         posati.append(_fermo(f"fischio_{e.fischio}", e.t, e.pos, e.n))

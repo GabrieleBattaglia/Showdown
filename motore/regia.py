@@ -21,6 +21,17 @@ verso la porta corre sul suo lato fino all'angolo di chi difende, e lì gira in 
 tasca, con la tappa svolta; prima era una retta lunga dal lato al centro della porta, che passava al
 centro già all'altezza dello schermo. Gli esiti non cambiano, e neanche le estrazioni della scena.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 11 e decisione D37: i blocchi avvengono
+soltanto sulle sponde. La fermata sta contro la sponda della sua zona, e quella di una pallina arrivata
+al centro contro la sponda più vicina; poi il controllo palla porta la pallina dove parte il colpo che
+il motore ha già scelto, con una delle tre possibilità di Gabriele compatibili con quel colpo: dal
+punto del blocco o da uno vicino sulla stessa sponda, dal centro, o dall'altra sponda. La scelta
+viene dal caso della scena, pesata dal controllo palla del giocatore: chi controlla meglio porta più
+spesso la pallina altrove. Se la strada è lunga il controllo dura di più, perché la paletta non
+porta la pallina oltre VELOCITA_TRASPORTO. Le palle morte si fermano a centrocampo, lontane dai
+giocatori, anche la pallina che sfugge al controllo. Gli esiti non cambiano, e il dado della partita
+non tira niente di nuovo.
+È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import itertools
@@ -51,11 +62,44 @@ from motore.tavolo import (
 _NUMERI_SERVIZIO = {1: "primo_servizio", 2: "secondo_servizio", 3: "terzo_servizio"}
 # I lungolinea, che verso la porta corrono sul loro lato fino all'angolo, issue 10.
 LUNGOLINEA = frozenset(("lungolineasx", "lungolineadx"))
+# Le tre possibilità di Gabriele dopo il blocco, issue 11: tirare dal punto del blocco o da uno vicino
+# sulla stessa sponda, portare la pallina al centro, o cambiare sponda e tirare dall'altra.
+DAL_BLOCCO = "dal_blocco"
+AL_CENTRO = "al_centro"
+ALTRA_SPONDA = "altra_sponda"
+TRASPORTI = (DAL_BLOCCO, AL_CENTRO, ALTRA_SPONDA)
+# La paletta porta la pallina al più a questa velocità, in cm/s: per una strada più lunga il controllo dura di più.
+VELOCITA_TRASPORTO = 90.0
+# La parte del controllo in cui la pallina resta scossa dove è stata bloccata, prima di muoversi.
+QUOTA_PRESA = 0.3
+# La qualità del controllo a cui portare la pallina altrove e tirare dal blocco si equivalgono: nella
+# popolazione di prova del 24 ottobre 2026 è la mediana, 19 su 100.
+MEZZO_DEL_CONTROLLO = 20.0
+# Chi tira vicino al blocco si sposta lungo la sponda al più di tanto, chi controlla meglio di più, e
+# resta fra queste distanze dalla sua linea.
+SCARTO_LUNGO_LA_SPONDA = 15.0
+DISTANZE_SULLA_SPONDA = (15.0, 45.0)
+# Le palle morte si fermano a centrocampo, lontane dai giocatori: a non più di 60 cm dallo schermo. La
+# ribattuta lenta e la pallina sfuggita al controllo si fermano prima dello schermo.
+CENTROCAMPO = (META_TAVOLO - 60.0, META_TAVOLO + 60.0)
+PRIMA_DELLO_SCHERMO = META_TAVOLO - 8.0
 _FISCHI = {E.SINGOLO: "FISCHIO_SINGOLO", E.DOPPIO: "FISCHIO_DOPPIO", E.LUNGO: "FISCHIO_LUNGO", E.TRIPLO: "FISCHIO_TRIPLO"}
 
 
 def altra(parte):
     return "B" if parte == "A" else "A"
+
+
+def aree_di_partenza(colpo):
+    """
+    Da dove si tira un colpo, nel riferimento di chi tira: sinistra, centro o destra, issue 11. I
+    lungolinea e le diagonali dal lato della loro partenza; i colpi di sponda dal centro o dal lato
+    opposto alla sponda che toccano per prima; la bomba dal centro.
+    """
+    lato = lato_di(colpo.partenza_u, "A")
+    if lato != "centro" or not colpo.sponde:
+        return (lato,)
+    return ("centro", "destra" if colpo.sponde[0] == "sinistra" else "sinistra")
 
 
 class Regia:
@@ -81,6 +125,8 @@ class Regia:
         # La mano del battitore e l'arrivo della battuta, scelti insieme alla ripresa.
         self._mano_battuta = None
         self._arrivo_battuta_locale = None
+        # La partenza del colpo che segue il controllo, scelta dal controllo stesso, issue 11.
+        self._partenza_pronta = None
 
     # Gli strumenti.
 
@@ -354,6 +400,7 @@ class Regia:
         n = len(passi)
         decisivo = None
         ultimo_colpitore = None
+        self._partenza_pronta = None
         while i < n:
             p = passi[i]
             chi = p.chi.id
@@ -386,8 +433,11 @@ class Regia:
                     durata *= t.FATTORE_CONTROLLO_GIOCO_RAPIDO
                 if p.esito == "trattenuta":
                     durata = self._uniforme(*t.DURATA_TRATTENUTA)
+                dati = {"valore": round(p.valore, 3), "prob": _arrotonda(p.prob)}
+                if p.esito == "riuscito":
+                    durata = self._porta_la_pallina(chi, pos, passi, i, False, durata, dati)
                 eventi.append(self._evento(E.CONTROLLO, durata, chi, pos, mano=self.mani[chi], esito=p.esito, causa=p.causa, critico=p.critico, colpo_n=colpo_n,
-                                           dati={"valore": round(p.valore, 3), "prob": _arrotonda(p.prob)}))
+                                           dati=dati))
             elif p.tipo == "sfuggita":
                 if p.esito == "autogoal":
                     porta = centro_porta(self.campo[chi].parte)
@@ -395,12 +445,18 @@ class Regia:
                     eventi.append(self._evento_volo(chi, volo))
                     pos = (volo[-1].x, volo[-1].y)
                 elif p.esito == "pallina_ferma":
-                    self._attesa_reale(2.0)
+                    # La palla morta di Gabriele, issue 11: la pallina sfugge e si ferma a centrocampo, lontana dai giocatori.
+                    pos = self._volo_fino_a_fermarsi(eventi, chi, pos, colpo_n, (60.0, 100.0), {"sfuggita": True})
                 else:
-                    eventi.append(self._evento(E.CONTROLLO, 0.6, chi, pos, mano=self.mani[chi], esito="recupero", colpo_n=colpo_n))
+                    dati = {}
+                    durata = self._porta_la_pallina(chi, pos, passi, i, True, 0.6, dati)
+                    eventi.append(self._evento(E.CONTROLLO, durata, chi, pos, mano=self.mani[chi], esito="recupero", colpo_n=colpo_n, dati=dati or None))
             elif p.tipo == "colpo":
                 colpo_n += 1
-                partenza = self._partenza_colpo(chi, p.colpo)
+                if self._partenza_pronta is not None:
+                    partenza, self._partenza_pronta = self._partenza_pronta, None
+                else:
+                    partenza = self._partenza_colpo(chi, p.colpo)
                 eventi.append(self._evento(E.COLPO, 0.0, chi, partenza, colpo=p.colpo, mano=self.mani[chi], esito=p.esito, causa=p.causa, critico=p.critico,
                                            colpo_n=colpo_n, dati=self._dati_colpo(p)))
                 pos = partenza
@@ -440,6 +496,80 @@ class Regia:
         if p.chi.cambiovelocita and p.esito == "colpo":
             dati["cambio_velocita"] = True
         return dati
+
+    def _porta_la_pallina(self, chi, pos, passi, i, recupero, durata, dati):
+        """
+        Il controllo palla della issue 11: dopo il blocco la paletta porta la pallina dove partirà il
+        colpo che segue, già scelto dal motore, e il colpo la ritrova lì. dati riceve il trasporto, il
+        punto d'arrivo in porta_a e la presa, cioè i secondi in cui la pallina resta scossa dove è stata
+        bloccata. Restituisce la durata del controllo, allungata quando la strada è lunga, perché la
+        paletta non porta la pallina più veloce di VELOCITA_TRASPORTO. Se dopo il controllo non viene
+        un colpo, come per una rottura, la pallina resta dov'è. recupero è vero per la pallina ripresa
+        dopo che è sfuggita.
+        """
+        seguente = passi[i + 1] if i + 1 < len(passi) else None
+        if seguente is None or seguente.tipo != "colpo" or seguente.chi.id != chi:
+            return durata
+        trasporto, partenza = self._partenza_dopo_il_blocco(chi, pos, seguente.colpo, recupero)
+        self._partenza_pronta = partenza
+        presa = QUOTA_PRESA * durata
+        strada = math.hypot(partenza[0] - pos[0], partenza[1] - pos[1])
+        dati.update(trasporto=trasporto, porta_a=(round(partenza[0], 1), round(partenza[1], 1)), presa=round(presa, 3))
+        return max(durata, presa + strada / VELOCITA_TRASPORTO)
+
+    def _partenza_dopo_il_blocco(self, chi, pos, nome, recupero=False):
+        """
+        Da dove parte il colpo dopo il blocco in pos, con le tre possibilità di Gabriele compatibili
+        con il colpo, issue 11: dal punto del blocco o da uno vicino sulla stessa sponda, dal centro,
+        o dall'altra sponda. Chi controlla meglio porta più spesso la pallina altrove, e chi tira
+        vicino al blocco si sposta di più lungo la sponda. La bravura viene dalla qualità del controllo
+        che usa il motore, cioè il controllo palla con precisione e tenuta, per la stanchezza del
+        punto: a MEZZO_DEL_CONTROLLO vale la metà; dopo un recupero la pallina è meno in mano, e vale
+        quanto il tempo che il motore le dà, TEMPO_DOPO_RECUPERO. Tre tiri della scena, sempre: la
+        possibilità e due per il punto.
+        """
+        c = self.campo[chi]
+        parte = c.parte
+        u_blocco, v_blocco = locale_in_assoluto(parte, *pos)
+        lato = "sinistra" if u_blocco < CENTRO_X else "destra"
+        altro = "destra" if lato == "sinistra" else "sinistra"
+        qualita = max(0.0, c.C * c.eff)
+        bravura = qualita / (qualita + MEZZO_DEL_CONTROLLO)
+        if recupero:
+            bravura *= self.tar.TEMPO_DOPO_RECUPERO
+        bravura = min(0.95, max(0.05, bravura))
+        aree = aree_di_partenza(self.tar.COLPI[nome])
+        pesi = []
+        if lato in aree:
+            pesi.append((DAL_BLOCCO, 1.0 - bravura))
+        if "centro" in aree:
+            pesi.append((AL_CENTRO, bravura))
+        if altro in aree:
+            # Cambiare sponda è la strada più lunga.
+            pesi.append((ALTRA_SPONDA, bravura / 2.0))
+        trasporto = self._pesata(pesi)
+        a, b = self.rng.random(), self.rng.random()
+        s = self.tar.SCOSTAMENTO_MASSIMO
+        if trasporto == DAL_BLOCCO:
+            u = u_blocco
+            v = min(DISTANZE_SULLA_SPONDA[1], max(DISTANZE_SULLA_SPONDA[0], v_blocco + SCARTO_LUNGO_LA_SPONDA * bravura * (2.0 * a - 1.0)))
+        elif trasporto == AL_CENTRO:
+            u = CENTRO_X + s * (2.0 * a - 1.0)
+            v = 25.0 + 15.0 * b
+        else:
+            dalla_sponda = MARGINE_GIOCO + s * a
+            u = dalla_sponda if altro == "sinistra" else LARGHEZZA_TAVOLO - dalla_sponda
+            v = 25.0 + 15.0 * b
+        return trasporto, locale_in_assoluto(parte, u, v)
+
+    def _pesata(self, pesi):
+        """Una delle voci (nome, peso), estratta col caso della scena in proporzione ai pesi: un tiro solo."""
+        x = self.rng.random() * sum(peso for _nome, peso in pesi)
+        for nome, peso in pesi:
+            x -= peso
+            if x < 0.0:
+                return nome
+        return pesi[-1][0]
 
     def _prossima_parata(self, passi, i):
         """Il passo della parata che segue, saltando un cambio di mano."""
@@ -506,10 +636,17 @@ class Regia:
         """
         Dove arriva davvero la pallina, dato l'arrivo alla parata: per un goal entra a non più di
         12 cm dal centro della tasca, per una difesa irregolare è toccata dentro l'area di porta,
-        per un body touch colpisce il corpo fra 5 e 25 cm dalla linea; altrimenti resta dov'era.
+        per un body touch colpisce il corpo fra 5 e 25 cm dalla linea; il blocco, issue 11, la ferma
+        contro la sponda; altrimenti resta dov'era.
         """
         parte_dif = parata.chi.parte
         causa = parata.causa
+        if parata.esito == "fermata":
+            # I blocchi avvengono soltanto sulle sponde: quella della zona, e per la pallina arrivata al
+            # centro la più vicina. Il centro della pallina sta a MARGINE_GIOCO, 3 cm dalla sponda
+            # efficace, perché un arrivo proprio sulla sponda non ha traiettoria; la distanza dalla linea resta.
+            x = MARGINE_GIOCO if arrivo[0] < CENTRO_X else LARGHEZZA_TAVOLO - MARGINE_GIOCO
+            return x, arrivo[1]
         if parata.esito == "goal" or (parata.esito == "fallo" and causa == "difesa_irregolare"):
             porta = centro_porta(parte_dif)
             raggio = self._uniforme(2.0, 12.0 if parata.esito == "goal" else RAGGIO_AREA_PORTA - 1.0)
@@ -549,10 +686,14 @@ class Regia:
         return sponde
 
     def _volo_debole(self, eventi, chi, pos, p, colpo_n):
-        """Il colpo debole si ferma da solo fra 120 e 280 cm dalla linea di chi ha colpito, prima di arrivare all'avversario."""
+        """
+        Il colpo debole si ferma da solo prima di arrivare all'avversario, a centrocampo, lontano dai
+        giocatori: fino alla issue 11 fra 120 e 280 cm dalla linea di chi ha colpito, ora a non più di
+        60 cm dallo schermo, da una parte o dall'altra.
+        """
         parte = self.campo[chi].parte
         u = pos[0] if parte == "A" else LARGHEZZA_TAVOLO - pos[0]
-        v_fermo = self._uniforme(120.0, 280.0)
+        v_fermo = self._uniforme(*CENTROCAMPO)
         u_fermo = min(LARGHEZZA_TAVOLO - MARGINE_GIOCO, max(MARGINE_GIOCO, u + self._uniforme(-20.0, 20.0)))
         arrivo = locale_in_assoluto(parte, u_fermo, v_fermo)
         lunghezza = math.hypot(arrivo[0] - pos[0], arrivo[1] - pos[1])
@@ -714,7 +855,7 @@ class Regia:
             self.pallina = "terra" if fuori else "tavolo"
         elif p.tipo == "palla_morta":
             if p.causa == "ribattuta_lenta":
-                pos = self._volo_ribattuta_lenta(eventi, chi, pos, colpo_n)
+                pos = self._volo_fino_a_fermarsi(eventi, chi, pos, colpo_n, (50.0, 90.0), {"ribattuta": True})
             if p.causa in ("pallina_ferma", "colpo_debole", "ribattuta_lenta"):
                 self._attesa_reale(2.0)
             eventi.append(self._evento(E.PALLA_MORTA, 0.0, chi, pos, fischio=E.SINGOLO, **comuni))
@@ -736,15 +877,22 @@ class Regia:
                 return p.chi
         raise ErroreMotore("Una difesa irregolare senza parata.")
 
-    def _volo_ribattuta_lenta(self, eventi, chi, pos, colpo_n):
+    def _volo_fino_a_fermarsi(self, eventi, chi, pos, colpo_n, velocita, dati):
+        """
+        La pallina che chi l'ha toccata per ultimo non gioca più, e si ferma da sola prima dello
+        schermo, a centrocampo, lontana dai giocatori: la ribattuta lenta e, dalla issue 11, la
+        pallina che sfugge al controllo, che prima restava ferma sul punto della parata. Fino alla issue
+        11 la ribattuta lenta si fermava fra 80 e 170 cm dalla linea. velocita è l'intervallo della
+        velocità iniziale.
+        """
         parte = self.campo[chi].parte
         u = pos[0] if parte == "A" else LARGHEZZA_TAVOLO - pos[0]
-        v_fermo = self._uniforme(80.0, 170.0)
+        v_fermo = self._uniforme(CENTROCAMPO[0], PRIMA_DELLO_SCHERMO)
         arrivo = locale_in_assoluto(parte, min(LARGHEZZA_TAVOLO - MARGINE_GIOCO, max(MARGINE_GIOCO, u + self._uniforme(-25.0, 25.0))), v_fermo)
         lunghezza = max(1.0, math.hypot(arrivo[0] - pos[0], arrivo[1] - pos[1]))
-        v0 = self._uniforme(50.0, 90.0)
+        v0 = self._uniforme(*velocita)
         volo = self._volo(pos, arrivo, (), v0, "fermo", v0 * v0 / (2.0 * lunghezza))
-        evento = self._evento_volo(chi, volo, None, {"ribattuta": True})
+        evento = self._evento_volo(chi, volo, None, dati)
         evento.colpo_n = colpo_n
         eventi.append(evento)
         return arrivo
@@ -851,7 +999,9 @@ def controlla_invarianti(eventi):
     crescenti e istanti che non tornano indietro, coordinate dentro il tavolo, voli coerenti, lati
     uguali alla posizione, un solo punto o una sola ripetizione per punto, il fischio doppio per
     ogni goal e quello singolo per ogni fallo, la battuta regolare con una sponda sola prima dello
-    schermo, e il fischio singolo nell'istante stesso di una rottura.
+    schermo, e il fischio singolo nell'istante stesso di una rottura. Dalla issue 11 anche il blocco
+    contro la sponda, il controllo che porta la pallina proprio dove parte il colpo che segue, e le
+    palle morte a centrocampo, salvo quella del limite tecnico, che non è una pallina ferma.
     """
     problemi = []
     precedente = None
@@ -887,6 +1037,7 @@ def controlla_invarianti(eventi):
             problemi.extend(_controlla_battuta(ev, seguente))
         if ev.tipo == E.ROTTURA and (seguente is None or seguente.tipo != E.FISCHIO or seguente.fischio != E.SINGOLO or abs(seguente.t - ev.t) > 1e-6):
             problemi.append(f"Evento {ev.n}: la rottura non è seguita subito dal fischio singolo.")
+        problemi.extend(_controlla_blocco_e_palla_morta(ev, seguente))
     for chiave, quanti in esiti_per_punto.items():
         if quanti != 1:
             problemi.append(f"Set {chiave[0]}, punto {chiave[1]}: {quanti} eventi di punto o ripetizione.")
@@ -904,6 +1055,22 @@ def _controlla_battuta(battuta, volo):
     if sponde != 1:
         return [f"Evento {volo.n}: la battuta regolare tocca {sponde} sponde prima dello schermo invece di una."]
     return []
+
+
+def _controlla_blocco_e_palla_morta(ev, seguente):
+    """
+    La issue 11: il blocco sta contro una sponda, il controllo che porta la pallina la porta proprio
+    dove parte il colpo che segue, dello stesso giocatore, e la palla morta sta a centrocampo.
+    """
+    problemi = []
+    if ev.tipo == E.PARATA and ev.esito == "fermata" and ev.pos is not None and min(ev.pos[0], LARGHEZZA_TAVOLO - ev.pos[0]) > MARGINE_GIOCO + 0.05:
+        problemi.append(f"Evento {ev.n}: un blocco lontano dalla sponda, a x {ev.pos[0]}.")
+    porta_a = (ev.dati or {}).get("porta_a") if ev.tipo == E.CONTROLLO else None
+    if porta_a is not None and (seguente is None or seguente.tipo != E.COLPO or seguente.chi != ev.chi or math.dist(seguente.pos, porta_a) > 0.15):
+        problemi.append(f"Evento {ev.n}: il controllo non porta la pallina dove parte il colpo.")
+    if ev.tipo == E.PALLA_MORTA and ev.causa != "limite_tecnico" and ev.pos is not None and not CENTROCAMPO[0] - 0.05 <= ev.pos[1] <= CENTROCAMPO[1] + 0.05:
+        problemi.append(f"Evento {ev.n}: una palla morta lontana da centrocampo, a y {ev.pos[1]}.")
+    return problemi
 
 
 def _dentro(pos):
