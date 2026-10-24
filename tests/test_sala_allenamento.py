@@ -7,10 +7,12 @@ buonuscita nello svincolo, la proposta di contratto nel dialogo dell'ingaggio e 
 nella guida. I messaggi di wx sono sostituiti da un registratore, che risponde come gli si dice.
 Dal 2026-10-24, col collaudo di gioco, Allena tutti coi tesserati tutti infortunati e con tutto al massimo, ciascuno col suo perché e il suo suono.
 Con le verifiche, il tutto al massimo accordato e detto soltanto di chi ha un punto da spendere.
+Coi collegamenti della finestra Mercato e ricerca, lo stesso giorno, l'ingaggio con la proposta di contratto lo offre lei.
 """
 
 import datetime
 import random
+import types
 
 import pytest
 import wx
@@ -25,6 +27,7 @@ import suoni
 import testi
 from costanti import FILE_MONDO, MESI_CONTRATTO_MIN, STIPENDIO_MINIMO
 from gui import dialoghi
+from gui import mercato_e_ricerca as gui_mercato
 from gui.finestra import FinestraPrincipale
 from modelli import Polisportiva
 from mondo import Mondo
@@ -569,14 +572,19 @@ def test_il_dialogo_dell_ingaggio_comincia_con_la_proposta(app_wx, mondo, messag
 
     monkeypatch.setattr(dialoghi.Cifra, "__init__", registra)
     monkeypatch.setattr(dialoghi.Cifra, "ShowModal", lambda self: wx.ID_CANCEL)
-    dialogo = dialoghi.Mercato(None, mondo, poli)
+    # Dai collegamenti del 24 ottobre 2026 l'ingaggio lo offre la finestra Mercato e ricerca, coi rimandi e gli annunci muti.
+    annunci = types.SimpleNamespace(annuncia=lambda righe, impostazioni: None, svuota=lambda: None)
+    dialogo = gui_mercato.MercatoERicerca(None, mondo, None, "mercato", pianifica=lambda secondi, funzione: types.SimpleNamespace(Stop=lambda: None), annunci=annunci)
     try:
-        candidato = next(c for c in mercato.candidati(mondo, poli, [], "liberi", 0, "valore") if c.tipo == mercato.LIBERO)
-        dialogo._ingaggio(candidato)
+        candidato = next(r for r in dialogo.righe if r.stato == mercato.LIBERO)
+        assert dialogo._ingaggio(candidato, poli) is None
     finally:
         dialogo.Destroy()
+        ciclo = wx.GUIEventLoop()
+        wx.CallLater(30, ciclo.Exit)
+        ciclo.Run()
     titolo, spiegazione = spiegazioni[0]
-    g = candidato.giocatore
+    g = candidato.persona
     assert titolo == f"Ingaggio di {_nome(g)}"
     assert spiegazione.startswith(testi.proposta_di_contratto(g, mondo) + " Per firmare, ")
     assert f"chiede {testi.euro(candidato.costo)} d'ingaggio" in spiegazione

@@ -67,6 +67,10 @@ la sua apertura come un Invio, e ignora gli Invio che arrivano entro la grazia: 
 nuove, e un Invio tenuto giù sulla voce di menu sceglieva il primo giocatore e giocava un'amichevole che nessuno
 aveva scelto. E la pressione di un pulsante che si ripete entro mezzo secondo, un tasto tenuto giù, si ignora con
 _ripetuta, che arriva dal calendario dei tornei. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, coi collegamenti della finestra, escono il dialogo del mercato dei giocatori, quello del mercato degli
+allenatori e quello della ricerca, che vivono nella finestra Mercato e ricerca, in gui/mercato_e_ricerca.py: Assumi dello
+staff apre lei, sugli allenatori liberi col posto già scelto, e lo staff tiene le offerte agli allenatori fra i suoi esiti
+e il resto fra quelli della finestra. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -78,21 +82,17 @@ import wx
 from GBwx import STILE_ADATTABILE, adatta_finestra, pannello_scorrevole
 
 import allenamento
-import classe
 import contratti
 import economia
 import impostazioni as modulo_impostazioni
 import luoghi
-import mercato
 import partita_sonora
-import ricerca
 import staff
 import suoni
 import testi
 from costanti import (
     INDOLI,
     INTENSITA,
-    LIVELLO_MINIMO_ALLENATORE,
     MESI_CONTRATTO_MAX,
     MESI_CONTRATTO_MIN,
     NOME_POLISPORTIVA_MAX,
@@ -101,7 +101,7 @@ from costanti import (
     STIPENDIO_MINIMO,
 )
 from gui import aspetto
-from modelli import normalizza_nome, probabilita_accettazione
+from modelli import normalizza_nome
 from motore import cronaca
 
 PAYPAL_URL = "https://paypal.me/GabrieleBattaglia780"
@@ -386,79 +386,6 @@ class SceltaGiocatore(_Dialogo):
             suoni.suona("nessuna_selezione")
             return
         self.scelto = self.visibili[indice]
-        self.chiudi(wx.ID_OK)
-
-
-class Ricerca(_Dialogo):
-    """
-    La ricerca dei giocatori: dove cercare, la caratteristica, la condizione e il valore. Senza la
-    scelta di dove cercare è il filtro del mercato, che cerca sempre fra i liberi.
-    """
-
-    def __init__(self, genitore, con_ambito=True, titolo="Cerca giocatori", pulsante="C&erca"):
-        super().__init__(genitore, titolo)
-        self.risultato = None
-        self.ambito = None
-        if con_ambito:
-            self.etichetta("&Dove cercare")
-            self.ambito = self.aggiungi(wx.Choice(self.pannello, choices=[nome.capitalize() for _chiave, nome in ricerca.AMBITI]))
-            self.ambito.SetSelection(0)
-        self.etichetta("&Caratteristica")
-        self.criterio = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome, _tipo, _leggi in ricerca.CRITERI]))
-        self.etichetta("C&ondizione")
-        self.condizione = self.aggiungi(wx.Choice(self.pannello))
-        self.etichetta("&Valore")
-        self.valore = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PROCESS_ENTER))
-        cerca, _annulla = self.pulsanti((wx.ID_OK, pulsante), (wx.ID_CANCEL, "Annulla"))
-        self.criterio.SetSelection(0)
-        self.criterio.Bind(wx.EVT_CHOICE, self.al_criterio)
-        self.valore.Bind(wx.EVT_TEXT_ENTER, self.conferma)
-        cerca.Bind(wx.EVT_BUTTON, self.conferma)
-        self.al_criterio()
-        self.completa((440, 360))
-        (self.ambito or self.criterio).SetFocus()
-
-    def chiave_criterio(self):
-        return ricerca.CRITERI[self.criterio.GetSelection()][0]
-
-    def al_criterio(self, event=None):
-        """Le condizioni giuste per la caratteristica scelta; per il sesso e per il sì o no il valore non serve."""
-        tipo = ricerca.tipo_criterio(self.chiave_criterio())
-        self.condizione.Set([nome for _chiave, nome in ricerca.CONDIZIONI[tipo]])
-        self.condizione.SetSelection(0)
-        self.valore.Enable(tipo not in ricerca.SENZA_VALORE)
-
-    def conferma(self, event=None):
-        """Controlla il valore e conserva la ricerca in risultato: ambito, criterio, condizione, valore e descrizione."""
-        criterio = self.chiave_criterio()
-        tipo = ricerca.tipo_criterio(criterio)
-        condizione = ricerca.CONDIZIONI[tipo][self.condizione.GetSelection()][0]
-        testo = self.valore.GetValue().strip()
-        valore = None
-        if tipo == ricerca.NUMERO:
-            try:
-                valore = ricerca.leggi_numero(testo)
-            except ValueError:
-                self.avvisa("Il valore deve essere un numero, per esempio 150 o 12,5.", self.valore)
-                return
-        elif tipo == ricerca.CLASSE:
-            try:
-                valore = ricerca.leggi_classe(testo)
-            except ValueError:
-                self.avvisa("La classe si scrive come nella scheda, per esempio G4, da A1 a K0, oppure col numero del livello, da 1 a 100.", self.valore)
-                return
-        elif tipo == ricerca.TESTO:
-            if not testo:
-                self.avvisa("Scrivi il testo da cercare.", self.valore)
-                return
-            valore = testo
-        ambito = ricerca.AMBITI[self.ambito.GetSelection()][0] if self.ambito else None
-        descrizione = f"{ricerca.nome_criterio(criterio).lower()} {ricerca.nome_condizione(criterio, condizione)}"
-        if valore is not None:
-            descrizione += f" {ricerca.codice_classe(valore) if tipo == ricerca.CLASSE else testi.numero(valore) if tipo == ricerca.NUMERO else valore}"
-        if ambito is not None:
-            descrizione = f"{ricerca.nome_ambito(ambito)}, {descrizione}"
-        self.risultato = (ambito, criterio, condizione, valore, descrizione)
         self.chiudi(wx.ID_OK)
 
 
@@ -832,245 +759,6 @@ class Cifra(_Dialogo):
             return
         self.valore = self.cifra.GetValue()
         self.chiudi(wx.ID_OK)
-
-
-class Mercato(_Dialogo):
-    """
-    Il mercato delle decisioni D20, D22 e D23, sul modello di Hattrick: filtri, chi mostrare, costo
-    massimo e ordine danno l'elenco dei candidati. A un libero si offre un ingaggio, scegliendo la
-    cifra e sentendo la probabilità che accetti; chi è in vendita si compra al suo prezzo; per un
-    tesserato del computer si offre una cifra alla sua polisportiva. Ogni offerta chiede conferma,
-    perché costa una mossa e non si ritira, e l'esito arriva in un messaggio. Il dialogo resta
-    aperto, e in esiti tiene i testi degli esiti, che la finestra racconta alla chiusura.
-    Ogni azione ha il suo suono, e ogni esito di un'offerta il suo, così accettata e rifiutata si
-    distinguono prima di leggere il messaggio. Quando un'azione svuota l'elenco dei candidati, o lo
-    riempie di nuovo, al posto del suo suono si sente quello del passaggio.
-    """
-
-    def __init__(self, genitore, mondo, poli, impostazioni=None):
-        super().__init__(genitore, f"Mercato di {poli.nome}")
-        self.mondo = mondo
-        self.poli = poli
-        self.impostazioni = impostazioni
-        self.filtri = []
-        self.esiti = []
-        self.righe = []
-        self.elenco_vuoto = _ElencoCheSiRestringe()
-        self.info = wx.StaticText(self.pannello, label=testi.info_mercato(poli, mondo))
-        self.sizer.Add(self.info, 0, wx.ALL, 8)
-        self.etichetta("&Filtri")
-        self.elenco_filtri = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE))
-        riga = wx.BoxSizer(wx.HORIZONTAL)
-        for testo, azione in (("&Aggiungi un filtro...", self.aggiungi_filtro), ("&Togli il filtro", self.togli_filtro), ("Togli t&utti i filtri", self.togli_tutti)):
-            pulsante = wx.Button(self.pannello, label=testo)
-            pulsante.Bind(wx.EVT_BUTTON, azione)
-            riga.Add(pulsante, 0, wx.ALL, 4)
-        self.sizer.Add(riga, 0, wx.LEFT | wx.RIGHT, 4)
-        self.etichetta("Mo&stra")
-        self.scelta = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome, _tipi in mercato.SCELTE]))
-        self.scelta.SetSelection(0)
-        self.etichetta("Costo &massimo in euro, zero per nessun limite")
-        self.massimo = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=100_000_000, initial=0))
-        self.etichetta("O&rdina per")
-        self.ordine = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome in mercato.ORDINI]))
-        self.ordine.SetSelection(0)
-        self.etichetta_trovati = wx.StaticText(self.pannello, label="&Giocatori trovati")
-        self.sizer.Add(self.etichetta_trovati, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        self.trovati = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
-        offri, scheda, _chiudi = self.pulsanti((wx.ID_ANY, "Fai un'&offerta"), (wx.ID_ANY, "Sc&heda del giocatore"), (wx.ID_CANCEL, "&Chiudi"))
-        offri.Bind(wx.EVT_BUTTON, self.offri)
-        scheda.Bind(wx.EVT_BUTTON, self.scheda)
-        self.trovati.Bind(wx.EVT_LISTBOX_DCLICK, self.offri)
-        self.scelta.Bind(wx.EVT_CHOICE, lambda event: self.aggiorna(suono="mercato_scelta_cambiata"))
-        self.massimo.Bind(wx.EVT_SPINCTRL, self.aggiorna)
-        self.massimo.Bind(wx.EVT_TEXT, self.aggiorna)
-        self.ordine.Bind(wx.EVT_CHOICE, lambda event: self.aggiorna(suono="mercato_ordine_cambiato"))
-        self.mostra_filtri()
-        self.aggiorna()
-        self.completa((700, 620))
-        self.trovati.SetFocus()
-
-    def mostra_filtri(self, posto=0):
-        """L'elenco dei filtri; senza filtri dice che compaiono tutti."""
-        self.elenco_filtri.Set([descrizione for _c, _k, _v, descrizione in self.filtri] or ["Nessun filtro: compaiono tutti."])
-        self.elenco_filtri.SetSelection(min(posto, self.elenco_filtri.GetCount() - 1))
-
-    def aggiorna(self, event=None, posto=0, suono=None):
-        """
-        Ricalcola l'elenco dei candidati con filtri, scelta, costo massimo e ordine del momento, e
-        suona il suono dell'azione, o quello del passaggio dell'elenco da pieno a vuoto o ritorno. Se
-        il mercato si apre già vuoto, lo dice dopo il suono dell'apertura.
-        """
-        mostra = mercato.SCELTE[self.scelta.GetSelection()][0]
-        ordine = mercato.ORDINI[self.ordine.GetSelection()][0]
-        filtri = [(criterio, condizione, valore) for criterio, condizione, valore, _d in self.filtri]
-        self.righe = mercato.candidati(self.mondo, self.poli, filtri, mostra, self.massimo.GetValue(), ordine)
-        self.trovati.Set([testi.riga_mercato(c) for c in self.righe])
-        if self.righe:
-            self.trovati.SetSelection(min(posto, len(self.righe) - 1))
-        self.etichetta_trovati.SetLabel(f"&Giocatori trovati: {testi.intero(len(self.righe))}")
-        self.info.SetLabel(testi.info_mercato(self.poli, self.mondo))
-        self.pannello.Layout()
-        apertura = self.elenco_vuoto.pieno is None
-        passaggio = self.elenco_vuoto.passaggio(bool(self.righe))
-        if apertura and not self.righe:
-            suoni.in_coda("elenco_svuotato")
-        elif passaggio or suono:
-            suoni.suona(passaggio or suono)
-
-    def aggiungi_filtro(self, event=None):
-        dialogo = Ricerca(self, con_ambito=False, titolo="Aggiungi un filtro", pulsante="&Aggiungi")
-        try:
-            suoni.suona("dialogo_filtro_mercato")
-            if dialogo.ShowModal() == wx.ID_OK and dialogo.risultato is not None:
-                _ambito, criterio, condizione, valore, descrizione = dialogo.risultato
-                self.filtri.append((criterio, condizione, valore, descrizione[0].upper() + descrizione[1:]))
-                self.mostra_filtri(len(self.filtri) - 1)
-                self.aggiorna(suono="filtro_aggiunto")
-            else:
-                suoni.suona("annullato")
-        finally:
-            dialogo.Destroy()
-
-    def togli_filtro(self, event=None):
-        indice = self.elenco_filtri.GetSelection()
-        if not self.filtri or indice == wx.NOT_FOUND:
-            suoni.suona("nessuna_selezione")
-            return
-        del self.filtri[indice]
-        self.mostra_filtri(indice)
-        self.aggiorna(suono="filtro_tolto")
-
-    def togli_tutti(self, event=None):
-        if not self.filtri:
-            suoni.suona("nessuna_selezione")
-            return
-        self.filtri.clear()
-        self.mostra_filtri()
-        self.aggiorna(suono="filtri_tutti_tolti")
-
-    def _scelto(self):
-        indice = self.trovati.GetSelection()
-        if indice == wx.NOT_FOUND:
-            suoni.suona("nessuna_selezione")
-            return None, indice
-        return self.righe[indice], indice
-
-    def _avviso(self, testo, suono):
-        suoni.suona(suono)
-        wx.MessageBox(testo, "Mercato", wx.OK | wx.ICON_WARNING, self)
-
-    def _suono_del_problema(self, costo=None):
-        """
-        Il suono di un'offerta che non si può fare, nell'ordine in cui il mondo controlla: le mosse
-        del giorno finite, la rosa piena, la cassa che non basta per il costo. Gli altri problemi,
-        come un giocatore che nel frattempo non è più disponibile, sono un tasto premuto a vuoto.
-        """
-        if self.mondo.mosse_rimaste(self.poli) <= 0:
-            return "mosse_finite"
-        if len(self.poli.tesserati) >= self.poli.maxtesserati:
-            return "rosa_piena"
-        if costo is not None and costo > self.poli.cassa:
-            return "cassa_insufficiente"
-        return "nessuna_selezione"
-
-    def _cifra(self, titolo, spiegazione, etichetta, iniziale, suono, nota=None, probabilita=None):
-        """La cifra scelta dall'utente, oppure None se ha annullato; suono è quello dell'apertura."""
-        dialogo = Cifra(self, titolo, spiegazione, etichetta, iniziale, self.poli.cassa, nota, probabilita)
-        try:
-            suoni.suona(suono)
-            if dialogo.ShowModal() == wx.ID_OK:
-                return dialogo.valore
-            suoni.suona("annullato")
-            return None
-        finally:
-            dialogo.Destroy()
-
-    def offri(self, event=None):
-        """L'offerta al candidato scelto, secondo il tipo: ingaggio, acquisto al prezzo, offerta d'acquisto."""
-        c, indice = self._scelto()
-        if c is None:
-            return
-        if self.poli.cassa <= 0:
-            self._avviso(f"La cassa di {self.poli.nome} è vuota.", "cassa_insufficiente")
-            return
-        if c.tipo == mercato.LIBERO:
-            esito = self._ingaggio(c)
-            suono = "ingaggio_accettato" if esito and esito[1] else "ingaggio_rifiutato"
-        elif c.tipo == mercato.IN_VENDITA:
-            esito = self._acquisto(c)
-            suono = "acquisto_fatto"
-        else:
-            esito = self._offerta_d_acquisto(c)
-            suono = "offerta_d_acquisto_accettata" if esito and esito[1] else "offerta_d_acquisto_rifiutata"
-        if esito is not None:
-            self.esiti.append(esito)
-            suoni.suona(suono)
-            wx.MessageBox(esito[0], "Esito", wx.OK | wx.ICON_INFORMATION, self)
-            self.aggiorna(posto=indice)
-        self.trovati.SetFocus()
-
-    def _ingaggio(self, c):
-        g = c.giocatore
-        problema = self.mondo.problema_offerta(self.poli, g)
-        if problema:
-            self._avviso(problema, self._suono_del_problema())
-            return None
-        richiesta = c.costo
-        # Dalla tappa 11 la spiegazione comincia con il contratto che il giocatore propone, D31:
-        # accettare l'offerta vuol dire accettare la proposta, annullare vuol dire rifiutarla.
-        spiegazione = (f"{testi.proposta_di_contratto(g, self.mondo)} Per firmare, {testi.nome_completo(g)} chiede {testi.euro(richiesta)} d'ingaggio: "
-                       "più offri, più è probabile che accetti.")
-        importo = self._cifra(f"Ingaggio di {testi.nome_completo(g)}", spiegazione,
-                              "&Ingaggio da offrire, in euro", richiesta, "dialogo_cifra_ingaggio",
-                              lambda cifra: f"Accetterebbe {testi.con_articolo('al', testi.percento(probabilita_accettazione(cifra, richiesta)))}.",
-                              lambda cifra: probabilita_accettazione(cifra, richiesta))
-        if importo is None:
-            return None
-        problema = self.mondo.problema_offerta(self.poli, g, importo)
-        if problema:
-            self._avviso(problema, self._suono_del_problema(importo))
-            return None
-        if not self._conferma(testi.domanda_ingaggio(c, importo, probabilita_accettazione(importo, richiesta), self.poli, self.mondo)):
-            return None
-        accetta, probabilita = self.mondo.offerta(self.poli, g, importo)
-        return testi.esito_ingaggio(g, self.poli, accetta, importo, probabilita), accetta
-
-    def _acquisto(self, c):
-        g = c.giocatore
-        problema = self.mondo.problema_acquisto(self.poli, g)
-        if problema:
-            self._avviso(problema, self._suono_del_problema(c.costo))
-            return None
-        if not self._conferma(testi.domanda_acquisto(c, self.poli, self.mondo)):
-            return None
-        prezzo = self.mondo.acquista(self.poli, g)
-        return testi.esito_acquisto(g, c.polisportiva, self.poli, prezzo), True
-
-    def _offerta_d_acquisto(self, c):
-        g = c.giocatore
-        problema = self.mondo.problema_offerta_d_acquisto(self.poli, g)
-        if problema:
-            self._avviso(problema, self._suono_del_problema())
-            return None
-        importo = self._cifra("Offerta d'acquisto", f"{testi.nome_completo(g)} vale {testi.euro(c.costo)} sul mercato: {c.polisportiva.nome} lo cede se l'offerta le basta.",
-                              "&Cifra da offrire, in euro", c.costo, "dialogo_cifra_offerta_d_acquisto")
-        if importo is None:
-            return None
-        problema = self.mondo.problema_offerta_d_acquisto(self.poli, g, importo)
-        if problema:
-            self._avviso(problema, self._suono_del_problema(importo))
-            return None
-        if not self._conferma(testi.domanda_offerta_d_acquisto(c, importo, self.poli, self.mondo)):
-            return None
-        accettata = self.mondo.offerta_d_acquisto(self.poli, g, importo)
-        return testi.esito_offerta_d_acquisto(g, c.polisportiva, self.poli, accettata, importo), accettata
-
-    def scheda(self, event=None):
-        c, _indice = self._scelto()
-        if c is None:
-            return
-        self._scheda_del_giocatore(c.giocatore, self.impostazioni)
 
 
 class PagaArretrati(_Dialogo):
@@ -1679,35 +1367,26 @@ class Contratti(_Dialogo):
         self._scheda_del_giocatore(g, self.impostazioni)
 
 
-class _DialogoDelloStaff(_Dialogo):
-    """La base dei due dialoghi dello staff: la scheda e il diario di un allenatore, da leggere e chiudere con Esc."""
+def _finestra_mercato_e_ricerca():
+    """Il modulo della finestra Mercato e ricerca, che importa questo: lo si prende quando serve, come i tornei in gui/sfide.py."""
+    from gui import mercato_e_ricerca
 
-    def _leggi(self, titolo, testo, suono):
-        dialogo = Lettura(self, titolo, testo, self.impostazioni)
-        try:
-            suoni.suona(suono)
-            dialogo.ShowModal()
-        finally:
-            dialogo.Destroy()
-
-    def _scheda_dell_allenatore(self, a):
-        self._leggi(f"Scheda di {testi.nome_completo(a)}", testi.scheda_allenatore(a, self.mondo), "scheda_allenatore")
-
-    def _diario_dell_allenatore(self, a):
-        self._leggi(f"Diario di {testi.nome_completo(a)}", testi.diario_allenatore(a), "diario_allenatore")
+    return mercato_e_ricerca
 
 
-class Staff(_DialogoDelloStaff):
+class Staff(_Dialogo):
     """
     Lo staff della polisportiva attiva, tappa 13, progetto 4.2: i tre posti, il capo e i due assistenti,
     ciascuno con l'allenatore, lo stipendio, la scadenza e il rinnovo, o vuoto; in testa la cassa, gli
     stipendi dello staff, le mosse e la qualità dello staff con i suoi effetti. Per il posto scelto, come
     nei contratti dei tesserati, lo stipendio offerto parte dalla richiesta e la durata da quella che
     l'allenatore propone, e l'esito previsto, con il tic della probabilità a ogni ritocco, dice come
-    andrebbe il rinnovo. Assumi apre il mercato degli allenatori per un posto vuoto; Rinnova propone il
-    rinnovo, Licenzia chiede conferma con la buonuscita. Non c'è un pulsante predefinito: Invio
-    sull'elenco non fa niente, come nei dialoghi della tappa 12. In esiti restano le coppie di testo ed
-    esito delle operazioni, anche di quelle fatte nel mercato, che la finestra riepiloga alla chiusura.
+    andrebbe il rinnovo. Assumi, per un posto vuoto, apre la finestra Mercato e ricerca sugli allenatori
+    liberi, col posto già scelto; Rinnova propone il rinnovo, Licenzia chiede conferma con la buonuscita.
+    Non c'è un pulsante predefinito: Invio sull'elenco non fa niente, come nei dialoghi della tappa 12. In
+    esiti restano le coppie di testo ed esito delle operazioni, anche delle offerte agli allenatori fatte
+    nella finestra, che la finestra principale riepiloga alla chiusura; in esiti_della_finestra il resto
+    di quello che si è fatto nella finestra, e l'amichevole scelta lì, che chiude lo staff.
     """
 
     def __init__(self, genitore, mondo, poli, impostazioni=None):
@@ -1716,6 +1395,7 @@ class Staff(_DialogoDelloStaff):
         self.poli = poli
         self.impostazioni = impostazioni
         self.esiti = []
+        self.esiti_della_finestra = _finestra_mercato_e_ricerca().EsitiDellaFinestra()
         self.info = wx.StaticText(self.pannello, label="")
         self.sizer.Add(self.info, 0, wx.ALL, 8)
         self.etichetta("&Posti dello staff")
@@ -1813,17 +1493,24 @@ class Staff(_DialogoDelloStaff):
         return "campo_da_correggere"
 
     def apri_il_mercato(self, posto):
-        """Il mercato degli allenatori per il posto: un metodo a sé, perché le prove lo sostituiscono. Restituisce gli esiti."""
-        suoni.suona("dialogo_mercato_allenatori")
-        dialogo = MercatoAllenatori(self, self.mondo, self.poli, self.impostazioni, posto)
+        """
+        La finestra Mercato e ricerca sugli allenatori liberi, col posto da offrire già scelto, che suona da sé la sua
+        apertura e alla chiusura non ricorda niente: un metodo a sé, perché le prove lo sostituiscono. Restituisce gli
+        esiti della finestra.
+        """
+        finestra = _finestra_mercato_e_ricerca().MercatoERicerca(self, self.mondo, self.impostazioni, None, posto=posto)
         try:
-            dialogo.ShowModal()
-            return list(dialogo.esiti)
+            finestra.ShowModal()
+            return finestra.esiti_alla_fine()
         finally:
-            dialogo.Destroy()
+            finestra.Destroy()
 
     def assumi(self, event=None):
-        """Il mercato degli allenatori per il posto scelto, se è vuoto; al ritorno, gli esiti e lo staff aggiornato."""
+        """
+        La finestra Mercato e ricerca per il posto scelto, se è vuoto. Al ritorno le offerte agli allenatori vanno fra
+        gli esiti dello staff, il resto fra quelli della finestra, e lo staff si aggiorna; un'amichevole scelta nella
+        finestra chiude lo staff, perché la partita la gioca la finestra principale.
+        """
         posto = self.elenco.GetSelection()
         if posto == wx.NOT_FOUND:
             suoni.suona("nessuna_selezione")
@@ -1832,7 +1519,16 @@ class Staff(_DialogoDelloStaff):
         if a is not None:
             self.avvisa(f"Il posto è di {testi.nome_completo(a)}: per cambiarlo, prima licenzia.", self.elenco, "staff_posto_occupato")
             return
-        self.esiti.extend(self.apri_il_mercato(posto))
+        esiti = self.apri_il_mercato(posto)
+        self.esiti.extend(esiti.allenatori)
+        finestra = self.esiti_della_finestra
+        finestra.giocatori.extend(esiti.giocatori)
+        finestra.sfide.extend(esiti.sfide)
+        finestra.preset.extend(esiti.preset)
+        if esiti.amichevole is not None:
+            finestra.amichevole = esiti.amichevole
+            self.chiudi(wx.ID_CANCEL)
+            return
         self.aggiorna(campi=True)
         self._torna(self.elenco)
 
@@ -1889,199 +1585,28 @@ class Staff(_DialogoDelloStaff):
         self.aggiorna(campi=True)
         self._torna(self.elenco)
 
-    def scheda(self, event=None):
-        a = self._scelto()
-        if a is None:
-            suoni.suona("nessuna_selezione")
-            return
-        self._scheda_dell_allenatore(a)
-
-    def diario(self, event=None):
-        a = self._scelto()
-        if a is None:
-            suoni.suona("nessuna_selezione")
-            return
-        self._diario_dell_allenatore(a)
-
-
-class MercatoAllenatori(_DialogoDelloStaff):
-    """
-    Il mercato degli allenatori, tappa 13, progetto 4.3 e D33 risposta 24: tutti gli allenatori liberi,
-    dalla classe migliore, coi filtri della classe minima, dell'età massima, del tipo e del sesso, che
-    restringono l'elenco mentre si sceglie. Ogni riga dice la classe, l'età, il tipo, il visus, quanto
-    chiede da capo e da assistente, e la prelazione o l'ora riservata a te. Ingaggia offre all'allenatore
-    scelto il posto del campo Posto, con la cifra d'ingaggio e il tic della probabilità dei liberi del
-    mercato dei giocatori; l'offerta chiede conferma e usa una mossa, come per i giocatori. Non c'è un
-    pulsante predefinito. In esiti restano le coppie di testo ed esito delle offerte.
-    """
-
-    TIPI = (("Tutti", None), ("Ex giocatori", staff.EX), ("Nati allenatori", staff.NATO))
-    SESSI = (("Tutti", None), ("Uomini", "m"), ("Donne", "f"))
-
-    def __init__(self, genitore, mondo, poli, impostazioni=None, posto=None):
-        super().__init__(genitore, f"Mercato degli allenatori di {poli.nome}")
-        self.mondo = mondo
-        self.poli = poli
-        self.impostazioni = impostazioni
-        self.esiti = []
-        self.righe = []
-        self.elenco_vuoto = _ElencoCheSiRestringe()
-        self.info = wx.StaticText(self.pannello, label="")
-        self.sizer.Add(self.info, 0, wx.ALL, 8)
-        self.etichetta("&Posto da offrire")
-        self.posto = self.aggiungi(wx.Choice(self.pannello, choices=[testi.voce_del_posto(poli, i, mondo) for i in range(staff.POSTI)]))
-        if posto is None:
-            posto = poli.staff.index(0) if 0 in poli.staff else 0
-        self.posto.SetSelection(posto)
-        self.etichetta("Classe &minima")
-        self.classe = self.aggiungi(wx.Choice(self.pannello, choices=["Qualunque", *(classe.codice(n) for n in range(1, LIVELLO_MINIMO_ALLENATORE))]))
-        self.classe.SetSelection(0)
-        self.etichetta("&Età massima, zero per nessun limite")
-        self.eta = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=120, initial=0))
-        self.etichetta("&Tipo")
-        self.tipo = self.aggiungi(wx.Choice(self.pannello, choices=[nome for nome, _t in self.TIPI]))
-        self.tipo.SetSelection(0)
-        self.etichetta("&Sesso")
-        self.sesso = self.aggiungi(wx.Choice(self.pannello, choices=[nome for nome, _s in self.SESSI]))
-        self.sesso.SetSelection(0)
-        self.etichetta_trovati = wx.StaticText(self.pannello, label="&Allenatori liberi")
-        self.sizer.Add(self.etichetta_trovati, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        self.trovati = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
-        ingaggia, scheda, diario, _chiudi = self.pulsanti((wx.ID_ANY, "&Ingaggia"), (wx.ID_ANY, "Sc&heda"), (wx.ID_ANY, "&Diario"), (wx.ID_CANCEL, "&Chiudi"),
-                                                          predefinito=False)
-        ingaggia.Bind(wx.EVT_BUTTON, self.ingaggia)
-        scheda.Bind(wx.EVT_BUTTON, self.scheda)
-        diario.Bind(wx.EVT_BUTTON, self.diario)
-        self.posto.Bind(wx.EVT_CHOICE, lambda event: suoni.suona("staff_posto_scelto"))
-        self.classe.Bind(wx.EVT_CHOICE, lambda event: self.aggiorna(suono="filtro_classe_allenatori"))
-        self.tipo.Bind(wx.EVT_CHOICE, lambda event: self.aggiorna(suono="filtro_tipo_allenatori"))
-        self.sesso.Bind(wx.EVT_CHOICE, lambda event: self.aggiorna(suono="filtro_sesso_allenatori"))
-        self.eta.Bind(wx.EVT_SPINCTRL, self.all_eta)
-        self.eta.Bind(wx.EVT_TEXT, self.all_eta)
-        self.aggiorna()
-        self.completa((720, 640))
-        self.trovati.SetFocus()
-
-    def candidati(self):
-        """Gli allenatori liberi che passano i filtri, dalla classe migliore; a parità, dal più giovane."""
-        oggi = self.mondo.datetime_corrente_simulazione
-        minimo = self.classe.GetSelection()
-        eta = self.eta.GetValue()
-        tipo = self.TIPI[self.tipo.GetSelection()][1]
-        sesso = self.SESSI[self.sesso.GetSelection()][1]
-        scelti = [a for a in self.mondo.allenatori.values() if a.libero and (minimo <= 0 or a.livello <= minimo)
-                  and (not eta or int(a.eta_anni(oggi)) <= eta) and (tipo is None or a.tipo == tipo) and (sesso is None or a.sesso == sesso)]
-        return sorted(scelti, key=lambda a: (a.livello, a.eta(oggi), a.numero))
-
-    def aggiorna(self, event=None, posto=0, suono=None):
-        """
-        Ricalcola l'elenco coi filtri del momento e suona il suono del filtro, o quello del passaggio
-        dell'elenco da pieno a vuoto o ritorno; se il mercato si apre già vuoto, lo dice dopo il suono
-        dell'apertura. Rifà anche la testata e i posti, che cambiano dopo un'offerta accettata.
-        """
-        self.righe = self.candidati()
-        self._riscrivi(self.trovati, [testi.riga_allenatore(a, self.mondo) for a in self.righe], posto)
-        self.etichetta_trovati.SetLabel(f"&Allenatori liberi: {testi.intero(len(self.righe))}")
-        self.info.SetLabel(testi.info_mercato_allenatori(self.poli, self.mondo))
-        scelta = self.posto.GetSelection()
-        for i in range(staff.POSTI):
-            voce = testi.voce_del_posto(self.poli, i, self.mondo)
-            if self.posto.GetString(i) != voce:
-                self.posto.SetString(i, voce)
-        self.posto.SetSelection(scelta)
-        self.pannello.Layout()
-        apertura = self.elenco_vuoto.pieno is None
-        passaggio = self.elenco_vuoto.passaggio(bool(self.righe))
-        if apertura and not self.righe:
-            suoni.in_coda("elenco_svuotato")
-        elif passaggio or suono:
-            suoni.suona(passaggio or suono)
-
-    def all_eta(self, event=None):
-        """L'età massima restringe l'elenco subito; il suono, quando ci si ferma."""
-        self.aggiorna()
-        self.suona_fra_poco(lambda: suoni.suona("filtro_eta_allenatori"))
-
-    def _scelto(self):
-        indice = self.trovati.GetSelection()
-        if indice == wx.NOT_FOUND or indice >= len(self.righe):
-            suoni.suona("nessuna_selezione")
-            return None, indice
-        return self.righe[indice], indice
-
-    def _suono_del_problema(self, a, posto, ingaggio=None):
-        """Il suono di un'offerta che non si può fare, nell'ordine in cui il mondo controlla."""
-        if ingaggio is not None and ingaggio > self.poli.cassa:
-            return "cassa_insufficiente"
-        if self.mondo.mosse_rimaste(self.poli) <= 0:
-            return "mosse_finite"
-        if self.poli.staff[posto]:
-            return "staff_posto_occupato"
-        if a.prelazione is not None and a.prelazione != self.poli.nome:
-            return "allenatore_in_prelazione"
-        return "nessuna_selezione"
-
-    def chiedi_la_cifra(self, a, posto):
-        """La cifra d'ingaggio scelta, oppure None se si annulla: un metodo a sé, perché le prove lo sostituiscono."""
-        ruolo = staff.CAPO if posto == 0 else staff.ASSISTENTE
-        richiesta = staff.ingaggio_richiesto(a, ruolo, self.poli)
-        dialogo = Cifra(self, f"Ingaggio di {testi.nome_completo(a)}", testi.spiegazione_ingaggio_allenatore(a, self.poli, posto, self.mondo),
-                        "&Ingaggio da offrire, in euro", richiesta, self.poli.cassa,
-                        lambda cifra: f"Accetterebbe {testi.con_articolo('al', testi.percento(probabilita_accettazione(cifra, richiesta)))}.",
-                        lambda cifra: probabilita_accettazione(cifra, richiesta))
+    def _leggi(self, titolo, testo, suono):
+        """La scheda o il diario di un allenatore, da leggere e chiudere con Esc."""
+        dialogo = Lettura(self, titolo, testo, self.impostazioni)
         try:
-            suoni.suona("dialogo_cifra_ingaggio_allenatore")
-            if dialogo.ShowModal() == wx.ID_OK:
-                return dialogo.valore
-            suoni.suona("annullato")
-            return None
+            suoni.suona(suono)
+            dialogo.ShowModal()
         finally:
             dialogo.Destroy()
 
-    def ingaggia(self, event=None):
-        """L'offerta all'allenatore scelto per il posto del campo Posto: la cifra, la conferma, l'esito."""
-        a, indice = self._scelto()
-        if a is None:
-            return
-        posto = self.posto.GetSelection()
-        if self.poli.cassa <= 0:
-            self.avvisa(f"La cassa di {self.poli.nome} è vuota.", self.trovati, "cassa_insufficiente")
-            return
-        problema = self.mondo.problema_offerta_allenatore(self.poli, a, posto)
-        if problema:
-            suono = self._suono_del_problema(a, posto)
-            self.avvisa(problema, self.posto if suono == "staff_posto_occupato" else self.trovati, suono)
-            return
-        importo = self.chiedi_la_cifra(a, posto)
-        if importo is None:
-            self._torna(self.trovati)
-            return
-        problema = self.mondo.problema_offerta_allenatore(self.poli, a, posto, importo)
-        if problema:
-            self.avvisa(problema, self.trovati, self._suono_del_problema(a, posto, importo))
-            return
-        ruolo = staff.CAPO if posto == 0 else staff.ASSISTENTE
-        probabilita = probabilita_accettazione(importo, staff.ingaggio_richiesto(a, ruolo, self.poli))
-        if not self._conferma(testi.domanda_offerta_allenatore(a, self.poli, posto, importo, probabilita, self.mondo)):
-            self._torna(self.trovati)
-            return
-        accetta, probabilita = self.mondo.offerta_allenatore(self.poli, a, posto, importo)
-        testo = testi.esito_offerta_allenatore(a, self.poli, accetta, importo, probabilita)
-        self.esiti.append((testo, "assunto" if accetta else "rifiutato"))
-        suoni.suona("allenatore_assunto" if accetta else "allenatore_rifiuta")
-        wx.MessageBox(testo, self.GetTitle(), wx.OK | wx.ICON_INFORMATION, self)
-        self.aggiorna(posto=indice)
-        self._torna(self.trovati)
-
     def scheda(self, event=None):
-        a, _indice = self._scelto()
-        if a is not None:
-            self._scheda_dell_allenatore(a)
+        a = self._scelto()
+        if a is None:
+            suoni.suona("nessuna_selezione")
+            return
+        self._leggi(f"Scheda di {testi.nome_completo(a)}", testi.scheda_allenatore(a, self.mondo), "scheda_allenatore")
 
     def diario(self, event=None):
-        a, _indice = self._scelto()
-        if a is not None:
-            self._diario_dell_allenatore(a)
+        a = self._scelto()
+        if a is None:
+            suoni.suona("nessuna_selezione")
+            return
+        self._leggi(f"Diario di {testi.nome_completo(a)}", testi.diario_allenatore(a), "diario_allenatore")
 
 
 class OpzioniAmichevole(_Dialogo):

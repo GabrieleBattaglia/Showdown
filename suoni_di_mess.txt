@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 323 suoni, 297 della finestra e 26 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 319 suoni, 293 della finestra e 26 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -20,7 +20,7 @@ Finestra, applicazione, il fuoco, i dialoghi e gli elenchi, 9 suoni.
 F5, il fuoco va nella vista principale: spostamento_f5.
 F7, il fuoco va nella barra di stato: spostamento_f7.
 Un'operazione annullata, con Esc o con Annulla in un dialogo: meteora_annullamento.
-La chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del mercato degli allenatori, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente: terminata.
+La chiusura della finestra Mercato e ricerca con degli esiti, compresi i preset, e quella delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente: terminata.
 Un pulsante premuto senza niente di scelto su cui lavorare: mess_tasto_a_vuoto.
 Un valore da correggere in un campo, e il dialogo resta aperto: mess_campo_da_correggere.
 Un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre: espelli.
@@ -81,15 +81,11 @@ L'elenco dei giocatori, con Ctrl+E: meteora_ramo_aggiornato.
 La classifica per valore, con Ctrl+L: meditimer_classifiche.
 La TOP 10 dei migliori giocatori, con Ctrl+T: mess_fuochi_d_artificio.
 Le statistiche nazionali, con Ctrl+I: meteora_marcatori.
-Finestra, mondo, la sessione e la ricerca, 8 suoni.
+Finestra, mondo, la sessione e la ricerca, 4 suoni.
 I nuovi arrivati della sessione, con Ctrl+Shift+N: meteora_marcatori_importati.
 I ritirati della sessione, con Ctrl+Shift+R: mess_saluto_in_eco.
 Gli usciti di scena nella sessione, con Ctrl+Shift+U: mess_spirale_breve.
 Si apre la ricerca dei giocatori, con Ctrl+F: mess_sonar.
-Una ricerca che trova dei giocatori: meteora_marcatori_trovato.
-Una ricerca che non trova nessuno: meteora_marcatori_non_trovato.
-I risultati dell'ultima ricerca, con Ctrl+R: apertura.
-Ctrl+R quando nella sessione non c'è ancora una ricerca: meditimer_allarme_zittito.
 Finestra, mondo, il tempo e le notizie, 11 suoni.
 La data simulata e il prossimo avanzamento, con Ctrl+D: meditimer_ora.
 Il riepilogo dell'ultimo avanzamento del mondo, con Ctrl+Shift+A: mess_notiziario.

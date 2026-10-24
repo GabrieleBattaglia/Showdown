@@ -11,6 +11,9 @@ anche se si salva dopo un avanzamento; il perché di un mondo non salvato prima 
 i suoni di ogni passo. I dialoghi sono sostituiti da risposte scritte, la cassa della partita da una
 cassa finta.
 Dal 2026-10-24, col collaudo di gioco, Alt+V a incontro finito mostra l'esito senza i guizzi di un salto alla fine che non c'è.
+Lo stesso giorno, coi collegamenti della finestra Mercato e ricerca, l'avversario si sceglie prima, nell'elenco della
+finestra aperta da Ctrl+O sugli avversari di oggi, e poi il tuo giocatore, fra i tuoi che oggi giocano, lui escluso: le
+risposte scritte scelgono l'avversario nella finestra vera e premono Amichevole.
 """
 
 import datetime
@@ -28,6 +31,7 @@ import partita_sonora
 import testi
 from costanti import CARTELLA_CRONACHE, FILE_MONDO
 from gui import dal_vivo, dialoghi
+from gui import mercato_e_ricerca as gui_mercato
 from gui.finestra import FinestraPrincipale
 from modelli import Polisportiva
 from mondo import Mondo
@@ -89,13 +93,14 @@ def _va_alla_fine(finestra_dal_vivo):
 
 class Scelte:
     """
-    Le risposte scritte ai dialoghi dell'amichevole: i due giocatori, le opzioni, e quello che si fa
-    nella finestra dal vivo, una funzione che la riceve; in elenchi e titoli restano gli elenchi e i
-    titoli dei dialoghi, in iniziali il modo da cui il dialogo delle opzioni è partito.
+    Le risposte scritte all'amichevole: l'avversario, scelto nell'elenco della finestra Mercato e ricerca, il tuo
+    giocatore, le opzioni, e quello che si fa nella finestra dal vivo, una funzione che la riceve. In elenchi e
+    titoli restano, nell'ordine, i numeri e il titolo dell'elenco della finestra e di quello della scelta del tuo
+    giocatore; in iniziali il modo da cui il dialogo delle opzioni è partito.
     """
 
     def __init__(self, monkeypatch, tuo, avversario, set_scelti=0, modo=FINE, livello=NORMALE, annulla_opzioni=False, nel_vivo=_esce_con_esc):
-        self.giocatori = [tuo, avversario]
+        self.tuo, self.avversario = tuo, avversario
         self.elenchi = []
         self.titoli = []
         self.opzioni = (set_scelti, modo, livello)
@@ -104,15 +109,25 @@ class Scelte:
         self.iniziali = None
         self.dal_vivo = []
         # Funzioni e non metodi legati: sulla classe del dialogo ricevono il dialogo come primo argomento.
+        monkeypatch.setattr(gui_mercato.MercatoERicerca, "ShowModal", lambda finestra: self.nella_finestra(finestra))
         monkeypatch.setattr(dialoghi.SceltaGiocatore, "ShowModal", lambda dialogo: self.scegli(dialogo))
         monkeypatch.setattr(dialoghi.OpzioniAmichevole, "ShowModal", lambda dialogo: self.opzioni_scelte(dialogo))
         monkeypatch.setattr(dal_vivo.FinestraDalVivo, "ShowModal", lambda dialogo: self.assisti(dialogo))
 
+    def nella_finestra(self, finestra):
+        """La finestra vera di Ctrl+O: l'avversario si sceglie nell'elenco, e Amichevole fa il resto; se si annulla, la finestra si chiude con Esc."""
+        self.elenchi.append(sorted(r.numero for r in finestra.righe))
+        self.titoli.append(finestra.GetTitle())
+        finestra.elenco.scegli(next(i for i, r in enumerate(finestra.righe) if r.numero == self.avversario and not r.allenatore))
+        finestra.amichevole()
+        if finestra.risultato is None:
+            finestra.chiudi_la_finestra()
+        return finestra.GetReturnCode()
+
     def scegli(self, dialogo):
         self.elenchi.append([g.id for g in dialogo.tutti])
         self.titoli.append(dialogo.GetTitle())
-        gid = self.giocatori[len(self.elenchi) - 1]
-        dialogo.elenco.SetSelection([g.id for g in dialogo.visibili].index(gid))
+        dialogo.elenco.SetSelection([g.id for g in dialogo.visibili].index(self.tuo))
         dialogo.conferma()
         return wx.ID_OK
 
@@ -129,6 +144,12 @@ class Scelte:
         self.dal_vivo.append(dialogo)
         self.nel_vivo(dialogo)
         return dialogo.GetReturnCode()
+
+
+def _disponibili(mondo, *tranne):
+    """I numeri di chi oggi può giocare un'amichevole, senza quelli dati: gli avversari dell'elenco della finestra di Ctrl+O."""
+    oggi = mondo.datetime_corrente_simulazione
+    return sorted(gid for gid, g in mondo.giocatori.items() if gid not in tranne and g.puo_giocare_amichevole(oggi))
 
 
 def _esito_atteso(finestra, tuo):
@@ -187,9 +208,11 @@ def test_assisti_apre_la_finestra_dal_vivo_con_l_incontro_gia_registrato(finestr
         f.esci(dal_vivo.CON_ESC)
 
     scelte = Scelte(monkeypatch, 2, 7, modo=ASSISTI, nel_vivo=nel_vivo)
+    disponibili = _disponibili(mondo)
     finestra.amichevole()
-    assert scelte.elenchi[0] == [2, 5, 9]
-    assert scelte.elenchi[1] == sorted(gid for gid in mondo.giocatori if gid != 2)
+    # Prima l'avversario, fra tutti quelli che oggi giocano, i tuoi compresi; poi il tuo giocatore, fra i tuoi, lui escluso.
+    assert scelte.elenchi[0] == disponibili == sorted(mondo.giocatori)
+    assert scelte.elenchi[1] == [2, 5, 9]
     assert len(scelte.dal_vivo) == 1 and scelte.dal_vivo[0].uscita == dal_vivo.CON_ESC
     # La velocità di gioco predefinita, decisione D30, è 4.
     assert visto["partite"] == 1 and visto["velocita"] == 4
@@ -198,7 +221,7 @@ def test_assisti_apre_la_finestra_dal_vivo_con_l_incontro_gia_registrato(finestr
     assert scelte.dal_vivo[0].cronologia.incontro.seme == finestra.incontro.risultato.seme
     # Uscendo con Esc il risultato non si svela, né con il suono dell'esito né nella vista o nella barra:
     # si sente soltanto il suono dell'amichevole registrata.
-    assert suonati == ["dialogo_amichevole", "dialogo_avversario", "dialogo_opzioni_amichevole", "amichevole_al_via", "riscaldamento_saltato",
+    assert suonati == ["dialogo_avversario", "dialogo_amichevole", "dialogo_opzioni_amichevole", "amichevole_al_via", "riscaldamento_saltato",
                        "amichevole_registrata"]
     testo = finestra.vista.GetValue()
     assert testo == testi.amichevole_senza_risultato(finestra.incontro.nomi)
@@ -331,8 +354,8 @@ def test_vai_alla_fine_mostra_risultato_e_cronaca(finestra, suonati, monkeypatch
     scelte = Scelte(monkeypatch, 2, 7, modo=FINE)
     finestra.amichevole()
     assert scelte.dal_vivo == [] and cassa.buffer == []
-    assert scelte.titoli == ["Amichevole, il tuo giocatore di Club Di Prova", f"Amichevole, l'avversario di {testi.nome_completo(mondo.giocatori[2])}"]
-    assert suonati == ["dialogo_amichevole", "dialogo_avversario", "dialogo_opzioni_amichevole", _esito_atteso(finestra, 2)]
+    assert scelte.titoli == ["Mercato e ricerca di Club Di Prova", f"Amichevole contro {testi.nome_completo(mondo.giocatori[7])}, il tuo giocatore di Club Di Prova"]
+    assert suonati == ["dialogo_avversario", "dialogo_amichevole", "dialogo_opzioni_amichevole", _esito_atteso(finestra, 2)]
     testo = finestra.vista.GetValue()
     assert testo == _testo_alla_fine(finestra)
     assert testo.splitlines()[0] == testi.risultato_amichevole(finestra.incontro.risultato, mondo)
@@ -349,10 +372,10 @@ def test_un_amichevole_al_giorno_nella_finestra(finestra, suonati, monkeypatch):
     assert suonati[-1] == "amichevole_fra_tuoi"
     testo = finestra.vista.GetValue()
     assert testo.startswith("Vince ") and testo.splitlines()[1].startswith("Punti allenamento: ")
-    # Chi ha giocato oggi non compare più negli elenchi.
+    # Chi ha giocato oggi non compare più negli elenchi: fra gli avversari della finestra, e fra i tuoi.
     scelte = Scelte(monkeypatch, 2, 3, annulla_opzioni=True)
     finestra.amichevole()
-    assert scelte.elenchi == [[2], sorted(gid for gid in mondo.giocatori if gid not in (2, 5, 9))]
+    assert scelte.elenchi == [_disponibili(mondo), [2]] and scelte.elenchi[0] == sorted(gid for gid in mondo.giocatori if gid not in (5, 9))
     assert suonati[-2:] == ["dialogo_opzioni_amichevole", "annullato"]
     assert mondo.giocatori[2].partitevinte + mondo.giocatori[2].partiteperse == 0
     # Se oggi non può giocare nessuno dei tuoi, la vista lo dice.
@@ -367,9 +390,10 @@ def test_un_amichevole_al_giorno_nella_finestra(finestra, suonati, monkeypatch):
             g.ultimo_impegno = mondo.datetime_corrente_simulazione
     scelte = Scelte(monkeypatch, 2, 3)
     finestra.amichevole()
-    assert scelte.elenchi == [[2]]
+    # Ctrl+O lo dice prima di aprire la finestra, che non avrebbe nessun avversario da offrire.
+    assert scelte.elenchi == []
     assert finestra.vista.GetValue().startswith(f"Oggi nessun altro giocatore può giocare un'amichevole contro {testi.nome_completo(mondo.giocatori[2])}")
-    assert suonati[-2:] == ["dialogo_amichevole", "nessun_giocatore_oggi"]
+    assert suonati[-1] == "nessun_giocatore_oggi" and "dialogo_avversario" not in suonati[-2:]
 
 
 def test_al_meglio_dei_5_e_la_cronaca_salvata(finestra, suonati, monkeypatch, cartella_di_prova):

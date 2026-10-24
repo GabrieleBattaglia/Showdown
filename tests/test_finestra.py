@@ -8,6 +8,9 @@ Dal 2026-10-23, con la issue 6, la voce Mercato non disponibile a mosse finite, 
 lo stesso: il tasto passa davvero dal ciclo di wx e dai tasti rapidi del menu di Windows, mentre
 l'evento del gancio dei tasti, che Windows crea soltanto per i tasti veri, è rifatto dalla prova. Con
 le verifiche del collaudo di gioco, la voce rimessa in pari anche dall'avanzamento fermato da un errore.
+Dal 2026-10-24, coi collegamenti della finestra Mercato e ricerca, le quattro porte che la aprono, la vista che
+riassume i suoi esiti, compresi i preset, o resta com'era, l'amichevole scelta lì, e Ctrl+Maiusc+G a mosse finite
+come Ctrl+K; la ricerca che stampava nella vista e Risultati della ricerca non ci sono più.
 """
 
 import datetime
@@ -20,14 +23,14 @@ import wx
 
 import archivio
 import impostazioni
-import mondo as modulo_mondo
+import mercato
 import partita_sonora
-import ricerca
 import suoni
 import testi
 from costanti import FILE_MONDO, LIMITE_MOVIMENTI_PER_TICK, VERSIONE
 from gui import dialoghi
 from gui import finestra as finestra_modulo
+from gui import mercato_e_ricerca as gui_mercato
 from gui.finestra import FinestraPrincipale
 from modelli import Polisportiva
 from mondo import Mondo
@@ -100,9 +103,10 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
             assert finestra.vista.GetValue(), testo
             assert "\n\n" not in finestra.vista.GetValue(), testo
             provate += 1
-    # Salva la cronaca, senza un'amichevole nella sessione, lo dice nella vista; dalla tappa 12 c'è anche la classifica mondiale.
-    assert provate == 24
-    assert finestra.comandi == 24
+    # Salva la cronaca, senza un'amichevole nella sessione, lo dice nella vista; dalla tappa 12 c'è anche la classifica mondiale;
+    # dalla issue 8 Risultati della ricerca non c'è più.
+    assert provate == 23
+    assert finestra.comandi == 23
 
 
 def test_i_menu_hanno_tasti_e_lettere_non_ripetuti(finestra):
@@ -222,48 +226,6 @@ def test_scelta_del_giocatore(app_wx, mondo):
         assert dialogo.elenco.GetCount() == 0
     finally:
         dialogo.Destroy()
-
-
-def test_ricerca(app_wx, monkeypatch):
-    avvisi = []
-    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo))
-    dialogo = dialoghi.Ricerca(None)
-    try:
-        dialogo.valore.ChangeValue("cento")
-        dialogo.conferma()
-        assert dialogo.risultato is None and avvisi == ["Il valore deve essere un numero, per esempio 150 o 12,5."]
-        dialogo.valore.ChangeValue("150,5")
-        dialogo.conferma()
-        assert dialogo.risultato == ("attivi", "valore", "maggiore", 150.5, "i giocatori in attività, valore maggiore di 150,5")
-        dialogo.criterio.SetSelection([chiave for chiave, *_resto in ricerca.CRITERI].index("ipovedente"))
-        dialogo.al_criterio()
-        assert not dialogo.valore.IsEnabled()
-        dialogo.condizione.SetSelection(1)
-        dialogo.conferma()
-        assert dialogo.risultato[1:4] == ("ipovedente", "no", None)
-    finally:
-        dialogo.Destroy()
-    filtro = dialoghi.Ricerca(None, con_ambito=False, titolo="Aggiungi un filtro", pulsante="&Aggiungi")
-    try:
-        assert filtro.ambito is None
-        filtro.criterio.SetSelection([chiave for chiave, *_resto in ricerca.CRITERI].index("sesso"))
-        filtro.al_criterio()
-        assert not filtro.valore.IsEnabled()
-        filtro.condizione.SetSelection(1)
-        filtro.conferma()
-        assert filtro.risultato == (None, "sesso", "f", None, "sesso donna")
-        # La classe si scrive come nella scheda, e la descrizione del filtro la dice allo stesso modo.
-        filtro.criterio.SetSelection([chiave for chiave, *_resto in ricerca.CRITERI].index("classe"))
-        filtro.al_criterio()
-        assert filtro.valore.IsEnabled() and [filtro.condizione.GetString(i) for i in range(filtro.condizione.GetCount())] == ["migliore di", "peggiore di"]
-        filtro.valore.ChangeValue("Z9")
-        filtro.conferma()
-        assert avvisi[-1].startswith("La classe si scrive come nella scheda, per esempio G4")
-        filtro.valore.ChangeValue("e0")
-        filtro.conferma()
-        assert filtro.risultato == (None, "classe", "migliore", 40, "classe migliore di E0")
-    finally:
-        filtro.Destroy()
 
 
 def test_aspetto(app_wx):
@@ -456,73 +418,149 @@ def test_cambia_polisportiva(finestra, monkeypatch):
     assert finestra.vista.GetValue().startswith("[TUA] Seconda squadra")
 
 
-def test_mercato(finestra, monkeypatch):
+# La finestra Mercato e ricerca dalle sue porte, issue 8 e decisione D36: Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O la aprono,
+# e alla chiusura la vista riassume i suoi esiti, e il mondo si salva, oppure resta com'era.
+
+@pytest.fixture
+def suonati_tutti(suonati, monkeypatch):
+    """I suoni, anche quelli della finestra Mercato e ricerca che aspettano il loro preset: per le prove ne hanno uno finto."""
+    monkeypatch.setattr(suoni, "EVENTI", {**suoni.EVENTI, **{evento: f"senza_preset_{evento}" for evento in suoni.SENZA_PRESET}})
+    return suonati
+
+
+@pytest.fixture
+def salvataggi(monkeypatch):
+    """I mondi salvati, in ordine: il salvataggio vero si fa lo stesso."""
+    fatti = []
+    vero = archivio.salva_con_avvisi
+    monkeypatch.setattr(archivio, "salva_con_avvisi", lambda mondo: (fatti.append(mondo), vero(mondo))[1])
+    return fatti
+
+
+def _risponde_come_chi_accetta(monkeypatch):
+    """
+    I dialoghi interni della finestra Mercato e ricerca rispondono come chi accetta: Sì alle domande, Chiudi agli avvisi,
+    la conferma con quello che propongono gli altri. Restituisce i testi delle domande e degli avvisi, in ordine.
+    """
+    letti = []
+
+    def risponde(chi, dialogo):
+        try:
+            if isinstance(dialogo, (gui_mercato.Avviso, gui_mercato.Domanda)):
+                letti.append(dialogo.testo.GetValue())
+                return wx.ID_YES if isinstance(dialogo, gui_mercato.Domanda) else wx.ID_CLOSE
+            dialogo.SetReturnCode(wx.ID_CANCEL)
+            dialogo.conferma()
+            return dialogo.GetReturnCode()
+        finally:
+            chi._dopo_un_dialogo()
+
+    monkeypatch.setattr(gui_mercato._ConTestiDaLeggere, "_modale", risponde)
+    return letti
+
+
+def test_le_quattro_porte_aprono_la_finestra_mercato_e_ricerca(finestra, suonati_tutti, salvataggi, monkeypatch):
+    mondo = finestra.mondo
+    aperte = []
+
+    def chiusa_subito(self):
+        aperte.append((self.porta, self.GetTitle()))
+        self.chiudi_la_finestra()
+        return wx.ID_CLOSE
+
+    monkeypatch.setattr(gui_mercato.MercatoERicerca, "ShowModal", chiusa_subito)
+    for comando, porta, suono in ((finestra.mercato, "mercato", "dialogo_mercato"), (finestra.mercato_allenatori, "allenatori", "dialogo_mercato_allenatori"),
+                                  (finestra.cerca, "ricerca", "dialogo_ricerca"), (finestra.amichevole, "amichevole", "dialogo_avversario")):
+        finestra.vista.ChangeValue("Il testo di prima.")
+        suonati_tutti.clear()
+        finestra._esegui(comando)
+        # Il suono dell'apertura lo suona la finestra, e l'elenco che nasce vuoto il suo, come quello degli allenatori in un mondo che non ne ha.
+        # Chiusa senza esiti, la vista resta com'era, col suono della finestra chiusa senza esiti, e il mondo non si salva.
+        vuoto = ["elenco_svuotato"] if porta == "allenatori" and not mondo.allenatori else []
+        assert aperte[-1] == (porta, "Mercato e ricerca di Club Di Prova")
+        assert suonati_tutti == [suono, *vuoto, "finestra_chiusa_senza_esiti"], porta
+        assert finestra.vista.GetValue() == "Il testo di prima."
+    assert len(aperte) == 4 and salvataggi == []
+    # La porta si ricorda anche quando a chiudere la finestra è qualcun altro, come la chiusura per l'aggiornamento:
+    # alla fine di ShowModal la chiusura della finestra si fa lo stesso.
+    monkeypatch.setattr(gui_mercato.MercatoERicerca, "ShowModal", lambda self: wx.ID_CANCEL)
+    mondo.filtri_di_ricerca = None
+    finestra.cerca()
+    assert mondo.filtri_di_ricerca is not None and mercato.stato_della_porta(mondo, "ricerca").scelta == "tutti_in_attivita"
+    assert salvataggi == []
+
+
+def test_dalla_finestra_un_acquisto_che_la_vista_riassume_e_il_mondo_salva(finestra, suonati_tutti, salvataggi, monkeypatch, cartella_di_prova):
     mondo = finestra.mondo
     poli = mondo.miapolisportiva_attiva
-    messaggi = []
-    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: messaggi.append(testo) or wx.YES)
-    monkeypatch.setattr(modulo_mondo, "caso", lambda p: True)
     cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(mondo.datetime_corrente_simulazione)]
     for gid in (10, 11):
         mondo._tessera(cpu, mondo.giocatori[gid])
     mondo.metti_in_vendita(cpu, mondo.giocatori[11], 500)
-    dialogo = dialoghi.Mercato(finestra, mondo, poli)
-    try:
-        liberi = [g for g in mondo.giocatori.values() if g.appartenenza == "*" and not g.ritirato]
-        assert len(dialogo.righe) == len(liberi) + 1
-        valori = [c.giocatore.indice_collettivo_valore for c in dialogo.righe]
+    letti = _risponde_come_chi_accetta(monkeypatch)
+
+    def compra(self):
+        # Ctrl+K apre sui liberi e su chi è in vendita da altri, dal valore più alto, con la riga della issue 7.
+        liberi = [g.id for g in mondo.giocatori.values() if g.appartenenza == "*" and not g.ritirato]
+        assert sorted(r.numero for r in self.righe) == sorted([*liberi, 11])
+        valori = [r.persona.indice_collettivo_valore for r in self.righe]
         assert valori == sorted(valori, reverse=True)
-        assert dialogo.etichetta_trovati.GetLabel() == f"&Giocatori trovati: {len(liberi) + 1}"
-        assert dialogo.elenco_filtri.GetString(0) == "Nessun filtro: compaiono tutti."
-        # Dalla issue 7 l'elenco dice, dopo nome e cognome, la classe e l'età completa.
-        primo = dialogo.righe[0].giocatore
-        assert dialogo.trovati.GetString(0) == testi.riga_mercato(dialogo.righe[0])
-        assert dialogo.trovati.GetString(0).startswith(f"{_nome(primo)}, {testi.codice_classe(primo)}, {testi.eta_completa(primo)}, valore ")
-        dialogo.scelta.SetSelection(3)
-        dialogo.aggiorna()
-        assert [c.giocatore.id for c in dialogo.righe] == [10]
-        dialogo.scelta.SetSelection(2)
-        dialogo.aggiorna()
-        assert [c.giocatore.id for c in dialogo.righe] == [11]
-        # Chi è in vendita si compra al prezzo chiesto, dopo la conferma.
-        dialogo.trovati.SetSelection(0)
-        dialogo.offri()
-        assert mondo.giocatori[11].appartenenza == poli.nome
-        assert messaggi[-2].startswith(f"Comprare {_nome(mondo.giocatori[11])} da {cpu.nome} per 500 euro?")
-        assert dialogo.esiti[-1] == (messaggi[-1], True)
-        # A un libero si offre l'ingaggio scelto nel dialogo della cifra.
-        dialogo.scelta.SetSelection(1)
-        dialogo.aggiorna()
-        candidato = dialogo.righe[0]
+        primo = self.righe[0].persona
+        assert self.elenco.testo(0).startswith(f"{_nome(primo)}, {testi.codice_classe(primo)}, {testi.eta_completa(primo)}, valore ")
+        self.elenco.scegli(next(i for i, r in enumerate(self.righe) if r.numero == 11))
+        self.offerta()
+        self.chiudi_la_finestra()
+        return wx.ID_CLOSE
 
-        def ingaggio_chiesto(self):
-            self.valore = candidato.costo
-            return wx.ID_OK
-
-        monkeypatch.setattr(dialoghi.Cifra, "ShowModal", ingaggio_chiesto)
-        dialogo.trovati.SetSelection(0)
-        dialogo.offri()
-        assert candidato.giocatore.appartenenza == poli.nome
-        assert messaggi[-2].startswith(f"Offrire a {_nome(candidato.giocatore)} un ingaggio di ")
-        assert messaggi[-1].startswith(f"{_nome(candidato.giocatore)} ha accettato l'ingaggio di ")
-        assert dialogo.info.GetLabel().startswith(f"Club Di Prova: cassa {testi.euro(poli.cassa)}, gloria 100, tesserati 4 su 15, mosse rimaste 3 su 5.")
-    finally:
-        dialogo.Destroy()
-
-    def cento_euro(self):
-        self.valore = 100
-        return wx.ID_OK
-
-    def un_offerta(self):
-        self.trovati.SetSelection(0)
-        self.offri()
-        return wx.ID_CANCEL
-
-    monkeypatch.setattr(dialoghi.Cifra, "ShowModal", cento_euro)
-    monkeypatch.setattr(dialoghi.Mercato, "ShowModal", un_offerta)
+    monkeypatch.setattr(gui_mercato.MercatoERicerca, "ShowModal", compra)
+    suonati_tutti.clear()
     finestra.mercato()
-    assert finestra.vista.GetValue().startswith("Mercato di Club Di Prova: 1 offerta, 1 riuscita.")
-    assert finestra.ultimo_evento == "mercato: 1 offerta"
+    # Chi è in vendita si compra al prezzo chiesto, dopo la domanda; l'esito si legge nella finestra, e alla chiusura la vista lo riassume.
+    assert mondo.giocatori[11].appartenenza == poli.nome
+    assert letti[0].startswith(f"Comprare {_nome(mondo.giocatori[11])} da {cpu.nome} per 500 euro?")
+    assert suonati_tutti == ["dialogo_mercato", "domanda", "acquisto_fatto", "lavoro_concluso"]
+    righe = finestra.vista.GetValue().splitlines()
+    assert righe[:2] == ["Mercato e ricerca di Club Di Prova: 1 offerta ai giocatori, 1 riuscita.", letti[1]]
+    assert righe[-1] == testi.info_mercato(poli, mondo) and finestra.ultimo_evento == "mercato e ricerca: 1 esito"
+    assert salvataggi == [mondo]
+    salvati = {g["id"]: g for g in archivio.leggi(cartella_di_prova / FILE_MONDO)["mondo"]["giocatori"]}
+    assert salvati[11]["appartenenza"] == poli.nome
+
+
+def test_i_preset_sono_esiti_e_l_amichevole_si_gioca_col_riepilogo_davanti(finestra, suonati_tutti, salvataggi, monkeypatch):
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+
+    def un_preset(self):
+        self.esiti.preset.append("Preset salvato: Giovani mancini.")
+        self.chiudi_la_finestra()
+        return wx.ID_CLOSE
+
+    monkeypatch.setattr(gui_mercato.MercatoERicerca, "ShowModal", un_preset)
+    finestra.cerca()
+    assert finestra.vista.GetValue().startswith("Mercato e ricerca di Club Di Prova: 1 operazione sui preset.\nPreset salvato: Giovani mancini.\n")
+    assert suonati_tutti[-1] == "lavoro_concluso" and finestra.ultimo_evento == "mercato e ricerca: 1 esito" and salvataggi == [mondo]
+    # Senza polisportiva attiva Ctrl+K apre lo stesso, per cercare, e il riepilogo non dice né cassa né mosse.
+    mondo.miapolisportiva_attiva = None
+    suonati_tutti.clear()
+    finestra.mercato()
+    assert suonati_tutti[:2] == ["dialogo_mercato", "nessuna_polisportiva_attiva"]
+    assert finestra.vista.GetValue() == "Mercato e ricerca: 1 operazione sui preset.\nPreset salvato: Giovani mancini."
+    mondo.miapolisportiva_attiva = poli
+    # Un'amichevole scelta nella finestra la gioca la finestra principale, col riepilogo della finestra davanti.
+    giocate = []
+    monkeypatch.setattr(finestra, "gioca_amichevole", lambda tuo, avversario, scelte, prima=None: giocate.append((tuo, avversario, scelte, prima)))
+
+    def un_amichevole(self):
+        self.esiti.preset.append("Preset salvato: Avversari.")
+        self.esiti.amichevole = (mondo.giocatori[2], mondo.giocatori[7], (3, "fine", "normale"))
+        self.chiudi_la_finestra()
+        return wx.ID_CLOSE
+
+    monkeypatch.setattr(gui_mercato.MercatoERicerca, "ShowModal", un_amichevole)
+    finestra.amichevole()
+    riepilogo = testi.riepilogo_mercato_e_ricerca(poli, mondo, preset=["Preset salvato: Avversari."])
+    assert giocate == [(mondo.giocatori[2], mondo.giocatori[7], (3, "fine", "normale"), riepilogo)]
 
 
 def test_cifra(app_wx, monkeypatch):
@@ -638,8 +676,11 @@ def test_password_e_chiusura(finestra, monkeypatch):
     assert "Club Di Prova" not in mondo.polisportive and mondo.miapolisportiva_attiva is None
     assert finestra.vista.GetValue().startswith("Club Di Prova ha chiuso per sempre: 2 giocatori tornano liberi.")
     assert mondo.giocatori[2].appartenenza == "*"
+    # Dalla issue 8 il mercato, senza polisportiva attiva, si apre lo stesso, per cercare; chiuso senza esiti, la vista resta com'era.
+    aperte = []
+    monkeypatch.setattr(FinestraPrincipale, "_apri_mercato_e_ricerca", lambda self, porta: aperte.append(porta) or gui_mercato.EsitiDellaFinestra())
     finestra.mercato()
-    assert finestra.vista.GetValue().startswith("Non hai una polisportiva attiva")
+    assert aperte == ["mercato"] and finestra.vista.GetValue().startswith("Club Di Prova ha chiuso per sempre")
 
 
 def test_chiudere_una_protetta_con_la_password(finestra, monkeypatch):
@@ -663,12 +704,14 @@ def _guasto(*_args):
 
 def test_i_comandi_suonano_il_loro_evento(finestra, suonati):
     voci = {voce[0]: voce[2] for _titolo, elenco in finestra.voci_menu() for voce in filter(None, elenco)}
-    for testo in ("&Guida ai comandi", "&Informazioni", "&Novità", "&TOP 10", "&Classifica per valore", "Vista &principale", "&Barra di stato",
-                  "R&isultati della ricerca", "&Riepilogo dell'ultimo avanzamento", "&Scheda della polisportiva attiva", "&Bilancio della polisportiva attiva",
+    for testo in ("&Guida ai comandi", "&Informazioni", "&Novità", "&TOP 10", "&Classifica per valore", "&Elenco dei giocatori", "Vista &principale", "&Barra di stato",
+                  "&Riepilogo dell'ultimo avanzamento", "&Scheda della polisportiva attiva", "&Bilancio della polisportiva attiva",
                   "&Tesserati della polisportiva attiva", "&Elenco delle polisportive", "&Vecchie glorie"):
         finestra._esegui(voci[testo])
-    assert suonati == ["guida", "informazioni", "novita", "top_10", "classifica", "fuoco_vista", "fuoco_barra", "nessuna_ricerca", "nessun_avanzamento",
+    # Classifica per valore ed Elenco dei giocatori restano anche con la finestra Mercato e ricerca, scelta di Gabriele.
+    assert suonati == ["guida", "informazioni", "novita", "top_10", "classifica", "elenco_giocatori", "fuoco_vista", "fuoco_barra", "nessun_avanzamento",
                        "scheda_polisportiva", "bilancio", "tesserati_polisportiva", "elenco_polisportive", "vecchie_glorie"]
+    assert "R&isultati della ricerca" not in voci and "Ctrl+R" not in [voce[1] for _t, elenco in finestra.voci_menu() for voce in filter(None, elenco)]
     finestra.mondo.miapolisportiva_attiva = None
     finestra._esegui(voci["&Tesserati della polisportiva attiva"])
     assert suonati[-1] == "nessuna_polisportiva_attiva"
@@ -677,12 +720,11 @@ def test_i_comandi_suonano_il_loro_evento(finestra, suonati):
 
 def test_annullare_un_dialogo_suona(finestra, suonati):
     finestra.scheda_giocatore()
-    finestra.cerca()
     finestra.cambia_aspetto()
     finestra.cambia_effetti()
     finestra.cambia_velocita()
     finestra.cambia_annunci()
-    assert suonati == ["dialogo_scheda_giocatore", "annullato", "dialogo_ricerca", "annullato", "dialogo_aspetto", "annullato", "dialogo_effetti_sonori", "annullato",
+    assert suonati == ["dialogo_scheda_giocatore", "annullato", "dialogo_aspetto", "annullato", "dialogo_effetti_sonori", "annullato",
                        "dialogo_velocita_di_gioco", "annullato", "dialogo_annunci_cronaca", "annullato"]
 
 
@@ -903,65 +945,11 @@ def test_i_suoni_delle_password(finestra, suonati, monkeypatch):
     assert suonati == ["password_sbagliata", "password_non_coincidono", "campo_da_correggere"]
 
 
-def test_i_suoni_del_mercato(finestra, suonati, monkeypatch):
-    mondo = finestra.mondo
-    poli = mondo.miapolisportiva_attiva
-    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: wx.YES)
-    monkeypatch.setattr(modulo_mondo, "caso", lambda p: False)
-    valori = ["1000000", "0"]
-
-    def filtro(self):
-        self.valore.ChangeValue(valori.pop(0))
-        self.conferma()
-        return wx.ID_OK
-
-    def cifra(self):
-        self.valore = self.cifra.GetValue()
-        return wx.ID_OK
-
-    monkeypatch.setattr(dialoghi.Ricerca, "ShowModal", filtro)
-    monkeypatch.setattr(dialoghi.Cifra, "ShowModal", cifra)
-    dialogo = dialoghi.Mercato(finestra, mondo, poli)
-    try:
-        assert suonati == []
-        dialogo.scelta.SetSelection(2)
-        dialogo.aggiorna(suono="mercato_scelta_cambiata")
-        dialogo.ordine.SetSelection(1)
-        dialogo.aggiorna(suono="mercato_ordine_cambiato")
-        dialogo.scelta.SetSelection(1)
-        dialogo.aggiorna(suono="mercato_scelta_cambiata")
-        dialogo.togli_tutti()
-        # Un filtro che non lascia nessuno suona come l'elenco che si svuota, e toglierlo come l'elenco che torna pieno.
-        dialogo.aggiungi_filtro()
-        dialogo.togli_filtro()
-        dialogo.aggiungi_filtro()
-        dialogo.togli_tutti()
-        dialogo.trovati.SetSelection(0)
-        dialogo.offri()
-        assert suonati == ["elenco_svuotato", "mercato_ordine_cambiato", "elenco_ripopolato", "nessuna_selezione",
-                           "dialogo_filtro_mercato", "elenco_svuotato", "elenco_ripopolato", "dialogo_filtro_mercato", "filtro_aggiunto", "filtri_tutti_tolti",
-                           "dialogo_cifra_ingaggio", "domanda", "ingaggio_rifiutato"]
-        poli.movimenti_oggi = 5
-        dialogo.offri()
-        assert suonati[-1] == "mosse_finite"
-        poli.cassa = 0
-        dialogo.offri()
-        assert suonati[-1] == "cassa_insufficiente"
-    finally:
-        dialogo.Destroy()
-
-
-def test_il_mercato_che_si_apre_vuoto(finestra, suonati, monkeypatch):
-    monkeypatch.setattr(dialoghi.mercato, "candidati", lambda *a, **k: [])
-    finestra.mercato()
-    assert suonati == ["dialogo_mercato", "elenco_svuotato", "lavoro_concluso"]
-
-
 # La voce Mercato a mosse finite, issue 6 di Gabriele: non disponibile, e Ctrl+K lo dice lo stesso.
 
 MF_BYCOMMAND, MF_GRAYED = 0x0, 0x1
 WM_KEYDOWN, WM_KEYUP = 0x0100, 0x0101
-VK_K, VK_SHIFT, VK_CONTROL, VK_MENU, VK_LWIN, VK_RWIN = 0x4B, 0x10, 0x11, 0x12, 0x5B, 0x5C
+VK_G, VK_K, VK_SHIFT, VK_CONTROL, VK_MENU, VK_LWIN, VK_RWIN = 0x47, 0x4B, 0x10, 0x11, 0x12, 0x5B, 0x5C
 VK_LSHIFT, VK_RSHIFT, VK_LCONTROL, VK_RCONTROL, VK_LMENU, VK_RMENU = 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5
 # Ctrl+K vuole il solo Ctrl sinistro giù: Maiuscolo, Alt e i tasti di Windows su, o il tasto rapido non corrisponde.
 MODIFICATORI_DI_CTRL_K = {VK_CONTROL: True, VK_LCONTROL: True, VK_RCONTROL: False, VK_SHIFT: False, VK_LSHIFT: False, VK_RSHIFT: False,
@@ -1020,41 +1008,48 @@ def _svuota_la_coda():
         del attivatore
 
 
-def _ctrl_k(finestra, gancio=True):
+def _ctrl_k(finestra, gancio=True, tasto=VK_K, maiuscolo=False):
     """
     Ctrl+K nella vista principale come la tastiera vera, sul desktop nascosto. Se gancio è vero, prima
     l'evento wxEVT_CHAR_HOOK che il gancio dei tasti di wx crea per un tasto vero, e che sale fino alla
     finestra: se un gestore lo tiene, senza Skip, wx butta il tasto, e qui finisce. Poi Ctrl e K giù per
     il filo, con SetKeyboardState, e WM_KEYDOWN della K messo in coda con PostMessage: il ciclo di wx lo
     passa ai tasti rapidi del menu, come il tasto vero. Il gancio va rifatto perché Windows lo chiama
-    soltanto per i tasti veri, e SendInput li manderebbe allo schermo vero.
+    soltanto per i tasti veri, e SendInput li manderebbe allo schermo vero. Dalla issue 8, con tasto e
+    maiuscolo, anche Ctrl+Maiusc+G, il mercato degli allenatori.
     """
     ctypes, user32 = _user32_dei_tasti()
     if gancio:
         evento = wx.KeyEvent(wx.wxEVT_CHAR_HOOK)
         evento.SetEventObject(finestra.vista)
-        evento.SetKeyCode(ord("K"))
+        evento.SetKeyCode(tasto)
         evento.SetControlDown(True)
+        evento.SetShiftDown(maiuscolo)
         if finestra.vista.GetEventHandler().ProcessEvent(evento) and not evento.IsNextEventAllowed():
             return
     prima = (ctypes.c_ubyte * 256)()
     user32.GetKeyboardState(prima)
     stato = (ctypes.c_ubyte * 256)(*prima)
     for codice, giu in MODIFICATORI_DI_CTRL_K.items():
-        stato[codice] = 0x80 if giu else 0
-    stato[VK_K] = 0x80
-    lparam = 1 | ((user32.MapVirtualKeyW(VK_K, 0) & 0xFF) << 16)
+        stato[codice] = 0x80 if giu or (maiuscolo and codice in (VK_SHIFT, VK_LSHIFT)) else 0
+    stato[tasto] = 0x80
+    lparam = 1 | ((user32.MapVirtualKeyW(tasto, 0) & 0xFF) << 16)
     hwnd = finestra.vista.GetHandle()
     try:
         user32.SetKeyboardState(stato)
-        user32.PostMessageW(hwnd, WM_KEYDOWN, VK_K, lparam)
+        user32.PostMessageW(hwnd, WM_KEYDOWN, tasto, lparam)
         _svuota_la_coda()
-        stato[VK_K] = 0
+        stato[tasto] = 0
         user32.SetKeyboardState(stato)
-        user32.PostMessageW(hwnd, WM_KEYUP, VK_K, lparam | (1 << 30) | (1 << 31))
+        user32.PostMessageW(hwnd, WM_KEYUP, tasto, lparam | (1 << 30) | (1 << 31))
         _svuota_la_coda()
     finally:
         user32.SetKeyboardState(prima)
+
+
+def _ctrl_maiusc_g(finestra, gancio=True):
+    """Ctrl+Maiusc+G, il mercato degli allenatori, come Ctrl+K."""
+    _ctrl_k(finestra, gancio, VK_G, maiuscolo=True)
 
 
 def _apri_il_menu(finestra, voce):
@@ -1066,20 +1061,26 @@ def test_la_voce_del_mercato_segue_le_mosse(finestra, suonati, monkeypatch):
     mondo = finestra.mondo
     poli = mondo.miapolisportiva_attiva
     voce = finestra.voci_del_menu[finestra.mercato]
-    assert voce.IsEnabled() and not _grigia_per_windows(finestra, voce)
+    # Dalla issue 8 la voce del mercato degli allenatori segue le mosse insieme a quella del mercato.
+    allenatori = finestra.voci_del_menu[finestra.mercato_allenatori]
+    assert voce.IsEnabled() and not _grigia_per_windows(finestra, voce) and allenatori.IsEnabled() and not _grigia_per_windows(finestra, allenatori)
     # Le mosse finite: alla fine di un comando qualunque la voce non è disponibile, e Windows la dà grigia.
     poli.movimenti_oggi = LIMITE_MOVIMENTI_PER_TICK
     finestra._esegui(finestra.bilancio)
-    assert not voce.IsEnabled() and _grigia_per_windows(finestra, voce)
-    # Il comando dice che le mosse sono finite, col loro suono, e il dialogo non si apre.
+    assert not voce.IsEnabled() and _grigia_per_windows(finestra, voce) and not allenatori.IsEnabled() and _grigia_per_windows(finestra, allenatori)
+    # Il comando dice che le mosse sono finite, col loro suono, e la finestra Mercato e ricerca non si apre.
     suonati.clear()
     finestra.mercato()
     assert finestra.vista.GetValue() == "Per oggi Club Di Prova ha finito le mosse di mercato."
     assert suonati == ["mosse_finite"] and finestra.ultimo_evento == "nessuna mossa"
+    finestra.vista.ChangeValue("")
+    finestra.mercato_allenatori()
+    assert finestra.vista.GetValue() == "Per oggi Club Di Prova ha finito le mosse di mercato." and suonati == ["mosse_finite", "mosse_finite"]
+    suonati.clear()
     # Lo svincolo, che usa anche lui una mossa, lo dice con le stesse parole.
     finestra.vista.ChangeValue("")
     finestra.svincola()
-    assert finestra.vista.GetValue() == "Per oggi Club Di Prova ha finito le mosse di mercato." and suonati == ["mosse_finite", "mosse_finite"]
+    assert finestra.vista.GetValue() == "Per oggi Club Di Prova ha finito le mosse di mercato." and suonati == ["mosse_finite"]
     # Un'altra polisportiva attiva, che ha le sue mosse: la voce torna disponibile.
     seconda = mondo.fonda_polisportiva("Seconda squadra", attiva=False)
 
@@ -1090,15 +1091,15 @@ def test_la_voce_del_mercato_segue_le_mosse(finestra, suonati, monkeypatch):
 
     monkeypatch.setattr(dialoghi.CambiaPolisportiva, "ShowModal", scegli_la_seconda)
     finestra._esegui(finestra.cambia_polisportiva)
-    assert mondo.miapolisportiva_attiva is seconda and voce.IsEnabled()
+    assert mondo.miapolisportiva_attiva is seconda and voce.IsEnabled() and allenatori.IsEnabled()
     # All'apertura del menu la voce si rimette in pari anche senza un comando.
     mondo.miapolisportiva_attiva = poli
     _apri_il_menu(finestra, voce)
-    assert not voce.IsEnabled()
-    # Senza polisportiva attiva la voce resta disponibile, e il comando lo dice come sempre.
+    assert not voce.IsEnabled() and not allenatori.IsEnabled()
+    # Senza polisportiva attiva la voce resta disponibile, e dalla issue 8 il comando apre la finestra, per cercare.
     mondo.miapolisportiva_attiva = None
     _apri_il_menu(finestra, voce)
-    assert voce.IsEnabled()
+    assert voce.IsEnabled() and allenatori.IsEnabled()
     mondo.miapolisportiva_attiva = poli
     _apri_il_menu(finestra, voce)
     assert not voce.IsEnabled()
@@ -1107,6 +1108,7 @@ def test_la_voce_del_mercato_segue_le_mosse(finestra, suonati, monkeypatch):
     mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=17)
     finestra._al_minuto(None)
     assert mondo.mosse_rimaste(poli) == LIMITE_MOVIMENTI_PER_TICK and voce.IsEnabled() and not _grigia_per_windows(finestra, voce)
+    assert allenatori.IsEnabled() and not _grigia_per_windows(finestra, allenatori)
 
 
 def test_la_voce_del_mercato_dopo_un_avanzamento_fermato_a_meta(finestra, monkeypatch):
@@ -1133,7 +1135,7 @@ def test_la_voce_del_mercato_all_apertura(app_wx, mondo):
     mondo.miapolisportiva_attiva.movimenti_oggi = LIMITE_MOVIMENTI_PER_TICK
     f = FinestraPrincipale(mondo, archivio.CARICATO, [], Mondo.rapporto_vuoto(adesso()), mondo.datetime_ultimo_run_reale)
     try:
-        assert not f.voci_del_menu[f.mercato].IsEnabled()
+        assert not f.voci_del_menu[f.mercato].IsEnabled() and not f.voci_del_menu[f.mercato_allenatori].IsEnabled()
     finally:
         f.timer.Stop()
         f.Destroy()
@@ -1176,6 +1178,38 @@ def test_ctrl_k_a_mosse_finite_sul_desktop_nascosto(finestra, suonati):
     comandi = finestra.comandi
     _ctrl_k(finestra, gancio=False)
     assert "dialogo_mercato" in suonati and voce.IsEnabled() and finestra.comandi == comandi + 1, (list(suonati), voce.IsEnabled())
+
+
+def test_ctrl_maiusc_g_a_mosse_finite_come_ctrl_k(finestra, suonati):
+    # Dalla issue 8 anche il mercato degli allenatori, a mosse finite, non è disponibile, e Ctrl+Maiusc+G lo dice come Ctrl+K.
+    poli = finestra.mondo.miapolisportiva_attiva
+    voce = finestra.voci_del_menu[finestra.mercato_allenatori]
+    comandi = finestra.comandi
+    _ctrl_maiusc_g(finestra)
+    assert "dialogo_mercato_allenatori" in suonati and "dialogo_mercato" not in suonati and finestra.comandi == comandi + 1, (list(suonati), finestra.comandi - comandi)
+    poli.movimenti_oggi = LIMITE_MOVIMENTI_PER_TICK
+    finestra.aggiorna_le_voci()
+    assert not voce.IsEnabled() and _grigia_per_windows(finestra, voce)
+    # Senza il gancio Windows prende il tasto della voce disattivata e non manda niente.
+    suonati.clear()
+    finestra.vista.ChangeValue("Il testo di prima.")
+    comandi = finestra.comandi
+    _ctrl_maiusc_g(finestra, gancio=False)
+    assert finestra.comandi == comandi and finestra.vista.GetValue() == "Il testo di prima." and "dialogo_mercato_allenatori" not in suonati, list(suonati)
+    # Col gancio la vista dice che le mosse sono finite, col loro suono, e la finestra non si apre.
+    suonati.clear()
+    _ctrl_maiusc_g(finestra)
+    assert finestra.vista.GetValue() == "Per oggi Club Di Prova ha finito le mosse di mercato."
+    assert suonati == ["mosse_finite"] and finestra.comandi == comandi + 1
+    # Ctrl+K, il tasto dell'altra voce, fa lo stesso per conto suo.
+    suonati.clear()
+    _ctrl_k(finestra)
+    assert suonati == ["mosse_finite"] and finestra.comandi == comandi + 2
+    # Con le mosse tornate la finestra si apre anche senza il gancio.
+    poli.movimenti_oggi = 0
+    suonati.clear()
+    _ctrl_maiusc_g(finestra, gancio=False)
+    assert "dialogo_mercato_allenatori" in suonati and voce.IsEnabled() and finestra.comandi == comandi + 3, (list(suonati), voce.IsEnabled())
 
 
 def test_i_tre_esiti_del_pagamento(finestra, suonati, monkeypatch):

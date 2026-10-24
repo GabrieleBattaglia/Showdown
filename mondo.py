@@ -58,6 +58,9 @@ e col magnate di D35 andrà per magnate. È di Gabriele Battaglia (IZ4APU) & Cla
 Lo stesso giorno, con i preset dei filtri scelti da Gabriele dopo la prova del prototipo, quello stato diventa un
 oggetto solo, i preset con le porte, che il mondo tiene a None finché la finestra non lo cambia. È di Gabriele
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, coi collegamenti della finestra, il mondo non tiene più i risultati dell'ultima ricerca, che servivano
+alla ricerca che stampava nella vista e a Risultati della ricerca, Ctrl+R, usciti con la finestra. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -299,7 +302,6 @@ class Mondo:
         self.giocatori_ritirati_sessione = []
         self.giocatori_morti_sessione = []
         self._ids_morti_processati_sessione = set()
-        self.risultati_ultima_ricerca = []
         # Il numero che avrà il prossimo giocatore: sale soltanto, e si salva col mondo.
         self.prossimo_id = 1
         # Diventa vero quando il salvataggio esiste ma non si legge: da lì non si salva più nulla.

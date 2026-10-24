@@ -16,6 +16,10 @@ Dal 24 ottobre 2026, con la issue 8 e la decisione D36, la prova di un filtro e 
 sono pubbliche, prova e leggi_criterio, perché il motore della finestra unica Mercato e ricerca, in
 mercato.py, le usa per le condizioni e per i tratti. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
 Opus 5.5, UltraCode).
+Lo stesso giorno, coi collegamenti della finestra, escono la ricerca che stampava nella vista e il filtro del mercato di
+prima, coi loro resti: gli ambiti, compreso quello dei risultati della ricerca precedente, cerca e cerca_con_filtri.
+Restano i criteri, le condizioni e la prova di un filtro, per le condizioni e i tratti della finestra. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import classe
@@ -29,17 +33,6 @@ from costanti import (
     NOME_ATTR_TO_DISPLAY_MAP,
 )
 
-# Dove si può cercare, con il nome da mostrare.
-AMBITI = (
-    ("attivi", "i giocatori in attività"),
-    ("tutti", "tutti i giocatori"),
-    ("liberi", "i giocatori liberi"),
-    ("tesserati", "i giocatori tesserati"),
-    ("nuovi", "i nuovi arrivati della sessione"),
-    ("ritirati", "i giocatori ritirati"),
-    ("usciti", "gli usciti di scena nella sessione"),
-    ("trovati", "i risultati della ricerca precedente"),
-)
 NUMERO = "numero"
 TESTO = "testo"
 SI_NO = "si_no"
@@ -47,8 +40,6 @@ SESSO = "sesso"
 CLASSE = "classe"
 CONDIZIONI = {NUMERO: (("maggiore", "maggiore di"), ("minore", "minore di")), TESTO: (("contiene", "contiene"),), SI_NO: (("si", "sì"), ("no", "no")),
               SESSO: (("m", "uomo"), ("f", "donna")), CLASSE: (("migliore", "migliore di"), ("peggiore", "peggiore di"))}
-# I tipi di criterio per cui non serve scrivere un valore: basta la condizione.
-SENZA_VALORE = (SI_NO, SESSO)
 
 
 def _nome_caratteristica(nome_base):
@@ -93,37 +84,8 @@ def nome_criterio(criterio):
     return _CRITERI[criterio][0]
 
 
-def nome_ambito(ambito):
-    return dict(AMBITI)[ambito]
-
-
 def nome_condizione(criterio, condizione):
     return dict(CONDIZIONI[tipo_criterio(criterio)])[condizione]
-
-
-def ids_ambito(mondo, ambito):
-    """Gli identificativi dei giocatori fra cui cercare, in ordine di numero."""
-    morti = mondo._ids_morti_processati_sessione
-    giocatori = mondo.giocatori
-    if ambito == "tutti":
-        ids = list(giocatori)
-    elif ambito == "attivi":
-        ids = [gid for gid, g in giocatori.items() if gid not in morti and not g.ritirato]
-    elif ambito == "liberi":
-        ids = [gid for gid, g in giocatori.items() if gid not in morti and not g.ritirato and g.appartenenza == "*"]
-    elif ambito == "tesserati":
-        ids = [gid for gid, g in giocatori.items() if gid not in morti and not g.ritirato and g.appartenenza != "*"]
-    elif ambito == "nuovi":
-        ids = [gid for gid in mondo.nuovi_giocatori_sessione if gid in giocatori]
-    elif ambito == "ritirati":
-        ids = [gid for gid, g in giocatori.items() if gid not in morti and g.ritirato]
-    elif ambito == "usciti":
-        ids = [gid for gid in morti if gid in giocatori]
-    elif ambito == "trovati":
-        ids = [gid for gid in mondo.risultati_ultima_ricerca if gid in giocatori]
-    else:
-        raise ValueError(f"Ambito di ricerca sconosciuto: {ambito}")
-    return sorted(ids)
 
 
 def leggi_numero(testo):
@@ -146,11 +108,6 @@ def leggi_classe(testo):
     if not 1 <= livello <= classe.LIVELLI:
         raise ValueError(f"Non è una classe: {testo!r}")
     return livello
-
-
-def codice_classe(livello):
-    """Il codice del livello di una classe, per la descrizione del filtro: 64 è G4."""
-    return classe.codice(int(livello))
 
 
 def leggi_criterio(criterio, g, oggi=None):
@@ -179,23 +136,3 @@ def prova(criterio, condizione, valore, oggi=None):
     if tipo == SESSO:
         return lambda g: leggi(g, oggi) == condizione
     return lambda g: bool(leggi(g, oggi)) == (condizione == "si")
-
-
-def cerca_con_filtri(mondo, ambito, filtri):
-    """
-    Gli identificativi dei giocatori dell'ambito che soddisfano tutti i filtri, ciascuno una terna
-    di criterio, condizione e valore, in ordine di numero. Senza filtri, tutto l'ambito.
-    """
-    oggi = getattr(mondo, "datetime_corrente_simulazione", None)
-    prove = [prova(criterio, condizione, valore, oggi) for criterio, condizione, valore in filtri]
-    return [gid for gid in ids_ambito(mondo, ambito) if all(controllo(mondo.giocatori[gid]) for controllo in prove)]
-
-
-def cerca(mondo, ambito, criterio, condizione, valore=None):
-    """
-    Gli identificativi dei giocatori dell'ambito che soddisfano la condizione, in ordine di numero.
-    Per le caratteristiche numeriche valore è un numero, per la classe il numero del livello, che
-    leggi_classe ricava da un codice come G4; per nome e cognome un testo, cercato
-    senza badare alle maiuscole; per il sesso e per il sì o no non serve.
-    """
-    return cerca_con_filtri(mondo, ambito, [(criterio, condizione, valore)])

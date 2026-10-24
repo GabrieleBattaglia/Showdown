@@ -16,9 +16,13 @@ mondo; le porte, con Assumi che non ricorda niente; i 350 e i 1000 millesimi; la
 la scheda della persona, Invio ed Esc; la grazia di Invio, anche dopo un dialogo interno, e il doppio colpo sui
 pulsanti; le mosse finite con Alt+O; le offerte, l'amichevole, la sfida e il diario coi loro suoni; le condizioni e
 Azzera; la chiusura con e senza esiti; e nessun messaggio di Windows.
+Coi collegamenti dello stesso giorno ci sono anche le prove del mercato degli allenatori di prima, che la finestra ha
+sostituito, da Ctrl+Maiusc+G e da Assumi: i liberi dal migliore coi loro filtri, l'ingaggio accettato e rifiutato col
+posto da offrire, la prelazione, la cassa vuota e le mosse finite, la scheda e il diario; e l'elenco che nasce vuoto.
 """
 
 import ctypes
+import datetime
 import random
 import re
 import sys
@@ -26,7 +30,7 @@ from pathlib import Path
 
 import pytest
 import wx
-from aiuti_mercato import mondo_del_mercato
+from aiuti_mercato import ORA, mondo_del_mercato
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 
@@ -34,12 +38,15 @@ import tastiera_simulata as tastiera
 
 import impostazioni
 import mercato
+import mondo as modulo_mondo
+import staff
 import suoni
 import testi
-from costanti import LIMITE_MOVIMENTI_PER_TICK
+from costanti import LIMITE_MOVIMENTI_PER_TICK, MESI_DI_INGAGGIO
 from gui import dialoghi
 from gui import mercato_e_ricerca as finestra_mr
 from gui.mercato_e_ricerca import ALTRI_FILTRI, FILTRI, FILTRI_ALLENATORI, RISULTATI
+from modelli import probabilita_accettazione
 
 
 class Attesa:
@@ -1007,6 +1014,147 @@ def test_esc_fuori_dalla_scheda_chiude_e_i_preset_sono_fra_gli_esiti(banco):
     assert mercato.stato_della_porta(banco.mondo, "mercato").scelta == banco.mondo.filtri_di_ricerca.preset[0].numero
     assert testi.riepilogo_mercato_e_ricerca(banco.mondo.miapolisportiva_attiva, banco.mondo, preset=f.risultato.preset).startswith(
         "Mercato e ricerca di Pat-Bologna: 1 operazione sui preset.\nPreset salvato: Preset di prova.")
+
+
+# Gli allenatori, da Ctrl+Maiusc+G e da Assumi: le prove del mercato degli allenatori di prima, dai collegamenti della finestra.
+
+def test_gli_allenatori_liberi_dal_migliore_coi_loro_filtri(banco):
+    f = banco.apri("allenatori")
+    mondo = banco.mondo
+    liberi = [a for a in mondo.allenatori.values() if a.libero]
+    assert banco.suonati[0] == "dialogo_mercato_allenatori" and f.GetDefaultItem() is None
+    assert [r.persona for r in f.righe] == sorted(liberi, key=lambda a: (a.livello, a.numero)) and all(r.allenatore for r in f.righe)
+    assert f.etichetta_trovati.GetLabel() == "&" + testi.etichetta_trovati(len(liberi), True)
+    assert f.elenco.testo(0) == testi.riga_trovato(f.righe[0], mondo, "classe", f.memoria)
+    # La classe migliore o uguale: il migliore resta, e chi è peggiore di lui no.
+    migliore = f.righe[0].persona
+    _scegli_voce(f.scelte["classe_migliore"][0], migliore.livello)
+    assert banco.suonati[-1] == "filtro_classe_allenatori"
+    banco.pianifica.scatta()
+    assert migliore in [r.persona for r in f.righe] and all(r.persona.livello <= migliore.livello for r in f.righe)
+    _scegli_voce(f.scelte["classe_migliore"][0], 0)
+    # Il sesso.
+    sesso = f.righe[0].persona.sesso
+    _scegli_voce(f.scelte["sesso"][0], 1 if sesso == "m" else 2)
+    assert banco.suonati[-1] == "filtro_sesso_allenatori"
+    banco.pianifica.scatta()
+    assert f.righe and all(r.persona.sesso == sesso for r in f.righe)
+    _scegli_voce(f.scelte["sesso"][0], 0)
+    banco.pianifica.scatta()
+    # Il tipo: gli allenatori della prova sono tutti nati, gli ex giocatori non ci sono, e l'elenco si svuota col suo suono.
+    tipo = f.scelte["tipo_allenatore"][0]
+    _scegli_voce(tipo, 1)
+    assert banco.suonati[-1] == "filtro_tipo_allenatori"
+    banco.pianifica.scatta()
+    assert f.righe == [] and "elenco_svuotato" in banco.suonati
+    _scegli_voce(tipo, 2)
+    banco.pianifica.scatta()
+    assert len(f.righe) == len(liberi) and banco.suonati[-1] == "elenco_ripopolato"
+    # L'età massima, col suo suono quando ci si ferma.
+    giovane = min(int(r.persona.eta_anni(mondo.datetime_corrente_simulazione)) for r in f.righe)
+    _scrivi_numero(f.numeri["eta_massima"], giovane)
+    banco.pianifica.scatta()
+    assert f.righe and all(int(r.persona.eta_anni(mondo.datetime_corrente_simulazione)) <= giovane for r in f.righe)
+    assert "filtro_eta_allenatori" in banco.suonati
+
+
+def test_l_ingaggio_accettato_di_un_allenatore_e_il_posto_occupato(banco, monkeypatch):
+    monkeypatch.setattr(modulo_mondo, "caso", lambda _p: True)
+    f = banco.apri("allenatori")
+    mondo = banco.mondo
+    attiva = mondo.miapolisportiva_attiva
+    a = _scegli_persona(f, f.righe[0].numero, allenatore=True).persona
+    richiesta = staff.ingaggio_richiesto(a, staff.CAPO, attiva)
+    # Dal progetto 3.1 e dalla revisione l'ingaggio porta la reputazione del club, fra la metà e il doppio.
+    stipendi = staff.stipendio_richiesto(a, staff.CAPO) * MESI_DI_INGAGGIO
+    assert stipendi / 2 <= richiesta <= stipendi * 2 <= attiva.cassa
+    cassa, mosse = attiva.cassa, mondo.mosse_rimaste(attiva)
+    domanda = testi.domanda_offerta_allenatore(a, attiva, 0, richiesta, probabilita_accettazione(richiesta, richiesta), mondo)
+    banco.suonati.clear()
+    _clic(f.pulsante_offerta)
+    # Il posto parte dal primo vuoto, il capo; la cifra dalla richiesta; poi la domanda col No già scelto, e l'esito da leggere.
+    assert banco.dialoghi.aperti == ["PostoDaOffrire", "Cifra", "Domanda", "Avviso"]
+    assert banco.dialoghi.domande == [domanda] and domanda.endswith("Userai una delle 5 mosse che ti restano oggi.")
+    assert banco.suonati == ["dialogo_posto_da_offrire", "dialogo_cifra_ingaggio_allenatore", "domanda", "allenatore_assunto"]
+    assert attiva.staff[0] == a.numero and a.polisportiva == attiva.nome and a.ruolo == staff.CAPO
+    assert attiva.cassa == cassa - richiesta and mondo.mosse_rimaste(attiva) == mosse - 1
+    testo = banco.dialoghi.letti[-1]
+    assert testo.startswith(f"{testi.nome_completo(a)} ha accettato l'ingaggio di ") and f.esiti.allenatori == [(testo, "assunto")]
+    # Chi ha firmato non è più fra i liberi, e la Situazione lo dice.
+    assert all(r.numero != a.numero for r in f.righe) and f.situazione.GetValue() == testi.situazione(mondo)
+    # Un posto già occupato, scelto a mano, dice il perché col suo suono.
+    _pausa(f)
+    _scegli_persona(f, f.righe[0].numero, allenatore=True)
+    banco.dialoghi.copione.append(lambda d: (d.posto.SetSelection(0), d.conferma(), d.GetReturnCode())[2])
+    _clic(f.pulsante_offerta)
+    assert banco.suonati[-1] == "staff_posto_occupato" and banco.dialoghi.letti[-1] == "Quel posto dello staff è già occupato."
+
+
+def test_l_ingaggio_rifiutato_di_un_allenatore_usa_la_mossa(banco, monkeypatch):
+    monkeypatch.setattr(modulo_mondo, "caso", lambda _p: False)
+    mondo = banco.mondo
+    attiva = mondo.miapolisportiva_attiva
+    staff_di_prima = list(attiva.staff)
+    # Da Assumi, sul posto vuoto scelto nello staff: la scelta del posto parte da lì.
+    f = banco.apri(None, posto=2)
+    a = _scegli_persona(f, f.righe[0].numero, allenatore=True).persona
+    mosse = mondo.mosse_rimaste(attiva)
+    posti = []
+    banco.dialoghi.copione.append(lambda d: (posti.append(d.posto.GetSelection()), d.conferma(), d.GetReturnCode())[2])
+    _clic(f.pulsante_offerta)
+    assert posti == [2] and banco.suonati[-1] == "allenatore_rifiuta" and a.libero and attiva.staff == staff_di_prima
+    assert mondo.mosse_rimaste(attiva) == mosse - 1
+    assert f.esiti.allenatori == [(banco.dialoghi.letti[-1], "rifiutato")] and "ha rifiutato l'ingaggio di " in banco.dialoghi.letti[-1]
+    assert f"Rifiuta l'offerta di {attiva.nome}, un ingaggio di " in testi.diario_allenatore(a)
+
+
+def test_gli_allenatori_senza_mosse_senza_cassa_e_in_prelazione(banco):
+    mondo = banco.mondo
+    attiva = mondo.miapolisportiva_attiva
+    # La revisione del 22 ottobre 2026: la prelazione per un'altra tua polisportiva ha il suo suono, non quello del tasto a vuoto.
+    f = banco.apri("allenatori")
+    r = f.righe[0]
+    r.persona.prelazione, r.persona.prelazione_fino = "Un altro tuo club", ORA + datetime.timedelta(days=5)
+    _scegli_persona(f, r.numero, allenatore=True)
+    banco.suonati.clear()
+    _clic(f.pulsante_offerta)
+    assert banco.suonati == ["allenatore_in_prelazione"] and "soltanto Un altro tuo club" in banco.dialoghi.letti[-1]
+    r.persona.prelazione = r.persona.prelazione_fino = None
+    # Con la cassa vuota il perché è la cassa, col suo suono.
+    attiva.cassa = 0
+    _pausa(f)
+    _clic(f.pulsante_offerta)
+    assert banco.suonati[-1] == "cassa_insufficiente" and banco.dialoghi.letti[-1] == f"La cassa di {attiva.nome} è vuota."
+    # Senza mosse anche Assumi apre con l'offerta oscurata, e Alt+O dice il perché.
+    attiva.movimenti_oggi = LIMITE_MOVIMENTI_PER_TICK
+    banco.suonati.clear()
+    g = banco.apri(None, posto=0)
+    assert banco.suonati == ["dialogo_mercato_allenatori", "mosse_finite"] and not g.pulsante_offerta.IsEnabled()
+    g.elenco.SetFocus()
+    assert tastiera.gancio(g.elenco, "o", alt=True)
+    assert banco.dialoghi.letti[-1] == f"Per oggi {attiva.nome} ha finito le mosse di mercato." and banco.suonati[-1] == "mosse_finite"
+
+
+def test_la_scheda_e_il_diario_di_un_allenatore(banco):
+    f = banco.apri("allenatori")
+    a = _scegli_persona(f, f.righe[0].numero, allenatore=True).persona
+    banco.suonati.clear()
+    _invio(f, f.elenco)
+    assert f.scheda.GetValue() == testi.scheda_allenatore(a, banco.mondo) and banco.suonati == ["scheda_allenatore"]
+    assert f.etichetta_scheda.GetLabel() == f"Sc&heda di {testi.nome_completo(a)}"
+    letti = []
+    banco.dialoghi.copione.append(lambda d: (letti.append((d.GetTitle(), d.testo.GetValue())), wx.ID_OK)[1])
+    _pausa(f)
+    _clic(f.pulsante_diario)
+    assert banco.dialoghi.aperti[-1] == "Lettura" and banco.suonati[-1] == "diario_allenatore"
+    assert letti == [(f"Diario di {testi.nome_completo(a)}", testi.diario_allenatore(a))] and "Entra nel mondo dello showdown" in letti[0][1]
+
+
+def test_la_finestra_che_si_apre_vuota_lo_dice(banco, monkeypatch):
+    # Dal mercato di prima: l'elenco che nasce vuoto suona subito dopo l'apertura.
+    monkeypatch.setattr(mercato, "cerca", lambda *a, **k: [])
+    banco.apri("mercato")
+    assert banco.suonati == ["dialogo_mercato", "elenco_svuotato"]
 
 
 @pytest.mark.parametrize("nome", ["SceltaGiocatore", "Cifra", "OpzioniAmichevole", "SalvaFiltri", "RinominaPreset", "PostoDaOffrire", "Condizione"])

@@ -1,4 +1,9 @@
-"""Test della ricerca dei giocatori: ambiti, condizioni e il minore stretto del problema P11."""
+"""
+Test della ricerca dei giocatori: le condizioni e il minore stretto del problema P11.
+Dal 24 ottobre 2026, coi collegamenti della finestra Mercato e ricerca, la ricerca che stampava nella vista e i suoi
+ambiti non ci sono più: le condizioni si provano con ricerca.prova, che la finestra usa per le condizioni e i tratti,
+su tutti i giocatori del mondo. Chi cercare lo provano le prove del motore della finestra, tests/test_mercato_e_ricerca.py.
+"""
 
 import datetime
 import random
@@ -6,10 +11,8 @@ import random
 import pytest
 
 import classe
-import mercato
 import ricerca
 from costanti import INDOLI
-from modelli import Polisportiva
 from mondo import Mondo
 
 ORA = datetime.datetime(2026, 10, 6, 18, 0)
@@ -23,6 +26,13 @@ def mondo():
     return m
 
 
+def _trova(mondo, criterio, condizione, valore=None, attivi=False):
+    """I numeri dei giocatori che soddisfano la condizione, in ordine di numero; con attivi, soltanto quelli in attività."""
+    oggi = getattr(mondo, "datetime_corrente_simulazione", None)
+    prova = ricerca.prova(criterio, condizione, valore, oggi)
+    return [gid for gid, g in sorted(mondo.giocatori.items()) if (not attivi or not g.ritirato) and prova(g)]
+
+
 def test_numeri_con_virgola_o_punto():
     assert ricerca.leggi_numero("12,5") == 12.5
     assert ricerca.leggi_numero(" 150 ") == 150.0
@@ -32,76 +42,44 @@ def test_numeri_con_virgola_o_punto():
 
 def test_minore_e_maggiore_stretti(mondo):
     soglia = mondo.giocatori[1].indice_collettivo_valore
-    minori = ricerca.cerca(mondo, "tutti", "valore", "minore", soglia)
-    maggiori = ricerca.cerca(mondo, "tutti", "valore", "maggiore", soglia)
+    minori = _trova(mondo, "valore", "minore", soglia)
+    maggiori = _trova(mondo, "valore", "maggiore", soglia)
     assert 1 not in minori and 1 not in maggiori
     assert sorted(minori + maggiori + [1]) == sorted(mondo.giocatori)
 
 
 def test_testo_senza_badare_alle_maiuscole(mondo):
     cognome = mondo.giocatori[3].cognome
-    assert 3 in ricerca.cerca(mondo, "tutti", "cognome", "contiene", cognome.upper())
+    assert 3 in _trova(mondo, "cognome", "contiene", cognome.upper())
 
 
 def test_si_e_no(mondo):
-    si = ricerca.cerca(mondo, "tutti", "ipovedente", "si")
-    no = ricerca.cerca(mondo, "tutti", "ipovedente", "no")
+    si = _trova(mondo, "ipovedente", "si")
+    no = _trova(mondo, "ipovedente", "no")
     assert sorted(si + no) == sorted(mondo.giocatori)
     assert all(mondo.giocatori[g].ipovedente for g in si)
 
 
-def test_ambiti(mondo):
-    mondo.giocatori[2].ritirato = True
-    mondo.giocatori[4].appartenenza = "Club"
-    mondo._ids_morti_processati_sessione.add(6)
-    assert 2 not in ricerca.ids_ambito(mondo, "attivi") and 2 in ricerca.ids_ambito(mondo, "ritirati")
-    assert ricerca.ids_ambito(mondo, "tesserati") == [4]
-    assert ricerca.ids_ambito(mondo, "usciti") == [6]
-    assert 6 not in ricerca.ids_ambito(mondo, "liberi")
-    mondo.risultati_ultima_ricerca = [9, 3]
-    assert ricerca.ids_ambito(mondo, "trovati") == [3, 9]
-    with pytest.raises(ValueError):
-        ricerca.ids_ambito(mondo, "altrove")
-
-
 def test_caratteristiche_di_gioco(mondo):
-    trovati = ricerca.cerca(mondo, "attivi", "bomba_base", "maggiore", 5)
-    assert all(mondo.giocatori[g]._get_valore_totale("bomba_base") > 5 for g in trovati)
+    mondo.giocatori[2].ritirato = True
+    trovati = _trova(mondo, "bomba_base", "maggiore", 5, attivi=True)
+    assert 2 not in trovati and all(mondo.giocatori[g]._get_valore_totale("bomba_base") > 5 for g in trovati)
     assert len(ricerca.CRITERI) == 45
     with pytest.raises(ValueError):
-        ricerca.cerca(mondo, "tutti", "valore", "contiene", 3)
+        ricerca.prova("valore", "contiene", 3)
 
 
 def test_sesso_e_tratti(mondo):
-    donne = ricerca.cerca(mondo, "tutti", "sesso", "f")
+    donne = _trova(mondo, "sesso", "f")
     assert donne == [gid for gid, g in mondo.giocatori.items() if g.sesso == "f"]
-    mancini = ricerca.cerca(mondo, "tutti", "mancino", "si")
+    mancini = _trova(mondo, "mancino", "si")
     assert mancini == [gid for gid, g in mondo.giocatori.items() if g.mancino]
-    economici = ricerca.cerca(mondo, "tutti", "gloria_richiesta", "minore", 100)
+    economici = _trova(mondo, "gloria_richiesta", "minore", 100)
     assert all(mondo.giocatori[gid].gloria_richiesta < 100 for gid in economici)
-
-
-def test_filtri_insieme(mondo):
-    filtri = [("sesso", "f", None), ("eta", "minore", 40)]
-    trovati = ricerca.cerca_con_filtri(mondo, "liberi", filtri)
-    assert trovati == [gid for gid in ricerca.ids_ambito(mondo, "liberi") if mondo.giocatori[gid].sesso == "f" and mondo.giocatori[gid].eta_anni < 40]
-    assert ricerca.cerca_con_filtri(mondo, "liberi", []) == ricerca.ids_ambito(mondo, "liberi")
-
-
-def test_i_candidati_del_mercato(mondo):
-    poli = Polisportiva("Club di prova", None, ORA)
-    filtri = [("sesso", "m", None)]
-    righe = mercato.candidati(mondo, poli, filtri, "liberi", 0, "costo")
-    assert {c.giocatore.id for c in righe} == set(ricerca.cerca_con_filtri(mondo, "liberi", filtri))
-    costi = [c.costo for c in righe]
-    assert costi == sorted(costi)
-    assert all(c.tipo == mercato.LIBERO for c in righe)
-    eta = [c.giocatore.eta for c in mercato.candidati(mondo, poli, (), "liberi", 0, "eta")]
-    assert eta == sorted(eta)
-    valori = [c.giocatore.indice_collettivo_valore for c in mercato.candidati(mondo, poli)]
-    assert valori == sorted(valori, reverse=True)
-    assert all(c.costo <= 500 for c in mercato.candidati(mondo, poli, (), "liberi", 500))
-
+    # Le prove di più condizioni si sommano, come le condizioni della finestra.
+    prove = [ricerca.prova("sesso", "f", None), ricerca.prova("eta", "minore", 40)]
+    insieme = [gid for gid, g in mondo.giocatori.items() if all(p(g) for p in prove)]
+    assert insieme == [gid for gid in donne if mondo.giocatori[gid].eta_anni < 40]
 
 
 def test_la_classe_si_scrive_come_nella_scheda():
@@ -110,7 +88,7 @@ def test_la_classe_si_scrive_come_nella_scheda():
     for sbagliata in ("A0", "K1", "0", "101", "Z3", "G", "G44", "", "4,5"):
         with pytest.raises(ValueError):
             ricerca.leggi_classe(sbagliata)
-    assert ricerca.codice_classe(64) == "G4" and ricerca.nome_criterio("classe") == "Classe"
+    assert ricerca.nome_criterio("classe") == "Classe"
     assert ricerca.nome_condizione("classe", "migliore") == "migliore di" and ricerca.nome_condizione("classe", "peggiore") == "peggiore di"
 
 
@@ -120,22 +98,22 @@ def test_i_criteri_della_tappa_11(mondo):
     mondo._entra(mia, mondo.giocatori[1])
     g = mondo.giocatori[1]
     g.punti_allenamento = 42.0
-    assert ricerca.cerca(mondo, "tutti", "punti_allenamento", "maggiore", 41) == [1]
-    con_contratto = ricerca.cerca(mondo, "tutti", "mesi_contratto", "maggiore", 3)
+    assert _trova(mondo, "punti_allenamento", "maggiore", 41) == [1]
+    con_contratto = _trova(mondo, "mesi_contratto", "maggiore", 3)
     assert con_contratto == [1]
-    assert ricerca.cerca(mondo, "tutti", "mesi_contratto", "minore", 0.5) == [gid for gid in mondo.giocatori if gid != 1]
+    assert _trova(mondo, "mesi_contratto", "minore", 0.5) == [gid for gid in mondo.giocatori if gid != 1]
     # La classe si cerca migliore o peggiore di un codice: la scala scende, migliore vuol dire un livello più piccolo.
     livelli = {gid: classe.classe(x).livello for gid, x in mondo.giocatori.items()}
     soglia = sorted(livelli.values())[len(livelli) // 2]
-    migliori = ricerca.cerca(mondo, "tutti", "classe", "migliore", soglia)
+    migliori = _trova(mondo, "classe", "migliore", soglia)
     assert migliori == sorted(gid for gid, n in livelli.items() if n < soglia) and migliori
-    assert ricerca.cerca(mondo, "tutti", "classe", "migliore", classe.codice(soglia)) == migliori
-    assert ricerca.cerca(mondo, "tutti", "classe", "peggiore", soglia) == sorted(gid for gid, n in livelli.items() if n > soglia)
-    assert 1 in ricerca.cerca(mondo, "tutti", "indole", "contiene", INDOLI[g.indole]["nome"].upper())
-    talenti = ricerca.cerca(mondo, "tutti", "talento", "si")
+    assert _trova(mondo, "classe", "migliore", classe.codice(soglia)) == migliori
+    assert _trova(mondo, "classe", "peggiore", soglia) == sorted(gid for gid, n in livelli.items() if n > soglia)
+    assert 1 in _trova(mondo, "indole", "contiene", INDOLI[g.indole]["nome"].upper())
+    talenti = _trova(mondo, "talento", "si")
     assert talenti == [gid for gid, x in mondo.giocatori.items() if x.talento]
-    precoci = ricerca.cerca(mondo, "tutti", "precoce", "si")
+    precoci = _trova(mondo, "precoce", "si")
     assert precoci == [gid for gid, x in mondo.giocatori.items() if x.maturazione == "precoce"]
-    ambiziosi = ricerca.cerca(mondo, "tutti", "ambizione", "maggiore", 60)
+    ambiziosi = _trova(mondo, "ambizione", "maggiore", 60)
     assert ambiziosi == [gid for gid, x in mondo.giocatori.items() if x.ambizione > 60]
-    assert ricerca.cerca(mondo, "tutti", "esperienza", "maggiore", -1) == sorted(mondo.giocatori)
+    assert _trova(mondo, "esperienza", "maggiore", -1) == sorted(mondo.giocatori)

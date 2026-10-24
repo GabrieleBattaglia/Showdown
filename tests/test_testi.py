@@ -169,33 +169,35 @@ def test_testi_del_mercato_e_delle_polisportive(mondo):
     p = mondo.miapolisportiva_attiva
     cpu = next(q for q in mondo.polisportive.values() if q.is_cpu_controlled)
     g = mondo.giocatori[1]
-    libero = mercato.Candidato(g, mercato.LIBERO, 450, 210)
-    riga = testi.riga_mercato(libero)
+    # Dai collegamenti della finestra Mercato e ricerca, il 24 ottobre 2026, le righe e le domande sono quelle della finestra.
+    libero = mercato.Riga(g, mercato.LIBERO, costo=450, stipendio=210)
+    riga = testi.riga_trovato(libero, mondo, "valore_alto")
     assert riga.startswith(f"{g.nome} {g.cognome}, ") and ", stipendio 210 euro, chiede 450 euro d'ingaggio" in riga and riga.endswith(", ID 1")
     # Dalla issue 7, subito dopo nome e cognome la classe e l'età completa, sul calendario dell'età della scheda.
     g.eta = 108 * 17 + 9 * 4 + 3
     assert testi.eta_completa(g) == "17:4:3"
-    assert testi.riga_mercato(libero).startswith(f"{g.nome} {g.cognome}, {testi.codice_classe(g)}, 17:4:3, valore ")
+    assert testi.riga_trovato(libero, mondo, "valore_alto").startswith(f"{g.nome} {g.cognome}, {testi.codice_classe(g)}, 17:4:3, valore ")
     assert "Età: 17 anni, 4 mesi e 3 giorni simulati" in testi.scheda_giocatore(g, mondo)
-    assert " anni, " not in testi.riga_mercato(libero)
-    in_vendita = mercato.Candidato(mondo.giocatori[3], mercato.IN_VENDITA, 1200, 300, cpu)
-    assert f", in vendita da {cpu.nome} a 1.200 euro" in testi.riga_mercato(in_vendita)
+    assert " anni, " not in testi.riga_trovato(libero, mondo, "valore_alto")
+    in_vendita = mercato.Riga(mondo.giocatori[3], mercato.IN_VENDITA, cpu, mercato.DEL_COMPUTER, 1200, 1200, 300)
+    assert f", in vendita da {cpu.nome} a 1.200 euro" in testi.riga_trovato(in_vendita, mondo, "valore_alto")
     domanda = testi.domanda_ingaggio(libero, 450, 50.0, p, mondo)
-    assert f"Accetta al 50%. {testi.proposta_di_contratto(libero.giocatore, mondo)} Userai una delle 5 mosse che ti restano oggi." in domanda
+    assert f"Accetta al 50%. {testi.proposta_di_contratto(libero.persona, mondo)} Userai una delle 5 mosse che ti restano oggi." in domanda
     # Tappa 11: il tesserato ha il suo contratto nella riga, e chi lo compra firma un contratto nuovo.
     mondo._entra(cpu, mondo.giocatori[3])
     scadenza = mondo.giocatori[3].contratto_scadenza
     mese = f"{testi.MESI[scadenza.month - 1]} {scadenza.year}"
-    assert f", contratto fino {'ad' if mese[0] in 'aeiou' else 'a'} {mese}" in testi.riga_mercato(in_vendita)
+    assert f", contratto fino {'ad' if mese[0] in 'aeiou' else 'a'} {mese}" in testi.riga_trovato(in_vendita, mondo, "valore_alto")
     assert f"Firmerà con Club Di Prova per {contratti.durata_proposta(mondo.giocatori[3])} mesi a " in testi.domanda_acquisto(in_vendita, p, mondo)
     p.movimenti_oggi = 4
     assert testi.domanda_acquisto(in_vendita, p, mondo).endswith("Userai l'ultima mossa che ti resta oggi.")
     assert testi.esito_ingaggio(g, p, False, 450, 12.0) == f"{g.nome} {g.cognome} ha rifiutato l'ingaggio di 450 euro: accettava al 12%."
-    riepilogo = testi.riepilogo_mercato(p, mondo, [("Primo esito.", False), ("Secondo esito.", True)])
+    # Il riepilogo della finestra alla chiusura, che ha preso il posto di quello del mercato di prima.
+    riepilogo = testi.riepilogo_mercato_e_ricerca(p, mondo, [("Primo esito.", False), ("Secondo esito.", True)])
     _accessibile(riepilogo)
-    assert riepilogo.startswith("Mercato di Club Di Prova: 2 offerte, 1 riuscita.\nPrimo esito.\nSecondo esito.")
+    assert riepilogo.startswith("Mercato e ricerca di Club Di Prova: 2 offerte ai giocatori, 1 riuscita.\nPrimo esito.\nSecondo esito.")
     assert riepilogo.endswith("Club Di Prova: cassa 20.000 euro, gloria 100, tesserati 3 su 15, mosse rimaste 1 su 5.")
-    assert testi.riepilogo_mercato(p, mondo, []).startswith("Mercato di Club Di Prova: nessuna offerta.")
+    assert testi.riepilogo_mercato_e_ricerca(p, mondo, []) is None
     assert testi.domanda_chiusura(p) == "Chiudere per sempre Club Di Prova? I suoi 3 tesserati torneranno liberi, e non si torna indietro."
     assert testi.chiusa("Club Di Prova", 1).startswith("Club Di Prova ha chiuso per sempre: 1 giocatore torna libero.")
     assert testi.chiusa("Club Di Prova", 0).startswith("Club Di Prova ha chiuso per sempre, senza tesserati.")

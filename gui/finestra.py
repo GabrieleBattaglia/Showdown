@@ -93,6 +93,16 @@ la finestra dal vivo lo restituisce come il risultato. È di Gabriele Battaglia 
 Opus 5.5, UltraCode). Con le verifiche dello stesso collaudo quel messaggio parla dei file di prima, che
 possono essere soltanto dei modelli, e la voce Mercato si rimette in pari anche quando un errore ferma a
 metà l'avanzamento del mondo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la finestra Mercato e ricerca della issue 8 e della decisione D36, Mercato, Ctrl+K, Mercato degli
+allenatori, Ctrl+Maiusc+G, Cerca giocatori, Ctrl+F, e Amichevole, Ctrl+O, aprono la stessa finestra, ciascuno col suo
+ultimo preset, e lei suona la sua apertura. A mosse finite anche la voce del mercato degli allenatori non è disponibile,
+e Ctrl+Maiusc+G lo dice come Ctrl+K; senza polisportiva attiva le due porte del mercato si aprono lo stesso, per cercare.
+L'amichevole sceglie prima l'avversario nella finestra, poi il tuo giocatore e le opzioni, e la partita la gioca la
+finestra principale, col riepilogo della finestra davanti; Ctrl+O tiene i suoi controlli prima di aprirla. Alla
+chiusura, con degli esiti, compresi i preset, la vista li riassume e il mondo si salva; senza, la vista resta com'era,
+con un suono suo. Lo staff riassume anche quello che si è fatto nella finestra aperta da Assumi. Spariscono la ricerca
+che stampava nella vista e Risultati della ricerca, Ctrl+R. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import contextlib
@@ -111,7 +121,6 @@ import istanza
 import modelli_torneo
 import percorsi
 import registro
-import ricerca
 import sfide
 import suoni
 import testi
@@ -131,14 +140,10 @@ from gui.dialoghi import (
     Contratti,
     EffettiSonori,
     Lettura,
-    Mercato,
-    MercatoAllenatori,
     MondoGiaPresente,
     NuovaPolisportiva,
-    OpzioniAmichevole,
     PagaArretrati,
     PasswordPolisportiva,
-    Ricerca,
     SalaAllenamento,
     SceltaGiocatore,
     Staff,
@@ -147,6 +152,7 @@ from gui.dialoghi import (
     scegli_cartella,
 )
 from gui.editor_tornei import EditorFormule, EditorModelli
+from gui.mercato_e_ricerca import MercatoERicerca
 from gui.sfide import LanciaSfida, SfideInArrivo, StoricoSfide
 from gui.tornei import AlboDOro, CalendarioTornei, PannelloTornei, UltimoIncontro, tuoi_del_mondo
 from partita import MotorePartita
@@ -181,6 +187,16 @@ def _modificatori(flags):
         if flags & rapido:
             modificatori |= tasto
     return modificatori
+
+
+def _parti_degli_esiti(esiti, allenatori=True):
+    """Gli esiti della finestra Mercato e ricerca come li vogliono il riepilogo e il fatto della barra; per lo staff senza gli allenatori, che sono suoi."""
+    return {"giocatori": esiti.giocatori, "allenatori": esiti.allenatori if allenatori else (), "sfide_lanciate": esiti.sfide, "preset": esiti.preset}
+
+
+def _davanti(prima, testo):
+    """Il testo con davanti prima, il riepilogo della finestra da cui arriva l'amichevole, se c'è."""
+    return f"{prima}\n{testo}" if prima else testo
 
 
 class FinestraPrincipale(wx.Frame):
@@ -222,7 +238,6 @@ class FinestraPrincipale(wx.Frame):
             if evento:
                 self.avanzamento_all_avvio = evento
                 self.ultimo_evento = testo
-        self.ultima_ricerca = None
         # L'ultima amichevole giocata nella sessione, di cui si salva la cronaca.
         self.incontro = None
         self._testo_barra = None
@@ -232,7 +247,8 @@ class FinestraPrincipale(wx.Frame):
         self.applica_aspetto()
         dentro_area_utile(self, (1024, 768))
         self.Bind(wx.EVT_CLOSE, self._alla_chiusura)
-        # Dalla issue 6 la voce Mercato segue le mosse della polisportiva attiva, e Ctrl+K parla anche quando non è disponibile.
+        # Dalla issue 6 la voce Mercato segue le mosse della polisportiva attiva, e Ctrl+K parla anche quando non è disponibile;
+        # dalla issue 8 anche quella del mercato degli allenatori, con Ctrl+Maiusc+G.
         self.Bind(wx.EVT_MENU_OPEN, self._all_apertura_del_menu)
         self.Bind(wx.EVT_CHAR_HOOK, self._tasto)
         self.aggiorna_le_voci()
@@ -281,7 +297,6 @@ class FinestraPrincipale(wx.Frame):
                 ("St&atistiche nazionali", "Ctrl+I", lambda: self.mostra(testi.statistiche(self.mondo), "statistiche nazionali", "statistiche_mondo")),
                 None,
                 ("Ce&rca giocatori...", "Ctrl+F", self.cerca),
-                ("R&isultati della ricerca", "Ctrl+R", self.risultati),
                 None,
                 ("&Nuovi arrivati della sessione", "Ctrl+Shift+N", lambda: self.mostra(testi.lista_nuovi(self.mondo), "nuovi arrivati", "nuovi_arrivati")),
                 ("Ritirati della sessi&one", "Ctrl+Shift+R", lambda: self.mostra(testi.lista_ritirati(self.mondo), "ritirati della sessione", "ritirati_sessione")),
@@ -362,7 +377,7 @@ class FinestraPrincipale(wx.Frame):
 
     def _crea_menu(self):
         barra_menu = wx.MenuBar()
-        # Le voci dei menu per comando, da rendere disponibili o no: dalla issue 6 quella del mercato.
+        # Le voci dei menu per comando, da rendere disponibili o no: dalla issue 6 quella del mercato, dalla issue 8 anche quella degli allenatori.
         self.voci_del_menu = {}
         for titolo, voci in self.voci_menu():
             menu = wx.Menu()
@@ -459,31 +474,37 @@ class FinestraPrincipale(wx.Frame):
             # Dalla issue 6: il comando può aver speso mosse di mercato o cambiato la polisportiva attiva.
             self.aggiorna_le_voci()
 
-    # La voce Mercato a mosse finite, issue 6 di Gabriele, dal collaudo di gioco del 23 ottobre 2026.
+    # La voce Mercato a mosse finite, issue 6 di Gabriele, dal collaudo di gioco del 23 ottobre 2026; dalla issue 8 anche
+    # quella del mercato degli allenatori.
 
     def _mercato_chiuso(self):
         """Vero se la polisportiva attiva ha finito le mosse di mercato di oggi; senza polisportiva attiva no, e il comando lo dice."""
         p = self.mondo.miapolisportiva_attiva
         return p is not None and self.mondo.mosse_rimaste(p) <= 0
 
+    def _comandi_del_mercato(self):
+        """I comandi delle voci che a mosse finite non sono disponibili: Mercato, Ctrl+K, e Mercato degli allenatori, Ctrl+Maiusc+G."""
+        return (self.mercato, self.mercato_allenatori)
+
     def aggiorna_le_voci(self):
         """
-        Rimette in pari la voce Mercato: non disponibile quando la polisportiva attiva ha finito le mosse
-        di mercato, e NVDA la legge così, di nuovo disponibile appena le mosse tornano o cambia la
-        polisportiva attiva. Senza polisportiva attiva resta disponibile.
+        Rimette in pari le voci Mercato e Mercato degli allenatori: non disponibili quando la polisportiva attiva
+        ha finito le mosse di mercato, e NVDA le legge così, di nuovo disponibili appena le mosse tornano o cambia
+        la polisportiva attiva. Senza polisportiva attiva restano disponibili.
         """
         if not self or self.chiusa:
             return
-        voce = self.voci_del_menu[self.mercato]
         disponibile = not self._mercato_chiuso()
-        if voce.IsEnabled() != disponibile:
-            voce.Enable(disponibile)
+        for comando in self._comandi_del_mercato():
+            voce = self.voci_del_menu[comando]
+            if voce.IsEnabled() != disponibile:
+                voce.Enable(disponibile)
 
     def _all_apertura_del_menu(self, event):
         """
-        All'apertura di un menu la voce Mercato si rimette in pari. Windows apre il menu per finta anche
+        All'apertura di un menu le voci del mercato si rimettono in pari. Windows apre il menu per finta anche
         quando si preme il tasto rapido di una sua voce, e guarda se la voce è disponibile soltanto dopo:
-        così anche Ctrl+K la trova com'è adesso.
+        così anche Ctrl+K e Ctrl+Maiusc+G la trovano com'è adesso.
         """
         self.aggiorna_le_voci()
         event.Skip()
@@ -491,17 +512,20 @@ class FinestraPrincipale(wx.Frame):
     def _tasto(self, event):
         """
         Il gancio dei tasti della finestra, che wx chiama prima dei tasti rapidi dei menu. Windows non
-        manda il comando di una voce disattivata, e Ctrl+K a mosse finite resterebbe muto: qui, se la
-        voce Mercato non è disponibile, il suo tasto rapido esegue lo stesso il comando, che dice nella
+        manda il comando di una voce disattivata, e Ctrl+K o Ctrl+Maiusc+G a mosse finite resterebbero muti:
+        qui, se la voce non è disponibile, il suo tasto rapido esegue lo stesso il comando, che dice nella
         vista che per oggi le mosse sono finite. Ogni altro tasto prosegue come sempre.
         """
-        voce = self.voci_del_menu[self.mercato]
-        rapido = voce.GetAccel()
-        if rapido is not None and event.GetKeyCode() == rapido.GetKeyCode() and event.GetModifiers() == _modificatori(rapido.GetFlags()):
+        for comando in self._comandi_del_mercato():
+            voce = self.voci_del_menu[comando]
+            rapido = voce.GetAccel()
+            if rapido is None or event.GetKeyCode() != rapido.GetKeyCode() or event.GetModifiers() != _modificatori(rapido.GetFlags()):
+                continue
             self.aggiorna_le_voci()
             if not voce.IsEnabled():
-                self._esegui(self.mercato)
+                self._esegui(comando)
                 return
+            break
         event.Skip()
 
     def mostra(self, testo, evento=None, suono=None):
@@ -717,25 +741,8 @@ class FinestraPrincipale(wx.Frame):
             dialogo.Destroy()
 
     def cerca(self):
-        dialogo = Ricerca(self)
-        try:
-            suoni.suona("dialogo_ricerca")
-            if self._modale(dialogo) == wx.ID_OK and dialogo.risultato is not None:
-                ambito, criterio, condizione, valore, descrizione = dialogo.risultato
-                ids = ricerca.cerca(self.mondo, ambito, criterio, condizione, valore)
-                self.mondo.risultati_ultima_ricerca = ids
-                self.ultima_ricerca = descrizione
-                self.mostra(testi.risultati_ricerca(self.mondo, descrizione, ids), f"trovati {len(ids)}", "ricerca_con_risultati" if ids else "ricerca_senza_risultati")
-            else:
-                suoni.suona("annullato")
-        finally:
-            dialogo.Destroy()
-
-    def risultati(self):
-        if self.ultima_ricerca is None:
-            self.mostra("In questa sessione non hai ancora fatto ricerche: si cercano con Ctrl+F.", "nessuna ricerca", "nessuna_ricerca")
-            return
-        self.mostra(testi.risultati_ricerca(self.mondo, self.ultima_ricerca, self.mondo.risultati_ultima_ricerca), "risultati della ricerca", "risultati_ricerca")
+        """Ctrl+F, Cerca giocatori: dalla issue 8 la finestra Mercato e ricerca su tutti quelli in attività, col cursore nel campo del nome. Si apre sempre."""
+        self._dopo_la_finestra(self._apri_mercato_e_ricerca("ricerca"))
 
     def riepilogo(self):
         """Il riepilogo dell'ultimo avanzamento; se nella sessione il mondo non è ancora avanzato, lo dice con il suo suono."""
@@ -793,26 +800,58 @@ class FinestraPrincipale(wx.Frame):
         """Vero se per oggi la polisportiva p ha finito le mosse di mercato, e allora lo dice nella vista, col suo suono."""
         if self.mondo.mosse_rimaste(p) > 0:
             return False
-        self.mostra(f"Per oggi {p.nome} ha finito le mosse di mercato.", "nessuna mossa", "mosse_finite")
+        self.mostra(testi.mosse_finite(p), "nessuna mossa", "mosse_finite")
         return True
 
     def mercato(self):
         """
-        Il mercato dei giocatori. Dalla issue 6, a mosse finite, la voce non è disponibile, e Ctrl+K arriva
-        qui dal gancio dei tasti: la vista dice che per oggi le mosse sono finite, e il dialogo non si apre.
+        Ctrl+K, il mercato dei giocatori: dalla issue 8 la finestra Mercato e ricerca, di serie sui liberi e su chi è in
+        vendita da altri. Dalla issue 6, a mosse finite, la voce non è disponibile, e Ctrl+K arriva qui dal gancio dei
+        tasti: la vista dice che per oggi le mosse sono finite, e la finestra non si apre. Senza polisportiva attiva si
+        apre lo stesso, e si può soltanto cercare.
         """
-        p = self._attiva()
-        if p is None or self._mosse_finite(p):
+        self._porta_del_mercato("mercato")
+
+    def mercato_allenatori(self):
+        """Ctrl+Maiusc+G, il mercato degli allenatori: la finestra Mercato e ricerca, di serie sugli allenatori liberi, che a mosse finite fa come Ctrl+K."""
+        self._porta_del_mercato("allenatori")
+
+    def _porta_del_mercato(self, porta):
+        p = self.mondo.miapolisportiva_attiva
+        if p is not None and self._mosse_finite(p):
             return
-        # Il suono dell'apertura viene prima del dialogo, che se nasce con l'elenco vuoto lo dice subito dopo.
-        suoni.suona("dialogo_mercato")
-        dialogo = Mercato(self, self.mondo, p, self.impostazioni)
+        self._dopo_la_finestra(self._apri_mercato_e_ricerca(porta))
+
+    # La finestra Mercato e ricerca, issue 8 e decisione D36.
+
+    def _apri_mercato_e_ricerca(self, porta):
+        """
+        La finestra Mercato e ricerca dalla porta d'ingresso data, che suona da sé la sua apertura; finché è aperta il
+        mondo non avanza. Restituisce i suoi esiti: un metodo a sé, perché le prove lo sostituiscono.
+        """
+        dialogo = MercatoERicerca(self, self.mondo, self.impostazioni, porta)
         try:
             self._modale(dialogo)
-            esiti = list(dialogo.esiti)
+            return dialogo.esiti_alla_fine()
         finally:
             dialogo.Destroy()
-        self._concludi(testi.riepilogo_mercato(p, self.mondo, esiti), f"mercato: {testi.conta(len(esiti), 'offerta', 'offerte')}", "lavoro_concluso", bool(esiti))
+
+    def _dopo_la_finestra(self, esiti):
+        """
+        Dopo la finestra Mercato e ricerca: con un'amichevole scelta, la partita, col riepilogo della finestra davanti;
+        con degli esiti, compresi quelli dei preset, la vista li riassume e il mondo si salva; senza, la vista resta
+        com'era, e suona la finestra chiusa senza esiti. I filtri ricordati dalle porte vanno col salvataggio seguente.
+        """
+        parti = _parti_degli_esiti(esiti)
+        riepilogo = testi.riepilogo_mercato_e_ricerca(self.mondo.miapolisportiva_attiva, self.mondo, **parti)
+        if esiti.amichevole is not None:
+            tuo, avversario, scelte = esiti.amichevole
+            self.gioca_amichevole(tuo, avversario, scelte, prima=riepilogo)
+            return
+        if riepilogo is None:
+            suoni.suona("finestra_chiusa_senza_esiti")
+            return
+        self._concludi(riepilogo, testi.evento_mercato_e_ricerca(**parti), "lavoro_concluso")
 
     def bilancio(self):
         p = self._attiva()
@@ -894,7 +933,12 @@ class FinestraPrincipale(wx.Frame):
         self._concludi(testi.riepilogo_contratti(p, esiti), testi.evento_contratti(esiti), "lavoro_concluso", bool(esiti))
 
     def staff(self):
-        """Lo staff della tappa 13: alla chiusura la vista mostra le operazioni e lo staff di adesso, e il mondo si salva se ce ne sono."""
+        """
+        Lo staff della tappa 13: alla chiusura la vista mostra le operazioni e lo staff di adesso, e il mondo si salva se
+        ce ne sono. Dalla issue 8 Assumi apre la finestra Mercato e ricerca: le offerte agli allenatori sono operazioni
+        dello staff, e il resto di quello che si è fatto nella finestra la vista lo riassume subito dopo; con
+        un'amichevole scelta lì, lo staff si chiude e la partita si gioca, coi riepiloghi davanti.
+        """
         p = self._attiva()
         if p is None:
             return
@@ -902,25 +946,20 @@ class FinestraPrincipale(wx.Frame):
         dialogo = Staff(self, self.mondo, p, self.impostazioni)
         try:
             self._modale(dialogo)
-            esiti = list(dialogo.esiti)
+            esiti, della_finestra = list(dialogo.esiti), dialogo.esiti_della_finestra
         finally:
             dialogo.Destroy()
-        self._concludi(testi.riepilogo_staff(p, esiti, self.mondo), testi.evento_staff(esiti), "lavoro_concluso", bool(esiti))
-
-    def mercato_allenatori(self):
-        """Il mercato degli allenatori della tappa 13, con lo stesso riepilogo dello staff alla chiusura."""
-        p = self._attiva()
-        if p is None:
+        parti = _parti_degli_esiti(della_finestra, allenatori=False)
+        altri = testi.riepilogo_mercato_e_ricerca(p, self.mondo, **parti)
+        testo = testi.riepilogo_staff(p, esiti, self.mondo)
+        if altri is not None:
+            testo = f"{testo}\n{altri}"
+        if della_finestra.amichevole is not None:
+            tuo, avversario, scelte = della_finestra.amichevole
+            self.gioca_amichevole(tuo, avversario, scelte, prima=testo)
             return
-        # Il suono dell'apertura viene prima del dialogo, che se nasce con l'elenco vuoto lo dice subito dopo.
-        suoni.suona("dialogo_mercato_allenatori")
-        dialogo = MercatoAllenatori(self, self.mondo, p, self.impostazioni)
-        try:
-            self._modale(dialogo)
-            esiti = list(dialogo.esiti)
-        finally:
-            dialogo.Destroy()
-        self._concludi(testi.riepilogo_staff(p, esiti, self.mondo), testi.evento_staff(esiti), "lavoro_concluso", bool(esiti))
+        evento = testi.evento_staff(esiti) if altri is None else f"{testi.evento_staff(esiti)}, {testi.evento_mercato_e_ricerca(**parti)}"
+        self._concludi(testo, evento, "lavoro_concluso", bool(esiti) or altri is not None)
 
     def svincola(self):
         p = self._attiva()
@@ -993,52 +1032,48 @@ class FinestraPrincipale(wx.Frame):
 
     def amichevole(self):
         """
-        Un'amichevole, regole di Gabriele: il primo giocatore è un tesserato della polisportiva
-        attiva, il secondo chiunque altro, e nessuno dei due deve aver già giocato un'amichevole
-        oggi. Dopo le opzioni l'incontro si gioca e si registra subito e il mondo si salva; con
-        Assisti si apre la finestra dal vivo, e quando se ne esce con Alt+V o dal risultato, o
-        subito con Vai alla fine, la vista mostra il risultato, i punti allenamento e sotto la
-        cronaca intera. L'esito suona quando si vede, non prima. Chi esce con Esc prima della fine
-        non lo vede, decisione D30: la vista dice soltanto che l'incontro è registrato e dove
-        leggerne il risultato; a incontro finito Esc vale come il pulsante del risultato.
+        Ctrl+O, un'amichevole, regole di Gabriele: il tuo giocatore è un tesserato della polisportiva attiva,
+        l'avversario chiunque altro, e nessuno dei due deve aver già giocato oggi. Prima i controlli di sempre, che
+        la vista dice col loro suono: la polisportiva attiva, i suoi tesserati, chi di loro oggi gioca e, se ne
+        gioca uno solo, qualcun altro da affrontare. Poi, dalla issue 8, la finestra Mercato e ricerca sugli
+        avversari di oggi: lì si sceglie l'avversario, poi il tuo giocatore e le opzioni, e alla conferma la finestra
+        si chiude e la partita la gioca gioca_amichevole.
         """
         p = self._attiva()
         if p is None:
             return
-        motore = MotorePartita(self.mondo)
-        rosa = [self.mondo.giocatori[gid] for gid in p.tesserati if gid in self.mondo.giocatori]
+        rosa = self._rosa_attiva(p)
         if not rosa:
             self.mostra(f"{p.nome} non ha tesserati da far giocare.", "nessun tesserato", "rosa_vuota")
             return
-        primi = motore.disponibili(rosa)
+        primi = MotorePartita(self.mondo).disponibili(rosa)
         if not primi:
             self.mostra(testi.nessuno_per_l_amichevole(self.mondo, adesso_utc(), poli=p), "nessuno gioca oggi", "nessun_giocatore_oggi")
             return
-        tuo = self._scegli_giocatore(f"Amichevole, il tuo giocatore di {p.nome}", "&Avanti", "dialogo_amichevole", primi)
-        if tuo is None:
+        oggi = self.mondo.datetime_corrente_simulazione
+        if len(primi) == 1 and not any(g is not primi[0] and g.puo_giocare_amichevole(oggi) for g in self.mondo.giocatori.values()):
+            self.mostra(testi.nessuno_per_l_amichevole(self.mondo, adesso_utc(), primo=primi[0]), "nessuno gioca oggi", "nessun_giocatore_oggi")
             return
-        avversari = motore.disponibili(g for g in self.mondo.giocatori.values() if g is not tuo)
-        if not avversari:
-            self.mostra(testi.nessuno_per_l_amichevole(self.mondo, adesso_utc(), primo=tuo), "nessuno gioca oggi", "nessun_giocatore_oggi")
-            return
-        avversario = self._scegli_giocatore(f"Amichevole, l'avversario di {testi.nome_completo(tuo)}", "&Avanti", "dialogo_avversario", avversari)
-        if avversario is None:
-            return
+        self._dopo_la_finestra(self._apri_mercato_e_ricerca("amichevole"))
+
+    def gioca_amichevole(self, tuo, avversario, scelte, prima=None):
+        """
+        L'amichevole fra il tuo giocatore e l'avversario scelti nella finestra Mercato e ricerca, con le scelte delle
+        opzioni, set, modo e livello, che si ricordano per la prossima. L'incontro si gioca e si registra subito e il
+        mondo si salva; con Assisti si apre la finestra dal vivo, e quando se ne esce con Alt+V o dal risultato, o
+        subito con Vai alla fine, la vista mostra il risultato, i punti allenamento e sotto la cronaca intera. L'esito
+        suona quando si vede, non prima. Chi esce con Esc prima della fine non lo vede, decisione D30: la vista dice
+        soltanto che l'incontro è registrato e dove leggerne il risultato; a incontro finito Esc vale come il pulsante
+        del risultato. prima, se c'è, è il riepilogo della finestra da cui si arriva, che la vista mette davanti.
+        """
+        set_al_meglio, modo, livello = scelte
         ultime = (self.impostazioni["amichevole_set"], self.impostazioni["amichevole_modo"], self.impostazioni["amichevole_livello"])
-        dialogo = OpzioniAmichevole(self, self.mondo, tuo, avversario, ultime)
-        try:
-            suoni.suona("dialogo_opzioni_amichevole")
-            if self._modale(dialogo) != wx.ID_OK or dialogo.risultato is None:
-                suoni.suona("annullato")
-                return
-            set_al_meglio, modo, livello = dialogo.risultato
-        finally:
-            dialogo.Destroy()
         # Le scelte si ricordano per la prossima amichevole, anche dopo la chiusura (Gabriele, 8 ottobre 2026).
         # Se il file non si scrive, valgono comunque per questa sessione: l'incontro non si ferma per questo.
         if ultime != (set_al_meglio, modo, livello):
             self.impostazioni.update(amichevole_set=set_al_meglio, amichevole_modo=modo, amichevole_livello=livello)
             modulo_impostazioni.salva(self.impostazioni)
+        motore = MotorePartita(self.mondo)
         # Il tuo giocatore è tuo per definizione; l'avversario può esserlo anche lui, di una qualunque delle tue polisportive.
         fra_tuoi = avversario.id in self._tuoi()
         istante, data_simulata = adesso(), self.mondo.datetime_corrente_simulazione
@@ -1061,7 +1096,7 @@ class FinestraPrincipale(wx.Frame):
         if uscita == CON_ESC:
             # Esc non svela il risultato, decisione D30: la vista dice soltanto che l'incontro è
             # registrato e dove leggerlo, con un suono suo e non quello dell'esito, e la barra non dice chi ha vinto.
-            self._concludi(testi.amichevole_senza_risultato(v.nomi), "amichevole registrata", "amichevole_registrata", salvataggio=(riuscito, messaggi))
+            self._concludi(_davanti(prima, testi.amichevole_senza_risultato(v.nomi)), "amichevole registrata", "amichevole_registrata", salvataggio=(riuscito, messaggi))
             return
         # Alt+V nella finestra dal vivo: prima i cinque guizzi del salto alla fine, poi l'esito. Se il
         # salvataggio non è riuscito, dopo l'esito si sente quello, e i guizzi restano fuori: due suoni
@@ -1069,7 +1104,7 @@ class FinestraPrincipale(wx.Frame):
         # come il risultato, e i guizzi di un salto che non c'è non si sentono.
         salto = uscita == ALLA_FINE and riuscito
         # La cronaca intera va in coda, dopo il perché di un salvataggio non riuscito, che così resta in cima.
-        self._concludi(testi.amichevole_solo_risultato(risultato, self.mondo), v.evento_esito, "resto_dell_incontro" if salto else esito,
+        self._concludi(_davanti(prima, testi.amichevole_solo_risultato(risultato, self.mondo)), v.evento_esito, "resto_dell_incontro" if salto else esito,
                        coda=testi.cronaca_amichevole(risultato, v.nomi, livello), salvataggio=(riuscito, messaggi))
         if salto:
             suoni.in_coda(esito)

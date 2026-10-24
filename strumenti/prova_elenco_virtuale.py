@@ -8,8 +8,9 @@ ventimila righe costa pochi millesimi, contro quasi due secondi del ListBox di o
 ripiega sull'elenco di oggi, un wx.ListBox nativo, con un tetto di righe: è la variante --listbox, con le
 prime 500 righe e l'etichetta che dice il numero vero dei trovati.
 Il mondo è un mondo di prova a regime, fatto in memoria con mondo_a_regime di strumenti/mondi_sintetici.py:
-circa ventimila giocatori in attività, tutti nell'elenco, dal valore più alto, con la riga del mercato
-della issue 7: nome e cognome, classe, età completa, valore, stipendio, costo e contratto, tratti e numero.
+circa ventimila giocatori in attività, tutti nell'elenco, dal valore più alto, con la riga della finestra
+Mercato e ricerca: nome e cognome, classe, età completa, valore, stipendio, stato e costo, contratto, tratti,
+regione e numero.
 Le cartelle del programma e del mondo sono temporanee, come nelle prove, quindi il mondo vero non si tocca
 e alla chiusura non resta niente; nessun suono parte.
 La finestra si apre massimizzata e Esc la chiude. In cima le istruzioni brevi, in un campo in sola lettura,
@@ -53,7 +54,9 @@ Le cose da provare con NVDA e il display:
 Dal passo della finestra, lo stesso 24 ottobre 2026, l'elenco virtuale con la sua ricerca per iniziali sta in
 gui/elenco_virtuale.py, da cui lo prende anche la finestra Mercato e ricerca, e la tastiera simulata in
 strumenti/tastiera_simulata.py, da cui la prendono anche le prove: qui restano il ListBox del ripiego, le righe
-lunghe e le misure.
+lunghe e le misure. Coi collegamenti della finestra, lo stesso giorno, il mercato di prima esce, e i trovati della
+prova vengono dal motore della finestra, mercato.cerca, coi liberi, chi è in vendita da altri e i tesserati del
+computer, dal valore più alto: le righe sono quelle di testi.riga_trovato, come nella finestra.
 """
 
 import argparse
@@ -102,6 +105,8 @@ TETTO_DEL_LISTBOX = 500
 LUNGHEZZA_DELLE_RIGHE_LUNGHE = 300
 TITOLO_VIRTUALE = "Prova dell'elenco virtuale"
 TITOLO_NATIVO = "Prova dell'elenco nativo"
+# Chi c'è nell'elenco della prova: i liberi, chi è in vendita da altri e i tesserati del computer, dal valore più alto.
+FILTRI_DELLA_PROVA = mercato.Filtri(liberi=True, in_vendita=True, del_computer=True)
 
 
 def istruzioni(nativo, attivi, tetto=TETTO_DEL_LISTBOX):
@@ -157,14 +162,14 @@ def costruisci_mondo(attivi=ATTIVI, seme=SEME):
     return mondo, poli
 
 
-def riga_lunga(c):
+def riga_lunga(r, mondo, memoria=None):
     """
-    La riga del mercato allungata oltre i 300 caratteri con le caratteristiche del giocatore, prima del suo
+    La riga della finestra allungata oltre i 300 caratteri con le caratteristiche del giocatore, prima del suo
     numero, e chiusa dal numero dei suoi caratteri: chi la legge sa se gli è arrivata intera.
     """
-    g = c.giocatore
+    g = r.persona
     coda = f", ID {g.id}"
-    parti = [testi.riga_mercato(c).removesuffix(coda)]
+    parti = [testi.riga_trovato(r, mondo, FILTRI_DELLA_PROVA.ordine, memoria).removesuffix(coda)]
     lunghezza = len(parti[0])
     for nome in ATTRIBUTI_BASE_CON_ALLENABILI:
         if lunghezza > LUNGHEZZA_DELLE_RIGHE_LUNGHE:
@@ -243,11 +248,12 @@ class ProvaElenco(dialoghi._Dialogo):
         self.ultima_riga = -1
         self.righe_lunghe = False
         self._timer_del_filtro = None
-        self.misure = {"candidati": 0.0, "apertura": 0.0, "ricalcoli": []}
-        self.tutti = mercato.candidati(mondo, poli, mostra="tutti")
-        self.nomi_di_tutti = [testi.nome_completo(c.giocatore).casefold() for c in self.tutti]
-        self.numeri_di_tutti = [str(c.giocatore.id) for c in self.tutti]
-        self.misure["candidati"] = (time.perf_counter() - inizio) * 1000
+        self.misure = {"ricerca": 0.0, "apertura": 0.0, "ricalcoli": []}
+        self.memoria = mercato.Memoria(mondo)
+        self.tutti = mercato.cerca(mondo, FILTRI_DELLA_PROVA, self.memoria)
+        self.nomi_di_tutti = [testi.nome_completo(r.persona).casefold() for r in self.tutti]
+        self.numeri_di_tutti = [str(r.numero) for r in self.tutti]
+        self.misure["ricerca"] = (time.perf_counter() - inizio) * 1000
         self.visibili = []
         self.nomi = []
         self.posti = {}
@@ -291,8 +297,8 @@ class ProvaElenco(dialoghi._Dialogo):
     # Le righe.
 
     def testo_della_riga(self, indice):
-        c = self.visibili[indice]
-        return riga_lunga(c) if self.righe_lunghe else testi.riga_mercato(c)
+        r = self.visibili[indice]
+        return riga_lunga(r, self.mondo, self.memoria) if self.righe_lunghe else testi.riga_trovato(r, self.mondo, FILTRI_DELLA_PROVA.ordine, self.memoria)
 
     def testo_dei_trovati(self, con_la_lettera=False):
         """Trovati: 20.000; nella variante col tetto, anche quante righe ci sono nell'elenco."""
@@ -316,12 +322,12 @@ class ProvaElenco(dialoghi._Dialogo):
         """L'elenco col filtro del momento; resta scelta la stessa persona se c'è ancora, altrimenti la prima riga."""
         inizio = time.perf_counter()
         fuoco = self.riga_scelta()
-        scelto = self.visibili[fuoco].giocatore.id if fuoco >= 0 else None
+        scelto = self.visibili[fuoco].numero if fuoco >= 0 else None
         chiave = self.campo.GetValue().strip().casefold()
         indici = self._indici(chiave)
         self.visibili = [self.tutti[i] for i in indici]
         self.nomi = [self.nomi_di_tutti[i] for i in indici]
-        self.posti = {c.giocatore.id: posto for posto, c in enumerate(self.visibili)}
+        self.posti = {r.numero: posto for posto, r in enumerate(self.visibili)}
         self.lettere.testo = ""
         self.elenco.nomi = self.nomi
         self.elenco.mostra(len(self.visibili), self.posti.get(scelto, 0))
@@ -423,7 +429,7 @@ class ProvaElenco(dialoghi._Dialogo):
     def riepilogo(self):
         """I tempi della prova in una frase, per la console alla chiusura."""
         ricalcoli = [ms for _chiave, _trovati, ms in self.misure["ricalcoli"]]
-        frase = f"Finestra pronta in {testi.numero(self.misure['apertura'], 0)} ms, di cui {testi.numero(self.misure['candidati'], 0)} per i candidati"
+        frase = f"Finestra pronta in {testi.numero(self.misure['apertura'], 0)} ms, di cui {testi.numero(self.misure['ricerca'], 0)} per la ricerca"
         if ricalcoli:
             frase += (f"; {testi.conta(len(ricalcoli), 'ricalcolo', 'ricalcoli')}, in media {testi.numero(sum(ricalcoli) / len(ricalcoli), 1)} ms, "
                       f"al massimo {testi.numero(max(ricalcoli), 1)} ms")
@@ -549,7 +555,7 @@ def misura_variante(mondo, poli, nativo, scrivi):
     elenco = dialogo.elenco
     richieste = getattr(elenco, "richieste", None)
     scrivi(f"{nome}, apertura con {testi.intero(len(dialogo.visibili))} trovati: finestra pronta in {testi.numero(costruita, 1)} ms, di cui "
-           f"{testi.numero(dialogo.misure['candidati'], 1)} per i candidati; mostrata e disegnata in {testi.numero(mostrata, 1)} ms; "
+           f"{testi.numero(dialogo.misure['ricerca'], 1)} per la ricerca; mostrata e disegnata in {testi.numero(mostrata, 1)} ms; "
            f"righe scritte {testi.intero(elenco.scritte)}" + (f", domande di Windows {testi.intero(richieste)}" if richieste is not None else "") + ".")
     tempo = _tempo(lambda: (dialogo.Restore(), pompa(), dialogo.Maximize(), pompa()))
     colonna = "" if nativo else f", colonna larga {elenco.GetColumnWidth(0)} pixel su {elenco.GetClientSize().width}"
@@ -623,13 +629,13 @@ def misura_lettere(dialogo, nome, scrivi, sentinella):
 def misura_ricalcoli(dialogo, nome, scrivi, sintesi):
     """I ricalcoli col filtro, chiamati subito, e uno col ritardo vero dopo l'ultimo tasto, con l'annuncio."""
     elenco = dialogo.elenco
-    persona = dialogo.visibili[elenco.col_fuoco()].giocatore if elenco.col_fuoco() >= 0 else None
+    persona = dialogo.visibili[elenco.col_fuoco()].persona if elenco.col_fuoco() >= 0 else None
     cognome = persona.cognome.casefold() if persona is not None else "rossi"
     for chiave in ("a", cognome, "", "ro", "ros", "12", "1234", "zzz", ""):
         dialogo.campo.ChangeValue(chiave)
         tempo = _tempo(lambda: (dialogo.ricalcola(), pompa()))
         fuoco = elenco.col_fuoco()
-        resta = persona is not None and fuoco >= 0 and dialogo.visibili[fuoco].giocatore is persona
+        resta = persona is not None and fuoco >= 0 and dialogo.visibili[fuoco].persona is persona
         scrivi(f"{nome}, ricalcolo col filtro {chiave!r}: {testi.intero(len(dialogo.visibili))} trovati, ricalcolati e ridisegnati in {testi.numero(tempo, 1)} ms; "
                f"la stessa persona {'resta scelta' if resta else 'non resta scelta'}; etichetta {dialogo.etichetta_trovati.GetLabel()!r}.")
     sintesi.detti.clear()

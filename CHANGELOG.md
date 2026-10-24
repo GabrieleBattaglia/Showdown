@@ -67,6 +67,8 @@ La finestra Mercato e ricerca ha i preset dei filtri, e il mondo li conserva nel
 
 La finestra Mercato e ricerca ha quattro schede native, Risultati, Filtri, Altri filtri e Filtri degli allenatori, che si cambiano con Ctrl+Tab, ciascuna col suo suono e con una lettera per ogni controllo; la casella dei preset applica ogni preset mentre la si scorre e apre Salva filtri soltanto con Invio, la scheda della persona si legge col cursore sotto l'elenco, i trovati si rifanno dopo 350 millesimi e la voce e il display li dicono dopo un secondo, e domande, esiti e avvisi si leggono in un campo da scorrere, mai in un messaggio di Windows (issue 8). La scelta del giocatore, la cifra e le opzioni dell'amichevole non rispondono più a un Invio tenuto giù subito dopo la loro apertura, così un Invio di troppo non fa partire un'amichevole che nessuno ha scelto.
 
+Mercato, Ctrl+K, Mercato degli allenatori, Ctrl+Maiusc+G, Cerca giocatori, Ctrl+F, Amichevole, Ctrl+O, e Assumi dello staff aprono la finestra Mercato e ricerca, che prende il posto del mercato dei giocatori, di quello degli allenatori, della ricerca che stampava nella vista, con Risultati della ricerca, Ctrl+R, e della scelta dell'avversario dall'elenco di tutti i giocatori: l'amichevole sceglie prima l'avversario nella finestra, poi il tuo giocatore, e Ctrl+Maiusc+G a mosse finite dice, come Ctrl+K, che per oggi le mosse sono finite (issue 8). Alla chiusura la vista riassume le offerte, le sfide e i preset, e il mondo si salva; chi ha soltanto guardato ritrova la vista com'era, con un suono suo.
+
 ## [1.94.6] - 2026-10-23
 
 Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.

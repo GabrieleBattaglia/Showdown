@@ -9,7 +9,8 @@ dell'aggiornamento. La partita dal vivo tiene il suo Esc, che esce senza svelare
 quali dialoghi ci sono: un dialogo nuovo che non ci sta fa fallire la prova, finché non lo si aggiunge
 a FABBRICHE. Un Chiudi wx.ID_CLOSE o qualunque, come in un dialogo futuro, risponde a Esc anche lui.
 Dal 24 ottobre 2026 ci sono anche la finestra Mercato e ricerca e i suoi dialoghi interni, con i testi da leggere
-delle domande, che a Esc valgono No, e degli avvisi.
+delle domande, che a Esc valgono No, e degli avvisi; coi collegamenti dello stesso giorno escono il mercato dei
+giocatori, quello degli allenatori e la ricerca, che la finestra ha sostituito.
 """
 
 import importlib
@@ -79,7 +80,6 @@ def _dal_vivo(scena):
 # Come nasce ogni dialogo di gui/ nella rassegna, per nome della classe.
 FABBRICHE = {
     "SceltaGiocatore": lambda s: dialoghi.SceltaGiocatore(None, s.mondo),
-    "Ricerca": lambda s: dialoghi.Ricerca(None),
     "Aspetto": lambda s: dialoghi.Aspetto(None, impostazioni.valide(None)),
     "Conservazione": lambda s: dialoghi.Conservazione(None, s.mondo.conservazione_diari),
     "EffettiSonori": lambda s: dialoghi.EffettiSonori(None, 80),
@@ -88,13 +88,11 @@ FABBRICHE = {
     "PasswordPolisportiva": lambda s: dialoghi.PasswordPolisportiva(None, s.club),
     "ChiediPassword": lambda s: dialoghi.ChiediPassword(None, s.club, "Per chiudere Club Di Prova serve la sua password."),
     "Cifra": lambda s: dialoghi.Cifra(None, "Ingaggio", "Spiegazione.", "&Ingaggio", 500, 1000),
-    "Mercato": lambda s: dialoghi.Mercato(None, s.mondo, s.club),
     "PagaArretrati": lambda s: dialoghi.PagaArretrati(None, s.mondo, s.club),
     "Vendite": lambda s: dialoghi.Vendite(None, s.mondo, s.club),
     "SalaAllenamento": lambda s: dialoghi.SalaAllenamento(None, s.mondo, s.club),
     "Contratti": lambda s: dialoghi.Contratti(None, s.mondo, s.club),
     "Staff": lambda s: dialoghi.Staff(None, s.mondo, s.club),
-    "MercatoAllenatori": lambda s: dialoghi.MercatoAllenatori(None, s.mondo, s.club),
     "OpzioniAmichevole": lambda s: dialoghi.OpzioniAmichevole(None, s.mondo, s.mondo.giocatori[2], s.mondo.giocatori[3]),
     "VelocitaDiGioco": lambda s: dialoghi.VelocitaDiGioco(None, 4),
     "AnnunciDellaCronaca": lambda s: dialoghi.AnnunciDellaCronaca(None, impostazioni.valide(None)),

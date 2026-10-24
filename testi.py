@@ -81,6 +81,9 @@ Lo stesso giorno, con la finestra, i suoi testi: le linguette delle schede dei f
 l'etichetta e la scheda della persona, i preset come esiti e le loro domande, le condizioni a parole, e le domande
 delle offerte che valgono anche sulla riga della finestra; il riepilogo della chiusura conta anche le operazioni sui
 preset e vale anche senza polisportiva attiva. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, coi collegamenti della finestra, escono i testi del mercato di prima, del suo riepilogo, della testata
+del mercato degli allenatori e dei risultati della ricerca che stampava nella vista; le domande delle offerte lavorano
+soltanto sulla riga della finestra. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -1007,13 +1010,6 @@ def esito_licenziamento(a, p, buonuscita):
     return f"{nome_completo(a)} non è più nello staff di {p.nome}{con}: è {accorda_sesso(a.sesso, 'libero')}."
 
 
-def info_mercato_allenatori(p, mondo):
-    """In testa al mercato degli allenatori: la cassa, i posti vuoti dello staff e le mosse."""
-    vuoti = [NOMI_DEI_POSTI[posto].lower() for posto in range(staff.POSTI) if not p.staff[posto]]
-    posti = f"posti vuoti: {unisci(vuoti)}" if vuoti else "lo staff è al completo"
-    return f"{p.nome}: cassa {euro(p.cassa)}, {posti}, mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}."
-
-
 def voce_del_posto(p, posto, mondo):
     """Un posto nella scelta del mercato: Capo, vuoto; Assistente 1, occupato da Mario Rossi, C4."""
     a = allenatore_del_posto(p, posto, mondo)
@@ -1043,7 +1039,10 @@ def esito_offerta_allenatore(a, p, accetta, importo, probabilita):
 
 
 def riepilogo_staff(p, esiti, mondo):
-    """Il riepilogo dello staff e del mercato degli allenatori alla chiusura: quante operazioni, una riga ciascuna, e lo staff di adesso."""
+    """
+    Il riepilogo dello staff alla chiusura, comprese le offerte agli allenatori fatte nella finestra Mercato e ricerca
+    aperta da Assumi: quante operazioni, una riga ciascuna, e lo staff di adesso.
+    """
     if not esiti:
         return "\n".join([f"Staff di {p.nome}: nessuna operazione.", *righe_dello_staff(p, mondo)[1:]])
     return "\n".join([f"Staff di {p.nome}: {conta(len(esiti), 'operazione', 'operazioni')}.", *(testo for testo, _esito in esiti), *righe_dello_staff(p, mondo)[1:]])
@@ -1099,12 +1098,6 @@ def lista_usciti(mondo):
     for gid, testo, g in voci:
         come = f"è {accorda(g, 'morto')}" if testo.startswith("DECESSO") else "ha lasciato il mondo dello showdown"
         righe.append(f"{nome_completo(g)} (ID {gid}) {come} a {anni(g)} anni.")
-    return "\n".join(righe)
-
-
-def risultati_ricerca(mondo, descrizione, ids):
-    righe = [f"Ricerca fra {descrizione}: {conta(len(ids), 'giocatore trovato', 'giocatori trovati')}."]
-    righe.extend(riga_giocatore(mondo.giocatori[gid], mondo) for gid in ids if gid in mondo.giocatori)
     return "\n".join(righe)
 
 
@@ -1270,24 +1263,6 @@ def info_mercato(p, mondo):
     return f"{p.nome}: cassa {euro(p.cassa)}, gloria {p.gloria}, tesserati {len(p.tesserati)} su {p.maxtesserati}, mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}."
 
 
-def riga_mercato(c):
-    """
-    Un candidato del mercato in una riga: chi è, quanto vale, quanto prende al mese e quanto costa
-    averlo. Dalla issue 7, subito dopo nome e cognome, la classe e l'età completa: Anna Neri, I1, 17:4:3.
-    """
-    g = c.giocatore
-    if c.tipo == mercato.LIBERO:
-        costo = f"chiede {euro(c.costo)} d'ingaggio"
-    elif c.tipo == mercato.IN_VENDITA:
-        costo = f"in vendita da {c.polisportiva.nome} a {euro(c.costo)}"
-    else:
-        costo = f"{accorda(g, 'tesserato')} con {c.polisportiva.nome}, valore di mercato {euro(c.costo)}"
-    if c.tipo != mercato.LIBERO and contratti.ha_contratto(g):
-        costo += f", {_contratto_in_riga(g)}"
-    tratti = "".join(", " + t for t in tratti_speciali(g))
-    return f"{nome_completo(g)}, {codice_classe(g)}, {eta_completa(g)}, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(c.stipendio)}, {costo}{tratti}, ID {g.id}"
-
-
 def _mossa(p, mondo):
     mosse = mondo.mosse_rimaste(p)
     return "l'ultima mossa che ti resta oggi" if mosse == 1 else f"una delle {mosse} mosse che ti restano oggi"
@@ -1305,14 +1280,10 @@ def _firmera(g, p):
     return f"con {p.nome} per {contratti.durata_proposta(g)} mesi a {euro(economia.stipendio(g))} al mese"
 
 
-def _giocatore_di(c):
-    """Il giocatore di un candidato del mercato di prima, o di una riga della finestra Mercato e ricerca: le domande valgono per tutti e due."""
-    return c.persona if isinstance(c, mercato.Riga) else c.giocatore
-
-
-def domanda_acquisto(c, p, mondo):
-    g = _giocatore_di(c)
-    return (f"Comprare {nome_completo(g)} da {c.polisportiva.nome} per {euro(c.costo)}? "
+def domanda_acquisto(r, p, mondo):
+    """La domanda dell'acquisto di chi è in vendita, per la riga r della finestra Mercato e ricerca."""
+    g = r.persona
+    return (f"Comprare {nome_completo(g)} da {r.polisportiva.nome} per {euro(r.costo)}? "
             f"Firmerà {_firmera(g, p)}. Userai {_mossa(p, mondo)}.")
 
 
@@ -1325,15 +1296,17 @@ def posizione_in_rosa(posto, quanti):
     return f"È il {posto}° più forte dei {quanti} della sua rosa"
 
 
-def domanda_offerta_d_acquisto(c, importo, p, mondo):
-    g = _giocatore_di(c)
+def domanda_offerta_d_acquisto(r, importo, p, mondo):
+    """La domanda dell'offerta d'acquisto di un tesserato del computer, per la riga r della finestra."""
+    g = r.persona
     posto, quanti = mondo.posizione_in_rosa(g)
-    return (f"Offrire {euro(importo)} a {c.polisportiva.nome} per {nome_completo(g)}? {posizione_in_rosa(posto, quanti)}, "
+    return (f"Offrire {euro(importo)} a {r.polisportiva.nome} per {nome_completo(g)}? {posizione_in_rosa(posto, quanti)}, "
             f"e se passa firmerà {_firmera(g, p)}. Userai {_mossa(p, mondo)}.")
 
 
-def domanda_ingaggio(c, importo, probabilita, p, mondo):
-    g = _giocatore_di(c)
+def domanda_ingaggio(r, importo, probabilita, p, mondo):
+    """La domanda dell'ingaggio di un libero, per la riga r della finestra."""
+    g = r.persona
     return (f"Offrire a {nome_completo(g)} un ingaggio di {euro(importo)}, per tesserarsi con {p.nome}? "
             f"Accetta {con_articolo('al', percento(probabilita))}. {proposta_di_contratto(g, mondo)} Userai {_mossa(p, mondo)}.")
 
@@ -1352,18 +1325,6 @@ def esito_offerta_d_acquisto(g, venditore, p, accettata, importo):
     if accettata:
         return esito_acquisto(g, venditore, p, importo)
     return f"{venditore.nome} ha rifiutato {euro(importo)} per {nome_completo(g)}."
-
-
-def riepilogo_mercato(p, mondo, esiti):
-    """Le operazioni di una visita al mercato, coppie di testo dell'esito e riuscita, con cassa e mosse che restano."""
-    if not esiti:
-        righe = [f"Mercato di {p.nome}: nessuna offerta."]
-    else:
-        riuscite = sum(1 for _testo, riuscita in esiti if riuscita)
-        righe = [f"Mercato di {p.nome}: {conta(len(esiti), 'offerta', 'offerte')}, {conta(riuscite, 'riuscita', 'riuscite')}."]
-        righe.extend(testo for testo, _riuscita in esiti)
-    righe.append(info_mercato(p, mondo))
-    return "\n".join(righe)
 
 
 # La finestra unica Mercato e ricerca, issue 8 e decisione D36.
@@ -1564,7 +1525,7 @@ def situazione(mondo):
     """
     La Situazione in testa alla finestra Mercato e ricerca, che si riscrive dopo ogni esito: prima le mosse,
     poi le sfide da lanciare, la cassa, la gloria, la polisportiva attiva, i tesserati e lo staff, in blocchi
-    di circa quaranta caratteri. Unisce info_mercato e info_mercato_allenatori.
+    di circa quaranta caratteri. Unisce info_mercato e la testata del mercato degli allenatori di prima.
     """
     p = mondo.miapolisportiva_attiva
     if p is None:

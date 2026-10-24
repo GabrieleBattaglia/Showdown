@@ -3,7 +3,8 @@ Le prove del prototipo dell'elenco virtuale della finestra unica, strumenti/prov
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 La finestra della prova si apre sul desktop nascosto del conftest, senza suoni e senza voce, in tutte e due le
 varianti: l'elenco virtuale e il ListBox col tetto di righe, qui di 40 righe su un mondo di prova di 300 attivi.
-Le righe sono quelle del mercato, scritte soltanto quando Windows le chiede, e le righe lunghe passano i 300
+Le righe sono quelle della finestra Mercato e ricerca, dai collegamenti della finestra dello stesso 24 ottobre, col
+suo motore e testi.riga_trovato, scritte soltanto quando Windows le chiede, e le righe lunghe passano i 300
 caratteri dicendo quanti sono; le lettere iniziali le cerca il prototipo, senza che Windows chieda il testo di
 tutte le righe; il filtro aspetta 350 millesimi, tiene scelta la stessa persona e annuncia i trovati alla voce e
 al display; Scheda lavora sulla riga col fuoco anche dopo Ctrl+Spazio; Esc, battuto davvero sull'elenco, chiude
@@ -129,22 +130,27 @@ def test_le_cartelle_della_prova_sono_temporanee_e_tornano_com_erano():
     assert not os.path.exists(temporanea)
 
 
-def test_le_righe_sono_quelle_del_mercato_e_le_lunghe_passano_i_300_caratteri(finestra, mondo_e_poli):
-    mondo, poli = mondo_e_poli
+def test_le_righe_sono_quelle_della_finestra_e_le_lunghe_passano_i_300_caratteri(finestra, mondo_e_poli):
+    mondo, _poli = mondo_e_poli
     elenco = finestra.elenco
-    tutti = mercato.candidati(mondo, poli, mostra="tutti")
+    # Dai collegamenti della finestra le righe vengono dal suo motore: i liberi, chi è in vendita e i tesserati del computer, dal valore più alto.
+    tutti = mercato.cerca(mondo, prova.FILTRI_DELLA_PROVA)
     assert len(finestra.visibili) == len(tutti) >= ATTIVI - 1
-    assert [c.giocatore.id for c in finestra.visibili] == [c.giocatore.id for c in tutti]
+    assert [r.numero for r in finestra.visibili] == [r.numero for r in tutti]
+    assert {r.stato for r in tutti} == {mercato.LIBERO, mercato.IN_VENDITA, mercato.DEL_COMPUTER}
+    valori = [r.persona.indice_collettivo_valore for r in tutti]
+    assert valori == sorted(valori, reverse=True)
+    prima = testi.riga_trovato(tutti[0], mondo, "valore_alto")
     if finestra.nativo:
         assert elenco.mostrate == elenco.GetCount() == TETTO
         assert finestra.etichetta_trovati.GetLabel() == f"&Trovati: {testi.intero(len(tutti))}, nell'elenco i primi {TETTO}"
-        assert elenco.GetString(0) == testi.riga_mercato(tutti[0])
+        assert elenco.GetString(0) == prima
     else:
         assert elenco.mostrate == elenco.GetItemCount() == len(tutti)
         assert finestra.etichetta_trovati.GetLabel() == f"&Trovati: {testi.intero(len(tutti))}"
         # Windows chiede soltanto le righe che mostra, e le riceve da fuori come le leggerebbe uno screen reader.
         assert 0 < elenco.scritte < len(tutti) // 2
-        assert prova.testo_letto(elenco, 0, 1024) == testi.riga_mercato(tutti[0])
+        assert prova.testo_letto(elenco, 0, 1024) == prima
         # La colonna è larga quanto l'elenco.
         assert elenco.GetColumnWidth(0) == elenco.GetClientSize().width
     assert finestra.elenco.col_fuoco() == 0
@@ -152,7 +158,7 @@ def test_le_righe_sono_quelle_del_mercato_e_le_lunghe_passano_i_300_caratteri(fi
     _clic(finestra.lunghe)
     for indice in (0, elenco.mostrate - 1):
         riga = elenco.testo(indice)
-        g = finestra.visibili[indice].giocatore
+        g = finestra.visibili[indice].persona
         assert len(riga) > prova.LUNGHEZZA_DELLE_RIGHE_LUNGHE
         assert riga.startswith(f"{testi.nome_completo(g)}, ") and f", ID {g.id}, " in riga
         assert riga.endswith(f", fine della riga di {len(riga)} caratteri")
@@ -208,21 +214,21 @@ def test_il_filtro_si_ferma_tiene_la_persona_e_annuncia_i_trovati(finestra, voce
     elenco = finestra.elenco
     elenco.scegli(5)
     prova.pompa()
-    persona = finestra.visibili[5].giocatore
+    persona = finestra.visibili[5].persona
     chiave = persona.cognome[:3].casefold()
     _scrivi_nel_campo(finestra, chiave.upper())
-    attesi = [c.giocatore.id for c in finestra.tutti if chiave in testi.nome_completo(c.giocatore).casefold()]
-    assert [c.giocatore.id for c in finestra.visibili] == attesi
-    assert finestra.visibili[elenco.col_fuoco()].giocatore is persona
+    attesi = [r.numero for r in finestra.tutti if chiave in testi.nome_completo(r.persona).casefold()]
+    assert [r.numero for r in finestra.visibili] == attesi
+    assert finestra.visibili[elenco.col_fuoco()].persona is persona
     trovati = f"Trovati: {testi.intero(len(attesi))}"
     assert finestra.etichetta_trovati.GetLabel() == "&" + trovati
     assert ("nvda", trovati) in voce_finta.detti
     assert ("nvda", trovati) in voce_finta.braille
     # Il numero si cerca dall'inizio, e quello uguale viene per primo.
     _scrivi_nel_campo(finestra, str(persona.id))
-    assert finestra.visibili[0].giocatore is persona
-    assert all(str(c.giocatore.id).startswith(str(persona.id)) for c in finestra.visibili)
-    assert finestra.visibili[elenco.col_fuoco()].giocatore is persona
+    assert finestra.visibili[0].persona is persona
+    assert all(str(r.numero).startswith(str(persona.id)) for r in finestra.visibili)
+    assert finestra.visibili[elenco.col_fuoco()].persona is persona
     # Nessuno, perché nessun numero comincia con lo zero: l'elenco è vuoto, e Scheda lo dice.
     _scrivi_nel_campo(finestra, "0")
     assert finestra.visibili == [] and elenco.mostrate == 0

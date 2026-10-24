@@ -31,6 +31,9 @@ messaggio di Windows: le domande hanno Sì e No, col No già scelto. A mosse fin
 Alt+O sulla scheda Risultati dice il perché col suo suono. L'amichevole si gioca scegliendo prima l'avversario qui, poi
 il proprio giocatore: la finestra si chiude e la partita la gioca la finestra principale. Assumi dello staff apre sugli
 allenatori liberi col posto già scelto, e non ricorda niente.
+Coi collegamenti dello stesso giorno la aprono Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O della finestra principale e Assumi
+dello staff, e chi la apre ne prende gli esiti con esiti_alla_fine, anche quando a chiuderla è stata la chiusura per
+l'aggiornamento, che chiude i dialoghi aperti: la porta si ricorda lo stesso.
 """
 
 import contextlib
@@ -1620,3 +1623,12 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
                 mercato.ricorda_la_porta(self.mondo, self.porta, mercato.StatoDellaPorta(self.scelta, self.attuali.copia()))
         self.risultato = self.esiti
         self.chiudi(wx.ID_CLOSE)
+
+    def esiti_alla_fine(self):
+        """
+        Gli esiti, per chi ha aperto la finestra, dopo ShowModal: se a chiuderla è stato qualcun altro, come la chiusura
+        per l'aggiornamento, che chiude i dialoghi aperti, la chiusura della finestra si fa adesso, porta compresa.
+        """
+        if self.risultato is None:
+            self.chiudi_la_finestra()
+        return self.risultato

@@ -94,6 +94,9 @@ anche nei due ripieghi del calendario, Iscrivi e Togli dopo il sorteggio. È di 
 Lo stesso giorno, con la finestra Mercato e ricerca della decisione D36, arrivano gli eventi della finestra che
 aspettano il loro preset, in SENZA_PRESET: il codice li fa già suonare, e finché il passo dei suoni non li porta nella
 collezione tacciono senza avvisi. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, coi collegamenti della finestra, escono da MESS i quattro suoni della ricerca che stampava nella vista
+e di Risultati della ricerca, che non c'è più, e la finestra chiusa senza esiti aspetta il suo preset. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -227,10 +230,6 @@ GRUPPI = (
         "ritirati_sessione": "mess_saluto_in_eco",
         "usciti_sessione": "mess_spirale_breve",
         "dialogo_ricerca": "mess_sonar",
-        "ricerca_con_risultati": "meteora_marcatori_trovato",
-        "ricerca_senza_risultati": "meteora_marcatori_non_trovato",
-        "risultati_ricerca": "apertura",
-        "nessuna_ricerca": "meditimer_allarme_zittito",
     }),
     ("Mondo, il tempo e le notizie", {
         "data_e_avanzamento": "meditimer_ora",
@@ -572,6 +571,8 @@ SENZA_PRESET = frozenset({
     "filtri_azzerati",
     # I perché del motore: un'offerta non possibile per questa persona, chi oggi non gioca, il club che non si sfida.
     "offerta_non_possibile", "non_gioca_oggi", "club_non_sfidabile",
+    # La finestra chiusa senza esiti, che lascia la vista com'era.
+    "finestra_chiusa_senza_esiti",
 })
 
 # Ogni evento detto a parole: l'azione che lo fa suonare. La legge l'elenco dei suoni per Acu_Maker,
@@ -597,9 +598,9 @@ AZIONI = {
     "fuoco_vista": "F5, il fuoco va nella vista principale",
     "fuoco_barra": "F7, il fuoco va nella barra di stato",
     "annullato": "un'operazione annullata, con Esc o con Annulla in un dialogo",
-    "lavoro_concluso": ("la chiusura del mercato, delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del mercato degli "
-                        "allenatori, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei tornei o degli editor, che la vista "
-                        "riassume, anche quando non si è cambiato niente"),
+    "lavoro_concluso": ("la chiusura della finestra Mercato e ricerca con degli esiti, compresi i preset, e quella delle vendite, degli arretrati, della "
+                        "sala allenamento, dei contratti, dello staff, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei "
+                        "tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente"),
     "nessuna_selezione": "un pulsante premuto senza niente di scelto su cui lavorare",
     "campo_da_correggere": "un valore da correggere in un campo, e il dialogo resta aperto",
     "elenco_svuotato": "un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre",
@@ -659,10 +660,6 @@ AZIONI = {
     "ritirati_sessione": "i ritirati della sessione, con Ctrl+Shift+R",
     "usciti_sessione": "gli usciti di scena nella sessione, con Ctrl+Shift+U",
     "dialogo_ricerca": "si apre la ricerca dei giocatori, con Ctrl+F",
-    "ricerca_con_risultati": "una ricerca che trova dei giocatori",
-    "ricerca_senza_risultati": "una ricerca che non trova nessuno",
-    "risultati_ricerca": "i risultati dell'ultima ricerca, con Ctrl+R",
-    "nessuna_ricerca": "Ctrl+R quando nella sessione non c'è ancora una ricerca",
     "data_e_avanzamento": "la data simulata e il prossimo avanzamento, con Ctrl+D",
     "riepilogo_avanzamento": "il riepilogo dell'ultimo avanzamento del mondo, con Ctrl+Shift+A",
     "nessun_avanzamento": "il riepilogo dell'avanzamento quando il mondo non è ancora avanzato",
