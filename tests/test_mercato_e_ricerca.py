@@ -739,13 +739,10 @@ def test_la_riga_dell_allenatore_ha_l_eta_completa_e_la_regione(mondo):
     assert f", capo {'allenatrice' if impiegato.persona.sesso == 'f' else 'allenatore'} di {_cpu(mondo).nome}, " in testi.riga_trovato(impiegato, mondo, "stipendio_basso")
 
 
-def test_la_situazione_in_blocchi_di_quaranta_caratteri(mondo):
-    testo = testi.situazione(mondo)
-    blocchi = [testo[i:i + 40] for i in range(0, len(testo), 40)]
-    assert all(blocco[0] != " " for blocco in blocchi) and all(blocco.endswith(" ") for blocco in blocchi[:-1])
-    assert " ".join(blocco.strip() for blocco in blocchi) == ("Mosse rimaste 5 su 5, sfide da lanciare 2, cassa 20.000 euro, gloria 100, Pat-Bologna, "
-                                                             "tesserati 5 su 15, staff: mancano il capo e l'assistente 2.")
-    assert blocchi[0].strip() == "Mosse rimaste 5 su 5,"
+def test_la_situazione_in_una_riga_senza_blocchi(mondo):
+    # Dal 24 ottobre 2026, regola di Gabriele: nelle finestre niente blocchi di quaranta caratteri, solo a console.
+    assert testi.situazione(mondo) == ("Mosse rimaste 5 su 5, sfide da lanciare 2, cassa 20.000 euro, gloria 100, Pat-Bologna, "
+                                       "tesserati 5 su 15, staff: mancano il capo e l'assistente 2.")
     mondo.miapolisportiva_attiva = None
     assert testi.situazione(mondo) == "Nessuna polisportiva attiva: puoi solo cercare."
     lungo = testi.a_blocchi(["x" * 45, "corto"])

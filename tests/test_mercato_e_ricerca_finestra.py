@@ -1387,3 +1387,35 @@ def test_l_amichevole_contro_l_unico_tuo_giocatore_che_oggi_gioca(banco, monkeyp
 def test_i_massimi_dei_numeri_sono_quelli_del_motore(banco):
     f = banco.apri()
     assert {campo: numero.GetMax() for campo, numero in f.numeri.items()} == mercato.MASSIMI_DEI_NUMERI
+
+
+def test_esc_dalla_scheda_col_ordine_cambiato_in_attesa(banco):
+    # Dal controllo finale del 24 ottobre 2026: l'ordine rovesciato e subito Esc nella scheda, prima che il ricalcolo
+    # scatti; l'elenco deve tornare sulla stessa persona, non sul suo posto di prima, dove ora c'è un altro.
+    f = banco.apri("ricerca")
+    r = _scegli_persona(f, f.righe[2].numero)
+    _invio(f, f.elenco)
+    tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
+    voci = [v for v, _testo in f._ordini]
+    _scegli_voce(f.scelta_ordine, voci.index("valore_basso"))
+    tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True, shift=True)
+    assert _fuoco_su(f.scheda)
+    tastiera.gancio(f.scheda, tastiera.VK_ESCAPE)
+    dopo = f.riga()
+    assert _fuoco_su(f.elenco) and dopo is not None and dopo.numero == r.numero
+
+
+def test_la_scheda_raggiunta_col_ricalcolo_in_attesa_e_gia_nuova(banco):
+    # Dal controllo finale del 24 ottobre 2026: una lettera nel nome e subito di ritorno nella scheda; il ricalcolo si fa
+    # prima, così la scheda non cambia sotto il cursore e l'annuncio dei trovati non arriva sopra la lettura.
+    f = banco.apri("ricerca")
+    _scegli_persona(f, f.righe[-1].numero)
+    _invio(f, f.elenco)
+    tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
+    f.campo_nome.SetValue("zz")
+    tastiera.pompa()
+    tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True, shift=True)
+    assert _fuoco_su(f.scheda)
+    scheda = f.scheda.GetValue()
+    banco.pianifica.scatta()
+    assert f.scheda.GetValue() == scheda and not banco.annunci.detti

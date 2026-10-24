@@ -1531,14 +1531,15 @@ def _staff_in_breve(p):
 def situazione(mondo):
     """
     La Situazione in testa alla finestra Mercato e ricerca, che si riscrive dopo ogni esito: prima le mosse,
-    poi le sfide da lanciare, la cassa, la gloria, la polisportiva attiva, i tesserati e lo staff, in blocchi
-    di circa quaranta caratteri. Unisce info_mercato e la testata del mercato degli allenatori di prima.
+    poi le sfide da lanciare, la cassa, la gloria, la polisportiva attiva, i tesserati e lo staff, in una riga
+    sola separata da virgole: dal 24 ottobre 2026, regola di Gabriele, nelle finestre niente blocchi di quaranta
+    caratteri, che valgono soltanto a console. Unisce info_mercato e la testata del mercato degli allenatori di prima.
     """
     p = mondo.miapolisportiva_attiva
     if p is None:
         return "Nessuna polisportiva attiva: puoi solo cercare."
-    return a_blocchi([f"Mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}", f"sfide da lanciare {sfide.disponibili(mondo, p)}",
-                      f"cassa {euro(p.cassa)}", f"gloria {p.gloria}", p.nome, f"tesserati {len(p.tesserati)} su {p.maxtesserati}", _staff_in_breve(p)])
+    return ", ".join([f"Mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}", f"sfide da lanciare {sfide.disponibili(mondo, p)}",
+                      f"cassa {euro(p.cassa)}", f"gloria {p.gloria}", p.nome, f"tesserati {len(p.tesserati)} su {p.maxtesserati}", _staff_in_breve(p)]) + "."
 
 
 # Le caselle di Chi cercare a parole, per i giocatori e per gli allenatori; i gruppi nelle contraddizioni e in fondo agli ordini per costo.

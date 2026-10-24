@@ -43,7 +43,7 @@ L'interfaccia testuale del vecchio sd.py, python Showdown.py --testo, non c'è p
 
 ### Il salvataggio
 
-Il mondo passa al formato 9: all'aggiornamento ogni polisportiva riceve una sede estratta. Chi arriva da una versione di prova trova i nomi nuovi dei tornei con Ripristina il calendario predefinito, nel menu Tornei, o ripartendo da un mondo nuovo.
+Il mondo passa al formato 10: all'aggiornamento ogni polisportiva riceve una sede estratta, e la finestra Mercato e ricerca trova i filtri di serie per ogni porta d'ingresso, pronti per i tuoi preset. Chi arriva da una versione di prova trova i nomi nuovi dei tornei con Ripristina il calendario predefinito, nel menu Tornei, o ripartendo da un mondo nuovo.
 
 ### Dal collaudo di gioco
 

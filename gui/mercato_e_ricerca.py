@@ -1281,7 +1281,13 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self._persona_della_scheda = persona
 
     def _scheda_col_fuoco(self, event):
+        """
+        La scheda prende il fuoco: dal controllo finale del 24 ottobre il ricalcolo che aspettava si fa prima, così la
+        scheda è già quella della persona nuova e l'annuncio dei trovati non arriva sopra la lettura.
+        """
         event.Skip()
+        if not self._in_ricalcolo and self._ricalcolo.subito():
+            self._annuncio.ferma()
         if self._scheda.in_attesa:
             self.aggiorna_la_scheda()
 
@@ -1311,7 +1317,11 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         suoni.suona("scheda_allenatore" if self.righe[indice].allenatore else "mercato_scheda_giocatore")
 
     def torna_all_elenco(self):
-        """Invio o Esc nella scheda: il fuoco torna sull'elenco, sulla stessa riga."""
+        """
+        Invio o Esc nella scheda: il fuoco torna sull'elenco, sulla stessa persona. Dal controllo finale del 24 ottobre
+        il ricalcolo che aspettava si fa prima di leggere la riga, che altrimenti cambierebbe sotto la persona.
+        """
+        self._ricalcolo.subito()
         indice = self.riga_scelta()
         self.elenco.SetFocus()
         if indice >= 0:
