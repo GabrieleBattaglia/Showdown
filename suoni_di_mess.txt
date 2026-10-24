@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 319 suoni, 293 della finestra e 26 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 323 suoni, 297 della finestra e 26 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -120,7 +120,7 @@ Il diario della polisportiva attiva, con Ctrl+Shift+M: mess_penna_sul_diario.
 L'elenco delle polisportive, con Ctrl+Shift+E: mess_albo_che_scorre.
 Si apre la scelta del tesserato da svincolare, con Ctrl+Shift+S: mess_porta_che_cigola.
 Un tesserato svincolato, che torna libero: mess_contratto_strappato.
-Un comando che vuole i tesserati quando la polisportiva attiva non ne ha: mess_eco_nello_spogliatoio.
+Un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue polisportive quando nessuna ne ha: mess_eco_nello_spogliatoio.
 Finestra, polisportive, le notizie dei tuoi tesserati, 3 suoni.
 Nell'avanzamento un tuo tesserato diventa una bandiera del club: mess_fanfara_della_bandiera.
 Nell'avanzamento un tuo tesserato si ritira: mess_scarpe_al_chiodo.
@@ -174,6 +174,11 @@ Un'amichevole fra due tuoi tesserati: mess_stretta_di_mano.
 Salva la cronaca quando nella sessione non c'è ancora un incontro mostrato o ascoltato: mess_nessun_incontro.
 La cronaca dell'ultimo incontro, amichevole, di torneo o di sfida, salvata nel suo file, con Ctrl+Shift+O: mess_cronaca_salvata.
 La cronaca dell'ultimo incontro che non si può scrivere nel file: mess_cronaca_non_salvata.
+Finestra, partite, tutte le amichevoli, 4 suoni.
+Parte la serie di Gioca tutte le amichevoli, nel menu Partite, della polisportiva attiva o di tutte le tue polisportive, quando almeno un tuo tesserato oggi può giocare: mess_amichevoli_in_serie.
+La serie di Gioca tutte le amichevoli è finita con almeno un incontro, e la vista ne fa il riepilogo: mess_amichevoli_in_serie_finite.
+Gioca tutte le amichevoli non parte, perché oggi nessun tesserato della polisportiva attiva, o di nessuna delle tue polisportive, può giocare un'amichevole: mess_nessuno_per_la_serie.
+La serie di Gioca tutte le amichevoli finisce senza incontri, perché per nessuno dei tuoi tesserati c'era oggi un avversario entro 15 classi dalla sua: mess_nessun_avversario_nel_raggio.
 Finestra, partite, la partita dal vivo, 12 suoni.
 Si apre la finestra della partita dal vivo, con Assisti: mess_conto_alla_rovescia.
 Nella partita dal vivo il riscaldamento saltato: mess_punto_successivo.

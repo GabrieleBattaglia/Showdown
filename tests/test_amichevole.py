@@ -11,6 +11,7 @@ anche se si salva dopo un avanzamento; il perché di un mondo non salvato prima 
 i suoni di ogni passo. I dialoghi sono sostituiti da risposte scritte, la cassa della partita da una
 cassa finta.
 Dal 2026-10-24, col collaudo di gioco, Alt+V a incontro finito mostra l'esito senza i guizzi di un salto alla fine che non c'è.
+Dallo stesso giorno il menu Partite ha anche le due voci di Gioca tutte le amichevoli, che prova test_amichevoli_in_serie.py.
 Lo stesso giorno, coi collegamenti della finestra Mercato e ricerca, l'avversario si sceglie prima, nell'elenco della
 finestra aperta da Ctrl+O sugli avversari di oggi, e poi il tuo giocatore, fra i tuoi che oggi giocano, lui escluso: le
 risposte scritte scelgono l'avversario nella finestra vera e premono Amichevole.
@@ -172,16 +173,19 @@ def test_il_menu_partite_e_la_guida(finestra):
     lettere = [titolo[titolo.index("&") + 1].lower() for titolo in titoli]
     assert len(lettere) == len(set(lettere)), lettere
     partite = dict(finestra.voci_menu())["Pa&rtite"]
-    # Dalla tappa 12 il menu Partite ha anche le sfide fra polisportive.
-    assert [(voce[0], voce[1]) for voce in partite if voce] == [("&Amichevole...", "Ctrl+O"), ("&Lancia una sfida...", "Ctrl+W"),
+    # Dalla tappa 12 il menu Partite ha anche le sfide fra polisportive; dal collaudo di gioco del 24 ottobre 2026, subito
+    # dopo Amichevole, le due voci di Gioca tutte le amichevoli, senza tasto rapido.
+    assert [(voce[0], voce[1]) for voce in partite if voce] == [("&Amichevole...", "Ctrl+O"), ("&Gioca tutte le amichevoli di Club Di Prova", None),
+                                                                ("Gioca tutte le amichevoli di tutte le tue &polisportive", None),
+                                                                ("&Lancia una sfida...", "Ctrl+W"),
                                                                 ("Sfide in a&rrivo...", "Ctrl+Shift+F"), ("S&torico delle sfide...", "Ctrl+Shift+H"),
                                                                 ("&Salva la cronaca", "Ctrl+Shift+O")]
     # F8 e Ctrl+F8 tornano liberi: il punto per punto è diventato la partita dal vivo.
     tasti = [voce[1] for _t, elenco in finestra.voci_menu() for voce in filter(None, elenco)]
     assert "F8" not in tasti and "Ctrl+F8" not in tasti
     guida = testi.guida(finestra.voci_guida())
-    assert ("Menu Partite: Amichevole, Ctrl+O; Lancia una sfida, Ctrl+W; Sfide in arrivo, Ctrl+Maiusc+F; Storico delle sfide, Ctrl+Maiusc+H; "
-            "Salva la cronaca, Ctrl+Maiusc+O.") in guida
+    assert ("Menu Partite: Amichevole, Ctrl+O; Gioca tutte le amichevoli di Club Di Prova; Gioca tutte le amichevoli di tutte le tue polisportive; "
+            "Lancia una sfida, Ctrl+W; Sfide in arrivo, Ctrl+Maiusc+F; Storico delle sfide, Ctrl+Maiusc+H; Salva la cronaca, Ctrl+Maiusc+O.") in guida
     assert "F8" not in guida and "Punto successivo" not in guida
 
 

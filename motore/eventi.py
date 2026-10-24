@@ -14,9 +14,10 @@ Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 10 e decisione D37:
 dove il lungolinea che va verso la porta lascia il suo lato nell'angolo di chi difende e gira verso
 la tasca. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 12 e decisione D37: nello schermo contro la
-pallina batte sullo schermo e torna indietro, con le parole di Gabriele, invece di urtarlo e fermarsi;
-il ritorno è un volo che finisce nella tappa fermo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
-Opus 5.5, UltraCode).
+pallina batte sullo schermo e torna indietro, con le parole di Gabriele, invece di urtarlo e fermarsi.
+Il volo del ritorno, che la portava indietro fino alla tappa fermo, se n'è andato lo stesso giorno,
+dopo l'ascolto alla cieca, perché non si sentiva: resta la frase. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 Dalle verifiche della issue 11, il 24 ottobre 2026, decisione D37: la frase della pallina che sfugge al
 controllo dice che rotola via e si ferma a centrocampo, come fa dalla issue 11, invece di restare ferma
 accanto a chi l'ha persa. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
@@ -167,6 +168,7 @@ CAUSE = {
     "battuta_doppio_tocco": _c("battuta", "15.3.1", "servizio_irregolare", 1, "{chi} tocca due volte la pallina in battuta"),
     # L'attacco: schermo centrale e out.
     # Dalla issue 12 la pallina batte sullo schermo e torna indietro, parole di Gabriele; prima si fermava.
+    # Lo dice soltanto la cronaca: il volo del ritorno nella partita dal vivo non si sentiva, e non c'è più.
     "schermo_contro": _c("attacco", "15.4.2", "schermo_centrale", 1, "la pallina di {chi} batte sullo schermo e torna indietro"),
     "schermo_sopra": _c("attacco", "15.4.1", "schermo_centrale", 1, "la pallina di {chi} passa sopra lo schermo"),
     "out_sponda": _c("attacco", "15.7.1", "out", 1, "la pallina di {chi} salta la sponda e finisce a terra"),

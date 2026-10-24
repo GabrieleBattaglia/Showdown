@@ -64,6 +64,10 @@ domanda di una spesa piccola hanno i decimali che servono a vederli salire, da 1
 dicono più da 144,4 a 144,4; tutti_al_massimo parla soltanto di chi si allena e ha almeno un punto da
 spendere, con le forme accordate di tutti_infortunati. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Con la richiesta di Gabriele dello stesso collaudo arrivano i testi di Gioca tutte le amichevoli, della polisportiva attiva
+o di tutte le tue: una riga per incontro, col tuo giocatore e la sua classe, l'avversario con la classe e la polisportiva,
+il risultato dal tuo punto di vista e i punti allenamento, e in fondo i totali, senza la cronaca; e il perché quando oggi
+nessuno dei tuoi può giocare. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Dal 24 ottobre 2026, con la issue 8 e la decisione D36, i testi della finestra unica Mercato e ricerca: la riga
 del giocatore trovato, che dopo nome, classe ed età completa porta il dato dell'ordine scelto, poi valore,
 stipendio, stato e costo, contratto, tratti, regione e numero; quella dell'allenatore, con l'età completa e la
@@ -137,6 +141,7 @@ from costanti import (
     PA_PER_SET_VINTO,
     PA_VITTORIA,
     PROPOSTE_RINNOVO_MASSIME,
+    RAGGIO_CLASSI_AMICHEVOLI,
 )
 from grammatica import torneo_con_preposizione
 from motore import cronaca
@@ -3437,12 +3442,16 @@ def cronaca_amichevole(risultato, nomi, livello):
     return "\n".join(cronaca.componi(risultato.momenti, nomi, livello))
 
 
-def nessuno_per_l_amichevole(mondo, ora, poli=None, primo=None):
+def nessuno_per_l_amichevole(mondo, ora, poli=None, primo=None, tutte=False):
     """
     Perché oggi l'amichevole non si gioca: nessun tesserato della polisportiva, o nessun avversario
     del primo giocatore, può giocare; e fra quanto arriva il giorno simulato dopo. ora è in UTC.
+    Dal collaudo di gioco, con tutte, nessun tesserato di nessuna delle tue polisportive, per Gioca
+    tutte le amichevoli di tutte le tue polisportive.
     """
-    if primo is None:
+    if tutte:
+        chi = "Oggi nessun tesserato delle tue polisportive può giocare un'amichevole"
+    elif primo is None:
         chi = f"Oggi nessun tesserato di {poli.nome} può giocare un'amichevole"
     else:
         chi = f"Oggi nessun altro giocatore può giocare un'amichevole contro {nome_completo(primo)}"
@@ -3457,6 +3466,124 @@ def cronaca_salvata(percorso, livello, nomi, tipo="amichevole"):
 
 def cronaca_non_salvata(errore, tipo="amichevole"):
     return f"La cronaca {NOMI_DEGLI_INCONTRI.get(tipo, tipo)} non si è potuta salvare: {errore}."
+
+
+# Gioca tutte le amichevoli, della polisportiva attiva o di tutte le tue, richiesta di Gabriele del 24 ottobre 2026: una
+# riga per incontro, coi due giocatori, il risultato e i punti allenamento, e in fondo i totali, senza la cronaca.
+
+def _e_tuo(g, mondo):
+    """Vero se il giocatore è un tesserato di una delle tue polisportive."""
+    club = mondo.polisportive.get(g.appartenenza)
+    return club is not None and not club.is_cpu_controlled
+
+
+def _da_dove_viene(g):
+    """La polisportiva di un giocatore nelle righe delle amichevoli in serie: di Pat-Bologna, oppure libero, accordato."""
+    return accorda(g, "libero") if g.appartenenza == "*" else f"di {g.appartenenza}"
+
+
+def _vince_il_tuo(voce):
+    lato = "A" if voce.risultato.parti[0] == voce.tuo.id else "B"
+    return voce.risultato.vincitore == lato
+
+
+def _risultato_del_tuo(voce):
+    """
+    Il risultato di un'amichevole in serie dal punto di vista del tuo giocatore: vince 3 set a 1 (11 a 5, 9 a 11, 11 a 7,
+    11 a 3); col ritiro, chi si ritira e dopo quanti set, con i parziali dei set giocati: vince perché Mario Rossi si ritira
+    dopo 2 set (11 a 5, 3 a 11).
+    """
+    risultato = voce.risultato
+    dalla_a = risultato.parti[0] == voce.tuo.id
+    verbo = "vince" if _vince_il_tuo(voce) else "perde"
+    ritiro = risultato.esito == "ritiro"
+    giocati = risultato.set[:risultato.set_giocati] if ritiro else risultato.set
+    parziali = ", ".join(f"{a} a {b}" if dalla_a else f"{b} a {a}" for a, b in giocati)
+    if not ritiro:
+        sa, sb = risultato.set_vinti
+        mio, suo = (sa, sb) if dalla_a else (sb, sa)
+        return f"{verbo} {mio} set a {suo} ({parziali})"
+    if len(risultato.ritirato) > 1:
+        chi = f"{verbo}, si ritirano tutti e due"
+    elif voce.tuo.id in risultato.ritirato:
+        chi = f"{verbo} perché si ritira"
+    else:
+        chi = f"{verbo} perché {nome_completo(voce.avversario)} si ritira"
+    return f"{chi} dopo {conta(len(giocati), 'set', 'set')} ({parziali})"
+
+
+def riga_amichevole_in_serie(voce, mondo):
+    """
+    Un incontro delle amichevoli in serie in una riga: il tuo giocatore e la sua classe, l'avversario con la classe e la
+    polisportiva, il risultato dal tuo punto di vista e i punti allenamento, anche dell'avversario quando è anche lui tuo, e
+    in coda gli infortuni e gli acciacchi dell'incontro. Senza avversario nel raggio, le classi in cui lo si è cercato; e chi
+    aveva già giocato nella serie, da avversario di un tuo di un'altra polisportiva, lo dice.
+    """
+    tuo = f"{nome_completo(voce.tuo)}, {classe.codice(voce.livello_tuo)}"
+    if voce.avversario is None:
+        alta = classe.codice(max(1, voce.livello_tuo - RAGGIO_CLASSI_AMICHEVOLI))
+        bassa = classe.codice(min(classe.LIVELLI, voce.livello_tuo + RAGGIO_CLASSI_AMICHEVOLI))
+        return f"{tuo}: oggi nessun avversario nel raggio, dalla classe {alta} alla {bassa}."
+    avversario = f"{nome_completo(voce.avversario)}, {classe.codice(voce.livello_avversario)}, {_da_dove_viene(voce.avversario)}"
+    if voce.gia_giocato:
+        return f"{tuo}, ha già giocato oggi, da avversario di {avversario}."
+    if _e_tuo(voce.avversario, mondo):
+        presi = f"punti allenamento {punti(voce.punti_tuo)} a {nome_completo(voce.tuo)} e {punti(voce.punti_avversario)} a {nome_completo(voce.avversario)}"
+    else:
+        presi = quanti_punti(voce.punti_tuo, True)
+    infortuni_e_acciacchi = [frase for frase in voce.risultato.registrazione or [] if not frase.startswith("Punti allenamento")]
+    return " ".join([f"{tuo}, contro {avversario}: {_risultato_del_tuo(voce)}; {presi}.", *infortuni_e_acciacchi])
+
+
+def amichevoli_giocate(serie):
+    """Le voci degli incontri giocati nelle amichevoli in serie, ciascuno una volta sola."""
+    return [v for _p, voci in serie for v in voci if v.risultato is not None and not v.gia_giocato]
+
+
+def totali_amichevoli_in_serie(serie, mondo):
+    """
+    I totali delle amichevoli in serie: quante, vinte e perse dai tuoi giocatori, i punti allenamento dei tuoi tesserati e chi
+    è rimasto senza avversario nel raggio. Senza nessun incontro, per quanti tuoi tesserati mancava l'avversario.
+    """
+    giocate = amichevoli_giocate(serie)
+    senza = sum(1 for _p, voci in serie for v in voci if v.avversario is None)
+    if not giocate:
+        return f"Nessuna amichevole giocata: oggi nessun avversario nel raggio per {conta(senza, 'tuo tesserato', 'tuoi tesserati')}."
+    vinte = sum(1 for v in giocate if _vince_il_tuo(v))
+    perse = len(giocate) - vinte
+    presi = sum(v.punti_tuo + (v.punti_avversario if _e_tuo(v.avversario, mondo) else 0.0) for v in giocate)
+    esiti = unisci([conta(vinte, "vinta", "vinte") if vinte else "", conta(perse, "persa", "perse") if perse else ""])
+    testo = f"In tutto {conta(len(giocate), 'amichevole', 'amichevoli')}: {esiti}, {quanti_punti(presi, True)} ai tuoi tesserati"
+    if senza:
+        testo += f"; {conta(senza, 'tesserato', 'tesserati')} senza un avversario nel raggio"
+    return f"{testo}."
+
+
+def riepilogo_amichevoli_in_serie(serie, mondo, set_al_meglio, tutte=False):
+    """
+    La vista dopo Gioca tutte le amichevoli: che cosa si è giocato e con quale regola, una riga per tesserato, e in fondo i
+    totali. Con tutte, quelle di tutte le tue polisportive, ciascuna aperta dal suo nome, anche quando oggi non gioca nessuno.
+    """
+    regola = (f"al meglio dei {set_al_meglio} set, contro avversari liberi o di un'altra polisportiva{', anche tua' if tutte else ''}, "
+              f"con la classe entro {RAGGIO_CLASSI_AMICHEVOLI} livelli da quella del tuo giocatore, in su o in giù.")
+    if tutte:
+        righe = [f"Tutte le amichevoli di oggi delle tue polisportive, {regola}"]
+    else:
+        righe = [f"Tutte le amichevoli di oggi di {serie[0][0].nome}, {regola}"]
+    for p, voci in serie:
+        if tutte and voci:
+            righe.append(f"Le amichevoli di {p.nome}:")
+        elif tutte:
+            righe.append(f"Oggi nessun tesserato di {p.nome} può giocare un'amichevole." if p.tesserati else f"{p.nome} non ha tesserati.")
+        righe.extend(riga_amichevole_in_serie(v, mondo) for v in voci)
+    righe.append(totali_amichevoli_in_serie(serie, mondo))
+    return "\n".join(righe)
+
+
+def evento_amichevoli_in_serie(serie):
+    """La riga della barra dopo le amichevoli in serie, entro quaranta caratteri: 5 amichevoli in serie."""
+    giocate = len(amichevoli_giocate(serie))
+    return f"{conta(giocate, 'amichevole', 'amichevoli')} in serie" if giocate else "nessun avversario nel raggio"
 
 
 # La sala allenamento e i contratti, tappa 11, decisione D31: i testi che la finestra mostra.

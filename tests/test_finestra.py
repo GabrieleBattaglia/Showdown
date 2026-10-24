@@ -103,10 +103,11 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
             assert finestra.vista.GetValue(), testo
             assert "\n\n" not in finestra.vista.GetValue(), testo
             provate += 1
-    # Salva la cronaca, senza un'amichevole nella sessione, lo dice nella vista; dalla tappa 12 c'è anche la classifica mondiale;
+    # Salva la cronaca, senza un'amichevole nella sessione, lo dice nella vista; dalla tappa 12 c'è anche la classifica mondiale.
+    # Dal collaudo di gioco del 24 ottobre 2026 le due voci di Gioca tutte le amichevoli, che riassumono la serie nella vista;
     # dalla issue 8 Risultati della ricerca non c'è più.
-    assert provate == 23
-    assert finestra.comandi == 23
+    assert provate == 25
+    assert finestra.comandi == 25
 
 
 def test_i_menu_hanno_tasti_e_lettere_non_ripetuti(finestra):

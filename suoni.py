@@ -91,6 +91,11 @@ al massimo anche con l'allenamento completo e con Allena tutti, l'incontro finit
 l'errore imprevisto senza finestra mentre MESS si chiude; le iscrizioni chiuse suonano col loro suono
 anche nei due ripieghi del calendario, Iscrivi e Togli dopo il sorteggio. È di Gabriele Battaglia (IZ4APU)
 & ClaudIA (Claude Opus 5.5, UltraCode).
+Con la richiesta di Gabriele dello stesso collaudo arriva il gruppo di Gioca tutte le amichevoli, quattro suoni nuovi
+nella V231, imparentati con quelli dell'amichevole: l'avvio della serie, la serie finita, nessuno da far giocare oggi e
+nessun avversario nel raggio delle classi per nessuno. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode). Con la verifica la rosa vuota suona anche per tutte le tue polisportive senza tesserati, e la sua azione lo
+dice. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Lo stesso giorno, con la finestra Mercato e ricerca della decisione D36, arrivano gli eventi della finestra che
 aspettano il loro preset, in SENZA_PRESET: il codice li fa già suonare, e finché il passo dei suoni non li porta nella
 collezione tacciono senza avvisi. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
@@ -336,6 +341,15 @@ GRUPPI = (
         "nessun_incontro": "mess_nessun_incontro",
         "cronaca_salvata": "mess_cronaca_salvata",
         "cronaca_non_salvata": "mess_cronaca_non_salvata",
+    }),
+    ("Partite, tutte le amichevoli", {
+        # Dal collaudo di gioco, il 24 ottobre 2026: l'invito dell'amichevole chiamato a tutta la rosa, la serie che si chiude
+        # con l'arpeggio della fanfara che scende al la, l'invito che si ferma a metà e ricade come quello che rimanda a
+        # domani, e la chiamata che non riceve risposta dall'altra parte del tavolo.
+        "amichevoli_in_serie": "mess_amichevoli_in_serie",
+        "amichevoli_in_serie_finite": "mess_amichevoli_in_serie_finite",
+        "nessuno_per_le_amichevoli_in_serie": "mess_nessuno_per_la_serie",
+        "nessun_avversario_nel_raggio": "mess_nessun_avversario_nel_raggio",
     }),
     ("Partite, la partita dal vivo", {
         # Dalla decisione D29 il punto per punto con F8 è diventato la partita dal vivo, che riusa i
@@ -692,7 +706,8 @@ AZIONI = {
     "elenco_polisportive": "l'elenco delle polisportive, con Ctrl+Shift+E",
     "dialogo_svincolo": "si apre la scelta del tesserato da svincolare, con Ctrl+Shift+S",
     "tesserato_svincolato": "un tesserato svincolato, che torna libero",
-    "rosa_vuota": "un comando che vuole i tesserati quando la polisportiva attiva non ne ha",
+    "rosa_vuota": ("un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue "
+                   "polisportive quando nessuna ne ha"),
     "tuo_tesserato_bandiera": "nell'avanzamento un tuo tesserato diventa una bandiera del club",
     "tuo_tesserato_ritirato": "nell'avanzamento un tuo tesserato si ritira",
     "tuo_tesserato_uscito_di_scena": "nell'avanzamento un tuo tesserato muore o lascia lo showdown",
@@ -740,6 +755,13 @@ AZIONI = {
     "nessun_incontro": "Salva la cronaca quando nella sessione non c'è ancora un incontro mostrato o ascoltato",
     "cronaca_salvata": "la cronaca dell'ultimo incontro, amichevole, di torneo o di sfida, salvata nel suo file, con Ctrl+Shift+O",
     "cronaca_non_salvata": "la cronaca dell'ultimo incontro che non si può scrivere nel file",
+    "amichevoli_in_serie": ("parte la serie di Gioca tutte le amichevoli, nel menu Partite, della polisportiva attiva o di tutte le tue "
+                            "polisportive, quando almeno un tuo tesserato oggi può giocare"),
+    "amichevoli_in_serie_finite": "la serie di Gioca tutte le amichevoli è finita con almeno un incontro, e la vista ne fa il riepilogo",
+    "nessuno_per_le_amichevoli_in_serie": ("Gioca tutte le amichevoli non parte, perché oggi nessun tesserato della polisportiva attiva, o di "
+                                           "nessuna delle tue polisportive, può giocare un'amichevole"),
+    "nessun_avversario_nel_raggio": ("la serie di Gioca tutte le amichevoli finisce senza incontri, perché per nessuno dei tuoi tesserati c'era "
+                                     "oggi un avversario entro 15 classi dalla sua"),
     "amichevole_al_via": "si apre la finestra della partita dal vivo, con Assisti",
     "riscaldamento_saltato": "nella partita dal vivo il riscaldamento saltato",
     "resto_dell_incontro": "nella partita dal vivo o in differita Alt+V, Vai alla fine, prima che l'incontro sia finito",

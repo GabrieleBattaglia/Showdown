@@ -1,22 +1,27 @@
 """
-Test dell'ascolto alla cieca dello schermo centrale della issue 12, strumenti/ascolto_schermo.py, senza
-mai suonare: la cassa di Acusticator è sostituita da un registratore, e quella vera, se qualcuno la
-chiamasse, fa fallire la prova. I punti sono schermi contro brevi, tre tirati dal giocatore di chi
-ascolta e tre dall'avversario, ciascuno col suo ritorno; le due versioni di un punto sono identiche
-fino all'urto, e la differenza è il rotolamento del ritorno. Le coppie: sei diverse, col ritorno prima
-in tre e dopo nelle altre tre, e quattro di controllo identiche campione per campione, due senza
-ritorno e due col ritorno; l'ordine si mescola e si ripete col seme; le coppie di un punto durano
-uguale, la seconda versione comincia sempre allo stesso campione, e nessun picco supera il tetto. Poi
-la sessione intera con una tastiera finta da copione: il via, il silenzio prima della prima coppia, le
-risposte anche mentre la coppia suona, il menu di fine gruppo con r che rifà le coppie, l'interruzione,
-e il file dei risultati, una riga per coppia, che svela quale versione era quale soltanto alla fine,
-anche se la sessione si interrompe; a schermo, prima della fine, nessuna parola che dica che cosa
-cambia, e nessuna riga vuota dello strumento.
+Test dell'ascolto di confronto dello schermo centrale della issue 12, strumenti/ascolto_schermo.py,
+senza mai suonare: la cassa di Acusticator è sostituita da un registratore, e quella vera, se qualcuno
+la chiamasse, fa fallire la prova. I punti sono schermi contro brevi, tre tirati dal giocatore di chi
+ascolta e tre dall'avversario. Le versioni: fino all'urto identiche campione per campione a quella di
+oggi, fischio compreso; l'urto nuovo sta più in alto di quello di oggi rispetto al fischio, e i tre urti
+nuovi si sentono forti uguali; il ritorno ricade dopo l'urto, nel punto da cui l'urto si sente, e da
+lì torna verso chi ha tirato fino a fermarsi nella sua metà; i timbri candidati restano fuori dalla collezione di GBUtils. Le lettere: sei
+per punto, le cinque versioni e una ripetuta identica, che cambia da un punto all'altro; tutte lunghe
+uguali e allo stesso livello, sotto il tetto; mescolate e ripetute col seme. Poi la sessione intera con
+una tastiera finta da copione: il via, il silenzio prima della prima lettera, la rassegna, la scelta
+anche mentre una lettera suona, il commento al punto, il menu di fine gruppo con r che rifà il gruppo,
+l'interruzione, il gruppo saltato, e il file dei risultati, una riga per voce, che svela quale lettera
+era quale soltanto alla fine, anche se la sessione si interrompe; a schermo, prima della fine, nessuna
+parola che dica che cosa cambia, e nessuna riga vuota dello strumento. Infine le due aggiunte di
+partita_sonora per lo strumento, il ritocco di componi e sorgente_del_preset, che lasciano la partita
+com'era.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
-import random
+import json
+import math
 import sys
+import types
 from pathlib import Path
 
 import collaudo_comune
@@ -34,15 +39,30 @@ import resa_prototipo as resa
 import partita_sonora as ps
 import percorsi
 import suoni
-from motore import eventi as E
+from costanti import LUNGHEZZA_TAVOLO
+from motore import cronaca as C
+from motore.tavolo import CENTRO_X
 
 SEME = 4127
 # I messaggi del menu di collaudo_comune, che dopo di sé lascia una riga vuota.
 MESSAGGI_DEL_MENU = ("Annotato.", "Segnato come superato.", "Chiuso.")
 # Le parole che a schermo, prima della fine, direbbero che cosa cambia o che ci sono controlli.
-VIETATE = ("ritorno", "torna indietro", "si ferma", "controllo", "identic", "nuova", "di prima", "rotola")
+VIETATE = ("ritorno", "torna", "controllo", "identic", "oggi", "netto", "legno", "plastica", "versione", "più forte", "rotola", "ricade")
 # Le parole della rivelazione, che nel file vengono soltanto alla fine.
-DELLA_RIVELAZIONE = ("ritorno", "controllo", "identic")
+DELLA_RIVELAZIONE = ("Rivelazione", "ritorno", "identic", "oggi", "netto", "legno", "plastica")
+
+
+def livello_a(stereo):
+    """Il livello di un tratto stereo in decibel, con la ponderazione A della norma IEC 61672, sulla media dei due canali."""
+    from scipy.signal import bilinear, lfilter
+
+    f1, f2, f3, f4 = 20.598997, 107.65265, 737.86223, 12194.217
+    numeratore = [(2 * math.pi * f4) ** 2 * 10 ** (1.9997 / 20), 0, 0, 0, 0]
+    denominatore = np.polymul([1, 4 * math.pi * f4, (2 * math.pi * f4) ** 2], [1, 4 * math.pi * f1, (2 * math.pi * f1) ** 2])
+    denominatore = np.polymul(np.polymul(denominatore, [1, 2 * math.pi * f3]), [1, 2 * math.pi * f2])
+    b, a = bilinear(numeratore, denominatore, ps.FS)
+    pesato = lfilter(b, a, np.asarray(stereo, dtype=np.float64).mean(axis=1))
+    return 10 * math.log10(max(float(np.mean(pesato ** 2)), 1e-24))
 
 
 def _vietato(nome, chiamate):
@@ -145,6 +165,17 @@ def _enter_escape_finta(risposte):
     return enter_escape
 
 
+def _dgt_finta(risposte):
+    """Al posto di dgt di GBUtils: scrive il prompt e va a capo come input, e risponde dal copione."""
+    risposte = iter(risposte)
+
+    def dgt(prompt="", *_args, **_kwargs):
+        print(prompt)
+        return next(risposte)
+
+    return dgt
+
+
 @pytest.fixture(scope="module")
 def preparazione(tmp_path_factory):
     """
@@ -166,170 +197,267 @@ def preparazione(tmp_path_factory):
 
 @pytest.fixture
 def prova(preparazione):
-    """Una prova nuova per ogni prova, perché raccoglie le scelte, sulle coppie già composte."""
-    return asc.Prova(SEME, preparazione[1].coppie)
+    """Una prova nuova per ogni prova, perché raccoglie le scelte, sugli stessi punti già composti."""
+    return asc.Prova(SEME, preparazione[1].gruppi)
 
 
-def _meta(coppia):
-    """Le due versioni di una coppia, senza la pausa fra loro."""
-    pausa = round(asc.PAUSA_FRA_LE_VERSIONI * ps.FS)
-    return coppia.buffer[:coppia.seconda - pausa], coppia.buffer[coppia.seconda:], coppia.buffer[coppia.seconda - pausa:coppia.seconda]
+def _punti(prova):
+    return [p for g in prova.gruppi for p in g.punti]
 
 
 # I punti e le versioni.
 
 def test_i_punti_sono_schermi_contro_brevi_dalle_due_parti(preparazione):
-    candidati, _prova = preparazione
+    candidati, prova = preparazione
     punti = asc.scegli_punti(candidati)
     assert len(punti) == 2 * asc.PUNTI_PER_PARTE
     assert [asc.chi_tira(p) for p in punti] == ["A"] * asc.PUNTI_PER_PARTE + ["B"] * asc.PUNTI_PER_PARTE
     for p in punti:
         esito = p.momento.esito
         assert esito.causa == "schermo_contro" and esito.attacchi <= asc.ATTACCHI_MASSIMI
-        assert sum(1 for e in p.momento.eventi if asc.e_ritorno(e)) == 1
     for parte in ("A", "B"):
         colpi = [p.momento.esito.colpo_decisivo for p in punti if asc.chi_tira(p) == parte]
         assert len(set(colpi)) == len(colpi)
+    # I gruppi: prima i tiri del tuo giocatore, poi quelli dell'avversario, con gli stessi punti.
+    assert [(g.parte, g.titolo) for g in prova.gruppi] == list(asc.GRUPPI)
+    assert [id(p.candidato.momento) for p in _punti(prova)] == [id(p.momento) for p in punti]
+    assert all(p.parte == g.parte for g in prova.gruppi for p in g.punti)
     # Sempre gli stessi; e se una parte non ne ha abbastanza, lo strumento lo dice invece di partire.
     assert [id(p.momento) for p in asc.scegli_punti(candidati)] == [id(p.momento) for p in punti]
     with pytest.raises(LookupError):
         asc.scegli_punti([p for p in punti if asc.chi_tira(p) == "A"])
 
 
-def test_le_due_versioni_sono_identiche_fino_all_urto(preparazione):
-    candidati, _prova = preparazione
-    for punto in asc.scegli_punti(candidati):
-        azione = resa.azione(punto.momento.eventi)
-        senza = asc.senza_ritorno(azione)
-        assert len(senza) == len(azione) - 1 and not any(asc.e_ritorno(e) for e in senza)
-        con, prima = asc.componi_versione(punto, asc.CON), asc.componi_versione(punto, asc.SENZA)
-        ritorno = next(e for e in azione if asc.e_ritorno(e))
-        composto = ps.componi(azione, asc.ASCOLTATORE)
-        urto = round(composto.secondi(ritorno.t) * ps.FS)
-        n = min(len(con), len(prima))
-        differenza = np.flatnonzero(np.any(np.abs(con[:n] - prima[:n]) > 1e-7, axis=1))
-        # La differenza comincia dopo l'urto, e non prima, alla prima capriola dei pallini: è il rotolamento del ritorno.
-        assert len(differenza) and urto - 3 <= differenza[0] <= urto + round(0.4 * ps.FS)
-        assert len(con) >= len(prima)
+def _urto(punto):
+    eventi = resa.azione(punto.candidato.momento.eventi)
+    volo = asc.volo_dello_schermo(eventi)
+    composto = ps.componi(eventi, asc.ASCOLTATORE)
+    return volo, composto, round(composto.secondi(volo.volo[-1].t) * ps.FS)
 
 
-# Le coppie.
+def test_le_versioni_sono_identiche_fino_all_urto(prova):
+    for punto in _punti(prova):
+        _volo, _composto, urto = _urto(punto)
+        oggi = punto.buffer["oggi"]
+        for chiave, buffer in punto.buffer.items():
+            assert len(buffer) == len(oggi)
+            if chiave == "oggi":
+                continue
+            differenza = np.flatnonzero(np.any(np.abs(buffer - oggi) > 1e-7, axis=1))
+            # Prima dell'urto, un campione d'arrotondamento al più, tutto uguale: anche il colpo, il rotolamento e il fischio.
+            assert len(differenza) and urto - 2 <= differenza[0] <= urto + 2, chiave
+        # Il netto e il netto col ritorno hanno lo stesso urto: si separano alla ricaduta.
+        netto, col_ritorno = punto.buffer["netto"], punto.buffer["netto_ritorno"]
+        dopo = np.flatnonzero(np.any(np.abs(col_ritorno - netto) > 1e-7, axis=1))
+        ricaduta = urto + round(asc.RITARDO_DELLA_RICADUTA * ps.FS)
+        assert len(dopo) and ricaduta - 2 <= dopo[0] <= ricaduta + 2
 
-def test_le_coppie_diverse_e_quelle_di_controllo(preparazione):
+
+def test_l_urto_nuovo_si_stacca_dal_fischio(prova):
+    for punto in _punti(prova)[::2]:
+        volo, composto, _urto_i = _urto(punto)
+        urto = volo.volo[-1]
+        fischio = next(p for p in composto.posati if p.ruolo == "fischio_singolo" and p.t >= urto.t - 1e-3)
+        # Il fischio parte nello stesso istante del tocco, in tutte le versioni: lo dice il ritocco, che non lo tocca.
+        assert fischio.t == pytest.approx(urto.t, abs=1e-3)
+        n = round(0.1 * ps.FS)
+        fischio_a = livello_a(ps.spazializza(fischio, "A")[:n])
+        livelli = {}
+        for versione in asc.VERSIONI:
+            resa_v = asc.componi_versione(punto.candidato, versione)
+            (schermo,) = [p for p in resa_v.posati if p.ruolo == "schermo"]
+            livelli[versione.chiave] = livello_a(ps.spazializza(schermo, "A")[:n]) - fischio_a
+            # Il fischio e il cicalino sono quelli di oggi, nello stesso istante.
+            assert [(p.ruolo, p.t) for p in resa_v.posati if p.ruolo in ("fischio_singolo", "fallo")] == \
+                [(p.ruolo, p.t) for p in composto.posati if p.ruolo in ("fischio_singolo", "fallo")]
+            if versione.verso_il_centro:
+                assert schermo.posizioni == [((urto.x + CENTRO_X) / 2.0, urto.y)]
+        # Oggi l'urto sta sotto il fischio; gli urti nuovi sopra, forti uguali entro pochi dB.
+        assert livelli["oggi"] < -4.0
+        nuovi = [livelli[k] for k in ("netto", "legno", "plastica")]
+        assert min(nuovi) > 0.5 and max(nuovi) - min(nuovi) < 3.0, livelli
+
+
+def test_il_ritorno_torna_verso_chi_ha_tirato(prova):
+    for punto in _punti(prova):
+        volo, _composto, _urto_i = _urto(punto)
+        urto = volo.volo[-1]
+        # Il ritorno parte dal punto da cui si sente l'urto, a metà fra quello vero e il centro dello schermo.
+        dove = asc.punto_dell_urto(urto, asc.PER_CHIAVE["netto_ritorno"])
+        assert dove == ((urto.x + CENTRO_X) / 2.0, urto.y)
+        indietro = asc.ritorno(volo, dove)
+        partenza, fermo = indietro.volo[0], indietro.volo[-1]
+        assert partenza.t == pytest.approx(urto.t + asc.RITARDO_DELLA_RICADUTA) and (partenza.x, partenza.y) == dove
+        assert fermo.tipo == "fermo" and fermo.v == pytest.approx(0.0, abs=1e-3)
+        assert asc.VELOCITA_DEL_RITORNO[0] <= partenza.v <= asc.VELOCITA_DEL_RITORNO[1]
+        strada = math.hypot(fermo.x - dove[0], fermo.y - dove[1])
+        assert strada <= asc.STRADA_DEL_RITORNO[1] + 1e-6 and strada > 80.0
+        # Verso chi ha tirato, dalla sua parte, e si ferma fra 25 e 70 cm dalla sua linea.
+        linea = fermo.y if punto.parte == "A" else LUNGHEZZA_TAVOLO - fermo.y
+        assert 25.0 <= linea <= 70.0, linea
+        # Lo stesso punto torna sempre uguale; i suoni: la ricaduta e il rotolamento, più forte di quello della partita.
+        assert asc.ritorno(volo, dove).volo == indietro.volo
+        ricaduta, rotolamento = asc.posati_del_ritorno(volo, dove)
+        assert ricaduta.ruolo == "ricaduta" and ricaduta.t == partenza.t and ricaduta.posizioni == [dove]
+        (della_partita,) = ps.posati_del_volo(indietro)
+        assert rotolamento.ruolo == "rotolamento" and np.allclose(rotolamento.guadagni, della_partita.guadagni * asc.GUADAGNO_DEL_RITORNO)
+
+
+def test_il_ritorno_riparte_da_dove_si_sente_l_urto(prova):
+    """Nelle versioni col ritorno la ricaduta e il rotolamento partono dal punto dell'urto che si sente, anche quando è verso il centro."""
+    col_ritorno = [v for v in asc.VERSIONI if v.ritorno]
+    assert col_ritorno and all(v.verso_il_centro for v in col_ritorno)
+    for punto in _punti(prova):
+        volo, _composto, _urto_i = _urto(punto)
+        for versione in col_ritorno:
+            posati = asc.componi_versione(punto.candidato, versione).posati
+            (schermo,) = [p for p in posati if p.ruolo == "schermo"]
+            (ricaduta,) = [p for p in posati if p.ruolo == "ricaduta"]
+            (indietro,) = [p for p in posati if p.ruolo == "rotolamento" and p.evento == volo.n + asc.SCARTO_DEL_NUMERO]
+            assert schermo.posizioni == [asc.punto_dell_urto(volo.volo[-1], versione)]
+            assert ricaduta.posizioni == schermo.posizioni, versione.chiave
+            assert indietro.posizioni[0] == pytest.approx(schermo.posizioni[0], abs=1e-6), versione.chiave
+            # Per chi ascolta, l'urto, la ricaduta e la partenza del rotolamento hanno lo stesso pan: niente salti di lato.
+            pan = [float(ps.SPAZIO.campi(p.posizioni[:1], asc.ASCOLTATORE)[0][0]) for p in (schermo, ricaduta, indietro)]
+            assert max(pan) - min(pan) < 1e-6, (versione.chiave, pan)
+
+
+def test_i_timbri_candidati_restano_fuori_da_gbutils():
+    import GBUtils
+
+    condivisa = json.loads((Path(GBUtils.__file__).resolve().parent / "Acu_Collection.json").read_text(encoding="utf-8"))
+    percorso = asc.registra_i_timbri()
+    assert Path(percorso).parent == Path(asc.tempfile.gettempdir())
+    assert asc.registra_i_timbri() == percorso
+    for nome, preset in asc.TIMBRI.items():
+        assert nome not in condivisa and nome.startswith("ascolto_schermo_")
+        assert set(preset) == {"descrizione", "score", "kind", "adsr"} and all(len(q) == 4 for q in preset["score"])
+        assert Acusticator.descrizione(nome) == preset["descrizione"]
+        assert len(ps.sorgente_del_preset(nome)) > 0
+    # Ogni versione nuova usa un timbro candidato, e la ricaduta il suo.
+    assert {v.urto for v in asc.VERSIONI if v.urto} | {asc.RICADUTA} == set(asc.TIMBRI)
+    with pytest.raises(KeyError, match="non c'è nella collezione"):
+        ps.sorgente_del_preset("ascolto_schermo_che_non_esiste")
+
+
+# Le lettere.
+
+def test_le_lettere_e_i_controlli(prova):
+    punti = _punti(prova)
+    chiavi = [v.chiave for v in asc.VERSIONI]
+    for punto in punti:
+        assert len(punto.lettere) == len(asc.LETTERE) == len(chiavi) + 1 and set(punto.lettere) == set(chiavi)
+        doppie = punto.lettere_di(punto.ripetuta)
+        assert len(doppie) == 2
+        assert np.array_equal(punto.da_sentire(doppie[0], 0.0), punto.da_sentire(doppie[1], 0.0))
+        # Le lettere durano uguali, e nessun picco supera il tetto della partita.
+        assert len({len(b) for b in punto.buffer.values()}) == 1
+        assert all(b.dtype == np.float32 and float(np.max(np.abs(b))) <= ps.TETTO for b in punto.buffer.values())
+        # L'anticipo è silenzio in testa.
+        sentita = punto.da_sentire("A", 2.0)
+        assert not np.any(sentita[:round(2.0 * ps.FS)]) and np.array_equal(sentita[round(2.0 * ps.FS):], punto.buffer[punto.lettere[0]])
+    # Ogni versione è la ripetuta almeno una volta.
+    assert {p.ripetuta for p in punti} == set(chiavi)
+
+
+def test_lo_stesso_livello_per_tutte_le_lettere_del_punto(preparazione):
+    _candidati, prova = preparazione
+    punto = _punti(prova)[0]
+    composte = {v.chiave: asc.componi_versione(punto.candidato, v).buffer for v in asc.VERSIONI}
+    picco = max(float(np.max(np.abs(b))) for b in composte.values())
+    fattore = min(1.0, ps.TETTO / picco)
+    for chiave, buffer in composte.items():
+        assert np.allclose(punto.buffer[chiave][:len(buffer)], buffer * fattore, atol=2e-6)
+
+
+def test_l_ordine_si_mescola_e_si_ripete_col_seme(preparazione, monkeypatch):
     candidati, prova = preparazione
-    punti = asc.scegli_punti(candidati)
-    coppie = prova.coppie
-    assert len(coppie) == len(punti) + asc.COPPIE_DI_CONTROLLO
-    diverse = [c for c in coppie if not c.controllo]
-    controlli = [c for c in coppie if c.controllo]
-    # Ogni punto una volta con le due versioni: il ritorno prima in metà delle coppie, dopo nell'altra metà.
-    assert sorted(id(c.punto.momento) for c in diverse) == sorted(id(p.momento) for p in punti)
-    assert sum(1 for c in diverse if c.versioni == (asc.CON, asc.SENZA)) == sum(1 for c in diverse if c.versioni == (asc.SENZA, asc.CON)) == len(punti) // 2
-    # I controlli: due senza ritorno e due col ritorno, identici campione per campione.
-    assert sorted(c.versioni[0] for c in controlli) == [asc.CON, asc.CON, asc.SENZA, asc.SENZA]
-    for c in controlli:
-        prima, seconda, pausa = _meta(c)
-        assert np.array_equal(prima, seconda) and not np.any(pausa)
-    for c in diverse:
-        prima, seconda, pausa = _meta(c)
-        assert len(prima) == len(seconda) and not np.array_equal(prima, seconda) and not np.any(pausa)
-    # Le coppie di un punto durano uguale, e la seconda versione comincia allo stesso campione.
-    per_punto = {}
-    for c in coppie:
-        per_punto.setdefault(id(c.punto.momento), set()).add((len(c.buffer), c.seconda))
-    assert all(len(forme) == 1 for forme in per_punto.values())
-    # La versione col ritorno è la stessa in tutte le coppie del suo punto, e così quella senza.
-    versioni = {}
-    for c in coppie:
-        prima, seconda, _pausa = _meta(c)
-        for versione, buffer in zip(c.versioni, (prima, seconda), strict=True):
-            chiave = (id(c.punto.momento), versione)
-            if chiave in versioni:
-                assert np.array_equal(versioni[chiave], buffer)
-            versioni[chiave] = buffer
-    # Il livello della partita al volume 100, col margine: nessun picco supera il tetto.
-    assert all(c.buffer.dtype == np.float32 and float(np.max(np.abs(c.buffer))) <= ps.TETTO for c in coppie)
-
-
-def test_l_ordine_si_mescola_e_si_ripete_col_seme(preparazione):
-    candidati, _prova = preparazione
-    punti = asc.scegli_punti(candidati)
+    # Le lettere vengono soltanto dal seme: per vederlo basta comporre niente.
+    monkeypatch.setattr(asc, "componi_punto", lambda _candidato: {})
 
     def forma(seme):
-        return [(id(p.momento), v) for p, v in asc.assegna(random.Random(seme), punti)]
+        return [p.lettere for g in asc.prepara(seme, candidati).gruppi for p in g.punti]
 
-    assert forma(SEME) == forma(SEME)
-    forme = {tuple(forma(seme)) for seme in range(20)}
-    assert len(forme) == 20
-    # Il nuovo non sta sempre nello stesso posto: in ogni seme metà delle coppie diverse lo mette prima.
-    for seme in range(20):
-        diverse = [v for _p, v in asc.assegna(random.Random(seme), punti) if v[0] != v[1]]
-        assert diverse.count((asc.CON, asc.SENZA)) == diverse.count((asc.SENZA, asc.CON))
+    assert forma(SEME) == forma(SEME) == [p.lettere for p in _punti(prova)]
+    assert len({tuple(forma(seme)) for seme in range(12)}) == 12
 
 
 def test_i_prompt_stanno_in_quaranta_caratteri():
-    for scelta in (None, *asc.RISPOSTE):
-        prompt = asc.invito(scelta)
+    for prompt in (asc.invito(None), *(asc.invito(lettera) for lettera in asc.LETTERE), "\rc per un commento, Invio prosegue\r"):
         assert prompt.startswith("\r") and prompt.endswith("\r") and len(prompt.strip("\r")) <= 40, prompt
 
 
 # La sessione.
 
-def _snapshot_senza_rivelazione(letture):
-    return all(parola not in lettura for lettura in letture for parola in DELLA_RIVELAZIONE)
-
-
 def test_la_sessione_intera(prova, cassa, programma_di_prova, suonati, monkeypatch, capsys):
     monkeypatch.setattr(asc, "prepara", lambda seme: prova if seme == SEME else pytest.fail(f"seme {seme}"))
     monkeypatch.setattr(asc, "enter_escape", _enter_escape_finta([True]))
-    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True]))
-    monkeypatch.setattr(collaudo_comune, "dgt", lambda *_a, **_k: "la seconda mi sembra più vera ")
+    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True, True]))
+    monkeypatch.setattr(collaudo_comune, "dgt", lambda *_a, **_k: "la terza lettera mi piace ")
+    monkeypatch.setattr(asc, "dgt", _dgt_finta(["la seconda è più vera "]))
     dormite = []
     monkeypatch.setattr(asc.time, "sleep", dormite.append)
     file = programma_di_prova / asc.FILE_DEI_RISULTATI
-    # Coppia 1: 1 al prompt. Coppia 2: 2 mentre suona. Coppia 3: spazio la ripete, poi u. Coppia 4: un
-    # tasto che non vale, poi Invio, senza scelta. Coppie 5-10: 1, 2, u, 1, 2, u. Poi c e Invio.
-    copione = ["1", ("durante", 2, "2"), " ", "u", "x", "\r", "1", "2", "u", "1", "2", "u", "c", "\r"]
+    # Primo gruppo. Punto 1: la rassegna, poi b la fa sentire, s la sceglie, c e il commento. Punto 2:
+    # a suona e d, premuto mentre suona, la ferma e fa sentire la D; spazio la ripete, s, Invio. Punto
+    # 3: Escape alla seconda lettera della rassegna, un tasto che non vale, n, Invio. Il menu: c e Invio.
+    # Secondo gruppo. Punto 1: Invio, senza scelta. Punto 2: s senza aver sentito niente, f, s, Invio.
+    # Punto 3: e, s, Invio. Il menu: Invio.
+    copione = ["b", "s", "c",
+               "a", ("durante", 14, "d"), " ", "s", "\r",
+               ("durante", 18, "\x1b"), "x", "n", "\r",
+               "c", "\r",
+               "\r",
+               "s", "f", "s", "\r",
+               "e", "s", "\r",
+               "\r"]
     tastiera = _tastiera(monkeypatch, cassa, copione, file)
     assert asc.main([str(SEME)]) == 0
     assert tastiera.copione == [] and dormite == [] and suonati == []
-    # Dieci coppie e una ripetizione; la prima ha il silenzio lungo dopo il via, le altre quello del numero.
-    assert len(cassa.suonati) == 11 and cassa.fermate == 1
-    assert np.array_equal(cassa.suonati[0], prova.da_sentire(0, asc.ANTICIPO_PRIMA_COPPIA))
-    assert np.array_equal(cassa.suonati[1], prova.da_sentire(1, asc.ANTICIPO_COPPIA))
-    assert np.array_equal(cassa.suonati[3], prova.da_sentire(2, asc.ANTICIPO_RIPETIZIONE))
-    assert asc.ANTICIPO_PRIMA_COPPIA >= asc.ANTICIPO_COPPIA + 3.0
-    assert prova.scelte == {0: "1", 1: "2", 2: "u", 4: "1", 5: "2", 6: "u", 7: "1", 8: "2", 9: "u"}
-    assert "\rSpazio ripete; 1, 2 o u per uguali\r" in tastiera.prompt
+    primo, secondo = prova.gruppi
+    p1, p2, p3 = primo.punti
+    q1, q2, q3 = secondo.punti
+    # Le lettere sentite, nell'ordine: la rassegna ha in testa il silenzio lungo dopo il via, poi quello del nome.
+    attesi = [p1.da_sentire(lettera, asc.ANTICIPO_PRIMA_LETTERA if not i else asc.ANTICIPO_LETTERA) for i, lettera in enumerate(asc.LETTERE)]
+    attesi.append(p1.da_sentire("B", asc.ANTICIPO_SCELTA))
+    attesi += [p2.da_sentire(lettera, asc.ANTICIPO_LETTERA) for lettera in asc.LETTERE]
+    attesi += [p2.da_sentire(lettera, asc.ANTICIPO_SCELTA) for lettera in "ADD"]
+    attesi += [p3.da_sentire(lettera, asc.ANTICIPO_LETTERA) for lettera in "AB"]
+    attesi += [q1.da_sentire(lettera, asc.ANTICIPO_PRIMA_LETTERA if not i else asc.ANTICIPO_LETTERA) for i, lettera in enumerate(asc.LETTERE)]
+    attesi += [q2.da_sentire(lettera, asc.ANTICIPO_LETTERA) for lettera in asc.LETTERE] + [q2.da_sentire("F", asc.ANTICIPO_SCELTA)]
+    attesi += [q3.da_sentire(lettera, asc.ANTICIPO_LETTERA) for lettera in asc.LETTERE] + [q3.da_sentire("E", asc.ANTICIPO_SCELTA)]
+    assert len(cassa.suonati) == len(attesi) and all(np.array_equal(a, b) for a, b in zip(cassa.suonati, attesi, strict=True))
+    assert cassa.fermate == 2
+    assert asc.ANTICIPO_PRIMA_LETTERA >= asc.ANTICIPO_LETTERA + 3.0
+    assert prova.scelte == {(0, 0): "B", (0, 1): "D", (0, 2): asc.NESSUNA, (1, 1): "F", (1, 2): "E"}
+    assert prova.commenti == {(0, 0): "la seconda è più vera"}
+    assert prova.svolti == {0, 1} and not prova.interrotti and not prova.chiusi
+    assert "\rUna lettera da A a F, n nessuna\r" in tastiera.prompt and "\rD: spazio ripete, s sceglie, n nessuna\r" in tastiera.prompt
 
     righe = file.read_text(encoding="utf-8").splitlines()
-    assert righe[0].startswith("Ascolto dello schermo centrale, ") and righe[0].endswith(f", seme {SEME}.")
-    risposte = ["la prima", "la seconda", "uguali", "senza scelta", "la prima", "la seconda", "uguali", "la prima", "la seconda", "uguali"]
-    assert righe[1:11] == [f"{asc.TITOLO}, coppia {k}: {r}." for k, r in enumerate(risposte, 1)]
-    assert righe[11].startswith(f"{asc.TITOLO}, ") and righe[11].endswith(": la seconda mi sembra più vera")
-    # Fino al commento, e a ogni prompt della sessione, il file non dice che cosa c'era nelle coppie.
-    assert not any(parola in riga for riga in righe[:12] for parola in DELLA_RIVELAZIONE)
-    assert tastiera.letture and _snapshot_senza_rivelazione(tastiera.letture)
-    # Poi la rivelazione, una riga per coppia, e il riepilogo.
-    rivelazione = righe[12:22]
-    assert rivelazione == asc.righe_della_rivelazione(prova)
-    for k, (riga, coppia) in enumerate(zip(rivelazione, prova.coppie, strict=True), 1):
-        assert riga.startswith(f"{asc.TITOLO}, coppia {k}, ")
-        assert ("coppia di controllo" in riga) == coppia.controllo
-    assert righe[22:] == asc.righe_del_riepilogo(prova)
+    assert righe[0].startswith("Ascolto di confronto dello schermo centrale, ") and righe[0].endswith(f", seme {SEME}.")
+    t1, t2 = primo.titolo, secondo.titolo
+    assert righe[1:5] == [f"{t1}, punto 1: hai scelto la B.", f"{t1}, punto 1, il tuo commento: la seconda è più vera", f"{t1}, punto 2: hai scelto la D.",
+                          f"{t1}, punto 3: nessuna somiglia al tavolo vero."]
+    assert righe[5].startswith(f"{t1}, ") and righe[5].endswith(": la terza lettera mi piace")
+    assert righe[6:9] == [f"{t2}, punto 1: senza scelta.", f"{t2}, punto 2: hai scelto la F.", f"{t2}, punto 3: hai scelto la E."]
+    assert righe[9].startswith(f"{t2}, ") and righe[9].endswith(": test superato, nessun commento")
+    # Fino alla fine, e a ogni prompt della sessione, il file non dice che cosa c'era dietro le lettere.
+    assert not any(parola in riga for riga in righe[:10] for parola in DELLA_RIVELAZIONE)
+    assert tastiera.letture and not any(parola in lettura for lettura in tastiera.letture for parola in DELLA_RIVELAZIONE)
+    # Poi la rivelazione e il riepilogo.
+    assert righe[10:] == asc.righe_della_rivelazione(prova) + asc.righe_del_riepilogo(prova)
     assert all(riga.strip() and not riga.startswith(("-", "=", "_")) for riga in righe)
 
     scritto = capsys.readouterr().out
-    assert scritto.startswith("Preparo le coppie, qualche secondo.\nAscolto alla cieca dello schermo centrale: 10 coppie, ")
-    assert scritto.rstrip().endswith("trovi le tue risposte, quale versione era quale e il riepilogo.")
-    # A schermo, prima del riepilogo finale, nessuna parola dice che cosa cambia, né la cronaca dei punti.
+    assert scritto.startswith("Preparo i punti, qualche secondo.\nAscolto di confronto dello schermo centrale: 2 gruppi, 6 punti, ")
+    assert scritto.rstrip().endswith("trovi le tue scelte, quale lettera era quale e il riepilogo.")
     prima_della_fine = scritto.split("Riepilogo, ")[0]
     for parola in VIETATE:
         assert parola not in prima_della_fine, parola
-    assert "Fischio" not in prima_della_fine and "schermo centrale" in prima_della_fine
-    for k in range(1, 11):
-        assert f"Coppia {k} di 10.\n" in scritto
-    # Il riepilogo si legge anche a schermo, alla fine.
+    assert "schermo centrale" in prima_della_fine and "Fischio" not in prima_della_fine
+    for testo in ("Punto 1 di 3.\n", "Lettera F.\n", "Rassegna interrotta.\n", "Scelta la B.\n", "Nessuna.\n", "Commento annotato.\n", "Prima ascolta una lettera.\n"):
+        assert testo in scritto, testo
     for riga in asc.righe_del_riepilogo(prova):
         assert riga in scritto
     # Le sole righe vuote sono quelle che il menu di collaudo_comune lascia dopo i suoi messaggi.
@@ -338,52 +466,52 @@ def test_la_sessione_intera(prova, cassa, programma_di_prova, suonati, monkeypat
     assert vuote and all(linee[i - 1] in MESSAGGI_DEL_MENU for i in vuote), [linee[i - 1] for i in vuote]
 
 
-def test_r_rifa_le_coppie_con_le_scelte_gia_date(prova, cassa, programma_di_prova, monkeypatch):
+def test_r_rifa_il_gruppo_con_le_scelte_gia_date(prova, cassa, programma_di_prova, monkeypatch, capsys):
     monkeypatch.setattr(asc, "prepara", lambda _seme: prova)
     monkeypatch.setattr(asc, "enter_escape", _enter_escape_finta([True]))
-    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True]))
-    # Il primo giro risponde 1 a tutte; con r il secondo cambia la prima coppia in u e lascia le altre con Invio.
-    copione = ["1"] * 10 + ["r", "u"] + ["\r"] * 9 + ["\r"]
+    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True, False]))
+    # Il primo giro sceglie la A in tutti e tre i punti; con r il secondo cambia il primo in nessuna e lascia gli altri con Invio.
+    giro = ["a", "s", "\r"] * 3
+    copione = [*giro, "r", "n", "\r", "\r", "\r", "\r"]
     tastiera = _tastiera(monkeypatch, cassa, copione)
     assert asc.main([]) == 0
-    assert tastiera.copione == [] and len(cassa.suonati) == 20
-    assert prova.scelte == {0: "u", **dict.fromkeys(range(1, 10), "1")}
-    assert tastiera.prompt.count("\rHai scelto la prima: spazio, 1, 2 o u\r") == 10
+    assert tastiera.copione == []
+    assert prova.scelte == {(0, 0): asc.NESSUNA, (0, 1): "A", (0, 2): "A"}
+    assert "Finora: hai scelto la A.\n" in capsys.readouterr().out
     righe = (programma_di_prova / asc.FILE_DEI_RISULTATI).read_text(encoding="utf-8").splitlines()
-    assert righe[1] == f"{asc.TITOLO}, coppia 1: uguali." and righe[2] == f"{asc.TITOLO}, coppia 2: la prima."
+    titolo = prova.gruppi[0].titolo
+    assert righe[1:4] == [f"{titolo}, punto 1: nessuna somiglia al tavolo vero.", f"{titolo}, punto 2: hai scelto la A.", f"{titolo}, punto 3: hai scelto la A."]
     assert sum(1 for riga in righe if riga.endswith(": test superato, nessun commento")) == 1
-    assert not any("chiuse prima della fine" in riga for riga in righe)
+    assert f"{prova.gruppi[1].titolo}: gruppo saltato." in righe
+    # Il gruppo saltato non si svela.
+    assert not any(riga.startswith(f"Rivelazione, {prova.gruppi[1].titolo}") for riga in righe)
 
 
-def test_escape_chiude_le_coppie_e_la_rivelazione_arriva_lo_stesso(prova, cassa, programma_di_prova, monkeypatch, capsys):
+def test_escape_chiude_i_punti_e_la_rivelazione_arriva_lo_stesso(prova, cassa, programma_di_prova, monkeypatch, capsys):
     monkeypatch.setattr(asc, "prepara", lambda _seme: prova)
     monkeypatch.setattr(asc, "enter_escape", _enter_escape_finta([True]))
-    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True]))
-    # Tre risposte, Escape mentre suona la quarta, e il menu chiuso senza giudizio.
-    copione = ["2", "2", "u", ("durante", 4, "\x1b"), "\x1b"]
+    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([True, True]))
+    # Primo gruppo: la scelta del primo punto, poi Escape mentre suona una lettera del secondo, e il menu
+    # chiuso senza giudizio. Secondo gruppo: Escape al commento del primo punto, e Invio al menu.
+    copione = ["c", "s", "\r", "b", ("durante", 14, "\x1b"), "\x1b",
+               "d", "n", "\x1b", "\r"]
     tastiera = _tastiera(monkeypatch, cassa, copione)
     assert asc.main([]) == 0
-    assert tastiera.copione == [] and len(cassa.suonati) == 4 and cassa.fermate == 1
-    assert prova.interrotta and prova.chiusa
+    assert tastiera.copione == [] and cassa.fermate == 1
+    assert prova.interrotti == {0, 1} and prova.chiusi == {0}
+    assert prova.scelte == {(0, 0): "C", (1, 0): asc.NESSUNA}
     righe = (programma_di_prova / asc.FILE_DEI_RISULTATI).read_text(encoding="utf-8").splitlines()
-    assert righe[1:11] == [f"{asc.TITOLO}, coppia {k}: {r}." for k, r in enumerate(["la seconda", "la seconda", "uguali"] + ["senza scelta"] * 7, 1)]
-    assert righe[11].endswith(": chiuso senza giudizio")
-    assert righe[12] == f"{asc.TITOLO}: le coppie si sono chiuse prima della fine."
-    assert righe[13:23] == asc.righe_della_rivelazione(prova)
-    assert righe[23] == f"Riepilogo, {asc.TITOLO}: il gruppo è stato chiuso senza giudizio, quindi le scelte che seguono non contano."
-    assert "Coppie chiuse." in capsys.readouterr().out
-
-
-def test_il_gruppo_saltato_non_svela_niente(prova, cassa, programma_di_prova, monkeypatch, capsys):
-    monkeypatch.setattr(asc, "prepara", lambda _seme: prova)
-    monkeypatch.setattr(asc, "enter_escape", _enter_escape_finta([True]))
-    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([False]))
-    _tastiera(monkeypatch, cassa, [])
-    assert asc.main([]) == 0
-    assert cassa.suonati == []
-    righe = (programma_di_prova / asc.FILE_DEI_RISULTATI).read_text(encoding="utf-8").splitlines()
-    assert righe[1:] == [f"{asc.TITOLO}: gruppo saltato."]
-    assert "Riepilogo" not in capsys.readouterr().out
+    t1, t2 = prova.gruppi[0].titolo, prova.gruppi[1].titolo
+    assert righe[1:4] == [f"{t1}, punto 1: hai scelto la C.", f"{t1}, punto 2: senza scelta.", f"{t1}, punto 3: senza scelta."]
+    assert righe[4].endswith(": chiuso senza giudizio")
+    rivelazione = asc.righe_della_rivelazione(prova)
+    assert f"{t1}: i punti si sono chiusi prima della fine." in rivelazione and f"{t2}: i punti si sono chiusi prima della fine." in rivelazione
+    assert righe[-len(rivelazione) - len(asc.righe_del_riepilogo(prova)):] == rivelazione + asc.righe_del_riepilogo(prova)
+    riepilogo = asc.righe_del_riepilogo(prova)
+    assert riepilogo[0] == f"Riepilogo, {t1}: il gruppo è stato chiuso senza giudizio, e le sue scelte non contano."
+    # Contano soltanto i tre punti del secondo gruppo: uno nessuna, due senza scelta.
+    assert "Riepilogo, nessuna somiglia al tavolo vero: 1 volta; senza scelta: 2 volte." in riepilogo
+    assert capsys.readouterr().out.count("Punti chiusi.") == 2
 
 
 def test_senza_il_via_non_suona_niente(prova, cassa, programma_di_prova, monkeypatch, capsys):
@@ -393,6 +521,18 @@ def test_senza_il_via_non_suona_niente(prova, cassa, programma_di_prova, monkeyp
     assert cassa.suonati == []
     assert not (programma_di_prova / asc.FILE_DEI_RISULTATI).exists()
     assert "\n\n" not in capsys.readouterr().out
+
+
+def test_i_gruppi_saltati_non_svelano_niente(prova, cassa, programma_di_prova, monkeypatch, capsys):
+    monkeypatch.setattr(asc, "prepara", lambda _seme: prova)
+    monkeypatch.setattr(asc, "enter_escape", _enter_escape_finta([True]))
+    monkeypatch.setattr(collaudo_comune, "enter_escape", _enter_escape_finta([False, False]))
+    _tastiera(monkeypatch, cassa, [])
+    assert asc.main([]) == 0
+    assert cassa.suonati == []
+    righe = (programma_di_prova / asc.FILE_DEI_RISULTATI).read_text(encoding="utf-8").splitlines()
+    assert righe[1:] == [f"{g.titolo}: gruppo saltato." for g in prova.gruppi]
+    assert "Riepilogo" not in capsys.readouterr().out
 
 
 def test_un_seme_che_non_e_un_numero(cassa, programma_di_prova, capsys):
@@ -405,45 +545,67 @@ def test_un_seme_che_non_e_un_numero(cassa, programma_di_prova, capsys):
 def test_una_scheda_che_non_risponde_non_ferma_l_ascolto(prova, monkeypatch, capsys):
     muta = Cassa(riesce=False)
     monkeypatch.setattr(bs, "Acusticator", muta)
-    _tastiera(monkeypatch, muta, ["1"] * len(prova.coppie))
-    assert asc.ascolta(prova)
+    _tastiera(monkeypatch, muta, ["n", "\r"] * asc.PUNTI_PER_PARTE)
+    assert asc.ascolta(prova, 0)
     assert "la scheda audio non risponde" in capsys.readouterr().out
 
 
-# La rivelazione e il riepilogo.
+# La rivelazione e il riepilogo, su una prova finta di cui si conoscono le lettere.
 
-def test_la_rivelazione_e_il_riepilogo(prova):
-    # Il ritorno scelto in tutte le coppie diverse, uguali in tre controlli e la seconda nel quarto.
-    controlli = [posto for posto, c in enumerate(prova.coppie) if c.controllo]
-    for posto, coppia in enumerate(prova.coppie):
-        if coppia.controllo:
-            prova.scelte[posto] = "2" if posto == controlli[-1] else "u"
-        else:
-            prova.scelte[posto] = "1" if coppia.versioni[0] == asc.CON else "2"
+def _prova_finta():
+    nomi = {"A": types.SimpleNamespace(testo="Mario Rossi"), "B": types.SimpleNamespace(testo="Anna Bianchi")}
+    candidato = types.SimpleNamespace(nomi=nomi, momento=types.SimpleNamespace(esito=types.SimpleNamespace(colpo_decisivo="diagonalesx")))
+    ordini = (("oggi", "netto", "netto_ritorno", "legno", "plastica", "oggi"), ("netto", "netto_ritorno", "legno", "plastica", "oggi", "legno"))
+    gruppi = [asc.Gruppo(parte, titolo, [asc.Punto(candidato, parte, ordine, {}) for ordine in ordini]) for parte, titolo in asc.GRUPPI]
+    prova = asc.Prova(SEME, gruppi)
+    prova.svolti = {0, 1}
+    return prova
+
+
+def test_la_rivelazione_e_il_riepilogo():
+    prova = _prova_finta()
+    # Primo gruppo: la C, netto col ritorno, e la F, legno col ritorno, identica alla C. Secondo: la C, netto col ritorno, e nessuna.
+    prova.scelte = {(0, 0): "C", (0, 1): "F", (1, 0): "C", (1, 1): asc.NESSUNA}
+    t1, t2 = prova.gruppi[0].titolo, prova.gruppi[1].titolo
+    colpo = f"{C.con_articolo('diagonalesx')} di"
     righe = asc.righe_della_rivelazione(prova)
-    for posto, (riga, coppia) in enumerate(zip(righe, prova.coppie, strict=True)):
-        if coppia.controllo:
-            assert "era una coppia di controllo, con due versioni identiche campione per campione, tutte e due " in riga
-            assert riga.endswith("; per te erano uguali.") or (posto == controlli[-1] and riga.endswith("; hai scelto la seconda."))
-        else:
-            assert riga.endswith(", quella col ritorno.") and "la prima era " in riga and "; la seconda era " in riga
-        tira = asc.chi_tira(coppia.punto)
-        assert (", del tuo giocatore: " in riga) == (tira == "A") and (", dell'avversario: " in riga) == (tira == "B")
-    riepilogo = asc.righe_del_riepilogo(prova)
-    assert riepilogo[0] == "Riepilogo, coppie diverse: 6 coppie; hai scelto il ritorno 6 volte, senza ritorno 0 volte, uguali 0 volte, senza scelta 0 volte."
-    assert riepilogo[1] == "Riepilogo, coppie diverse tirate dal tuo giocatore: 3 coppie; il ritorno 3 volte, senza ritorno 0 volte, uguali 0 volte, senza scelta 0 volte."
-    assert riepilogo[2] == "Riepilogo, coppie diverse tirate dall'avversario: 3 coppie; il ritorno 3 volte, senza ritorno 0 volte, uguali 0 volte, senza scelta 0 volte."
-    assert riepilogo[3] == "Riepilogo, coppie uguali di controllo: 4 coppie; hai detto uguali 3 volte, la prima 0 volte, la seconda 1 volta, senza scelta 0 volte."
-    # Il ritorno sta prima in tre coppie diverse e dopo nelle altre tre, più la seconda del controllo.
-    assert riepilogo[4] == "Riepilogo, l'ordine: in tutte le coppie hai scelto la prima 3 volte e la seconda 4 volte."
-    # Senza scelte, tutto senza scelta.
-    vuota = asc.Prova(SEME, prova.coppie)
-    assert all(riga.endswith("; senza scelta.") for riga in asc.righe_della_rivelazione(vuota))
-    assert "senza scelta 6 volte." in asc.righe_del_riepilogo(vuota)[0]
+    assert righe[:5] == [f"Rivelazione, la versione {v.nome}: {v.descrizione}." for v in asc.VERSIONI]
+    assert righe[5] == (f"Rivelazione, {t1}, punto 1, {colpo} Mario Rossi, del tuo giocatore: A oggi, B netto, C netto col ritorno, D legno col ritorno, "
+                        "E plastica col ritorno, F oggi; le lettere A e F erano identiche campione per campione, la versione oggi ripetuta; "
+                        "hai scelto la C, netto col ritorno.")
+    assert righe[6].endswith("; le lettere C e F erano identiche campione per campione, la versione legno col ritorno ripetuta; "
+                             "hai scelto la F, legno col ritorno, una delle due lettere identiche.")
+    assert righe[7].startswith(f"Rivelazione, {t2}, punto 1, {colpo} Anna Bianchi, dell'avversario: ") and righe[7].endswith("; hai scelto la C, netto col ritorno.")
+    assert righe[8].endswith("; nessuna somiglia al tavolo vero.")
+    assert asc.righe_del_riepilogo(prova) == [
+        "Riepilogo, oggi: scelta 0 volte su 4 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.",
+        "Riepilogo, netto: scelta 0 volte su 4 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.",
+        "Riepilogo, netto col ritorno: scelta 2 volte su 4 punti, 1 nei tiri del tuo giocatore e 1 in quelli dell'avversario.",
+        "Riepilogo, legno col ritorno: scelta 1 volta su 4 punti, 1 nei tiri del tuo giocatore e 0 in quelli dell'avversario.",
+        "Riepilogo, plastica col ritorno: scelta 0 volte su 4 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.",
+        "Riepilogo, nessuna somiglia al tavolo vero: 1 volta; senza scelta: 0 volte.",
+        "Riepilogo, i controlli: in ogni punto una versione stava sotto due lettere identiche, e hai scelto una delle due 1 volta; "
+        "scegliendo a caso succederebbe nel 33% dei punti.",
+        "Riepilogo, le lettere scelte: la A 0 volte, la B 0 volte, la C 2 volte, la D 0 volte, la E 0 volte, la F 1 volta.",
+    ]
+    # Senza punti da contare il riepilogo lo dice.
+    prova.chiusi = {0, 1}
+    assert asc.righe_del_riepilogo(prova)[-1] == "Riepilogo: nessun punto da contare."
 
 
-def test_il_ritorno_si_riconosce_dal_volo(preparazione):
-    candidati, _prova = preparazione
-    punto = asc.scegli_punti(candidati)[0]
-    (ritorno,) = [e for e in punto.momento.eventi if asc.e_ritorno(e)]
-    assert ritorno.tipo == E.VOLO and ritorno.volo[-1].tipo == "fermo" and ritorno.dati == {"ritorno": True}
+# Le due aggiunte di partita_sonora per lo strumento.
+
+def test_il_ritocco_e_la_sorgente_del_preset_lasciano_la_partita_com_era(preparazione):
+    _candidati, prova = preparazione
+    eventi = resa.azione(_punti(prova)[0].candidato.momento.eventi)
+    senza = ps.componi(eventi, "A")
+    uguale = ps.componi(eventi, "A", ritocco=lambda posati: posati)
+    assert np.array_equal(senza.buffer, uguale.buffer) and [p.ruolo for p in senza.posati] == [p.ruolo for p in uguale.posati]
+    # Il ritocco vede i suoni posati e decide quelli da comporre: senza nessuno, il buffer è silenzio.
+    muto = ps.componi(eventi, "A", ritocco=lambda _posati: [])
+    assert muto.posati == [] and not np.any(muto.buffer)
+    for ruolo in ("schermo", "fischio_singolo", "rotolamento"):
+        for variante in range(ps.VARIANTI_RUMORE):
+            assert ps.sorgente(ruolo, variante) is ps.sorgente_del_preset(ps.SUONI[ruolo], variante)
+    with pytest.raises(KeyError, match="del ruolo schermo non c'è"):
+        ps.sorgente_del_preset("mess_partita_che_non_esiste", ruolo="schermo")
