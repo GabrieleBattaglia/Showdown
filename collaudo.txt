@@ -1,0 +1,27 @@
+Collaudo di MESS 2.0.0: la finestra Mercato e ricerca col costruttore di regole, issue 8 e D36, del 24 ottobre 2026.
+Prima: MESS aperto dai sorgenti in mine\showdown; il tuo mondo passa al formato 10 da solo, e la copia di prima è in E:\git\tmp.
+1. Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O aprono tutti la finestra Mercato e ricerca, massimizzata, ciascuno col suo preset; Esc chiude.
+2. Ctrl+Tab e Ctrl+Maiusc+Tab passano fra le schede Risultati e Filtri; ogni controllo ha la sua lettera, che NVDA dice.
+3. Sull'elenco Invio porta nel campo della scheda della persona, che scorri col cursore; Esc o Invio ti riportano sulla stessa persona.
+4. Scorrendo la casella dei preset ogni preset si applica intero; la voce in cima riprende i filtri che avevi; Salva filtri si apre solo con Invio.
+5. Salva filtri con un nome, chiudi, riapri dalla stessa porta: riparte dal tuo preset; Gestisci i preset, Alt+G, rinomina, elimina e sposta.
+6. Ctrl+F, Ctrl+Tab a Filtri, aggiungi Stato è libero, poi Sesso è donna, poi col Collegamento su o Stato è in vendita da altri; Alt+R, terza riga, E: suono della e, e voce e display leggono e stato: è in vendita da altri.
+7. Di nuovo E sulla stessa riga: un suono nuovo e breve, il collegamento che c'è già, diverso da quello della e, e la riga non cambia.
+8. O sulla terza riga: suono della o, e NVDA legge Alternativa 2: giocatori, stato: è in vendita da altri.
+9. Prima riga, O: un suono nuovo, perché la prima regola ha sempre la e, diverso dal tasto a vuoto che senti con Azzera senza regole.
+10. Seconda riga, Canc: suono della regola tolta, e voce e display leggono la regola che ora sta sulla seconda riga.
+11. Canc sull'unica regola rimasta: NVDA legge Nessuna regola: si aggiungono con Aggiungi regola, e il Collegamento sparisce.
+12. Con una sola regola metti il Collegamento su o, Canc sulla regola, poi aggiungi una regola e torna su Alt+L: dice e, insieme.
+13. Regole Stato è libero e poi, con la o, Stato è in vendita da altri; Ctrl+Su sulla seconda, poi Ctrl+Giù: Alt+T dice lo stesso conto di prima, e le righe tornano com'erano.
+14. Regole libero, poi Alternativa 2 in vendita da altri, poi e donna; Canc su Alternativa 2: le righe diventano Giocatori, stato: è libero e Alternativa 2: giocatori, sesso: è donna.
+15. Le regole della prova 14; Ctrl+Giù sulla riga Alternativa 2: il conto in Alt+T non cambia.
+16. Ctrl+F, scrivi un cognome e premi subito Invio: NVDA legge l'elenco col conto; Ctrl+Tab, Alt+V, cancella il testo: un secondo dopo la voce e il display ridicono il conto di tutti.
+17. Nel Valore scrivi ro e premi subito Invio: suono della scheda Risultati e nessun suono del valore dopo.
+18. Caratteristica Età, scrivi vent e premi subito Invio: un solo suono, quello del campo da correggere, e la voce dice il perché.
+19. Caratteristica Costo, Operatore non ha il dato: il Valore sparisce, e Tab dall'Operatore porta ad Aggiungi regola.
+20. Torna all'operatore minore di: il Valore ricompare col testo di prima e suona soltanto l'operatore.
+21. Nome o numero, nel Valore un solo apostrofo: Alt+T dice che il testo ha soltanto apostrofi, trattini o spazi, e il conto non cambia.
+22. Nome o numero, operatore è, valore 012: trova il giocatore numero 12.
+23. Ascolta di seguito la O sulla prima regola, la E su una regola che ha già la e, Ctrl+Su sulla prima e Azzera senza regole: quattro suoni diversi.
+24. A mosse di mercato finite, nella finestra si oscura solo Fai un'offerta, e Alt+O dice il perché col suo suono.
+25. Dalla finestra: un'offerta a un libero, un'amichevole scegliendo prima l'avversario poi il tuo giocatore, Sfida il suo club, il Diario.
