@@ -1,0 +1,50 @@
+wxPython 4.3.2 msw (phoenix) wxWidgets 3.3.4, Python 3.14.5, computer GABRYBAT.
+La prima finestra del processo, con l'elenco virtuale: pronta, mostrata e disegnata in 195,0 ms.
+Elenco virtuale, apertura con 20.000 trovati: finestra pronta in 132,2 ms, di cui 110,6 per i candidati; mostrata e disegnata in 202,1 ms; righe scritte 38, domande di Windows 78.
+Elenco virtuale, finestra ripristinata e di nuovo massimizzata in 83,9 ms, colonna larga 1883 pixel su 1883.
+Elenco virtuale, una freccia giù dalla prima riga: riga col fuoco 1, eventi di wx [('deselezionata', -1), ('fuoco', 1), ('selezionata', 1)], eventi di accessibilità [('selezione interna', 0), ('fuoco', 2), ('selezione', 2)].
+Elenco virtuale, 200 frecce giù: media 3,49 ms, mediana 2,55 ms, massimo 14,78 ms; per freccia in media 5,8 domande di Windows e 0,82 righe scritte; riga col fuoco 201.
+Elenco virtuale, Pagina giù: 27,12 ms, riga col fuoco 237, domande di Windows 41, eventi di accessibilità 40.
+Elenco virtuale, Fine: 22,85 ms, riga col fuoco 19999, domande di Windows 40, eventi di accessibilità 41.
+Elenco virtuale, Pagina su: 20,26 ms, riga col fuoco 19963, domande di Windows 40, eventi di accessibilità 3.
+Elenco virtuale, Inizio: 26,78 ms, riga col fuoco 0, domande di Windows 41, eventi di accessibilità 42.
+Elenco virtuale, due Ctrl+freccia giù dalla prima riga: riga col fuoco 2, eventi di wx [('deselezionata', -1), ('fuoco', 1), ('selezionata', 1), ('deselezionata', -1), ('fuoco', 2), ('selezionata', 2)].
+Elenco virtuale, Ctrl+Spazio sulla seconda riga: fuoco e selezione (1, -1), eventi di wx [('deselezionata', 1)], eventi di accessibilità [('selezione tolta', 2)]; la riga delle azioni resta la 1.
+Elenco virtuale, la lettera x, la cui prima riga sta più in basso dalla prima riga: riga 923, 'xdusiu cannone'; tempo per lettera 24,80 ms; domande di Windows 40; eventi di accessibilità [('selezione interna', 0), ('fuoco', 924), ('selezione', 924), ('valore', '-5/0'), ('creazione', 888), ('creazione', 889), ('creazione', 890), ('creazione', 891), ('creazione', 892), ('creazione', 893), ('creazione', 894), ('creazione', 895), ('creazione', 896), ('creazione', 897), ('creazione', 898), ('creazione', 899), ('creazione', 900), ('creazione', 901), ('creazione', 902), ('creazione', 903), ('creazione', 904), ('creazione', 905), ('creazione', 906), ('creazione', 907), ('creazione', 908), ('creazione', 909), ('creazione', 910), ('creazione', 911), ('creazione', 912), ('creazione', 913), ('creazione', 914), ('creazione', 915), ('creazione', 916), ('creazione', 917), ('creazione', 918), ('creazione', 919), ('creazione', 920), ('creazione', 921), ('creazione', 922), ('creazione', 923), ('creazione', 924), ('creazione', 925)].
+Elenco virtuale, r e o di seguito dalla prima riga: riga 12, 'rosarita paletti'; tempo per lettera 8,51, 0,05 ms; domande di Windows 15; eventi di accessibilità [('selezione interna', 0), ('fuoco', 13), ('selezione', 13)].
+Elenco virtuale, tre volte m dalla prima riga: riga 21, 'marida torli'; tempo per lettera 3,30, 7,38, 5,22 ms; domande di Windows 30; eventi di accessibilità [('selezione interna', 0), ('fuoco', 5), ('selezione', 5), ('selezione interna', 0), ('fuoco', 15), ('selezione', 15), ('selezione interna', 0), ('fuoco', 22), ('selezione', 22)].
+Elenco virtuale, ricalcolo col filtro 'a': 18.286 trovati, ricalcolati e ridisegnati in 40,0 ms; la stessa persona resta scelta; etichetta '&Trovati: 18.286'.
+Elenco virtuale, ricalcolo col filtro 'torli': 5 trovati, ricalcolati e ridisegnati in 13,3 ms; la stessa persona resta scelta; etichetta '&Trovati: 5'.
+Elenco virtuale, ricalcolo col filtro '': 20.000 trovati, ricalcolati e ridisegnati in 86,9 ms; la stessa persona resta scelta; etichetta '&Trovati: 20.000'.
+Elenco virtuale, ricalcolo col filtro 'ro': 2.479 trovati, ricalcolati e ridisegnati in 29,6 ms; la stessa persona non resta scelta; etichetta '&Trovati: 2.479'.
+Elenco virtuale, ricalcolo col filtro 'ros': 510 trovati, ricalcolati e ridisegnati in 26,2 ms; la stessa persona non resta scelta; etichetta '&Trovati: 510'.
+Elenco virtuale, ricalcolo col filtro '12': 2.578 trovati, ricalcolati e ridisegnati in 28,0 ms; la stessa persona non resta scelta; etichetta '&Trovati: 2.578'.
+Elenco virtuale, ricalcolo col filtro '1234': 28 trovati, ricalcolati e ridisegnati in 52,9 ms; la stessa persona non resta scelta; etichetta '&Trovati: 28'.
+Elenco virtuale, ricalcolo col filtro 'zzz': 0 trovati, ricalcolati e ridisegnati in 1,9 ms; la stessa persona non resta scelta; etichetta '&Trovati: 0'.
+Elenco virtuale, ricalcolo col filtro '': 20.000 trovati, ricalcolati e ridisegnati in 90,5 ms; la stessa persona non resta scelta; etichetta '&Trovati: 20.000'.
+Elenco virtuale, quattro lettere nel campo: ricalcolo e annuncio arrivati dopo 403 ms; annunci [('sintesi', 'Trovati: 116'), ('braille', 'Trovati: 116')].
+Elenco virtuale, righe lunghe: riscritte e ridisegnate in 38,9 ms; le prime 50 da 346 a 367 caratteri; della prima, di 351 caratteri, arrivano a chi legge l'elenco: buffer 260: 259, buffer 1024: 351, buffer 4096: 351.
+ListBox, apertura con 20.000 trovati: finestra pronta in 157,1 ms, di cui 112,4 per i candidati; mostrata e disegnata in 166,0 ms; righe scritte 500.
+ListBox, finestra ripristinata e di nuovo massimizzata in 8,9 ms.
+ListBox, una freccia giù dalla prima riga: riga col fuoco 1, eventi di wx [('selezionata', 1)], eventi di accessibilità [('fuoco', 2), ('selezione', 2)].
+ListBox, 200 frecce giù: media 0,66 ms, mediana 0,72 ms, massimo 1,03 ms; per freccia in media 0,0 domande di Windows e 0,00 righe scritte; riga col fuoco 201.
+ListBox, Pagina giù: 3,16 ms, riga col fuoco 246, domande di Windows 0, eventi di accessibilità 3.
+ListBox, Fine: 3,07 ms, riga col fuoco 499, domande di Windows 0, eventi di accessibilità 3.
+ListBox, Pagina su: 0,33 ms, riga col fuoco 454, domande di Windows 0, eventi di accessibilità 2.
+ListBox, Inizio: 3,13 ms, riga col fuoco 0, domande di Windows 0, eventi di accessibilità 3.
+ListBox, due Ctrl+freccia giù dalla prima riga: riga col fuoco 2, eventi di wx [('selezionata', 1), ('selezionata', 2)].
+ListBox, Ctrl+Spazio sulla seconda riga: fuoco e selezione (1, 1), eventi di wx [], eventi di accessibilità []; la riga delle azioni resta la 1.
+ListBox, la lettera k, la cui prima riga sta più in basso dalla prima riga: riga 438, 'katia meloni'; tempo per lettera 2,88 ms; domande di Windows 0; eventi di accessibilità [('valore', '-5/0'), ('fuoco', 439), ('selezione', 439)].
+ListBox, r e o di seguito dalla prima riga: riga 12, 'rosarita paletti'; tempo per lettera 0,24, 0,02 ms; domande di Windows 0; eventi di accessibilità [('fuoco', 13), ('selezione', 13)].
+ListBox, tre volte m dalla prima riga: riga 21, 'marida torli'; tempo per lettera 0,20, 0,46, 0,27 ms; domande di Windows 0; eventi di accessibilità [('fuoco', 5), ('selezione', 5), ('fuoco', 15), ('selezione', 15), ('fuoco', 22), ('selezione', 22)].
+ListBox, ricalcolo col filtro 'a': 18.286 trovati, ricalcolati e ridisegnati in 91,3 ms; la stessa persona resta scelta; etichetta "&Trovati: 18.286, nell'elenco i primi 500".
+ListBox, ricalcolo col filtro 'torli': 5 trovati, ricalcolati e ridisegnati in 3,4 ms; la stessa persona resta scelta; etichetta '&Trovati: 5'.
+ListBox, ricalcolo col filtro '': 20.000 trovati, ricalcolati e ridisegnati in 97,3 ms; la stessa persona resta scelta; etichetta "&Trovati: 20.000, nell'elenco i primi 500".
+ListBox, ricalcolo col filtro 'ro': 2.479 trovati, ricalcolati e ridisegnati in 89,7 ms; la stessa persona non resta scelta; etichetta "&Trovati: 2.479, nell'elenco i primi 500".
+ListBox, ricalcolo col filtro 'ros': 510 trovati, ricalcolati e ridisegnati in 86,0 ms; la stessa persona non resta scelta; etichetta "&Trovati: 510, nell'elenco i primi 500".
+ListBox, ricalcolo col filtro '12': 2.578 trovati, ricalcolati e ridisegnati in 87,7 ms; la stessa persona non resta scelta; etichetta "&Trovati: 2.578, nell'elenco i primi 500".
+ListBox, ricalcolo col filtro '1234': 28 trovati, ricalcolati e ridisegnati in 4,6 ms; la stessa persona non resta scelta; etichetta '&Trovati: 28'.
+ListBox, ricalcolo col filtro 'zzz': 0 trovati, ricalcolati e ridisegnati in 1,4 ms; la stessa persona non resta scelta; etichetta '&Trovati: 0'.
+ListBox, ricalcolo col filtro '': 20.000 trovati, ricalcolati e ridisegnati in 96,8 ms; la stessa persona non resta scelta; etichetta "&Trovati: 20.000, nell'elenco i primi 500".
+ListBox, quattro lettere nel campo: ricalcolo e annuncio arrivati dopo 385 ms; annunci [('sintesi', 'Trovati: 116'), ('braille', 'Trovati: 116')].
+ListBox, righe lunghe: riscritte e ridisegnate in 93,7 ms; le prime 50 da 346 a 367 caratteri; della prima, di 351 caratteri, arrivano a chi legge l'elenco: LB_GETTEXTLEN 351.
