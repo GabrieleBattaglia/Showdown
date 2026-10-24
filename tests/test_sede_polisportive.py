@@ -7,6 +7,9 @@ del più popoloso, Roma 100%. La scheda dice la sede, l'elenco delle polisportiv
 formato 8 la ricevono nell'aggiornamento al 9. Il dialogo della fondazione nasce sul desktop nascosto del
 conftest, coi messaggi di wx sostituiti da un registratore che risponde come gli si dice.
 Dal 2026-10-24, col collaudo di gioco, la sede che non corrisponde a nessun comune suona come un campo da correggere.
+Dallo stesso giorno, col formato 10 della issue 8, il salvataggio dell'8 prosegue fino al 10, e il documento dell'8
+non ha lo stato dei filtri della finestra Mercato e ricerca, che nasce col 10. Di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 """
 
@@ -135,6 +138,8 @@ def _al_formato_8(m):
     contenuto["formato"] = 8
     for p in contenuto["mondo"]["polisportive"].values():
         del p["luogo"]
+    # Lo stato dei filtri della finestra Mercato e ricerca nasce col formato 10.
+    del contenuto["mondo"]["filtri_di_ricerca"]
     return contenuto
 
 
@@ -143,12 +148,14 @@ def test_l_aggiornamento_dal_formato_8_da_una_sede_a_tutte(cartella_di_prova):
     m.miapolisportiva_attiva = mia
     contenuto = _al_formato_8(m)
     archivio.MIGRAZIONI[8](contenuto)
-    assert contenuto["formato"] == 9 == archivio.FORMATO
+    assert contenuto["formato"] == 9
+    archivio.MIGRAZIONI[9](contenuto)
+    assert contenuto["formato"] == archivio.FORMATO == 10
     nuovo = Mondo()
     archivio.costruisci(contenuto, nuovo)
     # Anche quella dell'utente riceve il comune estratto dal nome: nel formato 8 nessuno l'aveva scelto.
     assert {nome: p.luogo for nome, p in nuovo.polisportive.items()} == {nome: luoghi.luogo_della_polisportiva(nome) for nome in m.polisportive}
-    # Dal file: il salvataggio dell'8 si legge, si aggiorna e si riscrive nel 9.
+    # Dal file: il salvataggio dell'8 si legge, si aggiorna e si riscrive nel formato di adesso.
     vecchio = _al_formato_8(m)
     percorso = cartella_di_prova / FILE_MONDO
     with gzip.open(percorso, "wt", encoding="utf-8") as f:
@@ -158,10 +165,10 @@ def test_l_aggiornamento_dal_formato_8_da_una_sede_a_tutte(cartella_di_prova):
     assert ricaricato.polisportive["PoliTeam01 Abab-Cdcd"].luogo == cpu.luogo
     assert ricaricato.polisportive["Circolo dei ciechi"].luogo == luoghi.luogo_della_polisportiva("Circolo dei ciechi")
     assert archivio.salva(ricaricato)
-    assert archivio.leggi(percorso)["formato"] == 9
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO
 
 
-def test_i_formati_vecchi_arrivano_fino_al_9():
+def test_i_formati_vecchi_arrivano_fino_all_ultimo():
     m, _mia, _cpu = _mondo_con_le_polisportive()
     contenuto = _al_formato_8(m)
     contenuto["formato"] = 7

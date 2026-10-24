@@ -1,18 +1,18 @@
 {
- "nota": "Tappa 14: col formato 9 ogni polisportiva ha il comune della sede, e la descrizione della formula gironi_32 dice campionati italiani, che i mondi copiano nelle sedi; tolto il campo, rimesso il formato 8 e ridetto campionati mondiali, le impronte dei mondi tornano identiche",
+ "nota": "Issue 8, D36: col formato 10 il mondo conserva lo stato dei filtri di ogni porta d'ingresso della finestra Mercato e ricerca; tolto il campo e rimesso il formato 9, le impronte dei mondi tornano identiche",
  "motore": {
   "sha256": "e2bb0360200954542a4aad553ea8677f9ce69b9577bef6474504a36d1c5cb071",
   "incontri": 420
  },
  "mondo_nato": {
-  "sha256": "8911ec852e33a77e8899bcfc7e5036e8b2c1d267cb8b605db2ac5f510d509d9a",
+  "sha256": "c79c36b778e2b9f5f1a15cad4e3f1eab71432327fbbac1d3fed1d76e3e0e50fc",
   "vivi": 674,
   "attivi": 674,
   "tesserati": 603,
   "polisportive": 41
  },
  "mondo_a_regime": {
-  "sha256": "1b4a4e51fe3113a9c944bf81ea19b2385bf2d2263aec2dcc507987e177fec946",
+  "sha256": "0447e94265e3b3c164fa426eabaec0746c330e6e97f6504e48ad6cededdf4446",
   "vivi": 1659,
   "attivi": 1259,
   "tesserati": 1078,

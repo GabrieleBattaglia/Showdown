@@ -21,14 +21,16 @@ per i magnati di D35. Le funzioni pure offerta_possibile, amichevole_possibile e
 per ogni riga che cosa si può fare, o perché no: i divieti restano in mondo.problema_* e in
 sfide.problema_bersaglio. La Memoria tiene classe e valore di mercato per la durata della finestra, e chi
 è in vendita si legge dalle liste in_vendita delle polisportive. Lo stato dei filtri di ogni porta
-d'ingresso, Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O, vive nel mondo, scelta di Gabriele. Il mercato di
+d'ingresso, Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O, vive nel mondo, scelta di Gabriele, e col formato 10
+dell'archivio si salva con lui: qui ogni campo si scrive e, alla lettura, si controlla. Il mercato di
 prima, coi candidati e la scelta Mostra, resta per il dialogo di oggi finché la finestra non lo
 sostituisce. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
+import math
 from collections import namedtuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 
 import classe as modulo_classe
 import contratti
@@ -44,6 +46,7 @@ from costanti import (
     CARATTERISTICHE_CONTROLLO_BASE,
     CARATTERISTICHE_DIFESA_BASE,
     CARATTERISTICHE_FISICHE_BASE,
+    INDOLI,
 )
 from economia import ingaggio_richiesto, stipendio, stipendio_pagato, valore_di_mercato
 from utilita import accorda
@@ -480,6 +483,101 @@ def con_la_pronta(stato, chiave):
 def pronte_disponibili(stato):
     """Le ricerche pronte del menu, coppie di chiave e nome: Torna ai tuoi filtri soltanto dopo una ricerca pronta, se prima c'erano filtri fatti a mano."""
     return [(chiave, nome) for chiave, nome in PRONTE if chiave != TORNA_AI_TUOI or stato.a_mano is not None]
+
+
+# Lo stato delle porte nel salvataggio, dal formato 10 dell'archivio: ogni campo dei filtri col suo controllo,
+# perché un salvataggio che non torna si rifiuta, come per ogni altra parte del mondo.
+
+def _intero(valore, massimo=None):
+    return isinstance(valore, int) and not isinstance(valore, bool) and valore >= 0 and (massimo is None or valore <= massimo)
+
+
+def _numero(valore):
+    return isinstance(valore, (int, float)) and not isinstance(valore, bool) and math.isfinite(valore)
+
+
+def _una_di(*scelte):
+    return lambda valore: valore is None or (isinstance(valore, str) and valore in scelte)
+
+
+def _tratti_validi(valore):
+    return isinstance(valore, dict) and all(tratto in TRATTI and isinstance(voluto, bool) for tratto, voluto in valore.items())
+
+
+def _condizioni_valide(valore):
+    return isinstance(valore, list) and all(isinstance(c, list) and len(c) == 3 and c[0] in CRITERI_DELLE_CONDIZIONI and c[1] in ("maggiore", "minore")
+                                            and _numero(c[2]) for c in valore)
+
+
+def _booleano(valore):
+    return isinstance(valore, bool)
+
+
+def _scritto(valore):
+    return isinstance(valore, str)
+
+
+_CONTROLLI_DEI_FILTRI = {
+    "allenatori": _booleano, "liberi": _booleano, "in_vendita": _booleano, "del_computer": _booleano, "tuoi": _booleano, "ritirati": _booleano,
+    "nome": _scritto, "sesso": _una_di("m", "f"), "classe_migliore": lambda v: _intero(v, modulo_classe.LIVELLI), "eta_massima": _intero,
+    "costo_massimo": _intero, "disponibili_oggi": _booleano, "ordine": lambda v: isinstance(v, str) and v in dict(ORDINI_GIOCATORI),
+    "ordine_allenatori": lambda v: isinstance(v, str) and v in dict(ORDINI_ALLENATORI),
+    "classe_peggiore": lambda v: _intero(v, modulo_classe.LIVELLI), "eta_minima": _intero, "regione": _scritto, "provincia": _scritto, "comune": _scritto,
+    "polisportiva": _scritto, "tratti": _tratti_validi, "indole": _una_di(*INDOLI), "valore_minimo": lambda v: _numero(v) and v >= 0,
+    "stipendio_massimo": _intero, "mesi_contratto_massimi": _intero, "senza_acciacchi": _booleano, "solo_ritirati_che_allenano": _booleano,
+    "solo_nuovi": _booleano, "comprendi_usciti": _booleano, "condizioni": _condizioni_valide, "tipo_allenatore": _una_di(*staff.TIPI),
+    "visus": _una_di(*staff.VISUS), "posto_attuale": _una_di(*staff.RUOLI), "stipendio_capo_massimo": _intero, "senza_prelazione_altrui": _booleano,
+}
+
+
+def filtri_a_dizionario(filtri):
+    """I filtri come dizionario del salvataggio JSON: i tratti un dizionario, le condizioni elenchi di tre."""
+    dati = {campo.name: getattr(filtri, campo.name) for campo in fields(Filtri)}
+    dati["tratti"] = dict(filtri.tratti)
+    dati["condizioni"] = [list(condizione) for condizione in filtri.condizioni]
+    return dati
+
+
+def filtri_da_dizionario(dati, chi):
+    """I filtri letti dal salvataggio, ogni campo controllato; ValueError, con chi davanti, se un campo manca, avanza o non va."""
+    if not isinstance(dati, dict) or set(dati) != set(_CONTROLLI_DEI_FILTRI):
+        raise ValueError(f"{chi}: i campi dei filtri non sono quelli di questa versione")
+    for campo, controllo in _CONTROLLI_DEI_FILTRI.items():
+        if not controllo(dati[campo]):
+            raise ValueError(f"{chi}: il campo {campo} dei filtri non è valido: {dati[campo]!r}")
+    return Filtri(**{**dati, "tratti": dict(dati["tratti"]), "condizioni": tuple(tuple(condizione) for condizione in dati["condizioni"])})
+
+
+def stato_a_dizionario(stato):
+    return {"filtri": filtri_a_dizionario(stato.filtri), "pronta": stato.pronta, "a_mano": filtri_a_dizionario(stato.a_mano) if stato.a_mano is not None else None}
+
+
+def stato_da_dizionario(dati, chi):
+    """Lo stato di una porta letto dal salvataggio; ValueError se non va."""
+    if not isinstance(dati, dict) or set(dati) != {"filtri", "pronta", "a_mano"}:
+        raise ValueError(f"{chi}: lo stato dei filtri non è valido")
+    pronta = dati["pronta"]
+    if pronta is not None and pronta not in _FILTRI_DELLE_PRONTE:
+        raise ValueError(f"{chi}: la ricerca pronta {pronta!r} non esiste")
+    a_mano = filtri_da_dizionario(dati["a_mano"], f"{chi}, filtri fatti a mano") if dati["a_mano"] is not None else None
+    return StatoDellaPorta(filtri_da_dizionario(dati["filtri"], chi), pronta, a_mano)
+
+
+def porte_a_dizionario(mondo):
+    """Lo stato di tutte le porte d'ingresso, per il salvataggio: quelle mai usate col loro stato predefinito."""
+    return {porta: stato_a_dizionario(stato_della_porta(mondo, porta)) for porta in PORTE}
+
+
+def porte_predefinite():
+    """Lo stato predefinito di tutte le porte, nella forma del salvataggio: quello di un mondo convertito dal formato 9."""
+    return {porta: stato_a_dizionario(stato_predefinito(porta)) for porta in PORTE}
+
+
+def porte_da_dizionario(dati):
+    """Lo stato delle porte letto dal salvataggio, una per porta; ValueError se manca una porta, se ce n'è una di troppo o se uno stato non va."""
+    if not isinstance(dati, dict) or set(dati) != set(PORTE):
+        raise ValueError(f"Mondo: le porte dei filtri di ricerca non sono quelle attese: {sorted(dati) if isinstance(dati, dict) else dati!r}")
+    return {porta: stato_da_dizionario(dati[porta], f"Filtri della porta {porta}") for porta in PORTE}
 
 
 class Memoria:

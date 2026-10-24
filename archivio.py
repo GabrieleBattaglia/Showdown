@@ -63,6 +63,12 @@ da un caso nato dal nome, come per le polisportive del computer che nascono, e i
 Dal 2026-10-23, richiesta di Gabriele, il salvataggio, la copia e i salvataggi illeggibili stanno nella cartella
 del mondo, che percorsi.py rilegge a ogni chiamata e che si sceglie dal menu Impostazioni, non più accanto al programma.
 Con la verifica finale dello stesso giorno carica può non rifare le copie dei salvataggi illeggibili, per le Riprova dell'avvio.
+Il formato 10, del 2026-10-24, con la issue 8 e la decisione D36, scelta di Gabriele: il mondo conserva i filtri della
+finestra unica Mercato e ricerca, uno stato per ogni porta d'ingresso, Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O, coi
+filtri di adesso, la ricerca pronta da cui vengono e quelli fatti a mano prima. La migrazione dal 9 dà a ogni porta il
+suo stato predefinito, quello della sua ricerca pronta, e non tocca altro; alla lettura ogni campo si controlla, e uno
+stato che non va fa rifiutare il salvataggio, col ripiego sulla copia di sempre. Col magnate di D35 andrà per magnate.
+È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -82,6 +88,7 @@ import classe as modulo_classe
 import contratti
 import economia
 import luoghi
+import mercato
 import percorsi
 import staff
 import tratti
@@ -123,7 +130,7 @@ from sfide import RegistroSfide
 from utilita import adesso, adesso_utc, senza_raccolta
 
 APPLICAZIONE = "MESS"
-FORMATO = 9
+FORMATO = 10
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Il segnaposto dei giocatori mentre si scrive il resto del documento, _testo_firmato: due caratteri
@@ -257,6 +264,8 @@ def componi(mondo):
             # Dalla tappa 13, formato 8: gli allenatori, in ordine di numero, e il contatore.
             "allenatori": [a.a_dizionario() for _numero, a in sorted(mondo.allenatori.items())],
             "prossimo_allenatore": mondo.prossimo_allenatore,
+            # Dalla issue 8, formato 10: lo stato dei filtri di ogni porta d'ingresso della finestra Mercato e ricerca.
+            "filtri_di_ricerca": mercato.porte_a_dizionario(mondo),
         },
     }
 
@@ -570,8 +579,17 @@ def _dal_formato_8(documento):
     documento["formato"] = 9
 
 
+def _dal_formato_9(documento):
+    """
+    Dal formato 9 al 10, con la issue 8 e la decisione D36: ogni porta d'ingresso della finestra Mercato e ricerca
+    riceve il suo stato predefinito, quello della sua ricerca pronta, come se la finestra non si fosse mai aperta.
+    """
+    documento["mondo"].setdefault("filtri_di_ricerca", mercato.porte_predefinite())
+    documento["formato"] = 10
+
+
 MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5, 6: _dal_formato_6,
-              7: _dal_formato_7, 8: _dal_formato_8}
+              7: _dal_formato_7, 8: _dal_formato_8, 9: _dal_formato_9}
 
 
 def _conservazione_da_json(valore):
@@ -632,6 +650,8 @@ def costruisci(documento, mondo):
         for g in giocatori.values():
             if g.classe_migliore == CLASSE_MIGLIORE_DA_CALCOLARE:
                 g.classe_migliore = modulo_classe.punteggio(g)
+        # Dalla issue 8, formato 10: i filtri delle porte della finestra Mercato e ricerca, ogni campo controllato.
+        filtri_di_ricerca = mercato.porte_da_dizionario(dati["filtri_di_ricerca"])
     except KeyError as e:
         raise ErroreSalvataggio(f"manca il dato {e}") from e
     except (TypeError, ValueError, AttributeError) as e:
@@ -648,6 +668,7 @@ def costruisci(documento, mondo):
     mondo.sfide = sfide_del_mondo
     mondo.allenatori = allenatori
     mondo.prossimo_allenatore = max(prossimo_allenatore, max(allenatori, default=0) + 1)
+    mondo.filtri_di_ricerca = filtri_di_ricerca
     if da_far_nascere:
         mondo.fai_nascere_lo_staff()
     mondo.aggiorna_fattori_staff()

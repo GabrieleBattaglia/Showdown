@@ -6,22 +6,28 @@ porta d'ingresso; la funzione che dice di chi è una polisportiva; la memoria di
 le funzioni pure che dicono, per ogni riga, quale offerta si può fare, se si gioca un'amichevole o si sfida
 il club, o perché no; e i testi della finestra, la riga, la Situazione a blocchi e Filtri attivi.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
-Nascono il 24 ottobre 2026 coi passi 2 e 3 della proposta della issue 8.
+Nascono il 24 ottobre 2026 coi passi 2 e 3 della proposta della issue 8. Lo stesso giorno, col formato 10
+dell'archivio, lo stato di ogni porta che va e torna dal salvataggio, il mondo del formato 9 che riceve quello
+predefinito, e il salvataggio con uno stato che non va, che si rifiuta.
 """
 
+import copy
 import datetime
+import gzip
+import json
 import random
 import re
 
 import pytest
 
+import archivio
 import classe
 import economia
 import luoghi
 import mercato
 import staff
 import testi
-from costanti import ANNO_SIMULAZIONE_GIORNI, LIMITE_MOVIMENTI_PER_TICK
+from costanti import ANNO_SIMULAZIONE_GIORNI, FILE_MONDO, LIMITE_MOVIMENTI_PER_TICK
 from mondo import Mondo
 
 ORA = datetime.datetime(2026, 10, 6, 18, 0)
@@ -625,3 +631,110 @@ def test_l_etichetta_dei_trovati_e_il_riepilogo_unico(mondo):
                          "Primo esito.", "Secondo esito.", "Assunto.", "Sfida lanciata."]
     assert righe[5] == testi.info_mercato(mia, mondo) and righe[6:] == testi.righe_dello_staff(mia, mondo)[1:]
     assert testi.evento_mercato_e_ricerca([("a", True)], (), ["b"]) == "mercato e ricerca: 2 esiti"
+
+
+# Il salvataggio, formato 10.
+
+def test_ogni_ricerca_pronta_va_e_torna_dal_dizionario():
+    for chiave in mercato.PRONTE[1:]:
+        filtri = mercato.filtri_della_pronta(chiave[0])
+        assert mercato.filtri_da_dizionario(json.loads(json.dumps(mercato.filtri_a_dizionario(filtri))), "Prova") == filtri
+
+
+def test_lo_stato_delle_porte_va_e_torna_dal_salvataggio(mondo, cartella_di_prova):
+    a_mano = mercato.Filtri(liberi=True, tuoi=True, nome="ros", sesso="f", classe_migliore=40, eta_massima=30, costo_massimo=5000, regione="Lombardia",
+                            tratti={"mancino": True, "talento": False}, indole=mondo.giocatori[3].indole, valore_minimo=120.5,
+                            condizioni=(("bomba_base", "maggiore", 10.5),), ordine="bomba_base")
+    ricerca = mercato.con_la_pronta(mercato.fatti_a_mano(a_mano), "piu_titolati")
+    allenatori = mercato.fatti_a_mano(mercato.Filtri(allenatori=True, liberi=True, visus=staff.VEDENTE, posto_attuale=staff.CAPO, ordine_allenatori="eta_anziano"))
+    mercato.ricorda_la_porta(mondo, "ricerca", ricerca)
+    mercato.ricorda_la_porta(mondo, "allenatori", allenatori)
+    assert archivio.salva(mondo)
+    letto = archivio.leggi(cartella_di_prova / FILE_MONDO)
+    assert letto["formato"] == archivio.FORMATO == 10 and set(letto["mondo"]["filtri_di_ricerca"]) == set(mercato.PORTE)
+    ricaricato = Mondo()
+    archivio.carica(ricaricato)
+    assert ricaricato.filtri_di_ricerca == {"mercato": mercato.stato_predefinito("mercato"), "allenatori": allenatori, "ricerca": ricerca,
+                                            "amichevole": mercato.stato_predefinito("amichevole")}
+    tornato = mercato.con_la_pronta(mercato.stato_della_porta(ricaricato, "ricerca"), mercato.TORNA_AI_TUOI)
+    assert tornato.filtri == a_mano and tornato.filtri.condizioni == (("bomba_base", "maggiore", 10.5),)
+
+
+def test_un_mondo_del_formato_9_riceve_lo_stato_predefinito_di_ogni_porta(mondo, cartella_di_prova):
+    mercato.ricorda_la_porta(mondo, "mercato", mercato.fatti_a_mano(mercato.Filtri(liberi=True)))
+    vecchio = archivio.componi(mondo)
+    vecchio["formato"] = 9
+    del vecchio["mondo"]["filtri_di_ricerca"]
+    aggiornato = copy.deepcopy(vecchio)
+    archivio.MIGRAZIONI[9](aggiornato)
+    # La migrazione aggiunge soltanto lo stato dei filtri, e nient'altro cambia.
+    assert aggiornato["formato"] == 10 and aggiornato["mondo"].pop("filtri_di_ricerca") == mercato.porte_predefinite()
+    assert aggiornato["mondo"] == vecchio["mondo"]
+    percorso = cartella_di_prova / FILE_MONDO
+    with gzip.open(percorso, "wt", encoding="utf-8") as f:
+        f.write(json.dumps({**vecchio, "firma": archivio.firma(vecchio)}))
+    ricaricato = Mondo()
+    archivio.carica(ricaricato)
+    assert ricaricato.filtri_di_ricerca == {porta: mercato.stato_predefinito(porta) for porta in mercato.PORTE}
+    assert archivio.salva(ricaricato) and archivio.leggi(percorso)["formato"] == archivio.FORMATO
+    assert set(archivio.MIGRAZIONI) == set(range(1, archivio.FORMATO))
+
+
+def _guasta(campo, valore, porta="mercato", dove="filtri"):
+    def guasto(porte):
+        porte[porta][dove][campo] = valore
+    return guasto
+
+
+def _togli(*chiavi):
+    def guasto(porte):
+        cosa = porte
+        for chiave in chiavi[:-1]:
+            cosa = cosa[chiave]
+        del cosa[chiavi[-1]]
+    return guasto
+
+
+GUASTI = {
+    "una porta in meno": _togli("amichevole"),
+    "una porta in più": lambda porte: porte.update(altrove=porte["mercato"]),
+    "un campo in meno": _togli("ricerca", "filtri", "sesso"),
+    "un campo in più": _guasta("volante", True),
+    "un sesso che non esiste": _guasta("sesso", "x"),
+    "un ordine che non esiste": _guasta("ordine", "a_caso"),
+    "un ordine dei giocatori agli allenatori": _guasta("ordine_allenatori", "valore_alto", "allenatori"),
+    "un tratto che non esiste": _guasta("tratti", {"volante": True}),
+    "un tratto senza sì o no": _guasta("tratti", {"mancino": None}),
+    "una condizione sulla classe": _guasta("condizioni", [["classe", "maggiore", 3]]),
+    "una condizione monca": _guasta("condizioni", [["valore", "maggiore"]]),
+    "una classe oltre K0": _guasta("classe_migliore", 101),
+    "un'età negativa": _guasta("eta_massima", -1),
+    "un costo con la virgola": _guasta("costo_massimo", 10.5),
+    "una casella scritta": _guasta("liberi", "sì"),
+    "un valore vero o falso": _guasta("valore_minimo", True),
+    "un nome che è un numero": _guasta("nome", 5),
+    "un'indole che non esiste": _guasta("indole", "furiosa"),
+    "un visus che non esiste": _guasta("visus", "miope"),
+    "una ricerca pronta che non esiste": lambda porte: porte["ricerca"].update(pronta="inventata"),
+    "Torna ai tuoi filtri come pronta": lambda porte: porte["ricerca"].update(pronta=mercato.TORNA_AI_TUOI),
+    "filtri fatti a mano che non vanno": lambda porte: porte["ricerca"].update(a_mano={"liberi": True}),
+    "lo stato senza la pronta": _togli("ricerca", "pronta"),
+    "le porte in un elenco": None,
+}
+
+
+@pytest.mark.parametrize("guasto", list(GUASTI))
+def test_uno_stato_dei_filtri_che_non_va_fa_rifiutare_il_salvataggio(mondo, guasto):
+    contenuto = archivio.componi(mondo)
+    if GUASTI[guasto] is None:
+        contenuto["mondo"]["filtri_di_ricerca"] = list(contenuto["mondo"]["filtri_di_ricerca"].values())
+    else:
+        GUASTI[guasto](contenuto["mondo"]["filtri_di_ricerca"])
+    nuovo = Mondo()
+    with pytest.raises(archivio.ErroreSalvataggio):
+        archivio.costruisci(contenuto, nuovo)
+    assert nuovo.filtri_di_ricerca == {} and nuovo.giocatori == {}
+    senza = archivio.componi(mondo)
+    del senza["mondo"]["filtri_di_ricerca"]
+    with pytest.raises(archivio.ErroreSalvataggio, match="manca il dato"):
+        archivio.costruisci(senza, Mondo())

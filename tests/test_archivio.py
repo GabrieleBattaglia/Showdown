@@ -358,7 +358,7 @@ def test_un_salvataggio_del_formato_4_si_aggiorna(cartella_di_prova):
     assert not ricaricato.giocatori[4].puo_giocare and ricaricato.giocatori[4].infortunio_sede == "non_precisata"
     assert archivio.salva(ricaricato)
     riletto = _ricarica()
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 9
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 10
     for gid, g in riletto.giocatori.items():
         assert vars(g) == vars(ricaricato.giocatori[gid])
 
