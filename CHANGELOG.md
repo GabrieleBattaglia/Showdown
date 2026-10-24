@@ -35,7 +35,7 @@ Se all'apertura la cartella scelta non c'è, per esempio perché la penna è sta
 
 ### Le finestre e le parole
 
-Tutte le finestre interne si aprono massimizzate, più comode da leggere con lo screen reader e il display braille, ed Esc chiude dove c'è il pulsante Chiudi. Davanti ai nomi dei tornei c'è l'articolo giusto: convocato al Campionato italiano, iscritta all'Open femminile del giovedì, la coppa d'oro alla Coppa delle polisportive. Nell'invito al caffè Invio nel testo chiude, e un Invio tenuto giù dalla voce del menu non lo chiude appena aperto. Trentaquattro suoni nuovi, nella collezione di GBUtils dalla V220 alla V229.
+Tutte le finestre interne si aprono massimizzate, più comode da leggere con lo screen reader e il display braille, ed Esc chiude dove c'è il pulsante Chiudi. Davanti ai nomi dei tornei c'è l'articolo giusto: convocato al Campionato italiano, iscritta all'Open femminile del giovedì, la coppa d'oro alla Coppa delle polisportive. Nell'invito al caffè Invio nel testo chiude, e un Invio tenuto giù dalla voce del menu non lo chiude appena aperto. Trentacinque suoni nuovi, nella collezione di GBUtils dalla V220 alla V230.
 
 ### Cosa se ne va
 
@@ -56,6 +56,12 @@ Quando la polisportiva attiva ha finito le mosse di mercato del giorno, la voce 
 Ogni evento ha davvero il suo suono, come promette il manuale: hanno il loro anche il modello di torneo e il file delle formule che non si scrivono, il rilancio a chi ha già rifiutato oggi la tua sfida e la sfida in arrivo che non vale più, le iscrizioni non ancora aperte, quelle già chiuse e Togli sulla Coppa delle polisportive, l'errore che ferma MESS e Allena tutti con i tesserati tutti infortunati, che prima suonavano come un altro evento; la sede che non corrisponde a nessun comune suona come un campo da correggere, e Vai alla fine a incontro finito porta al risultato senza il suono di un salto che non c'è. Il calendario predefinito che si ferma a metà del ripristino dice in quale cartella sono già finiti i file di prima.
 
 Il valore di una spesa d'allenamento piccola, nel messaggio breve, nell'anteprima e nella domanda di conferma, non sembra più fermo, da 144,4 a 144,4, ma ha i decimali che servono a vederlo salire, come da 144,400 a 144,402; Allena tutti con tutto al massimo parla soltanto di chi ha un punto da spendere, al femminile quando sono tutte donne. Un modello di torneo rinominato cambiando soltanto le maiuscole non sparisce più, come succedeva su Windows, e i ripieghi del calendario dopo il sorteggio suonano come le iscrizioni chiuse.
+
+Il lungolinea che va in porta si sente sul suo lato fino all'angolo, dove gira in silenzio verso la tasca, e passa al centro soltanto all'ultimo, come sul tavolo vero; prima arrivava centrale già dallo schermo (issue 10). La cronaca lo racconta con Un veloce lungolinea si insacca nella porta di, seguito dal nome di chi subisce, e il goal di diagonale con La diagonale prende precisa il punto G e finisce in goal. I risultati delle partite non cambiano.
+
+I blocchi avvengono soltanto sulle sponde: la paletta ferma la pallina contro la sponda, con un suono suo, e il controllo palla la porta al punto da cui parte il tiro, dal blocco stesso, dal centro o dall'altra sponda, secondo il colpo e la qualità del controllo del giocatore; la pallina sfuggita al controllo rotola via e si ferma a centrocampo. La cronaca dice il blocco sulla sponda e, al livello normale, dove il giocatore porta la pallina (issue 11). La scelta del tiro migliore dopo il blocco, che cambia gli esiti, è la issue 13.
+
+Lo schermo centrale dice quello che succede quasi sempre al tavolo: la pallina di Rossi batte sullo schermo e torna indietro, al posto di urta lo schermo e si ferma. Nella partita dal vivo, dopo l'urto, la pallina torna indietro rotolando piano verso chi l'ha tirata e si ferma da sola; l'arbitro fischia sempre all'urto, e a qualunque velocità di gioco, anche cambiata a metà punto, la recupera soltanto quando è ferma (issue 12). Gli esiti delle partite non cambiano.
 
 ## [1.94.6] - 2026-10-23
 
