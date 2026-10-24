@@ -65,24 +65,29 @@ pallina, e la parata resta alla ribattuta e alle parate che finiscono in fallo. 
 la pallina dove parte il colpo si sposta con lei: resta scosso sul punto del blocco per la presa, poi
 va in linea retta fino alla partenza del colpo, con gli stessi campioni e lo stesso guadagno. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
-Dalla issue 12, il 24 ottobre 2026, decisione D37: per la pallina tornata dallo schermo, che rotolava
-sotto il fischio, la chiamata e la pausa dopo il punto, ripiega aveva imparato a non piegare la
-procedura dentro il volo di una pallina. Tolto il ritorno lo stesso giorno, dopo l'ascolto alla cieca,
-nessun volo corre più sotto la procedura, salvo il millesimo d'arrotondamento in cui la consegna e i
-colpi del riscaldamento cominciano: le azioni di ripiega e dei segmenti se ne vanno con lui, e le
-pieghe sono quelle di prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dalle verifiche della issue 12, il 24 ottobre 2026, decisione D37: la pallina tornata dallo schermo
+rotola sotto il fischio, la chiamata e la pausa dopo il punto, e quando la velocità cambiava a punto
+già composto la procedura ripiegata portava il recupero dell'arbitro addosso alla pallina che rotolava
+ancora. Ora nessuna piega cade dentro il volo di una pallina, anche se il volo è cominciato nel
+segmento di prima: l'azione non si piega mai, nemmeno quando la procedura le corre accanto. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Dalla issue 12, lo stesso giorno, per l'ascolto di confronto dello schermo, strumenti/ascolto_schermo.py:
-componi accetta un ritocco dei suoni posati, e sorgente_del_preset dà la sorgente di un preset qualunque
-con le regole di sorgente, così le versioni nuove dello schermo si compongono come la partita senza
-toccarla. La partita non li usa, e suona come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
-Opus 5.5, UltraCode).
+sorgente_del_preset dà la sorgente di un preset qualunque con le regole di sorgente; il ritocco dei suoni
+posati che componi accettava per quell'ascolto se n'è andato con lui, a scelta fatta. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dalla issue 12, la sera del 24 ottobre 2026: all'ascolto di confronto Gabriele ha scelto il legno col
+ritorno in sei punti su sei. Lo schermo contro suona l'urto sulla tavola di legno, mess_partita_schermo_legno,
+più forte e dalla metà strada fra il punto del tocco e il centro dello schermo, poi la ricaduta della
+pallina, mess_partita_ricaduta, e il ritorno rotolando verso chi l'ha tirata, più forte del rotolamento
+di un colpo perché si senta sotto il fischio e il cicalino. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import collections
 import itertools
 import math
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 
@@ -97,6 +102,10 @@ CAMPIONI_PASSO = round(PASSO * FS)
 GUADAGNO_ROTOLAMENTO = 0.6
 V_RIF = 500.0
 GUADAGNO_CONTROLLO = 0.5
+# La issue 12, la versione scelta da Gabriele il 24 ottobre sera: l'urto sulla tavola dello schermo e il rotolamento
+# della pallina che torna indietro, più forti, perché si sentano sotto il fischio e il cicalino.
+GUADAGNO_SCHERMO = 1.7
+GUADAGNO_DEL_RITORNO = 2.5
 # Il sonaglio del rotolamento: una capriola dei pallini per ogni giro della pallina, cioè ogni
 # circonferenza percorsa, con il passo che varia di un quarto in più o in meno perché non batta
 # come una macchina, e il volume di ogni capriola fra tre quarti e il pieno.
@@ -174,7 +183,8 @@ SUONI = {
     "goal": "mess_partita_goal",
     "fischio_doppio": "mess_partita_fischio_doppio",
     "fanfara": "mess_partita_fanfara",
-    "schermo": "mess_partita_schermo",
+    "schermo": "mess_partita_schermo_legno",
+    "ricaduta": "mess_partita_ricaduta",
     "terra": "mess_partita_terra",
     "soffitto": "mess_partita_soffitto",
     "tavola_contatto": "mess_partita_tavola_di_contatto",
@@ -206,7 +216,8 @@ AZIONI = {
     "goal": "il goal, la pallina che cade nella tasca della porta",
     "fischio_doppio": "il fischio doppio dell'arbitro, per il goal",
     "fanfara": "la fanfara del goal, dopo il fischio doppio, dalla testata di chi segna",
-    "schermo": "la pallina che urta lo schermo centrale",
+    "schermo": "la pallina che batte sulla tavola di legno dello schermo centrale, dalla metà strada verso il suo centro",
+    "ricaduta": "la pallina che dopo lo schermo ricade sul tavolo, prima di tornare rotolando verso chi l'ha tirata",
     "terra": "la pallina che cade a terra fuori dal tavolo",
     "soffitto": "la pallina che sbatte sul soffitto",
     "tavola_contatto": "la pallina che sale sulla tavola di contatto in fondo al tavolo",
@@ -386,14 +397,14 @@ def _fondi(pieghe):
 
 
 def _fuori_dai_salti(a, b, salti):
-    """I pezzi dell'intervallo da a a b che restano fuori dai salti, in ordine."""
+    """I pezzi dell'intervallo da a a b che restano fuori dai salti, o dagli altri intervalli dati, in ordine."""
     pezzi = [(a, b)]
     for inizio, fine in salti:
         pezzi = [pezzo for x, y in pezzi for pezzo in ((x, min(y, inizio)), (max(x, fine), y)) if pezzo[1] - pezzo[0] > 1e-9]
     return pezzi
 
 
-def ripiega(procedure, velocita, pieghe=(), da=None, salti=()):
+def ripiega(procedure, velocita, pieghe=(), da=None, salti=(), azioni=()):
     """
     Le pieghe che fanno suonare la procedura di un segmento alla velocità data. procedure sono i
     tratti (a, b, v) di pausa e procedura del segmento, ciascuno svolto dal motore alla velocità v,
@@ -401,14 +412,19 @@ def ripiega(procedure, velocita, pieghe=(), da=None, salti=()):
     viene prima resta com'è stato suonato, con le pieghe date, e si ripiega solo il resto. salti sono
     gli intervalli (a, b) del motore che non si sentono, le pause lunghe della decisione D30: a ogni
     velocità si piegano quasi a zero, di PIEGA_DEL_SALTO, e la procedura che sta dentro non conta.
+    azioni sono gli intervalli (a, b) in cui corre una pallina, come il ritorno dallo schermo, che
+    rotola sotto il fischio, la chiamata e la pausa: la procedura che sta dentro non si piega, perché
+    il suono dell'azione dura sempre il suo tempo reale, e quello che viene dopo non deve arrivargli
+    addosso.
     """
     nuove = [] if da is None else [(a, min(b, da), f) for a, b, f in pieghe if a < da]
     libero = -math.inf if da is None else da
     fine = libero
+    fuori = (*salti, *azioni)
     for a, b, v in sorted(procedure):
         inizio = max(a, fine)
         if b - inizio > 1e-9 and abs(v / velocita - 1.0) > 1e-9:
-            nuove.extend((x, y, v / velocita) for x, y in _fuori_dai_salti(inizio, b, salti))
+            nuove.extend((x, y, v / velocita) for x, y in _fuori_dai_salti(inizio, b, fuori))
         fine = max(fine, b)
     nuove.extend((max(a, libero), b, PIEGA_DEL_SALTO) for a, b in salti if b > max(a, libero))
     return _fondi(nuove)
@@ -688,6 +704,7 @@ def posati_del_volo(e, varianti=None, causa=None):
     schermo, terra, corpo, e nel riscaldamento la paletta di chi riceve. causa è quella del colpo
     che ha lanciato il volo, se si conosce.
     """
+    from motore.regia import punto_della_ricaduta
     from motore.tavolo import posizione_al_tempo
 
     if varianti is None:
@@ -712,8 +729,15 @@ def posati_del_volo(e, varianti=None, causa=None):
     tappe = TAPPE_SONORE | TAPPE_DEL_RISCALDAMENTO if e.tipo == E.RISCALDAMENTO_COLPO else TAPPE_SONORE
     for tp in volo[1:]:
         ruolo = tappe.get(tp.tipo)
-        if ruolo:
+        if ruolo == "schermo":
+            # La issue 12: la tavola dello schermo risuona tutta, e si sente dalla metà strada verso il suo centro, più forte.
+            posati.append(_fermo(ruolo, tp.t, punto_della_ricaduta(tp), e.n, varianti(ruolo), guadagno=GUADAGNO_SCHERMO))
+        elif ruolo:
             posati.append(_fermo(ruolo, tp.t, (tp.x, tp.y), e.n, varianti(ruolo)))
+    if (e.dati or {}).get("ritorno"):
+        # La pallina tornata dallo schermo: prima la ricaduta sul tavolo, poi il rotolamento, più forte perché si senta sotto il fischio e il cicalino.
+        posati = [replace(p, guadagni=p.guadagni * GUADAGNO_DEL_RITORNO) if p.ruolo == "rotolamento" else p for p in posati]
+        posati.insert(0, _fermo("ricaduta", volo[0].t, (volo[0].x, volo[0].y), e.n, varianti("ricaduta")))
     return posati
 
 
@@ -762,7 +786,7 @@ def posa(eventi):
     return posati
 
 
-def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo=None, pieghe=(), ritocco=None):
+def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo=None, pieghe=()):
     """
     Gli eventi dati composti in un buffer stereo per chi ascolta dalla testata della parte indicata:
     ogni suono posato, spazializzato e sommato al suo istante, esatto al campione. da è l'istante del
@@ -771,16 +795,11 @@ def componi(eventi, ascoltatore="A", spazio=SPAZIO, da=None, fine=None, anticipo
     anticipo il silenzio in testa si accorcia, e davanti al primo suono ne restano quei secondi, mai
     prima di da: è la ripartenza da fermi, che non fa aspettare chi ha premuto il tasto. Le pieghe
     accorciano o allungano i tratti di procedura, e ogni suono cade al secondo che gli danno.
-    ritocco, se c'è, riceve i suoni posati e restituisce quelli da comporre: lo usa soltanto l'ascolto
-    di confronto dello schermo, strumenti/ascolto_schermo.py, per provare versioni nuove di un suono
-    senza toccare la partita.
     """
     eventi = list(eventi)
     if da is not None:
         eventi = [e for e in eventi if e.t >= da - TOLLERANZA]
     posati = posa(eventi)
-    if ritocco is not None:
-        posati = list(ritocco(posati))
     if da is None:
         t0 = min([e.t for e in eventi[:1]] + [p.t for p in posati], default=0.0)
     else:
@@ -995,11 +1014,15 @@ class Segmento:
     riparte da fermi, cioè dalla ripresa del gioco, perché pause e procedura che vengono prima le
     decide chi ascolta; fine è l'istante della chiusura, dove comincia il segmento che segue.
     procedure sono i tratti di pausa e procedura, con la velocità a cui il motore li ha svolti.
+    azioni sono gli intervalli dei voli della pallina, compresi quelli del segmento di prima che
+    corrono ancora quando comincia, come il ritorno dallo schermo alle velocità alte: lì la procedura
+    non si piega.
     """
     voci: list
     inizio: float
     fine: float
     procedure: list = field(default_factory=list)
+    azioni: list = field(default_factory=list)
 
     @property
     def eventi(self):
@@ -1047,8 +1070,8 @@ class Segmento:
         return self.eventi[len(self.preambolo):] if self.pausa_lunga else self.eventi
 
     def pieghe(self, velocita, pieghe=(), da=None):
-        """Le pieghe del segmento alla velocità data, cioè ripiega con la sua procedura e i suoi salti; pieghe e da come in ripiega."""
-        return ripiega(self.procedure, velocita, pieghe, da, self.salti)
+        """Le pieghe del segmento alla velocità data, cioè ripiega con la sua procedura, i suoi salti e le sue azioni; pieghe e da come in ripiega."""
+        return ripiega(self.procedure, velocita, pieghe, da, self.salti, self.azioni)
 
 
 def set_finito(punteggio, formato):
@@ -1072,6 +1095,8 @@ class Cronologia:
         self.esaurita = False
         # L'ultimo evento consegnato, con la velocità del suo momento: la pausa che lo segue sta nel segmento dopo.
         self._precedente = (None, None)
+        # I voli che corrono ancora alla fine dell'ultimo segmento: la procedura del segmento dopo non si piega dentro di loro.
+        self._azioni = []
 
     def _chiude(self, evento, momento):
         if evento.tipo in CHIUSURE_DEL_PUNTO:
@@ -1100,6 +1125,7 @@ class Cronologia:
         """Il segmento che segue, svolgendo i momenti che servono alla velocità data; None a incontro finito."""
         voci = []
         procedure = []
+        azioni = list(self._azioni)
         while True:
             if not self._in_attesa and (self.esaurita or not self._carica(velocita)):
                 break
@@ -1110,12 +1136,16 @@ class Cronologia:
             procedure.extend(tratti_di_procedura(precedente, evento, svolto_prima, svolto))
             self._precedente = (evento, svolto)
             voci.append((evento, momento, apre))
+            if evento.volo:
+                azioni.append((evento.volo[0].t, evento.volo[-1].t))
             if self._chiude(evento, momento):
                 break
         if not voci:
             return None
         chiusura = voci[-1][0]
-        return Segmento(voci, _inizio_del_gioco(voci), chiusura.t + chiusura.durata, procedure)
+        fine = chiusura.t + chiusura.durata
+        self._azioni = [(a, b) for a, b in azioni if b > fine + TOLLERANZA]
+        return Segmento(voci, _inizio_del_gioco(voci), fine, procedure, azioni)
 
 
 def _indice_del_gioco(voci):

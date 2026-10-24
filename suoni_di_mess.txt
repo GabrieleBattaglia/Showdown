@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 357 suoni, 331 della finestra e 26 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 358 suoni, 331 della finestra e 27 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -365,7 +365,7 @@ Nell'avanzamento finisce un torneo dei tuoi, senza medaglie: mess_torneo_conclus
 Nell'avanzamento l'iscrizione automatica iscrive tuoi atleti a un torneo: mess_iscrizioni_automatiche.
 Nell'avanzamento un torneo con tuoi iscritti si annulla per pochi iscritti, e la quota torna: mess_edizione_annullata.
 Nell'avanzamento finisce un campionato italiano: mess_mondiale_concluso.
-Partita dal vivo, i suoni dell'incontro, 26 suoni.
+Partita dal vivo, i suoni dell'incontro, 27 suoni.
 Il fischio singolo dell'arbitro, ai falli e alle riprese del gioco: mess_partita_fischio_singolo.
 La battuta, la paletta che colpisce la pallina al servizio: mess_partita_battuta.
 Il secondo tocco della battuta col doppio tocco: mess_partita_secondo_tocco.
@@ -380,7 +380,8 @@ La pallina che colpisce il corpo di chi difende, il body touch: mess_partita_cor
 Il goal, la pallina che cade nella tasca della porta: mess_partita_goal.
 Il fischio doppio dell'arbitro, per il goal: mess_partita_fischio_doppio.
 La fanfara del goal, dopo il fischio doppio, dalla testata di chi segna: mess_partita_fanfara.
-La pallina che urta lo schermo centrale: mess_partita_schermo.
+La pallina che batte sulla tavola di legno dello schermo centrale, dalla metà strada verso il suo centro: mess_partita_schermo_legno.
+La pallina che dopo lo schermo ricade sul tavolo, prima di tornare rotolando verso chi l'ha tirata: mess_partita_ricaduta.
 La pallina che cade a terra fuori dal tavolo: mess_partita_terra.
 La pallina che sbatte sul soffitto: mess_partita_soffitto.
 La pallina che sale sulla tavola di contatto in fondo al tavolo: mess_partita_tavola_di_contatto.

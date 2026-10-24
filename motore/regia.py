@@ -32,14 +32,27 @@ porta la pallina oltre VELOCITA_TRASPORTO. Le palle morte si fermano a centrocam
 giocatori, anche la pallina che sfugge al controllo. Gli esiti non cambiano, e il dado della partita
 non tira niente di nuovo.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
-Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 12 e decisione D37: la pallina che batteva
-sullo schermo tornava indietro, con un volo breve dopo l'urto che rotolava piano verso chi l'aveva
-tirata, e quello che seguiva il punto aspettava che fosse ferma. All'ascolto alla cieca dello stesso
-giorno Gabriele non l'ha mai distinto dallo schermo di prima, e non gli è sembrato lo schermo dello
-showdown vero: il ritorno se ne va, con l'attesa della pallina ferma e la sua estrazione della scena,
-e lo schermo aspetta prove audio nuove. Resta la frase della cronaca, in motore/eventi.py; lo schermo
-contro è quello di prima, evento per evento, col fallo segnato allo schermo e il recupero dell'arbitro
-che parte da lì, e controlla_invarianti vede il fallo che non resta allo schermo. Gli esiti non cambiano.
+Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, issue 12 e decisione D37: la pallina che batte
+sullo schermo torna indietro. Dopo l'urto un volo breve, il ritorno, la porta verso chi l'ha tirata,
+nella direzione del colpo specchiata dallo schermo, per una strada fra 40 e 120 cm, e la pallina rotola
+piano fino a fermarsi da sola. Il ritorno comincia nell'istante dell'urto e l'orologio resta lì, così
+il fallo, il fischio e la chiamata arrivano all'urto come prima, e il ritorno si sente sotto il fischio
+e il cicalino, e dopo di loro. Il fallo resta segnato allo schermo, la pallina resta dove si ferma, e
+il recupero dell'arbitro parte da lì. La strada viene dal caso della scena; gli esiti non cambiano, e
+il dado della partita non tira niente di nuovo.
+È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dalla issue 12, la sera del 24 ottobre 2026: tolto il ritorno, che all'ascolto alla cieca non si sentiva,
+Gabriele ha scelto all'ascolto di confronto, sei punti su sei, il legno col ritorno. Il ritorno torna
+con le sue misure: la pallina ricade sul tavolo RITARDO_DELLA_RICADUTA dopo l'urto, dalla metà strada fra
+il punto del tocco e il centro dello schermo, da dove si sente l'urto della tavola, e riparte col
+RIMBALZO_DALLO_SCHERMO della velocità che aveva, dentro VELOCITA_DEL_RITORNO, per una strada di
+RITORNO_DALLO_SCHERMO, rallentando sempre allo stesso modo fino a fermarsi. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dalle verifiche della issue 12, il 24 ottobre 2026, decisione D37: il ritorno è azione e resta a tempo
+reale, mentre la pausa fra i punti si accorcia con la velocità di gioco, così da velocità 5 a 8 l'arbitro
+recuperava la pallina mentre rotolava ancora. Ora, a ogni velocità, quello che viene dopo il punto
+assegnato, il recupero, il time-out, la sanzione o il cambio al tavolo, aspetta che la pallina sia ferma;
+il punto si assegna subito, come prima. Fino a velocità 4 la pausa finiva già dopo, e la scena non cambia.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -92,6 +105,15 @@ DISTANZE_SULLA_SPONDA = (15.0, 45.0)
 # ribattuta lenta e la pallina sfuggita al controllo si fermano prima dello schermo.
 CENTROCAMPO = (META_TAVOLO - 60.0, META_TAVOLO + 60.0)
 PRIMA_DELLO_SCHERMO = META_TAVOLO - 8.0
+# Il ritorno dallo schermo, issue 12, con le misure della versione scelta da Gabriele il 24 ottobre sera:
+# la pallina ricade sul tavolo dopo questi secondi dall'urto, dalla metà strada verso il centro dello
+# schermo, e riparte con questa parte della velocità dell'urto, dentro questi limiti in cm/s, per una
+# strada fra queste distanze in cm, rallentando sempre allo stesso modo fino a fermarsi. A ogni velocità
+# di gioco quello che segue il punto aspetta che la pallina sia ferma.
+RITARDO_DELLA_RICADUTA = 0.07
+RIMBALZO_DALLO_SCHERMO = 0.35
+VELOCITA_DEL_RITORNO = (150.0, 250.0)
+RITORNO_DALLO_SCHERMO = (120.0, 150.0)
 _FISCHI = {E.SINGOLO: "FISCHIO_SINGOLO", E.DOPPIO: "FISCHIO_DOPPIO", E.LUNGO: "FISCHIO_LUNGO", E.TRIPLO: "FISCHIO_TRIPLO"}
 
 
@@ -136,6 +158,11 @@ class Regia:
         self._arrivo_battuta_locale = None
         # La partenza del colpo che segue il controllo, scelta dal controllo stesso, issue 11.
         self._partenza_pronta = None
+        # Dove si ferma la pallina tornata indietro dallo schermo, issue 12: il fallo resta allo
+        # schermo, il recupero dell'arbitro parte da qui. E quando si ferma: quello che segue il punto
+        # non comincia prima.
+        self._dove_si_ferma = None
+        self._fine_del_ritorno = None
 
     # Gli strumenti.
 
@@ -410,6 +437,8 @@ class Regia:
         decisivo = None
         ultimo_colpitore = None
         self._partenza_pronta = None
+        self._dove_si_ferma = None
+        self._fine_del_ritorno = None
         while i < n:
             p = passi[i]
             chi = p.chi.id
@@ -498,6 +527,10 @@ class Regia:
         else:
             eventi.append(self._arbitro(E.RIPETIZIONE, 0.0, chiamata="si_ripete", esito=esito.esito, causa=esito.causa))
         self._attesa(t.PAUSA_FRA_PUNTI)
+        # La pallina tornata dallo schermo, issue 12, rotola a tempo reale anche dopo il punto: alle velocità
+        # alte la pausa finisce prima che si fermi, e l'arbitro aspetta. Fino a velocità 4 non serve mai.
+        if self._fine_del_ritorno is not None:
+            self.t = max(self.t, self._fine_del_ritorno)
         return eventi
 
     def _dati_colpo(self, p):
@@ -715,7 +748,10 @@ class Regia:
         return arrivo
 
     def _volo_del_fallo(self, eventi, chi, pos, p, colpo_n):
-        """Il volo di un attacco che finisce in fallo: contro lo schermo, sopra, fuori, sulla tavola di contatto o al soffitto."""
+        """
+        Il volo di un attacco che finisce in fallo: contro lo schermo, sopra, fuori, sulla tavola di
+        contatto o al soffitto. Contro lo schermo, dalla issue 12, la pallina poi torna indietro.
+        """
         causa = p.causa
         parte = self.campo[chi].parte
         if causa == "paletta_caduta":
@@ -733,9 +769,46 @@ class Regia:
         evento = self._evento_volo(chi, volo, p.colpo)
         evento.colpo_n = colpo_n
         eventi.append(evento)
+        if causa == "schermo_contro":
+            self._dove_si_ferma = self._ritorno_dallo_schermo(eventi, chi, volo, colpo_n)
         # Il fallo si segna nell'ultimo punto del volo che sta sul tavolo: per lo schermo contro, l'urto.
         dentro = [tappa for tappa in volo if _dentro((tappa.x, tappa.y))]
         return (dentro[-1].x, dentro[-1].y)
+
+    def _ritorno_dallo_schermo(self, eventi, chi, volo, colpo_n):
+        """
+        La pallina che batte sullo schermo e torna indietro, issue 12: RITARDO_DELLA_RICADUTA dopo l'urto
+        ricade sul tavolo dalla metà strada fra il punto del tocco e il centro dello schermo, da dove si
+        sente la tavola, e riparte verso chi l'ha tirata, nella direzione del colpo specchiata dallo
+        schermo, per una strada fra le distanze di RITORNO_DALLO_SCHERMO, col RIMBALZO_DALLO_SCHERMO della
+        velocità dell'urto dentro VELOCITA_DEL_RITORNO, rallentando sempre allo stesso modo fino a
+        fermarsi. Il caso è quello della scena, un'estrazione sola. È un VOLO suo, con il ritorno nei
+        dati; l'orologio resta all'urto, così il fallo, il fischio e la chiamata arrivano lì come prima.
+        Restituisce dove la pallina si ferma, e si segna quando, perché quello che segue il punto la aspetti.
+        """
+        partenza, urto = volo[0], volo[-1]
+        dx, dy = urto.x - partenza.x, urto.y - partenza.y
+        lunghezza = math.hypot(dx, dy)
+        strada = self._uniforme(*RITORNO_DALLO_SCHERMO)
+        x0, y0 = punto_della_ricaduta(urto)
+        # Lo schermo specchia la parte del moto che lo attraversa, e lascia quella lungo lo schermo.
+        x = min(LARGHEZZA_TAVOLO - MARGINE_GIOCO, max(MARGINE_GIOCO, x0 + strada * dx / lunghezza))
+        y = y0 - strada * dy / lunghezza
+        strada = math.hypot(x - x0, y - y0)
+        v0 = min(VELOCITA_DEL_RITORNO[1], max(VELOCITA_DEL_RITORNO[0], RIMBALZO_DALLO_SCHERMO * urto.v))
+        all_urto = self.t
+        self.t = all_urto + RITARDO_DELLA_RICADUTA
+        ritorno = self._volo((x0, y0), (x, y), (), v0, "fermo", v0 * v0 / (2.0 * strada))
+        # L'evento comincia all'urto, come il fallo che lo segue, così gli istanti non tornano indietro;
+        # la pallina ricade e riparte RITARDO_DELLA_RICADUTA dopo, con la prima tappa del volo.
+        self.t = all_urto
+        evento = self._evento_volo(chi, ritorno, None, {"ritorno": True})
+        evento.durata = ritorno[-1].t - all_urto
+        evento.colpo_n = colpo_n
+        eventi.append(evento)
+        self.t = all_urto
+        self._fine_del_ritorno = ritorno[-1].t
+        return x, y
 
     def _volo_aereo(self, pos, causa, parte, v0):
         """I voli che lasciano il piano del tavolo: tappe scritte a mano fra punti fissi, a velocità costante."""
@@ -877,7 +950,8 @@ class Regia:
             eventi.append(self._evento(E.SOSTITUZIONE_ATTREZZO, self.tar.DURATA_CAMBIO_ATTREZZO / self.velocita, None, self._pos_arbitro(),
                                        causa=p.causa, dati={"attrezzo": "paletta" if p.causa == "paletta_rotta" else "pallina", "di": chi}))
             self.pallina = "arbitro"
-        self.pos_pallina = pos
+        # La pallina tornata indietro dallo schermo, issue 12, resta dove si è fermata: il recupero parte da lì.
+        self.pos_pallina = pos if self._dove_si_ferma is None else self._dove_si_ferma
         return pos
 
     def _ultimo_difensore(self, passi, i):
@@ -1011,13 +1085,23 @@ def controlla_invarianti(eventi):
     schermo, e il fischio singolo nell'istante stesso di una rottura. Dalla issue 11 anche il blocco
     contro la sponda, il controllo che porta la pallina proprio dove parte il colpo che segue, e le
     palle morte a centrocampo, salvo quella del limite tecnico, che non è una pallina ferma. Dalla
-    issue 12 anche il fallo dello schermo contro, che viene subito dopo l'urto, allo schermo e nel suo
-    istante.
+    issue 12 la pallina che urta lo schermo torna indietro, dall'urto, e il fallo resta allo schermo; e,
+    dalle sue verifiche, quello che segue il punto non comincia prima che la pallina tornata sia ferma.
     """
     problemi = []
     precedente = None
     esiti_per_punto = {}
+    # La fine dell'ultimo ritorno dallo schermo, finché il primo evento dopo il suo punto non l'ha passata.
+    fine_del_ritorno, dopo_il_punto = None, False
     for indice, ev in enumerate(eventi):
+        if _e_ritorno(ev):
+            fine_del_ritorno, dopo_il_punto = ev.volo[-1].t, False
+        elif fine_del_ritorno is not None and dopo_il_punto:
+            if ev.t + 1e-3 < fine_del_ritorno:
+                problemi.append(f"Evento {ev.n} {ev.tipo}: comincia a {ev.t}, prima che si fermi la pallina tornata dallo schermo, a {fine_del_ritorno:.3f}.")
+            fine_del_ritorno = None
+        elif fine_del_ritorno is not None and ev.tipo in (E.PUNTO, E.RIPETIZIONE):
+            dopo_il_punto = True
         if precedente is not None:
             if ev.n <= precedente.n:
                 problemi.append(f"Evento {ev.n}: il progressivo non cresce.")
@@ -1049,7 +1133,7 @@ def controlla_invarianti(eventi):
         if ev.tipo == E.ROTTURA and (seguente is None or seguente.tipo != E.FISCHIO or seguente.fischio != E.SINGOLO or abs(seguente.t - ev.t) > 1e-6):
             problemi.append(f"Evento {ev.n}: la rottura non è seguita subito dal fischio singolo.")
         problemi.extend(_controlla_blocco_e_palla_morta(ev, seguente))
-        problemi.extend(_controlla_schermo(ev, seguente))
+        problemi.extend(_controlla_ritorno(ev, eventi[indice - 1] if indice else None, seguente))
     for chiave, quanti in esiti_per_punto.items():
         if quanti != 1:
             problemi.append(f"Set {chiave[0]}, punto {chiave[1]}: {quanti} eventi di punto o ripetizione.")
@@ -1085,14 +1169,44 @@ def _controlla_blocco_e_palla_morta(ev, seguente):
     return problemi
 
 
-def _controlla_schermo(ev, seguente):
-    """La issue 12: dopo il volo che urta lo schermo viene subito il fallo, segnato allo schermo e nell'istante dell'urto."""
-    if ev.tipo != E.VOLO or ev.volo is None or ev.volo[-1].tipo != "schermo":
+def _e_ritorno(ev):
+    return ev is not None and ev.tipo == E.VOLO and bool((ev.dati or {}).get("ritorno"))
+
+
+def _controlla_ritorno(ev, prima, seguente):
+    """
+    La issue 12: la pallina che urta lo schermo torna sempre indietro. Il ritorno comincia dalla
+    ricaduta, RITARDO_DELLA_RICADUTA dopo l'urto, e va verso chi l'ha tirata, dalla sua parte, fino a fermarsi; il fallo
+    che segue resta allo schermo, nell'istante dell'urto.
+    """
+    if ev.tipo != E.VOLO or ev.volo is None:
         return []
-    urto = ev.volo[-1]
+    if ev.volo[-1].tipo == "schermo" and not _e_ritorno(seguente):
+        return [f"Evento {ev.n}: la pallina urta lo schermo e non torna indietro."]
+    if not _e_ritorno(ev):
+        return []
+    urto = prima.volo[-1] if prima is not None and prima.tipo == E.VOLO and prima.volo else None
+    partenza, fermo = ev.volo[0], ev.volo[-1]
+    ricaduta = punto_della_ricaduta(urto) if urto is not None else None
+    if (urto is None or urto.tipo != "schermo" or abs(partenza.t - urto.t - RITARDO_DELLA_RICADUTA) > 1e-6
+            or math.dist((partenza.x, partenza.y), ricaduta) > 1e-6):
+        return [f"Evento {ev.n}: il ritorno non comincia dalla ricaduta dopo l'urto contro lo schermo."]
+    problemi = []
+    dall_urto, dal_fermo = urto.y - META_TAVOLO, fermo.y - META_TAVOLO
+    if fermo.tipo != "fermo" or dall_urto * dal_fermo <= 0 or abs(dal_fermo) <= abs(dall_urto):
+        problemi.append(f"Evento {ev.n}: il ritorno non torna indietro fino a fermarsi.")
     if seguente is None or seguente.tipo != E.FALLO or seguente.pos != (round(urto.x, 1), round(urto.y, 1)) or abs(seguente.t - urto.t) > 2e-3:
-        return [f"Evento {ev.n}: il fallo non resta allo schermo, nell'istante dell'urto."]
-    return []
+        problemi.append(f"Evento {ev.n}: il fallo non resta allo schermo, nell'istante dell'urto.")
+    return problemi
+
+
+def punto_della_ricaduta(urto):
+    """
+    Il punto da cui si sente l'urto della pallina sullo schermo, e da cui lei ricade e torna indietro: la
+    metà strada fra dove tocca e il centro dello schermo, perché la tavola risuona tutta. Dalla issue 12,
+    la versione scelta da Gabriele il 24 ottobre sera.
+    """
+    return (urto.x + CENTRO_X) / 2.0, urto.y
 
 
 def _dentro(pos):
@@ -1110,9 +1224,11 @@ def _in_un_angolo(tappa):
 def _controlla_volo(ev):
     problemi = []
     volo = ev.volo
-    if abs(volo[0].t - ev.t) > 2e-3:
+    # Il ritorno dallo schermo comincia all'urto, e la pallina ricade sul tavolo RITARDO_DELLA_RICADUTA dopo, con la prima tappa.
+    ricade = RITARDO_DELLA_RICADUTA if _e_ritorno(ev) else 0.0
+    if abs(volo[0].t - ev.t - ricade) > 2e-3:
         problemi.append(f"Evento {ev.n} {ev.tipo}: il volo non comincia con l'evento.")
-    if ev.tipo == E.VOLO and abs((volo[-1].t - volo[0].t) - ev.durata) > 2e-3:
+    if ev.tipo == E.VOLO and abs((volo[-1].t - volo[0].t + ricade) - ev.durata) > 2e-3:
         problemi.append(f"Evento {ev.n}: la durata del volo non corrisponde alle tappe.")
     for prima, dopo in itertools.pairwise(volo):
         if dopo.t + 1e-9 < prima.t:

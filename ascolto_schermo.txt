@@ -25,3 +25,52 @@ Riepilogo, coppie diverse tirate dal tuo giocatore: 3 coppie; il ritorno 0 volte
 Riepilogo, coppie diverse tirate dall'avversario: 3 coppie; il ritorno 0 volte, senza ritorno 0 volte, uguali 3 volte, senza scelta 0 volte.
 Riepilogo, coppie uguali di controllo: 4 coppie; hai detto uguali 4 volte, la prima 0 volte, la seconda 0 volte, senza scelta 0 volte.
 Riepilogo, l'ordine: in tutte le coppie hai scelto la prima 0 volte e la seconda 0 volte.
+Ascolto di confronto dello schermo centrale, 2026-10-24 18:37, seme 943039.
+Schermo, i tiri del tuo giocatore, punto 1: hai scelto la D.
+Schermo, i tiri del tuo giocatore, punto 2: nessuna somiglia al tavolo vero.
+Schermo, i tiri del tuo giocatore, punto 3: nessuna somiglia al tavolo vero.
+Schermo, i tiri del tuo giocatore, 2026-10-24 18:40: test superato, nessun commento
+Rivelazione, la versione oggi: lo schermo com'è oggi nella partita: l'urto di mess_partita_schermo dove la pallina tocca, e niente dopo.
+Rivelazione, la versione netto: l'urto netto e secco, più forte, verso il centro dello schermo, senza ritorno.
+Rivelazione, la versione netto col ritorno: lo stesso urto netto, poi la pallina ricade sul tavolo e torna rotolando verso chi l'ha tirata.
+Rivelazione, la versione legno col ritorno: l'urto su una tavola di legno, più grave e rimbombante, più forte, verso il centro, e il ritorno.
+Rivelazione, la versione plastica col ritorno: l'urto su una lastra di plastica dura, più chiaro, più forte, verso il centro, e il ritorno.
+Rivelazione, Schermo, i tiri del tuo giocatore, punto 1, un lungolinea sinistro di Mazza, del tuo giocatore: A netto, B netto col ritorno, C netto, D legno col ritorno, E oggi, F plastica col ritorno; le lettere A e C erano identiche campione per campione, la versione netto ripetuta; hai scelto la D, legno col ritorno.
+Rivelazione, Schermo, i tiri del tuo giocatore, punto 2, una singola sponda destra di Seno, del tuo giocatore: A netto, B plastica col ritorno, C legno col ritorno, D netto col ritorno, E oggi, F netto col ritorno; le lettere D e F erano identiche campione per campione, la versione netto col ritorno ripetuta; nessuna somiglia al tavolo vero.
+Rivelazione, Schermo, i tiri del tuo giocatore, punto 3, una diagonale sinistra di Cesaretti, del tuo giocatore: A netto col ritorno, B netto, C legno col ritorno, D oggi, E plastica col ritorno, F legno col ritorno; le lettere C e F erano identiche campione per campione, la versione legno col ritorno ripetuta; nessuna somiglia al tavolo vero.
+Riepilogo, oggi: scelta 0 volte su 3 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.
+Riepilogo, netto: scelta 0 volte su 3 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.
+Riepilogo, netto col ritorno: scelta 0 volte su 3 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.
+Riepilogo, legno col ritorno: scelta 1 volta su 3 punti, 1 nei tiri del tuo giocatore e 0 in quelli dell'avversario.
+Riepilogo, plastica col ritorno: scelta 0 volte su 3 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.
+Riepilogo, nessuna somiglia al tavolo vero: 2 volte; senza scelta: 0 volte.
+Riepilogo, i controlli: in ogni punto una versione stava sotto due lettere identiche, e hai scelto una delle due 0 volte; scegliendo a caso succederebbe nel 33% dei punti.
+Riepilogo, le lettere scelte: la A 0 volte, la B 0 volte, la C 0 volte, la D 1 volta, la E 0 volte, la F 0 volte.
+Ascolto di confronto dello schermo centrale, 2026-10-24 18:49, seme 683046.
+Schermo, i tiri del tuo giocatore, punto 1: hai scelto la C.
+Schermo, i tiri del tuo giocatore, punto 2: hai scelto la C.
+Schermo, i tiri del tuo giocatore, punto 3: hai scelto la B.
+Schermo, i tiri del tuo giocatore, 2026-10-24 18:53: test superato, nessun commento
+Schermo, i tiri dell'avversario, punto 1: hai scelto la B.
+Schermo, i tiri dell'avversario, punto 2: hai scelto la C.
+Schermo, i tiri dell'avversario, punto 3: hai scelto la F.
+Schermo, i tiri dell'avversario, 2026-10-24 18:56: test superato, nessun commento
+Rivelazione, la versione oggi: lo schermo com'è oggi nella partita: l'urto di mess_partita_schermo dove la pallina tocca, e niente dopo.
+Rivelazione, la versione netto: l'urto netto e secco, più forte, verso il centro dello schermo, senza ritorno.
+Rivelazione, la versione netto col ritorno: lo stesso urto netto, poi la pallina ricade sul tavolo e torna rotolando verso chi l'ha tirata.
+Rivelazione, la versione legno col ritorno: l'urto su una tavola di legno, più grave e rimbombante, più forte, verso il centro, e il ritorno.
+Rivelazione, la versione plastica col ritorno: l'urto su una lastra di plastica dura, più chiaro, più forte, verso il centro, e il ritorno.
+Rivelazione, Schermo, i tiri del tuo giocatore, punto 1, un lungolinea sinistro di Mazza, del tuo giocatore: A netto col ritorno, B legno col ritorno, C legno col ritorno, D plastica col ritorno, E oggi, F netto; le lettere B e C erano identiche campione per campione, la versione legno col ritorno ripetuta; hai scelto la C, legno col ritorno, una delle due lettere identiche.
+Rivelazione, Schermo, i tiri del tuo giocatore, punto 2, una singola sponda destra di Seno, del tuo giocatore: A netto col ritorno, B oggi, C legno col ritorno, D plastica col ritorno, E plastica col ritorno, F netto; le lettere D e E erano identiche campione per campione, la versione plastica col ritorno ripetuta; hai scelto la C, legno col ritorno.
+Rivelazione, Schermo, i tiri del tuo giocatore, punto 3, una diagonale sinistra di Cesaretti, del tuo giocatore: A netto, B legno col ritorno, C netto, D oggi, E netto col ritorno, F plastica col ritorno; le lettere A e C erano identiche campione per campione, la versione netto ripetuta; hai scelto la B, legno col ritorno.
+Rivelazione, Schermo, i tiri dell'avversario, punto 1, una doppia sponda destra di Cesaretti, dell'avversario: A oggi, B legno col ritorno, C netto col ritorno, D netto, E plastica col ritorno, F netto col ritorno; le lettere C e F erano identiche campione per campione, la versione netto col ritorno ripetuta; hai scelto la B, legno col ritorno.
+Rivelazione, Schermo, i tiri dell'avversario, punto 2, un lungolinea destro di Seno, dell'avversario: A netto, B oggi, C legno col ritorno, D oggi, E netto col ritorno, F plastica col ritorno; le lettere B e D erano identiche campione per campione, la versione oggi ripetuta; hai scelto la C, legno col ritorno.
+Rivelazione, Schermo, i tiri dell'avversario, punto 3, una singola sponda destra di Cardini, dell'avversario: A plastica col ritorno, B oggi, C netto, D netto col ritorno, E oggi, F legno col ritorno; le lettere B e E erano identiche campione per campione, la versione oggi ripetuta; hai scelto la F, legno col ritorno.
+Riepilogo, oggi: scelta 0 volte su 6 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.
+Riepilogo, netto: scelta 0 volte su 6 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.
+Riepilogo, netto col ritorno: scelta 0 volte su 6 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.
+Riepilogo, legno col ritorno: scelta 6 volte su 6 punti, 3 nei tiri del tuo giocatore e 3 in quelli dell'avversario.
+Riepilogo, plastica col ritorno: scelta 0 volte su 6 punti, 0 nei tiri del tuo giocatore e 0 in quelli dell'avversario.
+Riepilogo, nessuna somiglia al tavolo vero: 0 volte; senza scelta: 0 volte.
+Riepilogo, i controlli: in ogni punto una versione stava sotto due lettere identiche, e hai scelto una delle due 1 volta; scegliendo a caso succederebbe nel 33% dei punti.
+Riepilogo, le lettere scelte: la A 0 volte, la B 2 volte, la C 3 volte, la D 0 volte, la E 0 volte, la F 1 volta.

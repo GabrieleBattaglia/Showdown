@@ -11,7 +11,9 @@ la velocità di gioco che accorcia pause e procedura e lascia l'azione a tempo r
 punti; i tratti di procedura di ogni segmento e le pieghe che li fanno durare quanto vuole la velocità.
 Dalla decisione D30: il volume della partita, che cresce fino a 100 e al predefinito suona come
 l'ascolto libero, e le pause lunghe di ogni segmento, che il buffer salta, con la pausa di sempre
-che resta prima.
+che resta prima. Dalle verifiche della issue 12, il 24 ottobre 2026: la procedura non si piega dentro
+il volo di una pallina, e ogni segmento conosce i suoi voli, anche quelli del segmento di prima che
+corrono ancora.
 """
 
 import itertools
@@ -814,3 +816,34 @@ def test_i_salti_si_piegano_quasi_a_zero():
     assert ps.secondi_del_buffer(71.0, 0.0, pieghe) - ps.secondi_del_buffer(4.0, 0.0, pieghe) < 5 / FS
     for t in (0.5, 2.0, 3.5, 71.5, 80.0):
         assert ps.istante_del_motore(ps.secondi_del_buffer(t, 0.0, pieghe), 0.0, pieghe) == pytest.approx(t)
+
+
+def test_la_procedura_non_si_piega_dentro_l_azione():
+    """
+    Dalle verifiche della issue 12: dentro il volo di una pallina, come il ritorno dallo schermo che
+    rotola sotto il fischio, la chiamata e la pausa, la procedura non si piega, né per accorciare né
+    per allungare: il buffer attraversa l'azione nel suo tempo reale.
+    """
+    procedure = [(1.0, 3.0, 1.0), (5.0, 9.0, 1.0)]
+    azioni = ((2.0, 6.0),)
+    pieghe = ps.ripiega(procedure, 4, azioni=azioni)
+    assert pieghe == ((1.0, 2.0, 0.25), (6.0, 9.0, 0.25))
+    assert ps.secondi_del_buffer(6.0, 2.0, pieghe) == pytest.approx(4.0)
+    assert ps.ripiega(procedure, 0.5, azioni=azioni) == ((1.0, 2.0, 2.0), (6.0, 9.0, 2.0))
+    # Ripiegando da un istante dentro l'azione quello che è già suonato resta com'era, e l'azione continua.
+    assert ps.ripiega(procedure, 8, pieghe, da=4.0, azioni=azioni) == ((1.0, 2.0, 0.25), (6.0, 9.0, 0.125))
+    # Insieme ai salti, che restano piegati quasi a zero.
+    assert ps.ripiega(procedure, 4, salti=((7.0, 8.0),), azioni=azioni) == ((1.0, 2.0, 0.25), (6.0, 7.0, 0.25), (7.0, 8.0, ps.PIEGA_DEL_SALTO), (8.0, 9.0, 0.25))
+
+
+def test_ogni_segmento_conosce_i_voli_anche_quelli_di_prima():
+    segmenti = _segmenti(_incontro(8.0, seme=5), 8.0)
+    assert set(segmenti[0].azioni) == {(e.volo[0].t, e.volo[-1].t) for e in segmenti[0].eventi if e.volo}
+    portati = 0
+    for prima, segmento in itertools.pairwise(segmenti):
+        voli = {(e.volo[0].t, e.volo[-1].t) for e in segmento.eventi if e.volo}
+        # Oltre ai suoi, i voli del segmento di prima che corrono ancora alla sua fine: a velocità 8 il ritorno dallo schermo.
+        ancora = {(a, b) for a, b in prima.azioni if b > prima.fine + ps.TOLLERANZA}
+        assert set(segmento.azioni) == voli | ancora
+        portati += len(ancora)
+    assert portati >= 1
