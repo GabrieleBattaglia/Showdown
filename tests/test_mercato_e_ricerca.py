@@ -8,7 +8,10 @@ il club, o perché no; e i testi della finestra, la riga, la Situazione a blocch
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nascono il 24 ottobre 2026 coi passi 2 e 3 della proposta della issue 8. Lo stesso giorno, col formato 10
 dell'archivio, lo stato di ogni porta che va e torna dal salvataggio, il mondo del formato 9 che riceve quello
-predefinito, e il salvataggio con uno stato che non va, che si rifiuta.
+predefinito, e il salvataggio con uno stato che non va, che si rifiuta. Con le verifiche dello stesso giorno: il
+mondo che non ricorda e non scrive uno stato che poi rifiuterebbe, e ogni stato che il motore produce che si salva
+e si rilegge; la migrazione dal 9 con la sua costante storica; i tesserati del computer in fondo al prezzo sul
+valore di mercato; chi va in fondo negli ordini per stipendio e mesi di contratto, e chi resta coi limiti.
 """
 
 import copy
@@ -322,11 +325,15 @@ def test_ogni_ordine_ha_la_direzione_nel_nome_e_a_parita_decide_il_numero(mondo)
     assert bombe == sorted(bombe, reverse=True)
     classi = [memoria.punteggio(r.persona) for r in _cerca(mondo, ordine="classe", **tutti)]
     assert classi == sorted(classi, reverse=True)
-    # Negli ordini per costo chi non ne ha uno va in fondo, sia dal più basso sia dal più alto.
+    # Negli ordini per costo chi non ne ha uno va in fondo, sia dal più basso sia dal più alto; nel prezzo sul
+    # valore di mercato anche i tesserati del computer, il cui prezzo vero è nascosto.
     for chiave in mercato.ORDINI_DEL_COSTO:
-        costi = [r.costo for r in _cerca(mondo, ordine=chiave, **tutti)]
-        primo_senza = costi.index(None)
-        assert all(c is None for c in costi[primo_senza:]) and all(c is not None for c in costi[:primo_senza]), chiave
+        righe = _cerca(mondo, ordine=chiave, **tutti)
+        senza = [r.costo is None or (chiave == "prezzo_sul_mercato" and r.stato == mercato.DEL_COMPUTER) for r in righe]
+        assert senza == sorted(senza) and any(senza) and not all(senza), chiave
+    quote = [mercato.prezzo_sul_mercato(r, memoria) for r in _cerca(mondo, ordine="prezzo_sul_mercato", **tutti)]
+    presenti = [q for q in quote if q is not None]
+    assert presenti == sorted(presenti) and quote[len(presenti):] == [None] * (len(quote) - len(presenti))
     alti = [r.costo for r in _cerca(mondo, ordine="costo_alto", **tutti) if r.costo is not None]
     assert alti == sorted(alti, reverse=True)
     euro = [r.costo / r.persona.indice_collettivo_valore for r in _cerca(mondo, ordine="euro_per_punto", liberi=True)]
@@ -341,6 +348,61 @@ def test_ogni_ordine_ha_la_direzione_nel_nome_e_a_parita_decide_il_numero(mondo)
     assert [r.persona.id for r in _cerca(mondo, ordine="numero", **tutti)] == sorted(_ids(_cerca(mondo, **tutti)))
     contratti = _cerca(mondo, ordine="mesi_contratto", liberi=True, tuoi=True)
     assert all(r.stato == mercato.TUO for r in contratti[:9]) and all(r.stato == mercato.LIBERO for r in contratti[9:])
+
+
+def test_in_fondo_dice_chi_ci_va_davvero(mondo):
+    tutti = {"liberi": True, "in_vendita": True, "del_computer": True, "tuoi": True, "ritirati": True, "comprendi_usciti": True}
+    gruppi = {mercato.LIBERO: "liberi", mercato.IN_VENDITA: "in_vendita", mercato.DEL_COMPUTER: "del_computer", mercato.TUO: "tuoi",
+              mercato.RITIRATO: "ritirati", mercato.USCITO: "usciti"}
+    for attiva in (mondo.miapolisportiva_attiva, None):
+        mondo.miapolisportiva_attiva = attiva
+        memoria = mercato.Memoria(mondo)
+        dati = {**{chiave: (lambda r: r.costo) for chiave in ("costo_basso", "costo_alto", "euro_per_punto")},
+                "prezzo_sul_mercato": lambda r, memoria=memoria: mercato.prezzo_sul_mercato(r, memoria), "stipendio_basso": lambda r: r.stipendio,
+                "mesi_contratto": lambda r: r.persona.contratto_scadenza}
+        for ordine, dato in dati.items():
+            filtri = mercato.Filtri(ordine=ordine, **tutti)
+            righe = mercato.cerca(mondo, filtri, memoria)
+            senza = [dato(r) is None for r in righe]
+            assert senza == sorted(senza) and any(senza), ordine
+            assert {gruppi[r.stato] for r in righe if dato(r) is None} <= set(mercato.in_fondo(filtri, attiva)), ordine
+    mia = mondo.polisportive["Pat-Bologna"]
+    assert mercato.in_fondo(mercato.Filtri(in_vendita=True, del_computer=True, ordine="prezzo_sul_mercato"), mia) == ["del_computer"]
+    assert mercato.in_fondo(mercato.Filtri(in_vendita=True, del_computer=True, ordine="costo_basso"), mia) == []
+    assert mercato.in_fondo(mercato.Filtri(liberi=True, tuoi=True, ritirati=True, ordine="stipendio_basso"), None) == ["ritirati"]
+    assert mercato.in_fondo(mercato.Filtri(liberi=True, tuoi=True, ritirati=True, comprendi_usciti=True, ordine="mesi_contratto"), mia) == [
+        "liberi", "ritirati", "usciti"]
+    assert mercato.in_fondo(mercato.Filtri(allenatori=True, liberi=True, ordine_allenatori="stipendio_basso", ordine="mesi_contratto"), None) == []
+
+
+def test_chi_non_ha_il_dato_di_un_limite_resta_e_filtri_attivi_lo_dice(mondo):
+    mia = mondo.miapolisportiva_attiva
+    morti = mondo._ids_morti_processati_sessione
+    liberi = {gid for gid, g in mondo.giocatori.items() if g.appartenenza == "*" and not g.ritirato and gid not in morti}
+    # I tuoi hanno tutti un contratto più lungo di un mese; liberi, ritirati e usciti non ne hanno, e restano.
+    assert _ids(_cerca(mondo, mesi_contratto_massimi=1, liberi=True, tuoi=True)) == liberi
+    assert _ids(_cerca(mondo, mesi_contratto_massimi=1, ritirati=True, comprendi_usciti=True)) == {*range(40, 46)}
+    allenatori_liberi = mercato.cerca(mondo, mercato.Filtri(allenatori=True, liberi=True))
+    assert mercato.cerca(mondo, mercato.Filtri(allenatori=True, liberi=True, tuoi=True, mesi_contratto_massimi=1)) == allenatori_liberi
+    assert len(mercato.cerca(mondo, mercato.Filtri(allenatori=True, liberi=True, tuoi=True, mesi_contratto_massimi=600))) == len(allenatori_liberi) + 1
+    limiti = mercato.Filtri(liberi=True, tuoi=True, ritirati=True, comprendi_usciti=True, costo_massimo=100, stipendio_massimo=100, mesi_contratto_massimi=3)
+    assert mercato.restano(limiti, mia) == [("costo_massimo", ["tuoi", "ritirati", "usciti"]), ("stipendio_massimo", ["ritirati", "usciti"]),
+                                            ("mesi_contratto_massimi", ["liberi", "ritirati", "usciti"])]
+    assert [campo for campo, _gruppi in mercato.restano(limiti, None)] == ["stipendio_massimo", "mesi_contratto_massimi"]
+    assert mercato.restano(mercato.Filtri(in_vendita=True, del_computer=True, costo_massimo=100, stipendio_massimo=100, mesi_contratto_massimi=3), mia) == []
+    assert mercato.restano(mercato.Filtri(allenatori=True, liberi=True, tuoi=True, ritirati=True, stipendio_massimo=100, mesi_contratto_massimi=3), mia) == [
+        ("mesi_contratto_massimi", ["liberi"])]
+    righe = testi.filtri_attivi(mercato.Filtri(liberi=True, ritirati=True, stipendio_massimo=300, mesi_contratto_massimi=3, ordine="mesi_contratto"), mondo)
+    _accessibile(righe)
+    assert righe.splitlines() == ["Chi cercare: giocatori liberi e ritirati.", "Stipendio massimo: 300 euro; restano i ritirati, che non hanno uno stipendio.",
+                                  "Mesi di contratto rimasti al massimo: 3; restano i liberi e i ritirati, che non hanno un contratto.",
+                                  "Nell'ordine per mesi di contratto va in fondo chi non ha un contratto: i liberi e i ritirati."]
+    assert testi.filtri_attivi(mercato.Filtri(allenatori=True, liberi=True, mesi_contratto_massimi=3), mondo).splitlines()[1] == (
+        "Mesi di contratto rimasti al massimo: 3; restano i liberi, che non hanno un contratto.")
+    assert testi.filtri_attivi(mercato.Filtri(tuoi=True, ritirati=True, comprendi_usciti=True, ordine="stipendio_basso"), mondo).splitlines()[-1] == (
+        "Nell'ordine per stipendio va in fondo chi non ha uno stipendio: i ritirati e gli usciti di scena.")
+    assert testi.filtri_attivi(mercato.Filtri(in_vendita=True, del_computer=True, ordine="prezzo_sul_mercato"), mondo).splitlines()[-1] == (
+        "Nell'ordine per costo va in fondo chi non ha un costo: i tesserati del computer, il cui prezzo vero è nascosto.")
 
 
 # Le ricerche pronte e le porte d'ingresso.
@@ -545,6 +607,10 @@ def test_la_riga_del_giocatore_trovato(mondo):
     assert f", {testi.accorda(uscito.persona, 'uscito')} di scena" in testi.riga_trovato(uscito, mondo)
     computer = _riga(mondo, 11)
     assert f", {testi.accorda(computer.persona, 'tesserato')} con {_cpu(mondo).nome}, valore di mercato " in testi.riga_trovato(computer, mondo)
+    # Il suo prezzo vero è nascosto: nel prezzo sul valore di mercato non costa il 100%, e non ha il dato dell'ordine.
+    c = computer.persona
+    assert mercato.prezzo_sul_mercato(computer, memoria) is None and "costa" not in testi.riga_trovato(computer, mondo, "prezzo_sul_mercato", memoria)
+    assert testi.riga_trovato(computer, mondo, "prezzo_sul_mercato", memoria).startswith(f"{c.nome} {c.cognome}, {memoria.codice(c)}, {testi.eta_completa(c)}, valore ")
     # L'infortunio va dopo lo stato, come in testi.stato.
     tuo.persona.infortunato = True
     tuo.persona.infortunio_fine_datetime = ORA + datetime.timedelta(days=3)
@@ -591,12 +657,12 @@ def test_il_testo_dei_filtri_attivi(mondo):
         "Sesso: donne.",
         "Classe migliore o uguale a D0.",
         "Età massima: 20 anni.",
-        "Costo massimo: 5.000 euro.",
+        "Costo massimo: 5.000 euro; restano i ritirati, che non hanno un costo.",
         "Disponibili oggi per un'amichevole.",
         "Regione: Lombardia.",
         "Mancino: sì.",
         "Talento: no.",
-        "Bomba centrale maggiore di 10.",
+        "Bomba centrale: maggiore di 10.",
         "Visus: vedente, non conta per i giocatori.",
         "Disponibili oggi esclude i ritirati.",
         "Nell'ordine per costo va in fondo chi non ha un costo: i ritirati.",
@@ -667,9 +733,16 @@ def test_un_mondo_del_formato_9_riceve_lo_stato_predefinito_di_ogni_porta(mondo,
     del vecchio["mondo"]["filtri_di_ricerca"]
     aggiornato = copy.deepcopy(vecchio)
     archivio.MIGRAZIONI[9](aggiornato)
-    # La migrazione aggiunge soltanto lo stato dei filtri, e nient'altro cambia.
-    assert aggiornato["formato"] == 10 and aggiornato["mondo"].pop("filtri_di_ricerca") == mercato.porte_predefinite()
+    # La migrazione aggiunge soltanto lo stato dei filtri, dalla costante storica, e nient'altro cambia.
+    assert aggiornato["formato"] == 10 and aggiornato["mondo"].pop("filtri_di_ricerca") == archivio.porte_predefinite_del_formato_10()
     assert aggiornato["mondo"] == vecchio["mondo"]
+    # Finché il formato è 10, la costante storica e lo stato predefinito di oggi coincidono; ogni volta è un documento nuovo.
+    if archivio.FORMATO == 10:
+        assert archivio.porte_predefinite_del_formato_10() == mercato.porte_predefinite()
+    primo = archivio.porte_predefinite_del_formato_10()
+    primo["mercato"]["filtri"]["tratti"]["mancino"] = True
+    primo["mercato"]["filtri"]["condizioni"].append(["valore", "maggiore", 3])
+    assert archivio.porte_predefinite_del_formato_10()["mercato"]["filtri"]["tratti"] == {} and archivio.FILTRI_VUOTI_DEL_FORMATO_10["condizioni"] == []
     percorso = cartella_di_prova / FILE_MONDO
     with gzip.open(percorso, "wt", encoding="utf-8") as f:
         f.write(json.dumps({**vecchio, "firma": archivio.firma(vecchio)}))
@@ -716,6 +789,7 @@ GUASTI = {
     "un'indole che non esiste": _guasta("indole", "furiosa"),
     "un visus che non esiste": _guasta("visus", "miope"),
     "una ricerca pronta che non esiste": lambda porte: porte["ricerca"].update(pronta="inventata"),
+    "una ricerca pronta in un elenco": lambda porte: porte["ricerca"].update(pronta=["mercato"]),
     "Torna ai tuoi filtri come pronta": lambda porte: porte["ricerca"].update(pronta=mercato.TORNA_AI_TUOI),
     "filtri fatti a mano che non vanno": lambda porte: porte["ricerca"].update(a_mano={"liberi": True}),
     "lo stato senza la pronta": _togli("ricerca", "pronta"),
@@ -738,3 +812,84 @@ def test_uno_stato_dei_filtri_che_non_va_fa_rifiutare_il_salvataggio(mondo, guas
     del senza["mondo"]["filtri_di_ricerca"]
     with pytest.raises(archivio.ErroreSalvataggio, match="manca il dato"):
         archivio.costruisci(senza, Mondo())
+
+
+def test_una_ricerca_pronta_scritta_male_si_rifiuta_in_italiano(mondo):
+    contenuto = archivio.componi(mondo)
+    contenuto["mondo"]["filtri_di_ricerca"]["ricerca"]["pronta"] = ["mercato"]
+    with pytest.raises(archivio.ErroreSalvataggio, match=r"Filtri della porta ricerca: la ricerca pronta \['mercato'\] non esiste"):
+        archivio.costruisci(contenuto, Mondo())
+
+
+# Dalla verifica del formato 10: lo stato che il mondo ricorda e scrive deve rileggersi.
+
+SBAGLI_DELLA_FINESTRA = {
+    "un sesso vuoto invece di None": ("sesso", ""),
+    "una regione None invece del vuoto": ("regione", None),
+    "un'età con la virgola": ("eta_massima", 20.0),
+    "un tratto senza sì o no": ("tratti", {"mancino": None}),
+    "una condizione senza numero": ("condizioni", (("valore", "maggiore", float("nan")),)),
+    "un ordine che non esiste": ("ordine", "a_caso"),
+}
+
+
+@pytest.mark.parametrize("sbaglio", list(SBAGLI_DELLA_FINESTRA))
+def test_il_mondo_non_ricorda_uno_stato_che_non_si_rileggerebbe(mondo, sbaglio):
+    campo, valore = SBAGLI_DELLA_FINESTRA[sbaglio]
+    filtri = mercato.Filtri(liberi=True)
+    setattr(filtri, campo, valore)
+    # Il mondo non lo ricorda: né da solo, né come filtri fatti a mano dietro una ricerca pronta.
+    with pytest.raises(ValueError, match=f"^Filtri della porta mercato: il campo {campo} dei filtri non è valido"):
+        mercato.ricorda_la_porta(mondo, "mercato", mercato.fatti_a_mano(filtri))
+    with pytest.raises(ValueError, match=r"^Filtri della porta amichevole, filtri fatti a mano: "):
+        mercato.ricorda_la_porta(mondo, "amichevole", mercato.con_la_pronta(mercato.fatti_a_mano(filtri), "piu_forti"))
+    assert mondo.filtri_di_ricerca == {}
+    mercato.ricorda_la_porta(mondo, "mercato", mercato.fatti_a_mano(mercato.Filtri(liberi=True)))
+    with pytest.raises(ValueError):
+        mercato.ricorda_la_porta(mondo, "mercato", mercato.fatti_a_mano(filtri))
+    assert mondo.filtri_di_ricerca == {"mercato": mercato.fatti_a_mano(mercato.Filtri(liberi=True))}
+    # Un valore che il JSON non sa scrivere si rifiuta allo stesso modo, in italiano.
+    with pytest.raises(ValueError, match=r"^Filtri della porta ricerca: lo stato dei filtri non si può scrivere: "):
+        mercato.ricorda_la_porta(mondo, "ricerca", mercato.fatti_a_mano(mercato.Filtri(nome={"ros"})))
+
+
+def test_il_salvataggio_non_scrive_uno_stato_che_non_si_rileggerebbe(mondo, cartella_di_prova):
+    assert archivio.salva(mondo)
+    percorso = cartella_di_prova / FILE_MONDO
+    prima = percorso.read_bytes()
+    # Uno stato messo nel mondo senza ricorda_la_porta: il salvataggio si rifiuta, e quello di prima resta com'era.
+    filtri = mercato.Filtri(liberi=True)
+    filtri.sesso = ""
+    mondo.filtri_di_ricerca["mercato"] = mercato.fatti_a_mano(filtri)
+    messaggi = []
+    mondo.notifica = messaggi.append
+    assert archivio.salva(mondo) is False
+    assert percorso.read_bytes() == prima
+    assert messaggi == ["Salvataggio non riuscito: Filtri della porta mercato: il campo sesso dei filtri non è valido: ''. Il salvataggio precedente è rimasto com'era."]
+    ricaricato = Mondo()
+    archivio.carica(ricaricato)
+    assert ricaricato.filtri_di_ricerca == {porta: mercato.stato_predefinito(porta) for porta in mercato.PORTE}
+
+
+def test_ogni_stato_che_il_motore_produce_si_salva_e_si_rilegge(mondo, cartella_di_prova):
+    a_mano = mercato.Filtri(liberi=True, in_vendita=True, del_computer=True, tuoi=True, ritirati=True, nome="ros", sesso="f", classe_migliore=40, eta_massima=30,
+                            costo_massimo=5000, disponibili_oggi=True, ordine="bomba_base", ordine_allenatori="eta_anziano", classe_peggiore=60, eta_minima=18,
+                            regione="Lombardia", provincia="Milano", comune="mil", polisportiva="team",
+                            tratti={tratto: posto % 2 == 0 for posto, tratto in enumerate(mercato.TRATTI)}, indole=mondo.giocatori[3].indole,
+                            valore_minimo=120.5, stipendio_massimo=900, mesi_contratto_massimi=12, senza_acciacchi=True, solo_ritirati_che_allenano=True,
+                            solo_nuovi=True, comprendi_usciti=True, condizioni=(("bomba_base", "maggiore", 10.5), ("ambizione", "minore", 50)),
+                            tipo_allenatore=staff.EX, visus=staff.VEDENTE, posto_attuale=staff.CAPO, stipendio_capo_massimo=2000, senza_prelazione_altrui=True)
+    stati = [mercato.stato_predefinito(porta) for porta in mercato.PORTE] + [mercato.fatti_a_mano(a_mano), mercato.fatti_a_mano(mercato.azzera_altri(a_mano))]
+    for chiave, _nome in mercato.PRONTE[1:]:
+        dalla_pronta = mercato.con_la_pronta(mercato.fatti_a_mano(a_mano), chiave)
+        stati += [dalla_pronta, mercato.con_la_pronta(mercato.con_la_pronta(dalla_pronta, "piu_forti"), mercato.TORNA_AI_TUOI),
+                  mercato.fatti_a_mano(mercato.azzera_altri(mercato.filtri_della_pronta(chiave)))]
+    # Quattro stati per salvataggio, uno per porta.
+    for primo in range(0, len(stati), len(mercato.PORTE)):
+        gruppo = dict(zip(mercato.PORTE, stati[primo:primo + len(mercato.PORTE)], strict=False))
+        for porta, stato in gruppo.items():
+            mercato.ricorda_la_porta(mondo, porta, stato)
+        assert archivio.salva(mondo)
+        ricaricato = Mondo()
+        archivio.carica(ricaricato)
+        assert {porta: ricaricato.filtri_di_ricerca[porta] for porta in gruppo} == gruppo

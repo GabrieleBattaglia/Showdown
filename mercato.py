@@ -24,10 +24,17 @@ sfide.problema_bersaglio. La Memoria tiene classe e valore di mercato per la dur
 d'ingresso, Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O, vive nel mondo, scelta di Gabriele, e col formato 10
 dell'archivio si salva con lui: qui ogni campo si scrive e, alla lettura, si controlla. Il mercato di
 prima, coi candidati e la scelta Mostra, resta per il dialogo di oggi finché la finestra non lo
-sostituisce. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+sostituisce. Con le verifiche dello stesso giorno lo stato di una porta fa il giro del salvataggio, nel JSON e
+nei controlli della lettura, prima di entrare nel mondo e prima di essere scritto: il mondo non scrive mai uno
+stato che poi rifiuterebbe. Nel prezzo sul valore di mercato i tesserati del computer, che hanno per costo
+soltanto il valore di riferimento, vanno in fondo invece di costare sempre il 100%; e chi non ha il dato di un
+limite, come un libero coi mesi di contratto, resta nell'elenco in modo dichiarato, e Filtri attivi lo dice,
+come dice chi va in fondo anche negli ordini per stipendio e per mesi di contratto. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
+import json
 import math
 from collections import namedtuple
 from dataclasses import dataclass, field, fields
@@ -369,14 +376,49 @@ def contraddizioni(filtri):
 
 def in_fondo(filtri, attiva=None):
     """
-    Chi, in un ordine che segue il costo, non ha un costo e va in fondo: i liberi senza polisportiva attiva,
-    i tuoi tesserati che non sono in vendita da un'altra tua polisportiva, i ritirati e gli usciti di scena.
-    Un elenco vuoto negli altri ordini e per gli allenatori.
+    Chi non ha il dato dell'ordine scelto e va in fondo, come elenco dei gruppi spuntati, nell'ordine delle
+    caselle. Negli ordini che seguono il costo i liberi senza polisportiva attiva, i tuoi tesserati che non sono
+    in vendita da un'altra tua polisportiva, i ritirati e gli usciti di scena; nel prezzo sul valore di mercato
+    anche i tesserati del computer, il cui prezzo vero è nascosto, decisione D23. Nell'ordine per stipendio i
+    ritirati e gli usciti; nei mesi di contratto chi non ha un contratto, i liberi, i ritirati e gli usciti. Un
+    elenco vuoto negli altri ordini e per gli allenatori, che hanno tutti lo stipendio chiesto da capo.
     """
-    if filtri.allenatori or filtri.ordine not in ORDINI_DEL_COSTO:
+    if filtri.allenatori:
         return []
-    return [gruppo for gruppo, c in (("liberi", filtri.liberi and attiva is None), ("tuoi", filtri.tuoi), ("ritirati", filtri.ritirati),
-                                       ("usciti", filtri.comprendi_usciti)) if c]
+    ritirati, usciti = ("ritirati", filtri.ritirati), ("usciti", filtri.comprendi_usciti)
+    if filtri.ordine in ORDINI_DEL_COSTO:
+        gruppi = (("liberi", filtri.liberi and attiva is None), ("del_computer", filtri.del_computer and filtri.ordine == "prezzo_sul_mercato"),
+                  ("tuoi", filtri.tuoi), ritirati, usciti)
+    elif filtri.ordine == "stipendio_basso":
+        gruppi = (ritirati, usciti)
+    elif filtri.ordine == "mesi_contratto":
+        gruppi = (("liberi", filtri.liberi), ritirati, usciti)
+    else:
+        return []
+    return [gruppo for gruppo, c in gruppi if c]
+
+
+def restano(filtri, attiva=None):
+    """
+    I limiti impostati che non toccano chi non ha il loro dato: chi non ha un costo, uno stipendio o un
+    contratto, con quel limite non c'entra e resta nell'elenco, invece di svuotarlo, come per i filtri che non
+    contano. Coppie del campo e dei gruppi spuntati che restano, nell'ordine delle caselle: per il costo
+    massimo, che conta soltanto con la polisportiva attiva, i tuoi tesserati che non sono in vendita da
+    un'altra tua polisportiva, i ritirati e gli usciti di scena; per lo stipendio massimo i ritirati e gli
+    usciti; per i mesi di contratto i liberi, i ritirati e gli usciti, e fra gli allenatori i liberi.
+    """
+    if filtri.allenatori:
+        return [("mesi_contratto_massimi", ["liberi"])] if filtri.mesi_contratto_massimi and filtri.liberi else []
+    ritirati, usciti = ("ritirati", filtri.ritirati), ("usciti", filtri.comprendi_usciti)
+    limiti = (("costo_massimo", filtri.costo_massimo and attiva is not None, (("tuoi", filtri.tuoi), ritirati, usciti)),
+              ("stipendio_massimo", filtri.stipendio_massimo, (ritirati, usciti)),
+              ("mesi_contratto_massimi", filtri.mesi_contratto_massimi, (("liberi", filtri.liberi), ritirati, usciti)))
+    trovati = []
+    for campo, conta, gruppi in limiti:
+        chi = [gruppo for gruppo, c in gruppi if c]
+        if conta and chi:
+            trovati.append((campo, chi))
+    return trovati
 
 
 # Le ricerche pronte: ognuna imposta le caselle, i filtri, l'ordine e il nome, e azzera tutto il resto.
@@ -455,10 +497,16 @@ def stato_della_porta(mondo, porta):
 
 
 def ricorda_la_porta(mondo, porta, stato):
-    """Il mondo ricorda lo stato della porta, che si salva con lui; KeyError per una porta che non esiste."""
+    """
+    Il mondo ricorda lo stato della porta, che si salva con lui; KeyError per una porta che non esiste. Lo stato
+    fa prima il giro del salvataggio, e il mondo ricorda quello che ne torna: uno stato che la lettura
+    rifiuterebbe, come un sesso vuoto invece di None o un'età con la virgola, dà ValueError e il mondo resta
+    com'era. Dalla verifica del 24 ottobre 2026: prima entrava, si salvava, e al caricamento dopo il mondo
+    intero, file e copia, non si apriva più.
+    """
     if porta not in PORTE:
         raise KeyError(porta)
-    mondo.filtri_di_ricerca[porta] = stato.copia()
+    mondo.filtri_di_ricerca[porta] = _giro_del_salvataggio(stato, f"Filtri della porta {porta}")
 
 
 def fatti_a_mano(filtri):
@@ -557,19 +605,34 @@ def stato_da_dizionario(dati, chi):
     if not isinstance(dati, dict) or set(dati) != {"filtri", "pronta", "a_mano"}:
         raise ValueError(f"{chi}: lo stato dei filtri non è valido")
     pronta = dati["pronta"]
-    if pronta is not None and pronta not in _FILTRI_DELLE_PRONTE:
+    # Prima il tipo: un elenco non si cerca fra le chiavi, e il messaggio sarebbe quello inglese di Python.
+    if pronta is not None and (not isinstance(pronta, str) or pronta not in _FILTRI_DELLE_PRONTE):
         raise ValueError(f"{chi}: la ricerca pronta {pronta!r} non esiste")
     a_mano = filtri_da_dizionario(dati["a_mano"], f"{chi}, filtri fatti a mano") if dati["a_mano"] is not None else None
     return StatoDellaPorta(filtri_da_dizionario(dati["filtri"], chi), pronta, a_mano)
 
 
+def _giro_del_salvataggio(stato, chi):
+    """Lo stato dopo il giro del salvataggio, nel JSON e nei controlli della lettura: quello che si scrive deve rileggersi. ValueError se non va."""
+    try:
+        testo = json.dumps(stato_a_dizionario(stato))
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"{chi}: lo stato dei filtri non si può scrivere: {e}") from e
+    return stato_da_dizionario(json.loads(testo), chi)
+
+
 def porte_a_dizionario(mondo):
-    """Lo stato di tutte le porte d'ingresso, per il salvataggio: quelle mai usate col loro stato predefinito."""
-    return {porta: stato_a_dizionario(stato_della_porta(mondo, porta)) for porta in PORTE}
+    """
+    Lo stato di tutte le porte d'ingresso, per il salvataggio: quelle mai usate col loro stato predefinito. Ogni
+    stato fa il giro del salvataggio anche qui, per chi lo mettesse nel mondo senza ricorda_la_porta: con uno
+    che non va, ValueError, e archivio.salva lascia il salvataggio di prima com'era, invece di scriverne uno
+    che non si apre.
+    """
+    return {porta: stato_a_dizionario(_giro_del_salvataggio(stato_della_porta(mondo, porta), f"Filtri della porta {porta}")) for porta in PORTE}
 
 
 def porte_predefinite():
-    """Lo stato predefinito di tutte le porte, nella forma del salvataggio: quello di un mondo convertito dal formato 9."""
+    """Lo stato predefinito di tutte le porte, nella forma del salvataggio; nel formato 10 è anche quello della costante storica con cui l'archivio converte un mondo del 9."""
     return {porta: stato_a_dizionario(stato_predefinito(porta)) for porta in PORTE}
 
 
@@ -718,8 +781,10 @@ def _prove_dei_giocatori(mondo, filtri, memoria, attiva):
     """Le prove dei filtri dei giocatori, le più leggere per prime: la classe, che la prima volta si calcola, per ultima."""
     oggi = mondo.datetime_corrente_simulazione
     prove = _prove_comuni(filtri, lambda g: g.eta, lambda g: g.id)
+    # Chi non ha un contratto, come un libero o un ritirato, con quel limite non c'entra e resta, come più sotto
+    # per lo stipendio e il costo: Filtri attivi lo dice, con restano.
     if filtri.mesi_contratto_massimi:
-        prove.append(lambda r: contratti.mesi_al_termine(r.persona, oggi) <= filtri.mesi_contratto_massimi)
+        prove.append(lambda r: not contratti.ha_contratto(r.persona) or contratti.mesi_al_termine(r.persona, oggi) <= filtri.mesi_contratto_massimi)
     if filtri.disponibili_oggi:
         prove.append(lambda r: r.stato not in (RITIRATO, USCITO) and r.persona.puo_giocare_amichevole(oggi))
     for tratto, voluto in filtri.tratti.items():
@@ -808,6 +873,12 @@ def _chiave_dei_giocatori(ordine, memoria, oggi):
     if ordine in CARATTERISTICHE:
         return lambda r: (-ricerca.leggi_criterio(ordine, r.persona), r.persona.id)
     giorno = oggi.date()
+
+    def quota(r):
+        # In fondo chi non ha un prezzo da confrontare: chi non ha un costo, e i tesserati del computer.
+        valore = prezzo_sul_mercato(r, memoria)
+        return (valore is None, valore or 0.0, r.persona.id)
+
     chiavi = {
         "valore_alto": lambda r: (-r.persona.indice_collettivo_valore, r.persona.id),
         "valore_basso": lambda r: (r.persona.indice_collettivo_valore, r.persona.id),
@@ -817,7 +888,7 @@ def _chiave_dei_giocatori(ordine, memoria, oggi):
         "costo_basso": lambda r: (r.costo is None, r.costo or 0, r.persona.id),
         "costo_alto": lambda r: (r.costo is None, -(r.costo or 0), r.persona.id),
         "euro_per_punto": lambda r: (r.costo is None, euro_per_punto(r) or 0.0, r.persona.id),
-        "prezzo_sul_mercato": lambda r: (r.costo is None, prezzo_sul_mercato(r, memoria) or 0.0, r.persona.id),
+        "prezzo_sul_mercato": quota,
         "stipendio_basso": lambda r: (r.stipendio is None, r.stipendio or 0, r.persona.id),
         # Per i punti decidono ori, argenti e bronzi, come nella classifica nazionale, e soltanto dopo il numero.
         "punti_nazionali": lambda r: (-r.persona.punti_mondiali, -r.persona.ori, -r.persona.argenti, -r.persona.bronzi, r.persona.id),
@@ -839,8 +910,12 @@ def euro_per_punto(r):
 
 
 def prezzo_sul_mercato(r, memoria):
-    """Il costo della riga diviso il valore di mercato del giocatore, None se non ha un costo: 0,8 è l'80%."""
-    if r.costo is None:
+    """
+    Il costo della riga diviso il valore di mercato del giocatore, 0,8 è l'80%; None se non ha un costo, e per
+    un tesserato del computer, che ha per costo il valore di mercato come riferimento: il suo prezzo vero è
+    nascosto, decisione D23, e arriva fino al 50% in più, quindi il 100% di ogni riga sarebbe un dato falso.
+    """
+    if r.costo is None or r.stato == DEL_COMPUTER:
         return None
     return r.costo / max(1, memoria.valore_di_mercato(r.persona))
 
@@ -858,8 +933,9 @@ def _allenatori(mondo, filtri):
     oggi = mondo.datetime_corrente_simulazione
     attiva = mondo.miapolisportiva_attiva
     prove = _prove_comuni(filtri, lambda a: a.eta(oggi), lambda a: a.numero)
+    # Come per i giocatori, chi non ha un contratto, l'allenatore libero, resta.
     if filtri.mesi_contratto_massimi:
-        prove.append(lambda r: contratti.mesi_al_termine(r.persona, oggi) <= filtri.mesi_contratto_massimi)
+        prove.append(lambda r: not contratti.ha_contratto(r.persona) or contratti.mesi_al_termine(r.persona, oggi) <= filtri.mesi_contratto_massimi)
     if filtri.classe_migliore:
         prove.append(lambda r: r.persona.livello <= filtri.classe_migliore)
     if filtri.classe_peggiore:

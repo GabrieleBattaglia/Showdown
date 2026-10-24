@@ -68,6 +68,9 @@ finestra unica Mercato e ricerca, uno stato per ogni porta d'ingresso, Ctrl+K, C
 filtri di adesso, la ricerca pronta da cui vengono e quelli fatti a mano prima. La migrazione dal 9 dà a ogni porta il
 suo stato predefinito, quello della sua ricerca pronta, e non tocca altro; alla lettura ogni campo si controlla, e uno
 stato che non va fa rifiutare il salvataggio, col ripiego sulla copia di sempre. Col magnate di D35 andrà per magnate.
+Con le verifiche dello stesso giorno lo stato che la migrazione dal 9 dà alle porte è una costante storica del formato
+10, come lo stipendio della 1.50.0, e non viene più dal mercato di oggi: quando i filtri cambieranno forma, col magnate,
+un mondo del formato 9 diventerà sempre un documento del formato 10 vero, che la migrazione seguente sa leggere.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -579,12 +582,37 @@ def _dal_formato_8(documento):
     documento["formato"] = 9
 
 
+# I filtri del formato 10 a nessun filtro, e la ricerca pronta di ogni porta coi suoi filtri, costanti storiche del
+# 24 ottobre 2026: la migrazione dal 9 non legge il mercato di oggi, che col magnate di D35 cambierà forma.
+FILTRI_VUOTI_DEL_FORMATO_10 = {
+    "allenatori": False, "liberi": False, "in_vendita": False, "del_computer": False, "tuoi": False, "ritirati": False, "nome": "", "sesso": None,
+    "classe_migliore": 0, "eta_massima": 0, "costo_massimo": 0, "disponibili_oggi": False, "ordine": "valore_alto", "ordine_allenatori": "classe",
+    "classe_peggiore": 0, "eta_minima": 0, "regione": "", "provincia": "", "comune": "", "polisportiva": "", "tratti": {}, "indole": None,
+    "valore_minimo": 0, "stipendio_massimo": 0, "mesi_contratto_massimi": 0, "senza_acciacchi": False, "solo_ritirati_che_allenano": False,
+    "solo_nuovi": False, "comprendi_usciti": False, "condizioni": [], "tipo_allenatore": None, "visus": None, "posto_attuale": None,
+    "stipendio_capo_massimo": 0, "senza_prelazione_altrui": False,
+}
+_IN_ATTIVITA_DEL_FORMATO_10 = {"liberi": True, "in_vendita": True, "del_computer": True, "tuoi": True}
+PORTE_DEL_FORMATO_10 = {
+    "mercato": ("mercato", {"liberi": True, "in_vendita": True, "ordine": "valore_alto"}),
+    "allenatori": ("allenatori_liberi", {"allenatori": True, "liberi": True, "ordine_allenatori": "classe"}),
+    "ricerca": ("tutti_in_attivita", {**_IN_ATTIVITA_DEL_FORMATO_10, "ordine": "numero"}),
+    "amichevole": ("avversari_amichevole", {**_IN_ATTIVITA_DEL_FORMATO_10, "disponibili_oggi": True, "ordine": "classe"}),
+}
+
+
+def porte_predefinite_del_formato_10():
+    """Lo stato predefinito di ogni porta nel formato 10, nella forma del salvataggio, da quelle costanti: ogni volta un documento nuovo."""
+    return {porta: {"filtri": {**FILTRI_VUOTI_DEL_FORMATO_10, "tratti": {}, "condizioni": [], **filtri}, "pronta": pronta, "a_mano": None}
+            for porta, (pronta, filtri) in PORTE_DEL_FORMATO_10.items()}
+
+
 def _dal_formato_9(documento):
     """
     Dal formato 9 al 10, con la issue 8 e la decisione D36: ogni porta d'ingresso della finestra Mercato e ricerca
     riceve il suo stato predefinito, quello della sua ricerca pronta, come se la finestra non si fosse mai aperta.
     """
-    documento["mondo"].setdefault("filtri_di_ricerca", mercato.porte_predefinite())
+    documento["mondo"].setdefault("filtri_di_ricerca", porte_predefinite_del_formato_10())
     documento["formato"] = 10
 
 

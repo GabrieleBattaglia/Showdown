@@ -69,7 +69,12 @@ del giocatore trovato, che dopo nome, classe ed età completa porta il dato dell
 stipendio, stato e costo, contratto, tratti, regione e numero; quella dell'allenatore, con l'età completa e la
 regione; la Situazione, in blocchi di circa quaranta caratteri come le righe di stato; il testo di Filtri
 attivi, con i filtri che non contano e quelli che si escludono a vicenda; l'etichetta dei trovati e il
-riepilogo unico della chiusura. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+riepilogo unico della chiusura. Con le verifiche dello stesso giorno, Filtri attivi dice anche chi resta
+perché non ha il dato di un limite, come i liberi coi mesi di contratto, e chi va in fondo negli ordini per
+stipendio e per mesi di contratto, oltre che per costo; le condizioni si scrivono col nome seguito dai due
+punti, Ambizione, da 0 a 100: maggiore di 50; e nel prezzo sul valore di mercato un tesserato del computer
+non costa più il 100%, perché il suo prezzo vero è nascosto. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -1492,8 +1497,13 @@ _CHI_DEI_GIOCATORI = {"liberi": "liberi", "in_vendita": "in vendita da altri", "
 _CHI_DEGLI_ALLENATORI = {"liberi": "liberi", "del_computer": "che allenano per il computer", "tuoi": "del tuo staff"}
 _GRUPPI = {"liberi": "i liberi", "in_vendita": "chi è in vendita da altri", "del_computer": "i tesserati del computer", "tuoi": "i tuoi tesserati",
            "ritirati": "i ritirati", "usciti": "gli usciti di scena"}
-_GRUPPI_IN_FONDO = {"liberi": "i liberi, che senza polisportiva attiva non hanno un costo", "tuoi": "i tuoi tesserati che non sono in vendita da un'altra tua polisportiva",
-                    "ritirati": "i ritirati", "usciti": "gli usciti di scena"}
+_GRUPPI_IN_FONDO = {"liberi": "i liberi, che senza polisportiva attiva non hanno un costo", "del_computer": "i tesserati del computer, il cui prezzo vero è nascosto",
+                    "tuoi": "i tuoi tesserati che non sono in vendita da un'altra tua polisportiva", "ritirati": "i ritirati", "usciti": "gli usciti di scena"}
+# Gli altri ordini in cui qualcuno va in fondo: come si chiamano, e il dato che manca.
+_FONDO_DEGLI_ALTRI_ORDINI = {"stipendio_basso": ("stipendio", "uno stipendio"), "mesi_contratto": ("mesi di contratto", "un contratto")}
+# Chi resta coi limiti, quando non ha il loro dato: i gruppi, e il dato che manca.
+_GRUPPI_CHE_RESTANO = {**_GRUPPI, "tuoi": _GRUPPI_IN_FONDO["tuoi"]}
+_DATO_DEL_LIMITE = {"costo_massimo": "un costo", "stipendio_massimo": "uno stipendio", "mesi_contratto_massimi": "un contratto"}
 _PERCHE_NON_CONTA = {"allenatori": "per gli allenatori", "giocatori": "per i giocatori", "senza_attiva": "senza polisportiva attiva"}
 
 
@@ -1503,7 +1513,8 @@ def _righe_del_campo(f, campo):
     if campo == "tratti":
         return [f"{ricerca.nome_criterio(tratto)}: {'sì' if valore[tratto] else 'no'}" for tratto in mercato.TRATTI if tratto in valore]
     if campo == "condizioni":
-        return [f"{ricerca.nome_criterio(criterio)} {ricerca.nome_condizione(criterio, condizione)} {punti(numero_scritto)}"
+        # Il nome coi due punti, come per i tratti: un nome con la sua scala, come Ambizione, da 0 a 100, non si confonde con la condizione.
+        return [f"{ricerca.nome_criterio(criterio)}: {ricerca.nome_condizione(criterio, condizione)} {punti(numero_scritto)}"
                 for criterio, condizione, numero_scritto in valore]
     if not mercato.impostato(f, campo):
         return []
@@ -1574,22 +1585,32 @@ def _contraddizione(codice, dati):
 def filtri_attivi(f, mondo):
     """
     Il testo del campo Filtri attivi, un filtro per riga, compresi quelli dei controlli della finestra: prima
-    chi si cerca, poi i filtri impostati, ciascuno col perché se per chi si cerca non conta, poi quelli che si
-    escludono a vicenda e, negli ordini per costo, chi va in fondo perché non ha un costo.
+    chi si cerca, poi i filtri impostati, ciascuno col perché se per chi si cerca non conta, e per i limiti chi
+    resta perché non ne ha il dato; poi quelli che si escludono a vicenda e, negli ordini per costo, stipendio e
+    mesi di contratto, chi va in fondo perché non ha quel dato.
     """
     attiva = mondo.miapolisportiva_attiva
     non_contano = dict(mercato.non_contano(f, attiva))
+    restano = dict(mercato.restano(f, attiva))
     righe = [_chi_cercare(f)]
     campi = ("nome", "sesso", "classe_migliore", "eta_massima", "costo_massimo", "disponibili_oggi", *mercato.CASELLE_SOLO_GIOCATORI, *mercato.CAMPI_ALTRI)
     for campo in campi:
         if campo in mercato.CASELLE_SOLO_GIOCATORI and not f.allenatori:
             continue
         perche = non_contano.get(campo)
-        righe.extend(f"{riga}, non conta {_PERCHE_NON_CONTA[perche]}." if perche else f"{riga}." for riga in _righe_del_campo(f, campo))
+        for riga in _righe_del_campo(f, campo):
+            if perche:
+                riga += f", non conta {_PERCHE_NON_CONTA[perche]}"
+            elif campo in restano:
+                riga += f"; restano {unisci([_GRUPPI_CHE_RESTANO[g] for g in restano[campo]])}, che non hanno {_DATO_DEL_LIMITE[campo]}"
+            righe.append(f"{riga}.")
     righe.extend(_contraddizione(codice, dati) for codice, dati in mercato.contraddizioni(f))
     gruppi = mercato.in_fondo(f, attiva)
-    if gruppi:
+    if gruppi and f.ordine in mercato.ORDINI_DEL_COSTO:
         righe.append(f"Nell'ordine per costo va in fondo chi non ha un costo: {unisci([_GRUPPI_IN_FONDO[g] for g in gruppi])}.")
+    elif gruppi:
+        ordine, dato = _FONDO_DEGLI_ALTRI_ORDINI[f.ordine]
+        righe.append(f"Nell'ordine per {ordine} va in fondo chi non ha {dato}: {unisci([_GRUPPI[g] for g in gruppi])}.")
     return "\n".join(righe)
 
 

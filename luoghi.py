@@ -17,9 +17,8 @@ e la percentuale stanno qui, senza wx, così si collaudano da sole. Le parti del
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Dal 24 ottobre 2026, con la issue 8 e la decisione D36, i filtri di luogo della finestra unica Mercato e
 ricerca: l'elenco delle regioni, quello delle province, anche di una regione sola, la regione di una
-provincia e i comuni che contengono
-il testo scritto, senza badare a maiuscole e accenti come la ricerca della fondazione. È di Gabriele
-Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+provincia e i comuni che contengono il testo scritto, senza badare a maiuscole e accenti come la ricerca
+della fondazione. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
