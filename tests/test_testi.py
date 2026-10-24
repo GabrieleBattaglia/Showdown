@@ -224,7 +224,8 @@ def test_la_scheda_della_tappa_11(mondo):
     assert re.search(r"\| Classe: [A-K]\d(, (al |all')\d+% verso [A-K]\d|, la più alta) \| Classe migliore della carriera: [A-K]\d$", righe[0])
     # Dalla tappa 13 la seconda riga è la provenienza, richiesta di Gabriele del 22 ottobre 2026.
     assert righe[1] == f"Provenienza: {luoghi.descrivi(g.luogo)}" and g.luogo
-    assert f"| Indole: {testi.indole(g)} | Ambizione: {testi.ambizione(g)} | Punti allenamento: 38,5 | " in righe[3]
+    # Dal costruttore di regole del 24 ottobre 2026 l'ambizione ha anche il numero, quello che le regole confrontano.
+    assert f"| Indole: {testi.indole(g)} | Ambizione: {testi.ambizione(g)} ({testi.numero(g.ambizione)}) | Punti allenamento: 38,5 | " in righe[3]
     assert righe[4] == f"Allenamento: programma secondo la sua indole, intensità normale, costanza recente {testi.costanza(g)}"
     assert "talento" in scheda and "maturazione tardiva" in scheda
     assert f"Contratto con Club Di Prova fino al {testi.data_breve(g.contratto_scadenza)}, si rinnova da " in scheda

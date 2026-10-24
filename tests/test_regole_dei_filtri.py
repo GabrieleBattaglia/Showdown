@@ -6,13 +6,16 @@ valgono insieme, la memoria che costruisce le righe una volta sola e ricorda ogn
 tardi, i bersagli, gli ordini comuni e quelli dei soli giocatori; e l'equivalenza col motore a schede, filtro per
 filtro, con un oracolo che traduce i filtri di prima in regole e con l'elenco delle differenze volute.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
-Nascono il 24 ottobre 2026 sera col passo 1 del costruttore di regole.
+Nascono il 24 ottobre 2026 sera col passo 1 del costruttore di regole. Lo stesso giorno, col cambio della finestra, il
+motore a schede esce, e con lui l'oracolo: restano le impronte dei preset di serie prese coi due motori, e le differenze
+volute dette dalle regole.
 """
 
 import dataclasses
 import datetime
+import hashlib
 import itertools
-import random
+import json
 
 import pytest
 from aiuti_mercato import ORA, mondo_del_mercato
@@ -23,7 +26,6 @@ import economia
 import luoghi
 import mercato
 import regole
-import staff
 
 G = mercato.GIOCATORI
 A = mercato.ALLENATORI
@@ -39,7 +41,7 @@ def _regola(bersaglio, chiave, operatore, valore, collegamento=mercato.E):
 
 
 def _cerca(m, *regole_della_ricerca, ordine="numero", memoria=None):
-    return mercato.cerca_a_regole(m, mercato.FiltriARegole(mercato.con_la_prima_e(regole_della_ricerca), ordine), memoria)
+    return mercato.cerca(m, mercato.Filtri(mercato.con_la_prima_e(regole_della_ricerca), ordine), memoria)
 
 
 def _numeri(righe):
@@ -273,7 +275,8 @@ def test_tesserati_del_computer_comprende_chi_il_computer_vende(mondo):
     assert computer == set().union(*(p.tesserati for p in cpu)) and 10 in computer
     assert _ids(_cerca(mondo, _regola(G, "stato", "uguale", mercato.IN_VENDITA))) == {10}
     mercato_ = _ids(_cerca(mondo, _regola(G, "stato", "uguale", mercato.SUL_MERCATO)))
-    assert mercato_ == {r.persona.id for r in mercato.cerca(mondo, mercato.Filtri(liberi=True, in_vendita=True))}
+    morti = mondo._ids_morti_processati_sessione
+    assert mercato_ == {gid for gid, g in mondo.giocatori.items() if g.appartenenza == "*" and not g.ritirato and gid not in morti} | {10}
     assert len(_cerca(mondo, _regola(G, "stato", "uguale", mercato.IN_ATTIVITA))) == len(mondo.giocatori) - 6
 
 
@@ -344,7 +347,7 @@ def test_dopo_un_esito_le_righe_cambiano_stato(mondo):
 
 
 def test_senza_regole_non_si_trova_nessuno_e_i_bersagli(mondo):
-    assert mercato.cerca_a_regole(mondo, mercato.FiltriARegole()) == []
+    assert mercato.cerca(mondo, mercato.Filtri()) == []
     donne_g = _cerca(mondo, _regola(G, "sesso", "uguale", "f"))
     assert donne_g and not any(r.allenatore for r in donne_g)
     donne_a = _cerca(mondo, _regola(A, "sesso", "uguale", "f"))
@@ -399,9 +402,9 @@ def test_la_regola_in_preparazione_e_i_suoi_aiuti(mondo):
     assert mercato.regola_pronta(mercato.Preparazione(mercato.E, G, "costo", "manca", "")) == (_regola(G, "costo", "manca", None), None)
     assert mercato.regola_pronta(mercato.Preparazione(mercato.E, G, "sesso", "uguale", None)) == (None, None)
     # La prima regola ha sempre la e, anche quando la preparazione è l'unica.
-    soltanto = mercato.con_la_preparazione(mercato.FiltriARegole(), prep)
+    soltanto = mercato.con_la_preparazione(mercato.Filtri(), prep)
     assert soltanto.regole == (_regola(G, "eta", "minore_uguale", 20),)
-    serie = mercato.filtri_di_serie_a_regole("mercato")
+    serie = mercato.filtri_di_serie("mercato")
     con = mercato.con_la_preparazione(serie, prep)
     assert con.regole == (*serie.regole, regola) and con.ordine == serie.ordine
     assert mercato.con_la_preparazione(serie, dataclasses.replace(prep, valore="x")) == serie
@@ -423,12 +426,12 @@ def test_la_regola_in_preparazione_e_i_suoi_aiuti(mondo):
 
 def test_le_mosse_sull_elenco_delle_regole():
     prima, seconda, terza = _regola(G, "eta", "minore", 30), _regola(G, "sesso", "uguale", "f", mercato.O), _regola(G, "mancino", "uguale", True)
-    filtri = mercato.FiltriARegole((prima, seconda), "classe")
+    filtri = mercato.Filtri((prima, seconda), "classe")
     aggiunti, perche = mercato.aggiungi_la_regola(filtri, mercato.Preparazione(mercato.E, G, "mancino", "uguale", True))
-    assert aggiunti == mercato.FiltriARegole((prima, seconda, terza), "classe") and perche is None
+    assert aggiunti == mercato.Filtri((prima, seconda, terza), "classe") and perche is None
     assert mercato.aggiungi_la_regola(filtri, mercato.Preparazione(mercato.E, G, "mancino", "uguale", None)) == (filtri, regole.VUOTO)
     assert mercato.aggiungi_la_regola(filtri, mercato.Preparazione(mercato.E, G, "eta", "minore", "3,5")) == (filtri, regole.DECIMALI)
-    pieni = mercato.FiltriARegole(tuple(_regola(G, "eta", "minore", n) for n in range(mercato.LIMITE_DELLE_REGOLE)))
+    pieni = mercato.Filtri(tuple(_regola(G, "eta", "minore", n) for n in range(mercato.LIMITE_DELLE_REGOLE)))
     assert mercato.aggiungi_la_regola(pieni, mercato.Preparazione(mercato.E, G, "eta", "minore", "3")) == (pieni, mercato.AL_LIMITE)
     # Togliendo la prima, quella che sale in cima prende la e; spostando, ogni regola tiene il suo collegamento.
     assert mercato.togli_la_regola(aggiunti, 0).regole == (dataclasses.replace(seconda, collegamento=mercato.E), terza)
@@ -454,263 +457,76 @@ def test_le_mosse_sull_elenco_delle_regole():
 
 
 def test_i_preset_di_serie_sono_fatti_di_regole_con_la_sola_e():
-    assert set(mercato._FILTRI_DI_SERIE_A_REGOLE) == {chiave for chiave, _nome in mercato.PRESET_DI_SERIE}
+    assert set(mercato._FILTRI_DI_SERIE) == {chiave for chiave, _nome in mercato.PRESET_DI_SERIE}
     for chiave, _nome in mercato.PRESET_DI_SERIE:
-        filtri = mercato.filtri_di_serie_a_regole(chiave)
+        filtri = mercato.filtri_di_serie(chiave)
         assert filtri.regole and all(r.collegamento == mercato.E for r in filtri.regole) and filtri.ordine in dict(mercato.ORDINI)
-        assert mercato.problema_dei_filtri_a_regole(mercato.filtri_a_dizionario_a_regole(filtri)) is None
+        assert mercato.problema_dei_filtri(mercato.filtri_a_dizionario(filtri)) is None
     for porta in mercato.PORTE:
-        stato = mercato.stato_di_serie_a_regole(porta)
-        assert stato.scelta == mercato.PRESET_DELLA_PORTA[porta] and stato.attuali == mercato.filtri_di_serie_a_regole(stato.scelta)
+        stato = mercato.stato_di_serie(porta)
+        assert stato.scelta == mercato.PRESET_DELLA_PORTA[porta] and stato.attuali == mercato.filtri_di_serie(stato.scelta)
         assert stato.preparazione == mercato.Preparazione(mercato.E, A if porta == "allenatori" else G, "nome", "contiene", "")
 
 
 def test_la_ricerca_veloce_restringe_tutto_il_mercato(mondo):
     """L'obiezione 1 della critica: col Mercato sul mercato, senza o, il nome scritto restringe sia i liberi sia chi è in vendita."""
-    stato = mercato.stato_di_serie_a_regole("mercato")
+    stato = mercato.stato_di_serie("mercato")
     for scritto in ("a", "ro", "1"):
         prep = dataclasses.replace(stato.preparazione, valore=scritto)
-        trovati = mercato.cerca_a_regole(mondo, mercato.con_la_preparazione(stato.attuali, prep))
-        tutti = mercato.cerca_a_regole(mondo, stato.attuali)
+        trovati = mercato.cerca(mondo, mercato.con_la_preparazione(stato.attuali, prep))
+        tutti = mercato.cerca(mondo, stato.attuali)
         nome = mercato.caratteristica(G, "nome")
         attesi = [r for r in tutti if regole.prova(nome, "contiene", scritto)(r, regole.Contesto())]
         assert _numeri(trovati) == _numeri(attesi) and len(trovati) < len(tutti)
 
 
-# L'equivalenza col motore a schede: un oracolo traduce i filtri di prima in regole, coi limiti che diventano un'alternativa
-# in più per chi non ha il dato, e la ricerca nuova deve dare le stesse persone nello stesso ordine, salvo le differenze
-# volute, che stanno nell'elenco qui sotto, ciascuna con chi la può toccare.
-
-_CASELLE_DEI_GIOCATORI = {"liberi": mercato.LIBERO, "in_vendita": mercato.IN_VENDITA, "del_computer": mercato.DEL_COMPUTER, "tuoi": mercato.TUO,
-                          "ritirati": mercato.RITIRATO}
-_CASELLE_DEGLI_ALLENATORI = {"liberi": mercato.LIBERO, "del_computer": mercato.DEL_COMPUTER, "tuoi": mercato.TUO}
-
-
-def traduci(f):
-    """I filtri a schede in regole, in forma di alternative: una per ogni casella, e ogni filtro aggiunto a ciascuna."""
-    bersaglio = A if f.allenatori else G
-    caselle = _CASELLE_DEGLI_ALLENATORI if f.allenatori else _CASELLE_DEI_GIOCATORI
-    stati = [stato for casella, stato in caselle.items() if getattr(f, casella)]
-    if f.comprendi_usciti and not f.allenatori:
-        stati.append(mercato.USCITO)
-    alternative = [[_regola(bersaglio, "stato", "uguale", stato)] for stato in stati]
-
-    def e(chiave, operatore, valore):
-        for alternativa in alternative:
-            alternativa.append(_regola(bersaglio, chiave, operatore, valore))
-
-    def o_senza_il_dato(chiave, operatore, valore):
-        nuove = [[*alternativa, _regola(bersaglio, chiave, operatore, valore)] for alternativa in alternative]
-        nuove += [[*alternativa, _regola(bersaglio, chiave, "manca", None)] for alternativa in alternative]
-        alternative[:] = nuove
-
-    if f.nome.strip():
-        e("nome", "contiene", f.nome.strip())
-    if f.sesso:
-        e("sesso", "uguale", f.sesso)
-    if f.classe_migliore:
-        e("classe", "migliore_uguale", f.classe_migliore)
-    if f.classe_peggiore:
-        e("classe", "peggiore_uguale", f.classe_peggiore)
-    if f.eta_massima:
-        e("eta", "minore_uguale", f.eta_massima)
-    if f.eta_minima:
-        e("eta", "maggiore_uguale", f.eta_minima)
-    if f.regione:
-        e("regione", "uguale", f.regione)
-    if f.provincia:
-        e("provincia", "uguale", f.provincia)
-    if f.comune.strip():
-        e("comune", "contiene", f.comune.strip())
-    if f.polisportiva.strip():
-        e("polisportiva", "contiene", f.polisportiva.strip())
-    if f.mesi_contratto_massimi:
-        o_senza_il_dato("mesi_contratto", "minore_uguale", f.mesi_contratto_massimi)
-    if f.allenatori:
-        if f.tipo_allenatore:
-            e("tipo", "uguale", f.tipo_allenatore)
-        if f.visus:
-            e("visus", "uguale", f.visus)
-        if f.posto_attuale:
-            e("stato", "uguale", f.posto_attuale)
-        if f.stipendio_capo_massimo:
-            e("stipendio", "minore_uguale", f.stipendio_capo_massimo)
-        if f.senza_prelazione_altrui:
-            e("stato", "diverso", mercato.IN_PRELAZIONE)
-    else:
-        if f.costo_massimo:
-            o_senza_il_dato("costo", "minore_uguale", f.costo_massimo)
-        if f.disponibili_oggi:
-            e("disponibile", "uguale", True)
-        for tratto, voluto in f.tratti.items():
-            e(tratto, "uguale", voluto)
-        if f.indole:
-            e("indole", "uguale", f.indole)
-        if f.valore_minimo:
-            e("valore", "maggiore_uguale", float(f.valore_minimo))
-        if f.stipendio_massimo:
-            o_senza_il_dato("stipendio", "minore_uguale", f.stipendio_massimo)
-        if f.senza_acciacchi:
-            e("acciaccato", "uguale", False)
-        if f.solo_ritirati_che_allenano:
-            e("allena", "uguale", True)
-        if f.solo_nuovi:
-            e("nuovo", "uguale", True)
-        for criterio, condizione, valore in f.condizioni:
-            e(criterio, condizione, float(valore))
-    regole_tradotte = tuple(dataclasses.replace(regola, collegamento=mercato.O if posto and dentro == 0 else mercato.E)
-                            for posto, alternativa in enumerate(alternative) for dentro, regola in enumerate(alternativa))
-    return mercato.FiltriARegole(regole_tradotte, f.ordine_scelto)
+# L'equivalenza col motore a schede, che col cambio della finestra è uscito: i dodici preset di serie trovano, sul mondo
+# delle prove, le stesse persone nello stesso ordine del motore di prima. Le impronte, quanti sono e l'SHA-256 dei loro
+# numeri in ordine, sono state prese con tutti e due i motori la sera del 24 ottobre 2026, prima che quello a schede
+# uscisse, ed erano uguali; fino ad allora l'oracolo che traduceva i filtri di prima in regole le provava filtro per filtro.
+IMPRONTE_DEL_MOTORE_DI_PRIMA = {
+    "mercato": (86, "d97af938301db433"), "tutti_in_attivita": (114, "6ba143245c95c222"), "piu_forti": (114, "15375b0b64ad8dc6"),
+    "giovani_migliori": (25, "7ee4bec3d63ee54e"), "liberi_convenienti": (85, "ee9b9ea409413eb8"), "affari_in_vendita": (1, "7920a424ebc3aa30"),
+    "avversari_amichevole": (114, "15375b0b64ad8dc6"), "piu_titolati": (114, "6ba143245c95c222"), "allenatori_liberi": (4, "f98358438a69ad08"),
+    "capi_migliori": (1, "b4cf08021c81c4e6"), "assistenti_migliori": (1, "6bbdd42a78b227f6"), "nuovi_arrivati": (21, "8ba16bba6f46900b"),
+}
 
 
-def _uno(valore):
-    return float(f"{valore:.1f}")
+def _impronta(righe):
+    numeri = [[r.allenatore, r.numero] for r in righe]
+    return len(numeri), hashlib.sha256(json.dumps(numeri).encode()).hexdigest()[:16]
 
 
-def _chiave(testo):
-    return luoghi.chiave_di_confronto(testo)
-
-
-# Le differenze volute fra il motore a schede e quello delle regole, con chi possono toccare: i numeri si confrontano come
-# li scrive la scheda, e non più sul numero vero; i testi senza accenti né apostrofi; i mesi di contratto interi, fino al
-# mese della scadenza, e non più frazionari. Il costo senza polisportiva attiva ha una prova sua.
-def _differenza_del_valore(soglia):
-    return lambda r, _m: (r.persona.indice_collettivo_valore >= soglia) != (_uno(r.persona.indice_collettivo_valore) >= soglia)
-
-
-def _differenza_della_condizione(criterio, condizione, soglia):
-    def differenza(r, _m):
-        vero = r.persona._get_valore_totale(criterio) if criterio.endswith("_base") else getattr(r.persona, criterio)
-        if condizione == "maggiore":
-            return (vero > soglia) != (_uno(vero) > soglia)
-        return (vero < soglia) != (_uno(vero) < soglia)
-    return differenza
-
-
-def _differenza_del_testo(leggi, cercato):
-    return lambda r, m: (cercato.casefold() in (leggi(r) or "").casefold()) != (_chiave(cercato) in _chiave(leggi(r) or ""))
-
-
-def _differenza_dei_mesi(massimo):
-    def differenza(r, m):
-        p = r.persona
-        if not contratti.ha_contratto(p):
-            return False
-        return (contratti.mesi_al_termine(p, m.datetime_corrente_simulazione) <= massimo) != (contratti.mesi_interi(m.datetime_corrente_simulazione, p.contratto_scadenza) <= massimo)
-    return differenza
-
-
-TUTTI = {"liberi": True, "in_vendita": True, "del_computer": True, "tuoi": True, "ritirati": True, "comprendi_usciti": True}
-ALLENATORI_TUTTI = {"allenatori": True, "liberi": True, "del_computer": True, "tuoi": True}
-
-
-def _casi(m):
-    """Ogni filtro di prima preso da solo, sopra tutte le caselle, coi valori presi dal mondo, e la differenza voluta che può toccare."""
-    g3 = m.giocatori[3]
-    dove = luoghi.provincia_e_regione(g3.luogo)
-    soglia_del_valore = _uno(sorted(g.indice_collettivo_valore for g in m.giocatori.values())[60]) + 0.05
-    bomba = _uno(m.giocatori[5]._get_valore_totale("bomba_base")) + 0.05
-    cpu = next(p for p in sorted(m.polisportive.values(), key=lambda p: p.nome) if p.is_cpu_controlled)
-    casi = [
-        ("casella per casella", {"liberi": True}, None), ("in vendita", {"in_vendita": True}, None), ("del computer", {"del_computer": True}, None),
-        ("tuoi", {"tuoi": True}, None), ("ritirati e usciti", {"ritirati": True, "comprendi_usciti": True}, None), ("nessuna casella", {}, None),
-        ("nome", {**TUTTI, "nome": "ro"}, _differenza_del_testo(lambda r: f"{r.persona.nome} {r.persona.cognome}", "ro")),
-        ("numero", {**TUTTI, "nome": "1"}, None), ("sesso", {**TUTTI, "sesso": "f"}, None),
-        ("classe migliore", {**TUTTI, "classe_migliore": 60}, None), ("classe peggiore", {**TUTTI, "classe_peggiore": 40}, None),
-        ("età massima", {**TUTTI, "eta_massima": 25}, None), ("età minima", {**TUTTI, "eta_minima": 30}, None),
-        ("costo massimo", {**TUTTI, "costo_massimo": 2000}, None), ("disponibili", {**TUTTI, "disponibili_oggi": True}, None),
-        ("regione", {**TUTTI, "regione": dove[1]}, None), ("provincia", {**TUTTI, "provincia": dove[0]}, None),
-        ("comune", {**TUTTI, "comune": g3.luogo[:3]}, None),
-        ("polisportiva", {**TUTTI, "polisportiva": cpu.nome[2:6]}, _differenza_del_testo(lambda r: r.polisportiva.nome if r.polisportiva else None, cpu.nome[2:6])),
-        ("polisportiva tua", {**TUTTI, "polisportiva": "t-mil"}, None),
-        ("tratti", {**TUTTI, "tratti": {"mancino": True, "talento": False}}, None), ("tratti rari", {**TUTTI, "tratti": {"precoce": True}}, None),
-        ("indole", {**TUTTI, "indole": g3.indole}, None),
-        ("valore minimo", {**TUTTI, "valore_minimo": soglia_del_valore}, _differenza_del_valore(soglia_del_valore)),
-        ("stipendio massimo", {**TUTTI, "stipendio_massimo": 300}, None), ("mesi di contratto", {**TUTTI, "mesi_contratto_massimi": 12}, _differenza_dei_mesi(12)),
-        ("senza acciacchi", {**TUTTI, "senza_acciacchi": True}, None), ("ritirati che allenano", {**TUTTI, "solo_ritirati_che_allenano": True}, None),
-        ("nuovi", {**TUTTI, "solo_nuovi": True}, None),
-        ("condizione maggiore", {**TUTTI, "condizioni": (("bomba_base", "maggiore", bomba),)}, _differenza_della_condizione("bomba_base", "maggiore", bomba)),
-        ("condizione minore", {**TUTTI, "condizioni": (("ambizione", "minore", 50.05),)}, _differenza_della_condizione("ambizione", "minore", 50.05)),
-        ("allenatori", ALLENATORI_TUTTI, None), ("allenatori liberi", {"allenatori": True, "liberi": True}, None),
-        ("allenatori capi", {**ALLENATORI_TUTTI, "posto_attuale": staff.CAPO}, None),
-        ("allenatori vedenti nati", {**ALLENATORI_TUTTI, "visus": staff.VEDENTE, "tipo_allenatore": staff.NATO}, None),
-        ("allenatori economici", {**ALLENATORI_TUTTI, "stipendio_capo_massimo": 2000}, None),
-        ("allenatori senza prelazione", {**ALLENATORI_TUTTI, "senza_prelazione_altrui": True}, None),
-        ("allenatori coi mesi", {**ALLENATORI_TUTTI, "mesi_contratto_massimi": 30}, _differenza_dei_mesi(30)),
-        ("allenatori donne giovani", {**ALLENATORI_TUTTI, "sesso": "f", "eta_massima": 60}, None),
-    ]
-    casi += [(f"ordine {chiave}", {**TUTTI, "ordine": chiave}, None) for chiave, _nome in mercato.ORDINI_GIOCATORI]
-    casi += [(f"ordine degli allenatori {chiave}", {**ALLENATORI_TUTTI, "ordine_allenatori": chiave}, None) for chiave, _nome in mercato.ORDINI_ALLENATORI]
-    return casi
-
-
-def _prepara(m):
-    """Il mondo delle prove con qualcosa in più da trovare: un ritirato che allena, un acciaccato, un infortunato e una prelazione."""
-    m._ex_giocatore_allenatore(m.giocatori[41], None, ORA, rng=random.Random(4))
-    m.giocatori[62].acciacco_fino = ORA + datetime.timedelta(days=4)
-    m.giocatori[62].acciacco_giorni = 5
-    m.giocatori[62].acciacco_calo = 0.1
-    m.giocatori[63].infortunato = True
-    libero = next(a for a in sorted(m.allenatori.values(), key=lambda a: a.numero) if a.libero)
-    libero.prelazione = next(p.nome for p in m.polisportive.values() if p.is_cpu_controlled)
-    libero.prelazione_fino = ORA + datetime.timedelta(days=3)
-    return m
-
-
-def test_l_oracolo_e_il_motore_di_prima_danno_le_stesse_persone(mondo):
-    _prepara(mondo)
+def test_i_preset_di_serie_trovano_quello_che_trovava_il_motore_di_prima(mondo):
     memoria = mercato.Memoria(mondo)
-    for nome, campi, differenza in _casi(mondo):
-        vecchi = mercato.cerca(mondo, mercato.Filtri(**campi))
-        nuovi = mercato.cerca_a_regole(mondo, traduci(mercato.Filtri(**campi)), memoria)
-        if differenza is None:
-            assert _numeri(nuovi) == _numeri(vecchi), nome
-            continue
-        toccati = {(r.allenatore, r.numero) for r in [*vecchi, *nuovi] if differenza(r, mondo)}
-        assert {*_numeri(vecchi)} ^ {*_numeri(nuovi)} <= toccati, nome
-        assert [n for n in _numeri(vecchi) if n not in toccati] == [n for n in _numeri(nuovi) if n not in toccati], nome
-    # Le prove non sono vuote: ogni filtro trova qualcuno, e qualcuno non lo trova.
-    for nome, campi, _differenza in _casi(mondo):
-        if nome.startswith("ordine") or nome == "nessuna casella":
-            continue
-        trovati = mercato.cerca(mondo, mercato.Filtri(**campi))
-        assert trovati, nome
-
-
-def test_i_preset_di_serie_trovano_quello_che_trovavano(mondo):
-    _prepara(mondo)
-    memoria = mercato.Memoria(mondo)
+    assert set(IMPRONTE_DEL_MOTORE_DI_PRIMA) == set(dict(mercato.PRESET_DI_SERIE))
     for chiave, nome in mercato.PRESET_DI_SERIE:
-        vecchi = mercato.cerca(mondo, mercato.filtri_di_serie(chiave))
-        nuovi = mercato.cerca_a_regole(mondo, mercato.filtri_di_serie_a_regole(chiave), memoria)
-        assert _numeri(nuovi) == _numeri(vecchi), nome
-        assert _numeri(mercato.cerca_a_regole(mondo, traduci(mercato.filtri_di_serie(chiave)), memoria)) == _numeri(nuovi), nome
+        assert _impronta(mercato.cerca(mondo, mercato.filtri_di_serie(chiave), memoria)) == IMPRONTE_DEL_MOTORE_DI_PRIMA[chiave], nome
 
 
 def test_il_costo_senza_polisportiva_attiva_e_una_differenza_voluta(mondo):
-    """Prima il limite di costo senza polisportiva attiva non contava; con le regole vale per chi ha un costo, e i liberi, che non ce l'hanno, non lo passano."""
+    """
+    Prima il limite di costo senza polisportiva attiva non contava; con le regole vale per chi ha un costo, e i liberi,
+    che non ce l'hanno, non lo passano: si riprendono con la o e non ha il dato.
+    """
     mondo.miapolisportiva_attiva = None
-    vecchi = mercato.cerca(mondo, mercato.Filtri(liberi=True, in_vendita=True, costo_massimo=1000))
-    assert _ids(vecchi) == _ids(mercato.cerca(mondo, mercato.Filtri(liberi=True, in_vendita=True)))
     sul_mercato = _regola(G, "stato", "uguale", mercato.SUL_MERCATO)
     assert _cerca(mondo, sul_mercato, _regola(G, "costo", "minore_uguale", 1000)) == []
     con_il_dato_che_manca = _cerca(mondo, sul_mercato, _regola(G, "costo", "minore_uguale", 1000), _regola(G, "stato", "uguale", mercato.SUL_MERCATO, mercato.O),
                                    _regola(G, "costo", "manca", None))
-    assert _ids(con_il_dato_che_manca) == _ids(vecchi) - {10}
+    assert _ids(con_il_dato_che_manca) == _ids(_cerca(mondo, sul_mercato)) - {10}
 
 
 def test_le_altre_differenze_volute(mondo):
     """I numeri come la scheda, i testi senza accenti e i mesi di contratto interi, ciascuno con un caso che li tocca davvero."""
     tutti = _regola(G, "stato", "uguale", mercato.IN_ATTIVITA)
     g = mondo.giocatori[70]
+    # 149,96 il motore di prima lo lasciava fuori da un valore minimo di 150; la scheda scrive 150,0, e la regola lo trova.
     g.indice_collettivo_valore = 149.96
-    assert 70 not in _ids(mercato.cerca(mondo, mercato.Filtri(liberi=True, del_computer=True, tuoi=True, valore_minimo=150)))
     assert 70 in _ids(_cerca(mondo, tutti, _regola(G, "valore", "maggiore_uguale", 150.0)))
     g.cognome = "Forlì"
-    assert 70 not in _ids(mercato.cerca(mondo, mercato.Filtri(liberi=True, del_computer=True, tuoi=True, nome="forli")))
     assert 70 in _ids(_cerca(mondo, tutti, _regola(G, "nome", "contiene", "forli")))
     # Il 6 ottobre, un contratto fino al 30 novembre: 1,8 mesi di calendario per il motore di prima, 1 mese intero adesso.
     tuo = mondo.giocatori[2]
     tuo.contratto_scadenza = datetime.datetime(2026, 11, 30, 12, 0)
-    assert 2 not in _ids(mercato.cerca(mondo, mercato.Filtri(tuoi=True, mesi_contratto_massimi=1)))
     assert 2 in _ids(_cerca(mondo, tutti, _regola(G, "mesi_contratto", "minore_uguale", 1)))

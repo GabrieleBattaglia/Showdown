@@ -12,6 +12,9 @@ le schede che si contano coi tocchi, le caselle che salgono quando si spuntano e
 tolta dai quattro suoni della ricerca che non ci sono più.
 Con le verifiche della finestra, la firma degli altri programmi su apertura si controlla che resti, qualunque essa sia,
 perché la cambiano loro.
+La sera dello stesso giorno, col costruttore di regole, i suoni della finestra restano ventuno, in tre gruppi: le due
+schede, i preset e il bersaglio, che sale verso gli allenatori e scende nello specchio; e i sedici eventi nuovi tornano ad
+aspettare il loro preset in SENZA_PRESET, nuovi, usati dal codice, e muti senza avvisi.
 """
 
 import ast
@@ -27,6 +30,7 @@ from GBUtils import Acusticator
 
 import ascolta_suoni
 import impostazioni
+import mercato
 import partita_sonora
 import suoni
 from mondo import Mondo
@@ -269,13 +273,24 @@ def test_ogni_evento_e_usato_nel_codice():
 def test_ogni_suono_del_codice_e_un_evento():
     trovati = _suoni_nel_codice()
     assert len(trovati) > 100
-    sconosciuti = sorted({(file, s) for file, s in trovati if s not in suoni.EVENTI})
+    sconosciuti = sorted({(file, s) for file, s in trovati if s not in suoni.EVENTI and s not in suoni.SENZA_PRESET})
     assert not sconosciuti, f"suoni che non sono eventi della mappa: {sconosciuti}"
 
 
-# I quattro gruppi della finestra Mercato e ricerca, coi loro sessantatré suoni della V232.
-GRUPPI_DELLA_FINESTRA = ("Mercato e ricerca, le schede e i preset", "Mercato e ricerca, le caselle dei filtri",
-                         "Mercato e ricerca, le scelte e i numeri dei filtri", "Mercato e ricerca, le azioni")
+def test_gli_eventi_senza_preset_sono_nuovi_usati_e_tacciono(suonati, capsys):
+    # Dal costruttore di regole della finestra Mercato e ricerca: i sedici eventi che aspettano il loro preset non sono già
+    # nella mappa, il codice li fa suonare tutti, e tacciono senza avvisi, mentre un evento sconosciuto lo dice.
+    assert len(suoni.SENZA_PRESET) == 16 and not suoni.SENZA_PRESET & set(suoni.EVENTI)
+    codice = "".join(_codice(p) for p in _sorgenti() if p.name != "suoni.py")
+    assert not [evento for evento in suoni.SENZA_PRESET if f'"{evento}"' not in codice]
+    for evento in sorted(suoni.SENZA_PRESET):
+        assert suoni.suona(evento) is False
+    assert suonati == [] and capsys.readouterr().err == ""
+
+
+# I tre gruppi della finestra Mercato e ricerca, coi loro ventuno suoni della V232: dal costruttore di regole le schede
+# sono due, e delle caselle dei filtri resta soltanto il bersaglio.
+GRUPPI_DELLA_FINESTRA = ("Mercato e ricerca, le schede e i preset", "Mercato e ricerca, il bersaglio", "Mercato e ricerca, le azioni")
 
 
 def _eventi_della_finestra():
@@ -288,10 +303,10 @@ def test_i_suoni_della_finestra_mercato_e_ricerca():
     # non a onda quadra, con la descrizione che dice l'evento, com'è fatto il suono e a che cosa va bene; e il codice lo
     # fa suonare. I gruppi stanno subito dopo quello del mercato.
     eventi = _eventi_della_finestra()
-    assert len(eventi) == 63
+    assert len(eventi) == 21
     titoli = [titolo for titolo, _gruppo in suoni.GRUPPI]
     inizio = titoli.index("Economia, il mercato") + 1
-    assert tuple(titoli[inizio:inizio + 4]) == GRUPPI_DELLA_FINESTRA
+    assert tuple(titoli[inizio:inizio + len(GRUPPI_DELLA_FINESTRA)]) == GRUPPI_DELLA_FINESTRA
     codice = "".join(_codice(p) for p in _sorgenti() if p.name != "suoni.py")
     for evento, preset in eventi.items():
         assert preset.startswith("mess_"), evento
@@ -304,6 +319,7 @@ def test_i_suoni_della_finestra_mercato_e_ricerca():
 
 def test_le_schede_si_contano_coi_tocchi():
     # Ogni scheda ha tanti tocchi quanto è il suo posto, nella stessa onda, e il suono sta dal lato della sua linguetta.
+    # Dal costruttore di regole le schede sono le prime due delle quattro di prima, tutte e due a sinistra.
     from gui import mercato_e_ricerca
 
     lati = []
@@ -313,24 +329,21 @@ def test_le_schede_si_contano_coi_tocchi():
         assert kind == 3 and len(note) == posto + 1, evento
         assert len({score[i + 2] for i in note}) == 1, evento
         lati.append(score[2])
-    assert lati == sorted(lati) and lati[0] < 0 < lati[-1]
+    assert lati == sorted(lati) and lati[-1] < 0 and len(lati) == len(mercato_e_ricerca.NOMI_DELLE_SCHEDE) == 2
 
 
-def test_le_caselle_salgono_quando_si_spuntano_e_scendono_nello_specchio():
-    # Un timbro per casella: spuntata sale, tolta è lo stesso suono al contrario, con le scivolate rovesciate, e scende.
+def test_il_bersaglio_sale_verso_gli_allenatori_e_scende_nello_specchio():
+    # I due suoni della casella Allenatori di prima, che dal costruttore di regole sono il bersaglio: verso gli allenatori
+    # sale, tornando ai giocatori è lo stesso suono al contrario, con le scivolate rovesciate, e scende.
     from gui import mercato_e_ricerca
 
-    timbri = set()
-    for campo, (_etichetta, spuntata, tolta) in mercato_e_ricerca.CASELLE_DEI_FILTRI.items():
-        su, giu = (Acusticator.preset(suoni.EVENTI[evento]) for evento in (spuntata, tolta))
-        assert su[1] == giu[1] and su[2] == giu[2], campo
-        quartine_su = [su[0][i:i + 4] for i in range(0, len(su[0]), 4)]
-        rovesciate = [[".".join(reversed(str(n).split("."))), d, pn, v] for n, d, pn, v in reversed(quartine_su)]
-        assert [q[:2] for q in rovesciate] == [giu[0][i:i + 2] for i in range(0, len(giu[0]), 4)], campo
-        kind, figura = _figura(suoni.EVENTI[spuntata])
-        assert figura[-1][1] > figura[0][0], campo
-        timbri.add((kind, json.dumps(_sequenza(suoni.EVENTI[spuntata]))))
-    assert len(timbri) == len(mercato_e_ricerca.CASELLE_DEI_FILTRI)
+    su, giu = (Acusticator.preset(suoni.EVENTI[mercato_e_ricerca.SUONI_DEI_BERSAGLI[b]]) for b in (mercato.ALLENATORI, mercato.GIOCATORI))
+    assert su[1] == giu[1] and su[2] == giu[2]
+    quartine_su = [su[0][i:i + 4] for i in range(0, len(su[0]), 4)]
+    rovesciate = [[".".join(reversed(str(n).split("."))), d, pn, v] for n, d, pn, v in reversed(quartine_su)]
+    assert [q[:2] for q in rovesciate] == [giu[0][i:i + 2] for i in range(0, len(giu[0]), 4)]
+    _kind, figura = _figura(suoni.EVENTI["bersaglio_allenatori"])
+    assert figura[-1][1] > figura[0][0]
 
 
 def test_la_firma_di_mess_esce_dai_suoni_della_ricerca_tolta():

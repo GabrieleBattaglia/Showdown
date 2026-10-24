@@ -14,6 +14,8 @@ una caratteristica passa soltanto i negativi. I numeri si confrontano come li sc
 come lì, e i testi senza badare a maiuscole, accenti e apostrofi, con la chiave di confronto dei luoghi. Il catalogo
 delle caratteristiche, che legge il mondo, sta in mercato.py; leggi_classe arriva qui da ricerca.py, che col cambio della
 finestra se ne andrà intera.
+Lo stesso giorno, col cambio della finestra, ricerca.py se ne va davvero: qui restano tutte le regole della ricerca. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import unicodedata

@@ -4,10 +4,7 @@ Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nasce il 2026-10-24 col progetto corretto dal critico e le scelte di Gabriele dello stesso giorno: il mercato dei
 giocatori, quello degli allenatori, la ricerca e la scelta dell'avversario dell'amichevole diventano una finestra
 sola, che si apre massimizzata da ogni porta d'ingresso con il suo ultimo preset, ed Esc la chiude.
-Le schede sono native, wx.Notebook, e si cambiano con Ctrl+Tab e Ctrl+Maiusc+Tab, ognuna col suo suono: Risultati,
-con la Situazione, la casella dei preset, l'elenco virtuale dei trovati, la scheda della persona in un campo di sola
-lettura su più righe e i pulsanti delle azioni; Filtri, coi filtri più usati, Filtri attivi e Salva filtri; Altri
-filtri; e Filtri degli allenatori. Le ultime due dicono nella linguetta quanti dei loro filtri sono impostati. Ogni
+Le schede sono native, wx.Notebook, e si cambiano con Ctrl+Tab e Ctrl+Maiusc+Tab, ognuna col suo suono. Ogni
 controllo ha la sua lettera, e le lettere si ripetono da una scheda all'altra, perché Windows le cerca soltanto fra i
 controlli visibili; Chiudi, fuori dalle schede, ha la C in tutte. Il passo della finestra ha misurato su wx, sul
 desktop nascosto, che Ctrl+Tab cambia scheda da ogni controllo e porta il fuoco nella pagina nuova, che Alt+C
@@ -15,36 +12,47 @@ arriva a Chiudi anche da dentro una pagina, da un riquadro e dalla linguetta, e 
 non fanno niente: per questo il gancio dei tasti non li prende.
 La casella dei preset ha in cima la voce Filtri attuali, non salvati, poi i preset di Gabriele, poi i dodici preset
 di serie, e per ultima Salva filtri..., che si apre con Invio, o scegliendola dall'elenco aperto, mai con le frecce:
-scorrendo la casella chiusa ogni preset si applica intero. Un cambio a mano di un filtro porta la casella, in
-silenzio, sulla voce in cima, che tiene i filtri fatti a mano. I preset si salvano, si rinominano, si eliminano e si
+scorrendo la casella chiusa ogni preset si applica intero. I preset si salvano, si rinominano, si eliminano e si
 spostano, e ogni operazione passa subito nel mondo e fra gli esiti della finestra, che alla chiusura la vista
 racconta e il mondo salva.
-L'elenco si ricalcola 350 millesimi dopo l'ultimo tasto in un campo, in un numero o in una scelta, e subito per le
-caselle e i pulsanti; il numero dei trovati arriva alla voce e al display, con gli annunci della cronaca anche se la
-loro lettura è spenta, 1000 millesimi dopo l'ultimo tasto. La scheda della persona segue la riga scelta, e Invio
-sull'elenco porta lì; Invio ed Esc nella scheda tornano all'elenco, sulla stessa riga.
-Un Invio che arriva entro la grazia dall'apertura, dall'Invio di prima o dalla fine di un dialogo interno si mangia,
-perché NVDA rimanda Invio come pressioni nuove; e la pressione di un pulsante entro mezzo secondo dalla sua pressione
-di prima, o dalla fine di un dialogo interno, si ignora: il passo della finestra ha misurato che il gancio dei tasti
-non arriva alla finestra da un pulsante. Le domande, gli esiti e gli avvisi della finestra si leggono in un campo dove si scorre
-col cursore, non in un messaggio di Windows: le domande hanno Sì e No, col No già scelto; il lancio della sfida e la cifra, dialoghi
-di tutto il gioco, tengono i loro messaggi brevi. A mosse finite si oscura soltanto l'offerta, e
-Alt+O sulla scheda Risultati dice il perché col suo suono. L'amichevole si gioca scegliendo prima l'avversario qui, poi
-il proprio giocatore: la finestra si chiude e la partita la gioca la finestra principale. Assumi dello staff apre sugli
-allenatori liberi col posto già scelto, e non ricorda niente.
+La scheda della persona segue la riga scelta, e Invio sull'elenco porta lì; Invio ed Esc nella scheda tornano
+all'elenco, sulla stessa riga. Un Invio che arriva entro la grazia dall'apertura, dall'Invio di prima o dalla fine di
+un dialogo interno si mangia, perché NVDA rimanda Invio come pressioni nuove; e la pressione di un pulsante entro mezzo
+secondo dalla sua pressione di prima, o dalla fine di un dialogo interno, si ignora: il passo della finestra ha
+misurato che il gancio dei tasti non arriva alla finestra da un pulsante. Le domande, gli esiti e gli avvisi della
+finestra si leggono in un campo dove si scorre col cursore, non in un messaggio di Windows: le domande hanno Sì e No,
+col No già scelto; il lancio della sfida e la cifra, dialoghi di tutto il gioco, tengono i loro messaggi brevi. A mosse
+finite si oscura soltanto l'offerta, e Alt+O sulla scheda Risultati dice il perché col suo suono. L'amichevole si gioca
+scegliendo prima l'avversario qui, poi il proprio giocatore: la finestra si chiude e la partita la gioca la finestra
+principale. Assumi dello staff apre sugli allenatori liberi col posto già scelto, e non ricorda niente.
 Coi collegamenti dello stesso giorno la aprono Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O della finestra principale e Assumi
 dello staff, e chi la apre ne prende gli esiti con esiti_alla_fine, anche quando a chiuderla è stata la chiusura per
 l'aggiornamento, che chiude i dialoghi aperti: la porta si ricorda lo stesso.
-Dalle verifiche dello stesso giorno: ogni scheda è un riquadro col testo della sua linguetta, conto dei filtri compreso,
-perché NVDA, che delle pagine di wx non dice niente, lo dica quando il fuoco ci entra con Ctrl+Tab; l'elenco che prende
-il fuoco mentre un ricalcolo aspetta si rifà subito, prima che NVDA ne legga il nome e le righe, e lo stesso fa ogni
-dialogo interno, che ferma anche l'annuncio dei trovati, perché non arrivi sopra il dialogo; la casella dei preset
-lasciata su Salva filtri dall'elenco aperto torna sulla voce applicata; la Situazione resta su una riga sola, senza
-andare a capo a metà di un blocco di quaranta caratteri; anche all'apertura la scheda della persona si scrive col suo
-rimando; i suoni dell'apertura messi in fila si fermano alla chiusura; l'amichevole contro l'unico tuo giocatore che
-oggi gioca dice che serve un altro avversario, invece di dire che non gioca nessuno; i massimi dei numeri dei filtri
-vengono dal motore, che li controlla anche nella lettura. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
-UltraCode).
+Dalle verifiche dello stesso giorno: ogni scheda è un riquadro col testo della sua linguetta perché NVDA, che delle
+pagine di wx non dice niente, lo dica quando il fuoco ci entra con Ctrl+Tab; l'elenco che prende il fuoco mentre un
+ricalcolo aspetta si rifà subito, prima che NVDA ne legga il nome e le righe, e lo stesso fa ogni dialogo interno, che
+ferma anche l'annuncio dei trovati, perché non arrivi sopra il dialogo; la casella dei preset lasciata su Salva filtri
+dall'elenco aperto torna sulla voce applicata; la Situazione resta su una riga sola; anche all'apertura la scheda della
+persona si scrive col suo rimando; i suoni dell'apertura messi in fila si fermano alla chiusura; l'amichevole contro
+l'unico tuo giocatore che oggi gioca dice che serve un altro avversario, invece di dire che non gioca nessuno.
+La sera dello stesso giorno, con la richiesta di Gabriele sulla finestra a quattro schede e 55 controlli di filtro, uno
+per filtro, il costruttore di regole, e le schede tornano due. Risultati resta com'era, con la Situazione, la casella
+dei preset, l'elenco dei trovati, la scheda della persona, le azioni e Gestisci i preset, Alt+G. Filtri ha il campo
+Trovati, una riga per informazione; la regola in preparazione, nel suo riquadro, col collegamento, e oppure o, che si
+vede soltanto quando ci sono regole, il bersaglio, Giocatori o Allenatori, la caratteristica, l'operatore e il valore,
+una scelta o un campo secondo la caratteristica, con l'etichetta che dice che cosa scrivere; Aggiungi regola e Azzera;
+l'elenco delle regole, dove Canc ne toglie una, Ctrl+Su e Ctrl+Giù la spostano e le lettere E e O cambiano il suo
+collegamento; Ordina per, che fa parte del preset; e Salva filtri, che mette nel preset anche la regola in preparazione
+quando conta. La regola in preparazione conta appena ha un valore valido, e la e lega prima della o. Ogni mossa rifà il
+conto dei trovati dopo 350 millesimi, e l'annuncio alla voce e al display arriva 1000 millesimi dopo l'ultima, soltanto
+se dice qualcosa di nuovo. La casella dei preset va in cima, in silenzio, quando cambia qualcosa che conta: le regole,
+l'ordine o una regola in preparazione che conta; guardare le caratteristiche, col valore vuoto, non la stacca dal suo
+preset. Invio nel Valore con un valore sbagliato resta lì e dice il perché; Aggiungi regola conta come un Invio, perché
+quello rimandato da NVDA non porti dall'elenco delle regole ai Risultati. Le misure su wx del passo, sul desktop
+nascosto: la coppia di etichetta e controllo del Valore che non si vede perde la sua lettera, perché la lettera di
+un'etichetta nascosta porta il fuoco al controllo dopo; SetLabel cambia il nome che NVDA legge; Set e SetSelection
+di una scelta non mandano eventi; i tasti dell'elenco delle regole, messi in coda come quelli veri, arrivano al suo
+gestore coi loro modificatori. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -55,15 +63,11 @@ from ctypes import wintypes
 import wx
 
 import impostazioni as modulo_impostazioni
-import luoghi
 import mercato
-import ricerca
+import regole as modulo_regole
 import staff
 import suoni
 import testi
-from classe import LIVELLI
-from classe import codice as codice_della_classe
-from costanti import INDOLI
 from gui import aspetto, dialoghi
 from gui.dal_vivo import annunci_condivisi
 from gui.dialoghi import Cifra, Lettura, OpzioniAmichevole, SceltaGiocatore, _Dialogo, _SceltaConTesto
@@ -72,73 +76,32 @@ from gui.sfide import LanciaSfida
 from modelli import probabilita_accettazione
 from utilita import adesso_utc
 
-# I ritardi della finestra, in secondi: il ricalcolo dopo l'ultimo tasto, quello dei dialoghi di MESS; l'annuncio dei
-# trovati, scelta di Gabriele dopo la prova del prototipo; la scheda che segue la riga; il suono di un numero o di un
-# testo quando ci si ferma.
+# I ritardi della finestra, in secondi: il ricalcolo dopo l'ultima mossa, quello dei dialoghi di MESS; l'annuncio dei
+# trovati, scelta di Gabriele dopo la prova del prototipo; la scheda che segue la riga; il suono del valore scritto
+# quando ci si ferma.
 RITARDO_DEL_RICALCOLO = dialoghi.RITARDO_DEL_SUONO_AL_VOLO / 1000
 RITARDO_DELL_ANNUNCIO = 1.0
 RITARDO_DELLA_SCHEDA = dialoghi.RITARDO_DEL_SUONO_AL_VOLO / 1000
 RITARDO_DEL_SUONO = dialoghi.RITARDO_DEL_SUONO_AL_VOLO / 1000
-# Le quattro schede, con i loro nomi e i loro suoni.
-RISULTATI, FILTRI, ALTRI_FILTRI, FILTRI_ALLENATORI = range(4)
-NOMI_DELLE_SCHEDE = ("Risultati", "Filtri", "Altri filtri", "Filtri degli allenatori")
-SUONI_DELLE_SCHEDE = ("scheda_risultati", "scheda_filtri", "scheda_altri_filtri", "scheda_filtri_allenatori")
+# Le due schede, con i loro nomi e i loro suoni.
+RISULTATI, FILTRI = range(2)
+NOMI_DELLE_SCHEDE = ("Risultati", "Filtri")
+SUONI_DELLE_SCHEDE = ("scheda_risultati", "scheda_filtri")
 # Il suono d'apertura di ogni porta d'ingresso; Assumi dello staff, porta None, apre come il mercato degli allenatori.
 SUONI_DELLE_PORTE = {"mercato": "dialogo_mercato", "allenatori": "dialogo_mercato_allenatori", "ricerca": "dialogo_ricerca", "amichevole": "dialogo_avversario",
                      None: "dialogo_mercato_allenatori"}
-# Le caselle dei filtri: l'etichetta con la lettera, e i suoni di quando si spunta e di quando si toglie.
-CASELLE_DEI_FILTRI = {
-    "allenatori": ("&Allenatori invece dei giocatori", "casella_allenatori_spuntata", "casella_allenatori_tolta"),
-    "liberi": ("&Liberi", "casella_liberi_spuntata", "casella_liberi_tolta"),
-    "in_vendita": ("In &vendita da altri, solo per i giocatori", "casella_in_vendita_spuntata", "casella_in_vendita_tolta"),
-    "del_computer": ("Tesserati del comp&uter", "casella_del_computer_spuntata", "casella_del_computer_tolta"),
-    "tuoi": ("&Tuoi tesserati", "casella_tuoi_spuntata", "casella_tuoi_tolta"),
-    "ritirati": ("&Ritirati, solo per i giocatori", "casella_ritirati_spuntata", "casella_ritirati_tolta"),
-    "disponibili_oggi": ("&Disponibili oggi per un'amichevole", "casella_disponibili_oggi_spuntata", "casella_disponibili_oggi_tolta"),
-    "senza_acciacchi": ("&Escludi infortunati e acciaccati", "casella_senza_acciacchi_spuntata", "casella_senza_acciacchi_tolta"),
-    "solo_ritirati_che_allenano": ("Solo i ri&tirati che allenano", "casella_solo_ritirati_che_allenano_spuntata", "casella_solo_ritirati_che_allenano_tolta"),
-    "solo_nuovi": ("Solo i n&uovi arrivati della sessione", "casella_solo_nuovi_spuntata", "casella_solo_nuovi_tolta"),
-    "comprendi_usciti": ("Comprendi &gli usciti di scena", "casella_comprendi_usciti_spuntata", "casella_comprendi_usciti_tolta"),
-    "senza_prelazione_altrui": ("&Escludi chi è in prelazione per altri", "casella_senza_prelazione_altrui_spuntata", "casella_senza_prelazione_altrui_tolta"),
-}
-# Le voci delle scelte dei filtri: il valore del campo e il testo della scelta.
-SESSI = ((None, "Tutti"), ("m", "Uomini"), ("f", "Donne"))
-CLASSI = ((0, "Qualunque"), *((n, codice_della_classe(n)) for n in range(1, LIVELLI + 1)))
-TIPI_DI_ALLENATORE = ((None, "Qualunque"), (staff.EX, "Ex giocatori"), (staff.NATO, "Nati allenatori"))
-VISUS = ((None, "Qualunque"), *((visus, visus.capitalize()) for visus in staff.VISUS))
-POSTI_ATTUALI = ((None, "Qualunque"), (staff.CAPO, "Capo allenatore"), (staff.ASSISTENTE, "Assistente"))
-INDOLI_DELLA_SCELTA = ((None, "Qualunque"), *((chiave, dati["nome"].capitalize()) for chiave, dati in INDOLI.items()))
-VOCI_DEI_TRATTI = ((None, "Indifferente"), (True, "Sì"), (False, "No"))
-SUONI_DEI_TRATTI = {None: "filtro_tratto_indifferente", True: "filtro_tratto_si", False: "filtro_tratto_no"}
-# Le scelte dei filtri, nell'ordine dei campi: l'etichetta con la lettera, le voci e il suono a ogni freccia.
-SCELTE_DEI_FILTRI = {
-    "sesso": ("S&esso", SESSI, "filtro_sesso_allenatori"),
-    "classe_migliore": ("Classe mi&gliore o uguale a", CLASSI, "filtro_classe_allenatori"),
-    "classe_peggiore": ("Classe &peggiore o uguale a", CLASSI, "filtro_classe_peggiore"),
-    "indole": ("I&ndole", INDOLI_DELLA_SCELTA, "filtro_indole"),
-    "tipo_allenatore": ("&Tipo di allenatore", TIPI_DI_ALLENATORE, "filtro_tipo_allenatori"),
-    "visus": ("&Visus", VISUS, "filtro_visus"),
-    "posto_attuale": ("&Posto attuale", POSTI_ATTUALI, "filtro_posto_attuale"),
-}
-# I numeri dei filtri: l'etichetta con la lettera, il massimo, che è quello del motore, e il suono di quando ci si ferma.
-NUMERI_DEI_FILTRI = {
-    "eta_massima": ("Età &massima in anni, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["eta_massima"], "filtro_eta_allenatori"),
-    "eta_minima": ("Età m&inima in anni, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["eta_minima"], "filtro_eta_minima"),
-    "costo_massimo": ("Costo massimo in euro, &zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["costo_massimo"], "filtro_costo_massimo"),
-    "valore_minimo": ("Va&lore minimo in punti, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["valore_minimo"], "filtro_valore_minimo"),
-    "stipendio_massimo": ("&Stipendio massimo in euro al mese, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["stipendio_massimo"],
-                          "filtro_stipendio_massimo"),
-    "mesi_contratto_massimi": ("Mesi di contr&atto rimasti al massimo, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["mesi_contratto_massimi"],
-                               "filtro_mesi_contratto"),
-    "stipendio_capo_massimo": ("&Stipendio chiesto da capo al massimo, zero per nessun limite", mercato.MASSIMI_DEI_NUMERI["stipendio_capo_massimo"],
-                               "filtro_stipendio_capo"),
-}
-# I testi dei filtri: l'etichetta con la lettera, e il suono di quando ci si ferma; il nome non suona, perché NVDA dice le lettere.
-TESTI_DEI_FILTRI = {
-    "nome": ("&Nome, cognome o numero", None),
-    "comune": ("Co&mune, una parte del nome", "filtro_comune"),
-    "polisportiva": ("&Polisportiva, una parte del nome", "filtro_polisportiva"),
-}
+# Le voci del collegamento e del bersaglio, coi loro suoni.
+COLLEGAMENTI_DELLA_SCELTA = ((mercato.E, "e, insieme"), (mercato.O, "o, in alternativa"))
+SUONI_DEI_COLLEGAMENTI = {mercato.E: "collegamento_e", mercato.O: "collegamento_o"}
+BERSAGLI_DELLA_SCELTA = tuple((bersaglio, mercato.NOMI_DEI_BERSAGLI[bersaglio]) for bersaglio in mercato.BERSAGLI)
+SUONI_DEI_BERSAGLI = {mercato.GIOCATORI: "bersaglio_giocatori", mercato.ALLENATORI: "bersaglio_allenatori"}
+# Il timbro della caratteristica scelta, uno per tipo.
+SUONI_DEI_TIPI = {modulo_regole.NUMERO: "regola_caratteristica_numero", modulo_regole.CLASSE: "regola_caratteristica_classe",
+                  modulo_regole.TESTO: "regola_caratteristica_testo", modulo_regole.SCELTA: "regola_caratteristica_scelta",
+                  modulo_regole.SI_NO: "regola_caratteristica_si_no"}
+# Lo stato del valore della regola in preparazione, e il suono di quando cambia: vuoto, valido, da correggere.
+VUOTO, VALIDO, DA_CORREGGERE = "vuoto", "valido", "da_correggere"
+SUONI_DEL_VALORE = {VUOTO: "regola_valore_tolto", VALIDO: "regola_valore_scritto", DA_CORREGGERE: "regola_valore_da_correggere"}
 CB_GETDROPPEDSTATE = 0x0157
 # user32 in una copia tutta sua, con la firma che serve qui: la casella dei preset aperta o chiusa.
 _user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -163,6 +126,13 @@ def _di_gabriele(scelta):
 def _stesso(primo, secondo):
     """Vero se i due controlli sono lo stesso, anche quando wx ne restituisce un altro oggetto Python: si guarda anche il numero."""
     return primo is secondo or (primo is not None and secondo is not None and primo.GetId() == secondo.GetId())
+
+
+def voci_del_valore(car):
+    """Le voci della scelta del Valore per una scelta o un sì o no: nessun valore in cima, poi le voci, o sì e no."""
+    if car.tipo == modulo_regole.SI_NO:
+        return ((None, testi.NESSUN_VALORE), (True, "sì"), (False, "no"))
+    return ((None, testi.NESSUN_VALORE), *modulo_regole.voci(car))
 
 
 class Rimando:
@@ -307,21 +277,29 @@ class SalvaFiltri(_ConTestiDaLeggere, _Dialogo):
     """
     Salva filtri: il nome del preset, proposto da chi apre e tutto selezionato. Un nome che non va lo dice, col suono
     del campo da correggere; quello di un tuo preset, senza badare alle maiuscole, chiede se sostituirne i filtri, col
-    No già scelto. In risultato resta il nome, senza gli spazi in testa e in coda.
+    No già scelto. In risultato resta il nome, senza gli spazi in testa e in coda. Col costruttore di regole, nota dice
+    che cosa ne è della regola in preparazione, in un campo da leggere dopo il nome: entra nel preset, o resta fuori, e
+    perché; senza nota il campo non c'è.
     """
 
     GRAZIA_ALL_APERTURA = True
 
-    def __init__(self, genitore, filtri_di_ricerca, proposta="", impostazioni=None):
+    def __init__(self, genitore, filtri_di_ricerca, proposta="", impostazioni=None, nota=None):
         super().__init__(genitore, "Salva filtri")
         self.filtri_di_ricerca = filtri_di_ricerca
         self.impostazioni = impostazioni
         self.risultato = None
         self.etichetta("&Nome del preset")
         self.nome = self.aggiungi(wx.TextCtrl(self.pannello, value=proposta))
+        self.nota = None
+        if nota:
+            self.etichetta("&Regola in preparazione")
+            self.nota = self.aggiungi(wx.TextCtrl(self.pannello, value=nota, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
+            self.nota.SetMinSize((-1, self.nota.GetCharHeight() * 3))
+            aspetto.applica(self.nota, modulo_impostazioni.valide(impostazioni))
         salva, _annulla = self.pulsanti((wx.ID_OK, "&Salva"), (wx.ID_CANCEL, "Annulla"))
         salva.Bind(wx.EVT_BUTTON, self.conferma)
-        self.completa((440, 200))
+        self.completa((440, 240))
         self.nome.SetFocus()
         self.nome.SelectAll()
 
@@ -491,51 +469,19 @@ class PostoDaOffrire(_ConTestiDaLeggere, _Dialogo):
         self.chiudi(wx.ID_OK)
 
 
-class Condizione(_ConTestiDaLeggere, _Dialogo):
-    """
-    Una condizione sulle caratteristiche, per Altri filtri: la caratteristica, fra i criteri numerici che non hanno già
-    un campo, maggiore di o minore di, e il valore. In risultato resta la terna di criterio, condizione e valore.
-    """
-
-    GRAZIA_ALL_APERTURA = True
-    CONDIZIONI = ricerca.CONDIZIONI[ricerca.NUMERO]
-
-    def __init__(self, genitore, impostazioni=None):
-        super().__init__(genitore, "Aggiungi una condizione")
-        self.impostazioni = impostazioni
-        self.risultato = None
-        self.etichetta("&Caratteristica")
-        self.criterio = self.aggiungi(wx.Choice(self.pannello, choices=[ricerca.nome_criterio(c) for c in mercato.CRITERI_DELLE_CONDIZIONI]))
-        self.criterio.SetSelection(0)
-        self.etichetta("C&ondizione")
-        self.condizione = self.aggiungi(wx.Choice(self.pannello, choices=[nome for _chiave, nome in self.CONDIZIONI]))
-        self.condizione.SetSelection(0)
-        self.etichetta("&Valore")
-        self.valore = self.aggiungi(wx.TextCtrl(self.pannello))
-        aggiungi, _annulla = self.pulsanti((wx.ID_OK, "&Aggiungi"), (wx.ID_CANCEL, "Annulla"))
-        aggiungi.Bind(wx.EVT_BUTTON, self.conferma)
-        self.completa((440, 300))
-        self.criterio.SetFocus()
-
-    def conferma(self, event=None):
-        try:
-            valore = ricerca.leggi_numero(self.valore.GetValue())
-        except ValueError:
-            self.avvisa("Il valore deve essere un numero, per esempio 150 o 12,5.", self.valore)
-            return
-        self.risultato = (mercato.CRITERI_DELLE_CONDIZIONI[self.criterio.GetSelection()], self.CONDIZIONI[self.condizione.GetSelection()][0], valore)
-        self.chiudi(wx.ID_OK)
-
-
 # La finestra.
 
 class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
     """
     La finestra Mercato e ricerca. porta è una di mercato.PORTE, da cui la finestra riapre col suo ultimo preset e a
-    cui alla chiusura lascia la voce scelta e i filtri attuali; None per Assumi dello staff, che apre sugli allenatori
-    liberi col posto dato e non ricorda niente. pianifica(secondi, funzione) fa i rimandi, wx.CallLater di serie;
-    annunci sono quelli che dicono i trovati, di serie quelli della sessione. In risultato, alla chiusura, gli
-    EsitiDellaFinestra. Le prove sostituiscono pianifica, annunci e _modale.
+    cui alla chiusura lascia la voce scelta, i filtri attuali e la regola in preparazione; None per Assumi dello staff,
+    che apre sugli allenatori liberi col posto dato e non ricorda niente. pianifica(secondi, funzione) fa i rimandi,
+    wx.CallLater di serie; annunci sono quelli che dicono i trovati, di serie quelli della sessione. In risultato, alla
+    chiusura, gli EsitiDellaFinestra. Le prove sostituiscono pianifica, annunci e _modale.
+    Lo stato dei filtri è fatto di filtri, le regole dell'elenco e l'ordine, e di preparazione, la regola in
+    preparazione; quelli che contano, con la preparazione se ha un valore valido, li dà _contano. attuali e
+    _preparazione_attuale sono quelli della voce in cima alla casella, Filtri attuali, non salvati: mentre la casella sta
+    su un preset li tiene da parte, e la voce in cima li riprende com'erano.
     """
 
     def __init__(self, genitore, mondo, impostazioni, porta, posto=None, pianifica=None, annunci=None):
@@ -552,7 +498,6 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self._annuncio = Rimando(pianifica, RITARDO_DELL_ANNUNCIO, self.annuncia)
         self._scheda = Rimando(pianifica, RITARDO_DELLA_SCHEDA, self.aggiorna_la_scheda)
         self._suono_fermo = Rimando(pianifica, RITARDO_DEL_SUONO, self._suona_quando_ci_si_ferma)
-        self._suono_da_fare = None
         self.memoria = mercato.Memoria(mondo)
         self.esiti = EsitiDellaFinestra()
         self.risultato = None
@@ -560,30 +505,40 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         if porta is None:
             scelta = "allenatori_liberi"
             self.attuali = mercato.filtri_di_serie(scelta)
+            ricordata = mercato.Preparazione(mercato.E, mercato.ALLENATORI, "nome", "contiene", "")
         else:
             stato = mercato.stato_della_porta(mondo, porta)
-            scelta, self.attuali = stato.scelta, stato.attuali
+            scelta, self.attuali, ricordata = stato.scelta, stato.attuali, stato.preparazione
         try:
             self.filtri = mercato.filtri_della_voce(self.filtri_di_ricerca, scelta, self.attuali)
         except KeyError:
             scelta = mercato.PRESET_DELLA_PORTA[porta]
             self.filtri = mercato.filtri_di_serie(scelta)
         self.scelta = scelta
+        # All'apertura con un preset il valore in preparazione si svuota; Ctrl+F la rimette sul nome.
+        self.preparazione = ricordata if scelta is None else mercato.svuota_il_valore(ricordata)
+        if porta == "ricerca":
+            self.preparazione = mercato.preparazione_della_ricerca_veloce(self.preparazione)
+        self._preparazione_attuale = self.preparazione if scelta is None else ricordata
         # Il tuo preset da cui vengono i filtri attuali: Salva filtri ne propone il nome.
         self._origine = None
         self._spostato = None
         self.righe = []
         self.ultima_riga = -1
-        self._ordine_delle_righe = self.filtri.ordine_scelto
+        self._ordine_delle_righe = self.filtri.ordine
         self._in_ricalcolo = False
         self._applico = False
         self._chiusa = False
         self._persona_della_scheda = None
         self._testo_della_scheda = None
-        self._testo_dei_filtri_attivi = None
+        self._testo_dei_trovati = None
+        self._ultimo_annuncio = None
+        self._ultimo_canc = float("-inf")
         self._vuoto = dialoghi._ElencoCheSiRestringe()
-        self._controlli_dei_filtri = []
         self._riquadri_delle_schede = []
+        self._caratteristiche = []
+        self._operatori = []
+        self._voci_del_valore = []
         # Il resto dei suoni dell'apertura, che aspetta il suo turno: alla chiusura si ferma.
         self._fila = None
         self._costruisci()
@@ -592,6 +547,7 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         # Il ricalcolo chiede la scheda col suo rimando, anche adesso: all'apertura il fuoco va sull'elenco, e la
         # scheda, che costa una quarantina di millesimi, si scrive subito dopo, o appena prende il fuoco.
         self.ricalcola()
+        self._ultimo_annuncio = self._testo_dell_annuncio()
         self._aggiorna_la_situazione()
         self._aggiorna_l_offerta()
         self.Bind(wx.EVT_CHAR_HOOK, self._tasto)
@@ -599,8 +555,8 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self.completa((980, 720))
         if porta == "ricerca":
             self.libro.SetSelection(FILTRI)
-            self.campo_nome.SetFocus()
-            self.campo_nome.SelectAll()
+            self.valore_scritto.SetFocus()
+            self.valore_scritto.SelectAll()
         else:
             self.elenco.SetFocus()
         self.libro.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self._scheda_cambiata)
@@ -616,7 +572,7 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         da genitore a tutti i suoi controlli. Restituisce il riquadro e il suo sizer. Dalla verifica con la lente di
         NVDA: una pagina di wx, per Windows, è un riquadro senza ruolo, che NVDA non dice, e la linguetta è la stessa
         per tutte le pagine, quindi con Ctrl+Tab NVDA diceva soltanto il controllo; un riquadro col nome, invece, NVDA
-        lo dice quando il fuoco ci entra, come i riquadri Luogo o Chi cercare.
+        lo dice quando il fuoco ci entra, come il riquadro della regola in preparazione.
         """
         pannello = wx.Panel(self.libro)
         pannello.SetSizer(wx.BoxSizer(wx.VERTICAL))
@@ -645,48 +601,35 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         return griglia
 
     @staticmethod
-    def _campo(genitore, griglia, etichetta, fabbrica):
-        """Etichetta e controllo sulla stessa riga della griglia: l'etichetta nasce prima, e NVDA ne prende il nome del controllo."""
-        griglia.Add(wx.StaticText(genitore, label=etichetta), 0, wx.ALIGN_CENTER_VERTICAL)
+    def _coppia(genitore, griglia, etichetta, fabbrica):
+        """
+        Etichetta e controllo sulla stessa riga della griglia: l'etichetta nasce prima, e NVDA ne prende il nome del
+        controllo. Restituisce l'etichetta e il controllo.
+        """
+        testo = wx.StaticText(genitore, label=etichetta)
+        griglia.Add(testo, 0, wx.ALIGN_CENTER_VERTICAL)
         controllo = fabbrica(genitore)
         griglia.Add(controllo, 1, wx.EXPAND)
-        return controllo
+        return testo, controllo
 
-    def _casella(self, genitore, sizer, campo):
-        etichetta, spuntata, tolta = CASELLE_DEI_FILTRI[campo]
-        casella = wx.CheckBox(genitore, label=etichetta)
-        sizer.Add(casella, 0, wx.ALL, 3)
-        casella.Bind(wx.EVT_CHECKBOX, lambda event: self._alla_casella(campo, casella.GetValue(), spuntata, tolta))
-        self._controlli_dei_filtri.append(casella)
-        self.caselle[campo] = casella
-        return casella
+    def _campo(self, genitore, griglia, etichetta, fabbrica):
+        return self._coppia(genitore, griglia, etichetta, fabbrica)[1]
 
-    def _scelta(self, genitore, griglia, campo, etichetta=None, voci=None, suono=None):
-        predefinita, voci_di_serie, suono_di_serie = SCELTE_DEI_FILTRI.get(campo, (None, None, None))
-        voci = voci if voci is not None else voci_di_serie
-        scelta = self._campo(genitore, griglia, etichetta or predefinita, lambda g: wx.Choice(g, choices=[testo for _valore, testo in voci]))
-        self.scelte[campo] = (scelta, voci)
-        suono = suono or suono_di_serie
-        scelta.Bind(wx.EVT_CHOICE, lambda event: self._alla_scelta(campo, suono))
-        self._controlli_dei_filtri.append(scelta)
-        return scelta
-
-    def _numero(self, genitore, griglia, campo):
-        etichetta, massimo, suono = NUMERI_DEI_FILTRI[campo]
-        numero = self._campo(genitore, griglia, etichetta, lambda g: wx.SpinCtrl(g, min=0, max=massimo, initial=0))
-        self.numeri[campo] = numero
-        for tipo in (wx.EVT_SPINCTRL, wx.EVT_TEXT):
-            numero.Bind(tipo, lambda event: self._al_numero(campo, suono))
-        self._controlli_dei_filtri.append(numero)
-        return numero
-
-    def _testo(self, genitore, griglia, campo):
-        etichetta, suono = TESTI_DEI_FILTRI[campo]
-        testo = self._campo(genitore, griglia, etichetta, lambda g: wx.TextCtrl(g))
-        self.testi_dei_filtri[campo] = testo
-        testo.Bind(wx.EVT_TEXT, lambda event: self._al_testo(campo, suono))
-        self._controlli_dei_filtri.append(testo)
-        return testo
+    @staticmethod
+    def _mostra_coppia(etichetta, controllo, visibile, testo):
+        """
+        La coppia di etichetta e controllo, visibile o nascosta, con l'etichetta data; vero se è cambiato qualcosa.
+        Nascosta, l'etichetta perde la sua lettera: il passo l'ha misurato, la lettera di un'etichetta nascosta porta
+        il fuoco al primo controllo visibile dopo di lei, e Alt+L senza regole finiva sul bersaglio.
+        """
+        voluto = testo if visibile else testo.replace("&", "")
+        cambiata = etichetta.GetLabel() != voluto or controllo.IsShown() != visibile
+        if etichetta.GetLabel() != voluto:
+            etichetta.SetLabel(voluto)
+        if controllo.IsShown() != visibile:
+            etichetta.Show(visibile)
+            controllo.Show(visibile)
+        return cambiata
 
     def _pulsante(self, genitore, sizer, etichetta, azione, identificativo=wx.ID_ANY):
         pulsante = wx.Button(genitore, identificativo, etichetta)
@@ -695,13 +638,10 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         return pulsante
 
     def _costruisci(self):
-        self.caselle, self.scelte, self.numeri, self.testi_dei_filtri, self.tratti = {}, {}, {}, {}, {}
         self.libro = wx.Notebook(self.pannello)
         self.aggiungi(self.libro, 1)
         self._costruisci_i_risultati(*self._pagina(NOMI_DELLE_SCHEDE[RISULTATI]))
         self._costruisci_i_filtri(*self._pagina(NOMI_DELLE_SCHEDE[FILTRI]))
-        self._costruisci_gli_altri_filtri(*self._pagina(NOMI_DELLE_SCHEDE[ALTRI_FILTRI]))
-        self._costruisci_i_filtri_degli_allenatori(*self._pagina(NOMI_DELLE_SCHEDE[FILTRI_ALLENATORI]))
         riga = wx.BoxSizer(wx.HORIZONTAL)
         self.pulsante_chiudi = self._pulsante(self.pannello, riga, "&Chiudi", self.chiudi_la_finestra, wx.ID_CLOSE)
         self.sizer.Add(riga, 0, wx.ALIGN_RIGHT | wx.ALL, 4)
@@ -709,8 +649,8 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
     def _costruisci_i_risultati(self, pagina, sizer):
         griglia = self._griglia(sizer)
         # Su più righe: wx toglie dal giro del Tab, e quindi anche dalla sua lettera, un campo a una riga in sola lettura.
-        # Senza andare a capo, dalla verifica con la lente di NVDA: il testo è una riga sola a blocchi di quaranta
-        # caratteri, e a capo a metà di un blocco il display braille lo spezzava; la riga in più è per la barra orizzontale.
+        # Senza andare a capo, dalla verifica con la lente di NVDA: a capo a metà di una frase il display braille la
+        # spezzava; la riga in più è per la barra orizzontale.
         self.situazione = self._campo(pagina, griglia, "&Situazione",
                                       lambda g: wx.TextCtrl(g, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_DONTWRAP))
         self.situazione.SetMinSize((-1, self.situazione.GetCharHeight() * 2))
@@ -718,9 +658,11 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self.casella_preset = self._campo(pagina, griglia, "&Preset dei filtri", lambda g: wx.Choice(g))
         self.casella_preset.Bind(wx.EVT_CHOICE, self._al_preset)
         self.casella_preset.Bind(wx.EVT_KILL_FOCUS, self._casella_lasciata)
-        self.etichetta_trovati = wx.StaticText(pagina, label="&" + testi.etichetta_trovati(0))
+        self.etichetta_trovati = wx.StaticText(pagina, label="&Trovati")
         sizer.Add(self.etichetta_trovati, 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
         self.elenco = ElencoVirtuale(pagina, self._testo_della_riga)
+        # Soltanto le righe degli allenatori si riscrivono a ogni domanda: dicono fino a che ora sono riservati a te, che segue l'ora vera.
+        self.elenco.riscrivi_sempre = lambda indice: indice < len(self.righe) and self.righe[indice].allenatore
         self.elenco.SetMinSize((-1, self.elenco.GetCharHeight() * 8))
         sizer.Add(self.elenco, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
         for tipo in (wx.EVT_LIST_ITEM_FOCUSED, wx.EVT_LIST_ITEM_SELECTED):
@@ -743,89 +685,52 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         sizer.Add(riga, 0, wx.ALL, 4)
 
     def _costruisci_i_filtri(self, pagina, sizer):
+        """
+        La scheda Filtri, nell'ordine del Tab: Trovati, poi nel riquadro della regola in preparazione collegamento,
+        bersaglio, caratteristica, operatore e valore, poi Aggiungi regola, Azzera, l'elenco delle regole, Ordina per e
+        Salva filtri. Il Valore è una coppia di etichetta e scelta e una di etichetta e campo: se ne vede una sola.
+        """
         griglia = self._griglia(sizer)
-        self.campo_nome = self._testo(pagina, griglia, "nome")
-        self._casella(pagina, sizer, "allenatori")
-        scatola, riquadro = self._riquadro(pagina, "Chi cercare", sizer)
-        for campo in ("liberi", "in_vendita", "del_computer", "tuoi", "ritirati"):
-            self._casella(scatola, riquadro, campo)
+        # Su più righe e senza andare a capo, come la Situazione: una riga per informazione, alto quattro righe più la barra.
+        self.campo_trovati = self._campo(pagina, griglia, "&Trovati",
+                                         lambda g: wx.TextCtrl(g, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_DONTWRAP))
+        self.campo_trovati.SetMinSize((-1, self.campo_trovati.GetCharHeight() * 5))
+        aspetto.applica(self.campo_trovati, self.impostazioni)
+        scatola, riquadro = self._riquadro(pagina, "Regola in preparazione", sizer)
+        griglia = self._griglia(riquadro)
+        testi_delle_voci = [testo for _chiave, testo in COLLEGAMENTI_DELLA_SCELTA]
+        self.etichetta_collegamento, self.scelta_collegamento = self._coppia(scatola, griglia, "Co&llegamento", lambda g: wx.Choice(g, choices=testi_delle_voci))
+        self.scelta_bersaglio = self._campo(scatola, griglia, "&Bersaglio", lambda g: wx.Choice(g, choices=[testo for _b, testo in BERSAGLI_DELLA_SCELTA]))
+        self.scelta_caratteristica = self._campo(scatola, griglia, "C&aratteristica", lambda g: wx.Choice(g))
+        self.scelta_operatore = self._campo(scatola, griglia, "&Operatore", lambda g: wx.Choice(g))
+        self.etichetta_valore_scelto, self.valore_scelto = self._coppia(scatola, griglia, "&Valore", lambda g: wx.Choice(g))
+        self.etichetta_valore_scritto, self.valore_scritto = self._coppia(scatola, griglia, "&Valore", lambda g: wx.TextCtrl(g))
+        self.valore_scritto.SetMaxLength(modulo_regole.LUNGHEZZA_MASSIMA_DEL_TESTO)
+        self.scelta_collegamento.Bind(wx.EVT_CHOICE, self._al_collegamento)
+        self.scelta_bersaglio.Bind(wx.EVT_CHOICE, self._al_bersaglio)
+        self.scelta_caratteristica.Bind(wx.EVT_CHOICE, self._alla_caratteristica)
+        self.scelta_operatore.Bind(wx.EVT_CHOICE, self._all_operatore)
+        self.valore_scelto.Bind(wx.EVT_CHOICE, self._al_valore_scelto)
+        self.valore_scritto.Bind(wx.EVT_TEXT, self._al_valore_scritto)
+        riga = wx.BoxSizer(wx.HORIZONTAL)
+        self.pulsante_aggiungi = self._pulsante(pagina, riga, "A&ggiungi regola", lambda event: self.aggiungi_la_regola())
+        self.pulsante_azzera = self._pulsante(pagina, riga, "A&zzera", lambda event: self.azzera())
+        sizer.Add(riga, 0, wx.ALL, 4)
+        sizer.Add(wx.StaticText(pagina, label="&Regole"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
+        self.regole = wx.ListBox(pagina, style=wx.LB_SINGLE)
+        self.regole.SetMinSize((-1, self.regole.GetCharHeight() * 6))
+        sizer.Add(self.regole, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
+        self.regole.Bind(wx.EVT_KEY_DOWN, self._tasto_sulle_regole)
         griglia = self._griglia(sizer)
-        self._scelta(pagina, griglia, "sesso")
-        self._scelta(pagina, griglia, "classe_migliore")
-        self._scelta(pagina, griglia, "classe_peggiore")
-        self._numero(pagina, griglia, "eta_massima")
-        self._numero(pagina, griglia, "eta_minima")
-        self._numero(pagina, griglia, "costo_massimo")
-        self._casella(pagina, sizer, "disponibili_oggi")
-        griglia = self._griglia(sizer)
-        # L'ordine cambia voci con la casella Allenatori: si riempie in _scrivi_l_ordine.
-        self.scelta_ordine = self._campo(pagina, griglia, "&Ordina per", lambda g: wx.Choice(g))
+        self._ordini = [(chiave, nome[0].upper() + nome[1:]) for chiave, nome in mercato.ORDINI]
+        self.scelta_ordine = self._campo(pagina, griglia, "Ordina &per", lambda g: wx.Choice(g, choices=[testo for _chiave, testo in self._ordini]))
         self.scelta_ordine.Bind(wx.EVT_CHOICE, self._all_ordine)
-        self._controlli_dei_filtri.append(self.scelta_ordine)
-        sizer.Add(wx.StaticText(pagina, label="&Filtri attivi"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 8)
-        self.filtri_attivi = wx.TextCtrl(pagina, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2)
-        self.filtri_attivi.SetMinSize((-1, self.filtri_attivi.GetCharHeight() * 6))
-        aspetto.applica(self.filtri_attivi, self.impostazioni)
-        sizer.Add(self.filtri_attivi, 1, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.BOTTOM, 8)
-        self._controlli_dei_filtri.append(self.filtri_attivi)
         riga = wx.BoxSizer(wx.HORIZONTAL)
         self.pulsante_salva = self._pulsante(pagina, riga, "&Salva filtri...", lambda event: self.salva_filtri())
         sizer.Add(riga, 0, wx.ALL, 4)
-
-    def _costruisci_gli_altri_filtri(self, pagina, sizer):
-        # Due colonne di riquadri, perché la pagina non diventi più alta dello schermo: l'ordine del Tab resta quello in cui nascono.
-        colonne = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(colonne, 1, wx.EXPAND)
-        sinistra, destra = wx.BoxSizer(wx.VERTICAL), wx.BoxSizer(wx.VERTICAL)
-        colonne.Add(sinistra, 1, wx.EXPAND)
-        colonne.Add(destra, 1, wx.EXPAND)
-        scatola, riquadro = self._riquadro(pagina, "Luogo", sinistra)
-        griglia = self._griglia(riquadro)
-        self._scelta(scatola, griglia, "regione", "&Regione", (("", "Qualunque"), *((regione, regione) for regione in luoghi.regioni())), "filtro_regione")
-        # La provincia cambia voci con la regione: si riempie in _scrivi_la_provincia.
-        self.scelta_provincia = self._campo(scatola, griglia, "Pro&vincia", lambda g: wx.Choice(g))
-        self.scelta_provincia.Bind(wx.EVT_CHOICE, self._alla_provincia)
-        self._controlli_dei_filtri.append(self.scelta_provincia)
-        self._testo(scatola, griglia, "comune")
-        self._testo(scatola, griglia, "polisportiva")
-        scatola, riquadro = self._riquadro(pagina, "Tratti", sinistra)
-        griglia = self._griglia(riquadro)
-        for numero, tratto in enumerate(mercato.TRATTI, 1):
-            scelta = self._campo(scatola, griglia, f"Tratto &{numero}, {ricerca.nome_criterio(tratto).lower()}",
-                                 lambda g: wx.Choice(g, choices=[testo for _valore, testo in VOCI_DEI_TRATTI]))
-            scelta.Bind(wx.EVT_CHOICE, lambda event, tratto=tratto: self._al_tratto(tratto))
-            self.tratti[tratto] = scelta
-            self._controlli_dei_filtri.append(scelta)
-        scatola, riquadro = self._riquadro(pagina, "Indole, soldi e contratto", destra)
-        griglia = self._griglia(riquadro)
-        self._scelta(scatola, griglia, "indole")
-        self._numero(scatola, griglia, "valore_minimo")
-        self._numero(scatola, griglia, "stipendio_massimo")
-        self._numero(scatola, griglia, "mesi_contratto_massimi")
-        scatola, riquadro = self._riquadro(pagina, "Salute, carriera e sessione", destra)
-        for campo in ("senza_acciacchi", "solo_ritirati_che_allenano", "solo_nuovi", "comprendi_usciti"):
-            self._casella(scatola, riquadro, campo)
-        scatola, riquadro = self._riquadro(pagina, "Condizioni", destra, 1)
-        riquadro.Add(wx.StaticText(scatola, label="Con&dizioni sulle caratteristiche"), 0, wx.LEFT | wx.RIGHT | wx.TOP, 4)
-        self.elenco_condizioni = wx.ListBox(scatola, style=wx.LB_SINGLE)
-        self.elenco_condizioni.SetMinSize((-1, self.elenco_condizioni.GetCharHeight() * 4))
-        riquadro.Add(self.elenco_condizioni, 1, wx.EXPAND | wx.ALL, 4)
-        riga = wx.BoxSizer(wx.HORIZONTAL)
-        self.pulsante_aggiungi = self._pulsante(scatola, riga, "Agg&iungi una condizione...", lambda event: self.aggiungi_condizione())
-        self.pulsante_togli = self._pulsante(scatola, riga, "Togli la condi&zione", lambda event: self.togli_condizione())
-        self.pulsante_togli_tutte = self._pulsante(scatola, riga, "Togli tutte le c&ondizioni", lambda event: self.togli_tutte_le_condizioni())
-        riquadro.Add(riga, 0, wx.ALL, 2)
-        riga = wx.BoxSizer(wx.HORIZONTAL)
-        self.pulsante_azzera = self._pulsante(pagina, riga, "Azzera &questi filtri", lambda event: self.azzera_gli_altri_filtri())
-        sizer.Add(riga, 0, wx.ALL, 4)
-
-    def _costruisci_i_filtri_degli_allenatori(self, pagina, sizer):
-        griglia = self._griglia(sizer)
-        self._scelta(pagina, griglia, "tipo_allenatore")
-        self._scelta(pagina, griglia, "visus")
-        self._scelta(pagina, griglia, "posto_attuale")
-        self._numero(pagina, griglia, "stipendio_capo_massimo")
-        self._casella(pagina, sizer, "senza_prelazione_altrui")
+        # I controlli della scheda Filtri su cui Invio porta all'elenco dei Risultati.
+        self._controlli_dei_filtri = [self.campo_trovati, self.scelta_collegamento, self.scelta_bersaglio, self.scelta_caratteristica, self.scelta_operatore,
+                                      self.valore_scelto, self.valore_scritto, self.regole, self.scelta_ordine]
 
     # I controlli dai filtri.
 
@@ -836,164 +741,307 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         if scelta.GetSelection() != posto:
             scelta.SetSelection(posto)
 
-    def _voci_dell_ordine(self):
-        ordini = mercato.ORDINI_ALLENATORI if self.filtri.allenatori else mercato.ORDINI_GIOCATORI
-        return [(chiave, nome[0].upper() + nome[1:]) for chiave, nome in ordini]
-
-    def _scrivi_l_ordine(self):
-        voci = self._voci_dell_ordine()
-        testi_delle_voci = [testo for _chiave, testo in voci]
-        if self.scelta_ordine.GetItems() != testi_delle_voci:
-            self.scelta_ordine.Set(testi_delle_voci)
-        self._metti(self.scelta_ordine, voci, self.filtri.ordine_scelto)
-        self._ordini = voci
-
-    def _voci_della_provincia(self):
-        """Le province della regione scelta, o tutte; la provincia scelta fuori regione resta, in fondo, e Filtri attivi lo dice."""
-        voci = [("", "Qualunque"), *((provincia, provincia) for provincia in luoghi.province(self.filtri.regione or None))]
-        if self.filtri.provincia and all(valore != self.filtri.provincia for valore, _testo in voci):
-            voci.append((self.filtri.provincia, self.filtri.provincia))
-        return voci
-
-    def _scrivi_la_provincia(self):
-        voci = self._voci_della_provincia()
+    def _metti_le_voci(self, scelta, voci, valore):
+        """Le voci della scelta, cambiate soltanto se sono diverse, e la scelta sul valore: il passo ha misurato che Set e SetSelection non mandano eventi."""
         testi_delle_voci = [testo for _valore, testo in voci]
-        if self.scelta_provincia.GetItems() != testi_delle_voci:
-            self.scelta_provincia.Set(testi_delle_voci)
-        self._metti(self.scelta_provincia, voci, self.filtri.provincia)
-        self._province = voci
+        if scelta.GetItems() != testi_delle_voci:
+            scelta.Set(testi_delle_voci)
+        self._metti(scelta, voci, valore)
 
-    def _scrivi_le_condizioni(self, posto=0):
-        righe = [testi.condizione_a_parole(*condizione) for condizione in self.filtri.condizioni] or [testi.NESSUNA_CONDIZIONE]
-        self._riscrivi(self.elenco_condizioni, righe, posto)
+    def _caratteristica(self):
+        return mercato.caratteristica(self.preparazione.bersaglio, self.preparazione.caratteristica)
 
-    def _scrivi_i_controlli(self):
-        """Tutti i controlli delle quattro schede dai filtri, senza che i loro gestori li prendano per cambi a mano."""
+    def _scrivi_la_preparazione(self):
+        """I controlli della regola in preparazione: il collegamento soltanto con delle regole, e il Valore della caratteristica, scelta o campo."""
+        prep = self.preparazione
+        car = self._caratteristica()
         self._applico = True
         try:
-            for campo, testo in self.testi_dei_filtri.items():
-                if testo.GetValue() != getattr(self.filtri, campo):
-                    testo.ChangeValue(getattr(self.filtri, campo))
-            for campo, casella in self.caselle.items():
-                casella.SetValue(bool(getattr(self.filtri, campo)))
-            for campo, (scelta, voci) in self.scelte.items():
-                self._metti(scelta, voci, getattr(self.filtri, campo))
-            for campo, numero in self.numeri.items():
-                valore = round(getattr(self.filtri, campo))
-                if numero.GetValue() != valore:
-                    numero.SetValue(valore)
-            for tratto, scelta in self.tratti.items():
-                self._metti(scelta, VOCI_DEI_TRATTI, self.filtri.tratti.get(tratto))
-            self._scrivi_l_ordine()
-            self._scrivi_la_provincia()
-            self._scrivi_le_condizioni()
+            cambiata = self._mostra_coppia(self.etichetta_collegamento, self.scelta_collegamento, bool(self.filtri.regole), "Co&llegamento")
+            self._metti(self.scelta_collegamento, COLLEGAMENTI_DELLA_SCELTA, prep.collegamento)
+            self._metti(self.scelta_bersaglio, BERSAGLI_DELLA_SCELTA, prep.bersaglio)
+            self._caratteristiche = [(chiave, c.nome) for chiave, c in mercato.CATALOGO[prep.bersaglio].items()]
+            self._metti_le_voci(self.scelta_caratteristica, self._caratteristiche, prep.caratteristica)
+            self._operatori = list(modulo_regole.operatori(car))
+            self._metti_le_voci(self.scelta_operatore, self._operatori, prep.operatore)
+            a_scelta = car.tipo in (modulo_regole.SCELTA, modulo_regole.SI_NO)
+            etichetta = testi.etichetta_del_valore(car)
+            cambiata = self._mostra_coppia(self.etichetta_valore_scelto, self.valore_scelto, a_scelta, etichetta) or cambiata
+            cambiata = self._mostra_coppia(self.etichetta_valore_scritto, self.valore_scritto, not a_scelta, etichetta) or cambiata
+            if a_scelta:
+                self._voci_del_valore = list(voci_del_valore(car))
+                self._metti_le_voci(self.valore_scelto, self._voci_del_valore, prep.valore)
+            elif self.valore_scritto.GetValue() != prep.valore:
+                self.valore_scritto.ChangeValue(prep.valore)
         finally:
             self._applico = False
+        if cambiata:
+            self.libro.GetPage(FILTRI).Layout()
 
-    # I cambi a mano.
+    def _scrivi_le_regole(self, posto=0):
+        """L'elenco delle regole, una riga ciascuna, o la riga che dice come si aggiungono; la linguetta e il riquadro della scheda col loro conto."""
+        regole = self.filtri.regole
+        righe = [testi.regola_a_parole(regola, i, regole) for i, regola in enumerate(regole)] or [testi.NESSUNA_REGOLA]
+        self._riscrivi(self.regole, righe, posto)
+        testo = testi.linguetta_dei_filtri(len(regole))
+        if self.libro.GetPageText(FILTRI) != testo:
+            self.libro.SetPageText(FILTRI, testo)
+            # Il riquadro della scheda dice lo stesso della linguetta: è il nome che NVDA legge entrando con Ctrl+Tab.
+            self._riquadri_delle_schede[FILTRI].SetLabel(testo)
+            self.libro.GetPage(FILTRI).Layout()
 
-    def _cambiati(self, nuovi):
+    def _scrivi_i_controlli(self):
+        """Tutti i controlli della scheda Filtri dai filtri e dalla preparazione, senza che i loro gestori li prendano per mosse."""
+        self._scrivi_le_regole()
+        self._scrivi_la_preparazione()
+        self._applico = True
+        try:
+            self._metti(self.scelta_ordine, self._ordini, self.filtri.ordine)
+        finally:
+            self._applico = False
+        self._stato_suonato = self._stato_del_valore()
+
+    # Le mosse.
+
+    def _contano(self):
+        """I filtri che contano: le regole dell'elenco, più la regola in preparazione se ha un valore valido, e l'ordine."""
+        return mercato.con_la_preparazione(self.filtri, self.preparazione)
+
+    def _lascia_la_voce_in_cima(self):
+        """Prima che la casella vada su un preset: la voce in cima tiene da parte i filtri attuali e la loro regola in preparazione."""
+        if self.scelta is None:
+            self.attuali = self.filtri
+            self._preparazione_attuale = self.preparazione
+
+    def _dopo_la_mossa(self, prima):
         """
-        I filtri nuovi, cambiati a mano: falso, e niente cambia, se sono uguali a prima. Altrimenti diventano i filtri
-        attuali, la casella va in silenzio sulla voce in cima, e se erano quelli di un tuo preset, Salva filtri ne
-        proporrà il nome.
+        Dopo ogni mossa, con prima i filtri che contavano: se contano filtri diversi, la casella va in silenzio sulla voce
+        in cima, che tiene i filtri fatti a mano, e se erano quelli di un tuo preset Salva filtri ne proporrà il nome;
+        guardare le caratteristiche col valore vuoto non la stacca dal suo preset. Poi il ricalcolo e l'annuncio,
+        ciascuno col suo ritardo dall'ultima mossa.
         """
-        if nuovi == self.filtri:
-            return False
-        if self.scelta is not None:
+        if self.scelta is not None and self._contano() != prima:
             self._origine = self.scelta if _di_gabriele(self.scelta) else None
             self.scelta = None
-        self.filtri = nuovi
-        self.attuali = nuovi.copia()
-        self._metti_la_casella(0)
-        return True
-
-    def _con(self, campo, valore):
-        nuovi = self.filtri.copia()
-        setattr(nuovi, campo, valore)
-        return nuovi
-
-    def _dopo_un_tasto(self):
-        """Dopo un tasto in un campo, un numero o una scelta: il ricalcolo e l'annuncio, ciascuno col suo ritardo dall'ultimo tasto."""
+            self._metti_la_casella(0)
+        if self.scelta is None:
+            self.attuali = self.filtri
+            self._preparazione_attuale = self.preparazione
         self._ricalcolo.chiedi()
         self._annuncio.chiedi()
 
-    def _subito(self):
-        """Dopo una casella o un pulsante, che cambiano una volta sola: il ricalcolo subito, l'annuncio col suo ritardo."""
-        self.ricalcola()
-        self._annuncio.chiedi()
+    def _con_la_preparazione(self, **campi):
+        """La regola in preparazione cambia, e la mossa conta come tale."""
+        prima = self._contano()
+        self.preparazione = dataclasses.replace(self.preparazione, **campi)
+        return prima
 
-    def _quando_ci_si_ferma(self, suono):
-        if suono:
-            self._suono_da_fare = suono
-            self._suono_fermo.chiedi()
+    def _al_collegamento(self, event=None):
+        collegamento = COLLEGAMENTI_DELLA_SCELTA[self.scelta_collegamento.GetSelection()][0]
+        if self._applico or collegamento == self.preparazione.collegamento:
+            return
+        prima = self._con_la_preparazione(collegamento=collegamento)
+        suoni.suona(SUONI_DEI_COLLEGAMENTI[collegamento])
+        self._dopo_la_mossa(prima)
+
+    def _al_bersaglio(self, event=None):
+        bersaglio = BERSAGLI_DELLA_SCELTA[self.scelta_bersaglio.GetSelection()][0]
+        if self._applico or bersaglio == self.preparazione.bersaglio:
+            return
+        prima = self._contano()
+        self.preparazione = mercato.con_il_bersaglio(self.preparazione, bersaglio)
+        self._scrivi_la_preparazione()
+        self._stato_suonato = self._stato_del_valore()
+        suoni.suona(SUONI_DEI_BERSAGLI[bersaglio])
+        self._dopo_la_mossa(prima)
+
+    def _alla_caratteristica(self, event=None):
+        chiave = self._caratteristiche[self.scelta_caratteristica.GetSelection()][0]
+        if self._applico or chiave == self.preparazione.caratteristica:
+            return
+        prima = self._contano()
+        self.preparazione = mercato.con_la_caratteristica(self.preparazione, chiave)
+        self._scrivi_la_preparazione()
+        self._stato_suonato = VUOTO
+        suoni.suona(SUONI_DEI_TIPI[self._caratteristica().tipo])
+        self._dopo_la_mossa(prima)
+
+    def _all_operatore(self, event=None):
+        operatore = self._operatori[self.scelta_operatore.GetSelection()][0]
+        if self._applico or operatore == self.preparazione.operatore:
+            return
+        prima = self._con_la_preparazione(operatore=operatore)
+        suoni.suona("regola_operatore")
+        self._dopo_la_mossa(prima)
+
+    def _al_valore_scelto(self, event=None):
+        valore = self._voci_del_valore[self.valore_scelto.GetSelection()][0]
+        if self._applico or (valore == self.preparazione.valore and type(valore) is type(self.preparazione.valore)):
+            return
+        prima = self._con_la_preparazione(valore=valore)
+        suoni.suona("regola_valore_tolto" if valore is None else "regola_valore_scelto")
+        self._dopo_la_mossa(prima)
+
+    def _al_valore_scritto(self, event=None):
+        """
+        Il valore scritto: i caratteri di controllo, come un a capo incollato, si tolgono mentre si scrive, perché la
+        porta possa ricordarlo; il suono arriva quando ci si ferma, e soltanto se il valore cambia stato.
+        """
+        if self._applico:
+            return
+        scritto = self.valore_scritto.GetValue()
+        pulito = modulo_regole.senza_caratteri_di_controllo(scritto)
+        if pulito != scritto:
+            punto = self.valore_scritto.GetInsertionPoint()
+            self.valore_scritto.ChangeValue(pulito)
+            self.valore_scritto.SetInsertionPoint(min(punto, len(pulito)))
+        if pulito == self.preparazione.valore:
+            return
+        prima = self._con_la_preparazione(valore=pulito)
+        self._suono_fermo.chiedi()
+        self._dopo_la_mossa(prima)
+
+    def _stato_del_valore(self):
+        """Lo stato della regola in preparazione: VALIDO se conta, VUOTO col Valore vuoto o su nessun valore, DA_CORREGGERE con un valore sbagliato."""
+        regola, perche = mercato.regola_pronta(self.preparazione)
+        if regola is not None:
+            return VALIDO
+        return VUOTO if perche is None else DA_CORREGGERE
 
     def _suona_quando_ci_si_ferma(self):
-        suono, self._suono_da_fare = self._suono_da_fare, None
-        if suono:
-            suoni.suona(suono)
-
-    def _alla_casella(self, campo, valore, spuntata, tolta):
-        if self._applico or not self._cambiati(self._con(campo, valore)):
-            return
-        if campo == "allenatori":
-            self._applico = True
-            try:
-                self._scrivi_l_ordine()
-            finally:
-                self._applico = False
-        suoni.suona(spuntata if valore else tolta)
-        self._subito()
-
-    def _alla_scelta(self, campo, suono):
-        scelta, voci = self.scelte[campo]
-        if self._applico or not self._cambiati(self._con(campo, voci[scelta.GetSelection()][0])):
-            return
-        if campo == "regione":
-            self._applico = True
-            try:
-                self._scrivi_la_provincia()
-            finally:
-                self._applico = False
-        suoni.suona(suono)
-        self._dopo_un_tasto()
-
-    def _alla_provincia(self, event=None):
-        if self._applico or not self._cambiati(self._con("provincia", self._province[self.scelta_provincia.GetSelection()][0])):
-            return
-        suoni.suona("filtro_provincia")
-        self._dopo_un_tasto()
+        """Il suono del valore scritto, quando ci si ferma, soltanto se il suo stato è cambiato dall'ultima volta."""
+        stato = self._stato_del_valore()
+        if stato != self._stato_suonato:
+            self._stato_suonato = stato
+            suoni.suona(SUONI_DEL_VALORE[stato])
 
     def _all_ordine(self, event=None):
-        campo = "ordine_allenatori" if self.filtri.allenatori else "ordine"
-        if self._applico or not self._cambiati(self._con(campo, self._ordini[self.scelta_ordine.GetSelection()][0])):
+        ordine = self._ordini[self.scelta_ordine.GetSelection()][0]
+        if self._applico or ordine == self.filtri.ordine:
             return
+        prima = self._contano()
+        self.filtri = dataclasses.replace(self.filtri, ordine=ordine)
         suoni.suona("mercato_ordine_cambiato")
-        self._dopo_un_tasto()
+        self._dopo_la_mossa(prima)
 
-    def _al_tratto(self, tratto):
-        voluto = VOCI_DEI_TRATTI[self.tratti[tratto].GetSelection()][0]
-        nuovi = self.filtri.copia()
-        if voluto is None:
-            nuovi.tratti.pop(tratto, None)
+    def _valore_visibile(self):
+        return self.valore_scelto if self.valore_scelto.IsShown() else self.valore_scritto
+
+    def aggiungi_la_regola(self):
+        """
+        Aggiungi regola: la regola in preparazione va in fondo all'elenco, si svuota soltanto il valore e il fuoco va
+        sulla regola nuova. Conta come un Invio: Windows preme il pulsante e porta il fuoco sull'elenco delle regole, e
+        l'Invio rimandato da NVDA, che il gancio vede arrivare lì, si mangia invece di portare ai Risultati. Con una
+        regola vuota o sbagliata l'avviso e il fuoco sul Valore; al limite delle regole il suo suono.
+        """
+        if self._ripetuta("aggiungi"):
+            return
+        nuovi, perche = mercato.aggiungi_la_regola(self.filtri, self.preparazione)
+        if perche == mercato.AL_LIMITE:
+            self.leggi(testi.regola_non_aggiunta(self.preparazione, perche), "regole_al_limite", self.regole)
+            return
+        if perche is not None:
+            self.avvisa(testi.regola_non_aggiunta(self.preparazione, perche), self._valore_visibile())
+            return
+        prima = self._contano()
+        self.filtri = nuovi
+        self.preparazione = mercato.svuota_il_valore(self.preparazione)
+        self._scrivi_le_regole(len(nuovi.regole) - 1)
+        self._scrivi_la_preparazione()
+        self._stato_suonato = VUOTO
+        self.regole.SetFocus()
+        self.ultimo_invio = dialoghi._adesso()
+        suoni.suona("regola_aggiunta")
+        self._dopo_la_mossa(prima)
+
+    def azzera(self):
+        """Azzera: toglie tutte le regole, chiedendo prima, col No già scelto, quando sono più d'una; senza regole il tasto a vuoto."""
+        if self._ripetuta("azzera"):
+            return
+        quante = len(self.filtri.regole)
+        if not quante:
+            suoni.suona("nessuna_selezione")
+            return
+        if quante > 1 and not self._conferma(testi.domanda_azzera_le_regole(quante)):
+            self._torna(self.pulsante_azzera)
+            return
+        prima = self._contano()
+        self.filtri = mercato.Filtri((), self.filtri.ordine)
+        self._scrivi_le_regole()
+        self._scrivi_la_preparazione()
+        suoni.suona("regole_azzerate")
+        self._dopo_la_mossa(prima)
+        self._torna(self.pulsante_azzera)
+
+    def _tasto_sulle_regole(self, event):
+        """
+        I tasti dell'elenco delle regole: Canc toglie la regola scelta, Ctrl+Su e Ctrl+Giù la spostano, E ed O cambiano il
+        suo collegamento. Gli altri vanno all'elenco. Il passo ha misurato che, messi in coda come quelli veri, arrivano
+        qui coi loro modificatori; il Canc vero ha il codice del tasto, quello del tastierino col blocco spento l'altro.
+        """
+        codice = event.GetKeyCode()
+        if codice in (wx.WXK_DELETE, wx.WXK_NUMPAD_DELETE) and not event.HasAnyModifiers():
+            self.togli_la_regola(event.IsAutoRepeat())
+        elif codice in (wx.WXK_UP, wx.WXK_DOWN, wx.WXK_NUMPAD_UP, wx.WXK_NUMPAD_DOWN) and event.ControlDown() and not (event.AltDown() or event.ShiftDown()):
+            self.sposta_la_regola(-1 if codice in (wx.WXK_UP, wx.WXK_NUMPAD_UP) else 1)
+        elif codice in (ord("E"), ord("O")) and not event.HasAnyModifiers():
+            self.cambia_il_collegamento(mercato.E if codice == ord("E") else mercato.O)
         else:
-            nuovi.tratti[tratto] = voluto
-        if self._applico or not self._cambiati(nuovi):
-            return
-        suoni.suona(SUONI_DEI_TRATTI[voluto])
-        self._dopo_un_tasto()
+            event.Skip()
 
-    def _al_numero(self, campo, suono):
-        if self._applico or not self._cambiati(self._con(campo, self.numeri[campo].GetValue())):
-            return
-        self._quando_ci_si_ferma(suono)
-        self._dopo_un_tasto()
+    def _regola_scelta(self):
+        """Il posto della regola scelta nell'elenco, o None, col tasto a vuoto, se non ci sono regole."""
+        posto = self.regole.GetSelection()
+        if not self.filtri.regole or posto == wx.NOT_FOUND or posto >= len(self.filtri.regole):
+            suoni.suona("nessuna_selezione")
+            return None
+        return posto
 
-    def _al_testo(self, campo, suono):
-        if self._applico or not self._cambiati(self._con(campo, self.testi_dei_filtri[campo].GetValue())):
+    def togli_la_regola(self, ripetuto=False):
+        """Canc: la regola scelta esce, e la scelta resta allo stesso posto. Un tasto tenuto giù, o un secondo Canc entro mezzo secondo, si ignora."""
+        adesso = dialoghi._adesso()
+        precedente, self._ultimo_canc = self._ultimo_canc, adesso
+        if ripetuto or adesso - precedente < dialoghi.RIPETIZIONE_IGNORATA:
             return
-        self._quando_ci_si_ferma(suono)
-        self._dopo_un_tasto()
+        posto = self._regola_scelta()
+        if posto is None:
+            return
+        prima = self._contano()
+        self.filtri = mercato.togli_la_regola(self.filtri, posto)
+        self._scrivi_le_regole(min(posto, len(self.filtri.regole) - 1))
+        self._scrivi_la_preparazione()
+        suoni.suona("regola_tolta")
+        self._dopo_la_mossa(prima)
+
+    def sposta_la_regola(self, verso):
+        """Ctrl+Su e Ctrl+Giù: la regola scelta si sposta di un posto, e la scelta la segue; al bordo il suo suono."""
+        posto = self._regola_scelta()
+        if posto is None:
+            return
+        spostata = mercato.sposta_la_regola(self.filtri, posto, verso)
+        if spostata is None:
+            suoni.suona("regola_al_bordo")
+            return
+        prima = self._contano()
+        self.filtri, nuovo = spostata
+        self._scrivi_le_regole(nuovo)
+        suoni.suona("regola_spostata_su" if verso < 0 else "regola_spostata_giu")
+        self._dopo_la_mossa(prima)
+
+    def cambia_il_collegamento(self, collegamento):
+        """E ed O sull'elenco delle regole: il collegamento della regola scelta; la prima ha sempre la e, e suona il tasto a vuoto."""
+        posto = self._regola_scelta()
+        if posto is None:
+            return
+        nuovi = mercato.cambia_il_collegamento(self.filtri, posto, collegamento)
+        if nuovi is None:
+            suoni.suona("nessuna_selezione")
+            return
+        prima = self._contano()
+        self.filtri = nuovi
+        self._scrivi_le_regole(posto)
+        suoni.suona(SUONI_DEI_COLLEGAMENTI[collegamento])
+        self._dopo_la_mossa(prima)
 
     # La casella dei preset.
 
@@ -1017,12 +1065,12 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
 
     def _al_preset(self, event=None):
         """
-        Una voce della casella dei preset: un preset si applica intero, la voce in cima riprende i filtri fatti a mano;
-        Salva filtri si apre soltanto scelto dall'elenco aperto, con Invio o col clic, mai con le frecce; la voce già
-        applicata non fa niente. Dalla verifica con la lente di NVDA: uscendo con Tab, Maiusc+Tab, Alt+lettera o
-        Ctrl+Tab dall'elenco aperto su Salva filtri, Windows manda prima l'uscita del fuoco, con la casella ancora
-        sulla voce di prima, e poi la scelta di Salva filtri, a elenco chiuso; la casella restava lì, e tornandoci NVDA
-        leggeva Salva filtri. Adesso torna in silenzio sulla voce applicata, come quando il fuoco la lascia.
+        Una voce della casella dei preset: un preset si applica intero, con le sue regole e il suo ordine, e svuota il
+        valore in preparazione; la voce in cima riprende tutto com'era, regola in preparazione compresa. Salva filtri si
+        apre soltanto scelto dall'elenco aperto, con Invio o col clic, mai con le frecce; la voce già applicata non fa
+        niente. Dalla verifica con la lente di NVDA: uscendo con Tab, Maiusc+Tab, Alt+lettera o Ctrl+Tab dall'elenco
+        aperto su Salva filtri, Windows manda prima l'uscita del fuoco, con la casella ancora sulla voce di prima, e poi
+        la scelta di Salva filtri, a elenco chiuso; adesso la casella torna in silenzio sulla voce applicata.
         """
         posto = self.casella_preset.GetSelection()
         voce = self._voce_della_casella()
@@ -1035,15 +1083,18 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         if posto == self._posto_applicato:
             return
         if voce.tipo == mercato.VOCE_ATTUALI:
-            filtri, suono = self.attuali.copia(), "filtri_attuali_ripresi"
+            self.filtri, self.preparazione, suono = self.attuali, self._preparazione_attuale, "filtri_attuali_ripresi"
         else:
-            filtri, suono = mercato.filtri_della_voce(self.filtri_di_ricerca, voce.scelta, self.attuali), "mercato_scelta_cambiata"
-        self.filtri = filtri
+            self._lascia_la_voce_in_cima()
+            self.filtri = mercato.filtri_della_voce(self.filtri_di_ricerca, voce.scelta, self.attuali)
+            self.preparazione = mercato.svuota_il_valore(self.preparazione)
+            suono = "mercato_scelta_cambiata"
         self.scelta = voce.scelta
         self._posto_applicato = posto
         self._scrivi_i_controlli()
         suoni.suona(suono)
-        self._dopo_un_tasto()
+        self._ricalcolo.chiedi()
+        self._annuncio.chiedi()
 
     def _casella_lasciata(self, event):
         """Il fuoco lascia la casella ferma su Salva filtri...: torna in silenzio sulla voce applicata."""
@@ -1069,10 +1120,16 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         return preset.nome if preset is not None else ""
 
     def salva_filtri(self):
+        """
+        Salva filtri: le regole dell'elenco e l'ordine diventano un tuo preset. La regola in preparazione che conta entra
+        come ultima regola, se le regole sono meno di 50; il dialogo dice che cosa ne è, e perché resta fuori.
+        """
         if self._ripetuta("salva_filtri"):
             return
         fuoco = dialoghi.controllo_col_fuoco()
-        with self._interno(SalvaFiltri(self, self.filtri_di_ricerca, self._nome_proposto(), self.impostazioni), "dialogo_salva_filtri") as dialogo:
+        da_salvare, esito = mercato.filtri_per_salva_filtri(self.filtri, self.preparazione)
+        nota = testi.preparazione_nel_preset(self.preparazione, esito)
+        with self._interno(SalvaFiltri(self, self.filtri_di_ricerca, self._nome_proposto(), self.impostazioni, nota), "dialogo_salva_filtri") as dialogo:
             nome = dialogo.risultato if self._modale(dialogo) == wx.ID_OK else None
         if nome is None:
             suoni.suona("annullato")
@@ -1081,15 +1138,22 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
             return
         nuovi = self.filtri_di_ricerca.copia()
         try:
-            preset, sostituito = mercato.salva_preset(nuovi, nome, self.filtri)
+            preset, sostituito = mercato.salva_preset(nuovi, nome, da_salvare)
         except ValueError as errore:
             self._metti_la_casella(self._posto_applicato)
             self.avvisa(str(errore), fuoco)
             return
         if self.preset_cambiati(nuovi, testi.esito_preset_salvato(preset.nome, sostituito), "preset_sostituito" if sostituito else "preset_salvato"):
-            # Il preset salvato è la voce scelta, che la porta riaprirà.
+            # Il preset salvato è la voce scelta, che la porta riaprirà; la voce in cima tiene da parte quello che c'era.
+            self._lascia_la_voce_in_cima()
+            if esito == mercato.AGGIUNTA:
+                self.filtri = da_salvare
+                self.preparazione = mercato.svuota_il_valore(self.preparazione)
+                self._scrivi_i_controlli()
+                self._scrivi_le_regole(len(self.filtri.regole) - 1)
             self.scelta = preset.numero
             self._metti_la_casella(mercato.posto_della_scelta(self.voci, preset.numero))
+            self._ricalcolo.chiedi()
         else:
             self._metti_la_casella(self._posto_applicato)
         self._torna(fuoco)
@@ -1098,7 +1162,7 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         """
         I preset di Gabriele dopo un'operazione: passano subito nel mondo, e l'operazione fra gli esiti della finestra,
         una riga sola per gli spostamenti di seguito dello stesso preset; la casella si rifà. Una scelta o un'origine che
-        punta a un preset eliminato torna alla voce in cima. Falso, con l'avviso, se il mondo non li prende.
+        punta a un preset eliminato torna alla voce in cima, coi filtri di adesso. Falso, con l'avviso, se il mondo non li prende.
         """
         try:
             mercato.ricorda_i_preset(self.mondo, nuovi)
@@ -1114,7 +1178,8 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         numeri = {p.numero for p in nuovi.preset}
         if _di_gabriele(self.scelta) and self.scelta not in numeri:
             self.scelta = None
-            self.attuali = self.filtri.copia()
+            self.attuali = self.filtri
+            self._preparazione_attuale = self.preparazione
         if _di_gabriele(self._origine) and self._origine not in numeri:
             self._origine = None
         self._rifai_la_casella()
@@ -1127,62 +1192,6 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         with self._interno(GestisciPreset(self, self), "dialogo_gestisci_preset") as dialogo:
             self._modale(dialogo)
         self._torna(self.pulsante_gestisci)
-
-    # Le condizioni e Azzera.
-
-    def aggiungi_condizione(self):
-        if self._ripetuta("aggiungi"):
-            return
-        with self._interno(Condizione(self, self.impostazioni), "dialogo_filtro_mercato") as dialogo:
-            nuova = dialogo.risultato if self._modale(dialogo) == wx.ID_OK else None
-        if nuova is None:
-            suoni.suona("annullato")
-            self._torna(self.pulsante_aggiungi)
-            return
-        nuovi = self.filtri.copia()
-        nuovi.condizioni = (*nuovi.condizioni, nuova)
-        self._cambiati(nuovi)
-        self._scrivi_le_condizioni(len(nuovi.condizioni) - 1)
-        self.elenco_condizioni.SetFocus()
-        suoni.suona("filtro_aggiunto")
-        self._subito()
-
-    def togli_condizione(self):
-        if self._ripetuta("togli"):
-            return
-        posto = self.elenco_condizioni.GetSelection()
-        if not self.filtri.condizioni or posto == wx.NOT_FOUND:
-            suoni.suona("nessuna_selezione")
-            return
-        nuovi = self.filtri.copia()
-        nuovi.condizioni = tuple(c for i, c in enumerate(nuovi.condizioni) if i != posto)
-        self._cambiati(nuovi)
-        self._scrivi_le_condizioni(min(posto, len(nuovi.condizioni) - 1))
-        self.elenco_condizioni.SetFocus()
-        suoni.suona("filtro_tolto")
-        self._subito()
-
-    def togli_tutte_le_condizioni(self):
-        if self._ripetuta("togli_tutte"):
-            return
-        if not self.filtri.condizioni:
-            suoni.suona("nessuna_selezione")
-            return
-        self._cambiati(self._con("condizioni", ()))
-        self._scrivi_le_condizioni()
-        self.elenco_condizioni.SetFocus()
-        suoni.suona("filtri_tutti_tolti")
-        self._subito()
-
-    def azzera_gli_altri_filtri(self):
-        if self._ripetuta("azzera"):
-            return
-        if not self._cambiati(mercato.azzera(self.filtri, mercato.CAMPI_ALTRI_FILTRI)):
-            suoni.suona("nessuna_selezione")
-            return
-        self._scrivi_i_controlli()
-        suoni.suona("filtri_azzerati")
-        self._subito()
 
     # L'elenco, il ricalcolo e l'annuncio.
 
@@ -1202,53 +1211,61 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
 
     def ricalcola(self, ripiego=0):
         """
-        L'elenco coi filtri di adesso: resta scelta la stessa persona, o il posto di ripiego, e l'etichetta, Filtri
-        attivi e le linguette si rifanno; quando l'elenco si svuota o torna pieno, il suo suono. Gli eventi dell'elenco
-        di questo momento non contano: la scheda si chiede dopo.
+        L'elenco coi filtri che contano adesso: resta scelta la stessa persona, o il posto di ripiego, e l'etichetta
+        dell'elenco e il campo Trovati si rifanno; quando l'elenco si svuota o torna pieno, il suo suono. Gli eventi
+        dell'elenco di questo momento non contano: la scheda si chiede dopo.
         """
         self._ricalcolo.ferma()
         r = self.riga()
-        self.righe = mercato.cerca(self.mondo, self.filtri, self.memoria)
-        self._ordine_delle_righe = self.filtri.ordine_scelto
+        contano = self._contano()
+        self.righe = mercato.cerca(self.mondo, contano, self.memoria)
+        self._ordine_delle_righe = contano.ordine
         posto = mercato.indice_della_persona(self.righe, r.numero, r.allenatore, ripiego) if r is not None else (0 if self.righe else None)
         self._in_ricalcolo = True
         try:
-            self.elenco.riscrivi_sempre = self.filtri.allenatori
             self.elenco.mostra(len(self.righe), posto, [testi.nome_completo(riga.persona).casefold() for riga in self.righe])
         finally:
             self._in_ricalcolo = False
         self.ultima_riga = self.elenco.col_fuoco() if self.righe else -1
-        self._aggiorna_le_etichette()
+        self._aggiorna_le_etichette(contano)
         primo = self._vuoto.pieno is None
         passaggio = self._vuoto.passaggio(bool(self.righe))
         if passaggio and not primo:
             suoni.in_coda(passaggio)
         self._scheda.chiedi()
 
-    def _aggiorna_le_etichette(self):
-        etichetta = "&" + testi.etichetta_trovati(len(self.righe), self.filtri.allenatori)
+    def _aggiorna_le_etichette(self, contano):
+        """L'etichetta dell'elenco, che NVDA legge come suo nome, coi trovati; e il campo Trovati, che tiene la riga dove sta il cursore."""
+        etichetta = testi.trovati(self.righe, contano)
         if self.etichetta_trovati.GetLabel() != etichetta:
             self.etichetta_trovati.SetLabel(etichetta)
             self.libro.GetPage(RISULTATI).Layout()
-        testo = testi.filtri_attivi(self.filtri, self.mondo)
-        if testo != self._testo_dei_filtri_attivi:
-            self.filtri_attivi.ChangeValue(testo)
-            aspetto.ridai_stile(self.filtri_attivi, self.impostazioni)
-            self._testo_dei_filtri_attivi = testo
-        for pagina, campi in ((ALTRI_FILTRI, mercato.CAMPI_ALTRI_FILTRI), (FILTRI_ALLENATORI, mercato.CAMPI_FILTRI_ALLENATORI)):
-            testo = testi.linguetta(NOMI_DELLE_SCHEDE[pagina], mercato.quanti_impostati(self.filtri, campi))
-            if self.libro.GetPageText(pagina) != testo:
-                self.libro.SetPageText(pagina, testo)
-                # Il riquadro della scheda dice lo stesso della linguetta: è il nome che NVDA legge entrando con Ctrl+Tab.
-                self._riquadri_delle_schede[pagina].SetLabel(testo)
-                self.libro.GetPage(pagina).Layout()
+        testo = testi.riepilogo_dei_trovati(self.righe, self.filtri, self.preparazione, self.mondo)
+        if testo != self._testo_dei_trovati:
+            _vero, _colonna, riga = self.campo_trovati.PositionToXY(self.campo_trovati.GetInsertionPoint())
+            self.campo_trovati.ChangeValue(testo)
+            aspetto.ridai_stile(self.campo_trovati, self.impostazioni)
+            righe = testo.count("\n") + 1
+            self.campo_trovati.SetInsertionPoint(self.campo_trovati.XYToPosition(0, min(max(riga, 0), righe - 1)))
+            self._testo_dei_trovati = testo
 
-    def annuncia(self):
-        """Il numero dei trovati alla voce e al display, al posto di quello di prima, anche con la lettura della cronaca spenta; prima, il ricalcolo che aspettava."""
+    def _testo_dell_annuncio(self):
+        return testi.annuncio_dei_trovati(self.righe, self._contano(), self.preparazione)
+
+    def annuncia(self, forzato=False):
+        """
+        I trovati alla voce e al display, al posto di quello di prima, anche con la lettura della cronaca spenta; prima,
+        il ricalcolo che aspettava. Soltanto se dice qualcosa di nuovo rispetto all'ultimo annuncio, salvo forzato, per
+        Invio nel Valore con un valore sbagliato, che dice subito il perché.
+        """
         self._annuncio.ferma()
         self._ricalcolo.subito()
+        testo = self._testo_dell_annuncio()
+        if testo == self._ultimo_annuncio and not forzato:
+            return
+        self._ultimo_annuncio = testo
         self.annunci.svuota()
-        self.annunci.annuncia([testi.etichetta_trovati(len(self.righe), self.filtri.allenatori)], {**self.impostazioni, "annunci_cronaca": True})
+        self.annunci.annuncia([testo], {**self.impostazioni, "annunci_cronaca": True})
 
     def _alla_riga(self, event):
         """Il fuoco o la selezione su una riga: la scheda la segue; la deselezione con -1 e gli eventi del ricalcolo non contano."""
@@ -1294,15 +1311,17 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
     def _elenco_col_fuoco(self, event):
         """
         L'elenco prende il fuoco: il ricalcolo che aspettava si fa adesso, prima che NVDA ne legga il nome, coi trovati,
-        e le righe; l'annuncio dei trovati non serve più, perché NVDA li dice nel nome. Dalla verifica con la lente di
-        NVDA: con una freccia sulla casella dei preset e subito Tab, Alt+T, Maiusc+Tab o Ctrl+Tab, NVDA leggeva l'elenco
-        di prima, e mezzo secondo dopo l'elenco cambiava senza che lo rileggesse.
+        e le righe; l'annuncio dei trovati non serve più, perché NVDA li dice nel nome, e conta come detto. Dalla
+        verifica con la lente di NVDA: con una freccia sulla casella dei preset e subito Tab, Alt+T, Maiusc+Tab o
+        Ctrl+Tab, NVDA leggeva l'elenco di prima, e mezzo secondo dopo l'elenco cambiava senza che lo rileggesse.
         """
         event.Skip()
         if self._in_ricalcolo:
             return
         self._ricalcolo.subito()
-        self._annuncio.ferma()
+        if self._annuncio.in_attesa:
+            self._annuncio.ferma()
+            self._ultimo_annuncio = self._testo_dell_annuncio()
 
     def vai_alla_scheda(self):
         """Invio sull'elenco, o il doppio clic: la scheda della riga, col fuoco all'inizio; con l'elenco vuoto, il tasto a vuoto."""
@@ -1332,7 +1351,7 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
 
     def _controllo_di(self, oggetto):
         """Il controllo della finestra a cui va il tasto: l'oggetto dell'evento, o il primo dei suoi genitori che la finestra conosce."""
-        noti = (self.elenco, self.scheda, self.casella_preset, self.elenco_condizioni, *self._controlli_dei_filtri)
+        noti = (self.elenco, self.scheda, self.casella_preset, *self._controlli_dei_filtri)
         while isinstance(oggetto, wx.Window) and not _stesso(oggetto, self):
             if isinstance(oggetto, wx.Button):
                 return oggetto
@@ -1346,9 +1365,10 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         """
         Il gancio dei tasti della finestra. Ogni Invio che arriva qui passa dalla grazia, una prova sola per tasto; a
         elenco aperto di una scelta va a Windows, che lo chiude. Poi Invio sull'elenco porta alla scheda, nella scheda
-        torna all'elenco, nella casella dei preset apre Salva filtri o porta all'elenco, nei filtri fa subito il
-        ricalcolo e porta all'elenco della scheda Risultati, sui pulsanti è di Windows, e i pulsanti si difendono con
-        _ripetuta. Esc nella scheda torna all'elenco. Alt+O sull'offerta oscurata, nella scheda Risultati, dice il perché.
+        torna all'elenco, nella casella dei preset apre Salva filtri o porta all'elenco, nella scheda Filtri fa subito il
+        ricalcolo e porta all'elenco dei Risultati, salvo nel Valore con un valore sbagliato; sui pulsanti è di Windows, e
+        i pulsanti si difendono con _ripetuta. Esc nella scheda torna all'elenco. Alt+O sull'offerta oscurata, nella
+        scheda Risultati, dice il perché.
         """
         codice = event.GetKeyCode()
         controllo = self._controllo_di(event.GetEventObject())
@@ -1372,18 +1392,25 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         event.Skip()
 
     def _invio(self, controllo):
-        """Invio dopo la grazia: sull'elenco delle condizioni, sulla Situazione e sulla linguetta non fa niente."""
+        """Invio dopo la grazia: sulla Situazione e sulla linguetta non fa niente."""
         if controllo is self.elenco:
             self.vai_alla_scheda()
         elif controllo is self.scheda:
             self.torna_all_elenco()
         elif controllo is self.casella_preset:
             self._invio_sulla_casella()
+        elif controllo is self.valore_scritto and self._stato_del_valore() == DA_CORREGGERE:
+            self._valore_da_correggere()
         elif any(controllo is filtro for filtro in self._controlli_dei_filtri):
             self._ai_risultati()
 
+    def _valore_da_correggere(self):
+        """Invio nel Valore con un valore sbagliato: il fuoco resta lì, col suono del campo da correggere, e l'annuncio dice subito il perché."""
+        suoni.suona("campo_da_correggere")
+        self.annuncia(forzato=True)
+
     def _ai_risultati(self):
-        """Invio in un filtro: subito il ricalcolo che aspettava, niente annuncio, e il fuoco sull'elenco della scheda Risultati."""
+        """Invio nella scheda Filtri: subito il ricalcolo che aspettava, niente annuncio, e il fuoco sull'elenco della scheda Risultati."""
         self._ricalcolo.subito()
         self._annuncio.ferma()
         if self.libro.GetSelection() != RISULTATI:
@@ -1391,7 +1418,7 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
         self.elenco.SetFocus()
 
     def _scheda_cambiata(self, event):
-        """Il cambio di scheda, con Ctrl+Tab, Ctrl+Maiusc+Tab o con Invio in un filtro, che porta ai Risultati: il suono della scheda."""
+        """Il cambio di scheda, con Ctrl+Tab, Ctrl+Maiusc+Tab o con Invio nei filtri, che porta ai Risultati: il suono della scheda."""
         event.Skip()
         pagina = event.GetSelection()
         if 0 <= pagina < len(SUONI_DELLE_SCHEDE):
@@ -1492,6 +1519,15 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
             return "cassa_insufficiente"
         return mercato.offerta_possibile(self.mondo, p, r, posto).motivo or mercato.OFFERTA_NON_POSSIBILE
 
+    def _dopo_un_esito(self, persona):
+        """
+        Dopo un esito: la memoria dimentica la persona toccata e le righe, perché uno stato può cambiare, come il libero
+        che firma e diventa tuo; poi l'elenco si ricalcola sullo stesso posto.
+        """
+        self.memoria.dimentica(persona)
+        self.memoria.dimentica_le_righe()
+        self.ricalcola(ripiego=self.riga_scelta())
+
     def offerta(self, event=None):
         """
         L'offerta alla persona della riga, secondo chi è: l'ingaggio a un libero, l'acquisto a chi è in vendita, l'offerta
@@ -1519,9 +1555,8 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
             self.esiti.allenatori.append((testo, riuscita))
         else:
             self.esiti.giocatori.append((testo, riuscita))
-            self.memoria.dimentica(r.persona)
         self.leggi(testo, suono)
-        self.ricalcola(ripiego=self.riga_scelta())
+        self._dopo_un_esito(r.persona)
         self._aggiorna_la_situazione()
         self._aggiorna_l_offerta()
         self.elenco.SetFocus()
@@ -1694,7 +1729,7 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
     def chiudi_la_finestra(self, event=None):
         """
         Chiudi, Esc e la chiusura della finestra: i rimandi si fermano e il display si svuota; una porta vera ricorda la
-        voce scelta e i filtri attuali; in risultato gli esiti.
+        voce scelta, i filtri attuali e la regola in preparazione della voce in cima; in risultato gli esiti.
         """
         if self._chiusa:
             return
@@ -1707,9 +1742,11 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
                 fila.Stop()
         self.annunci.svuota()
         if self.porta is not None:
-            # I filtri vengono dai controlli e dai preset, e fanno sempre il giro del salvataggio: se non lo facessero, la porta riaprirebbe come prima.
+            preparazione = self.preparazione if self.scelta is None else self._preparazione_attuale
+            # I filtri vengono dai controlli e dai preset, e fanno sempre il giro del salvataggio: se non lo facessero, la
+            # porta riaprirebbe come prima; la preparazione la ripulisce dai caratteri di controllo ricorda_la_porta.
             with contextlib.suppress(ValueError):
-                mercato.ricorda_la_porta(self.mondo, self.porta, mercato.StatoDellaPorta(self.scelta, self.attuali.copia()))
+                mercato.ricorda_la_porta(self.mondo, self.porta, mercato.StatoDellaPorta(self.scelta, self.attuali, preparazione))
         self.risultato = self.esiti
         self.chiudi(wx.ID_CLOSE)
 

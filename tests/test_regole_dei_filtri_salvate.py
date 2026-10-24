@@ -5,7 +5,8 @@ la scrittura severa, la lettura che ripara un pezzo alla volta e riconosce i fil
 ricorda quello che non si rileggerebbe; e le parole delle regole in testi.py, le righe dell'elenco, il valore, il
 perché di una regola in preparazione che non conta, l'etichetta dei trovati, l'annuncio e il campo Trovati.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
-Nascono il 24 ottobre 2026 sera col passo 1 del costruttore di regole.
+Nascono il 24 ottobre 2026 sera col passo 1 del costruttore di regole. Lo stesso giorno, col cambio della finestra, i
+nomi perdono il loro _a_regole, e il mondo salvato dalla finestra a schede si scrive dalle costanti storiche di archivio.py.
 """
 
 import copy
@@ -53,24 +54,24 @@ def _accessibile(testo):
 
 def _con_i_preset(m):
     """Il mondo con due preset di regole, il 2 e il 3 dopo che l'1 è stato eliminato, e ogni porta con la sua preparazione."""
-    fdr = mercato.filtri_di_ricerca_del_mondo_a_regole(m)
-    mercato.salva_preset_a_regole(fdr, "Da togliere", mercato.FiltriARegole((_regola(G, "stato", "uguale", mercato.LIBERO),)))
-    mercato.salva_preset_a_regole(fdr, "Giovani mancine", mercato.FiltriARegole((_regola(G, "sesso", "uguale", "f"), _regola(G, "mancino", "uguale", True),
+    fdr = mercato.filtri_di_ricerca_del_mondo(m)
+    mercato.salva_preset(fdr, "Da togliere", mercato.Filtri((_regola(G, "stato", "uguale", mercato.LIBERO),)))
+    mercato.salva_preset(fdr, "Giovani mancine", mercato.Filtri((_regola(G, "sesso", "uguale", "f"), _regola(G, "mancino", "uguale", True),
                                                                                  _regola(G, "eta", "minore_uguale", 20)), "valore_alto"))
-    mercato.salva_preset_a_regole(fdr, "Capi o vedenti", mercato.FiltriARegole((_regola(A, "stato", "uguale", mercato.CAPO),
+    mercato.salva_preset(fdr, "Capi o vedenti", mercato.Filtri((_regola(A, "stato", "uguale", mercato.CAPO),
                                                                                 _regola(A, "visus", "uguale", staff.VEDENTE, mercato.O)), "eta_anziano"))
     mercato.elimina_preset(fdr, 1)
-    mercato.ricorda_i_preset_a_regole(m, fdr)
-    costo = mercato.FiltriARegole((_regola(G, "stato", "uguale", mercato.SUL_MERCATO), _regola(G, "costo", "minore_uguale", 5000),
+    mercato.ricorda_i_preset(m, fdr)
+    costo = mercato.Filtri((_regola(G, "stato", "uguale", mercato.SUL_MERCATO), _regola(G, "costo", "minore_uguale", 5000),
                                    _regola(G, "stato", "uguale", mercato.SUL_MERCATO, mercato.O), _regola(G, "costo", "manca", None)), "costo_basso")
-    mercato.ricorda_la_porta_a_regole(m, "mercato", mercato.StatoDellaPorta(2, costo, mercato.Preparazione(mercato.E, G, "nome", "contiene", "ros")))
-    mercato.ricorda_la_porta_a_regole(m, "allenatori", mercato.StatoDellaPorta(3, mercato.FiltriARegole((_regola(A, "stato", "uguale", mercato.TUO),), "classe"),
+    mercato.ricorda_la_porta(m, "mercato", mercato.StatoDellaPorta(2, costo, mercato.Preparazione(mercato.E, G, "nome", "contiene", "ros")))
+    mercato.ricorda_la_porta(m, "allenatori", mercato.StatoDellaPorta(3, mercato.Filtri((_regola(A, "stato", "uguale", mercato.TUO),), "classe"),
                                                                                  mercato.Preparazione(mercato.O, A, "visus", "uguale", None)))
-    a_mano = mercato.FiltriARegole((_regola(G, "stato", "uguale", mercato.IN_ATTIVITA), _regola(G, "valore", "maggiore", 150.5),
+    a_mano = mercato.Filtri((_regola(G, "stato", "uguale", mercato.IN_ATTIVITA), _regola(G, "valore", "maggiore", 150.5),
                                     _regola(G, "classe", "migliore_uguale", 50), _regola(G, "indole", "uguale", m.giocatori[3].indole),
                                     _regola(G, "regione", "uguale", "Lombardia"), _regola(G, "nome", "contiene", "Forlì")), "numero")
-    mercato.ricorda_la_porta_a_regole(m, "ricerca", mercato.StatoDellaPorta(None, a_mano, mercato.Preparazione(mercato.E, G, "eta", "minore", "2.5")))
-    mercato.ricorda_la_porta_a_regole(m, "amichevole", mercato.StatoDellaPorta("piu_forti", mercato.FiltriARegole((_regola(G, "disponibile", "uguale", True),), "classe"),
+    mercato.ricorda_la_porta(m, "ricerca", mercato.StatoDellaPorta(None, a_mano, mercato.Preparazione(mercato.E, G, "eta", "minore", "2.5")))
+    mercato.ricorda_la_porta(m, "amichevole", mercato.StatoDellaPorta("piu_forti", mercato.Filtri((_regola(G, "disponibile", "uguale", True),), "classe"),
                                                                                  mercato.Preparazione(mercato.E, G, "mancino", "uguale", True)))
     return m
 
@@ -79,28 +80,28 @@ def _con_i_preset(m):
 
 def test_ogni_preset_di_serie_va_e_torna_dal_dizionario():
     for chiave, _nome in mercato.PRESET_DI_SERIE:
-        filtri = mercato.filtri_di_serie_a_regole(chiave)
-        assert mercato.filtri_da_dizionario_a_regole(json.loads(json.dumps(mercato.filtri_a_dizionario_a_regole(filtri)))) == filtri
-    serie = mercato.filtri_di_ricerca_di_serie_a_regole()
-    assert mercato.filtri_di_ricerca_da_dizionario_a_regole(json.loads(json.dumps(mercato.filtri_di_ricerca_a_dizionario_a_regole(serie)))) == (serie, [])
+        filtri = mercato.filtri_di_serie(chiave)
+        assert mercato.filtri_da_dizionario(json.loads(json.dumps(mercato.filtri_a_dizionario(filtri)))) == filtri
+    serie = mercato.filtri_di_ricerca_di_serie()
+    assert mercato.filtri_di_ricerca_da_dizionario(json.loads(json.dumps(mercato.filtri_di_ricerca_a_dizionario(serie)))) == (serie, [])
 
 
 def test_la_costante_storica_del_formato_10_nella_forma_delle_regole():
     """La migrazione dal 9, col cambio della finestra, darà esattamente lo stato di serie delle porte; ogni volta un documento nuovo."""
-    serie = mercato.filtri_di_ricerca_di_serie_a_regole()
-    assert archivio.filtri_di_ricerca_del_formato_10_a_regole() == mercato.filtri_di_ricerca_a_dizionario_a_regole(serie)
-    assert mercato.filtri_di_ricerca_da_dizionario_a_regole(archivio.filtri_di_ricerca_del_formato_10_a_regole()) == (serie, [])
-    primo = archivio.filtri_di_ricerca_del_formato_10_a_regole()
+    serie = mercato.filtri_di_ricerca_di_serie()
+    assert archivio.filtri_di_ricerca_del_formato_10() == mercato.filtri_di_ricerca_a_dizionario(serie)
+    assert mercato.filtri_di_ricerca_da_dizionario(archivio.filtri_di_ricerca_del_formato_10()) == (serie, [])
+    primo = archivio.filtri_di_ricerca_del_formato_10()
     primo["porte"]["mercato"]["attuali"]["regole"].append({"numero": 1})
     primo["porte"]["mercato"]["preparazione"]["valore"] = "x"
-    secondo = archivio.filtri_di_ricerca_del_formato_10_a_regole()
+    secondo = archivio.filtri_di_ricerca_del_formato_10()
     assert len(secondo["porte"]["mercato"]["attuali"]["regole"]) == 1 and secondo["porte"]["mercato"]["preparazione"]["valore"] == ""
-    assert set(archivio.PORTE_DEL_FORMATO_10_A_REGOLE) == set(mercato.PORTE)
+    assert set(archivio.PORTE_DEL_FORMATO_10) == set(mercato.PORTE)
 
 
 def test_preset_e_porte_fanno_il_giro_del_salvataggio(mondo, scritti):
     _con_i_preset(mondo)
-    blocco = mercato.filtri_di_ricerca_da_salvare_a_regole(mondo)
+    blocco = mercato.filtri_di_ricerca_da_salvare(mondo)
     assert [(p["numero"], p["nome"]) for p in blocco["preset"]] == [(2, "Giovani mancine"), (3, "Capi o vedenti")] and blocco["prossimo_preset"] == 4
     assert blocco["preset"][0]["filtri"] == {"regole": [
         {"collegamento": "e", "bersaglio": "giocatori", "caratteristica": "sesso", "operatore": "uguale", "valore": "f"},
@@ -109,50 +110,50 @@ def test_preset_e_porte_fanno_il_giro_del_salvataggio(mondo, scritti):
     assert {porta: stato["scelta"] for porta, stato in blocco["porte"].items()} == {"mercato": 2, "allenatori": 3, "ricerca": None, "amichevole": "piu_forti"}
     assert blocco["porte"]["ricerca"]["preparazione"] == {"collegamento": "e", "bersaglio": "giocatori", "caratteristica": "eta", "operatore": "minore",
                                                           "valore": "2.5"}
-    letti, avvisi = mercato.filtri_di_ricerca_da_dizionario_a_regole(json.loads(json.dumps(blocco)))
+    letti, avvisi = mercato.filtri_di_ricerca_da_dizionario(json.loads(json.dumps(blocco)))
     assert letti == mondo.filtri_di_ricerca and avvisi == [] and scritti == []
-    assert mercato.stato_della_porta_a_regole(mondo, "allenatori").preparazione == mercato.Preparazione(mercato.O, A, "visus", "uguale", None)
-    assert mercato.filtri_della_voce_a_regole(letti, 3, None).ordine == "eta_anziano"
-    assert mercato.filtri_della_voce_a_regole(letti, "mercato", None) == mercato.filtri_di_serie_a_regole("mercato")
+    assert mercato.stato_della_porta(mondo, "allenatori").preparazione == mercato.Preparazione(mercato.O, A, "visus", "uguale", None)
+    assert mercato.filtri_della_voce(letti, 3, None).ordine == "eta_anziano"
+    assert mercato.filtri_della_voce(letti, "mercato", None) == mercato.filtri_di_serie("mercato")
     with pytest.raises(KeyError):
-        mercato.filtri_della_voce_a_regole(letti, 1, None)
+        mercato.filtri_della_voce(letti, 1, None)
     with pytest.raises(KeyError):
-        mercato.stato_della_porta_a_regole(mondo, "altrove")
+        mercato.stato_della_porta(mondo, "altrove")
 
 
 def test_salvare_eliminare_e_ricordare_i_preset_di_regole(mondo):
     _con_i_preset(mondo)
-    fdr = mercato.filtri_di_ricerca_del_mondo_a_regole(mondo)
-    nuovi = mercato.FiltriARegole((_regola(G, "stato", "uguale", mercato.RITIRATO),), "eta_anziano")
-    preset, sostituito = mercato.salva_preset_a_regole(fdr, "giovani MANCINE", nuovi)
+    fdr = mercato.filtri_di_ricerca_del_mondo(mondo)
+    nuovi = mercato.Filtri((_regola(G, "stato", "uguale", mercato.RITIRATO),), "eta_anziano")
+    preset, sostituito = mercato.salva_preset(fdr, "giovani MANCINE", nuovi)
     assert sostituito and preset.numero == 2 and preset.nome == "Giovani mancine" and preset.filtri == nuovi
     with pytest.raises(ValueError, match="voce di serie"):
-        mercato.salva_preset_a_regole(fdr, "filtri attuali, NON salvati", nuovi)
+        mercato.salva_preset(fdr, "filtri attuali, NON salvati", nuovi)
     with pytest.raises(ValueError, match="la regola 1 non va"):
-        mercato.salva_preset_a_regole(fdr, "Strani", mercato.FiltriARegole((_regola(G, "eta", "minore", 20.5),)))
+        mercato.salva_preset(fdr, "Strani", mercato.Filtri((_regola(G, "eta", "minore", 20.5),)))
     # Eliminando il preset che riapre, la porta torna al suo preset di serie e tiene filtri attuali e preparazione.
     prima = fdr.porte["allenatori"]
     mercato.elimina_preset(fdr, 3)
     dopo = fdr.porte["allenatori"]
     assert dopo.scelta == "allenatori_liberi" and dopo.attuali == prima.attuali and dopo.preparazione == prima.preparazione
-    mercato.ricorda_i_preset_a_regole(mondo, fdr)
+    mercato.ricorda_i_preset(mondo, fdr)
     assert [p.numero for p in mondo.filtri_di_ricerca.preset] == [2] and mondo.filtri_di_ricerca.porte["allenatori"].scelta == "allenatori_liberi"
     assert mondo.filtri_di_ricerca.prossimo_preset == 4
 
 
 SBAGLI_DEL_MONDO = {
-    "una regola con troppi decimali": (mercato.FiltriARegole((_regola(G, "eta", "minore", 20.5),)), mercato.Preparazione()),
-    "la prima regola con la o": (mercato.FiltriARegole((_regola(G, "eta", "minore", 20, mercato.O),)), mercato.Preparazione()),
-    "cinquantuno regole": (mercato.FiltriARegole(tuple(_regola(G, "eta", "minore", n) for n in range(51))), mercato.Preparazione()),
-    "un operatore di un altro tipo": (mercato.FiltriARegole((_regola(G, "eta", "contiene", "2"),)), mercato.Preparazione()),
-    "una caratteristica dell'altro bersaglio": (mercato.FiltriARegole((_regola(G, "visus", "uguale", staff.VEDENTE),)), mercato.Preparazione()),
-    "un valore per non ha il dato": (mercato.FiltriARegole((_regola(G, "costo", "manca", 3),)), mercato.Preparazione()),
-    "un ordine che non c'è": (mercato.FiltriARegole((), "a_caso"), mercato.Preparazione()),
-    "un testo con gli spazi": (mercato.FiltriARegole((_regola(G, "nome", "contiene", " ros"),)), mercato.Preparazione()),
-    "nessuna preparazione": (mercato.FiltriARegole(), None),
-    "una preparazione dell'altro bersaglio": (mercato.FiltriARegole(), mercato.Preparazione(mercato.E, A, "valore", "maggiore", "3")),
-    "una preparazione con una voce che non c'è": (mercato.FiltriARegole(), mercato.Preparazione(mercato.E, G, "sesso", "uguale", "x")),
-    "una preparazione sì o no scritta": (mercato.FiltriARegole(), mercato.Preparazione(mercato.E, G, "mancino", "uguale", "sì")),
+    "una regola con troppi decimali": (mercato.Filtri((_regola(G, "eta", "minore", 20.5),)), mercato.Preparazione()),
+    "la prima regola con la o": (mercato.Filtri((_regola(G, "eta", "minore", 20, mercato.O),)), mercato.Preparazione()),
+    "cinquantuno regole": (mercato.Filtri(tuple(_regola(G, "eta", "minore", n) for n in range(51))), mercato.Preparazione()),
+    "un operatore di un altro tipo": (mercato.Filtri((_regola(G, "eta", "contiene", "2"),)), mercato.Preparazione()),
+    "una caratteristica dell'altro bersaglio": (mercato.Filtri((_regola(G, "visus", "uguale", staff.VEDENTE),)), mercato.Preparazione()),
+    "un valore per non ha il dato": (mercato.Filtri((_regola(G, "costo", "manca", 3),)), mercato.Preparazione()),
+    "un ordine che non c'è": (mercato.Filtri((), "a_caso"), mercato.Preparazione()),
+    "un testo con gli spazi": (mercato.Filtri((_regola(G, "nome", "contiene", " ros"),)), mercato.Preparazione()),
+    "nessuna preparazione": (mercato.Filtri(), None),
+    "una preparazione dell'altro bersaglio": (mercato.Filtri(), mercato.Preparazione(mercato.E, A, "valore", "maggiore", "3")),
+    "una preparazione con una voce che non c'è": (mercato.Filtri(), mercato.Preparazione(mercato.E, G, "sesso", "uguale", "x")),
+    "una preparazione sì o no scritta": (mercato.Filtri(), mercato.Preparazione(mercato.E, G, "mancino", "uguale", "sì")),
 }
 
 
@@ -162,16 +163,16 @@ def test_il_mondo_non_ricorda_quello_che_non_si_rileggerebbe(mondo, sbaglio):
     prima = mondo.filtri_di_ricerca.copia()
     attuali, preparazione = SBAGLI_DEL_MONDO[sbaglio]
     with pytest.raises(ValueError):
-        mercato.ricorda_la_porta_a_regole(mondo, "ricerca", mercato.StatoDellaPorta(None, attuali, preparazione))
+        mercato.ricorda_la_porta(mondo, "ricerca", mercato.StatoDellaPorta(None, attuali, preparazione))
     assert mondo.filtri_di_ricerca == prima
     with pytest.raises(KeyError):
-        mercato.ricorda_la_porta_a_regole(mondo, "altrove", prima.porte["ricerca"])
+        mercato.ricorda_la_porta(mondo, "altrove", prima.porte["ricerca"])
 
 
 def test_la_preparazione_si_ripulisce_prima_di_ricordarla(mondo):
     """L'obiezione 22 della critica: un carattere di controllo incollato nel Valore non fa più perdere lo stato della porta."""
-    stato = mercato.StatoDellaPorta(None, mercato.FiltriARegole(), mercato.Preparazione(mercato.E, G, "nome", "contiene", "ro\ts\r\n" + "x" * 60))
-    mercato.ricorda_la_porta_a_regole(mondo, "ricerca", stato)
+    stato = mercato.StatoDellaPorta(None, mercato.Filtri(), mercato.Preparazione(mercato.E, G, "nome", "contiene", "ro\ts\r\n" + "x" * 60))
+    mercato.ricorda_la_porta(mondo, "ricerca", stato)
     assert mondo.filtri_di_ricerca.porte["ricerca"].preparazione.valore == "ros" + "x" * 47
 
 
@@ -198,7 +199,7 @@ def _togli(*chiavi):
 def _attuali_di_serie(porta):
     def atteso(f):
         stato = f.porte[porta]
-        stato.attuali = mercato.filtri_di_serie_a_regole(mercato.PRESET_DELLA_PORTA[porta])
+        stato.attuali = mercato.filtri_di_serie(mercato.PRESET_DELLA_PORTA[porta])
         if stato.scelta is None:
             stato.scelta = mercato.PRESET_DELLA_PORTA[porta]
     return atteso
@@ -212,13 +213,13 @@ def _preparazione_di_serie(porta):
 
 def _filtri_del_preset_di_serie(posto):
     def atteso(f):
-        f.preset[posto].filtri = mercato.filtri_di_serie_a_regole(mercato.SERIE_DEI_FILTRI_ILLEGGIBILI)
+        f.preset[posto].filtri = mercato.filtri_di_serie(mercato.SERIE_DEI_FILTRI_ILLEGGIBILI)
     return atteso
 
 
 def _porta_di_serie(porta):
     def atteso(f):
-        f.porte[porta] = mercato.stato_di_serie_a_regole(porta)
+        f.porte[porta] = mercato.stato_di_serie(porta)
     return atteso
 
 
@@ -266,8 +267,8 @@ GUASTI = {
     "una porta in meno": (_togli("porte", "amichevole"), _porta_di_serie("amichevole"), None),
     "un preset che non c'è più": (_metti(7, "porte", "mercato", "scelta"), _scelta_di_serie("mercato"), None),
     "un preset di serie che non c'è": (_metti("inventata", "porte", "amichevole", "scelta"), _scelta_di_serie("amichevole"), None),
-    "un preset nella forma di prima": (_metti(archivio.FILTRI_VUOTI_DEL_FORMATO_10, "preset", 1, "filtri"), _filtri_del_preset_di_serie(1), mercato.FORMA_DI_PRIMA),
-    "filtri attuali nella forma di prima": (_metti({**archivio.FILTRI_VUOTI_DEL_FORMATO_10, "liberi": True}, "porte", "ricerca", "attuali"),
+    "un preset nella forma di prima": (_metti(archivio.FILTRI_VUOTI_DEL_FORMATO_10_A_SCHEDE, "preset", 1, "filtri"), _filtri_del_preset_di_serie(1), mercato.FORMA_DI_PRIMA),
+    "filtri attuali nella forma di prima": (_metti({**archivio.FILTRI_VUOTI_DEL_FORMATO_10_A_SCHEDE, "liberi": True}, "porte", "ricerca", "attuali"),
                                             _attuali_di_serie("ricerca"), mercato.FORMA_DI_PRIMA),
 }
 
@@ -276,9 +277,9 @@ GUASTI = {
 def test_la_lettura_ripara_un_pezzo_alla_volta(mondo, guasto, scritti):
     _con_i_preset(mondo)
     rovina, atteso, nel_testo = GUASTI[guasto]
-    dati = mercato.filtri_di_ricerca_da_salvare_a_regole(mondo)
+    dati = mercato.filtri_di_ricerca_da_salvare(mondo)
     rovina(dati)
-    letti, avvisi = mercato.filtri_di_ricerca_da_dizionario_a_regole(dati)
+    letti, avvisi = mercato.filtri_di_ricerca_da_dizionario(dati)
     previsto = mondo.filtri_di_ricerca.copia()
     atteso(previsto)
     assert letti == previsto and avvisi
@@ -287,31 +288,34 @@ def test_la_lettura_ripara_un_pezzo_alla_volta(mondo, guasto, scritti):
     if nel_testo:
         assert any(nel_testo in riga for riga in righe), righe
     # Quello che si è letto si riscrive e si rilegge senza riparazioni.
-    assert mercato.filtri_di_ricerca_da_dizionario_a_regole(json.loads(json.dumps(mercato.filtri_di_ricerca_a_dizionario_a_regole(letti)))) == (letti, [])
+    assert mercato.filtri_di_ricerca_da_dizionario(json.loads(json.dumps(mercato.filtri_di_ricerca_a_dizionario(letti)))) == (letti, [])
 
 
 def test_un_mondo_salvato_dalla_finestra_a_schede_si_legge_e_lo_dice(mondo):
     """Il formato 10 di prima del costruttore di regole: i preset restano col loro nome e numero, i filtri tornano di serie, e ogni avviso nomina la forma di prima."""
-    fdr = mercato.filtri_di_ricerca_del_mondo(mondo)
-    mercato.salva_preset(fdr, "Donne libere", mercato.Filtri(liberi=True, sesso="f"))
-    mercato.ricorda_i_preset(mondo, fdr)
-    mercato.ricorda_la_porta(mondo, "mercato", mercato.StatoDellaPorta(1, mercato.Filtri(liberi=True)))
-    di_prima = mercato.filtri_di_ricerca_da_salvare(mondo)
-    letti, avvisi = mercato.filtri_di_ricerca_da_dizionario_a_regole(json.loads(json.dumps(di_prima)))
+    # Dal cambio della finestra il motore a schede non c'è più: il mondo salvato da lei si scrive a mano, dalle costanti storiche.
+    def a_schede(**campi):
+        return {**archivio.FILTRI_VUOTI_DEL_FORMATO_10_A_SCHEDE, "tratti": {}, "condizioni": [], **campi}
+
+    di_prima = archivio.filtri_di_ricerca_del_formato_10_a_schede()
+    di_prima["preset"] = [{"numero": 1, "nome": "Donne libere", "filtri": a_schede(liberi=True, sesso="f")}]
+    di_prima["prossimo_preset"] = 2
+    di_prima["porte"]["mercato"] = {"scelta": 1, "attuali": a_schede(liberi=True)}
+    letti, avvisi = mercato.filtri_di_ricerca_da_dizionario(json.loads(json.dumps(di_prima)))
     assert [(p.numero, p.nome) for p in letti.preset] == [(1, "Donne libere")] and letti.prossimo_preset == 2
-    assert letti.preset[0].filtri == mercato.filtri_di_serie_a_regole(mercato.SERIE_DEI_FILTRI_ILLEGGIBILI)
-    assert letti.porte["mercato"].scelta == 1 and letti.porte["ricerca"] == mercato.stato_di_serie_a_regole("ricerca")
+    assert letti.preset[0].filtri == mercato.filtri_di_serie(mercato.SERIE_DEI_FILTRI_ILLEGGIBILI)
+    assert letti.porte["mercato"].scelta == 1 and letti.porte["ricerca"] == mercato.stato_di_serie("ricerca")
     assert all(stato.preparazione == mercato.preparazione_di_serie(porta) for porta, stato in letti.porte.items())
     assert len(avvisi) == 1 + 2 * len(mercato.PORTE)
     assert all("forma di prima del costruttore di regole" in avviso.problema for avviso in avvisi)
     # La costante storica a schede di archivio.py si riconosce allo stesso modo.
-    _letti, avvisi = mercato.filtri_di_ricerca_da_dizionario_a_regole(archivio.filtri_di_ricerca_del_formato_10())
-    assert len(avvisi) == 2 * len(mercato.PORTE) and _letti == mercato.filtri_di_ricerca_di_serie_a_regole()
+    _letti, avvisi = mercato.filtri_di_ricerca_da_dizionario(archivio.filtri_di_ricerca_del_formato_10_a_schede())
+    assert len(avvisi) == 2 * len(mercato.PORTE) and _letti == mercato.filtri_di_ricerca_di_serie()
 
 
 def test_la_lettura_non_solleva_mai_eccezioni_e_quello_che_legge_si_riscrive(mondo):
     _con_i_preset(mondo)
-    buono = mercato.filtri_di_ricerca_da_salvare_a_regole(mondo)
+    buono = mercato.filtri_di_ricerca_da_salvare(mondo)
     caso = random.Random(2424)
     valori = (None, 0, -1, 1, 2, 3, 1.5, 150.25, float("nan"), True, False, "", "x", "e", "o", "giocatori", "allenatori", "stato", "uguale", "manca",
               "mercato", [], [1], {}, {"a": 1}, {"regole": [], "ordine": "numero"})
@@ -334,8 +338,8 @@ def test_la_lettura_non_solleva_mai_eccezioni_e_quello_che_legge_si_riscrive(mon
                     dati = copy.deepcopy(caso.choice(valori))
             except (KeyError, IndexError, TypeError):
                 continue
-        letti, _avvisi = mercato.filtri_di_ricerca_da_dizionario_a_regole(dati)
-        assert mercato.filtri_di_ricerca_da_dizionario_a_regole(json.loads(json.dumps(mercato.filtri_di_ricerca_a_dizionario_a_regole(letti)))) == (letti, [])
+        letti, _avvisi = mercato.filtri_di_ricerca_da_dizionario(dati)
+        assert mercato.filtri_di_ricerca_da_dizionario(json.loads(json.dumps(mercato.filtri_di_ricerca_a_dizionario(letti)))) == (letti, [])
 
 
 # Le parole delle regole.
@@ -403,11 +407,11 @@ def test_l_etichetta_del_valore_e_il_perche_di_una_regola_che_non_conta():
 
 
 def test_i_trovati_l_annuncio_e_il_campo_trovati(mondo):
-    serie = mercato.filtri_di_serie_a_regole("mercato")
+    serie = mercato.filtri_di_serie("mercato")
     vuota = mercato.Preparazione()
-    righe = mercato.cerca_a_regole(mondo, serie)
+    righe = mercato.cerca(mondo, serie)
     giocatori = len(righe)
-    assert testi.trovati(righe, serie) == f"&Trovati: {giocatori} giocatori" and testi.trovati([], mercato.FiltriARegole()) == "&Trovati: nessuno, senza regole"
+    assert testi.trovati(righe, serie) == f"&Trovati: {giocatori} giocatori" and testi.trovati([], mercato.Filtri()) == "&Trovati: nessuno, senza regole"
     assert testi.trovati([], serie) == "&Trovati: nessuno"
     assert testi.annuncio_dei_trovati(righe, serie, vuota) == f"Trovati: {giocatori} giocatori"
     sbagliata = mercato.Preparazione(mercato.E, G, "valore", "maggiore", "1.5")
@@ -418,26 +422,26 @@ def test_i_trovati_l_annuncio_e_il_campo_trovati(mondo):
     _accessibile(campo)
     ros = dataclasses.replace(vuota, valore="ro")
     contano = mercato.con_la_preparazione(serie, ros)
-    con_ros = mercato.cerca_a_regole(mondo, contano)
+    con_ros = mercato.cerca(mondo, contano)
     assert testi.riepilogo_dei_trovati(con_ros, serie, ros, mondo).splitlines()[0] == f"{len(con_ros)} giocatori, con la regola in preparazione."
-    assert testi.riepilogo_dei_trovati([], mercato.FiltriARegole(), vuota, mondo).splitlines()[0] == "Nessuno, perché non ci sono regole."
+    assert testi.riepilogo_dei_trovati([], mercato.Filtri(), vuota, mondo).splitlines()[0] == "Nessuno, perché non ci sono regole."
     # Le alternative, quelle che mescolano i bersagli, gli allenatori in un ordine che non hanno, il costo senza polisportiva attiva.
-    due = mercato.FiltriARegole((_regola(G, "stato", "uguale", mercato.LIBERO), _regola(A, "stato", "uguale", mercato.LIBERO, mercato.O)), "valore_alto")
+    due = mercato.Filtri((_regola(G, "stato", "uguale", mercato.LIBERO), _regola(A, "stato", "uguale", mercato.LIBERO, mercato.O)), "valore_alto")
     o_preparazione = mercato.Preparazione(mercato.O, A, "sesso", "uguale", "f")
-    insieme = mercato.cerca_a_regole(mondo, mercato.con_la_preparazione(due, o_preparazione))
+    insieme = mercato.cerca(mondo, mercato.con_la_preparazione(due, o_preparazione))
     campo = testi.riepilogo_dei_trovati(insieme, due, o_preparazione, mondo)
     giocatori, allenatori = mercato.conta_le_righe(insieme)
     assert campo.splitlines() == [f"{giocatori} giocatori e {allenatori} allenatori, con la regola in preparazione.",
                                   "Le regole formano 3 alternative; la regola in preparazione va nell'alternativa 3.",
                                   "Gli allenatori non hanno il dato dell'ordine, valore, dal più alto: vanno in fondo, in ordine di classe."]
     assert testi.trovati(insieme, due) == f"&Trovati: {giocatori} giocatori e {allenatori} allenatori"
-    misto = mercato.FiltriARegole((_regola(G, "stato", "uguale", mercato.LIBERO), _regola(A, "stato", "uguale", mercato.LIBERO)), "numero")
+    misto = mercato.Filtri((_regola(G, "stato", "uguale", mercato.LIBERO), _regola(A, "stato", "uguale", mercato.LIBERO)), "numero")
     assert "Le regole mescolano giocatori e allenatori: non trovano nessuno." in testi.riepilogo_dei_trovati([], misto, vuota, mondo).splitlines()
-    solo_allenatori = mercato.FiltriARegole((_regola(A, "stato", "uguale", mercato.LIBERO),), "costo_basso")
-    trovati = mercato.cerca_a_regole(mondo, solo_allenatori)
+    solo_allenatori = mercato.Filtri((_regola(A, "stato", "uguale", mercato.LIBERO),), "costo_basso")
+    trovati = mercato.cerca(mondo, solo_allenatori)
     assert "Gli allenatori non hanno il dato dell'ordine, costo, dal più basso: sono in ordine di classe." in testi.riepilogo_dei_trovati(trovati, solo_allenatori,
                                                                                                                                      vuota, mondo)
     mondo.miapolisportiva_attiva = None
     assert testi.riepilogo_dei_trovati(trovati, solo_allenatori, vuota, mondo).endswith("perché l'ingaggio dipende dalla gloria di chi offre.")
-    costo = mercato.FiltriARegole((_regola(G, "costo", "minore", 30),), "numero")
+    costo = mercato.Filtri((_regola(G, "costo", "minore", 30),), "numero")
     assert testi.riepilogo_dei_trovati([], costo, vuota, mondo).splitlines()[-1].startswith("Senza polisportiva attiva i liberi non hanno un costo")

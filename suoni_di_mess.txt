@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 386 suoni, 360 della finestra e 26 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 339 suoni, 313 della finestra e 26 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -125,20 +125,17 @@ Finestra, polisportive, le notizie dei tuoi tesserati, 3 suoni.
 Nell'avanzamento un tuo tesserato diventa una bandiera del club: mess_fanfara_della_bandiera.
 Nell'avanzamento un tuo tesserato si ritira: mess_scarpe_al_chiodo.
 Nell'avanzamento un tuo tesserato muore o lascia lo showdown: mess_il_silenzio.
-Finestra, economia, il mercato, 8 suoni.
+Finestra, economia, il mercato, 7 suoni.
 Si apre la finestra Mercato e ricerca dal mercato, con Ctrl+K: mess_mercato_aperto.
 Nella finestra Mercato e ricerca la casella dei preset applica un preset intero, a ogni freccia: mess_mercato_mostra.
 Nella finestra Mercato e ricerca cambia l'ordine dell'elenco, con Ordina per: mess_mercato_ordine.
-Nella finestra Mercato e ricerca si apre Aggiungi una condizione, sulle caratteristiche: mess_filtro_dialogo.
-Nella finestra Mercato e ricerca una condizione sulle caratteristiche aggiunta: mess_filtro_aggiunto.
-Nella finestra Mercato e ricerca una condizione sulle caratteristiche tolta: mess_filtro_tolto.
-Nella finestra Mercato e ricerca Togli tutte le condizioni: mess_filtri_tutti_tolti.
+Nella scheda Filtri della finestra Mercato e ricerca, Aggiungi regola mette la regola in preparazione in fondo all'elenco delle regole: mess_filtro_aggiunto.
+Nella scheda Filtri della finestra Mercato e ricerca, Canc sull'elenco delle regole toglie la regola scelta: mess_filtro_tolto.
+Nella scheda Filtri della finestra Mercato e ricerca, Azzera toglie tutte le regole: mess_filtri_tutti_tolti.
 Nella finestra Mercato e ricerca Invio sull'elenco porta alla scheda del giocatore, e nella sala allenamento, nei contratti e nel pannello dei tornei la scheda del giocatore scelto: carta_girata.
-Finestra, mercato e ricerca, le schede e i preset, 17 suoni.
-Nella finestra Mercato e ricerca il passaggio alla scheda Risultati, con Ctrl+Tab o Ctrl+Maiusc+Tab, o con Invio in un filtro, che porta all'elenco: mess_scheda_risultati.
+Finestra, mercato e ricerca, le schede e i preset, 15 suoni.
+Nella finestra Mercato e ricerca il passaggio alla scheda Risultati, con Ctrl+Tab o Ctrl+Maiusc+Tab, o con Invio nella scheda Filtri, che porta all'elenco: mess_scheda_risultati.
 Nella finestra Mercato e ricerca il passaggio alla scheda Filtri, con Ctrl+Tab o Ctrl+Maiusc+Tab: mess_scheda_filtri.
-Nella finestra Mercato e ricerca il passaggio alla scheda Altri filtri, con Ctrl+Tab o Ctrl+Maiusc+Tab: mess_scheda_altri_filtri.
-Nella finestra Mercato e ricerca il passaggio alla scheda Filtri degli allenatori, con Ctrl+Tab o Ctrl+Maiusc+Tab: mess_scheda_filtri_allenatori.
 Nella finestra Mercato e ricerca la casella dei preset torna sulla voce Filtri attuali, non salvati, e con lei i filtri fatti a mano: mess_filtri_attuali_ripresi.
 Si apre Salva filtri, nella finestra Mercato e ricerca, con Invio sulla sua voce della casella dei preset, scegliendola dall'elenco aperto o col pulsante Salva filtri della scheda Filtri: mess_salva_filtri.
 Si apre Rinomina il preset, col pulsante Rinomina della gestione dei preset: mess_rinomina_preset.
@@ -152,50 +149,9 @@ Nella gestione dei preset Sposta giù porta il preset scelto un posto più giù:
 Nella gestione dei preset Sposta su sul primo preset, o Sposta giù sull'ultimo, che non si sposta oltre: mess_preset_al_bordo.
 Nella finestra Mercato e ricerca Invio o Esc nel campo della scheda della persona riportano il fuoco all'elenco, sulla stessa riga: mess_ritorno_all_elenco.
 La finestra Mercato e ricerca si chiude senza esiti da riassumere, come offerte, sfide o preset, e la vista resta com'era: mess_finestra_senza_esiti.
-Finestra, mercato e ricerca, le caselle dei filtri, 24 suoni.
-Nella finestra Mercato e ricerca si spunta la casella Allenatori invece dei giocatori, e l'elenco passa agli allenatori: mess_casella_allenatori_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Allenatori invece dei giocatori, e l'elenco torna ai giocatori: mess_casella_allenatori_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Liberi: mess_casella_liberi_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Liberi: mess_casella_liberi_tolta.
-Nella finestra Mercato e ricerca si spunta la casella In vendita da altri, solo per i giocatori: mess_casella_in_vendita_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella In vendita da altri, solo per i giocatori: mess_casella_in_vendita_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Tesserati del computer: mess_casella_del_computer_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Tesserati del computer: mess_casella_del_computer_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Tuoi tesserati: mess_casella_tuoi_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Tuoi tesserati: mess_casella_tuoi_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Ritirati, solo per i giocatori: mess_casella_ritirati_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Ritirati, solo per i giocatori: mess_casella_ritirati_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Disponibili oggi per un'amichevole: mess_casella_disponibili_oggi_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Disponibili oggi per un'amichevole: mess_casella_disponibili_oggi_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Escludi infortunati e acciaccati: mess_casella_senza_acciacchi_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Escludi infortunati e acciaccati: mess_casella_senza_acciacchi_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Solo i ritirati che allenano: mess_casella_ritirati_che_allenano_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Solo i ritirati che allenano: mess_casella_ritirati_che_allenano_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Solo i nuovi arrivati della sessione: mess_casella_solo_nuovi_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Solo i nuovi arrivati della sessione: mess_casella_solo_nuovi_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Comprendi gli usciti di scena: mess_casella_usciti_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Comprendi gli usciti di scena: mess_casella_usciti_tolta.
-Nella finestra Mercato e ricerca si spunta la casella Escludi chi è in prelazione per altri: mess_casella_senza_prelazione_spuntata.
-Nella finestra Mercato e ricerca si toglie la spunta alla casella Escludi chi è in prelazione per altri: mess_casella_senza_prelazione_tolta.
-Finestra, mercato e ricerca, le scelte e i numeri dei filtri, 18 suoni.
-Nella finestra Mercato e ricerca cambia la classe peggiore, a ogni freccia: mess_filtro_classe_peggiore.
-Nella finestra Mercato e ricerca cambia la regione, a ogni freccia: mess_filtro_regione.
-Nella finestra Mercato e ricerca cambia la provincia, a ogni freccia: mess_filtro_provincia.
-Nella finestra Mercato e ricerca uno dei nove tratti, come mancino, passa a Sì, a ogni freccia: mess_filtro_tratto_si.
-Nella finestra Mercato e ricerca uno dei nove tratti passa a No, a ogni freccia: mess_filtro_tratto_no.
-Nella finestra Mercato e ricerca uno dei nove tratti torna Indifferente, a ogni freccia: mess_filtro_tratto_indifferente.
-Nella finestra Mercato e ricerca cambia l'indole, a ogni freccia: mess_filtro_indole.
-Nella finestra Mercato e ricerca cambia il visus degli allenatori, a ogni freccia: mess_filtro_visus.
-Nella finestra Mercato e ricerca cambia il posto attuale degli allenatori, capo o assistente, a ogni freccia: mess_filtro_posto_attuale.
-Nella finestra Mercato e ricerca cambia l'età minima, quando ci si ferma: mess_filtro_eta_minima.
-Nella finestra Mercato e ricerca cambia il costo massimo, quando ci si ferma: mess_filtro_costo_massimo.
-Nella finestra Mercato e ricerca cambia il valore minimo, quando ci si ferma: mess_filtro_valore_minimo.
-Nella finestra Mercato e ricerca cambia lo stipendio massimo al mese dei giocatori, quando ci si ferma: mess_filtro_stipendio_massimo.
-Nella finestra Mercato e ricerca cambia il massimo dei mesi di contratto rimasti, quando ci si ferma: mess_filtro_mesi_contratto.
-Nella finestra Mercato e ricerca cambia lo stipendio chiesto da capo allenatore al massimo, quando ci si ferma: mess_filtro_stipendio_capo.
-Nella finestra Mercato e ricerca cambia la parte del nome del comune, quando si smette di scrivere: mess_filtro_comune.
-Nella finestra Mercato e ricerca cambia la parte del nome della polisportiva, quando si smette di scrivere: mess_filtro_polisportiva.
-Nella scheda Altri filtri della finestra Mercato e ricerca, Azzera questi filtri li riporta ai valori di serie: mess_filtri_azzerati.
+Finestra, mercato e ricerca, il bersaglio, 2 suoni.
+Nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione passa agli allenatori: mess_casella_allenatori_spuntata.
+Nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione torna ai giocatori: mess_casella_allenatori_tolta.
 Finestra, mercato e ricerca, le azioni, 4 suoni.
 Nella finestra Mercato e ricerca l'offerta a un allenatore libero apre la scelta del posto dello staff da offrire: mess_posto_da_offrire.
 Nella finestra Mercato e ricerca un'offerta che a quella persona non si può fare, come a un allenatore che allena già, a un ritirato, a chi è uscito di scena o a un tuo tesserato non in vendita: mess_offerta_non_possibile.
@@ -287,7 +243,7 @@ Finestra, contratti e allenamento, le notizie, 3 suoni.
 Nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo: mess_contratti_in_scadenza.
 Nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero: mess_contratto_scaduto.
 Nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento: mess_infortunio_in_allenamento.
-Finestra, staff, gli allenatori, 18 suoni.
+Finestra, staff, gli allenatori, 14 suoni.
 Si apre il dialogo dello staff della polisportiva, con Ctrl+H: mess_staff_aperto.
 Si apre la finestra Mercato e ricerca sugli allenatori, con Ctrl+Shift+G o con Assumi nel dialogo dello staff: mess_mercato_allenatori.
 Si apre il dialogo della cifra d'ingaggio di un allenatore: mess_cifra_ingaggio_allenatore.
@@ -302,10 +258,6 @@ Si vuole assumere un allenatore in prelazione per un'altra tua polisportiva: mes
 Si apre la scheda di un allenatore, nello staff, o nella finestra Mercato e ricerca con Invio sull'elenco: mess_scheda_allenatore.
 Si apre il diario di un allenatore: mess_diario_allenatore.
 Nella finestra Mercato e ricerca cambia il posto da offrire a un allenatore libero: mess_staff_posto_scelto.
-Nella finestra Mercato e ricerca cambia la classe migliore, a ogni freccia: mess_filtro_classe_allenatori.
-Nella finestra Mercato e ricerca cambia l'età massima, quando ci si ferma: mess_filtro_eta_allenatori.
-Nella finestra Mercato e ricerca cambia il tipo di allenatore, ex giocatori o nati allenatori, a ogni freccia: mess_filtro_tipo_allenatori.
-Nella finestra Mercato e ricerca cambia il sesso, a ogni freccia: mess_filtro_sesso_allenatori.
 Finestra, staff, le notizie, 6 suoni.
 Nell'avanzamento un allenatore del tuo staff se ne va per lo stipendio non pagato: mess_staff_partito.
 Nell'avanzamento il contratto di un allenatore del tuo staff scade senza rinnovo, e lui torna libero: mess_staff_scaduto.

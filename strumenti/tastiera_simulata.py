@@ -41,9 +41,11 @@ user32.GetFocus.restype = wintypes.HWND
 WM_KEYDOWN, WM_KEYUP, WM_CHAR, WM_SYSCHAR = 0x0100, 0x0101, 0x0102, 0x0106
 VK_TAB, VK_RETURN, VK_SHIFT, VK_CONTROL, VK_MENU, VK_ESCAPE = 0x09, 0x0D, 0x10, 0x11, 0x12, 0x1B
 VK_SPACE, VK_PRIOR, VK_NEXT, VK_END, VK_HOME, VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN = 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28
+VK_DELETE = 0x2E
 VK_LSHIFT, VK_LCONTROL, VK_LMENU = 0xA0, 0xA2, 0xA4
-# I tasti estesi, che senza il bit 24 di lParam wx leggerebbe come quelli del tastierino.
-ESTESI = frozenset({VK_PRIOR, VK_NEXT, VK_END, VK_HOME, VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN})
+# I tasti estesi, che senza il bit 24 di lParam wx leggerebbe come quelli del tastierino: dal costruttore di regole della
+# sera del 24 ottobre 2026 anche Canc, che senza quel bit è il Canc del tastierino col blocco spento.
+ESTESI = frozenset({VK_PRIOR, VK_NEXT, VK_END, VK_HOME, VK_LEFT, VK_UP, VK_RIGHT, VK_DOWN, VK_DELETE})
 # I tasti di wx per i codici di Windows che servono al gancio fatto a mano.
 _TASTI_DI_WX = {VK_RETURN: wx.WXK_RETURN, VK_ESCAPE: wx.WXK_ESCAPE, VK_TAB: wx.WXK_TAB, VK_SPACE: wx.WXK_SPACE}
 

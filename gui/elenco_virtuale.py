@@ -16,6 +16,9 @@ Le lettere iniziali le cerca l'elenco stesso, sui nomi che chi lo usa gli dà a 
 Windows: le lettere battute entro un secondo l'una dall'altra si sommano, e la stessa lettera ripetuta passa
 al nome seguente che comincia così. La ricerca di wx chiederebbe a Python il testo di tutte le righe, e
 sulle righe vere si arrende dopo mezzo secondo senza muovere la scelta: la misura del critico della issue 8.
+La sera dello stesso giorno, col costruttore di regole, le righe da riscrivere sempre si scelgono una per una, perché
+giocatori e allenatori possono stare nello stesso elenco. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import contextlib
@@ -87,7 +90,9 @@ class ElencoVirtuale(wx.ListCtrl):
     con riga(indice), e si tiene fino al ricalcolo, salvo con riscrivi_sempre, che la scrive a ogni domanda. In
     nomi i nomi in minuscolo delle righe, per la ricerca per iniziali, che chi usa l'elenco rifà a ogni
     ricalcolo; in lettere la ricerca. In richieste il numero delle domande di Windows, in scritte quello delle
-    righe scritte davvero.
+    righe scritte davvero. Dal costruttore di regole della sera del 24 ottobre 2026 riscrivi_sempre può anche essere
+    una funzione dell'indice, vera per le righe da riscrivere a ogni domanda: nella finestra, quelle degli allenatori,
+    che nello stesso elenco stanno insieme ai giocatori.
     """
 
     def __init__(self, genitore, riga, riscrivi_sempre=False, attesa=ATTESA_DELLE_LETTERE):
@@ -108,11 +113,12 @@ class ElencoVirtuale(wx.ListCtrl):
         self.richieste += 1
         if not 0 <= item < len(self._righe):
             return ""
-        testo = None if self.riscrivi_sempre else self._righe[item]
+        sempre = self.riscrivi_sempre(item) if callable(self.riscrivi_sempre) else self.riscrivi_sempre
+        testo = None if sempre else self._righe[item]
         if testo is None:
             testo = self._riga(item)
             self.scritte += 1
-            if not self.riscrivi_sempre:
+            if not sempre:
                 self._righe[item] = testo
         return testo
 

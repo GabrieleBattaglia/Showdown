@@ -87,6 +87,11 @@ preparazione. Qui c'è già la costante storica dello stato delle porte in quell
 che le prove confrontano coi preset di serie del motore nuovo; la lettura che ripara e riconosce i filtri a schede sta
 in mercato.py. La migrazione dal 9 e la lettura passano alla forma nuova col cambio della finestra, che oggi salva
 ancora i filtri a schede. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, col cambio della finestra alle due schede e al costruttore di regole, il formato 10 prende quella forma
+davvero, sempre senza cambiare numero: il salvataggio scrive regole, ordine e regola in preparazione, la migrazione dal 9
+dà filtri_di_ricerca_del_formato_10, che perde il suo _a_regole, e le costanti a schede di prima diventano _a_schede e
+restano soltanto per le prove della lettura, che le riconosce e torna ai filtri di serie con un avviso. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -598,9 +603,10 @@ def _dal_formato_8(documento):
     documento["formato"] = 9
 
 
-# I filtri del formato 10 a nessun filtro, e il preset di serie di ogni porta coi suoi filtri, costanti storiche del
-# 24 ottobre 2026: la migrazione dal 9 non legge il mercato di oggi, che col magnate di D35 cambierà forma.
-FILTRI_VUOTI_DEL_FORMATO_10 = {
+# I filtri del formato 10 a schede a nessun filtro, e il preset di serie di ogni porta coi suoi filtri, costanti storiche
+# del 24 ottobre 2026, della forma di prima del costruttore di regole: la migrazione non le dà più, e restano perché le
+# prove ci controllano che la lettura riconosca un mondo salvato dalla finestra a schede.
+FILTRI_VUOTI_DEL_FORMATO_10_A_SCHEDE = {
     "allenatori": False, "liberi": False, "in_vendita": False, "del_computer": False, "tuoi": False, "ritirati": False, "nome": "", "sesso": None,
     "classe_migliore": 0, "eta_massima": 0, "costo_massimo": 0, "disponibili_oggi": False, "ordine": "valore_alto", "ordine_allenatori": "classe",
     "classe_peggiore": 0, "eta_minima": 0, "regione": "", "provincia": "", "comune": "", "polisportiva": "", "tratti": {}, "indole": None,
@@ -608,30 +614,30 @@ FILTRI_VUOTI_DEL_FORMATO_10 = {
     "solo_nuovi": False, "comprendi_usciti": False, "condizioni": [], "tipo_allenatore": None, "visus": None, "posto_attuale": None,
     "stipendio_capo_massimo": 0, "senza_prelazione_altrui": False,
 }
-_IN_ATTIVITA_DEL_FORMATO_10 = {"liberi": True, "in_vendita": True, "del_computer": True, "tuoi": True}
-PORTE_DEL_FORMATO_10 = {
+_IN_ATTIVITA_DEL_FORMATO_10_A_SCHEDE = {"liberi": True, "in_vendita": True, "del_computer": True, "tuoi": True}
+PORTE_DEL_FORMATO_10_A_SCHEDE = {
     "mercato": ("mercato", {"liberi": True, "in_vendita": True, "ordine": "valore_alto"}),
     "allenatori": ("allenatori_liberi", {"allenatori": True, "liberi": True, "ordine_allenatori": "classe"}),
-    "ricerca": ("tutti_in_attivita", {**_IN_ATTIVITA_DEL_FORMATO_10, "ordine": "numero"}),
-    "amichevole": ("avversari_amichevole", {**_IN_ATTIVITA_DEL_FORMATO_10, "disponibili_oggi": True, "ordine": "classe"}),
+    "ricerca": ("tutti_in_attivita", {**_IN_ATTIVITA_DEL_FORMATO_10_A_SCHEDE, "ordine": "numero"}),
+    "amichevole": ("avversari_amichevole", {**_IN_ATTIVITA_DEL_FORMATO_10_A_SCHEDE, "disponibili_oggi": True, "ordine": "classe"}),
 }
 
 
-def filtri_di_ricerca_del_formato_10():
+def filtri_di_ricerca_del_formato_10_a_schede():
     """
-    I filtri della finestra Mercato e ricerca di un mondo che arriva dal formato 9, nella forma del salvataggio, da quelle
-    costanti: nessun preset, il prossimo col numero 1, e ogni porta sul suo preset di serie, coi filtri di quel preset
-    come filtri attuali. Ogni volta un documento nuovo.
+    I filtri della finestra Mercato e ricerca nella forma a schede di prima del costruttore di regole, da quelle costanti:
+    nessun preset, il prossimo col numero 1, e ogni porta sul suo preset di serie, coi filtri di quel preset come filtri
+    attuali. Ogni volta un documento nuovo.
     """
-    porte = {porta: {"scelta": scelta, "attuali": {**FILTRI_VUOTI_DEL_FORMATO_10, "tratti": {}, "condizioni": [], **filtri}}
-             for porta, (scelta, filtri) in PORTE_DEL_FORMATO_10.items()}
+    porte = {porta: {"scelta": scelta, "attuali": {**FILTRI_VUOTI_DEL_FORMATO_10_A_SCHEDE, "tratti": {}, "condizioni": [], **filtri}}
+             for porta, (scelta, filtri) in PORTE_DEL_FORMATO_10_A_SCHEDE.items()}
     return {"preset": [], "prossimo_preset": 1, "porte": porte}
 
 
 # Lo stesso stato delle porte nella forma del costruttore di regole, costante storica della sera del 24 ottobre 2026:
 # per ogni porta il preset di serie, le sue regole, il suo ordine e il bersaglio della regola in preparazione, che è su
-# Nome o numero, contiene, e vuota. Col cambio della finestra la migrazione dal 9 darà questa, al posto di quella a schede.
-PORTE_DEL_FORMATO_10_A_REGOLE = {
+# Nome o numero, contiene, e vuota. Dal cambio della finestra, la stessa sera, la migrazione dal 9 dà questa.
+PORTE_DEL_FORMATO_10 = {
     "mercato": ("mercato", [("giocatori", "stato", "uguale", "sul_mercato")], "valore_alto", "giocatori"),
     "allenatori": ("allenatori_liberi", [("allenatori", "stato", "uguale", "libero")], "classe", "allenatori"),
     "ricerca": ("tutti_in_attivita", [("giocatori", "stato", "uguale", "in_attivita")], "numero", "giocatori"),
@@ -639,14 +645,14 @@ PORTE_DEL_FORMATO_10_A_REGOLE = {
 }
 
 
-def filtri_di_ricerca_del_formato_10_a_regole():
+def filtri_di_ricerca_del_formato_10():
     """
     I filtri della finestra Mercato e ricerca di un mondo che arriva dal formato 9, nella forma del costruttore di regole:
     nessun preset, il prossimo col numero 1, e ogni porta sul suo preset di serie, con le sue regole come filtri attuali e
     la regola in preparazione di serie. Ogni volta un documento nuovo.
     """
     porte = {}
-    for porta, (scelta, regole, ordine, bersaglio) in PORTE_DEL_FORMATO_10_A_REGOLE.items():
+    for porta, (scelta, regole, ordine, bersaglio) in PORTE_DEL_FORMATO_10.items():
         attuali = {"regole": [{"collegamento": "e", "bersaglio": chi, "caratteristica": caratteristica, "operatore": operatore, "valore": valore}
                               for chi, caratteristica, operatore, valore in regole], "ordine": ordine}
         preparazione = {"collegamento": "e", "bersaglio": bersaglio, "caratteristica": "nome", "operatore": "contiene", "valore": ""}

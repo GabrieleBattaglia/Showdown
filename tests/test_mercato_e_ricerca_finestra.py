@@ -5,26 +5,23 @@ Nascono il 24 ottobre 2026 col passo della finestra. La finestra si apre sul des
 suoni e senza voce, sul mondo di tests/aiuti_mercato.py; i rimandi del ricalcolo, dell'annuncio, della scheda e dei
 suoni li fa partire la prova, gli annunci si annotano, e i dialoghi interni rispondono da un copione, al posto di
 ShowModal. I tasti arrivano in tre modi, con strumenti/tastiera_simulata.py: messi in coda, perché passino da
-IsDialogMessage come quelli veri, per l'ordine del Tab, le lettere rapide e Ctrl+Tab; mandati al controllo, per le
-frecce della casella dei preset; e come li vede il gancio dei tasti di wx, fatto a mano, per Invio, Esc e Alt+O, perché
-Windows chiama quel gancio soltanto per i tasti veri.
-Si provano: le quattro schede e le lettere, uniche in ogni scheda e che arrivano davvero, Chiudi compreso, e quelle di
-una scheda nascosta che non fanno niente; l'ordine del Tab; Ctrl+Tab coi suoni delle schede; la casella dei preset con
-le frecce, la voce già applicata, Salva filtri che si apre con Invio e dall'elenco aperto ma non con le frecce, e la
-casella che torna sulla voce applicata; Salva, la sostituzione, Rinomina e Gestisci, coi preset fra gli esiti e nel
-mondo; le porte, con Assumi che non ricorda niente; i 350 e i 1000 millesimi; la stessa persona dopo il ricalcolo;
-la scheda della persona, Invio ed Esc; la grazia di Invio, anche dopo un dialogo interno, e il doppio colpo sui
-pulsanti; le mosse finite con Alt+O; le offerte, l'amichevole, la sfida e il diario coi loro suoni; le condizioni e
-Azzera; la chiusura con e senza esiti; e nessun messaggio di Windows.
+IsDialogMessage come quelli veri, per l'ordine del Tab, le lettere rapide, Ctrl+Tab e i tasti dell'elenco delle regole;
+mandati al controllo, per le frecce della casella dei preset; e come li vede il gancio dei tasti di wx, fatto a mano, per
+Invio, Esc e Alt+O, perché Windows chiama quel gancio soltanto per i tasti veri.
 Coi collegamenti dello stesso giorno ci sono anche le prove del mercato degli allenatori di prima, che la finestra ha
-sostituito, da Ctrl+Maiusc+G e da Assumi: i liberi dal migliore coi loro filtri, l'ingaggio accettato e rifiutato col
-posto da offrire, la prelazione, la cassa vuota e le mosse finite, la scheda e il diario; e l'elenco che nasce vuoto.
-Col passo dei suoni dello stesso giorno ogni evento della finestra ha il suo preset, e le prove usano il registratore di sempre.
-Con le verifiche dello stesso giorno: ogni scheda è un riquadro col testo della linguetta, guardato anche coi nomi MSAA
-che legge NVDA; l'elenco che prende il fuoco si rifà subito; la casella lasciata su Salva filtri dall'elenco aperto torna
-sulla voce applicata; un dialogo interno fa il ricalcolo e ferma l'annuncio; la Situazione su una riga sola; la scheda
-col suo rimando anche all'apertura; i suoni in fila fermati alla chiusura; l'amichevole contro l'unico tuo che gioca; i
-massimi dei numeri del motore. Banco.apri fa partire i rimandi dell'apertura, salvo chi la vuole com'è.
+sostituito, da Ctrl+Maiusc+G e da Assumi. Col passo dei suoni dello stesso giorno ogni evento della finestra ha il suo
+preset, e le prove usano il registratore di sempre. Con le verifiche dello stesso giorno: ogni scheda è un riquadro col
+testo della linguetta, guardato anche coi nomi MSAA che legge NVDA; l'elenco che prende il fuoco si rifà subito; la
+casella lasciata su Salva filtri dall'elenco aperto torna sulla voce applicata; un dialogo interno fa il ricalcolo e
+ferma l'annuncio; la Situazione su una riga sola; la scheda col suo rimando anche all'apertura; i suoni in fila fermati
+alla chiusura; l'amichevole contro l'unico tuo che gioca.
+La sera dello stesso giorno, col costruttore di regole, le schede sono due e le prove dei 55 controlli di filtro escono:
+si provano l'ordine del Tab e le lettere uniche di ogni scheda, coi nomi MSAA del Valore; ogni tipo di caratteristica col
+suo valore, i suoi operatori e i suoi suoni; Aggiungi regola, che conta come un Invio, Azzera con la domanda, Canc col
+tasto ripetuto, Ctrl+Su e Ctrl+Giù, E ed O sull'elenco delle regole e il limite di 50; la e che lega prima della o su un
+esempio; il conto dei trovati e l'annuncio a ogni mossa, soltanto se dice qualcosa di nuovo; la casella dei preset che
+resta sul suo preset quando si guardano le caratteristiche; Invio nel Valore con un valore sbagliato; e il preset salvato,
+con la regola in preparazione, riaperto da ogni porta.
 """
 
 import ctypes
@@ -46,13 +43,19 @@ import tastiera_simulata as tastiera
 import impostazioni
 import mercato
 import mondo as modulo_mondo
+import regole as modulo_regole
 import staff
 import testi
 from costanti import LIMITE_MOVIMENTI_PER_TICK, MESI_DI_INGAGGIO
 from gui import dialoghi
 from gui import mercato_e_ricerca as finestra_mr
-from gui.mercato_e_ricerca import ALTRI_FILTRI, FILTRI, FILTRI_ALLENATORI, RISULTATI
+from gui.mercato_e_ricerca import FILTRI, RISULTATI
 from modelli import probabilita_accettazione
+
+G = mercato.GIOCATORI
+A = mercato.ALLENATORI
+E = mercato.E
+O = mercato.O
 
 
 class Attesa:
@@ -160,6 +163,18 @@ def mondo():
     return mondo_del_mercato()
 
 
+@pytest.fixture(autouse=True)
+def suoni_senza_preset_annotati(monkeypatch):
+    """
+    I sedici eventi del costruttore di regole aspettano il loro preset in suoni.SENZA_PRESET, dove tacciono senza passare
+    dal registratore del conftest: qui hanno un preset finto, così il registratore li annota come gli altri, e le prove
+    sentono che suonano dove devono.
+    """
+    import suoni
+    for evento in suoni.SENZA_PRESET:
+        monkeypatch.setitem(suoni.EVENTI, evento, f"senza_preset_{evento}")
+
+
 @pytest.fixture
 def messaggi(monkeypatch):
     finti = Messaggi()
@@ -222,6 +237,8 @@ def _pausa(chi):
     chi.__dict__.setdefault("_pressioni", {}).clear()
     chi._fine_di_un_dialogo = float("-inf")
     chi.ultimo_invio = float("-inf")
+    if hasattr(chi, "_ultimo_canc"):
+        chi._ultimo_canc = float("-inf")
 
 
 def _invio(f, controllo=None, fuori_dalla_grazia=True):
@@ -243,23 +260,72 @@ def _clic(controllo):
     tastiera.pompa()
 
 
-def _spunta(f, campo, valore=True):
-    casella = f.caselle[campo]
-    casella.SetValue(valore)
-    _clic(casella)
-
-
 def _scegli_voce(scelta, posto):
     scelta.SetSelection(posto)
     _clic(scelta)
 
 
-def _scrivi_numero(numero, valore):
-    numero.SetValue(valore)
-    evento = wx.CommandEvent(wx.wxEVT_TEXT, numero.GetId())
-    evento.SetEventObject(numero)
-    numero.GetEventHandler().ProcessEvent(evento)
-    tastiera.pompa()
+def _caratteristica(f, chiave):
+    """La caratteristica scelta nella regola in preparazione, come con le frecce."""
+    _scegli_voce(f.scelta_caratteristica, [k for k, _nome in f._caratteristiche].index(chiave))
+
+
+def _operatore(f, chiave):
+    _scegli_voce(f.scelta_operatore, [k for k, _nome in f._operatori].index(chiave))
+
+
+def _bersaglio(f, bersaglio):
+    _scegli_voce(f.scelta_bersaglio, [b for b, _nome in finestra_mr.BERSAGLI_DELLA_SCELTA].index(bersaglio))
+
+
+def _collegamento(f, collegamento):
+    _scegli_voce(f.scelta_collegamento, [c for c, _nome in finestra_mr.COLLEGAMENTI_DELLA_SCELTA].index(collegamento))
+
+
+def _valore(f, valore):
+    """Il Valore della regola in preparazione: scritto nel campo, che manda il suo evento, o scelto fra le voci."""
+    if isinstance(valore, str) and f.valore_scritto.IsShown():
+        f.valore_scritto.SetValue(valore)
+        tastiera.pompa()
+    else:
+        _scegli_voce(f.valore_scelto, [(v, type(v)) for v, _nome in f._voci_del_valore].index((valore, type(valore))))
+
+
+def _prepara(f, bersaglio, chiave, operatore, valore, collegamento=None):
+    """La regola in preparazione, una mossa per controllo, come dalla tastiera."""
+    if collegamento is not None:
+        _collegamento(f, collegamento)
+    if f.preparazione.bersaglio != bersaglio:
+        _bersaglio(f, bersaglio)
+    if f.preparazione.caratteristica != chiave:
+        _caratteristica(f, chiave)
+    if f.preparazione.operatore != operatore:
+        _operatore(f, operatore)
+    if operatore not in modulo_regole.SENZA_VALORE:
+        _valore(f, valore)
+
+
+def _aggiungi(f, *regola):
+    """Una regola nell'elenco: la preparazione, poi Aggiungi regola; dopo, una pausa, come chi preme un tasto dopo l'altro."""
+    _prepara(f, *regola)
+    _pausa(f)
+    _clic(f.pulsante_aggiungi)
+    _pausa(f)
+
+
+def _con_le_regole(f, *regole, ordine=None):
+    """Filtri messi a mano, per le prove delle azioni: come se le regole fossero state fatte, e l'elenco ricalcolato."""
+    f.filtri = mercato.Filtri(mercato.con_la_prima_e(regole), ordine or f.filtri.ordine)
+    f.preparazione = mercato.svuota_il_valore(f.preparazione)
+    f.scelta = None
+    f.attuali = f.filtri
+    f._metti_la_casella(0)
+    f._scrivi_i_controlli()
+    f.ricalcola()
+
+
+def _stato(valore, bersaglio=G, collegamento=E):
+    return mercato.Regola(collegamento, bersaglio, "stato", "uguale", valore)
 
 
 def _scegli_persona(f, numero, allenatore=False):
@@ -274,12 +340,12 @@ def _scegli_persona(f, numero, allenatore=False):
 
 
 def _focalizzabili(genitore):
-    """I controlli che prendono il fuoco dalla tastiera, nell'ordine in cui nascono, dentro i riquadri compresi."""
+    """I controlli visibili che prendono il fuoco dalla tastiera, nell'ordine in cui nascono, dentro i riquadri compresi."""
     trovati = []
     for figlio in genitore.GetChildren():
         if isinstance(figlio, wx.StaticBox):
             trovati.extend(_focalizzabili(figlio))
-        elif not isinstance(figlio, wx.StaticText) and figlio.AcceptsFocusFromKeyboard():
+        elif not isinstance(figlio, wx.StaticText) and figlio.IsShown() and figlio.AcceptsFocusFromKeyboard():
             trovati.append(figlio)
     return trovati
 
@@ -302,16 +368,8 @@ def _lettere_della_pagina(pagina):
     return lettere
 
 
-def _pagina_di(f, controllo):
-    """Il posto della scheda in cui sta il controllo, a qualunque profondità di riquadri."""
-    genitore = controllo.GetParent()
-    while genitore is not None and f.libro.FindPage(genitore) == wx.NOT_FOUND:
-        genitore = genitore.GetParent()
-    return f.libro.FindPage(genitore)
-
-
 def _fuoco_su(controllo):
-    """Vero se il fuoco è sul controllo o dentro di lui, come il campo di uno SpinCtrl; se wx non lo sa, lo dice Windows."""
+    """Vero se il fuoco è sul controllo o dentro di lui; se wx non lo sa, lo dice Windows."""
     fuoco = wx.Window.FindFocus()
     while fuoco is not None:
         if fuoco is controllo or fuoco.GetId() == controllo.GetId():
@@ -321,19 +379,28 @@ def _fuoco_su(controllo):
     return bool(maniglia) and (maniglia == controllo.GetHandle() or bool(ctypes.windll.user32.IsChild(controllo.GetHandle(), maniglia)))
 
 
+def _righe_delle_regole(f):
+    return [f.regole.GetString(i) for i in range(f.regole.GetCount())]
+
+
 # La forma della finestra e le lettere.
 
-def test_si_apre_massimizzata_col_titolo_e_le_quattro_schede(banco):
+def test_si_apre_massimizzata_col_titolo_e_le_due_schede(banco):
     f = banco.apri()
     assert f.IsMaximized() and f.GetTitle() == "Mercato e ricerca di Pat-Bologna"
-    assert [f.libro.GetPageText(i) for i in range(f.libro.GetPageCount())] == ["Risultati", "Filtri", "Altri filtri", "Filtri degli allenatori"]
+    assert [f.libro.GetPageText(i) for i in range(f.libro.GetPageCount())] == ["Risultati", "Filtri, 1 regola"]
     assert f.libro.GetSelection() == RISULTATI and _fuoco_su(f.elenco)
     assert f.GetEscapeId() == f.pulsante_chiudi.GetId()
     # Il suono della porta, e nient'altro: ci sono mosse, e l'elenco non è vuoto.
     assert banco.suonati == ["dialogo_mercato"]
     assert f.casella_preset.GetStringSelection() == mercato.nome_del_preset_di_serie("mercato")
-    assert f.etichetta_trovati.GetLabel() == "&" + testi.etichetta_trovati(len(f.righe))
+    assert f.etichetta_trovati.GetLabel() == testi.trovati(f.righe, f._contano()) == f"&Trovati: {len(f.righe)} giocatori"
     assert f.situazione.GetValue() == testi.situazione(banco.mondo)
+    # La scheda Filtri: le regole del preset, la regola in preparazione di serie sul nome, e il campo Trovati.
+    assert _righe_delle_regole(f) == ["Giocatori, stato: è sul mercato"] and f.preparazione == mercato.Preparazione(E, G, "nome", "contiene", "")
+    assert f.campo_trovati.GetValue() == testi.riepilogo_dei_trovati(f.righe, f.filtri, f.preparazione, banco.mondo)
+    assert f.valore_scritto.IsShown() and not f.valore_scelto.IsShown() and f.scelta_collegamento.IsShown()
+    assert f.scelta_ordine.GetStringSelection() == "Valore, dal più alto" and f.scelta_ordine.GetCount() == len(mercato.ORDINI) == 41
 
 
 def test_le_lettere_sono_uniche_in_ogni_scheda_e_ogni_controllo_ne_ha_una(banco):
@@ -345,18 +412,22 @@ def test_le_lettere_sono_uniche_in_ogni_scheda_e_ogni_controllo_ne_ha_una(banco)
         tutte = [lettera for _c, lettera in lettere] + ["c"]
         assert len(tutte) == len(set(tutte)), f"scheda {posto}: lettere doppie in {tutte}"
     # I controlli che contano, uno per uno, con la loro lettera.
-    attese = {RISULTATI: "spthombdg", FILTRI: "nalvutregpmizdofs", ALTRI_FILTRI: "rvmp123456789nlsaetugdizoq", FILTRI_ALLENATORI: "tvpse"}
+    attese = {RISULTATI: "spthombdg", FILTRI: "tlbaovgzrps"}
     for posto, lettere in attese.items():
         assert "".join(lettera for _c, lettera in _lettere_della_pagina(f.libro.GetPage(posto))) == lettere
+    # Con una scelta nel Valore la lettera resta la V, e senza regole il collegamento non c'è.
+    _caratteristica(f, "sesso")
+    _con_le_regole(f)
+    assert "".join(lettera for _c, lettera in _lettere_della_pagina(f.libro.GetPage(FILTRI))) == "tbaovgzrps"
 
 
 def test_le_lettere_arrivano_davvero_soltanto_nella_scheda_visibile(banco):
     f = banco.apri()
     premuti = []
-    for pulsante in [c for posto in range(4) for c in _focalizzabili(f.libro.GetPage(posto)) if isinstance(c, wx.Button)] + [f.pulsante_chiudi]:
+    for pulsante in [c for posto in range(2) for c in _focalizzabili(f.libro.GetPage(posto)) if isinstance(c, wx.Button)] + [f.pulsante_chiudi]:
         # Un gestore in cima, che annota e non lascia andare: le azioni vere non partono.
         pulsante.Bind(wx.EVT_BUTTON, lambda event, p=pulsante: premuti.append(p.GetLabel()))
-    for posto in range(4):
+    for posto in range(2):
         f.libro.SetSelection(posto)
         tastiera.pompa()
         controlli = _lettere_della_pagina(f.libro.GetPage(posto))
@@ -377,13 +448,38 @@ def test_le_lettere_arrivano_davvero_soltanto_nella_scheda_visibile(banco):
         tastiera.pompa()
         tastiera.posta_alt("c")
         assert premuti == ["&Chiudi"]
-    # Una lettera che c'è soltanto in una scheda nascosta non fa niente: la Q di Azzera questi filtri, dalla scheda Risultati.
+    # Una lettera che c'è soltanto in una scheda nascosta non fa niente: la Z di Azzera, dalla scheda Risultati.
     f.libro.SetSelection(RISULTATI)
     f.elenco.SetFocus()
     tastiera.pompa()
     premuti.clear()
-    tastiera.posta_alt("q")
+    tastiera.posta_alt("z")
     assert premuti == [] and _fuoco_su(f.elenco) and f.libro.GetSelection() == RISULTATI
+
+
+def test_le_coppie_nascoste_perdono_la_lettera_e_nvda_legge_il_nome_del_valore(banco):
+    # Dalle misure del passo: la lettera di un'etichetta nascosta portava il fuoco al primo controllo visibile dopo di lei.
+    f = banco.apri("ricerca")
+    _con_le_regole(f)
+    assert not f.scelta_collegamento.IsShown() and f.etichetta_collegamento.GetLabel() == "Collegamento"
+    f.scelta_bersaglio.SetFocus()
+    tastiera.pompa()
+    tastiera.posta_alt("l")
+    assert _fuoco_su(f.scelta_bersaglio)
+    # Il nome che NVDA legge per il Valore è la sua etichetta, che cambia con la caratteristica.
+    tastiera.posta_alt("v")
+    assert _fuoco_su(f.valore_scritto) and f.etichetta_valore_scritto.GetLabel() == testi.etichetta_del_valore(mercato.caratteristica(G, "nome"))
+    assert _nome_msaa(f.valore_scritto.GetHandle()) == "Valore, una parte del nome o del cognome, o le cifre del numero"
+    _caratteristica(f, "eta")
+    assert _nome_msaa(f.valore_scritto.GetHandle()) == "Valore, anni compiuti, da 0 a 120"
+    _caratteristica(f, "sesso")
+    assert f.valore_scelto.IsShown() and not f.valore_scritto.IsShown() and f.etichetta_valore_scritto.GetLabel().count("&") == 0
+    f.scelta_bersaglio.SetFocus()
+    tastiera.pompa()
+    tastiera.posta_alt("v")
+    assert _fuoco_su(f.valore_scelto) and _nome_msaa(f.valore_scelto.GetHandle()) == "Valore"
+    # Il limite dei 50 caratteri lo tiene il campo di Windows, EM_GETLIMITTEXT.
+    assert tastiera.user32.SendMessageW(f.valore_scritto.GetHandle(), 0x00D5, 0, 0) == modulo_regole.LUNGHEZZA_MASSIMA_DEL_TESTO == 50
 
 
 def test_l_ordine_del_tab_segue_quello_dei_controlli(banco):
@@ -391,13 +487,9 @@ def test_l_ordine_del_tab_segue_quello_dei_controlli(banco):
     attesi = {
         RISULTATI: [f.situazione, f.casella_preset, f.elenco, f.scheda, f.pulsante_offerta, f.pulsante_amichevole, f.pulsante_sfida, f.pulsante_diario,
                     f.pulsante_gestisci, f.pulsante_chiudi],
-        FILTRI: [f.campo_nome, f.caselle["allenatori"], *(f.caselle[c] for c in ("liberi", "in_vendita", "del_computer", "tuoi", "ritirati")),
-                 f.scelte["sesso"][0], f.scelte["classe_migliore"][0], f.scelte["classe_peggiore"][0], f.numeri["eta_massima"], f.numeri["eta_minima"],
-                 f.numeri["costo_massimo"], f.caselle["disponibili_oggi"], f.scelta_ordine, f.filtri_attivi, f.pulsante_salva, f.pulsante_chiudi],
-        FILTRI_ALLENATORI: [f.scelte["tipo_allenatore"][0], f.scelte["visus"][0], f.scelte["posto_attuale"][0], f.numeri["stipendio_capo_massimo"],
-                            f.caselle["senza_prelazione_altrui"], f.pulsante_chiudi],
+        FILTRI: [f.campo_trovati, f.scelta_collegamento, f.scelta_bersaglio, f.scelta_caratteristica, f.scelta_operatore, f.valore_scritto,
+                 f.pulsante_aggiungi, f.pulsante_azzera, f.regole, f.scelta_ordine, f.pulsante_salva, f.pulsante_chiudi],
     }
-    attesi[ALTRI_FILTRI] = [*(c for c, _l in _lettere_della_pagina(f.libro.GetPage(ALTRI_FILTRI))), f.pulsante_chiudi]
     for posto, controlli in attesi.items():
         f.libro.SetSelection(posto)
         tastiera.pompa()
@@ -411,11 +503,18 @@ def test_l_ordine_del_tab_segue_quello_dei_controlli(banco):
         assert _fuoco_su(f.libro)
         tastiera.posta_tasto(tastiera.VK_TAB, shift=True)
         assert _fuoco_su(f.pulsante_chiudi)
+    # Con una scelta nel Valore, il Tab passa dalla scelta; il campo nascosto non c'è.
+    _caratteristica(f, "sesso")
+    f.scelta_operatore.SetFocus()
+    tastiera.pompa()
+    tastiera.posta_tasto(tastiera.VK_TAB)
+    assert _fuoco_su(f.valore_scelto)
+    tastiera.posta_tasto(tastiera.VK_TAB)
+    assert _fuoco_su(f.pulsante_aggiungi)
 
 
 def test_ctrl_tab_cambia_scheda_da_ogni_controllo_col_suo_suono(banco):
     f = banco.apri()
-    banco.suonati.clear()
     for controllo in (f.elenco, f.scheda, f.casella_preset, f.situazione):
         f.libro.SetSelection(RISULTATI)
         controllo.SetFocus()
@@ -425,12 +524,9 @@ def test_ctrl_tab_cambia_scheda_da_ogni_controllo_col_suo_suono(banco):
         assert f.libro.GetSelection() == FILTRI and banco.suonati == ["scheda_filtri"]
         assert f.libro.GetPage(FILTRI).IsDescendant(wx.Window.FindFocus())
         tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
-        tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
-        tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
-        assert f.libro.GetSelection() == RISULTATI
-        assert banco.suonati == ["scheda_filtri", "scheda_altri_filtri", "scheda_filtri_allenatori", "scheda_risultati"]
+        assert f.libro.GetSelection() == RISULTATI and banco.suonati == ["scheda_filtri", "scheda_risultati"]
         tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True, shift=True)
-        assert f.libro.GetSelection() == FILTRI_ALLENATORI and banco.suonati[-1] == "scheda_filtri_allenatori"
+        assert f.libro.GetSelection() == FILTRI and banco.suonati[-1] == "scheda_filtri"
 
 
 # La casella dei preset.
@@ -441,25 +537,26 @@ def test_le_frecce_sulla_casella_applicano_ogni_preset_intero(banco):
     casella.SetFocus()
     tastiera.pompa()
     banco.suonati.clear()
-    # Dal preset del mercato, il secondo di serie, una freccia giù porta a Tutti in attività.
+    # Dal preset del mercato, il primo di serie, una freccia giù porta a Tutti in attività, con le sue regole e il suo ordine.
     posto = casella.GetSelection()
     tastiera.premi(casella, tastiera.VK_DOWN)
     assert casella.GetSelection() == posto + 1
     voce = f.voci[posto + 1]
     assert f.scelta == voce.scelta and f.filtri == mercato.filtri_di_serie(voce.scelta)
-    assert banco.suonati == ["mercato_scelta_cambiata"] and f.caselle["tuoi"].GetValue()
-    # Il ricalcolo e l'annuncio aspettano l'ultimo tasto: 350 e 1000 millesimi.
+    assert banco.suonati == ["mercato_scelta_cambiata"] and _righe_delle_regole(f) == ["Giocatori, stato: è in attività"]
+    assert f.scelta_ordine.GetStringSelection() == "Numero, dal più basso"
+    # Il ricalcolo e l'annuncio aspettano l'ultima mossa: 350 e 1000 millesimi.
     assert banco.pianifica.vive() == [0.35, 1.0]
     prima = len(f.righe)
     banco.pianifica.scatta(0.35)
-    assert len(f.righe) > prima and f.etichetta_trovati.GetLabel() == "&" + testi.etichetta_trovati(len(f.righe))
+    assert len(f.righe) > prima and f.etichetta_trovati.GetLabel() == testi.trovati(f.righe, f._contano())
     banco.pianifica.scatta(1.0)
-    assert banco.annunci.detti[-1] == ([testi.etichetta_trovati(len(f.righe))], True)
+    assert banco.annunci.detti[-1] == ([testi.annuncio_dei_trovati(f.righe, f._contano(), f.preparazione)], True)
     # Su, alla voce in cima: i filtri attuali, quelli di serie della porta finché non si cambia niente a mano.
     tastiera.premi(casella, tastiera.VK_UP)
     tastiera.premi(casella, tastiera.VK_UP)
     assert casella.GetSelection() == 0 and f.scelta is None and banco.suonati[-1] == "filtri_attuali_ripresi"
-    assert f.filtri == f.attuali
+    assert f.filtri == f.attuali == mercato.filtri_di_serie("mercato")
     # Con Fine si arriva a Salva filtri...: le frecce non lo aprono, e niente suona.
     banco.suonati.clear()
     tastiera.premi(casella, tastiera.VK_END)
@@ -469,6 +566,27 @@ def test_le_frecce_sulla_casella_applicano_ogni_preset_intero(banco):
     f.elenco.SetFocus()
     tastiera.pompa()
     assert casella.GetSelection() == 0 and banco.suonati == []
+
+
+def test_un_preset_svuota_il_valore_e_la_voce_in_cima_riprende_tutto_com_era(banco):
+    f = banco.apri("ricerca")
+    _valore(f, "ros")
+    assert f.scelta is None and f.casella_preset.GetSelection() == 0
+    _scegli_voce(f.casella_preset, mercato.posto_della_scelta(f.voci, "piu_forti"))
+    assert f.preparazione.valore == "" and f.valore_scritto.GetValue() == "" and f.filtri == mercato.filtri_di_serie("piu_forti")
+    _scegli_voce(f.casella_preset, 0)
+    assert f.preparazione.valore == "ros" and f.valore_scritto.GetValue() == "ros" and f.filtri == mercato.filtri_di_serie("tutti_in_attivita")
+
+
+def test_guardare_le_caratteristiche_non_stacca_la_casella_dal_suo_preset(banco):
+    # Dalla critica del costruttore: cambiare caratteristica svuota il valore e i trovati non cambiano; la casella resta.
+    f = banco.apri()
+    for chiave in ("eta", "sesso", "classe", "mancino", "costo"):
+        _caratteristica(f, chiave)
+        assert f.scelta == "mercato" and f.casella_preset.GetSelection() == f._posto_applicato != 0, chiave
+    _operatore(f, "manca")
+    # Non ha il dato conta subito, senza valore: la casella va in cima.
+    assert f.scelta is None and f.casella_preset.GetSelection() == 0
 
 
 def test_la_voce_gia_applicata_non_fa_niente(banco):
@@ -501,50 +619,75 @@ def test_salva_filtri_si_apre_con_invio_e_dall_elenco_aperto(banco):
     assert banco.dialoghi.aperti == ["SalvaFiltri", "SalvaFiltri"]
 
 
-def test_salva_filtri_salva_sostituisce_e_propone_il_nome(banco):
+def _scrivi_il_nome(nome, note=None):
+    """La risposta a Salva filtri: annota la nota sulla regola in preparazione, se c'è, scrive il nome e conferma."""
+    def risposta(dialogo):
+        assert dialogo.GetTitle() == "Salva filtri"
+        if note is not None:
+            note.append(dialogo.nota.GetValue() if dialogo.nota is not None else None)
+        dialogo.nome.SetValue(nome)
+        dialogo.conferma()
+        return dialogo.GetReturnCode()
+    return risposta
+
+
+def test_salva_filtri_salva_la_regola_in_preparazione_sostituisce_e_propone_il_nome(banco):
     f = banco.apri()
-    _spunta(f, "ritirati")
+    _valore(f, "ros")
     assert f.scelta is None and f.casella_preset.GetSelection() == 0
-
-    def scrivi(nome):
-        def risposta(dialogo):
-            assert dialogo.GetTitle() == "Salva filtri"
-            dialogo.nome.SetValue(nome)
-            dialogo.conferma()
-            return dialogo.GetReturnCode()
-        return risposta
-
-    # Il nome proposto è vuoto: i filtri vengono da un preset di serie.
-    proposte = []
-    banco.dialoghi.copione.append(lambda d: (proposte.append(d.nome.GetValue()), scrivi("  Giovani mancini ")(d))[1])
+    # Il nome proposto è vuoto: i filtri vengono da un preset di serie. La regola in preparazione conta, ed entra nel preset.
+    proposte, note = [], []
+    banco.dialoghi.copione.append(lambda d: (proposte.append(d.nome.GetValue()), _scrivi_il_nome("  Giovani mancini ", note)(d))[1])
     banco.suonati.clear()
     f.salva_filtri()
-    assert proposte == [""]
+    assert proposte == [""] and note == ["La regola in preparazione entra nel preset, come ultima regola."]
+    salvati = mercato.Filtri((_stato(mercato.SUL_MERCATO), mercato.Regola(E, G, "nome", "contiene", "ros")), "valore_alto")
     preset = banco.mondo.filtri_di_ricerca.preset
-    assert [(p.numero, p.nome) for p in preset] == [(1, "Giovani mancini")] and preset[0].filtri == f.filtri
+    assert [(p.numero, p.nome) for p in preset] == [(1, "Giovani mancini")] and preset[0].filtri == salvati == f.filtri
+    assert f.preparazione.valore == "" and _righe_delle_regole(f)[-1] == 'e nome o numero: contiene "ros"' and f.regole.GetSelection() == 1
     assert banco.suonati == ["dialogo_salva_filtri", "preset_salvato"] and f.esiti.preset == ["Preset salvato: Giovani mancini."]
-    assert f.scelta == 1 and f.casella_preset.GetStringSelection() == "Giovani mancini"
-    # Un ritocco a mano: la casella torna in cima, e Salva propone il nome del preset da cui vengono i filtri.
-    _spunta(f, "liberi", False)
+    assert f.scelta == 1 and f.casella_preset.GetStringSelection() == "Giovani mancini" and f.libro.GetPageText(FILTRI) == "Filtri, 2 regole"
+    # La voce in cima tiene da parte quello che c'era: le regole di prima e la regola in preparazione col suo valore.
+    assert f.attuali == mercato.filtri_di_serie("mercato") and f._preparazione_attuale.valore == "ros"
+    # Un ritocco a mano, l'ordine: la casella torna in cima, e Salva propone il nome del preset da cui vengono i filtri.
+    _scegli_voce(f.scelta_ordine, [k for k, _n in f._ordini].index("numero"))
     assert f.scelta is None and f._nome_proposto() == "Giovani mancini"
     # Lo stesso nome, con le maiuscole diverse: la domanda col No; al No il dialogo resta aperto, poi col Sì sostituisce.
-    banco.dialoghi.copione.extend([scrivi("GIOVANI MANCINI"), lambda d: wx.ID_CANCEL])
+    banco.dialoghi.copione.extend([_scrivi_il_nome("GIOVANI MANCINI", note), lambda d: wx.ID_CANCEL])
     _pausa(f)
     f.salva_filtri()
-    assert banco.dialoghi.domande == ["Esiste già il preset Giovani mancini: sostituirne i filtri con questi?"]
+    assert banco.dialoghi.domande == ["Esiste già il preset Giovani mancini: sostituirne i filtri con questi?"] and note[-1] is None
     assert banco.mondo.filtri_di_ricerca.preset[0].filtri != f.filtri
-    banco.dialoghi.copione.append(scrivi("giovani mancini"))
+    banco.dialoghi.copione.append(_scrivi_il_nome("giovani mancini"))
     banco.suonati.clear()
     _pausa(f)
     f.salva_filtri()
     assert banco.mondo.filtri_di_ricerca.preset[0].filtri == f.filtri and banco.mondo.filtri_di_ricerca.preset[0].nome == "Giovani mancini"
-    assert banco.suonati == ["dialogo_salva_filtri", "domanda", "preset_sostituito"]
+    assert f.filtri.ordine == "numero" and banco.suonati == ["dialogo_salva_filtri", "domanda", "preset_sostituito"]
     assert f.esiti.preset[-1] == "Preset Giovani mancini: filtri sostituiti con quelli attuali."
     # Un nome di serie non va, e lo dice col suono del campo da correggere: il dialogo resta aperto, e qui si annulla.
-    banco.dialoghi.copione.append(scrivi("Salva filtri..."))
+    banco.dialoghi.copione.append(_scrivi_il_nome("Salva filtri..."))
     _pausa(f)
     f.salva_filtri()
     assert "è il nome di una voce di serie" in banco.dialoghi.letti[-1] and "campo_da_correggere" in banco.suonati
+
+
+def test_salva_filtri_dice_quando_la_regola_in_preparazione_resta_fuori(banco):
+    f = banco.apri()
+    _prepara(f, G, "eta", "minore", "2.5")
+    note = []
+    banco.dialoghi.copione.append(_scrivi_il_nome("Con l'età sbagliata", note))
+    f.salva_filtri()
+    assert note == ["La regola in preparazione resta fuori dal preset: il punto separa le migliaia: i decimali vanno dopo la virgola, come 150,5."]
+    assert banco.mondo.filtri_di_ricerca.preset[0].filtri == mercato.filtri_di_serie("mercato") and f.preparazione.valore == "2.5"
+    # Al limite delle regole la regola in preparazione resta fuori anche se conta.
+    _pausa(f)
+    _con_le_regole(f, *([_stato(mercato.IN_ATTIVITA)] * mercato.LIMITE_DELLE_REGOLE))
+    _valore(f, "20")
+    banco.dialoghi.copione.append(_scrivi_il_nome("Cinquanta", note))
+    f.salva_filtri()
+    assert note[-1] == "La regola in preparazione resta fuori dal preset: le regole sono già 50."
+    assert len(banco.mondo.filtri_di_ricerca.preset[-1].filtri.regole) == 50 and f.preparazione.valore == "20"
 
 
 def test_gestisci_rinomina_sposta_ed_elimina(banco):
@@ -601,7 +744,7 @@ def test_gestisci_rinomina_sposta_ed_elimina(banco):
     assert banco.dialoghi.domande[-1] == "Eliminare il preset Il migliore? Le porte che lo riaprivano torneranno al loro preset di serie."
     assert [p.nome for p in banco.mondo.filtri_di_ricerca.preset] == ["Primo"] and banco.suonati[-1] == "preset_eliminato"
     # Era applicato: i filtri restano, e diventano quelli attuali, in cima alla casella.
-    assert f.scelta is None and f.casella_preset.GetSelection() == 0 and f.filtri == mercato.filtri_di_serie("piu_forti")
+    assert f.scelta is None and f.casella_preset.GetSelection() == 0 and f.filtri == f.attuali == mercato.filtri_di_serie("piu_forti")
     # Senza preset, l'elenco lo dice, e i pulsanti suonano il tasto a vuoto.
     banco.dialoghi.copione.append(gestisci([elimina]))
     _pausa(f)
@@ -618,52 +761,96 @@ def test_gestisci_rinomina_sposta_ed_elimina(banco):
 
 def test_ogni_porta_riapre_col_suo_ultimo_preset_e_assumi_non_ricorda_niente(banco):
     f = banco.apri("ricerca")
-    assert f.libro.GetSelection() == FILTRI and _fuoco_su(f.campo_nome)
+    assert f.libro.GetSelection() == FILTRI and _fuoco_su(f.valore_scritto)
     assert f.casella_preset.GetStringSelection() == mercato.nome_del_preset_di_serie("tutti_in_attivita")
-    f.campo_nome.SetValue("ros")
+    f.valore_scritto.SetValue("ros")
     f.chiudi_la_finestra()
     assert f.GetReturnCode() == wx.ID_CLOSE and f.risultato.vuoti
     stato = mercato.stato_della_porta(banco.mondo, "ricerca")
-    assert stato.scelta is None and stato.attuali.nome == "ros"
+    assert stato.scelta is None and stato.preparazione == mercato.Preparazione(E, G, "nome", "contiene", "ros")
     g = banco.apri("ricerca")
-    assert g.campo_nome.GetValue() == "ros" and g.casella_preset.GetSelection() == 0 and g.filtri == stato.attuali
+    assert g.valore_scritto.GetValue() == "ros" and g.casella_preset.GetSelection() == 0 and g.filtri == stato.attuali
+    assert all("ros" in testi.nome_completo(r.persona).casefold() for r in g.righe)
+    # Ctrl+F rimette la preparazione sul nome, anche se l'ultima volta era su un'altra caratteristica.
+    _caratteristica(g, "eta")
+    _valore(g, "30")
+    g.chiudi_la_finestra()
+    assert mercato.stato_della_porta(banco.mondo, "ricerca").preparazione == mercato.Preparazione(E, G, "eta", "uguale", "30")
+    h = banco.apri("ricerca")
+    assert h.preparazione == mercato.Preparazione(E, G, "nome", "contiene", "") and _fuoco_su(h.valore_scritto)
     # Le altre porte non cambiano; Assumi apre sugli allenatori liberi, e alla chiusura non ricorda niente.
     a = banco.apri(None, posto=2)
-    assert a.filtri == mercato.filtri_di_serie("allenatori_liberi") and a.scelta == "allenatori_liberi"
+    assert a.filtri == mercato.filtri_di_serie("allenatori_liberi") and a.scelta == "allenatori_liberi" and a.preparazione.bersaglio == A
     assert banco.suonati[-1] == "dialogo_mercato_allenatori"
-    _spunta(a, "tuoi")
+    _scegli_voce(a.scelta_ordine, [k for k, _n in a._ordini].index("numero"))
     prima = mercato.filtri_di_ricerca_del_mondo(banco.mondo)
     a.chiudi_la_finestra()
     assert mercato.filtri_di_ricerca_del_mondo(banco.mondo) == prima
 
 
+def test_il_preset_salvato_si_riapre_da_ogni_porta(banco):
+    # Da ogni porta, un preset con le sue regole, salvato e riaperto; poi, da un'altra porta, scelto dalla casella.
+    numeri = {}
+    for porta in mercato.PORTE:
+        f = banco.apri(porta)
+        _con_le_regole(f, _stato(mercato.IN_ATTIVITA), mercato.Regola(E, G, "eta", "maggiore", 30), ordine="eta_giovane")
+        banco.dialoghi.copione.append(_scrivi_il_nome(f"Preset di {porta}"))
+        _pausa(f)
+        f.salva_filtri()
+        numeri[porta] = f.scelta
+        f.chiudi_la_finestra()
+        g = banco.apri(porta)
+        assert g.scelta == numeri[porta] and g.casella_preset.GetStringSelection() == f"Preset di {porta}", porta
+        assert g.filtri == mercato.Filtri((_stato(mercato.IN_ATTIVITA), mercato.Regola(E, G, "eta", "maggiore", 30)), "eta_giovane"), porta
+        assert g.righe and all(r.persona.eta_anni > 30 for r in g.righe), porta
+        g.chiudi_la_finestra()
+    f = banco.apri("mercato")
+    _scegli_voce(f.casella_preset, mercato.posto_della_scelta(f.voci, numeri["amichevole"]))
+    assert f.scelta == numeri["amichevole"] and f.filtri.ordine == "eta_giovane"
+
+
 # Il ricalcolo, l'annuncio e la scheda.
 
-def test_il_ricalcolo_aspetta_350_millesimi_e_l_annuncio_1000(banco):
+def test_il_ricalcolo_aspetta_350_millesimi_e_l_annuncio_1000_e_dice_soltanto_il_nuovo(banco):
     spente = impostazioni.valide({"annunci_cronaca": False})
     f = banco.apri("ricerca", impostazioni_date=spente)
     banco.pianifica.scatta()
     prima = list(f.righe)
     persona = f.righe[3].persona
-    f.campo_nome.SetValue(persona.cognome[:3])
+    f.valore_scritto.SetValue(persona.cognome[:3])
     assert f.righe == prima and banco.pianifica.vive() == [0.35, 1.0]
-    # Un altro tasto sposta tutte e due le attese.
-    f.campo_nome.SetValue(persona.cognome[:4])
-    assert len([a for a in banco.pianifica.attese if a.viva]) == 2
+    # Un altro tasto sposta le attese: il ricalcolo, l'annuncio e il suono del valore quando ci si ferma.
+    f.valore_scritto.SetValue(persona.cognome[:4])
+    assert len([a for a in banco.pianifica.attese if a.viva]) == 3
     banco.pianifica.scatta(0.35)
     assert all(persona.cognome[:4].casefold() in testi.nome_completo(r.persona).casefold() for r in f.righe)
-    assert "Nome, cognome o numero: " + persona.cognome[:4] in f.filtri_attivi.GetValue()
-    assert banco.annunci.detti == []
+    assert f.campo_trovati.GetValue().splitlines()[0].endswith(", con la regola in preparazione.")
+    assert banco.annunci.detti == [] and banco.suonati[-1] == "regola_valore_scritto"
     banco.pianifica.scatta(1.0)
     # Il numero dei trovati arriva anche con la lettura della cronaca spenta.
-    assert banco.annunci.detti == [([testi.etichetta_trovati(len(f.righe))], True)] and banco.annunci.svuotati >= 1
-    # Una casella ricalcola subito, e annuncia dopo: resta in attesa la scheda, che segue la riga.
-    banco.suonati.clear()
+    assert banco.annunci.detti == [([testi.annuncio_dei_trovati(f.righe, f._contano(), f.preparazione)], True)] and banco.annunci.svuotati >= 1
+    # Una mossa che non cambia i trovati non annuncia di nuovo: l'ordine.
+    _scegli_voce(f.scelta_ordine, [k for k, _n in f._ordini].index("valore_alto"))
+    assert banco.suonati[-1] == "mercato_ordine_cambiato"
     banco.pianifica.scatta()
-    _spunta(f, "liberi", False)
-    assert banco.suonati == ["casella_liberi_tolta"] and banco.pianifica.vive() == [0.35, 1.0]
-    assert f._scheda.in_attesa and f._annuncio.in_attesa and not f._ricalcolo.in_attesa
-    assert all(r.stato != mercato.LIBERO for r in f.righe)
+    assert len(banco.annunci.detti) == 1
+    # Una che li cambia, sì: la caratteristica nuova svuota il valore, e il nome non conta più.
+    _caratteristica(f, "eta")
+    banco.pianifica.scatta()
+    assert len(banco.annunci.detti) == 2 and banco.annunci.detti[-1][0] == [f"Trovati: {len(f.righe)} giocatori"]
+
+
+def test_il_valore_scritto_suona_soltanto_quando_cambia_stato(banco):
+    f = banco.apri("ricerca")
+    _caratteristica(f, "eta")
+    assert banco.suonati[-1] == "regola_caratteristica_numero"
+    for scritto, suono in (("2", "regola_valore_scritto"), ("20", None), ("20,5", "regola_valore_da_correggere"), ("20,", None), ("", "regola_valore_tolto"),
+                           ("1.000", "regola_valore_da_correggere"), ("100", "regola_valore_scritto")):
+        banco.suonati.clear()
+        f.valore_scritto.SetValue(scritto)
+        banco.pianifica.scatta(0.35)
+        # Soltanto i suoni del valore: l'elenco che si svuota o torna pieno ha i suoi.
+        assert [s for s in banco.suonati if s.startswith("regola_valore")] == ([suono] if suono else []), scritto
 
 
 def test_la_stessa_persona_resta_scelta_e_gli_eventi_del_ricalcolo_non_contano(banco):
@@ -682,13 +869,14 @@ def test_la_stessa_persona_resta_scelta_e_gli_eventi_del_ricalcolo_non_contano(b
     assert f.elenco.GetFirstSelected() == -1 and f.riga_scelta() == f.ultima_riga
     # Dopo un filtro resta la stessa persona; se non c'è più, la prima riga.
     _scegli_persona(f, 12)
-    _spunta(f, "liberi", False)
+    _scegli_voce(f.scelta_ordine, [k for k, _n in f._ordini].index("valore_alto"))
+    banco.pianifica.scatta()
     assert f.riga().persona.id == 12 and f.righe.index(f.riga()) != 0
-    f.campo_nome.SetValue("zzzzzz")
+    f.valore_scritto.SetValue("zzzzzz")
     banco.pianifica.scatta()
     assert f.righe == [] and f.riga() is None and f.etichetta_scheda.GetLabel() == "Sc&heda"
     assert f.scheda.GetValue() == testi.ELENCO_VUOTO_SENZA_SCHEDA and "elenco_svuotato" in banco.suonati
-    f.campo_nome.SetValue("")
+    f.valore_scritto.SetValue("")
     banco.pianifica.scatta()
     assert f.riga_scelta() == 0 and banco.suonati[-1] == "elenco_ripopolato"
 
@@ -706,41 +894,46 @@ def test_invio_sull_elenco_porta_alla_scheda_e_invio_o_esc_tornano(banco):
     assert tastiera.gancio(f.scheda, tastiera.VK_ESCAPE)
     assert _fuoco_su(f.elenco) and f.riga() is r and f.GetReturnCode() == 0 and banco.suonati[-1] == "ritorno_all_elenco"
     # Gli allenatori hanno la loro scheda e il loro suono.
-    _spunta(f, "allenatori")
-    _spunta(f, "liberi")
+    _con_le_regole(f, _stato(mercato.LIBERO, A))
     f.elenco.SetFocus()
     _invio(f, f.elenco)
     assert f.scheda.GetValue() == testi.scheda_allenatore(f.riga().persona, banco.mondo) and banco.suonati[-1] == "scheda_allenatore"
     # Con l'elenco vuoto Invio suona il tasto a vuoto.
-    f.campo_nome.SetValue("zzzzzz")
-    banco.pianifica.scatta()
+    _con_le_regole(f)
     f.elenco.SetFocus()
     _invio(f, f.elenco)
     assert banco.suonati[-1] == "nessuna_selezione"
 
 
-def test_invio_in_un_filtro_porta_all_elenco_dei_risultati(banco):
+def test_invio_nei_filtri_porta_all_elenco_dei_risultati_salvo_col_valore_sbagliato(banco):
     f = banco.apri("ricerca")
-    f.campo_nome.SetValue("ro")
+    f.valore_scritto.SetValue("ro")
     assert banco.pianifica.vive() == [0.35, 1.0]
     banco.suonati.clear()
-    _invio(f, f.campo_nome)
+    _invio(f, f.valore_scritto)
     # Il ricalcolo subito, niente annuncio, e la scheda Risultati col suo suono.
-    assert banco.pianifica.vive() == [0.35] and f.libro.GetSelection() == RISULTATI and _fuoco_su(f.elenco)
+    assert 1.0 not in banco.pianifica.vive() and f.libro.GetSelection() == RISULTATI and _fuoco_su(f.elenco)
     assert banco.suonati == ["scheda_risultati"] and all("ro" in testi.nome_completo(r.persona).casefold() for r in f.righe)
-    # Anche dalle caselle, dalle scelte e da Filtri attivi; sull'elenco delle condizioni no.
-    for controllo in (f.caselle["liberi"], f.scelte["indole"][0], f.filtri_attivi):
-        f.libro.SetSelection(_pagina_di(f, controllo))
+    # Anche dalle scelte, dal campo Trovati, da Ordina per e dall'elenco delle regole.
+    for controllo in (f.scelta_bersaglio, f.scelta_caratteristica, f.campo_trovati, f.scelta_ordine, f.regole):
+        f.libro.SetSelection(FILTRI)
         controllo.SetFocus()
         _invio(f, controllo)
-        assert f.libro.GetSelection() == RISULTATI and _fuoco_su(f.elenco)
-    f.libro.SetSelection(ALTRI_FILTRI)
-    f.elenco_condizioni.SetFocus()
-    _invio(f, f.elenco_condizioni)
-    assert f.libro.GetSelection() == ALTRI_FILTRI
+        assert f.libro.GetSelection() == RISULTATI and _fuoco_su(f.elenco), type(controllo).__name__
+    # Con un valore sbagliato nel Valore il fuoco resta lì, col suono del campo da correggere, e l'annuncio dice subito il perché.
+    f.libro.SetSelection(FILTRI)
+    _caratteristica(f, "eta")
+    f.valore_scritto.SetValue("vent")
+    f.valore_scritto.SetFocus()
+    banco.suonati.clear()
+    detti = len(banco.annunci.detti)
+    _invio(f, f.valore_scritto)
+    assert f.libro.GetSelection() == FILTRI and _fuoco_su(f.valore_scritto) and banco.suonati == ["campo_da_correggere"]
+    assert banco.annunci.detti[detti:] == [([f"Trovati: {len(f.righe)} giocatori. La regola in preparazione non conta: un numero si scrive con le cifre, "
+                                             "col punto soltanto fra le migliaia e la virgola per i decimali."], True)]
 
 
-def test_la_grazia_di_invio_dall_apertura_dall_invio_di_prima_e_dai_dialoghi_interni(banco):
+def test_la_grazia_di_invio_dall_apertura_dall_invio_di_prima_dai_dialoghi_interni_e_da_aggiungi_regola(banco):
     f = banco.apri("mercato", grazia=True)
     banco.suonati.clear()
     # L'apertura conta come un Invio: quello della voce di menu, rimandato da NVDA, si mangia.
@@ -764,6 +957,17 @@ def test_la_grazia_di_invio_dall_apertura_dall_invio_di_prima_e_dai_dialoghi_int
     assert banco.dialoghi.aperti[-1] == "Lettura"
     assert tastiera.gancio(f.elenco, tastiera.VK_RETURN)
     assert not _fuoco_su(f.scheda)
+    # Dalla critica del costruttore: Invio su Aggiungi regola lo gestisce Windows, e il fuoco va sulle regole; l'Invio
+    # rimandato da NVDA arriva lì, e si mangia invece di portare ai Risultati.
+    _pausa(f)
+    f.libro.SetSelection(FILTRI)
+    f.valore_scritto.SetValue("ros")
+    f.pulsante_aggiungi.SetFocus()
+    tastiera.pompa()
+    tastiera.posta_tasto(tastiera.VK_RETURN)
+    assert _fuoco_su(f.regole) and len(f.filtri.regole) == 2
+    assert tastiera.gancio(f.regole, tastiera.VK_RETURN)
+    assert _fuoco_su(f.regole) and f.libro.GetSelection() == FILTRI
 
 
 def test_un_pulsante_premuto_due_volte_di_seguito_conta_una(banco, monkeypatch):
@@ -779,6 +983,216 @@ def test_un_pulsante_premuto_due_volte_di_seguito_conta_una(banco, monkeypatch):
     assert banco.dialoghi.aperti == ["Lettura", "Lettura"]
 
 
+# Il costruttore di regole.
+
+def test_ogni_tipo_di_caratteristica_col_suo_valore_i_suoi_operatori_e_i_suoi_suoni(banco):
+    f = banco.apri("ricerca")
+    mondo = banco.mondo
+    tutti = {r.persona.id for r in f.righe}
+    casi = (
+        # La chiave, il tipo, il suono, gli operatori, il valore da dare e chi deve restare.
+        ("nome", "regola_caratteristica_testo", ["contiene", "non_contiene", "comincia", "uguale", "diverso"], "1", lambda g: str(g.id).startswith("1")),
+        ("eta", "regola_caratteristica_numero", ["uguale", "diverso", "maggiore", "maggiore_uguale", "minore", "minore_uguale"], "25",
+         lambda g: int(g.eta_anni) <= 25),
+        ("classe", "regola_caratteristica_classe", ["uguale", "diverso", "migliore", "migliore_uguale", "peggiore", "peggiore_uguale"], "F0",
+         lambda g: f.memoria.livello(g) <= modulo_regole.leggi_classe("F0") == 50),
+        ("sesso", "regola_caratteristica_scelta", ["uguale", "diverso"], "f", lambda g: g.sesso == "f"),
+        ("mancino", "regola_caratteristica_si_no", ["uguale"], True, lambda g: g.mancino),
+        ("costo", "regola_caratteristica_numero", ["uguale", "diverso", "maggiore", "maggiore_uguale", "minore", "minore_uguale", "manca", "presente"], "1.000",
+         None),
+    )
+    # Si parte da un'altra caratteristica: la porta della ricerca apre sul nome.
+    _caratteristica(f, "valore")
+    for chiave, suono, operatori, valore, resta in casi:
+        _caratteristica(f, chiave)
+        car = mercato.caratteristica(G, chiave)
+        assert banco.suonati[-1] == suono, chiave
+        assert [k for k, _n in f._operatori] == operatori and f.scelta_operatore.GetItems() == [n for _k, n in modulo_regole.operatori(car)], chiave
+        a_scelta = car.tipo in (modulo_regole.SCELTA, modulo_regole.SI_NO)
+        assert f.valore_scelto.IsShown() == a_scelta and f.valore_scritto.IsShown() == (not a_scelta), chiave
+        visibile = f.etichetta_valore_scelto if a_scelta else f.etichetta_valore_scritto
+        assert visibile.GetLabel() == testi.etichetta_del_valore(car), chiave
+        if a_scelta:
+            assert f.valore_scelto.GetItems()[0] == testi.NESSUN_VALORE and f.valore_scelto.GetSelection() == 0, chiave
+        if chiave in ("eta", "classe"):
+            _operatore(f, "minore_uguale" if chiave == "eta" else "migliore_uguale")
+            assert banco.suonati[-1] == "regola_operatore"
+        banco.suonati.clear()
+        _valore(f, valore)
+        if a_scelta:
+            assert banco.suonati == ["regola_valore_scelto"], chiave
+        banco.pianifica.scatta()
+        regola = f._contano().regole[-1]
+        assert (regola.caratteristica, regola.valore) == (chiave, modulo_regole.leggi_valore(car, valore).valore if not a_scelta else valore), chiave
+        if resta is not None:
+            assert {r.persona.id for r in f.righe} == {gid for gid in tutti if resta(mondo.giocatori[gid])}, chiave
+    # Il costo non c'è per tutti: non ha il dato lo riprende, senza valore, e ha il dato è il suo contrario.
+    _operatore(f, "manca")
+    banco.pianifica.scatta()
+    senza = {r.persona.id for r in f.righe}
+    _operatore(f, "presente")
+    banco.pianifica.scatta()
+    assert senza and senza.isdisjoint({r.persona.id for r in f.righe}) and senza | {r.persona.id for r in f.righe} == tutti
+    # Nessun valore, per una scelta, toglie la regola in preparazione, col suo suono.
+    _caratteristica(f, "sesso")
+    _valore(f, "m")
+    banco.suonati.clear()
+    _valore(f, None)
+    assert banco.suonati == ["regola_valore_tolto"] and f._contano() == f.filtri
+
+
+def test_il_bersaglio_tiene_la_caratteristica_o_torna_sullo_stato(banco):
+    f = banco.apri("ricerca")
+    _caratteristica(f, "eta")
+    _operatore(f, "minore_uguale")
+    _valore(f, "40")
+    banco.suonati.clear()
+    _bersaglio(f, A)
+    # L'età c'è anche per gli allenatori: resta, col suo operatore e il suo valore.
+    assert f.preparazione == mercato.Preparazione(E, A, "eta", "minore_uguale", "40") and banco.suonati == ["bersaglio_allenatori"]
+    assert [k for k, _n in f._caratteristiche] == list(mercato.CATALOGO[A]) and f.scelta_caratteristica.GetStringSelection() == "Età"
+    _caratteristica(f, "visus")
+    _bersaglio(f, G)
+    # Il visus no: la caratteristica va sullo Stato, col primo operatore e nessun valore.
+    assert f.preparazione == mercato.Preparazione(E, G, "stato", "uguale", None) and banco.suonati[-1] == "bersaglio_giocatori"
+    assert f.valore_scelto.IsShown() and f.valore_scelto.GetItems() == [testi.NESSUN_VALORE, *(n for _k, n in mercato.STATI_DEI_GIOCATORI)]
+
+
+def test_aggiungi_azzera_canc_e_spostamento_delle_regole(banco):
+    f = banco.apri("ricerca")
+    _con_le_regole(f)
+    assert _righe_delle_regole(f) == [testi.NESSUNA_REGOLA] and not f.scelta_collegamento.IsShown() and f.libro.GetPageText(FILTRI) == "Filtri, nessuna regola"
+    # Aggiungi senza valore, o con un valore sbagliato: l'avviso col perché, e il fuoco sul Valore.
+    _caratteristica(f, "eta")
+    banco.suonati.clear()
+    _clic(f.pulsante_aggiungi)
+    assert banco.dialoghi.letti[-1] == "La regola non si aggiunge: il Valore è vuoto." and banco.suonati == ["campo_da_correggere"] and _fuoco_su(f.valore_scritto)
+    _pausa(f)
+    f.valore_scritto.SetValue("20,5")
+    _clic(f.pulsante_aggiungi)
+    assert banco.dialoghi.letti[-1] == "La regola non si aggiunge: età si scrive senza decimali." and f.filtri.regole == ()
+    _pausa(f)
+    # Tre regole: la regola entra in fondo, si svuota soltanto il valore, e il fuoco va sulla regola nuova.
+    _aggiungi(f, G, "stato", "uguale", mercato.LIBERO)
+    assert banco.suonati[-1] == "regola_aggiunta" and _fuoco_su(f.regole) and f.regole.GetSelection() == 0
+    assert f.preparazione == mercato.Preparazione(E, G, "stato", "uguale", None) and f.scelta_collegamento.IsShown()
+    _aggiungi(f, G, "sesso", "uguale", "f")
+    _aggiungi(f, G, "stato", "uguale", mercato.IN_VENDITA, O)
+    assert _righe_delle_regole(f) == ["Giocatori, stato: è libero", "e sesso: è donna", "Alternativa 2: giocatori, stato: è in vendita da altri"]
+    assert f.regole.GetSelection() == 2 and f.libro.GetPageText(FILTRI) == "Filtri, 3 regole" == f._riquadri_delle_schede[FILTRI].GetLabel()
+    f.regole.SetFocus()
+    tastiera.pompa()
+    # E ed O, coi tasti veri in coda: il collegamento della regola scelta; la ricerca per iniziali non parte.
+    banco.suonati.clear()
+    tastiera.posta_tasto(ord("E"))
+    assert f.filtri.regole[2].collegamento == E and banco.suonati == ["collegamento_e"] and f.regole.GetSelection() == 2
+    assert _righe_delle_regole(f)[2] == "e stato: è in vendita da altri"
+    tastiera.posta_tasto(ord("O"))
+    assert f.filtri.regole[2].collegamento == O and banco.suonati[-1] == "collegamento_o"
+    f.regole.SetSelection(0)
+    tastiera.posta_tasto(ord("O"))
+    assert f.filtri.regole[0].collegamento == E and banco.suonati[-1] == "nessuna_selezione"
+    # Ctrl+Su e Ctrl+Giù: la regola si sposta e la scelta la segue; al bordo il suo suono. La prima ha sempre la e.
+    tastiera.posta_tasto(tastiera.VK_UP, ctrl=True)
+    assert banco.suonati[-1] == "regola_al_bordo"
+    tastiera.posta_tasto(tastiera.VK_DOWN, ctrl=True)
+    assert banco.suonati[-1] == "regola_spostata_giu" and f.regole.GetSelection() == 1
+    assert [r.caratteristica for r in f.filtri.regole] == ["sesso", "stato", "stato"] and f.filtri.regole[0].collegamento == E
+    tastiera.posta_tasto(tastiera.VK_UP, ctrl=True)
+    assert banco.suonati[-1] == "regola_spostata_su" and f.regole.GetSelection() == 0 and f.filtri.regole[0].caratteristica == "stato"
+    # Canc toglie la regola scelta, e la scelta resta allo stesso posto; un secondo Canc entro mezzo secondo si ignora.
+    f.regole.SetSelection(1)
+    tastiera.posta_tasto(tastiera.VK_DELETE)
+    assert banco.suonati[-1] == "regola_tolta" and [r.caratteristica for r in f.filtri.regole] == ["stato", "stato"] and f.regole.GetSelection() == 1
+    tastiera.posta_tasto(tastiera.VK_DELETE)
+    assert len(f.filtri.regole) == 2
+    _pausa(f)
+    # Azzera, con più di una regola, chiede prima, col No già scelto.
+    banco.dialoghi.copione.append(lambda d: wx.ID_CANCEL)
+    f.azzera()
+    assert banco.dialoghi.domande[-1] == testi.domanda_azzera_le_regole(2) and len(f.filtri.regole) == 2 and banco.suonati[-1] == "annullato"
+    _pausa(f)
+    f.azzera()
+    assert f.filtri.regole == () and banco.suonati[-1] == "regole_azzerate" and not f.scelta_collegamento.IsShown()
+    _pausa(f)
+    f.azzera()
+    f.regole.SetFocus()
+    tastiera.posta_tasto(tastiera.VK_DELETE)
+    assert banco.suonati[-2:] == ["nessuna_selezione", "nessuna_selezione"]
+
+
+def test_al_limite_delle_50_regole_aggiungi_ha_il_suo_suono(banco):
+    f = banco.apri("ricerca")
+    _con_le_regole(f, *([_stato(mercato.IN_ATTIVITA)] * (mercato.LIMITE_DELLE_REGOLE - 1)))
+    _aggiungi(f, G, "eta", "minore_uguale", "30")
+    assert len(f.filtri.regole) == 50
+    _prepara(f, G, "eta", "minore_uguale", "40")
+    banco.suonati.clear()
+    _clic(f.pulsante_aggiungi)
+    assert banco.suonati == ["regole_al_limite"] and len(f.filtri.regole) == 50 and _fuoco_su(f.regole)
+    assert banco.dialoghi.letti[-1] == "La regola non si aggiunge: le regole sono già 50, e per aggiungerne un'altra se ne toglie una con Canc."
+
+
+def test_la_e_lega_prima_della_o(banco):
+    # Liberi donne, oppure in vendita da altri: la e lega prima della o, e nella seconda alternativa ci sono anche gli uomini.
+    f = banco.apri("ricerca")
+    _con_le_regole(f)
+    _aggiungi(f, G, "stato", "uguale", mercato.LIBERO)
+    _aggiungi(f, G, "sesso", "uguale", "f")
+    _aggiungi(f, G, "stato", "uguale", mercato.IN_VENDITA, O)
+    banco.pianifica.scatta()
+    mondo = banco.mondo
+    liberi_donne = {r.persona.id for r in mercato.cerca(mondo, mercato.Filtri((_stato(mercato.LIBERO), mercato.Regola(E, G, "sesso", "uguale", "f")))) }
+    in_vendita = {r.persona.id for r in mercato.cerca(mondo, mercato.Filtri((_stato(mercato.IN_VENDITA),)))}
+    assert in_vendita == {10} and liberi_donne and {r.persona.id for r in f.righe} == liberi_donne | in_vendita
+    # Dopo Aggiungi si svuota soltanto il valore: il collegamento resta la o, e qui torna la e. La regola in preparazione
+    # con la e va nell'ultima alternativa, e il campo Trovati lo dice.
+    assert f.preparazione.collegamento == O
+    _collegamento(f, E)
+    assert banco.suonati[-1] == "collegamento_e"
+    _caratteristica(f, "eta")
+    _operatore(f, "minore_uguale")
+    banco.pianifica.scatta()
+    assert "Le regole formano 2 alternative; la regola in preparazione va nell'alternativa 2." in f.campo_trovati.GetValue().splitlines()
+    _valore(f, "99")
+    banco.pianifica.scatta()
+    assert {r.persona.id for r in f.righe} == liberi_donne | {gid for gid in in_vendita if mondo.giocatori[gid].eta_anni <= 99}
+    # Con la o, ne apre una terza.
+    _collegamento(f, O)
+    assert banco.suonati[-1] == "collegamento_o"
+    banco.pianifica.scatta()
+    assert "Le regole formano 3 alternative; la regola in preparazione va nell'alternativa 3." in f.campo_trovati.GetValue().splitlines()
+
+
+def test_il_campo_trovati_si_rifa_a_ogni_mossa_e_tiene_la_riga_del_cursore(banco):
+    f = banco.apri("mercato")
+    assert f.campo_trovati.GetValue() == f"{len(f.righe)} giocatori.\nLa regola in preparazione non conta: il Valore è vuoto."
+    _bersaglio(f, A)
+    _caratteristica(f, "visus")
+    _valore(f, staff.VEDENTE)
+    _collegamento(f, O)
+    banco.pianifica.scatta()
+    righe = f.campo_trovati.GetValue().splitlines()
+    assert righe[0].endswith(", con la regola in preparazione.") and righe[1] == "Le regole formano 2 alternative; la regola in preparazione va nell'alternativa 2."
+    assert any(r.allenatore for r in f.righe) and any(not r.allenatore for r in f.righe)
+    assert f.etichetta_trovati.GetLabel() == testi.trovati(f.righe, f._contano()) and " e " in f.etichetta_trovati.GetLabel()
+    # Il cursore sulla seconda riga ci resta quando il campo si riscrive.
+    f.campo_trovati.SetInsertionPoint(f.campo_trovati.XYToPosition(0, 1))
+    _scegli_voce(f.scelta_ordine, [k for k, _n in f._ordini].index("bomba_base"))
+    banco.pianifica.scatta()
+    assert f.campo_trovati.PositionToXY(f.campo_trovati.GetInsertionPoint())[2] == 1
+    assert "Gli allenatori non hanno il dato dell'ordine" in f.campo_trovati.GetValue()
+
+
+def test_il_valore_toglie_i_caratteri_di_controllo(banco):
+    # Dalla critica: un carattere di controllo incollato nel Valore faceva perdere tutto lo stato della porta.
+    f = banco.apri("ricerca")
+    f.valore_scritto.SetValue("ro\ts")
+    assert f.valore_scritto.GetValue() == "ros" and f.preparazione.valore == "ros"
+    f.chiudi_la_finestra()
+    assert mercato.stato_della_porta(banco.mondo, "ricerca").preparazione.valore == "ros"
+
+
 # Le mosse finite e la polisportiva che manca.
 
 def test_a_mosse_finite_si_oscura_soltanto_l_offerta_e_alt_o_dice_il_perche(banco):
@@ -788,14 +1202,14 @@ def test_a_mosse_finite_si_oscura_soltanto_l_offerta_e_alt_o_dice_il_perche(banc
     assert banco.suonati == ["dialogo_ricerca", "mosse_finite"]
     assert not f.pulsante_offerta.IsEnabled()
     assert all(p.IsEnabled() for p in (f.pulsante_amichevole, f.pulsante_sfida, f.pulsante_diario, f.pulsante_gestisci, f.pulsante_salva))
-    # Nella scheda Risultati Alt+O dice il perché col suo suono; nella scheda Filtri Alt+O è la lettera di Ordina per.
+    # Nella scheda Risultati Alt+O dice il perché col suo suono; nella scheda Filtri Alt+O è la lettera dell'Operatore.
     f.libro.SetSelection(RISULTATI)
     f.elenco.SetFocus()
     assert tastiera.gancio(f.elenco, "o", alt=True)
     assert banco.dialoghi.letti == [f"Per oggi {attiva.nome} ha finito le mosse di mercato."] and banco.suonati[-1] == "mosse_finite"
     f.libro.SetSelection(FILTRI)
-    f.campo_nome.SetFocus()
-    assert not tastiera.gancio(f.campo_nome, "o", alt=True)
+    f.valore_scritto.SetFocus()
+    assert not tastiera.gancio(f.valore_scritto, "o", alt=True)
     # Con le mosse il pulsante torna, e Alt+O passa a Windows.
     attiva.movimenti_oggi = 0
     f._aggiorna_l_offerta()
@@ -834,7 +1248,7 @@ def test_l_ingaggio_di_un_libero(banco):
     assert banco.dialoghi.letti == [testo] and banco.mondo.mosse_rimaste(attiva) == LIMITE_MOVIMENTI_PER_TICK - 1
     assert f.situazione.GetValue() == testi.situazione(banco.mondo) and _fuoco_su(f.elenco)
     if riuscita:
-        # Chi ha firmato non è più libero: la scelta resta allo stesso posto.
+        # Chi ha firmato non è più libero: la memoria rifà le righe, e la scelta resta allo stesso posto.
         assert all(r.numero != libero.numero for r in f.righe) and f.riga_scelta() == min(posto, len(f.righe) - 1)
     # L'annullamento della cifra non costa niente.
     _scegli_persona(f, next(r for r in f.righe if r.stato == mercato.LIBERO).numero)
@@ -855,11 +1269,13 @@ def test_l_ultima_mossa_oscura_l_offerta(banco):
     assert banco.dialoghi.aperti == ["Domanda", "Avviso"] and banco.dialoghi.domande[0].startswith(f"Comprare {testi.nome_completo(in_vendita.persona)}")
     assert banco.suonati == ["domanda", "acquisto_fatto", "mosse_finite"] and f.esiti.giocatori[0][1] is True
     assert in_vendita.persona.id in attiva.tesserati and not f.pulsante_offerta.IsEnabled()
+    # Chi è stato comprato è tuo adesso: la memoria ha rifatto le righe, e il Mercato non lo trova più.
+    assert all(r.numero != in_vendita.numero for r in f.righe)
 
 
 def test_i_perche_delle_offerte_che_non_si_fanno(banco):
     f = banco.apri("ricerca")
-    _spunta(f, "ritirati")
+    _con_le_regole(f, _stato(mercato.IN_ATTIVITA), _stato(mercato.RITIRATO, collegamento=O))
     _scegli_persona(f, 40)
     banco.suonati.clear()
     _clic(f.pulsante_offerta)
@@ -922,7 +1338,7 @@ def test_l_amichevole_sceglie_prima_l_avversario_poi_il_tuo_giocatore(banco):
     assert f.GetReturnCode() == wx.ID_CLOSE and f.risultato is f.esiti and not f.risultato.vuoti
     # Chi oggi non gioca lo dice col suo suono.
     g = banco.apri("ricerca")
-    _spunta(g, "ritirati")
+    _con_le_regole(g, _stato(mercato.RITIRATO))
     _scegli_persona(g, 40)
     _clic(g.pulsante_amichevole)
     assert banco.suonati[-1] == "non_gioca_oggi"
@@ -947,75 +1363,6 @@ def test_la_sfida_apre_il_lancio_sul_suo_club_e_il_diario(banco):
     assert banco.dialoghi.aperti[-1] == "Lettura" and banco.suonati[-1] == "diario_giocatore"
 
 
-# Le condizioni, Azzera e le linguette.
-
-def test_le_condizioni_azzera_e_le_linguette(banco):
-    f = banco.apri("ricerca")
-    f.libro.ChangeSelection(ALTRI_FILTRI)
-    assert f.elenco_condizioni.GetString(0) == testi.NESSUNA_CONDIZIONE
-    banco.suonati.clear()
-    f.togli_condizione()
-    f.togli_tutte_le_condizioni()
-    f.azzera_gli_altri_filtri()
-    assert banco.suonati == ["nessuna_selezione"] * 3
-    _pausa(f)
-
-    def condizione(dialogo):
-        dialogo.criterio.SetSelection(mercato.CRITERI_DELLE_CONDIZIONI.index("ambizione"))
-        dialogo.valore.SetValue("50")
-        dialogo.conferma()
-        return dialogo.GetReturnCode()
-
-    banco.dialoghi.copione.append(condizione)
-    f.aggiungi_condizione()
-    assert f.filtri.condizioni == (("ambizione", "maggiore", 50.0),) and banco.suonati[-2:] == ["dialogo_filtro_mercato", "filtro_aggiunto"]
-    assert f.elenco_condizioni.GetString(0) == testi.condizione_a_parole("ambizione", "maggiore", 50.0) and _fuoco_su(f.elenco_condizioni)
-    assert f.libro.GetPageText(ALTRI_FILTRI) == "Altri filtri, 1 attivo" and all(r.persona.ambizione > 50 for r in f.righe)
-    # Un valore che non è un numero si dice, col suono del campo da correggere.
-    banco.dialoghi.copione.append(lambda d: (d.valore.SetValue("tanto"), d.conferma(), wx.ID_CANCEL)[2])
-    _pausa(f)
-    f.aggiungi_condizione()
-    assert banco.dialoghi.letti[-1] == "Il valore deve essere un numero, per esempio 150 o 12,5." and banco.suonati[-2:] == ["campo_da_correggere", "annullato"]
-    _scegli_voce(f.tratti["mancino"], 1)
-    assert f.filtri.tratti == {"mancino": True} and banco.suonati[-1] == "filtro_tratto_si"
-    banco.pianifica.scatta()
-    assert f.libro.GetPageText(ALTRI_FILTRI) == "Altri filtri, 2 attivi"
-    _scrivi_numero(f.numeri["stipendio_capo_massimo"], 5000)
-    banco.pianifica.scatta()
-    assert f.libro.GetPageText(FILTRI_ALLENATORI) == "Filtri degli allenatori, 1 attivo" and banco.suonati[-1] == "filtro_stipendio_capo"
-    _pausa(f)
-    f.azzera_gli_altri_filtri()
-    assert f.filtri.condizioni == () and f.filtri.tratti == {} and f.filtri.stipendio_capo_massimo == 5000 and banco.suonati[-1] == "filtri_azzerati"
-    assert f.libro.GetPageText(ALTRI_FILTRI) == "Altri filtri" and f.tratti["mancino"].GetSelection() == 0
-
-
-def test_la_provincia_resta_quando_cambia_la_regione(banco):
-    f = banco.apri("ricerca")
-    regione = f.scelte["regione"][0]
-    _scegli_voce(regione, 1)
-    prima = f.filtri.regione
-    provincia = f._province[1][0]
-    _scegli_voce(f.scelta_provincia, 1)
-    assert f.filtri.provincia == provincia and banco.suonati[-1] == "filtro_provincia"
-    _scegli_voce(regione, 2)
-    assert f.filtri.regione != prima and f.filtri.provincia == provincia
-    assert f.scelta_provincia.GetStringSelection() == provincia and f.scelta_provincia.GetSelection() == f.scelta_provincia.GetCount() - 1
-    banco.pianifica.scatta()
-    assert f"la provincia {provincia} sta in {prima}" in f.filtri_attivi.GetValue()
-
-
-def test_la_casella_allenatori_cambia_gli_ordini(banco):
-    f = banco.apri("ricerca")
-    assert f.scelta_ordine.GetCount() == len(mercato.ORDINI_GIOCATORI)
-    _spunta(f, "allenatori")
-    assert f.scelta_ordine.GetCount() == len(mercato.ORDINI_ALLENATORI) and banco.suonati[-1] == "casella_allenatori_spuntata"
-    assert all(r.allenatore for r in f.righe) and f.etichetta_trovati.GetLabel().endswith("allenatori")
-    _scegli_voce(f.scelta_ordine, 4)
-    assert f.filtri.ordine_allenatori == mercato.ORDINI_ALLENATORI[4][0] and f.filtri.ordine == "numero"
-    _spunta(f, "allenatori", False)
-    assert f.scelta_ordine.GetStringSelection() == "Numero, dal più basso" and banco.suonati[-1] == "casella_allenatori_tolta"
-
-
 def test_esc_fuori_dalla_scheda_chiude_e_i_preset_sono_fra_gli_esiti(banco):
     f = banco.apri("mercato")
     banco.dialoghi.copione.append(lambda d: (d.nome.SetValue("Preset di prova"), d.conferma(), d.GetReturnCode())[2])
@@ -1030,46 +1377,41 @@ def test_esc_fuori_dalla_scheda_chiude_e_i_preset_sono_fra_gli_esiti(banco):
 
 # Gli allenatori, da Ctrl+Maiusc+G e da Assumi: le prove del mercato degli allenatori di prima, dai collegamenti della finestra.
 
-def test_gli_allenatori_liberi_dal_migliore_coi_loro_filtri(banco):
+def test_gli_allenatori_liberi_dal_migliore_con_le_loro_regole(banco):
     f = banco.apri("allenatori")
     mondo = banco.mondo
     liberi = [a for a in mondo.allenatori.values() if a.libero]
-    assert banco.suonati[0] == "dialogo_mercato_allenatori" and f.GetDefaultItem() is None
+    assert banco.suonati[0] == "dialogo_mercato_allenatori" and f.GetDefaultItem() is None and f.preparazione.bersaglio == A
     # Dalla classe migliore e, a parità di classe, dal più giovane, come nel mercato degli allenatori di prima.
     oggi = mondo.datetime_corrente_simulazione
     assert [r.persona for r in f.righe] == sorted(liberi, key=lambda a: (a.livello, a.eta(oggi), a.numero)) and all(r.allenatore for r in f.righe)
-    assert f.etichetta_trovati.GetLabel() == "&" + testi.etichetta_trovati(len(liberi), True)
+    assert f.etichetta_trovati.GetLabel() == f"&Trovati: {len(liberi)} allenatori"
     assert f.elenco.testo(0) == testi.riga_trovato(f.righe[0], mondo, "classe", f.memoria)
     # La classe migliore o uguale: il migliore resta, e chi è peggiore di lui no.
     migliore = f.righe[0].persona
-    _scegli_voce(f.scelte["classe_migliore"][0], migliore.livello)
-    assert banco.suonati[-1] == "filtro_classe_allenatori"
+    _prepara(f, A, "classe", "migliore_uguale", migliore.codice)
+    assert "regola_caratteristica_classe" in banco.suonati
     banco.pianifica.scatta()
     assert migliore in [r.persona for r in f.righe] and all(r.persona.livello <= migliore.livello for r in f.righe)
-    _scegli_voce(f.scelte["classe_migliore"][0], 0)
     # Il sesso.
     sesso = f.righe[0].persona.sesso
-    _scegli_voce(f.scelte["sesso"][0], 1 if sesso == "m" else 2)
-    assert banco.suonati[-1] == "filtro_sesso_allenatori"
+    _prepara(f, A, "sesso", "uguale", sesso)
+    assert banco.suonati[-1] == "regola_valore_scelto"
     banco.pianifica.scatta()
     assert f.righe and all(r.persona.sesso == sesso for r in f.righe)
-    _scegli_voce(f.scelte["sesso"][0], 0)
-    banco.pianifica.scatta()
     # Il tipo: gli allenatori della prova sono tutti nati, gli ex giocatori non ci sono, e l'elenco si svuota col suo suono.
-    tipo = f.scelte["tipo_allenatore"][0]
-    _scegli_voce(tipo, 1)
-    assert banco.suonati[-1] == "filtro_tipo_allenatori"
+    _prepara(f, A, "tipo", "uguale", staff.EX)
     banco.pianifica.scatta()
     assert f.righe == [] and "elenco_svuotato" in banco.suonati
-    _scegli_voce(tipo, 2)
+    _valore(f, staff.NATO)
     banco.pianifica.scatta()
     assert len(f.righe) == len(liberi) and banco.suonati[-1] == "elenco_ripopolato"
     # L'età massima, col suo suono quando ci si ferma.
-    giovane = min(int(r.persona.eta_anni(mondo.datetime_corrente_simulazione)) for r in f.righe)
-    _scrivi_numero(f.numeri["eta_massima"], giovane)
+    giovane = min(int(r.persona.eta_anni(oggi)) for r in f.righe)
+    _prepara(f, A, "eta", "minore_uguale", str(giovane))
     banco.pianifica.scatta()
-    assert f.righe and all(int(r.persona.eta_anni(mondo.datetime_corrente_simulazione)) <= giovane for r in f.righe)
-    assert "filtro_eta_allenatori" in banco.suonati
+    assert f.righe and all(int(r.persona.eta_anni(oggi)) <= giovane for r in f.righe)
+    assert "regola_valore_scritto" in banco.suonati
 
 
 def test_l_ingaggio_accettato_di_un_allenatore_e_il_posto_occupato(banco, monkeypatch):
@@ -1164,6 +1506,21 @@ def test_la_scheda_e_il_diario_di_un_allenatore(banco):
     assert letti == [(f"Diario di {testi.nome_completo(a)}", testi.diario_allenatore(a))] and "Entra nel mondo dello showdown" in letti[0][1]
 
 
+def test_giocatori_e_allenatori_nello_stesso_elenco_e_le_righe_degli_allenatori_si_riscrivono(banco):
+    f = banco.apri("mercato")
+    _con_le_regole(f, _stato(mercato.LIBERO), _stato(mercato.LIBERO, A, O))
+    giocatori, allenatori = mercato.conta_le_righe(f.righe)
+    assert giocatori and allenatori and f.etichetta_trovati.GetLabel() == f"&Trovati: {giocatori} giocatori e {allenatori} allenatori"
+    # Soltanto le righe degli allenatori si riscrivono a ogni domanda di Windows, per la riserva che segue l'ora vera.
+    primo_allenatore = next(i for i, r in enumerate(f.righe) if r.allenatore)
+    scritte = f.elenco.scritte
+    f.elenco.testo(0)
+    f.elenco.testo(0)
+    f.elenco.testo(primo_allenatore)
+    f.elenco.testo(primo_allenatore)
+    assert f.elenco.scritte - scritte == 3
+
+
 def test_la_finestra_che_si_apre_vuota_lo_dice(banco, monkeypatch):
     # Dal mercato di prima: l'elenco che nasce vuoto suona subito dopo l'apertura.
     monkeypatch.setattr(mercato, "cerca", lambda *a, **k: [])
@@ -1171,7 +1528,7 @@ def test_la_finestra_che_si_apre_vuota_lo_dice(banco, monkeypatch):
     assert banco.suonati == ["dialogo_mercato", "elenco_svuotato"]
 
 
-@pytest.mark.parametrize("nome", ["SceltaGiocatore", "Cifra", "OpzioniAmichevole", "SalvaFiltri", "RinominaPreset", "PostoDaOffrire", "Condizione"])
+@pytest.mark.parametrize("nome", ["SceltaGiocatore", "Cifra", "OpzioniAmichevole", "SalvaFiltri", "RinominaPreset", "PostoDaOffrire"])
 def test_i_dialoghi_che_confermano_con_invio_contano_l_apertura_come_un_invio(app_wx, mondo, nome):
     # Dalla critica del progetto: un Invio tenuto giù sulla voce di menu sceglieva il primo giocatore e faceva partire l'amichevole.
     attiva = mondo.miapolisportiva_attiva
@@ -1182,7 +1539,6 @@ def test_i_dialoghi_che_confermano_con_invio_contano_l_apertura_come_un_invio(ap
         "SalvaFiltri": lambda: finestra_mr.SalvaFiltri(None, mercato.filtri_di_ricerca_di_serie(), "Giovani"),
         "RinominaPreset": lambda: finestra_mr.RinominaPreset(None, mercato.filtri_di_ricerca_di_serie(), mercato.Preset(1, "Giovani", mercato.Filtri())),
         "PostoDaOffrire": lambda: finestra_mr.PostoDaOffrire(None, mondo, attiva),
-        "Condizione": lambda: finestra_mr.Condizione(None),
     }
     dialogo = fabbriche[nome]()
     try:
@@ -1206,8 +1562,7 @@ def test_i_dialoghi_che_confermano_con_invio_contano_l_apertura_come_un_invio(ap
 ROLE_SYSTEM_GROUPING = 20
 
 
-def _genitori_msaa(maniglia):
-    """Nome e ruolo MSAA del controllo e dei suoi genitori, come li vede NVDA: con oleacc e IDispatch di pywin32."""
+def _oggetto_msaa(maniglia):
     import pythoncom
     oleacc = ctypes.WinDLL("oleacc")
     oleacc.AccessibleObjectFromWindow.restype = ctypes.c_long
@@ -1215,7 +1570,19 @@ def _genitori_msaa(maniglia):
     iid = ctypes.create_string_buffer(uuid.UUID("{00020400-0000-0000-C000-000000000046}").bytes_le, 16)
     puntatore = ctypes.c_void_p()
     assert oleacc.AccessibleObjectFromWindow(maniglia, 0xFFFFFFFC, iid, ctypes.byref(puntatore)) == 0 and puntatore.value
-    oggetto = pythoncom.ObjectFromAddress(puntatore.value, pythoncom.IID_IDispatch)
+    return pythoncom.ObjectFromAddress(puntatore.value, pythoncom.IID_IDispatch)
+
+
+def _nome_msaa(maniglia):
+    """Il nome MSAA del controllo, quello che NVDA legge."""
+    import pythoncom
+    return _oggetto_msaa(maniglia).Invoke(-5003, 0, pythoncom.DISPATCH_PROPERTYGET, True, 0)
+
+
+def _genitori_msaa(maniglia):
+    """Nome e ruolo MSAA del controllo e dei suoi genitori, come li vede NVDA: con oleacc e IDispatch di pywin32."""
+    import pythoncom
+    oggetto = _oggetto_msaa(maniglia)
     catena = []
     while oggetto is not None and len(catena) < 12:
         catena.append((oggetto.Invoke(-5003, 0, pythoncom.DISPATCH_PROPERTYGET, True, 0), oggetto.Invoke(-5006, 0, pythoncom.DISPATCH_PROPERTYGET, True, 0)))
@@ -1236,16 +1603,16 @@ def test_ogni_scheda_e_un_riquadro_che_nvda_dice_col_testo_della_linguetta(banco
         figli = list(pagina.GetChildren())
         assert len(figli) == 1 and isinstance(figli[0], wx.StaticBox) and figli[0].GetLabel() == f.libro.GetPageText(posto)
         assert all(figli[0].IsDescendant(c) for c in _focalizzabili(pagina))
-    # Il conto della linguetta cambia anche nel riquadro.
-    _spunta(f, "senza_acciacchi")
-    assert f.libro.GetPageText(ALTRI_FILTRI) == testi.linguetta("Altri filtri", 1) == f._riquadri_delle_schede[ALTRI_FILTRI].GetLabel()
+    # Il conto della linguetta cambia anche nel riquadro, appena cambiano le regole.
+    _aggiungi(f, G, "sesso", "uguale", "f")
+    assert f.libro.GetPageText(FILTRI) == testi.linguetta_dei_filtri(2) == f._riquadri_delle_schede[FILTRI].GetLabel()
     # Come lo vede NVDA: dopo Ctrl+Tab, fra i genitori del controllo col fuoco c'è il raggruppamento col nome della scheda.
-    for _volta in range(2):
-        tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
-    assert f.libro.GetSelection() == ALTRI_FILTRI
-    assert (testi.linguetta("Altri filtri", 1), ROLE_SYSTEM_GROUPING) in _genitori_msaa(tastiera.user32.GetFocus())
+    f.libro.SetSelection(RISULTATI)
+    f.elenco.SetFocus()
+    tastiera.pompa()
     tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
-    assert ("Filtri degli allenatori", ROLE_SYSTEM_GROUPING) in _genitori_msaa(tastiera.user32.GetFocus())
+    assert f.libro.GetSelection() == FILTRI
+    assert (testi.linguetta_dei_filtri(2), ROLE_SYSTEM_GROUPING) in _genitori_msaa(tastiera.user32.GetFocus())
 
 
 @pytest.mark.parametrize("via", ["Tab", "Alt+T"])
@@ -1263,8 +1630,8 @@ def test_l_elenco_che_prende_il_fuoco_si_rifa_prima_che_nvda_lo_legga(banco, via
     else:
         tastiera.posta_alt("t")
     assert _fuoco_su(f.elenco)
-    assert len(f.righe) > prima and len(f.righe) == len(mercato.cerca(banco.mondo, f.filtri))
-    assert f.etichetta_trovati.GetLabel() == "&" + testi.etichetta_trovati(len(f.righe))
+    assert len(f.righe) > prima and len(f.righe) == len(mercato.cerca(banco.mondo, f._contano()))
+    assert f.etichetta_trovati.GetLabel() == testi.trovati(f.righe, f._contano())
     # NVDA dice i trovati nel nome dell'elenco: l'annuncio non parte.
     assert 1.0 not in banco.pianifica.vive()
     banco.pianifica.scatta()
@@ -1307,16 +1674,16 @@ def test_un_dialogo_interno_fa_il_ricalcolo_e_ferma_l_annuncio(banco):
         visti.append((type(dialogo).__name__, banco.pianifica.vive(), all("ro" in testi.nome_completo(r.persona).casefold() for r in f.righe)))
         return wx.ID_CANCEL
 
-    f.campo_nome.SetValue("ro")
-    assert banco.pianifica.vive() == [0.35, 1.0]
+    f.valore_scritto.SetValue("ro")
+    assert 1.0 in banco.pianifica.vive()
     banco.dialoghi.copione.append(guarda)
     _pausa(f)
     _clic(f.pulsante_salva)
     # Dentro il dialogo l'elenco è già quello del nome scritto, e l'annuncio non aspetta più.
     assert visti and visti[0][0] == "SalvaFiltri" and 1.0 not in visti[0][1] and visti[0][2]
-    # Una persona scelta, poi una casella, che annuncia dopo un secondo, e subito il diario.
+    # Una persona scelta, poi una mossa, che annuncia dopo un secondo, e subito il diario.
     _scegli_persona(f, f.righe[0].numero)
-    _spunta(f, "ritirati")
+    _scegli_voce(f.scelta_ordine, [k for k, _n in f._ordini].index("valore_alto"))
     assert 1.0 in banco.pianifica.vive()
     banco.dialoghi.copione.append(guarda)
     _pausa(f)
@@ -1327,10 +1694,11 @@ def test_un_dialogo_interno_fa_il_ricalcolo_e_ferma_l_annuncio(banco):
 
 
 def test_la_situazione_resta_su_una_riga_sola(banco):
-    # Dalla verifica con la lente di NVDA: andava a capo a metà di un blocco di quaranta caratteri, e il display lo spezzava.
+    # Dalla verifica con la lente di NVDA: andava a capo a metà di una frase, e il display la spezzava.
     f = banco.apri()
     assert f.situazione.HasFlag(wx.TE_DONTWRAP) and f.situazione.HasFlag(wx.TE_MULTILINE)
     assert len(f.situazione.GetValue()) > 120 and f.situazione.GetNumberOfLines() == 1
+    assert f.campo_trovati.HasFlag(wx.TE_DONTWRAP) and f.campo_trovati.HasFlag(wx.TE_MULTILINE) and f.campo_trovati.HasFlag(wx.TE_READONLY)
 
 
 def test_la_scheda_si_scrive_col_suo_rimando_anche_all_apertura(banco):
@@ -1369,7 +1737,6 @@ def test_l_amichevole_contro_l_unico_tuo_giocatore_che_oggi_gioca(banco, monkeyp
     unico = banco.mondo.giocatori[p.tesserati[0]]
     monkeypatch.setattr(mercato, "tuoi_per_l_amichevole", lambda mondo, poli, avversario: [g for g in (unico,) if g is not avversario])
     f = banco.apri("ricerca")
-    _spunta(f, "tuoi")
     _scegli_persona(f, unico.id)
     _clic(f.pulsante_amichevole)
     assert banco.dialoghi.letti[-1] == testi.unico_per_l_amichevole(unico, p) and banco.suonati[-1] == "non_gioca_oggi"
@@ -1382,11 +1749,6 @@ def test_l_amichevole_contro_l_unico_tuo_giocatore_che_oggi_gioca(banco, monkeyp
     banco.dialoghi.copione.append(lambda d: (scelti.append([g.id for g in d.tutti]), wx.ID_CANCEL)[1])
     _clic(f.pulsante_amichevole)
     assert banco.dialoghi.aperti[-1] == "SceltaGiocatore" and scelti == [[unico.id]]
-
-
-def test_i_massimi_dei_numeri_sono_quelli_del_motore(banco):
-    f = banco.apri()
-    assert {campo: numero.GetMax() for campo, numero in f.numeri.items()} == mercato.MASSIMI_DEI_NUMERI
 
 
 def test_esc_dalla_scheda_col_ordine_cambiato_in_attesa(banco):
@@ -1412,7 +1774,7 @@ def test_la_scheda_raggiunta_col_ricalcolo_in_attesa_e_gia_nuova(banco):
     _scegli_persona(f, f.righe[-1].numero)
     _invio(f, f.elenco)
     tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True)
-    f.campo_nome.SetValue("zz")
+    f.valore_scritto.SetValue("zz")
     tastiera.pompa()
     tastiera.posta_tasto(tastiera.VK_TAB, ctrl=True, shift=True)
     assert _fuoco_su(f.scheda)

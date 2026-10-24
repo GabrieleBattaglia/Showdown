@@ -10,7 +10,8 @@ quali dialoghi ci sono: un dialogo nuovo che non ci sta fa fallire la prova, fin
 a FABBRICHE. Un Chiudi wx.ID_CLOSE o qualunque, come in un dialogo futuro, risponde a Esc anche lui.
 Dal 24 ottobre 2026 ci sono anche la finestra Mercato e ricerca e i suoi dialoghi interni, con i testi da leggere
 delle domande, che a Esc valgono No, e degli avvisi; coi collegamenti dello stesso giorno escono il mercato dei
-giocatori, quello degli allenatori e la ricerca, che la finestra ha sostituito.
+giocatori, quello degli allenatori e la ricerca, che la finestra ha sostituito. La sera, col costruttore di regole, esce
+Aggiungi una condizione, e Salva filtri si prova col campo che dice che cosa ne è della regola in preparazione.
 """
 
 import importlib
@@ -117,11 +118,11 @@ FABBRICHE = {
     "FinestraDalVivo": _dal_vivo,
     # Dal 24 ottobre 2026, la finestra Mercato e ricerca e i suoi dialoghi interni, coi testi da leggere.
     "MercatoERicerca": lambda s: gui_mercato.MercatoERicerca(None, s.mondo, impostazioni.valide(None), "mercato"),
-    "SalvaFiltri": lambda s: gui_mercato.SalvaFiltri(None, mercato.filtri_di_ricerca_di_serie(), "Giovani mancini"),
+    "SalvaFiltri": lambda s: gui_mercato.SalvaFiltri(None, mercato.filtri_di_ricerca_di_serie(), "Giovani mancini",
+                                                      nota="La regola in preparazione entra nel preset, come ultima regola."),
     "RinominaPreset": lambda s: gui_mercato.RinominaPreset(None, mercato.filtri_di_ricerca_di_serie(), mercato.Preset(1, "Giovani mancini", mercato.Filtri())),
     "GestisciPreset": lambda s: gui_mercato.GestisciPreset(None, types.SimpleNamespace(filtri_di_ricerca=mercato.filtri_di_ricerca_di_serie(), impostazioni=None)),
     "PostoDaOffrire": lambda s: gui_mercato.PostoDaOffrire(None, s.mondo, s.club),
-    "Condizione": lambda s: gui_mercato.Condizione(None),
     "Avviso": lambda s: gui_mercato.Avviso(None, "Avviso", "Un testo da leggere."),
     "Domanda": lambda s: gui_mercato.Domanda(None, "Domanda", "Una domanda da leggere?"),
 }

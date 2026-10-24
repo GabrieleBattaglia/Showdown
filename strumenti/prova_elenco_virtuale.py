@@ -57,6 +57,8 @@ strumenti/tastiera_simulata.py, da cui la prendono anche le prove: qui restano i
 lunghe e le misure. Coi collegamenti della finestra, lo stesso giorno, il mercato di prima esce, e i trovati della
 prova vengono dal motore della finestra, mercato.cerca, coi liberi, chi è in vendita da altri e i tesserati del
 computer, dal valore più alto: le righe sono quelle di testi.riga_trovato, come nella finestra.
+La sera dello stesso giorno, col costruttore di regole, i trovati della prova sono chi è sul mercato o tesserato del
+computer, due regole unite dalla o. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import argparse
@@ -105,8 +107,10 @@ TETTO_DEL_LISTBOX = 500
 LUNGHEZZA_DELLE_RIGHE_LUNGHE = 300
 TITOLO_VIRTUALE = "Prova dell'elenco virtuale"
 TITOLO_NATIVO = "Prova dell'elenco nativo"
-# Chi c'è nell'elenco della prova: i liberi, chi è in vendita da altri e i tesserati del computer, dal valore più alto.
-FILTRI_DELLA_PROVA = mercato.Filtri(liberi=True, in_vendita=True, del_computer=True)
+# Chi c'è nell'elenco della prova: i liberi, chi è in vendita da altri e i tesserati del computer, dal valore più alto;
+# col costruttore di regole, chi è sul mercato o tesserato del computer.
+FILTRI_DELLA_PROVA = mercato.Filtri((mercato.Regola(mercato.E, mercato.GIOCATORI, "stato", "uguale", mercato.SUL_MERCATO),
+                                     mercato.Regola(mercato.O, mercato.GIOCATORI, "stato", "uguale", mercato.DEL_COMPUTER)), "valore_alto")
 
 
 def istruzioni(nativo, attivi, tetto=TETTO_DEL_LISTBOX):
