@@ -280,7 +280,9 @@ class ElencoVirtuale(wx.ListCtrl):
         col messaggio di Windows e non con SetColumnWidth di wx 3.3, che prima che la finestra si mostri tiene
         da parte le larghezze e alla prima apparizione le rifà una per una, ridisegnando ogni volta, e dopo
         ridisegna due volte ogni larghezza nuova: sul PC Gigante, con 2.000 righe, l'apertura costava da 310 a
-        480 millesimi in 15 ridisegni, contro i 55 di adesso.
+        480 millesimi in 15 ridisegni, contro i 55 col messaggio. Quando l'elenco cambia misura, la larghezza
+        arriva dopo, con _misura_cambiata, e all'apertura costa un ridisegno della pagina in più: sul Gigante,
+        il 24 ottobre 2026, una trentina di millesimi, e 116 domande di Windows invece di 78.
         """
         larghezza = self.GetClientSize().width
         if larghezza > 0 and larghezza != self._larghezza_data:
@@ -289,7 +291,17 @@ class ElencoVirtuale(wx.ListCtrl):
 
     def _misura_cambiata(self, event):
         event.Skip()
-        self.adatta_colonna()
+        # La nuova misura arriva anche mentre l'elenco aggiorna ancora le sue barre, quando compare o sparisce
+        # quella verticale, per un filtro o per la finestra che cambia misura: la larghezza data lì dentro la
+        # supera il calcolo di prima, che lascia la barra orizzontale con la colonna larga quanto l'elenco, e
+        # le frecce sinistra e destra farebbero scorrere l'elenco di lato. La stessa larghezza ridata dopo,
+        # Windows la ignora; e da wx non si distingue quando l'elenco è a metà. Si dà quando ha finito.
+        wx.CallAfter(self._adatta_dopo)
+
+    def _adatta_dopo(self):
+        # Se nel frattempo l'elenco si è chiuso, non c'è più niente da adattare.
+        with contextlib.suppress(RuntimeError):
+            self.adatta_colonna()
 
 
 class ElencoNativo(wx.ListBox):

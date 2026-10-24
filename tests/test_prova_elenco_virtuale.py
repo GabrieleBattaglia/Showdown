@@ -8,11 +8,15 @@ caratteri dicendo quanti sono; le lettere iniziali le cerca il prototipo, senza 
 tutte le righe; il filtro aspetta 350 millesimi, tiene scelta la stessa persona e annuncia i trovati alla voce e
 al display; Scheda lavora sulla riga col fuoco anche dopo Ctrl+Spazio; Esc, battuto davvero sull'elenco, chiude
 la finestra come Chiudi. La ricerca per iniziali si prova anche da sola, sui nomi, e le cartelle temporanee
-tornano com'erano.
+tornano com'erano. Quando la barra verticale dell'elenco virtuale compare o sparisce, per un filtro o per la
+finestra che cambia misura, la colonna resta larga quanto l'elenco e la barra orizzontale non compare: lo ha
+trovato la verifica del prototipo, il 24 ottobre 2026.
 """
 
+import ctypes
 import os
 import sys
+from ctypes import wintypes
 from pathlib import Path
 
 import pytest
@@ -30,6 +34,13 @@ ATTIVI = 300
 TETTO = 40
 # Il codice con cui la rete di sicurezza chiude una finestra che Esc non ha chiuso.
 NON_CHIUSA = 4242
+# Le barre di scorrimento dell'elenco virtuale le mostra Windows da sé, e HasScrollbar di wx non le vede: si
+# leggono nello stile della sua finestra, con una copia di user32 tutta della prova.
+user32 = ctypes.WinDLL("user32", use_last_error=True)
+user32.GetWindowLongW.restype = wintypes.LONG
+user32.GetWindowLongW.argtypes = [wintypes.HWND, ctypes.c_int]
+GWL_STYLE = -16
+WS_HSCROLL, WS_VSCROLL = 0x00100000, 0x00200000
 
 
 class Messaggi(list):
@@ -70,6 +81,12 @@ def _clic(controllo):
         evento.SetInt(int(controllo.GetValue()))
     controllo.GetEventHandler().ProcessEvent(evento)
     prova.pompa()
+
+
+def _barre(controllo):
+    """Le barre di scorrimento che Windows mostra sul controllo: (orizzontale, verticale)."""
+    stile = user32.GetWindowLongW(controllo.GetHandle(), GWL_STYLE) & 0xFFFFFFFF
+    return bool(stile & WS_HSCROLL), bool(stile & WS_VSCROLL)
 
 
 def _scrivi_nel_campo(dialogo, testo):
@@ -217,6 +234,69 @@ def test_il_filtro_si_ferma_tiene_la_persona_e_annuncia_i_trovati(finestra, voce
     assert elenco.col_fuoco() == 0
     # Alla chiusura la console dice i tempi: qui quattro ricalcoli.
     assert finestra.riepilogo().startswith("Finestra pronta in ") and "; 4 ricalcoli, in media " in finestra.riepilogo()
+
+
+def test_tornando_a_tutti_dopo_un_filtro_vuoto_non_compare_la_barra_orizzontale(app_wx, mondo_e_poli):
+    """
+    Dal filtro senza trovati a tutti, la barra verticale torna e stringe l'elenco virtuale, e Windows lo dice
+    mentre l'elenco aggiorna ancora le sue barre: la colonna resta larga quanto l'elenco, e non compare la
+    barra orizzontale, con cui le frecce sinistra e destra farebbero scorrere l'elenco di lato.
+    """
+    mondo, poli = mondo_e_poli
+    dialogo = prova.ProvaElenco(None, mondo, poli, tetto=TETTO)
+    dialogo.Show()
+    prova.pompa()
+    try:
+        elenco = dialogo.elenco
+        for chiave, verticale in (("", True), ("0", False), ("", True), ("0", False), ("", True)):
+            if chiave or dialogo.campo.GetValue():
+                _scrivi_nel_campo(dialogo, chiave)
+                prova.pompa()
+            assert _barre(elenco) == (False, verticale), f"filtro {chiave!r}"
+            assert elenco.GetColumnWidth(0) == elenco.GetClientSize().width
+    finally:
+        dialogo.Destroy()
+        prova.pompa()
+
+
+def test_cambiando_misura_alla_finestra_non_compare_la_barra_orizzontale(app_wx, mondo_e_poli):
+    """
+    Lo stesso quando la barra verticale compare o sparisce perché la finestra cambia misura: con un filtro le
+    cui righe stanno tutte nella finestra massimizzata e non in quella ripristinata.
+    """
+    mondo, poli = mondo_e_poli
+    dialogo = prova.ProvaElenco(None, mondo, poli, tetto=TETTO)
+    dialogo.Show()
+    prova.pompa()
+    try:
+        elenco = dialogo.elenco
+        nella_massimizzata = elenco.GetCountPerPage()
+        dialogo.Restore()
+        prova.pompa()
+        nella_ripristinata = elenco.GetCountPerPage()
+        dialogo.Maximize()
+        prova.pompa()
+        assert nella_ripristinata + 4 < nella_massimizzata
+        # Un pezzo di nome che lascia più righe di quante ne stanno nella finestra ripristinata, e meno della massimizzata.
+        conti = {}
+        for nome in dialogo.nomi_di_tutti:
+            for pezzo in {nome[i:i + lunghezza] for lunghezza in (2, 3) for i in range(len(nome) - lunghezza + 1)} - {""}:
+                if " " not in pezzo:
+                    conti[pezzo] = conti.get(pezzo, 0) + 1
+        chiave = next(pezzo for pezzo, quanti in sorted(conti.items()) if nella_ripristinata + 2 <= quanti <= nella_massimizzata - 2)
+        _scrivi_nel_campo(dialogo, chiave)
+        prova.pompa()
+        assert len(dialogo.visibili) == conti[chiave]
+        for passo, azione, verticale in (("massimizzata", None, False), ("ripristinata", dialogo.Restore, True), ("di nuovo massimizzata", dialogo.Maximize, False),
+                                         ("di nuovo ripristinata", dialogo.Restore, True)):
+            if azione is not None:
+                azione()
+                prova.pompa()
+            assert _barre(elenco) == (False, verticale), f"filtro {chiave!r}, finestra {passo}"
+            assert elenco.GetColumnWidth(0) == elenco.GetClientSize().width
+    finally:
+        dialogo.Destroy()
+        prova.pompa()
 
 
 def test_scheda_lavora_sulla_riga_col_fuoco_anche_dopo_ctrl_spazio(finestra, messaggi):
