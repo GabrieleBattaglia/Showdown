@@ -124,7 +124,7 @@ Il diario della polisportiva attiva, con Ctrl+Shift+M: mess_penna_sul_diario.
 L'elenco delle polisportive, con Ctrl+Shift+E: mess_albo_che_scorre.
 Si apre la scelta del tesserato da svincolare, con Ctrl+Shift+S: mess_porta_che_cigola.
 Un tesserato svincolato, che torna libero: mess_contratto_strappato.
-Un comando che vuole i tesserati quando la polisportiva attiva non ne ha: mess_eco_nello_spogliatoio.
+Un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue polisportive quando nessuna ne ha: mess_eco_nello_spogliatoio.
 Finestra, polisportive, le notizie dei tuoi tesserati, 3 suoni.
 Nell'avanzamento un tuo tesserato diventa una bandiera del club: mess_fanfara_della_bandiera.
 Nell'avanzamento un tuo tesserato si ritira: mess_scarpe_al_chiodo.

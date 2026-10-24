@@ -98,6 +98,8 @@ di, col nome della polisportiva attiva, e Gioca tutte le amichevoli di tutte le 
 può giocare ne gioca una contro un avversario scelto a caso, con la classe entro 15 livelli dalla sua e di un'altra
 polisportiva, senza la finestra dal vivo; il mondo si salva, e la vista riassume ogni incontro in una riga, coi totali in
 fondo. Ogni evento nuovo ha il suo suono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Con la verifica, quando nessuna delle tue polisportive ha tesserati, la seconda voce lo dice come la prima, col suono della
+rosa vuota, e non rimanda al giorno simulato dopo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -1133,10 +1135,17 @@ class FinestraPrincipale(wx.Frame):
         self._amichevoli_in_serie([p], tutte=False)
 
     def amichevoli_di_tutte(self):
-        """Gioca tutte le amichevoli di tutte le tue polisportive, nell'ordine dei nomi, come in _amichevoli_in_serie."""
+        """
+        Gioca tutte le amichevoli di tutte le tue polisportive, nell'ordine dei nomi, come in _amichevoli_in_serie. Se nessuna
+        ha tesserati la vista lo dice come per la polisportiva attiva, col nome quando la tua è una sola: il giorno dopo non serve.
+        """
         mie = sorted((p for p in self.mondo.polisportive.values() if not p.is_cpu_controlled), key=lambda p: p.nome.casefold())
         if not mie:
             self.mostra("Non hai ancora nessuna polisportiva: fondane una con Ctrl+N.", "nessuna polisportiva", "nessuna_polisportiva_tua")
+            return
+        if not any(self._rosa_attiva(p) for p in mie):
+            testo = f"{mie[0].nome} non ha tesserati da far giocare." if len(mie) == 1 else "Nessuna delle tue polisportive ha tesserati da far giocare."
+            self.mostra(testo, "nessun tesserato", "rosa_vuota")
             return
         self._amichevoli_in_serie(mie, tutte=True)
 

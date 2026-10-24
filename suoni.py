@@ -94,7 +94,8 @@ anche nei due ripieghi del calendario, Iscrivi e Togli dopo il sorteggio. È di 
 Con la richiesta di Gabriele dello stesso collaudo arriva il gruppo di Gioca tutte le amichevoli, quattro suoni nuovi
 nella V231, imparentati con quelli dell'amichevole: l'avvio della serie, la serie finita, nessuno da far giocare oggi e
 nessun avversario nel raggio delle classi per nessuno. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
-UltraCode).
+UltraCode). Con la verifica la rosa vuota suona anche per tutte le tue polisportive senza tesserati, e la sua azione lo
+dice. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -672,7 +673,8 @@ AZIONI = {
     "elenco_polisportive": "l'elenco delle polisportive, con Ctrl+Shift+E",
     "dialogo_svincolo": "si apre la scelta del tesserato da svincolare, con Ctrl+Shift+S",
     "tesserato_svincolato": "un tesserato svincolato, che torna libero",
-    "rosa_vuota": "un comando che vuole i tesserati quando la polisportiva attiva non ne ha",
+    "rosa_vuota": ("un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue "
+                   "polisportive quando nessuna ne ha"),
     "tuo_tesserato_bandiera": "nell'avanzamento un tuo tesserato diventa una bandiera del club",
     "tuo_tesserato_ritirato": "nell'avanzamento un tuo tesserato si ritira",
     "tuo_tesserato_uscito_di_scena": "nell'avanzamento un tuo tesserato muore o lascia lo showdown",

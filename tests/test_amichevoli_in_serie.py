@@ -2,7 +2,8 @@
 Test di Gioca tutte le amichevoli, richiesta di Gabriele del 24 ottobre 2026, dal collaudo di gioco, sul desktop nascosto del
 conftest e senza suonare: la scelta dell'avversario nel raggio di 15 classi, in su o in giù, fuori dalla stessa polisportiva e
 fra chi oggi può giocare; nessun avversario due volte e nessuno dei tuoi due volte, anche quando un tuo di un'altra polisportiva
-fa da avversario; tutte le polisportive, nell'ordine dei nomi; nessun avversario nel raggio; nessuno da far giocare; il
+fa da avversario; tutte le polisportive, nell'ordine dei nomi; nessun avversario nel raggio; nessuno da far giocare, e dalla
+verifica nessun tesserato in nessuna delle tue polisportive; il
 salvataggio, anche quando non riesce; le righe, i totali e il plurale giusto; le voci del menu Partite, col nome della
 polisportiva attiva che segue i cambi; i suoni di ogni evento, con l'esito che aspetta la fine del suono dell'avvio. La classe,
 dove la prova deve deciderla, la dà una funzione finta.
@@ -249,6 +250,31 @@ def test_senza_tesserati_senza_attiva_e_senza_polisportive(finestra, mondo, suon
         p.is_cpu_controlled = True
     finestra._esegui(finestra.amichevoli_di_tutte)
     assert finestra.vista.GetValue() == "Non hai ancora nessuna polisportiva: fondane una con Ctrl+N." and suonati[-1] == "nessuna_polisportiva_tua"
+
+
+def test_tutte_le_tue_polisportive_senza_tesserati(finestra, mondo, suonati):
+    # Dalla verifica: senza tesserati in nessuna delle tue polisportive la vista lo dice, come per la polisportiva attiva, e non
+    # rimanda al giorno simulato dopo; con una sola polisportiva tua ne dice il nome.
+    ora = mondo.datetime_corrente_simulazione
+    prima = {g.id: _partite(g) for g in mondo.giocatori.values()}
+    mondo.polisportive["Vuota"] = Polisportiva("Vuota", None, ora)
+    for gid in range(9, 16):
+        mondo._lascia(mondo.polisportive[SECONDA], mondo.giocatori[gid])
+    # Magnavacca ha ancora i suoi tesserati, ma oggi hanno già giocato: allora sì, si aspetta il giorno dopo.
+    for gid in range(1, 9):
+        mondo.giocatori[gid].ultimo_impegno = ora
+    finestra._esegui(finestra.amichevoli_di_tutte)
+    assert finestra.vista.GetValue().startswith("Oggi nessun tesserato delle tue polisportive può giocare un'amichevole: ognuno gioca")
+    assert suonati == ["nessuno_per_le_amichevoli_in_serie"]
+    for gid in range(1, 9):
+        mondo._lascia(mondo.polisportive[PRIMA], mondo.giocatori[gid])
+    finestra._esegui(finestra.amichevoli_di_tutte)
+    assert finestra.vista.GetValue() == "Nessuna delle tue polisportive ha tesserati da far giocare."
+    assert suonati[-1] == "rosa_vuota" and finestra.ultimo_evento == "nessun tesserato"
+    mondo.polisportive[PRIMA].is_cpu_controlled = mondo.polisportive[SECONDA].is_cpu_controlled = True
+    finestra._esegui(finestra.amichevoli_di_tutte)
+    assert finestra.vista.GetValue() == "Vuota non ha tesserati da far giocare." and suonati == ["nessuno_per_le_amichevoli_in_serie"] + ["rosa_vuota"] * 2
+    assert {g.id: _partite(g) for g in mondo.giocatori.values()} == prima
 
 
 # Il salvataggio e la vista.
