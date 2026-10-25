@@ -18,6 +18,13 @@ L'Anteprima della riga, Alt+E, dice la riga come sarebbe adesso.
 Barra di serie, Alt+B, rimette la barra di partenza; Salva, Alt+S, chiude, e la barra nuova si vede subito nella finestra principale, alta quanto le sue righe.
 Riapri la finestra ed esci con Esc: si sente l'annullamento, e la barra resta com'era.
 Invio sulla scelta Riga o su un pulsante non salva e non chiude: Salva si preme.
+Muoviti con le frecce sulla barra: entrando in un dato con la sigla senti, dopo la lettura di NVDA, il suo nome, e lo leggi sul display braille; per esempio gloria entrando in Glo.
+Dentro lo stesso dato il nome non si ripete; uscendo sullo spazio e rientrando, sì.
+Con Ctrl+Freccia destra il nome arriva a ogni dato; tenendo giù una freccia arriva una volta sola, quando la lasci.
+Il nome della polisportiva, il giorno della settimana e l'ultimo evento non hanno la sigla, e non si spiegano.
+Arrivando sulla barra con F7 o Tab, e quando la barra si riscrive da sola ogni 20 secondi, il nome non si dice.
 Domanda: i dodici suoni nuovi ti sembrano adatti ai loro eventi, e distinti fra loro?
 Domanda: la barra di serie ti va bene così, o vuoi spostare qualche dato?
 Domanda: tornando sulla barra con F7 il cursore resta dove l'avevi lasciato, invece di ripartire dalla prima riga: ti va bene?
+Domanda: il nome breve del dato ti basta, o vuoi anche la spiegazione intera, quella della finestra Barra di stato?
+Domanda: arrivando sulla barra con F7 vuoi sentire anche il nome del dato su cui sta il cursore?

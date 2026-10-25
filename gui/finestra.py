@@ -117,6 +117,11 @@ stessa colonna. I dati vengono da barra.py: quelli che cambiano col tempo si ric
 vengono da un'istantanea che si svuota dopo ogni comando, dopo ogni avanzamento e quando si salva una barra nuova; F7
 sulla barra la rifà tutta. A metà di un comando la barra non si riscrive: lo fa la fine del comando, una volta sola. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, richiesta di Gabriele perché le sigle sono tante da ricordare: quando ti muovi col cursore nella barra e
+entri in un dato che ha la sigla, la sintesi e il display braille ne dicono il nome, con la voce degli annunci della
+cronaca, e lo ridicono se ne esci e ci rientri. Lo dice soltanto il cursore che si muove, coi tasti o col clic: né
+l'arrivo sulla barra né la riscrittura sotto il cursore. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import contextlib
@@ -141,7 +146,7 @@ import suoni
 import testi
 from gui import aspetto
 from gui.barra_di_stato import BarraDiStato
-from gui.dal_vivo import ALLA_FINE, CON_ESC, FinestraDalVivo
+from gui.dal_vivo import ALLA_FINE, CON_ESC, FinestraDalVivo, annunci_condivisi
 from gui.dialoghi import (
     ASSISTI,
     PORTA_IL_MIO_MONDO,
@@ -247,6 +252,9 @@ class FinestraPrincipale(wx.Frame):
         self._istantanea = {}
         self._salvataggio_riuscito = True
         self._comandi_in_corso = 0
+        # Le righe della barra coi loro dati, e la chiave del dato su cui stava il cursore, per dirne il nome quando ci entra.
+        self._dati_della_barra = []
+        self._dato_sotto_il_cursore = None
         # Dalla tappa 12, punto 12.10: un modello o una formula dei tornei che non si leggono si dicono in
         # testa alla vista all'avvio, col loro suono, e nella barra una volta per sessione e a ogni cambio.
         self.problemi_all_avvio = self._problemi_del_calendario()
@@ -298,6 +306,8 @@ class FinestraPrincipale(wx.Frame):
         self.barra = wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_DONTWRAP)
         self.barra.SetName("Barra di stato")
         self.barra.Bind(wx.EVT_SET_FOCUS, self._alla_barra)
+        self.barra.Bind(wx.EVT_KEY_UP, self._mossa_nella_barra)
+        self.barra.Bind(wx.EVT_LEFT_UP, self._mossa_nella_barra)
         sizer.Add(self.etichetta_vista, 0, wx.LEFT | wx.RIGHT | wx.TOP, 5)
         sizer.Add(self.vista, 1, wx.EXPAND | wx.ALL, 5)
         sizer.Add(self.etichetta_barra, 0, wx.LEFT | wx.RIGHT, 5)
@@ -593,7 +603,8 @@ class FinestraPrincipale(wx.Frame):
         """
         if not self or self.chiusa or self._comandi_in_corso:
             return
-        testo = "\n".join(modulo_barra.righe(self.impostazioni["barra_di_stato"], self.contesto_della_barra(), self._istantanea))
+        self._dati_della_barra = modulo_barra.righe_coi_dati(self.impostazioni["barra_di_stato"], self.contesto_della_barra(), self._istantanea)
+        testo = "\n".join(modulo_barra.testo_della_riga(riga) for riga in self._dati_della_barra)
         if testo == self._testo_barra:
             return
         self._testo_barra = testo
@@ -605,10 +616,42 @@ class FinestraPrincipale(wx.Frame):
         posizione = self.barra.XYToPosition(colonna, riga)
         if posizione >= 0:
             self.barra.SetInsertionPoint(posizione)
+        # La riscrittura non è una mossa: il dato sotto il cursore si ricorda in silenzio.
+        self._dato_sotto_il_cursore = self._chiave_al_cursore()
+
+    def _dato_al_cursore(self):
+        """Il dato della barra su cui sta il cursore, o None sullo spazio fra due dati e dopo la fine della riga."""
+        _trovata, colonna, riga = self.barra.PositionToXY(self.barra.GetInsertionPoint())
+        if not 0 <= riga < len(self._dati_della_barra):
+            return None
+        return modulo_barra.dato_alla_colonna(self._dati_della_barra[riga], colonna)
+
+    def _chiave_al_cursore(self):
+        dato = self._dato_al_cursore()
+        return dato.chiave if dato is not None else None
+
+    def _mossa_nella_barra(self, event):
+        """
+        A ogni tasto lasciato e a ogni clic sulla barra: se il cursore è entrato in un dato diverso da quello di prima, e quel
+        dato ha la sigla, la sintesi e il display braille ne dicono il nome, dopo quello che NVDA sta leggendo. Uscendo su
+        uno spazio e rientrando nello stesso dato, lo ridicono. Un tasto tenuto giù parla una volta sola, quando si lascia.
+        """
+        event.Skip()
+        dato = self._dato_al_cursore()
+        chiave = dato.chiave if dato is not None else None
+        if chiave == self._dato_sotto_il_cursore:
+            return
+        self._dato_sotto_il_cursore = chiave
+        if dato is not None and dato.sigla:
+            annunci_condivisi().breve(dato.nome, self.impostazioni)
 
     def _alla_barra(self, event):
-        """Quando il cursore arriva sulla barra, la ricalcola prima che lo screen reader la legga."""
+        """
+        Quando il cursore arriva sulla barra, la ricalcola prima che lo screen reader la legga. L'arrivo non è una mossa: il
+        dato su cui sta il cursore si ricorda in silenzio, e il suo nome si dice soltanto se ci si entra muovendosi.
+        """
         self.aggiorna_barra()
+        self._dato_sotto_il_cursore = self._chiave_al_cursore()
         event.Skip()
 
     def _al_rinfresco(self, event):

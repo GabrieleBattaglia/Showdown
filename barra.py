@@ -17,6 +17,10 @@ evento, si ricalcolano a ogni rinfresco; tutti gli altri vengono dall'istantanea
 la finestra svuota dopo ogni comando, dopo ogni avanzamento e quando si salva una barra nuova. Un dato senza testo, come
 quello del salvataggio quando tutto va bene o quelli della polisportiva attiva quando non ce n'è una, non lascia spazi,
 e una riga senza nessun testo non si scrive.
+Lo stesso giorno, richiesta di Gabriele: le sigle sono tante da ricordare, e la finestra, quando il cursore entra in un dato
+che ha la sigla, ne dice il nome alla sintesi e al display braille. Per questo le righe si possono avere anche coi loro
+dati, e dato_alla_colonna dice quale dato sta sotto una colonna. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
+5.5, UltraCode).
 """
 
 import dataclasses
@@ -926,12 +930,12 @@ def dati_noti(riga):
     return [CATALOGO[chiave] for chiave in riga if chiave in CATALOGO]
 
 
-def righe(barra_scelta, contesto, istantanea):
+def righe_coi_dati(barra_scelta, contesto, istantanea):
     """
-    Le righe della barra: per ogni riga scelta i testi dei suoi dati, uniti da uno spazio. I dati del rinfresco si calcolano
-    sempre; gli altri vengono dall'istantanea, il dizionario fra chiave e testo che la finestra svuota dopo ogni comando e
-    ogni avanzamento, e quelli che mancano si calcolano e ci restano. Un dato senza testo non lascia spazi, e una riga
-    senza nessun testo non si scrive.
+    Le righe della barra coi loro dati: per ogni riga che si scrive, le coppie di dato e testo, nell'ordine. I dati del
+    rinfresco si calcolano sempre; gli altri vengono dall'istantanea, il dizionario fra chiave e testo che la finestra
+    svuota dopo ogni comando e ogni avanzamento, e quelli che mancano si calcolano e ci restano. Un dato senza testo non
+    c'è, e una riga senza nessun testo non si scrive.
     """
     calcolo = _Calcolo(contesto)
     risultato = []
@@ -945,10 +949,33 @@ def righe(barra_scelta, contesto, istantanea):
             else:
                 testo = istantanea[dato.chiave] = dato.testo(calcolo)
             if testo:
-                parti.append(testo)
+                parti.append((dato, testo))
         if parti:
-            risultato.append(" ".join(parti))
+            risultato.append(parti)
     return risultato
+
+
+def testo_della_riga(riga_coi_dati):
+    """Il testo di una riga della barra: i testi dei suoi dati, uniti da uno spazio."""
+    return " ".join(testo for _dato, testo in riga_coi_dati)
+
+
+def righe(barra_scelta, contesto, istantanea):
+    """Le righe della barra, come le scrive la finestra: i testi dei dati di ogni riga, uniti da uno spazio. Vedi righe_coi_dati."""
+    return [testo_della_riga(riga) for riga in righe_coi_dati(barra_scelta, contesto, istantanea)]
+
+
+def dato_alla_colonna(riga_coi_dati, colonna):
+    """
+    Il dato della riga su cui sta il cursore alla colonna data, contata da zero come in wx: il cursore sta su un carattere
+    quando gli sta davanti. Sullo spazio fra due dati, e dopo l'ultimo carattere della riga, nessuno: None.
+    """
+    inizio = 0
+    for dato, testo in riga_coi_dati:
+        if inizio <= colonna < inizio + len(testo):
+            return dato
+        inizio += len(testo) + 1
+    return None
 
 
 # I testi della finestra della barra di stato.

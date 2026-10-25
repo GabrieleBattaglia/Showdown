@@ -13,6 +13,9 @@ e i blocchi si mostrano in fila, ognuno almeno per il tempo minimo di lettura: �
 nata in MeTeOra. Il braille ce l'hanno soltanto NVDA e JAWS: con la voce di Windows scelta per la
 sintesi, il display riceve le righe dallo screen reader che risponde, con la scelta automatica.
 Non conosce wx: chi lo crea gli dà la funzione che pianifica le attese, wx.CallLater nella finestra.
+Dal 2026-10-25, richiesta di Gabriele per la barra di stato su misura di D38, c'è anche il testo breve, che va subito alla
+sintesi e al display insieme, senza la coda dei blocchi: il nome di un dato quando il cursore ci entra. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 from GBsintesi import AUTOMATICA, CON_IL_BRAILLE, Coda, Sintesi
@@ -52,6 +55,16 @@ class Annunci:
                 self.sintesi.dici(riga, impostazioni["annunci_sintesi"], "sintesi")
             if dove in ("entrambi", "braille"):
                 self._coda.aggiungi(riga, impostazioni["annunci_celle"], impostazioni["annunci_lettura_minima"] / 1000)
+
+    def breve(self, testo, impostazioni):
+        """
+        Un testo breve alla sintesi e al display braille, subito e senza interrompere quello che la sintesi sta dicendo:
+        la sintesi è quella scelta per gli annunci, il braille va come quello della cronaca. Non dipende dalla lettura
+        automatica della cronaca, che vale soltanto per le partite.
+        """
+        self._impostazioni = impostazioni
+        self.sintesi.dici(testo, impostazioni["annunci_sintesi"], "sintesi")
+        self.sintesi.dici(testo, self._uscita_del_braille(), "braille")
 
     def svuota(self):
         """Toglie dal display le righe ancora in fila: la finestra si è chiusa, e non servono più."""

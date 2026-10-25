@@ -285,3 +285,55 @@ def test_la_voce_del_menu_salva_la_barra(finestra, suonati, monkeypatch):
     suonati.clear()
     finestra._esegui(finestra.cambia_barra)
     assert suonati == ["dialogo_barra_di_stato", "annullato"] and impostazioni.carica()["barra_di_stato"] == salvata
+
+
+# La spiegazione delle sigle, richiesta di Gabriele del 25 ottobre 2026.
+
+def _vai(finestra, colonna, riga):
+    """Il cursore va alla colonna e alla riga date, e si lascia il tasto, come con le frecce."""
+    _metti_il_cursore(finestra.barra, colonna, riga)
+    finestra._mossa_nella_barra(_tasto(wx.WXK_RIGHT))
+
+
+def test_entrando_in_un_dato_con_la_sigla_se_ne_sente_il_nome(finestra, voce_finta):
+    _con_la_barra(finestra, [["nome_polisportiva", "gloria", "cassa"], ["ultimo_evento"]])
+    assert finestra.barra.GetValue() == "Club Di Prova Glo:100 Cas:20.000\nmondo pronto"
+    _vai(finestra, 14, 0)
+    # Alla sintesi e al display braille, con la scelta automatica, cioè NVDA nelle prove.
+    assert voce_finta.detti == [("nvda", "gloria")] and voce_finta.braille == [("nvda", "gloria")]
+    # Dentro lo stesso dato non si ripete.
+    _vai(finestra, 17, 0)
+    _vai(finestra, 20, 0)
+    assert voce_finta.detti == [("nvda", "gloria")]
+    # Sullo spazio niente; rientrando nello stesso dato, di nuovo.
+    _vai(finestra, 21, 0)
+    _vai(finestra, 20, 0)
+    _vai(finestra, 25, 0)
+    assert [testo for _uscita, testo in voce_finta.detti] == ["gloria", "gloria", "cassa"]
+    # I dati senza sigla non si spiegano: il nome della polisportiva e l'ultimo evento.
+    _vai(finestra, 3, 0)
+    _vai(finestra, 2, 1)
+    assert [testo for _uscita, testo in voce_finta.detti] == ["gloria", "gloria", "cassa"]
+
+
+def test_ne_l_arrivo_ne_la_riscrittura_spiegano_il_dato(finestra, voce_finta):
+    _con_la_barra(finestra, [["gloria", "cassa"], ["ultimo_evento"]])
+    _vai(finestra, 10, 0)
+    assert [testo for _uscita, testo in voce_finta.detti] == ["cassa"]
+    # La riscrittura sposta i dati sotto il cursore, che finisce sulla gloria: non è una mossa, e tace.
+    finestra.mondo.miapolisportiva_attiva.gloria = 1_000_000
+    finestra._istantanea.clear()
+    finestra.aggiorna_barra()
+    assert finestra.barra.GetValue().startswith("Glo:1000000 Cas:") and finestra._dato_sotto_il_cursore == "gloria"
+    finestra._mossa_nella_barra(_tasto(wx.WXK_SHIFT))
+    assert [testo for _uscita, testo in voce_finta.detti] == ["cassa"]
+    # Arrivando sulla barra, il dato su cui sta il cursore si ricorda in silenzio.
+    finestra.vista.SetFocus()
+    _metti_il_cursore(finestra.barra, 2, 0)
+    finestra._alla_barra(_tasto(wx.WXK_TAB))
+    finestra._mossa_nella_barra(_tasto(wx.WXK_TAB))
+    assert [testo for _uscita, testo in voce_finta.detti] == ["cassa"]
+    # La sintesi scelta per gli annunci vale anche qui.
+    finestra.impostazioni = {**finestra.impostazioni, "annunci_sintesi": "sapi5"}
+    _vai(finestra, 13, 0)
+    assert voce_finta.detti[-1] == ("sapi5", "cassa") and voce_finta.braille[-1] == ("nvda", "cassa")

@@ -296,3 +296,15 @@ def test_spiegazione_e_anteprima(mondo):
     assert barra.anteprima(["gloria", "cassa"], contesto) == "Glo:100 Cas:20.000"
     assert barra.anteprima([], contesto) == "La riga è vuota, e non si salverà."
     assert barra.anteprima(["stato_salvataggio"], contesto) == "Adesso questa riga non mostra niente."
+
+
+def test_il_dato_sotto_ogni_colonna(mondo):
+    # La richiesta di Gabriele del 25 ottobre: la finestra sa su quale dato sta il cursore, per dirne il nome.
+    riga = barra.righe_coi_dati([["nome_polisportiva", "gloria", "stato_salvataggio", "cassa"]], _contesto(mondo), {})[0]
+    assert barra.testo_della_riga(riga) == "Club Di Prova Glo:100 Cas:20.000"
+    sotto = [barra.dato_alla_colonna(riga, colonna) for colonna in range(len("Club Di Prova Glo:100 Cas:20.000") + 2)]
+    chiavi = [d.chiave if d is not None else None for d in sotto]
+    # Il nome con i suoi spazi è un dato solo; lo spazio dopo un dato e la fine della riga non sono di nessuno.
+    assert chiavi[:13] == ["nome_polisportiva"] * 13 and chiavi[13] is None
+    assert chiavi[14:21] == ["gloria"] * 7 and chiavi[21] is None
+    assert chiavi[22:32] == ["cassa"] * 10 and chiavi[32:] == [None, None]
