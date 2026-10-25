@@ -1,1 +1,0 @@
-Collaudo di MESS 2.0.0: la finestra Mercato e ricerca col costruttore di regole, issue 8 e D36, del 24 ottobre 2026.
