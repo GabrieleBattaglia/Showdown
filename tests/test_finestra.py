@@ -1654,3 +1654,11 @@ def test_ogni_domanda_si_o_no_ha_il_no_gia_scelto():
     senza = [f"{p.name}:{n}" for p in sorted(radice.glob("*.py")) for n, riga in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
              if "wx.YES_NO" in riga and "wx.NO_DEFAULT" not in riga]
     assert not senza, f"domande con il Sì già scelto: {senza}"
+
+
+def test_le_sfide_in_arrivo_senza_sfide_non_aprono_la_finestra(finestra, suonati):
+    # Dal collaudo di gioco del 25 ottobre 2026: senza sfide la finestra non si apre, e la vista lo dice col suo suono.
+    finestra.vista.ChangeValue("")
+    finestra.sfide_in_arrivo()
+    assert finestra.vista.GetValue() == testi.nessuna_sfida_in_arrivo() and suonati[-1] == "nessuna_sfida_in_arrivo"
+    assert "dialogo_sfide_in_arrivo" not in suonati

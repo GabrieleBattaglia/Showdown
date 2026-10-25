@@ -186,9 +186,9 @@ def test_le_sfide_dalla_finestra_e_lo_storico(finestra, suonati, cartella_di_pro
     finestra.lancia_sfida()
     assert finestra.vista.GetValue().startswith("Sfide lanciate da Club Di Prova: 1.\nPoliTeam04 ")
     assert suonati[0] == "dialogo_lancia_sfida" and suonati[-1] == "lavoro_concluso"
-    # Le sfide in arrivo, senza nessuna da rispondere.
+    # Le sfide in arrivo, senza nessuna da rispondere: dal collaudo di gioco del 25 ottobre 2026 la finestra non si apre.
     finestra.sfide_in_arrivo()
-    assert finestra.vista.GetValue() == "Club Di Prova non ha risposto a nessuna sfida."
+    assert finestra.vista.GetValue() == testi.nessuna_sfida_in_arrivo() and suonati[-1] == "nessuna_sfida_in_arrivo"
     # Una sfida accettata e giocata all'avanzamento di domani entra nello storico, con la differita.
     mondo.sfide.attive.clear()
     oggi = mondo.datetime_corrente_simulazione.date()

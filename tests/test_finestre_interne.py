@@ -115,7 +115,7 @@ FABBRICHE = {
     "EditorFormule": lambda s: gui_editor.EditorFormule(None, s.gestore),
     "FormazioneDialogo": lambda s: gui_sfide.FormazioneDialogo(None, s.mondo, "Rosa di prova", "La rosa.", s.tesserati(), [], lambda ids: None),
     "LanciaSfida": lambda s: gui_sfide.LanciaSfida(None, s.mondo, s.club),
-    "SfideInArrivo": lambda s: gui_sfide.SfideInArrivo(None, s.mondo, s.club),
+    "SfideInArrivo": lambda s: gui_sfide.SfideInArrivo(None, s.mondo, [s.club]),
     "StoricoSfide": lambda s: gui_sfide.StoricoSfide(None, s.mondo),
     "CalendarioTornei": lambda s: gui_tornei.CalendarioTornei(None, s.mondo, s.club),
     "PannelloTornei": lambda s: gui_tornei.PannelloTornei(None, s.mondo),

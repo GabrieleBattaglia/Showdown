@@ -620,6 +620,8 @@ GRUPPI = (
         "sfida_gia_rifiutata_oggi": "mess_sfida_riprova_domani",
         "nessuna_sfida_da_lanciare": "mess_nessuna_sfida_da_lanciare",
         "dialogo_sfide_in_arrivo": "mess_sfide_in_arrivo",
+        # Dal collaudo di gioco del 25 ottobre 2026: le sfide in arrivo senza sfide, e la finestra non si apre.
+        "nessuna_sfida_in_arrivo": "mess_nessuna_sfida_in_arrivo",
         "sfida_accettata": "mess_sfida_accettata",
         "sfida_rifiutata": "mess_sfida_rifiutata",
         # Dal collaudo di gioco: la sfida in arrivo che non vale più, che prima suonava come la formazione che non va.
@@ -1007,7 +1009,9 @@ AZIONI = {
     "sfida_gia_rifiutata_oggi": ("nel lancio di una sfida la polisportiva scelta ha già rifiutato oggi, e si riprova domani; anche con Sfida il suo club "
                                  "nella finestra Mercato e ricerca"),
     "nessuna_sfida_da_lanciare": "la tua polisportiva non ha più sfide da lanciare questo mese",
-    "dialogo_sfide_in_arrivo": "si aprono le sfide in arrivo, a cui rispondere entro oggi, prima dell'avanzamento seguente, con Ctrl+Shift+F",
+    "dialogo_sfide_in_arrivo": ("si aprono le sfide in arrivo di tutte le tue polisportive, a cui rispondere entro oggi, prima dell'avanzamento seguente, "
+                                "con Ctrl+Shift+F"),
+    "nessuna_sfida_in_arrivo": "Ctrl+Shift+F quando nessuna delle tue polisportive ha sfide che aspettano risposta, e la finestra non si apre",
     "sfida_accettata": "accetti una sfida in arrivo, con la tua formazione",
     "sfida_rifiutata": "rifiuti una sfida in arrivo",
     "sfida_non_piu_valida": ("nelle sfide in arrivo la sfida scelta non vale più: non aspetta più una risposta, chi sfida ha chiuso o non ha più "

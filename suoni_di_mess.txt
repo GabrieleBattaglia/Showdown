@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 370 suoni, 343 della finestra e 27 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 371 suoni, 344 della finestra e 27 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -340,13 +340,14 @@ Nell'editor delle formule una fase tolta: mess_fase_tolta.
 Il calendario predefinito rimesso, con quello di prima messo da parte: mess_calendario_ripristinato.
 Il calendario predefinito non si riesce a rimettere, per esempio perché un file non si scrive, e la vista dice il perché: mess_calendario_non_ripristinato.
 Un modello o una formula dei tornei che non si leggono, all'avvio, nell'avanzamento o all'apertura dell'editor: mess_calendario_illeggibile.
-Finestra, partite, le sfide, 12 suoni.
+Finestra, partite, le sfide, 13 suoni.
 Si apre il lancio di una sfida a una polisportiva del computer, con Ctrl+W: mess_lancia_sfida.
 La polisportiva del computer accetta la tua sfida, che si gioca domani: mess_sfida_raccolta.
 La polisportiva del computer rifiuta la tua sfida, e dice perché: mess_sfida_declinata.
 Nel lancio di una sfida la polisportiva scelta ha già rifiutato oggi, e si riprova domani; anche con Sfida il suo club nella finestra Mercato e ricerca: mess_sfida_riprova_domani.
 La tua polisportiva non ha più sfide da lanciare questo mese: mess_nessuna_sfida_da_lanciare.
-Si aprono le sfide in arrivo, a cui rispondere entro oggi, prima dell'avanzamento seguente, con Ctrl+Shift+F: mess_sfide_in_arrivo.
+Si aprono le sfide in arrivo di tutte le tue polisportive, a cui rispondere entro oggi, prima dell'avanzamento seguente, con Ctrl+Shift+F: mess_sfide_in_arrivo.
+Ctrl+Shift+F quando nessuna delle tue polisportive ha sfide che aspettano risposta, e la finestra non si apre: mess_nessuna_sfida_in_arrivo.
 Accetti una sfida in arrivo, con la tua formazione: mess_sfida_accettata.
 Rifiuti una sfida in arrivo: mess_sfida_rifiutata.
 Nelle sfide in arrivo la sfida scelta non vale più: non aspetta più una risposta, chi sfida ha chiuso o non ha più una squadra valida, quando la accetti, la rifiuti o cambi la formazione: mess_sfida_non_piu_valida.

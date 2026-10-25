@@ -145,6 +145,7 @@ from costanti import (
     FASCE_COSTANZA,
     FASCE_TEMPERAMENTO,
     FILE_MONDO,
+    GIOCATORI_AL_TAVOLO,
     INDOLI,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
@@ -2616,6 +2617,27 @@ def riga_bersaglio(dati):
     if dati["ultima_sfida"] is not None:
         testo += f", ultima sfida il {data_breve(dati['ultima_sfida'])}"
     return testo
+
+
+def squadra_di_chi_sfida(s, mondo):
+    """
+    La squadra di chi ti sfida, per decidere se e come accettare, richiesta di Gabriele del 25 ottobre 2026: la polisportiva
+    con la sua gloria, poi i titolari nell'ordine della rotazione e le riserve, ciascuno come nella formazione, con l'età.
+    """
+    club = mondo.polisportive.get(s.sfidante["nome"])
+    righe = [f"{s.sfidante['nome']}, gloria {club.gloria}." if club is not None else f"{s.sfidante['nome']}, che non c'è più."]
+    for posto, gid in enumerate(s.convocati["sfidante"]):
+        g = mondo.giocatori.get(gid)
+        if g is None:
+            continue
+        nome_del_posto = f"Titolare {posto + 1}" if posto < GIOCATORI_AL_TAVOLO else f"Riserva {posto - GIOCATORI_AL_TAVOLO + 1}"
+        righe.append(f"{nome_del_posto}: {riga_convocabile(g, mondo)}, {anni(g)} anni.")
+    return "\n".join(righe)
+
+
+def nessuna_sfida_in_arrivo():
+    """Il comando delle sfide in arrivo senza sfide, dal 25 ottobre 2026: la finestra non si apre."""
+    return "Nessuna delle tue polisportive ha sfide che aspettano la tua risposta. Quando arriva una sfida, l'avanzamento lo dice, e la conta il dato Sfr della barra di stato."
 
 
 def riga_sfida_in_arrivo(s, forza):

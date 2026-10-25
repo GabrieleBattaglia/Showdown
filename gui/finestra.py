@@ -1454,18 +1454,27 @@ class FinestraPrincipale(wx.Frame):
         self._concludi(testo, f"sfide: {testi.conta(len(esiti), 'lancio', 'lanci')}", "lavoro_concluso", bool(esiti))
 
     def sfide_in_arrivo(self):
-        """Le sfide che aspettano la risposta della polisportiva attiva, entro oggi, prima dell'avanzamento seguente: accettare con la formazione o rifiutare."""
-        p = self._attiva()
-        if p is None:
+        """
+        Le sfide che aspettano la risposta delle tue polisportive, entro oggi, prima dell'avanzamento seguente: accettare con la
+        formazione o rifiutare. Dal collaudo di gioco del 25 ottobre 2026, risposte di Gabriele: di tutte le tue polisportive,
+        l'attiva per prima, come le conta il dato Sfr della barra; senza sfide la finestra non si apre, e la vista lo dice.
+        """
+        attiva = self.mondo.miapolisportiva_attiva
+        tue = sorted((p for p in self.mondo.polisportive.values() if not p.is_cpu_controlled), key=lambda p: p is not attiva)
+        if not tue:
+            self.mostra("Non hai ancora nessuna polisportiva: fondane una con Ctrl+N.", "nessuna polisportiva", "nessuna_polisportiva_tua")
+            return
+        if not any(sfide.in_arrivo(self.mondo, p) for p in tue):
+            self.mostra(testi.nessuna_sfida_in_arrivo(), "nessuna sfida in arrivo", "nessuna_sfida_in_arrivo")
             return
         suoni.suona("dialogo_sfide_in_arrivo")
-        dialogo = SfideInArrivo(self, self.mondo, p)
+        dialogo = SfideInArrivo(self, self.mondo, tue)
         try:
             self._modale(dialogo)
             esiti = list(dialogo.esiti)
         finally:
             dialogo.Destroy()
-        testo = "\n".join([f"Risposte di {p.nome} alle sfide: {len(esiti)}.", *esiti]) if esiti else f"{p.nome} non ha risposto a nessuna sfida."
+        testo = "\n".join([f"Risposte alle sfide: {len(esiti)}.", *esiti]) if esiti else "Non hai risposto a nessuna sfida."
         self._concludi(testo, f"sfide: {testi.conta(len(esiti), 'risposta', 'risposte')}", "lavoro_concluso", bool(esiti))
 
     def storico_sfide(self):

@@ -28,6 +28,11 @@ cursore sulla sfida; prima suonava come la formazione che non va, o come un camp
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode). Lo stesso giorno, con la finestra Mercato e
 ricerca, il lancio di una sfida si apre anche con la polisportiva da sfidare già scelta, quella del club di chi si
 è trovato. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal collaudo di gioco del 25 ottobre 2026, risposte di Gabriele: le sfide in arrivo sono quelle di tutte le tue
+polisportive, come le conta il dato Sfr della barra di stato, e non più della sola attiva; ogni riga dice chi è sfidata,
+e la formazione segue la polisportiva della sfida su cui sei. Sotto l'elenco, il campo Squadra di chi sfida dice la
+polisportiva che sfida con la sua gloria, e i suoi sei nell'ordine del computer, ciascuno con classe, sesso, età e
+acciacco. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import wx
@@ -257,16 +262,18 @@ class LanciaSfida(_Dialogo):
 
 class SfideInArrivo(_Dialogo):
     """
-    Le sfide che aspettano la risposta della polisportiva attiva, punto 12.6: chi sfida, la forza della
-    sua squadra e la scadenza; la formazione, proposta per il giorno del gioco e da cambiare se vuoi; i
-    pulsanti Accetta, Rifiuta e Chiudi, nessuno predefinito: si accetta soltanto con Alt+A, decisione 10
-    di Gabriele del 14 ottobre 2026. In esiti restano i messaggi, per la vista.
+    Le sfide che aspettano la risposta delle tue polisportive, punto 12.6, dal 25 ottobre 2026 di tutte quelle date e non
+    più della sola attiva: chi sfida chi, la forza della squadra e la scadenza; la squadra di chi sfida; la formazione della
+    polisportiva sfidata, proposta per il giorno del gioco e da cambiare se vuoi; i pulsanti Accetta, Rifiuta e Chiudi,
+    nessuno predefinito: si accetta soltanto con Alt+A, decisione 10 di Gabriele del 14 ottobre 2026. poli è la polisportiva
+    della sfida scelta, che risponde. In esiti restano i messaggi, per la vista.
     """
 
-    def __init__(self, genitore, mondo, poli):
-        super().__init__(genitore, f"Sfide in arrivo, {poli.nome}")
+    def __init__(self, genitore, mondo, polisportive):
+        super().__init__(genitore, "Sfide in arrivo")
         self.mondo = mondo
-        self.poli = poli
+        self.polisportive = list(polisportive)
+        self.poli = self.polisportive[0]
         self.esiti = []
         self.proposte = []
         self.memoria = {}
@@ -274,8 +281,13 @@ class SfideInArrivo(_Dialogo):
         self.sizer.Add(self.info, 0, wx.ALL, 8)
         self.etichetta("&Sfide in arrivo")
         self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        self.elenco.Bind(wx.EVT_LISTBOX, lambda event: self._alla_sfida())
+        self.etichetta("S&quadra di chi sfida")
+        self.squadra = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
+        self.squadra.SetName("Squadra di chi sfida")
+        self.squadra.SetMinSize((-1, self.squadra.GetCharHeight() * 8))
         giorno = sfide.giorno_del_gioco(mondo)
-        self.formazione = SezioneFormazione(self, mondo, sfide.convocabili(mondo, poli, giorno), sfide.proposta(mondo, poli), self._problema_della_formazione,
+        self.formazione = SezioneFormazione(self, mondo, sfide.convocabili(mondo, self.poli, giorno), sfide.proposta(mondo, self.poli), self._problema_della_formazione,
                                             self._suono_del_problema)
         accetta, rifiuta, _chiudi = self.pulsanti((wx.ID_ANY, "&Accetta"), (wx.ID_ANY, "&Rifiuta"), (wx.ID_CANCEL, "&Chiudi"), predefinito=False)
         accetta.Bind(wx.EVT_BUTTON, self.accetta)
@@ -290,11 +302,26 @@ class SfideInArrivo(_Dialogo):
 
     def aggiorna(self, posto=None):
         posto = self.elenco.GetSelection() if posto is None else posto
-        self.proposte = sfide.in_arrivo(self.mondo, self.poli)
-        self.info.SetLabel(f"{self.poli.nome}: {testi.conta(len(self.proposte), 'sfida aspetta', 'sfide aspettano')} la tua risposta. "
+        self.proposte = [s for p in self.polisportive for s in sfide.in_arrivo(self.mondo, p)]
+        self.info.SetLabel(f"{testi.conta(len(self.proposte), 'sfida aspetta', 'sfide aspettano')} la risposta delle tue polisportive. "
                            "Accettata, si gioca domani; senza risposta decade all'avanzamento di domani.")
         self._riscrivi(self.elenco, [testi.riga_sfida_in_arrivo(s, self._forza(s)) for s in self.proposte] or ["Nessuna sfida aspetta la tua risposta."], posto)
+        self._alla_sfida(rifai=True)
         self.pannello.Layout()
+
+    def _alla_sfida(self, rifai=False):
+        """
+        La sfida scelta nell'elenco: il campo dice la squadra di chi sfida, e la formazione diventa quella della tua polisportiva
+        sfidata, se è un'altra, o se rifai lo chiede, perché una risposta ha appena cambiato chi è libero quel giorno.
+        """
+        s = self._scelta()
+        self.squadra.ChangeValue(testi.squadra_di_chi_sfida(s, self.mondo) if s is not None else "Nessuna sfida aspetta più la tua risposta.")
+        sfidata = self.mondo.polisportive.get(s.sfidata["nome"]) if s is not None else None
+        if sfidata is not None and sfidata is not self.poli:
+            self.poli = sfidata
+            rifai = True
+        if rifai and hasattr(self, "formazione"):
+            self.formazione.riempi(sfide.convocabili(self.mondo, self.poli, sfide.giorno_del_gioco(self.mondo)), sfide.proposta(self.mondo, self.poli))
 
     def _scelta(self):
         indice = self.elenco.GetSelection()
@@ -339,7 +366,7 @@ class SfideInArrivo(_Dialogo):
                 self.avvisa(self.formazione.problema() or problema, self.formazione.scelte[0], "formazione_non_valida")
             return
         cognomi = testi.unisci([self.mondo.giocatori[gid].cognome for gid in ids[:GIOCATORI_AL_TAVOLO]])
-        if not self._conferma(f"Accettare la sfida di {s.sfidante['nome']}, con {cognomi}? Si gioca domani."):
+        if not self._conferma(f"Accettare per {self.poli.nome} la sfida di {s.sfidante['nome']}, con {cognomi}? Si gioca domani."):
             self.elenco.SetFocus()
             return
         messaggio = sfide.accetta(self.mondo, s.id, self.poli, ids)
@@ -354,7 +381,7 @@ class SfideInArrivo(_Dialogo):
         if problema:
             self.avvisa(problema, self.elenco, "sfida_non_piu_valida")
             return
-        if not self._conferma(f"Rifiutare la sfida di {s.sfidante['nome']}? Non costa niente a nessuno."):
+        if not self._conferma(f"Rifiutare per {self.poli.nome} la sfida di {s.sfidante['nome']}? Non costa niente a nessuno."):
             self.elenco.SetFocus()
             return
         self._dopo(sfide.rifiuta(self.mondo, s.id, self.poli), "sfida_rifiutata")
@@ -364,7 +391,6 @@ class SfideInArrivo(_Dialogo):
         suoni.suona(suono)
         wx.MessageBox(messaggio, self.GetTitle(), wx.OK | wx.ICON_INFORMATION, self)
         self.aggiorna()
-        self.formazione.riempi(sfide.convocabili(self.mondo, self.poli, sfide.giorno_del_gioco(self.mondo)), sfide.proposta(self.mondo, self.poli))
         self.elenco.SetFocus()
 
 

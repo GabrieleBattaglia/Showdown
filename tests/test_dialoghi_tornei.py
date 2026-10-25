@@ -479,7 +479,7 @@ def test_le_etichette_dei_dialoghi_nuovi_hanno_la_lettera(calendario, gestore, s
     dialoghi_nuovi = [dialogo_calendario, gui_tornei.PannelloTornei(None, mondo), gui_tornei.AlboDOro(None, mondo), gui_editor.EditorModelli(None, gestore),
                       gui_editor.ModelloTorneoDialogo(None, modello, formule.leggi()[0], gestore), gui_editor.EditorFormule(None, gestore),
                       gui_editor.FaseDialogo(None, {"tipo": formule.GIRONI, "partecipanti": 8, "gironi": 2, "promossi": 2, "finalina": False}, 0, False),
-                      gui_sfide.LanciaSfida(None, mondo_sfide, club), gui_sfide.SfideInArrivo(None, mondo_sfide, club), gui_sfide.StoricoSfide(None, mondo_sfide)]
+                      gui_sfide.LanciaSfida(None, mondo_sfide, club), gui_sfide.SfideInArrivo(None, mondo_sfide, [club]), gui_sfide.StoricoSfide(None, mondo_sfide)]
     try:
         for d in dialoghi_nuovi:
             etichette, lettere = _etichette_e_lettere(d)
@@ -745,7 +745,7 @@ def test_le_sfide_in_arrivo_si_accettano_o_si_rifiutano(sfidanti, suonati, messa
     rapporto = Mondo.rapporto_vuoto(oggi)
     convocati = sfide.convoca(mondo, cpu, oggi + datetime.timedelta(days=1))
     sfide._proponi(mondo, cpu, club, convocati, oggi, rapporto)
-    dialogo = gui_sfide.SfideInArrivo(None, mondo, club)
+    dialogo = gui_sfide.SfideInArrivo(None, mondo, [club])
     try:
         assert dialogo.elenco.GetString(0).startswith("PoliTeam04 sfida Club Di Prova, forza ") and "; rispondi entro il " in dialogo.elenco.GetString(0)
         dialogo.accetta()
@@ -757,7 +757,7 @@ def test_le_sfide_in_arrivo_si_accettano_o_si_rifiutano(sfidanti, suonati, messa
     finally:
         dialogo.Destroy()
     sfide._proponi(mondo, cpu, club, convocati, oggi, rapporto)
-    dialogo = gui_sfide.SfideInArrivo(None, mondo, club)
+    dialogo = gui_sfide.SfideInArrivo(None, mondo, [club])
     try:
         dialogo.rifiuta()
         assert suonati[-1] == "sfida_rifiutata" and messaggi[-1] == "Sfida di PoliTeam04 rifiutata."
@@ -788,7 +788,7 @@ def test_la_sfida_in_arrivo_che_non_vale_piu_ha_il_suo_suono(sfidanti, suonati, 
     mondo, club, cpu = sfidanti
     oggi = mondo.datetime_corrente_simulazione.date()
     sfide._proponi(mondo, cpu, club, sfide.convoca(mondo, cpu, oggi + datetime.timedelta(days=1)), oggi, Mondo.rapporto_vuoto(oggi))
-    dialogo = gui_sfide.SfideInArrivo(None, mondo, club)
+    dialogo = gui_sfide.SfideInArrivo(None, mondo, [club])
     try:
         # La formazione che non va ha ancora il suo suono: tre titolari dello stesso sesso.
         uomini = [i for i, g in enumerate(dialogo.formazione.convocabili) if g.sesso == "m"]
@@ -826,7 +826,7 @@ def test_nei_dialoghi_delle_sfide_invio_non_lancia_e_non_accetta(sfidanti, messa
     oggi = mondo.datetime_corrente_simulazione.date()
     sfide._proponi(mondo, cpu, club, sfide.convoca(mondo, cpu, oggi + datetime.timedelta(days=1)), oggi, Mondo.rapporto_vuoto(oggi))
     lancio = gui_sfide.LanciaSfida(None, mondo, club)
-    arrivo = gui_sfide.SfideInArrivo(None, mondo, club)
+    arrivo = gui_sfide.SfideInArrivo(None, mondo, [club])
     try:
         for dialogo in (lancio, arrivo):
             assert dialogo.GetDefaultItem() is None and not dialogo.invio(dialogo.elenco)
@@ -991,3 +991,29 @@ def test_ogni_notizia_nuova_sta_nella_barra():
         for quanti in (1, 999):
             evento, testo = suoni.evento_avanzamento(_rapporto(**{chiave: quanti}), True, True, "PoliTeam04")
             assert evento in suoni.EVENTI and len(testo) <= 40, testo
+
+
+def test_le_sfide_in_arrivo_di_tutte_le_tue_polisportive(sfidanti, suonati, messaggi):
+    # Dal collaudo di gioco del 25 ottobre 2026: la finestra elenca le sfide di tutte le tue polisportive, come le conta il dato
+    # Sfr della barra, la formazione segue la polisportiva sfidata, e il campo dice la squadra di chi sfida.
+    mondo, club, cpu = sfidanti
+    seconda = polisportiva(mondo, "Seconda Mia", cpu=False, cassa=1000, ids=(7, 8, 13, 9))
+    oggi = mondo.datetime_corrente_simulazione.date()
+    convocati = sfide.convoca(mondo, cpu, oggi + datetime.timedelta(days=1))
+    sfide._proponi(mondo, cpu, seconda, convocati, oggi, Mondo.rapporto_vuoto(oggi))
+    dialogo = gui_sfide.SfideInArrivo(None, mondo, [club, seconda])
+    try:
+        assert dialogo.elenco.GetCount() == 1 and dialogo.elenco.GetString(0).startswith("PoliTeam04 sfida Seconda Mia, forza ")
+        assert dialogo.info.GetLabel().startswith("1 sfida aspetta la risposta delle tue polisportive.")
+        assert dialogo.poli is seconda and dialogo.formazione.convocabili and {g.id for g in dialogo.formazione.convocabili} <= set(seconda.tesserati)
+        squadra = dialogo.squadra.GetValue().splitlines()
+        assert squadra[0] == f"PoliTeam04, gloria {cpu.gloria}." and len(squadra) == 1 + len(convocati)
+        primo = convocati[0]
+        assert squadra[1] == f"Titolare 1: {testi.riga_convocabile(primo, mondo)}, {testi.anni(primo)} anni."
+        assert squadra[-1].startswith("Riserva 1: ") and all(riga.endswith(" anni.") for riga in squadra[1:])
+        dialogo.accetta()
+        assert suonati[-1] == "sfida_accettata" and mondo.sfide.attive[0].stato == sfide.ACCETTATA
+        assert mondo.sfide.attive[0].sfidata["nome"] == "Seconda Mia"
+        assert dialogo.squadra.GetValue() == "Nessuna sfida aspetta più la tua risposta."
+    finally:
+        dialogo.Destroy()
