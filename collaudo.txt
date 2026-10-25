@@ -1,5 +1,0 @@
-Collaudo delle sfide in arrivo del 25 ottobre 2026. Cancella ogni riga che passa; scrivi i commenti sulla riga che non va.
-Con una sfida in arrivo per TuratiBoys e Magnavacca attiva, Ctrl+Maiusc+F apre la finestra con quella sfida, e la riga dice chi sfida chi.
-Il campo Squadra di chi sfida, Alt+Q, dice la gloria di chi sfida e i suoi titolari e riserve, ciascuno con classe, sesso ed età.
-La formazione sotto è quella di TuratiBoys; Accetta o Rifiuta rispondono per TuratiBoys, e la domanda lo dice, senza cambiare la polisportiva attiva.
-Senza sfide in arrivo in nessuna delle tue polisportive, Ctrl+Maiusc+F non apre la finestra: la vista lo dice, col suono nuovo.
