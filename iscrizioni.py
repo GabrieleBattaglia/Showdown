@@ -33,6 +33,9 @@ annullano negli stessi giorni, le iscrizioni sovrapposte annullate col rimborso,
 Dalla verifica del 15 ottobre 2026, lettura 13 delle decisioni finali di Gabriele, al sorteggio di un
 torneo individuale chi si è ritirato dall'attività o è uscito di scena da iscritto lascia l'edizione, e
 la quota torna al club che l'ha pagata, come al mondiale; l'infortunato resta, a suo rischio.
+Dal 2026-10-25, con la barra di stato su misura di D38, qui arrivano da gui/tornei.py i tuoi nei tornei, che la barra
+conta senza wx, e la chiave della classifica dell'anno diventa una funzione, con cui la barra conta chi sta davanti al
+tuo migliore. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -101,6 +104,26 @@ def tuo(mondo, g):
     """Vero se il giocatore è un tesserato di una polisportiva dell'utente."""
     poli = mondo.polisportive.get(g.appartenenza)
     return poli is not None and not poli.is_cpu_controlled
+
+
+def tuoi_del_mondo(mondo):
+    """I tuoi: gli identificativi dei tesserati e i nomi delle polisportive dell'utente, per riconoscerli nei tornei e nelle sfide."""
+    mie = [p for p in mondo.polisportive.values() if not p.is_cpu_controlled]
+    return {gid for p in mie for gid in p.tesserati} | {p.nome for p in mie}
+
+
+def iscritto_tuo(mondo, gid, club, tuoi):
+    """Vero se l'iscritto è tuo: un tesserato di adesso o una tua polisportiva, fra i tuoi dati, o iscritto col club di una tua polisportiva."""
+    if gid in tuoi:
+        return True
+    poli = polisportiva_del_club(mondo, club)
+    return poli is not None and not poli.is_cpu_controlled
+
+
+def tuoi_nel_torneo(mondo, torneo, tuoi=None):
+    """Gli iscritti di una sede che sono tuoi: tesserati di adesso o iscritti col club di una tua polisportiva; nella coppa, le tue polisportive."""
+    tuoi = tuoi_del_mondo(mondo) if tuoi is None else tuoi
+    return {gid for gid in torneo.iscritti if iscritto_tuo(mondo, gid, torneo.info[gid].get("club"), tuoi)}
 
 
 # Il ritmo e il carico.
@@ -418,7 +441,12 @@ def classifica_dell_anno(mondo, modello, oggi):
     """
     morti = mondo._ids_morti_processati_sessione
     attivi = [g for gid, g in mondo.giocatori.items() if gid not in morti and not g.ritirato and modelli_torneo.idoneo(modello, g)]
-    return sorted(attivi, key=lambda g: (-palmares.punti_dell_anno(g, oggi), -classe.punteggio(g), g.id))
+    return sorted(attivi, key=lambda g: chiave_dell_anno(g, oggi))
+
+
+def chiave_dell_anno(g, oggi):
+    """La chiave del giocatore nella classifica dell'anno: chi l'ha più piccola sta davanti."""
+    return -palmares.punti_dell_anno(g, oggi), -classe.punteggio(g), g.id
 
 
 def _sovrapposti(inizio, fine, intervalli):

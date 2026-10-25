@@ -16,6 +16,9 @@ La classifica mondiale è per sempre, come un medagliere storico, scelta di Gabr
 ogni partecipante prende l'importanza del torneo per i punti del suo posto, che vanno nei punti
 mondiali, per sempre, e nei punti recenti, una lista di coppie di giorno e punti dell'ultimo anno,
 che servono alla qualificazione al mondiale.
+Dal 2026-10-25, con la barra di stato su misura di D38, le righe e la chiave della classifica mondiale si leggono anche
+a parte, così la barra conta chi sta davanti al tuo migliore invece di ordinare tutti. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -142,21 +145,74 @@ def classifica_mondiale(mondo, sesso):
     ritirati compresi, e le vecchie glorie, con i punti, le medaglie e i titoli mondiali, dal primo.
     Ogni riga è un dizionario con id, nome, punti, ori, argenti, bronzi, legni, titoli e vivo.
     """
-    righe = []
+    return sorted(righe_mondiali(mondo, sesso), key=chiave_mondiale)
+
+
+def chiave_mondiale(riga):
+    """La chiave di una riga della classifica mondiale: chi l'ha più piccola sta davanti."""
+    return _chiave_mondiale(riga["punti"], riga["ori"], riga["argenti"], riga["bronzi"], riga["id"])
+
+
+def _chiave_mondiale(punti, ori, argenti, bronzi, numero):
+    return -punti, -ori, -argenti, -bronzi, str(numero)
+
+
+def _in_classifica(mondo, sessi):
+    """
+    Chi sta nella classifica mondiale di ciascuno dei sessi dati, in un giro solo: per sesso le coppie di numero e giocatore
+    dei vivi, ritirati compresi, con dei punti o un oro, e le voci delle vecchie glorie con dei punti che non sono già fra i
+    vivi, ciascuna una volta sola. Un numero è di una persona sola, quindi di un sesso solo.
+    """
     morti = getattr(mondo, "_ids_morti_processati_sessione", set())
+    vivi = {sesso: [] for sesso in sessi}
     for gid, g in mondo.giocatori.items():
-        if gid in morti or g.sesso != sesso or (g.punti_mondiali <= 0 and not g.ori):
-            continue
-        # I titoli mondiali sono i mondiali vinti, come per le vecchie glorie: g.titoli tiene anche gli altri podi del mondiale.
-        righe.append({"id": gid, "nome": f"{g.nome} {g.cognome}", "punti": g.punti_mondiali, "ori": g.ori, "argenti": g.argenti, "bronzi": g.bronzi,
-                      "legni": g.legni, "titoli": sum(1 for t in g.titoli if t.get("mondiale") and t.get("posto") == 1), "vivo": True})
-    visti = {r["id"] for r in righe}
+        elenco = vivi.get(g.sesso)
+        if elenco is not None and gid not in morti and (g.punti_mondiali > 0 or g.ori):
+            elenco.append((gid, g))
+    visti = {gid for elenco in vivi.values() for gid, _g in elenco}
+    glorie = {sesso: [] for sesso in sessi}
     for voce in mondo.vecchie_glorie:
-        if voce.get("sesso") != sesso or voce.get("id") in visti or not voce.get("punti_mondiali"):
+        elenco = glorie.get(voce.get("sesso"))
+        if elenco is None or voce.get("id") in visti or not voce.get("punti_mondiali"):
             continue
         visti.add(voce.get("id"))
-        righe.append({"id": voce.get("id"), "nome": f"{voce.get('nome', '')} {voce.get('cognome', '')}".strip(), "punti": voce.get("punti_mondiali", 0.0),
-                      "ori": voce.get("ori", 0), "argenti": voce.get("argenti", 0), "bronzi": voce.get("bronzi", 0), "legni": voce.get("legni", 0),
-                      "titoli": voce.get("titoli_mondiali", 0), "vivo": False})
-    righe.sort(key=lambda r: (-r["punti"], -r["ori"], -r["argenti"], -r["bronzi"], str(r["id"])))
+        elenco.append(voce)
+    return {sesso: (vivi[sesso], glorie[sesso]) for sesso in sessi}
+
+
+def righe_mondiali(mondo, sesso):
+    """Le righe della classifica mondiale di un sesso, come classifica_mondiale, ma nell'ordine in cui si trovano."""
+    vivi, glorie = _in_classifica(mondo, (sesso,))[sesso]
+    # I titoli mondiali sono i mondiali vinti, come per le vecchie glorie: g.titoli tiene anche gli altri podi del mondiale.
+    righe = [{"id": gid, "nome": f"{g.nome} {g.cognome}", "punti": g.punti_mondiali, "ori": g.ori, "argenti": g.argenti, "bronzi": g.bronzi,
+              "legni": g.legni, "titoli": sum(1 for t in g.titoli if t.get("mondiale") and t.get("posto") == 1), "vivo": True} for gid, g in vivi]
+    righe.extend({"id": voce.get("id"), "nome": f"{voce.get('nome', '')} {voce.get('cognome', '')}".strip(), "punti": voce.get("punti_mondiali", 0.0),
+                  "ori": voce.get("ori", 0), "argenti": voce.get("argenti", 0), "bronzi": voce.get("bronzi", 0), "legni": voce.get("legni", 0),
+                  "titoli": voce.get("titoli_mondiali", 0), "vivo": False} for voce in glorie)
     return righe
+
+
+def posti_mondiali(mondo, ids):
+    """
+    Per sesso il posto nella classifica mondiale del migliore fra i giocatori ids, contando chi gli sta davanti senza
+    ordinare né costruire le righe, in un giro solo per i due sessi; None per il sesso in cui nessuno di loro è in
+    classifica. Per la barra di stato su misura, D38.
+    """
+    posti = {}
+    for sesso, (vivi, glorie) in _in_classifica(mondo, ("m", "f")).items():
+        tuoi = [_chiave_mondiale(g.punti_mondiali, g.ori, g.argenti, g.bronzi, gid) for gid, g in vivi if gid in ids]
+        if not tuoi:
+            posti[sesso] = None
+            continue
+        migliore = min(tuoi)
+        punti = -migliore[0]
+        # Chi ha più punti sta davanti, chi ne ha meno dietro: la chiave intera serve soltanto a pari punti.
+        davanti = sum(1 for gid, g in vivi if g.punti_mondiali > punti
+                      or (g.punti_mondiali == punti and _chiave_mondiale(g.punti_mondiali, g.ori, g.argenti, g.bronzi, gid) < migliore))
+        for voce in glorie:
+            punti_della_gloria = voce.get("punti_mondiali", 0.0)
+            if punti_della_gloria > punti or (punti_della_gloria == punti and _chiave_mondiale(punti_della_gloria, voce.get("ori", 0), voce.get("argenti", 0),
+                                                                                                  voce.get("bronzi", 0), voce.get("id")) < migliore):
+                davanti += 1
+        posti[sesso] = davanti + 1
+    return posti

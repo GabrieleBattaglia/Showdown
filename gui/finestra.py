@@ -110,6 +110,13 @@ chiusura, con degli esiti, compresi i preset, la vista li riassume e il mondo si
 con un suono suo. Lo staff riassume anche quello che si è fatto nella finestra aperta da Assumi. Spariscono la ricerca
 che stampava nella vista e Risultati della ricerca, Ctrl+R. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Dal 2026-10-25, con la decisione D38, la barra di stato su misura: le righe e i dati li sceglie chi gioca, con la voce
+Barra di stato del menu Impostazioni, da una a sedici righe, lunghe quanto serve, e la barra è alta quanto le sue righe.
+Si rinfresca ogni 20 secondi, quanto dura un minuto simulato, anche col cursore sopra, che resta sulla stessa riga e nella
+stessa colonna. I dati vengono da barra.py: quelli che cambiano col tempo si ricalcolano a ogni rinfresco, gli altri
+vengono da un'istantanea che si svuota dopo ogni comando, dopo ogni avanzamento e quando si salva una barra nuova; F7
+sulla barra la rifà tutta. A metà di un comando la barra non si riscrive: lo fa la fine del comando, una volta sola. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -122,6 +129,7 @@ from GBwx import dentro_area_utile
 
 import aggiornamento
 import archivio
+import barra as modulo_barra
 import cartella_del_mondo
 import impostazioni as modulo_impostazioni
 import istanza
@@ -132,6 +140,7 @@ import sfide
 import suoni
 import testi
 from gui import aspetto
+from gui.barra_di_stato import BarraDiStato
 from gui.dal_vivo import ALLA_FINE, CON_ESC, FinestraDalVivo
 from gui.dialoghi import (
     ASSISTI,
@@ -170,7 +179,6 @@ TITOLO = "MESS, Manageriale e Simulatore Showdown"
 # il fischietto si confondeva con l'avvio, collaudo di Gabriele del 23 ottobre 2026. Dalla tappa 14
 # vale anche per la notizia del crash della volta prima.
 PAUSA_NOTIZIA_DELLO_STAFF = 1.0
-RIGHE_BARRA = 4
 # Ogni quanti millesimi la chiusura per l'aggiornamento riprova, finché un messaggio resta aperto.
 RIPROVA_DELLA_CHIUSURA = 200
 # Dopo quanti secondi la chiusura per l'aggiornamento smette di riprovare: lo script di sostituzione
@@ -234,6 +242,11 @@ class FinestraPrincipale(wx.Frame):
         self.inizio = adesso()
         self.comandi = 0
         self.ultimo_evento = "mondo pronto"
+        # La barra su misura, D38: l'istantanea dei dati che non cambiano col tempo, l'esito dell'ultimo salvataggio, e i
+        # comandi in corso, durante i quali la barra non si riscrive.
+        self._istantanea = {}
+        self._salvataggio_riuscito = True
+        self._comandi_in_corso = 0
         # Dalla tappa 12, punto 12.10: un modello o una formula dei tornei che non si leggono si dicono in
         # testa alla vista all'avvio, col loro suono, e nella barra una volta per sessione e a ogni cambio.
         self.problemi_all_avvio = self._problemi_del_calendario()
@@ -260,8 +273,8 @@ class FinestraPrincipale(wx.Frame):
         self.Bind(wx.EVT_CHAR_HOOK, self._tasto)
         self.aggiorna_le_voci()
         self.timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self._al_minuto, self.timer)
-        self.timer.Start(60_000)
+        self.Bind(wx.EVT_TIMER, self._al_rinfresco, self.timer)
+        self.timer.Start(modulo_barra.RINFRESCO_MILLESIMI)
         apertura = testi.apertura(mondo, origine, messaggi, rapporto, ultimo_prima, adesso_utc())
         if self.problemi_all_avvio:
             apertura = f"{testi.calendario_illeggibile(self.problemi_all_avvio)}\n{apertura}"
@@ -280,8 +293,8 @@ class FinestraPrincipale(wx.Frame):
         self.vista = wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2)
         self.vista.SetName("Vista principale")
         self.etichetta_barra = wx.StaticText(self.pannello, label="Barra di stato")
-        # Le righe della barra non vanno mai a capo, come in Tornello: restano di quaranta
-        # caratteri anche con i caratteri grandi o la finestra stretta.
+        # Le righe della barra non vanno mai a capo, come in Tornello: una riga lunga scorre di lato, e le
+        # frecce su e giù passano da una riga di dati all'altra anche con i caratteri grandi.
         self.barra = wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_DONTWRAP)
         self.barra.SetName("Barra di stato")
         self.barra.Bind(wx.EVT_SET_FOCUS, self._alla_barra)
@@ -369,11 +382,13 @@ class FinestraPrincipale(wx.Frame):
                 ("&Effetti sonori...", None, self.cambia_effetti),
                 ("&Velocità di gioco...", None, self.cambia_velocita),
                 ("A&nnunci della cronaca...", None, self.cambia_annunci),
+                ("&Barra di stato...", None, self.cambia_barra),
                 None,
                 ("Cartella del &mondo...", None, self.scegli_la_cartella_del_mondo),
             )),
             ("&Aiuto", (
-                ("&Guida ai comandi", "F1", lambda: self.mostra(testi.guida(self.voci_guida()), "guida ai comandi", "guida")),
+                ("&Guida ai comandi", "F1", lambda: self.mostra(testi.guida(self.voci_guida(), modulo_barra.legenda(self.impostazioni["barra_di_stato"])),
+                                                                "guida ai comandi", "guida")),
                 ("&Manuale", "Shift+F1", self.manuale),
                 ("&Novità", "F2", self.novita),
                 ("&Informazioni", "F3", lambda: self.mostra(testi.informazioni(), "informazioni", "informazioni")),
@@ -415,12 +430,13 @@ class FinestraPrincipale(wx.Frame):
     def applica_aspetto(self):
         for controllo in (self.pannello, self.etichetta_vista, self.vista, self.etichetta_barra, self.barra):
             aspetto.applica(controllo, self.impostazioni)
-        # La barra è alta quattro righe del suo carattere, più il bordo, la barra di scorrimento
-        # orizzontale e mezza riga di margine, come il pie' di pagina di Tornello.
+        # La barra è alta quanto le sue righe, nel suo carattere, più il bordo, la barra di scorrimento
+        # orizzontale e mezza riga di margine, come il pie' di pagina di Tornello: dalla barra su misura di
+        # D38 le righe sono quelle scelte, da una a sedici.
         riga = self.barra.GetCharHeight()
         fuori = max(self.barra.GetSize().height - self.barra.GetClientSize().height,
                     self.barra.GetWindowBorderSize().height + wx.SystemSettings.GetMetric(wx.SYS_HSCROLL_Y, self.barra))
-        self.barra.SetMinSize(wx.Size(-1, riga * RIGHE_BARRA + riga // 2 + fuori))
+        self.barra.SetMinSize(wx.Size(-1, riga * len(self.impostazioni["barra_di_stato"]) + riga // 2 + fuori))
         self.pannello.Layout()
 
     # I suoni dell'avvio e degli errori.
@@ -480,11 +496,16 @@ class FinestraPrincipale(wx.Frame):
 
     def _esegui(self, comando):
         self.comandi += 1
+        self._comandi_in_corso += 1
         try:
             comando()
         finally:
+            self._comandi_in_corso -= 1
             # Dalla issue 6: il comando può aver speso mosse di mercato o cambiato la polisportiva attiva.
             self.aggiorna_le_voci()
+            # Dalla barra su misura di D38: il comando può aver cambiato qualunque dato, e la barra si rifà tutta, una volta sola.
+            self._istantanea.clear()
+            self.aggiorna_barra()
 
     # La voce Mercato a mosse finite, issue 6 di Gabriele, dal collaudo di gioco del 23 ottobre 2026; dalla issue 8 anche
     # quella del mercato degli allenatori.
@@ -558,29 +579,46 @@ class FinestraPrincipale(wx.Frame):
             self.ultimo_evento = evento
         self.aggiorna_barra()
 
+    def contesto_della_barra(self):
+        """Quello che i dati della barra devono sapere della finestra: l'ultimo evento, l'ultimo avanzamento, il salvataggio e la sessione."""
+        return modulo_barra.Contesto(self.mondo, adesso_utc(), self.ultimo_evento, self.rapporto, self._salvataggio_riuscito, adesso() - self.inizio,
+                                     self.comandi)
+
     def aggiorna_barra(self):
-        """Riscrive la barra di stato, ma solo se è cambiata: riscriverla riporta il cursore all'inizio."""
-        testo = "\n".join(testi.righe_barra(self.mondo, self.ultimo_evento, adesso_utc()))
+        """
+        Riscrive la barra di stato con le righe scelte nelle impostazioni, ma solo se è cambiata, e mai a metà di un comando:
+        lo fa la fine del comando. Dalla barra su misura di D38 si riscrive anche col cursore sopra, che non disturba NVDA: il
+        cursore resta sulla stessa riga e nella stessa colonna, a fine riga se la riga si è accorciata, sull'ultima riga se le
+        righe sono meno di prima. Con TE_RICH2 le posizioni non sono indici della stringa: righe e colonne le traduce wx.
+        """
+        if not self or self.chiusa or self._comandi_in_corso:
+            return
+        testo = "\n".join(modulo_barra.righe(self.impostazioni["barra_di_stato"], self.contesto_della_barra(), self._istantanea))
         if testo == self._testo_barra:
             return
         self._testo_barra = testo
+        _trovata, colonna, riga = self.barra.PositionToXY(self.barra.GetInsertionPoint())
         self.barra.ChangeValue(testo)
         aspetto.ridai_stile(self.barra, self.impostazioni)
+        riga = min(max(riga, 0), max(self.barra.GetNumberOfLines() - 1, 0))
+        colonna = min(max(colonna, 0), max(self.barra.GetLineLength(riga), 0))
+        posizione = self.barra.XYToPosition(colonna, riga)
+        if posizione >= 0:
+            self.barra.SetInsertionPoint(posizione)
 
     def _alla_barra(self, event):
         """Quando il cursore arriva sulla barra, la ricalcola prima che lo screen reader la legga."""
         self.aggiorna_barra()
         event.Skip()
 
-    def _al_minuto(self, event):
+    def _al_rinfresco(self, event):
         """
-        Ogni minuto, se è maturato un giorno simulato e non c'è un dialogo aperto, fa avanzare il
-        mondo; poi rinfresca il tempo che manca all'avanzamento, ma non sotto il cursore di chi legge.
+        Ogni 20 secondi, quanto dura un minuto simulato, se è maturato un giorno simulato e non c'è un dialogo aperto, fa
+        avanzare il mondo; poi rinfresca la barra, anche sotto il cursore di chi legge, che resta dov'è.
         """
         if not self._modali and self.mondo.ticks_maturati():
             self.avanza()
-        if not self.barra.HasFocus():
-            self.aggiorna_barra()
+        self.aggiorna_barra()
 
     def _ha_polisportive(self):
         return any(not p.is_cpu_controlled for p in self.mondo.polisportive.values())
@@ -631,6 +669,7 @@ class FinestraPrincipale(wx.Frame):
             return
         # Dalla issue 6: col giorno nuovo le mosse di mercato ripartono, e la voce Mercato torna disponibile.
         self.aggiorna_le_voci()
+        self._istantanea.clear()
         self.rapporto = rapporto
         self.rapporto_sessione = testi.somma_rapporti(self.rapporto_sessione, rapporto) if self.rapporto_sessione else rapporto
         salvato, _messaggi, _avvisi = self._salva_raccogliendo()
@@ -662,8 +701,11 @@ class FinestraPrincipale(wx.Frame):
         self.vista.SetFocus()
 
     def vai_alla_barra(self):
+        """F7: il fuoco va nella barra; se c'è già, la barra si rifà tutta, anche i dati dell'istantanea."""
         suoni.suona("fuoco_barra")
         if self.barra.HasFocus():
+            self._istantanea.clear()
+            self._testo_barra = None
             self.aggiorna_barra()
         self.barra.SetFocus()
 
@@ -678,6 +720,8 @@ class FinestraPrincipale(wx.Frame):
             riuscito, avvisi = archivio.salva_con_avvisi(self.mondo)
         finally:
             self.mondo.notifica = notifica
+        # Per la barra su misura di D38: il dato del salvataggio compare finché l'ultimo non riesce.
+        self._salvataggio_riuscito = riuscito
         return riuscito, messaggi, avvisi
 
     def _concludi(self, testo, evento, suono, salvare=True, coda=None, salvataggio=None):
@@ -1452,6 +1496,26 @@ class FinestraPrincipale(wx.Frame):
         finally:
             dialogo.Destroy()
 
+    def cambia_barra(self):
+        """
+        La barra di stato su misura, D38: la finestra sceglie le righe e i loro dati; al Salva la barra nuova si scrive nel
+        file delle impostazioni e si vede subito, alta quanto le sue righe, e anche dopo la chiusura.
+        """
+        dialogo = BarraDiStato(self, self.impostazioni, self.contesto_della_barra)
+        try:
+            suoni.suona("dialogo_barra_di_stato")
+            if self._modale(dialogo) == wx.ID_OK and dialogo.risultato is not None:
+                self.impostazioni = modulo_impostazioni.valide({**self.impostazioni, "barra_di_stato": dialogo.risultato})
+                salvate = self._salva_impostazioni("barra_di_stato_salvata")
+                self.ultimo_evento = "barra di stato salvata" if salvate else "barra di stato non salvata"
+                self._istantanea.clear()
+                self.applica_aspetto()
+                self.aggiorna_barra()
+            else:
+                suoni.suona("annullato")
+        finally:
+            dialogo.Destroy()
+
     def cambia_annunci(self):
         """Gli annunci della cronaca della partita dal vivo e della differita, 1.79.0: valgono dalla riga seguente, e anche dopo la chiusura."""
         dialogo = AnnunciDellaCronaca(self, self.impostazioni)
@@ -1759,15 +1823,14 @@ class FinestraPrincipale(wx.Frame):
             self._modali -= 1
 
     def avanzamento_dell_aggiornamento(self, presi, totale):
-        """A che punto è lo scaricamento, nella quarta riga della barra di stato, entro quaranta caratteri; non sotto il cursore di chi legge."""
+        """A che punto è lo scaricamento, nell'ultimo evento della barra di stato; dalla barra su misura di D38 anche sotto il cursore di chi legge."""
         if not self or self.chiusa:
             return
         if totale:
             self.ultimo_evento = f"aggiornamento scaricato {testi.con_articolo('al', testi.percento(presi * 100 // totale))}"
         else:
             self.ultimo_evento = f"aggiornamento: {testi.numero(presi / 1048576, 1)} MB scaricati"
-        if not self.barra.HasFocus():
-            self.aggiorna_barra()
+        self.aggiorna_barra()
 
     def chiudi_per_aggiornare(self):
         """

@@ -7,6 +7,7 @@ import re
 import pytest
 
 import allenamento
+import barra
 import contratti
 import economia
 import luoghi
@@ -114,23 +115,6 @@ def test_liste_della_sessione(mondo):
     assert " è mort" in usciti
 
 
-def test_barra_di_stato(mondo):
-    righe = testi.righe_barra(mondo, "mondo salvato alle 18:41", ADESSO)
-    assert len(righe) == 4
-    assert all(len(r) <= 40 for r in righe)
-    assert righe[0] == "s06/10/2026 18:00 a5h00m"
-    # La decisione 11 di Gabriele del 14 ottobre 2026: d dice le sfide che restano da lanciare.
-    assert righe[1] == "Club Di Prova g100 t3/15 m5 c20 d2"
-    mondo.miapolisportiva_attiva.sfide_da_lanciare = 4
-    assert testi.righe_barra(mondo, None, ADESSO)[1].endswith(" c20 d4")
-    assert re.fullmatch(r"l\d+ t3 f\d+ n40 p2", righe[2])
-    mondo.miapolisportiva_attiva.nome = "Un nome di polisportiva lunghissimo, ben oltre i quaranta caratteri"
-    seconda = testi.righe_barra(mondo, "x" * 60, ADESSO)[1]
-    assert len(seconda) == 40 and seconda.endswith(" g100 t3/15 m5 c20 d4")
-    mondo.miapolisportiva_attiva = None
-    assert testi.righe_barra(mondo, None, ADESSO)[1] == "nessuna polisportiva attiva"
-
-
 def test_apertura_e_avanzamento(mondo):
     rapporto = Mondo.rapporto_vuoto(ORA) | {"ticks": 3, "giorni": 3, "nuovi": 7, "ritirati": 1, "tesserati_cpu": 4, "svincolati_cpu": 2, "poli_create": 1}
     testo = testi.apertura(mondo, CARICATO, ["Mondo caricato: prova."], rapporto, ADESSO - datetime.timedelta(days=1), ADESSO)
@@ -148,10 +132,12 @@ def test_apertura_e_avanzamento(mondo):
 
 
 def test_guida_novita_e_informazioni():
-    guida = testi.guida([("File", [("Salva il mondo", "Ctrl+S"), ("Esci", "Ctrl+Q")])])
+    # Dalla barra su misura di D38 la legenda in fondo è quella della barra scelta.
+    legenda = barra.legenda(barra.BARRA_DI_SERIE)
+    guida = testi.guida([("File", [("Salva il mondo", "Ctrl+S"), ("Esci", "Ctrl+Q")])], legenda)
     _accessibile(guida)
     assert "Menu File: Salva il mondo, Ctrl+S; Esci, Ctrl+Q." in guida
-    assert testi.LEGENDA_BARRA in guida
+    assert guida.endswith(legenda) and legenda not in testi.guida([])
     # I tasti della partita dal vivo non stanno in un menu: la guida li dice in una riga sua.
     assert testi.GUIDA_DELLA_PARTITA_DAL_VIVO in guida.splitlines()
     assert all(tasto in testi.GUIDA_DELLA_PARTITA_DAL_VIVO for tasto in ("Prosegui", "Alt+F", "Alt+L", "Alt+V", "Esc", "più e meno", "F1"))

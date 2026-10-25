@@ -840,7 +840,8 @@ def _quanti(giocatori, polisportive):
 
 
 def _riassunto(mondo):
-    testo = f"{_quanti(len(mondo.giocatori), len(mondo.polisportive))}, data simulata {mondo.datetime_corrente_simulazione:%d/%m/%Y %H:%M}."
+    # Dalla barra su misura di D38 l'ora del giorno simulato corre, e quella della data è soltanto l'ora di nascita del mondo: basta la data.
+    testo = f"{_quanti(len(mondo.giocatori), len(mondo.polisportive))}, data simulata {mondo.datetime_corrente_simulazione:%d/%m/%Y}."
     if mondo.miapolisportiva_attiva is not None:
         testo += f" Polisportiva attiva: {mondo.miapolisportiva_attiva.nome}."
     return testo

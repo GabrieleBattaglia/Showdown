@@ -17,6 +17,7 @@ import datetime
 
 import pytest
 import wx
+from aiuti_barra import evento_della_barra
 from aiuti_calendario import OGGI, apri, giorno, iscrivi_tutti, mondo_di_prova, polisportiva
 
 import archivio
@@ -238,7 +239,7 @@ def test_il_ripristino_del_calendario_che_non_riesce(finestra, suonati, messaggi
     messaggi.risposta = wx.YES
     finestra.ripristina_calendario()
     assert finestra.vista.GetValue() == "Il calendario predefinito non si è potuto rimettere: [Errno 13] Accesso negato."
-    assert finestra.barra.GetValue().splitlines()[3] == "calendario non ripristinato"
+    assert evento_della_barra(finestra) == "calendario non ripristinato"
     assert suonati[-2:] == ["domanda", "calendario_non_ripristinato"] and "calendario_illeggibile" not in suonati
 
 

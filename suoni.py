@@ -132,6 +132,10 @@ sulla prima regola, che ha sempre la e, mess_collegamento_della_prima, e la lett
 ha già, mess_collegamento_invariato, che prima suonavano il tasto a vuoto o il collegamento come se cambiasse. Il tasto a
 vuoto dice anche i tasti dell'elenco delle regole e Azzera senza regole. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Dal 2026-10-25, con la barra di stato su misura della decisione D38, la sua finestra ha un gruppo suo, coi dodici suoni
+della V235 di GBUtils: l'apertura e il salvataggio, il dato aggiunto, tolto, spostato su e giù o al bordo, la riga
+aggiunta o tolta, le sedici righe già piene, la riga sola che non si toglie e la barra di serie rimessa. Il tasto a vuoto
+dice anche gli elenchi vuoti della finestra. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -228,6 +232,23 @@ GRUPPI = (
         # Gli annunci della cronaca, 1.79.0: il din don degli annunci di una stazione, e lo stesso rovesciato quando si salvano.
         "dialogo_annunci_cronaca": "mess_annunci_della_cronaca",
         "annunci_cronaca_salvati": "mess_annunci_salvati",
+    }),
+    # Dal 25 ottobre 2026, con la decisione D38: la barra di stato su misura, un pallottoliere di sinusoidi in fa maggiore.
+    # I dati sono le palline, che entrano nella riga da sinistra ed escono a sinistra, salgono e scendono di un posto e
+    # battono sul bordo del telaio; le righe vanno a capo come una macchina da scrivere.
+    ("Applicazione, la barra di stato su misura", {
+        "dialogo_barra_di_stato": "mess_barra_di_stato",
+        "barra_dato_aggiunto": "mess_barra_dato_aggiunto",
+        "barra_dato_tolto": "mess_barra_dato_tolto",
+        "barra_dato_su": "mess_barra_dato_su",
+        "barra_dato_giu": "mess_barra_dato_giu",
+        "barra_dato_al_bordo": "mess_barra_dato_al_bordo",
+        "barra_riga_aggiunta": "mess_barra_riga_aggiunta",
+        "barra_riga_tolta": "mess_barra_riga_tolta",
+        "barra_righe_piene": "mess_barra_righe_piene",
+        "barra_riga_sola": "mess_barra_riga_sola",
+        "barra_di_serie_rimessa": "mess_barra_di_serie",
+        "barra_di_stato_salvata": "mess_barra_salvata",
     }),
     # Dal 23 ottobre 2026, richiesta di Gabriele: la cartella del mondo, per portarlo fra le macchine. Un
     # cassetto che si apre, un trasloco riuscito, un cambio di scena e una porta chiusa. Dalla V226 anche
@@ -664,7 +685,8 @@ AZIONI = {
                         "sala allenamento, dei contratti, dello staff, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei "
                         "tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente"),
     "nessuna_selezione": ("un pulsante premuto senza niente di scelto su cui lavorare; nella scheda Filtri della finestra Mercato e ricerca anche Canc, "
-                          "Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole"),
+                          "Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole; nella finestra della barra di stato "
+                          "Invio, Spazio o Canc su un elenco vuoto, e Sposta su o Sposta giù con la riga vuota"),
     "campo_da_correggere": "un valore da correggere in un campo, e il dialogo resta aperto",
     "elenco_svuotato": "un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre",
     "elenco_ripopolato": "un elenco vuoto che torna a riempirsi mentre si scrive o si cambia un filtro",
@@ -700,6 +722,18 @@ AZIONI = {
     "velocita_di_gioco_salvata": "la velocità di gioco confermata e salvata",
     "dialogo_annunci_cronaca": "si apre il dialogo degli annunci della cronaca",
     "annunci_cronaca_salvati": "gli annunci della cronaca confermati e salvati",
+    "dialogo_barra_di_stato": "si apre la finestra della barra di stato, dal menu Impostazioni",
+    "barra_dato_aggiunto": "nella finestra della barra di stato Invio o Spazio su Dati disponibili, e il dato va in fondo alla riga",
+    "barra_dato_tolto": "nella finestra della barra di stato Invio, Spazio o Canc su Dati della riga, e il dato torna fra i disponibili",
+    "barra_dato_su": "nella finestra della barra di stato Sposta su porta il dato scelto della riga un posto più su",
+    "barra_dato_giu": "nella finestra della barra di stato Sposta giù porta il dato scelto della riga un posto più giù",
+    "barra_dato_al_bordo": "nella finestra della barra di stato Sposta su sul primo dato della riga, o Sposta giù sull'ultimo, che non si sposta oltre",
+    "barra_riga_aggiunta": "nella finestra della barra di stato Aggiungi riga mette una riga vuota dopo quella scelta",
+    "barra_riga_tolta": "nella finestra della barra di stato Togli riga toglie la riga scelta, e i suoi dati tornano disponibili",
+    "barra_righe_piene": "nella finestra della barra di stato Aggiungi riga con già sedici righe, il massimo, e un avviso lo dice",
+    "barra_riga_sola": "nella finestra della barra di stato Togli riga con una riga sola, che si può svuotare ma non togliere, e un avviso lo dice",
+    "barra_di_serie_rimessa": "nella finestra della barra di stato Barra di serie rimette la barra di partenza, che si salva soltanto con Salva",
+    "barra_di_stato_salvata": "nella finestra della barra di stato Salva, e la barra nuova si vede subito ed è salvata nel file delle impostazioni",
     "cartella_mondo": "Cartella del mondo, nel menu Impostazioni, e all'avvio Scegli un'altra cartella: si apre la finestra di Windows che sceglie dove stanno il mondo e i dati di gioco",
     "cartella_spostata": "il mondo e i dati di gioco spostati nella cartella scelta dal menu, e alla prima partenza di questa versione i dati di accanto al programma, con un mondo o senza, passati in uso nella cartella del mondo",
     "cartella_cambiata": "si sceglie il mondo che la cartella nuova ha già, e MESS si chiude per riaprirsi su di lui",
@@ -1132,7 +1166,7 @@ def _riproduci(evento, preset, sync=False, fattore=1.0, semitoni=0.0):
 
 def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=None):
     """
-    Il suono di un avanzamento del mondo e il testo della quarta riga della barra di stato, scelti
+    Il suono di un avanzamento del mondo e il testo dell'ultimo evento della barra di stato, scelti
     insieme perché non dicano cose diverse: al massimo un suono per avanzamento, quello della notizia
     più importante. Prima il salvataggio che non riesce; poi i tesserati andati via, quelli tornati
     liberi a fine contratto e gli stipendi non pagati, e dalla tappa 13 gli allenatori del tuo staff
@@ -1148,21 +1182,19 @@ def evento_avanzamento(rapporto, salvato=True, ha_polisportive=False, sfidante=N
     polisportiva. Un avanzamento di più giorni ha il suo suono, che copre le notizie del mondo: dopo
     un'assenza ce ne sono quasi sempre, e le racconta il riepilogo. Per il giorno singolo le notizie del
     mondo, dal mondiale concluso alla più leggera, e infine il giorno qualunque. Restituisce la coppia
-    (evento, testo), o (None, None) se il mondo non è avanzato; il testo sta nei quaranta caratteri.
+    (evento, testo), o (None, None) se il mondo non è avanzato. Dalla barra su misura di D38 il testo non si taglia più
+    ai quaranta caratteri: la riga della barra è lunga quanto serve.
     """
     if not rapporto or not rapporto["ticks"]:
         return None, None
     giorni = rapporto["giorni"]
     di_giorni = "di un giorno" if giorni == 1 else f"di {giorni} giorni"
     if not salvato:
-        testo = f"mondo avanzato {di_giorni}, non salvato"
-        # Dopo un'assenza di mesi il testo supererebbe i quaranta caratteri della barra.
-        return "salvataggio_non_riuscito", testo if len(testo) <= 40 else f"avanzato {di_giorni}, non salvato"
+        return "salvataggio_non_riuscito", f"mondo avanzato {di_giorni}, non salvato"
 
     def sfida_in_attesa(n):
         if n == 1:
-            testo = f"sfida da {sfidante}, rispondi oggi" if sfidante else ""
-            return testo if testo and len(testo) <= 40 else "sfida ricevuta, rispondi oggi"
+            return f"sfida da {sfidante}, rispondi oggi" if sfidante else "sfida ricevuta, rispondi oggi"
         return f"{n} sfide da rispondere oggi"
 
     def coppa(colore):

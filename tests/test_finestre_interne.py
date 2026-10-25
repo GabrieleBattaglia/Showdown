@@ -25,18 +25,21 @@ from aiuti_calendario import OGGI, apri, mondo_di_prova, polisportiva
 from aiuti_dal_vivo import CassaFinta, Orologio, vieta_la_cassa_vera
 from aiuti_motore import giocatore
 
+import barra
 import formule
 import gui
 import impostazioni
 import mercato
 import modelli_torneo
 import testi
+from gui import barra_di_stato as gui_barra
 from gui import dal_vivo, dialoghi
 from gui import editor_tornei as gui_editor
 from gui import mercato_e_ricerca as gui_mercato
 from gui import sfide as gui_sfide
 from gui import tornei as gui_tornei
 from motore import COMPLETO, SINGOLARE_3, Incontro, cronaca
+from utilita import adesso_utc
 
 # Il codice con cui la rete di sicurezza chiude un dialogo che Esc non ha chiuso, dopo ATTESA millisecondi.
 NON_CHIUSO = 4242
@@ -97,6 +100,8 @@ FABBRICHE = {
     "OpzioniAmichevole": lambda s: dialoghi.OpzioniAmichevole(None, s.mondo, s.mondo.giocatori[2], s.mondo.giocatori[3]),
     "VelocitaDiGioco": lambda s: dialoghi.VelocitaDiGioco(None, 4),
     "AnnunciDellaCronaca": lambda s: dialoghi.AnnunciDellaCronaca(None, impostazioni.valide(None)),
+    # Dal 25 ottobre 2026 la barra di stato su misura, decisione D38.
+    "BarraDiStato": lambda s: gui_barra.BarraDiStato(None, impostazioni.valide(None), lambda: barra.Contesto(s.mondo, adesso_utc())),
     "Lettura": lambda s: dialoghi.Lettura(None, "Scheda di prova", "Un testo da leggere."),
     "Caffe": lambda s: dialoghi.Caffe(None, "Offrimi un caffè, se ti va."),
     "Aggiornamento": lambda s: dialoghi.Aggiornamento(None, "1.94.6", "2.0.0", "Note."),

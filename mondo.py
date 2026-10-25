@@ -148,6 +148,10 @@ from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_b
 
 ORE_PER_TICK = 8
 DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
+# L'ora del giorno simulato della barra di stato, D38: un giorno simulato dura DURATA_TICK, quindi un minuto simulato
+# dura 20 secondi veri, e l'ora corre di tre minuti simulati per minuto vero.
+MINUTI_DEL_GIORNO = 24 * 60
+SECONDI_PER_MINUTO_SIMULATO = DURATA_TICK.total_seconds() / MINUTI_DEL_GIORNO
 # Le voci del riepilogo di un avanzamento, oltre all'ora in cui è avvenuto.
 CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", "nuovi", "autoallenati",
                    "tesserati_cpu", "svincolati_cpu", "poli_chiuse", "poli_create", "partiti", "vendite",
@@ -2072,6 +2076,17 @@ class Mondo:
     def prossimo_avanzamento(self):
         """L'istante, in UTC, in cui maturerà il prossimo giorno simulato."""
         return self.datetime_ultimo_run_reale + DURATA_TICK
+
+    def ora_del_giorno(self, ora=None):
+        """
+        L'ora del giorno simulato, all'istante dato o adesso, come coppia di ore e minuti: parte da 00:00 a ogni
+        avanzamento e corre di un minuto simulato ogni 20 secondi veri, fino alle 23:59 quando il giorno dopo è maturato
+        e aspetta, per esempio che si chiuda un dialogo. Scelta di Gabriele del 24 ottobre 2026, D38: così la data resta
+        quella di oggi del gioco. Non tocca né la data simulata né il salvataggio.
+        """
+        secondi = ((ora or adesso_utc()) - self.datetime_ultimo_run_reale).total_seconds()
+        minuti = min(MINUTI_DEL_GIORNO - 1, max(0, int(secondi // SECONDI_PER_MINUTO_SIMULATO)))
+        return divmod(minuti, 60)
 
     def ticks_maturati(self, ora=None):
         """Quanti giorni simulati sono maturati e non ancora elaborati, all'istante dato o adesso."""

@@ -1,0 +1,287 @@
+"""
+Test della barra di stato su misura nella finestra, decisione D38, sul desktop nascosto del conftest: la barra di serie,
+il rinfresco ogni 20 secondi anche col cursore sopra, che resta sulla stessa riga e nella stessa colonna, la barra che a metà
+di un comando aspetta la fine, F7 che la rifà tutta, e la finestra della barra di stato, coi suoi tasti, i suoi avvisi e i
+suoi suoni, le chiavi sconosciute che restano e il Salva che la mette nel file delle impostazioni.
+"""
+
+import datetime
+import random
+import types
+
+import pytest
+import wx
+from aiuti_barra import evento_della_barra
+
+import archivio
+import barra
+import impostazioni
+from gui import barra_di_stato as gui_barra
+from gui.finestra import FinestraPrincipale
+from modelli import Polisportiva
+from mondo import Mondo
+from utilita import adesso, adesso_utc
+
+
+@pytest.fixture
+def mondo():
+    random.seed(11)
+    ora = adesso()
+    m = Mondo()
+    m.datetime_corrente_simulazione = ora
+    m.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=2)
+    m.crea_giocatori_casuali(30, ora)
+    mia = Polisportiva("Club Di Prova", "segreta", ora)
+    m.polisportive[mia.nome] = mia
+    for gid in (2, 5):
+        mia.aggiungi_tesserato(gid, m.giocatori[gid].indice_collettivo_valore)
+        m.giocatori[gid].appartenenza = mia.nome
+    m.miapolisportiva_attiva = mia
+    return m
+
+
+@pytest.fixture
+def finestra(app_wx, mondo, monkeypatch):
+    monkeypatch.setattr(wx.Dialog, "ShowModal", lambda self: wx.ID_CANCEL)
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: wx.NO)
+    f = FinestraPrincipale(mondo, archivio.CARICATO, ["Mondo caricato: prova."], Mondo.rapporto_vuoto(adesso()), mondo.datetime_ultimo_run_reale)
+    f.Show()
+    yield f
+    if f and not f.IsBeingDeleted():
+        f.timer.Stop()
+        f.Destroy()
+    wx.Yield()
+
+
+def _cursore(controllo):
+    _trovata, colonna, riga = controllo.PositionToXY(controllo.GetInsertionPoint())
+    return colonna, riga
+
+
+def _metti_il_cursore(controllo, colonna, riga):
+    controllo.SetInsertionPoint(controllo.XYToPosition(colonna, riga))
+    assert _cursore(controllo) == (colonna, riga)
+
+
+def _con_la_barra(finestra, scelta):
+    finestra.impostazioni = {**finestra.impostazioni, "barra_di_stato": scelta}
+    finestra._istantanea.clear()
+    finestra.aggiorna_barra()
+
+
+# La barra nella finestra.
+
+def test_la_barra_di_serie_e_il_rinfresco_ogni_20_secondi(finestra):
+    righe = finestra.barra.GetValue().splitlines()
+    assert len(righe) == 10 and righe[-1] == "Not:0 mondo pronto" and evento_della_barra(finestra) == "mondo pronto"
+    assert finestra.timer.GetInterval() == barra.RINFRESCO_MILLESIMI == 20_000
+    # La barra è alta quanto le sue righe.
+    alta = finestra.barra.GetMinSize().height
+    _con_la_barra(finestra, [["gloria"], ["ultimo_evento"]])
+    finestra.applica_aspetto()
+    assert finestra.barra.GetMinSize().height < alta and finestra.barra.GetValue() == "Glo:100\nmondo pronto"
+
+
+def test_il_cursore_resta_dov_era_quando_la_barra_si_riscrive(finestra):
+    _con_la_barra(finestra, [["gloria", "cassa"], ["nome_polisportiva", "tesserati", "ultimo_evento"]])
+    finestra.ultimo_evento = "un evento piuttosto lungo"
+    finestra.aggiorna_barra()
+    _metti_il_cursore(finestra.barra, 10, 1)
+    # La riga cambia ma resta lunga: il cursore resta sulla stessa riga e nella stessa colonna.
+    finestra.ultimo_evento = "un altro evento ancora più lungo"
+    finestra._al_rinfresco(None)
+    assert finestra.barra.GetValue().splitlines()[1].endswith("un altro evento ancora più lungo") and _cursore(finestra.barra) == (10, 1)
+    # La riga si accorcia sotto il cursore: va a fine riga.
+    _metti_il_cursore(finestra.barra, 40, 1)
+    finestra.ultimo_evento = "corto"
+    finestra.aggiorna_barra()
+    riga = finestra.barra.GetValue().splitlines()[1]
+    assert _cursore(finestra.barra) == (len(riga), 1)
+    # Le righe sono meno di prima: il cursore va sull'ultima.
+    _metti_il_cursore(finestra.barra, 3, 1)
+    _con_la_barra(finestra, [["gloria", "cassa"]])
+    assert finestra.barra.GetValue() == "Glo:100 Cas:20.000" and _cursore(finestra.barra) == (3, 0)
+
+
+def test_a_meta_di_un_comando_la_barra_aspetta_la_fine(finestra):
+    viste = []
+
+    def comando():
+        finestra.mostra("Un risultato.", "evento del comando")
+        viste.append(finestra.barra.GetValue())
+
+    finestra._esegui(comando)
+    assert "evento del comando" not in viste[0] and evento_della_barra(finestra) == "evento del comando"
+
+
+def test_l_istantanea_si_svuota_dopo_il_comando_e_f7_la_rifa(finestra):
+    _con_la_barra(finestra, [["gloria"], ["ultimo_evento"]])
+    finestra.mondo.miapolisportiva_attiva.gloria = 150
+    finestra.aggiorna_barra()
+    assert finestra.barra.GetValue().startswith("Glo:100")
+    finestra._esegui(lambda: None)
+    assert finestra.barra.GetValue().startswith("Glo:150")
+    finestra.mondo.miapolisportiva_attiva.gloria = 175
+    finestra.barra.SetFocus()
+    wx.Yield()
+    if finestra.barra.HasFocus():
+        finestra.vai_alla_barra()
+        assert finestra.barra.GetValue().startswith("Glo:175")
+
+
+def test_il_salvataggio_che_non_riesce_compare_in_testa(finestra, monkeypatch):
+    monkeypatch.setattr(archivio, "salva_con_avvisi", lambda mondo: (False, []))
+    finestra._salva_raccogliendo()
+    finestra.aggiorna_barra()
+    assert finestra.barra.GetValue().startswith("Slv:fallito Dat:")
+    monkeypatch.setattr(archivio, "salva_con_avvisi", lambda mondo: (True, []))
+    finestra._salva_raccogliendo()
+    finestra.aggiorna_barra()
+    assert finestra.barra.GetValue().startswith("Dat:")
+
+
+# La finestra della barra di stato.
+
+def _finestra_della_barra(finestra, scelta=None):
+    if scelta is not None:
+        finestra.impostazioni = {**finestra.impostazioni, "barra_di_stato": scelta}
+    return gui_barra.BarraDiStato(finestra, finestra.impostazioni, finestra.contesto_della_barra)
+
+
+def _etichette(elenco):
+    return [elenco.GetString(i) for i in range(elenco.GetCount())]
+
+
+def test_dati_e_righe_si_spostano(finestra, suonati):
+    dialogo = _finestra_della_barra(finestra, [["gloria", "cassa"], ["ultimo_evento"]])
+    try:
+        assert dialogo.scelta_riga.GetItems() == ["Riga 1, 2 dati", "Riga 2, 1 dato"]
+        assert _etichette(dialogo.della_riga) == ["Glo, gloria", "Cas, cassa"]
+        assert dialogo.disponibili.GetCount() == len(barra.CATALOGO) - 3 and _etichette(dialogo.disponibili)[:2] == ["Dat, data simulata", "giorno della settimana"]
+        assert dialogo.anteprima.GetValue() == "Glo:100 Cas:20.000"
+        # Il primo dei disponibili va in fondo alla riga; la scelta resta al primo posto, sul dato che segue.
+        dialogo.disponibili.SetSelection(0)
+        dialogo.aggiungi_dato()
+        assert dialogo.righe[0] == ["gloria", "cassa", "data_simulata"] and dialogo.disponibili.GetSelection() == 0
+        assert _etichette(dialogo.disponibili)[0] == "giorno della settimana" and dialogo.della_riga.GetSelection() == 2
+        assert dialogo.anteprima.GetValue().startswith("Glo:100 Cas:20.000 Dat:")
+        # Sposta su e giù, e il bordo.
+        dialogo.sposta(-1)
+        assert dialogo.righe[0] == ["gloria", "data_simulata", "cassa"] and dialogo.della_riga.GetSelection() == 1
+        dialogo.sposta(1)
+        dialogo.sposta(1)
+        assert dialogo.righe[0] == ["gloria", "cassa", "data_simulata"]
+        # Il dato tolto torna fra i disponibili, al suo posto nel catalogo.
+        dialogo.della_riga.SetSelection(0)
+        dialogo.togli_dato()
+        assert dialogo.righe[0] == ["cassa", "data_simulata"] and "Glo, gloria" in _etichette(dialogo.disponibili)
+        assert dialogo.disponibili.GetString(dialogo.disponibili.GetSelection()) == "Glo, gloria"
+        # Una riga nuova dopo quella scelta, poi via; i suoi dati tornano disponibili.
+        dialogo.aggiungi_riga()
+        assert len(dialogo.righe) == 3 and dialogo.riga == 1 and dialogo.righe[1] == [] and dialogo.scelta_riga.GetSelection() == 1
+        assert dialogo.anteprima.GetValue() == "La riga è vuota, e non si salverà."
+        dialogo.disponibili.SetSelection(0)
+        dialogo.aggiungi_dato()
+        dialogo.togli_riga()
+        assert dialogo.righe == [["cassa", "data_simulata"], ["ultimo_evento"]] and dialogo.riga == 1
+        assert suonati == ["barra_dato_aggiunto", "barra_dato_su", "barra_dato_giu", "barra_dato_al_bordo", "barra_dato_tolto", "barra_riga_aggiunta",
+                           "barra_dato_aggiunto", "barra_riga_tolta"]
+    finally:
+        dialogo.Destroy()
+
+
+def test_i_limiti_e_la_barra_di_serie(finestra, suonati, monkeypatch):
+    avvisi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo) or wx.OK)
+    dialogo = _finestra_della_barra(finestra, [["gloria"]])
+    try:
+        # Con la riga sola, Togli riga dice di no; con sedici righe, Aggiungi riga.
+        dialogo.togli_riga()
+        for _n in range(barra.RIGHE_MASSIME - 1):
+            dialogo.aggiungi_riga()
+        assert len(dialogo.righe) == barra.RIGHE_MASSIME
+        dialogo.aggiungi_riga()
+        assert len(dialogo.righe) == barra.RIGHE_MASSIME
+        assert avvisi == ["La barra ha una riga sola: si può svuotare, ma non togliere.", "La barra ha già 16 righe, il massimo."]
+        assert suonati[0] == "barra_riga_sola" and suonati[-1] == "barra_righe_piene"
+        # Su un elenco vuoto il tasto a vuoto.
+        dialogo.scelta_riga.SetSelection(3)
+        dialogo._alla_riga(None)
+        suonati.clear()
+        dialogo.togli_dato()
+        dialogo.sposta(1)
+        assert suonati == ["nessuna_selezione", "nessuna_selezione"]
+        dialogo.barra_di_serie()
+        assert dialogo.righe == [list(r) for r in barra.BARRA_DI_SERIE] and dialogo.disponibili.GetCount() == 0
+        dialogo.disponibili.SetFocus()
+        dialogo.aggiungi_dato()
+        assert suonati[-2:] == ["barra_di_serie_rimessa", "nessuna_selezione"]
+    finally:
+        dialogo.Destroy()
+
+
+def test_le_chiavi_sconosciute_restano_nella_loro_riga(finestra):
+    dialogo = _finestra_della_barra(finestra, [["dato_di_domani", "gloria"], ["ultimo_evento"]])
+    try:
+        assert dialogo.righe == [["gloria"], ["ultimo_evento"]] and _etichette(dialogo.della_riga) == ["Glo, gloria"]
+        dialogo.salva()
+        assert dialogo.risultato == [["gloria", "dato_di_domani"], ["ultimo_evento"]]
+    finally:
+        dialogo.Destroy()
+
+
+def _tasto(codice, ripetuto=False, modificatori=False):
+    saltati = []
+    return types.SimpleNamespace(GetKeyCode=lambda: codice, IsAutoRepeat=lambda: ripetuto, HasAnyModifiers=lambda: modificatori,
+                                 Skip=lambda: saltati.append(True), saltati=saltati)
+
+
+def test_invio_spazio_e_canc_sugli_elenchi(finestra, suonati, monkeypatch):
+    dialogo = _finestra_della_barra(finestra, [["gloria"]])
+    fuoco = [dialogo.disponibili]
+    monkeypatch.setattr(gui_barra, "controllo_col_fuoco", lambda: fuoco[0])
+    try:
+        dialogo.disponibili.SetSelection(0)
+        dialogo._tasto(_tasto(wx.WXK_RETURN))
+        dialogo._tasto(_tasto(wx.WXK_SPACE))
+        # Uno Spazio tenuto giù non aggiunge niente, e non arriva all'elenco.
+        ripetuto = _tasto(wx.WXK_SPACE, ripetuto=True)
+        dialogo._tasto(ripetuto)
+        assert dialogo.righe[0] == ["gloria", "data_simulata", "giorno_della_settimana"] and not ripetuto.saltati
+        fuoco[0] = dialogo.della_riga
+        dialogo.della_riga.SetSelection(0)
+        dialogo._tasto(_tasto(wx.WXK_DELETE))
+        # Un secondo Canc entro mezzo secondo è un tasto tenuto giù.
+        dialogo._tasto(_tasto(wx.WXK_DELETE))
+        assert dialogo.righe[0] == ["data_simulata", "giorno_della_settimana"]
+        dialogo._tasto(_tasto(wx.WXK_SPACE))
+        assert dialogo.righe[0] == ["giorno_della_settimana"]
+        # Con un modificatore, o fuori dagli elenchi, il tasto prosegue.
+        con_alt = _tasto(ord("S"), modificatori=True)
+        dialogo._tasto(con_alt)
+        fuoco[0] = dialogo.scelta_riga
+        invio = _tasto(wx.WXK_RETURN)
+        dialogo._tasto(invio)
+        assert con_alt.saltati and invio.saltati and dialogo.risultato is None
+        assert suonati == ["barra_dato_aggiunto", "barra_dato_aggiunto", "barra_dato_tolto", "barra_dato_tolto"]
+    finally:
+        dialogo.Destroy()
+
+
+def test_la_voce_del_menu_salva_la_barra(finestra, suonati, monkeypatch):
+    def mostra(self):
+        self.togli_riga()
+        self.salva()
+        return wx.ID_OK
+
+    monkeypatch.setattr(gui_barra.BarraDiStato, "ShowModal", mostra)
+    finestra._esegui(finestra.cambia_barra)
+    assert suonati == ["dialogo_barra_di_stato", "barra_riga_tolta", "barra_di_stato_salvata"]
+    salvata = impostazioni.carica()["barra_di_stato"]
+    assert salvata == [list(r) for r in barra.BARRA_DI_SERIE[1:]] and finestra.impostazioni["barra_di_stato"] == salvata
+    assert len(finestra.barra.GetValue().splitlines()) == 9 and evento_della_barra(finestra) == "barra di stato salvata"
+    # Con Annulla resta tutto com'era.
+    monkeypatch.setattr(gui_barra.BarraDiStato, "ShowModal", lambda self: wx.ID_CANCEL)
+    suonati.clear()
+    finestra._esegui(finestra.cambia_barra)
+    assert suonati == ["dialogo_barra_di_stato", "annullato"] and impostazioni.carica()["barra_di_stato"] == salvata

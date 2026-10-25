@@ -17,6 +17,11 @@ Dal 2026-10-21, con la 1.79.0, gli annunci della cronaca, chiesti da Gabriele pr
 braille o a tutti e due, con la sintesi scelta fra l'automatica, NVDA, JAWS e la voce di Windows, le
 celle del display braille e il tempo minimo di lettura di ogni blocco. Le chiavi delle uscite e delle
 destinazioni sono quelle di GBsintesi, di GBUtils.
+Dal 2026-10-25, con la decisione D38, la barra di stato su misura: le righe scelte e i loro dati, da una a sedici righe,
+ciascuna una lista di chiavi del catalogo di barra.py, con la barra di serie di dieci righe come partenza. Le chiavi che
+questo MESS non conosce restano nel file, perché il file viaggia col mondo fra le macchine e un MESS rimasto indietro non
+deve perdere i dati di uno più nuovo: le ignora soltanto a schermo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -59,22 +64,70 @@ VOLUME_PARTITA_PREDEFINITO = 50
 # 60.000 e 2.000 di partenza, come in MeTeOra, da cui viene la barra a blocchi.
 CELLE_MASSIME = 160
 LETTURA_MINIMA, LETTURA_MASSIMA = 100, 60_000
+# La barra di stato su misura, D38: da una a sedici righe, scelta di Gabriele del 24 ottobre 2026, perché la vista scorre
+# e la barra può prendere metà della finestra. La barra di serie ne ha dieci: le otto del catalogo del 24 ottobre, dalla
+# più utile alla meno utile e con le cose da fare oggi nella seconda, più due composte coi venti dati rimasti, e in fondo
+# le notizie con l'ultimo evento, perché Ctrl+Fine ci porta subito.
+RIGHE_MASSIME = 16
+BARRA_DI_SERIE = (
+    ("stato_salvataggio", "data_simulata", "giorno_della_settimana", "ora_simulata", "prossimo_avanzamento_fra", "prossimo_avanzamento_alle",
+     "ultimo_avanzamento_alle", "giorni_al_primo_del_mese"),
+    ("amichevoli_di_tutte", "punti_di_tutte", "sfide_ricevute", "sfide_da_lanciare", "mosse_rimaste", "rinnovi_da_proporre", "contratti_in_uscita",
+     "riservati_a_te", "differite_da_ascoltare"),
+    ("nome_polisportiva", "gloria", "posto_per_gloria", "tesserati", "disponibili", "amichevoli_giocabili", "impegnati_oggi", "punti_allenamento",
+     "infortunati", "acciaccati", "tuoi_in_vendita", "contratti_in_scadenza", "migliore", "capo_allenatore", "posti_staff", "rinnovi_staff", "prelazioni"),
+    ("cassa", "margine_al_primo", "saldo_mensile", "autonomia", "arretrati", "pazienza_minima", "sponsor", "stipendi_tesserati", "stipendi_staff",
+     "bilancio_ultimo_mese"),
+    ("tornei_in_corso", "tuoi_in_gara", "iscrizioni_dei_tuoi", "prossimo_torneo_dei_tuoi", "sfide_di_domani", "convocati_campionato",
+     "classifica_anno_uomini", "classifica_anno_donne", "classifica_uomini", "classifica_donne", "coppa_delle_polisportive"),
+    ("polisportive_tue", "capitale", "atleti_in_tutto", "gloria_piu_alta", "medaglie_di_tutte", "coppe_di_tutte"),
+    ("liberi_nel_mondo", "sotto_contratto_nel_mondo", "fermi_nel_mondo", "popolazione", "polisportive_nel_mondo", "vecchie_glorie", "nuovi_della_sessione",
+     "ritirati_della_sessione", "durata_sessione", "comandi_della_sessione"),
+    ("medaglie", "coppe", "palmares_cinque_anni", "sfide_vinte_perse", "valore_collettivo", "valore_di_mercato", "eta_media", "uomini_donne",
+     "prossima_guarigione", "intensita_intensa", "iscrizione_manuale", "qualita_staff"),
+    ("quote_del_mese", "premi_del_mese", "movimenti_del_mese", "in_vendita_nel_mondo", "allenatori_liberi", "edizioni_aperte",
+     "prossimo_torneo_del_calendario", "prossima_apertura"),
+    ("notizie_ultimo_avanzamento", "ultimo_evento"),
+)
 PREDEFINITE = {"dimensione": 12, "colore_testo": [0, 100, 0], "colore_sfondo": [0, 0, 0], "volume_effetti": 50,
                "amichevole_set": 3, "amichevole_modo": "assisti", "amichevole_livello": "normale", "velocita_gioco": VELOCITA_PREDEFINITA,
                "volume_partita": VOLUME_PARTITA_PREDEFINITO,
                "annunci_cronaca": True, "annunci_dove": "entrambi", "annunci_sintesi": AUTOMATICA, "annunci_celle": 40,
-               "annunci_lettura_minima": 2000}
+               "annunci_lettura_minima": 2000, "barra_di_stato": [list(riga) for riga in BARRA_DI_SERIE]}
 
 
 def _colore_valido(valore):
     return isinstance(valore, list) and len(valore) == 3 and all(isinstance(c, int) and not isinstance(c, bool) and 0 <= c <= 100 for c in valore)
 
 
+def barra_valida(valore):
+    """
+    La barra di stato ricevuta, pulita: una lista di righe, ogni riga una lista di chiavi. Si tengono soltanto le chiavi
+    scritte come testo, una volta sola, dove compaiono la prima volta, anche quelle che questo MESS non conosce; le righe
+    vuote se ne vanno, e oltre la sedicesima non si va. Se non resta niente, la barra di serie.
+    """
+    viste = set()
+    righe = []
+    for riga in valore if isinstance(valore, list) else ():
+        if not isinstance(riga, list):
+            continue
+        tenute = []
+        for chiave in riga:
+            if isinstance(chiave, str) and chiave and chiave not in viste:
+                viste.add(chiave)
+                tenute.append(chiave)
+        if tenute:
+            righe.append(tenute)
+    return righe[:RIGHE_MASSIME] or [list(riga) for riga in BARRA_DI_SERIE]
+
+
 def valide(dati):
     """Le impostazioni ricevute, con i predefiniti al posto dei valori che mancano o non vanno."""
     risultato = {chiave: list(v) if isinstance(v, list) else v for chiave, v in PREDEFINITE.items()}
+    risultato["barra_di_stato"] = barra_valida(None)
     if not isinstance(dati, dict):
         return risultato
+    risultato["barra_di_stato"] = barra_valida(dati.get("barra_di_stato"))
     dimensione = dati.get("dimensione")
     if isinstance(dimensione, int) and not isinstance(dimensione, bool) and DIMENSIONE_MINIMA <= dimensione <= DIMENSIONE_MASSIMA:
         risultato["dimensione"] = dimensione

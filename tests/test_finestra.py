@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 import wx
+from aiuti_barra import evento_della_barra
 
 import archivio
 import impostazioni
@@ -73,8 +74,9 @@ def test_apertura_e_barra(finestra):
     assert finestra.vista.GetValue().startswith("MESS, Manageriale e Simulatore Showdown, versione")
     assert "Mondo caricato: prova." in finestra.vista.GetValue()
     righe = finestra.barra.GetValue().splitlines()
-    assert len(righe) == 4 and all(len(r) <= 40 for r in righe)
-    assert righe[1].startswith("Club Di Prova g")
+    # La barra di serie della barra su misura, decisione D38: dieci righe, il salvataggio che non si vede quando va, l'ultimo evento in fondo.
+    assert len(righe) == 10 and righe[0].startswith("Dat:") and righe[2].startswith("Club Di Prova Glo:100 ")
+    assert righe[-1] == f"Not:0 {finestra.ultimo_evento}"
 
 
 def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
@@ -92,7 +94,9 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
                    # Dalla tappa 14, issue 4, le voci del PUB, che aprirebbero la posta per davvero: le provano le prove del PUB.
                    finestra.entra_al_pub, finestra.chiedi_aiuto_al_pub,
                    # Dal 23 ottobre 2026 la cartella del mondo, con la finestra di Windows: la provano le prove della cartella.
-                   finestra.scegli_la_cartella_del_mondo}
+                   finestra.scegli_la_cartella_del_mondo,
+                   # Dal 25 ottobre 2026 la barra di stato su misura: la provano le prove della barra.
+                   finestra.cambia_barra}
     provate = 0
     for _titolo, voci in finestra.voci_menu():
         for voce in filter(None, voci):
@@ -155,16 +159,16 @@ def test_il_timer_fa_avanzare_il_mondo(finestra, cartella_di_prova, monkeypatch)
     mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=17)
     # Con un dialogo aperto il mondo aspetta.
     finestra._modali = 1
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     assert mondo.datetime_corrente_simulazione == data_prima
     finestra._modali = 0
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     assert mondo.datetime_corrente_simulazione == data_prima + datetime.timedelta(days=2)
     assert finestra.ultimo_evento == "mondo avanzato di 2 giorni"
     assert finestra.rapporto["giorni"] == finestra.rapporto_sessione["giorni"] == 2
     assert finestra.vista.GetValue() == "Il testo che si sta leggendo."
     assert archivio.leggi(cartella_di_prova / FILE_MONDO)["mondo"]["data_simulata"] == mondo.datetime_corrente_simulazione.isoformat()
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     assert finestra.rapporto_sessione["giorni"] == 2
     riepiloghi = []
     originale = dialoghi.Lettura.__init__
@@ -616,10 +620,10 @@ def test_avviso_degli_stipendi_non_pagati(finestra):
     poli.gloria = 1
     mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 31, 12, 0)
     mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=9)
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     assert mondo.datetime_corrente_simulazione.day == 1
     assert finestra.ultimo_evento == "stipendi non pagati, vedi il bilancio"
-    assert finestra.barra.GetValue().splitlines()[3] == "stipendi non pagati, vedi il bilancio"
+    assert evento_della_barra(finestra) == "stipendi non pagati, vedi il bilancio"
 
 
 def test_svincolo(finestra, monkeypatch):
@@ -860,20 +864,20 @@ def test_l_avanzamento_suona_una_volta_sola(finestra, suonati, monkeypatch):
     mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 10, 12, 0)
     mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=9)
     finestra._modali = 1
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     assert suonati == []
     finestra._modali = 0
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     evento, testo = suoni.evento_avanzamento(finestra.rapporto, True, True)
     assert suonati == [evento]
     assert finestra.ultimo_evento == testo
-    assert finestra.barra.GetValue().splitlines()[3] == testo
+    assert evento_della_barra(finestra) == testo
     # Senza giorni maturati il timer tace.
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     assert suonati == [evento]
     mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=9)
     monkeypatch.setattr(archivio, "scrivi", _guasto)
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     assert suonati == [evento, "salvataggio_non_riuscito"]
     assert finestra.ultimo_evento == "mondo avanzato di un giorno, non salvato"
 
@@ -885,7 +889,7 @@ def test_gli_stipendi_non_pagati_suonano(finestra, suonati):
     poli.gloria = 1
     mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 31, 12, 0)
     mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=9)
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     assert finestra.rapporto["mesi"] == 1
     assert suonati == ["stipendi_non_pagati"]
 
@@ -1101,7 +1105,7 @@ def test_la_voce_del_mercato_segue_le_mosse(finestra, suonati, monkeypatch):
     # Il giorno nuovo rende le mosse: col mondo che avanza la voce torna disponibile.
     mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 10, 12, 0)
     mondo.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(hours=17)
-    finestra._al_minuto(None)
+    finestra._al_rinfresco(None)
     assert mondo.mosse_rimaste(poli) == LIMITE_MOVIMENTI_PER_TICK and voce.IsEnabled() and not _grigia_per_windows(finestra, voce)
     assert allenatori.IsEnabled() and not _grigia_per_windows(finestra, allenatori)
 
@@ -1379,7 +1383,7 @@ def test_il_manuale_nel_browser(finestra, suonati, monkeypatch):
     assert [Path(p).name for p in aperti] == ["manuale.html"] and Path(aperti[0]).is_file()
     # La vista resta com'era, la barra dice dov'è il manuale.
     assert suonati == ["manuale"] and finestra.vista.GetValue() == "Il testo che si sta leggendo."
-    assert finestra.barra.GetValue().splitlines()[3] == "manuale nel browser"
+    assert evento_della_barra(finestra) == "manuale nel browser"
     assert "Manuale, Maiusc+F1" in testi.guida(finestra.voci_guida())
 
 
@@ -1483,12 +1487,12 @@ def test_entra_al_pub(finestra, suonati, mail_preparate):
     # Finché la finestra della mail è aperta il mondo non avanza; la vista resta com'era, la barra dice l'esito.
     assert mail["modali"] == 1 and finestra._modali == 0
     assert suonati == ["pub_entra"] and finestra.vista.GetValue() == "Il testo che si sta leggendo."
-    assert finestra.barra.GetValue().splitlines()[3] == "mail d'iscrizione al PUB pronta"
+    assert evento_della_barra(finestra) == "mail d'iscrizione al PUB pronta"
     # Chiusa prima di preparare la mail: il suono dell'annullamento.
     mail_preparate.risposta = False
     finestra.entra_al_pub()
     assert suonati == ["pub_entra", "pub_entra", "annullato"]
-    assert finestra.barra.GetValue().splitlines()[3] == "iscrizione al PUB annullata"
+    assert evento_della_barra(finestra) == "iscrizione al PUB annullata"
 
 
 def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, programma_di_prova):
@@ -1530,7 +1534,7 @@ def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, programma_di_pro
     # Senza registri, niente da allegare, e nessuna avvertenza sui percorsi.
     assert "Allega" not in mail["spiegazione"] and mail["passi"][-1][0].startswith("Passo 4 di 4. Spedisci la mail.")
     assert "utente di Windows" not in mail["spiegazione"] + mail["passi"][-1][0]
-    assert suonati == ["pub_aiuto"] and finestra.barra.GetValue().splitlines()[3] == "mail d'aiuto al PUB pronta"
+    assert suonati == ["pub_aiuto"] and evento_della_barra(finestra) == "mail d'aiuto al PUB pronta"
     # Un registro vuoto non si allega; uno scritto sì, con la cartella in cui sta.
     errori = programma_di_prova / "MESS - Errori.log"
     errori.write_text("", encoding="utf-8")
@@ -1559,7 +1563,7 @@ def test_chiedi_aiuto_al_pub(finestra, suonati, mail_preparate, programma_di_pro
     assert "anche i file MESS - Crash.log e MESS - Errori.log, che stanno" in mail_preparate[-1]["spiegazione"]
     mail_preparate.risposta = False
     finestra.chiedi_aiuto_al_pub()
-    assert suonati[-2:] == ["pub_aiuto", "annullato"] and finestra.barra.GetValue().splitlines()[3] == "richiesta d'aiuto annullata"
+    assert suonati[-2:] == ["pub_aiuto", "annullato"] and evento_della_barra(finestra) == "richiesta d'aiuto annullata"
 
 
 def test_la_finestra_della_mail_con_le_parole_di_mess(finestra, monkeypatch, informazioni_finte):
@@ -1589,7 +1593,7 @@ def test_la_finestra_della_mail_con_le_parole_di_mess(finestra, monkeypatch, inf
     oggetto = f"Chiedo per MESS {VERSIONE}"
     assert viste[0].startswith("Il pulsante Apri nel programma di posta prepara in Thunderbird una mail al PUB") and "{programma}" not in viste[0]
     assert [mail[:2] for mail in aperte] == [(GBUtils.PUB_GRUPPO, oggetto)] and aperte[0][2].startswith("Scrivi qui la tua domanda")
-    assert copiati == [] and finestra.barra.GetValue().splitlines()[3] == "mail d'aiuto al PUB pronta"
+    assert copiati == [] and evento_della_barra(finestra) == "mail d'aiuto al PUB pronta"
     # Senza programma di posta, un passo alla volta: ogni passo copia il suo testo negli appunti.
     programma[0] = None
     viste.clear()
@@ -1597,11 +1601,11 @@ def test_la_finestra_della_mail_con_le_parole_di_mess(finestra, monkeypatch, inf
     assert copiati[:2] == [GBUtils.PUB_GRUPPO, oggetto] and copiati[2] == aperte[0][2] and len(copiati) == 3
     assert viste[0] == f"{testi.SENZA_POSTA_DEL_PUB}\n{testi.mail_d_aiuto_al_pub(INFORMAZIONI_DI_PROVA)['passi'][0][0]}\n{GBUtils.PUB_GRUPPO}"
     assert viste[-1].startswith("Passo 4 di 4. Spedisci la mail.")
-    assert finestra.barra.GetValue().splitlines()[3] == "mail d'aiuto al PUB pronta"
+    assert evento_della_barra(finestra) == "mail d'aiuto al PUB pronta"
     copiati.clear()
     finestra.entra_al_pub()
     assert copiati == [GBUtils.PUB_ISCRIZIONE] and len(aperte) == 1
-    assert finestra.barra.GetValue().splitlines()[3] == "mail d'iscrizione al PUB pronta"
+    assert evento_della_barra(finestra) == "mail d'iscrizione al PUB pronta"
 
 
 # Il crash della volta prima, tappa 14.

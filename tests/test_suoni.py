@@ -699,4 +699,5 @@ def test_ogni_suono_dell_avanzamento_e_un_evento_e_il_testo_sta_nella_barra():
             for salvato in (True, False):
                 evento, testo = suoni.evento_avanzamento(_rapporto(ticks=giorni, giorni=giorni, **{chiave: 999}), salvato, True)
                 assert evento in suoni.EVENTI
-                assert len(testo) <= 40, testo
+                # Dalla barra su misura di D38 il testo è lungo quanto serve, ma resta una riga sola.
+                assert testo and "\n" not in testo, testo

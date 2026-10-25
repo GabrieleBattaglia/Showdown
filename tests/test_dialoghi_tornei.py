@@ -972,8 +972,10 @@ def test_la_campionessa_d_italia_nella_barra():
 
 
 def test_la_sfida_in_attesa_e_quella_decaduta_nella_barra():
-    # Il nome di chi sfida, se ci sta nei quaranta caratteri; altrimenti la forma corta.
-    assert suoni.evento_avanzamento(_rapporto(sfide_in_attesa=1), True, True, "Polisportiva Dal Nome Lunghissimo Di Prova")[1] == "sfida ricevuta, rispondi oggi"
+    # Il nome di chi sfida, anche lungo: dalla barra su misura di D38 l'ultimo evento non si taglia più ai quaranta caratteri.
+    assert suoni.evento_avanzamento(_rapporto(sfide_in_attesa=1), True, True, "Polisportiva Dal Nome Lunghissimo Di Prova")[1] == (
+        "sfida da Polisportiva Dal Nome Lunghissimo Di Prova, rispondi oggi")
+    assert suoni.evento_avanzamento(_rapporto(sfide_in_attesa=1), True, True, None)[1] == "sfida ricevuta, rispondi oggi"
     assert suoni.evento_avanzamento(_rapporto(sfide_in_attesa=2), True, True, "PoliTeam04")[1] == "2 sfide da rispondere oggi"
     # Una sfida arrivata e decaduta durante un recupero di più giorni non dice rispondi oggi.
     recupero = _rapporto(ticks=3, giorni=3, sfide_ricevute=1, sfide_decadute=1, sfide_in_attesa=0)

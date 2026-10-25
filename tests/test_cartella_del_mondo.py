@@ -24,6 +24,7 @@ import sys
 
 import pytest
 import wx
+from aiuti_barra import evento_della_barra
 
 import archivio
 import cartella_del_mondo as cdm
@@ -822,7 +823,7 @@ def test_la_finestra_di_windows_chiusa_con_annulla(finestra, suonati, monkeypatc
     finestra.scegli_la_cartella_del_mondo()
     assert scelte == [(testi.TITOLO_DELLA_SCELTA, str(cartella_di_prova))]
     assert suonati == ["cartella_mondo", "annullato"]
-    assert finestra.barra.GetValue().splitlines()[3] == "cartella del mondo invariata"
+    assert evento_della_barra(finestra) == "cartella del mondo invariata"
     assert percorsi.cartella() == str(cartella_di_prova)
 
 
@@ -877,8 +878,7 @@ def test_la_cartella_senza_mondo_riceve_i_dati_e_mess_continua(finestra, suonati
     assert percorsi.cartella() == str(nuova) and impostazioni.carica()["volume_effetti"] == 33
     assert finestra.vista.GetValue() == (f"Il mondo e i dati di gioco ora stanno nella cartella {nuova}: li ho spostati dalla cartella "
                                          f"{cartella_di_prova}. Su questo computer MESS li cercherà lì anche alle prossime partenze.")
-    righe = finestra.barra.GetValue().splitlines()
-    assert righe[3] == "cartella del mondo cambiata" and all(len(r) <= 40 for r in righe)
+    assert evento_della_barra(finestra) == "cartella del mondo cambiata"
     # E MESS continua: il salvataggio seguente va nella cartella nuova.
     finestra.salva()
     assert os.path.exists(os.path.join(nuova, FILE_MONDO_COPIA)) and not finestra.chiusa
@@ -930,7 +930,7 @@ def test_la_domanda_dice_le_date_e_il_piu_recente(finestra, suonati, monkeypatch
     # Annulla non cambia niente.
     assert suonati == ["cartella_mondo", "domanda", "annullato"]
     assert _albero(cartella_di_prova) == prima_mia and _albero(dropbox) == prima_sua and percorsi.cartella() == str(cartella_di_prova)
-    assert finestra.barra.GetValue().splitlines()[3] == "cartella del mondo invariata"
+    assert evento_della_barra(finestra) == "cartella del mondo invariata"
 
 
 def test_porta_il_mio_mondo(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
@@ -1001,7 +1001,7 @@ def test_il_file_della_cartella_che_non_si_scrive_quando_si_usa_il_mondo_della_c
     finestra.scegli_la_cartella_del_mondo()
     assert suonati == ["cartella_mondo", "domanda", "cartella_non_registrata"]
     assert finestra.vista.GetValue() == testi.cartella_non_scritta(PermissionError(errno.EACCES, "Accesso negato"), str(dropbox))
-    assert finestra.barra.GetValue().splitlines()[3] == "cartella del mondo invariata"
+    assert evento_della_barra(finestra) == "cartella del mondo invariata"
     # MESS resta aperto sul suo mondo, nella sua cartella, e quella scelta non si tocca.
     assert riaperture == [] and not finestra.chiusa and percorsi.cartella() == str(cartella_di_prova) and _albero(dropbox) == prima_sua
 
@@ -1015,7 +1015,7 @@ def test_il_file_della_cartella_rovinato_a_mess_aperto(finestra, suonati, monkey
     assert suonati == ["cartella_illeggibile"] and scelte == []
     assert finestra.vista.GetValue().startswith(f"Non so più dove sia la cartella del mondo: il file {percorsi.FILE_DELLA_CARTELLA}, accanto al programma, è rovinato.")
     assert finestra.vista.GetValue().endswith("Riapri MESS, e all'avvio potrai sceglierla.")
-    assert finestra.barra.GetValue().splitlines()[3] == "cartella del mondo illeggibile"
+    assert evento_della_barra(finestra) == "cartella del mondo illeggibile"
 
 
 def test_lo_spostamento_che_non_riesce_lascia_tutto_com_era(finestra, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
@@ -1038,7 +1038,7 @@ def test_lo_spostamento_che_non_riesce_lascia_tutto_com_era(finestra, suonati, m
     assert percorsi.cartella() == str(cartella_di_prova)
     assert finestra.vista.GetValue().startswith(f"I dati del mondo non si sono potuti spostare nella cartella {nuova}: Accesso negato:")
     assert finestra.vista.GetValue().endswith(f"Non è cambiato niente: il mondo resta nella cartella {cartella_di_prova}.")
-    assert finestra.barra.GetValue().splitlines()[3] == "mondo non spostato"
+    assert evento_della_barra(finestra) == "mondo non spostato"
 
 
 def test_il_mondo_che_non_si_salva_non_cambia_cartella(finestra, suonati, monkeypatch, tmp_path_factory, cartella_di_prova):
@@ -1096,7 +1096,7 @@ def test_la_penna_staccata_a_mess_aperto_e_il_mondo_salvato_nella_cartella_scelt
     assert len(archivio.leggi(str(nuova / FILE_MONDO))["mondo"]["giocatori"]) == 12
     assert finestra.vista.GetValue().startswith(f"La cartella del mondo di prima, {penna}, non si raggiunge più: il mondo e le impostazioni ora "
                                                 f"stanno nella cartella {nuova}, dove li ho salvati")
-    assert finestra.barra.GetValue().splitlines()[3] == "cartella del mondo cambiata"
+    assert evento_della_barra(finestra) == "cartella del mondo cambiata"
     assert _albero(staccata) == prima
 
 

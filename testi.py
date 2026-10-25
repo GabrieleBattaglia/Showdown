@@ -1,11 +1,13 @@
 """
-I testi che MESS mostra nella finestra: schede, elenchi, classifiche, statistiche, ricerche, la
-barra di stato, l'apertura e la chiusura.
+I testi che MESS mostra nella finestra: schede, elenchi, classifiche, statistiche, ricerche, l'apertura
+e la chiusura.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-06 con la tappa 5 del piano. Sono funzioni pure: ricevono il mondo e
 restituiscono testo, senza wx, così si collaudano da sole. Seguono le regole di accessibilità del
-parco: frasi intere, nessun separatore grafico, nessuna riga vuota, e righe da quaranta caratteri
-soltanto nella barra di stato, scritta a codici come in meditimer.
+parco: frasi intere, nessun separatore grafico, nessuna riga vuota. Dal 2026-10-25, con la barra di stato su
+misura di D38, la barra non sta più qui ma in barra.py, e la guida ne dice la legenda delle righe scelte; la data
+simulata del comando Data e prossimo avanzamento ha l'ora del giorno che corre. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 Le schede del giocatore e della polisportiva seguono la scheda del mostro di Terminal Beast,
 secondo la decisione D10: una riga d'intestazione con i dati principali separati dalla barra
 verticale, poi i blocchi annunciati da un'etichetta fra parentesi quadre, le caratteristiche due
@@ -171,14 +173,6 @@ AGGETTIVI = ("Inesistente", "Disastroso", "Tremendo", "Scarso", "Debole", "Insuf
 GRUPPI = (("CARATTERISTICHE FISICHE", CARATTERISTICHE_FISICHE_BASE), ("DIFESA", CARATTERISTICHE_DIFESA_BASE),
           ("ATTACCO", CARATTERISTICHE_ATTACCO_BASE), ("POLIVALENTI", CARATTERISTICHE_CONTROLLO_BASE))
 LARGHEZZA_BARRA = 40
-LEGENDA_BARRA = (
-    "La barra di stato ha quattro righe, ciascuna entro quaranta caratteri, scritte a codici: una lettera e un numero. "
-    "Prima riga, il tempo: s è la data simulata, a il tempo che manca al prossimo avanzamento del mondo. "
-    "Seconda riga, la polisportiva attiva: prima il nome, poi g la gloria, t i tesserati sul massimo, m le mosse di mercato rimaste oggi, c la cassa in migliaia di euro, "
-    "d le sfide che restano da lanciare. "
-    "Terza riga, la popolazione: l i giocatori liberi, t i tesserati, f quelli fermi perché ritirati o infortunati, n il totale, p le polisportive. "
-    "Quarta riga, a parole, l'ultima cosa successa."
-)
 
 
 # Numeri, date e parole.
@@ -1883,7 +1877,9 @@ def password_cambiata(p):
 def data_e_avanzamento(mondo, ora):
     """La data simulata e il prossimo avanzamento; ora è l'istante attuale in UTC."""
     prossimo = mondo.prossimo_avanzamento()
-    righe = [f"Data simulata: {data_lunga(mondo.datetime_corrente_simulazione)}."]
+    # Dalla barra su misura di D38 l'ora è quella del giorno simulato che corre, da 00:00 a ogni avanzamento.
+    ore, minuti = mondo.ora_del_giorno(ora)
+    righe = [f"Data simulata: {data_breve(mondo.datetime_corrente_simulazione)} alle {ore:02d}:{minuti:02d}."]
     if prossimo > ora:
         righe.append(f"Il prossimo avanzamento, di un giorno simulato, è previsto per il {data_lunga(in_ora_locale(prossimo))}, fra {durata(prossimo - ora)}.")
     else:
@@ -1986,36 +1982,6 @@ def riepilogo_avanzamento(rapporto):
     if not rapporto or not rapporto["ticks"]:
         return "In questa sessione il mondo non è ancora avanzato."
     return f"Ultimo avanzamento, il {data_lunga(rapporto['ora'])}: il mondo è andato avanti di {conta(rapporto['giorni'], 'giorno simulato', 'giorni simulati')}. {_fatti_avanzamento(rapporto)}"
-
-
-# La barra di stato.
-
-def _entro(testo, larghezza=LARGHEZZA_BARRA):
-    return testo[:larghezza]
-
-
-def righe_barra(mondo, ultimo, ora):
-    """
-    Le quattro righe della barra di stato, a codici, ciascuna entro quaranta caratteri. Dalla decisione
-    11 di Gabriele del 14 ottobre 2026 la seconda dice anche, con d, quante sfide restano da lanciare,
-    e il nome della polisportiva si accorcia perché la riga resti nei quaranta caratteri.
-    """
-    mancano = mondo.prossimo_avanzamento() - ora
-    minuti = max(0, int(mancano.total_seconds() // 60))
-    tempo = f"s{mondo.datetime_corrente_simulazione:%d/%m/%Y %H:%M} a{minuti // 60}h{minuti % 60:02d}m"
-    p = mondo.miapolisportiva_attiva
-    if p is None:
-        club = "nessuna polisportiva attiva"
-    else:
-        codici = (f" g{p.gloria} t{len(p.tesserati)}/{p.maxtesserati} m{LIMITE_MOVIMENTI_PER_TICK - p.movimenti_oggi} c{p.cassa // 1000}"
-                  f" d{sfide.disponibili(mondo, p)}")
-        club = p.nome[:LARGHEZZA_BARRA - len(codici)] + codici
-    morti = mondo._ids_morti_processati_sessione
-    vivi = [g for gid, g in mondo.giocatori.items() if gid not in morti]
-    fermi = sum(1 for g in vivi if g.ritirato or g.infortunato)
-    tesserati = sum(1 for g in vivi if not g.ritirato and not g.infortunato and g.appartenenza != "*")
-    popolazione = f"l{len(vivi) - fermi - tesserati} t{tesserati} f{fermi} n{len(vivi)} p{len(mondo.polisportive)}"
-    return [_entro(tempo), _entro(club), _entro(popolazione), _entro(ultimo or "pronto")]
 
 
 # Diari e vecchie glorie.
@@ -3256,8 +3222,11 @@ def chiusura(durata_sessione, comandi, messaggi, rapporto_sessione=None):
     return "\n".join(righe)
 
 
-def guida(voci):
-    """La guida ai comandi, dalle voci dei menu: coppie di menu e lista di voci con il loro tasto."""
+def guida(voci, legenda_della_barra=""):
+    """
+    La guida ai comandi, dalle voci dei menu: coppie di menu e lista di voci con il loro tasto. In fondo la legenda della
+    barra di stato, se si dà: dalla barra su misura di D38 è quella delle righe scelte, che scrive barra.legenda.
+    """
     righe = ["Guida ai comandi di MESS. Ogni comando sta in un menu, e quasi tutti hanno un tasto rapido."]
     for menu, comandi in voci:
         elenco = "; ".join(f"{voce}, {tasto}" if tasto else voce for voce, tasto in comandi)
@@ -3266,7 +3235,8 @@ def guida(voci):
     righe.append(GUIDA_DELLA_PARTITA_DAL_VIVO)
     righe.extend((GUIDA_DEI_TORNEI, GUIDA_DELLE_SFIDE))
     righe.extend((LEGENDA_CLASSE, LEGENDA_ALLENAMENTO, LEGENDA_CONTRATTI, LEGENDA_STAFF))
-    righe.append(LEGENDA_BARRA)
+    if legenda_della_barra:
+        righe.append(legenda_della_barra)
     return "\n".join(righe)
 
 
@@ -3358,7 +3328,7 @@ GUIDA_DEI_TORNEI = (
 )
 GUIDA_DELLE_SFIDE = (
     "Le sfide fra polisportive sono gare a squadre, un set a 31, con due giocatori di un sesso e uno dell'altro al tavolo e fino a tre riserve. Ogni polisportiva "
-    "ne riceve due da lanciare il primo del mese, fino a quattro, e la barra di stato dice con d quante ne restano; si lanciano a una polisportiva del "
+    "ne riceve due da lanciare il primo del mese, fino a quattro, e il dato Sfl della barra di stato dice quante ne restano; si lanciano a una polisportiva del "
     "computer con Ctrl+W, che risponde subito, e quelle che ricevi si accettano o si rifiutano con Ctrl+Maiusc+F entro il giorno in cui arrivano: "
     "all'avanzamento seguente decadono. La formazione proposta si cambia prima di lanciare o di accettare; si lancia soltanto col pulsante Lancia, Alt+L, "
     "e si accetta soltanto con Accetta, Alt+A: Invio sugli elenchi non fa niente. "

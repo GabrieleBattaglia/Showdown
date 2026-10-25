@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 358 suoni, 331 della finestra e 27 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 370 suoni, 343 della finestra e 27 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -21,7 +21,7 @@ F5, il fuoco va nella vista principale: spostamento_f5.
 F7, il fuoco va nella barra di stato: spostamento_f7.
 Un'operazione annullata, con Esc o con Annulla in un dialogo: meteora_annullamento.
 La chiusura della finestra Mercato e ricerca con degli esiti, compresi i preset, e quella delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente: terminata.
-Un pulsante premuto senza niente di scelto su cui lavorare; nella scheda Filtri della finestra Mercato e ricerca anche Canc, Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole: mess_tasto_a_vuoto.
+Un pulsante premuto senza niente di scelto su cui lavorare; nella scheda Filtri della finestra Mercato e ricerca anche Canc, Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole; nella finestra della barra di stato Invio, Spazio o Canc su un elenco vuoto, e Sposta su o Sposta giù con la riga vuota: mess_tasto_a_vuoto.
 Un valore da correggere in un campo, e il dialogo resta aperto: mess_campo_da_correggere.
 Un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre: espelli.
 Un elenco vuoto che torna a riempirsi mentre si scrive o si cambia un filtro: aggiunta_giocatore.
@@ -60,6 +60,19 @@ Si apre il dialogo della velocità di gioco: mess_velocita_di_gioco.
 La velocità di gioco confermata e salvata: mess_velocita_salvata.
 Si apre il dialogo degli annunci della cronaca: mess_annunci_della_cronaca.
 Gli annunci della cronaca confermati e salvati: mess_annunci_salvati.
+Finestra, applicazione, la barra di stato su misura, 12 suoni.
+Si apre la finestra della barra di stato, dal menu Impostazioni: mess_barra_di_stato.
+Nella finestra della barra di stato Invio o Spazio su Dati disponibili, e il dato va in fondo alla riga: mess_barra_dato_aggiunto.
+Nella finestra della barra di stato Invio, Spazio o Canc su Dati della riga, e il dato torna fra i disponibili: mess_barra_dato_tolto.
+Nella finestra della barra di stato Sposta su porta il dato scelto della riga un posto più su: mess_barra_dato_su.
+Nella finestra della barra di stato Sposta giù porta il dato scelto della riga un posto più giù: mess_barra_dato_giu.
+Nella finestra della barra di stato Sposta su sul primo dato della riga, o Sposta giù sull'ultimo, che non si sposta oltre: mess_barra_dato_al_bordo.
+Nella finestra della barra di stato Aggiungi riga mette una riga vuota dopo quella scelta: mess_barra_riga_aggiunta.
+Nella finestra della barra di stato Togli riga toglie la riga scelta, e i suoi dati tornano disponibili: mess_barra_riga_tolta.
+Nella finestra della barra di stato Aggiungi riga con già sedici righe, il massimo, e un avviso lo dice: mess_barra_righe_piene.
+Nella finestra della barra di stato Togli riga con una riga sola, che si può svuotare ma non togliere, e un avviso lo dice: mess_barra_riga_sola.
+Nella finestra della barra di stato Barra di serie rimette la barra di partenza, che si salva soltanto con Salva: mess_barra_di_serie.
+Nella finestra della barra di stato Salva, e la barra nuova si vede subito ed è salvata nel file delle impostazioni: mess_barra_salvata.
 Finestra, applicazione, la cartella del mondo, 11 suoni.
 Cartella del mondo, nel menu Impostazioni, e all'avvio Scegli un'altra cartella: si apre la finestra di Windows che sceglie dove stanno il mondo e i dati di gioco: mess_cartella_mondo.
 Il mondo e i dati di gioco spostati nella cartella scelta dal menu, e alla prima partenza di questa versione i dati di accanto al programma, con un mondo o senza, passati in uso nella cartella del mondo: mess_cartella_spostata.

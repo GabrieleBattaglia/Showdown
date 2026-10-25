@@ -59,6 +59,7 @@ from grammatica import torneo_con_preposizione
 from gui import sfide as gui_sfide
 from gui.dal_vivo import ALLA_FINE, CON_ESC, ascolta_in_differita
 from gui.dialoghi import Lettura, _Dialogo
+from iscrizioni import tuoi_del_mondo, tuoi_nel_torneo
 from partita import risultato_della_differita
 from utilita import adesso
 
@@ -144,23 +145,6 @@ def leggi_e_ricorda(genitore, mondo, differita, seme, impostazioni, data, tipo):
     finally:
         dialogo.Destroy()
     return UltimoIncontro(risultato, nomi, livello, None, adesso(), _data_del_gioco(data), tipo)
-
-
-def tuoi_del_mondo(mondo):
-    """I tuoi: gli identificativi dei tesserati e i nomi delle polisportive dell'utente, per riconoscerli nei tornei e nelle sfide."""
-    mie = [p for p in mondo.polisportive.values() if not p.is_cpu_controlled]
-    return {gid for p in mie for gid in p.tesserati} | {p.nome for p in mie}
-
-
-def tuoi_nel_torneo(mondo, torneo, tuoi=None):
-    """Gli iscritti di una sede che sono tuoi: tesserati di adesso o iscritti col club di una tua polisportiva; nella coppa, le tue polisportive."""
-    tuoi = tuoi_del_mondo(mondo) if tuoi is None else tuoi
-    scelti = set()
-    for gid in torneo.iscritti:
-        poli = iscrizioni.polisportiva_del_club(mondo, torneo.info[gid].get("club"))
-        if gid in tuoi or (poli is not None and not poli.is_cpu_controlled):
-            scelti.add(gid)
-    return scelti
 
 
 class CalendarioTornei(_Dialogo):

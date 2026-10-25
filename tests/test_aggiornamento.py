@@ -18,6 +18,7 @@ import types
 import GBUtils
 import pytest
 import wx
+from aiuti_barra import evento_della_barra
 from aiuti_dal_vivo import CassaFinta, vieta_la_cassa_vera
 from aiuti_motore import giocatore
 
@@ -263,28 +264,27 @@ def test_la_proposta_che_scade_risponde_no(finestra, suonati):
         guardia.Stop()
     # La proposta lasciata scadere ha il suo suono, diverso da Non adesso.
     assert suonati == ["aggiornamento_disponibile", "aggiornamento_scaduto"]
-    assert finestra.barra.GetValue().splitlines()[3] == "aggiornamento rimandato: tempo scaduto" and finestra._modali == 0
+    assert evento_della_barra(finestra) == "aggiornamento rimandato: tempo scaduto" and finestra._modali == 0
 
 
 def test_non_adesso(finestra, suonati, monkeypatch):
     monkeypatch.setattr(dialoghi.Aggiornamento, "ShowModal", lambda self: wx.ID_NO)
     assert not finestra.proponi_l_aggiornamento("1.94.6", "2.0.0", "Note.", attesa=120)
-    assert suonati == ["aggiornamento_disponibile", "annullato"] and finestra.barra.GetValue().splitlines()[3] == "aggiornamento rimandato"
+    assert suonati == ["aggiornamento_disponibile", "annullato"] and evento_della_barra(finestra) == "aggiornamento rimandato"
 
 
 def test_la_proposta_accettata(finestra, suonati, monkeypatch):
     monkeypatch.setattr(dialoghi.Aggiornamento, "ShowModal", lambda self: wx.ID_YES)
     assert finestra.proponi_l_aggiornamento("1.94.6", "2.0.0", "Note.", attesa=120)
-    assert suonati == ["aggiornamento_disponibile", "aggiornamento_scelto"] and finestra.barra.GetValue().splitlines()[3] == "scarico MESS 2.0.0"
+    assert suonati == ["aggiornamento_disponibile", "aggiornamento_scelto"] and evento_della_barra(finestra) == "scarico MESS 2.0.0"
 
 
 def test_l_avanzamento_nella_barra_di_stato(finestra):
     righe = []
     for presi, totale in ((8, 100), (1, 3), (100, 100), (5 * 1048576, 0)):
         finestra.avanzamento_dell_aggiornamento(presi, totale)
-        righe.append(finestra.barra.GetValue().splitlines()[3])
+        righe.append(evento_della_barra(finestra))
     assert righe == ["aggiornamento scaricato all'8%", "aggiornamento scaricato al 33%", "aggiornamento scaricato al 100%", "aggiornamento: 5,0 MB scaricati"]
-    assert all(len(riga) <= 40 for riga in righe)
 
 
 def test_gli_esiti_dalle_frasi_vere_di_gbutils(compilato, monkeypatch):
@@ -410,8 +410,8 @@ def test_chiudi_per_aggiornare_smette_di_riprovare_e_lo_dice(finestra, suonati, 
     # Il suono suo, dalla terza revisione: quello dell'aggiornamento non riuscito resta allo scaricamento.
     assert finestra.vista.GetValue() == NON_INSTALLATO and suonati == ["aggiornamento_non_installato"]
     assert EVENTI["aggiornamento_non_installato"] == "mess_aggiornamento_non_installato" != EVENTI["aggiornamento_non_riuscito"]
-    riga = finestra.barra.GetValue().splitlines()[3]
-    assert riga == "aggiornamento non installato" and len(riga) <= 40
+    riga = evento_della_barra(finestra)
+    assert riga == "aggiornamento non installato"
     assert len(rinviati) == 3 and not finestra.chiusa
 
 
