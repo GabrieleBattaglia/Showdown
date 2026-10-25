@@ -233,7 +233,7 @@ def test_le_chiavi_sconosciute_restano_nella_loro_riga(finestra):
 def _tasto(codice, ripetuto=False, modificatori=False):
     saltati = []
     return types.SimpleNamespace(GetKeyCode=lambda: codice, IsAutoRepeat=lambda: ripetuto, HasAnyModifiers=lambda: modificatori,
-                                 Skip=lambda: saltati.append(True), saltati=saltati)
+                                 ControlDown=lambda: modificatori, Skip=lambda: saltati.append(True), saltati=saltati)
 
 
 def test_invio_spazio_e_canc_sugli_elenchi(finestra, suonati, monkeypatch):
@@ -337,3 +337,124 @@ def test_ne_l_arrivo_ne_la_riscrittura_spiegano_il_dato(finestra, voce_finta):
     finestra.impostazioni = {**finestra.impostazioni, "annunci_sintesi": "sapi5"}
     _vai(finestra, 13, 0)
     assert voce_finta.detti[-1] == ("sapi5", "cassa") and voce_finta.braille[-1] == ("nvda", "cassa")
+
+
+# I ritocchi del collaudo di Gabriele del 25 ottobre 2026.
+
+def _detti(voce_finta):
+    return [testo for _uscita, testo in voce_finta.detti]
+
+
+def _con_tasto(finestra, colonna, riga, codice, ctrl=False):
+    """Il cursore va alla colonna e alla riga date col tasto dato: il tasto scende, il cursore si muove, il tasto si lascia."""
+    finestra._tasto_giu_nella_barra(_tasto(codice, modificatori=ctrl))
+    _metti_il_cursore(finestra.barra, colonna, riga)
+    finestra._mossa_nella_barra(_tasto(codice, modificatori=ctrl))
+
+
+def test_le_frecce_verticali_cambiano_riga_in_silenzio(finestra, voce_finta):
+    _con_la_barra(finestra, [["gloria", "cassa"], ["tesserati", "disponibili"], ["ultimo_evento"]])
+    # Con la freccia giù si arriva nei tesserati senza sentirne il nome, e nemmeno muovendosi dentro lo stesso dato.
+    _con_tasto(finestra, 2, 1, wx.WXK_DOWN)
+    _con_tasto(finestra, 4, 1, wx.WXK_RIGHT)
+    assert _detti(voce_finta) == [] and finestra._attesa_lunga is None
+    # Con la freccia destra nel dato seguente sì.
+    _con_tasto(finestra, 10, 1, wx.WXK_RIGHT)
+    assert _detti(voce_finta) == ["disponibili"]
+    # Ctrl+Giù lasciando prima Ctrl: conta la freccia, e tace.
+    finestra._tasto_giu_nella_barra(_tasto(wx.WXK_DOWN, modificatori=True))
+    _metti_il_cursore(finestra.barra, 1, 0)
+    finestra._mossa_nella_barra(_tasto(wx.WXK_CONTROL, modificatori=False))
+    finestra._mossa_nella_barra(_tasto(wx.WXK_DOWN, modificatori=False))
+    assert _detti(voce_finta) == ["disponibili"] and finestra._dato_sotto_il_cursore == "gloria"
+    # Ctrl+Inizio e Pagina giù cambiano riga in silenzio; Inizio senza Ctrl si muove nella riga, e parla.
+    _con_tasto(finestra, 0, 1, wx.WXK_PAGEDOWN)
+    _con_tasto(finestra, 0, 0, wx.WXK_HOME, ctrl=True)
+    assert _detti(voce_finta) == ["disponibili"]
+    _con_tasto(finestra, 0, 1, wx.WXK_HOME)
+    assert _detti(voce_finta) == ["disponibili", "tesserati"]
+
+
+def test_il_cursor_routing_del_display_spiega_il_dato(finestra, voce_finta):
+    _con_la_barra(finestra, [["gloria", "cassa"], ["ultimo_evento"]])
+    finestra._controllo_attivo = True
+    # Il cursore si sposta senza tasti, come col cursor routing: il controllo del cursore lo vede.
+    _metti_il_cursore(finestra.barra, 9, 0)
+    finestra._controlla_il_cursore()
+    assert _detti(voce_finta) == ["cassa"] and voce_finta.braille[-1] == ("nvda", "cassa")
+    # Mentre un tasto è giù, il controllo aspetta che lo si lasci.
+    finestra._tasto_giu_nella_barra(_tasto(wx.WXK_LEFT))
+    _metti_il_cursore(finestra.barra, 1, 0)
+    finestra._controlla_il_cursore()
+    assert _detti(voce_finta) == ["cassa"]
+    finestra._mossa_nella_barra(_tasto(wx.WXK_LEFT))
+    assert _detti(voce_finta) == ["cassa", "gloria"]
+
+
+def test_dieci_secondi_fermi_nel_dato_e_parte_la_spiegazione_lunga(finestra, voce_finta):
+    _con_la_barra(finestra, [["gloria", "cassa"], ["tesserati"], ["ultimo_evento"]])
+    _con_tasto(finestra, 9, 0, wx.WXK_RIGHT)
+    _con_tasto(finestra, 1, 0, wx.WXK_LEFT)
+    attesa = finestra._attesa_lunga
+    assert _detti(voce_finta) == ["cassa", "gloria"] and attesa is not None and attesa.IsRunning()
+    # Muovendosi dentro il dato l'attesa riparte da capo.
+    _con_tasto(finestra, 3, 0, wx.WXK_RIGHT)
+    assert finestra._attesa_lunga is not attesa and finestra._attesa_lunga.IsRunning() and not attesa.IsRunning()
+    finestra._spiega_a_lungo()
+    lunga = barra.CATALOGO["gloria"].spiegazione
+    assert _detti(voce_finta) == ["cassa", "gloria", lunga]
+    # Una volta sola per ingresso.
+    _con_tasto(finestra, 4, 0, wx.WXK_RIGHT)
+    finestra._spiega_a_lungo()
+    assert _detti(voce_finta) == ["cassa", "gloria", lunga] and finestra._attesa_lunga is None
+    # Uscendo dal dato, o dalla barra, l'attesa si ferma e non parla.
+    _con_tasto(finestra, 9, 0, wx.WXK_RIGHT)
+    assert finestra._attesa_lunga is not None
+    _con_tasto(finestra, 2, 1, wx.WXK_DOWN)
+    assert finestra._attesa_lunga is None
+    _con_tasto(finestra, 10, 0, wx.WXK_UP)
+    _con_tasto(finestra, 1, 0, wx.WXK_LEFT)
+    assert finestra._attesa_lunga is not None
+    finestra._via_dalla_barra(_tasto(wx.WXK_TAB))
+    assert finestra._attesa_lunga is None and not finestra._controllo_attivo
+    finestra._spiega_a_lungo()
+    assert _detti(voce_finta) == ["cassa", "gloria", lunga, "cassa", "gloria"]
+
+
+def test_il_giro_del_tab_della_finestra_della_barra(finestra):
+    dialogo = _finestra_della_barra(finestra, [["gloria", "cassa"]])
+    try:
+        figli = list(dialogo.pannello.GetChildren())
+        ordine = [dialogo.scelta_riga, dialogo.pulsante_aggiungi_riga, dialogo.pulsante_togli_riga, dialogo.della_riga, dialogo.spiegazione,
+                  dialogo.pulsante_su, dialogo.pulsante_giu, dialogo.disponibili, dialogo.anteprima, dialogo.pulsante_di_serie, dialogo.pulsante_salva]
+        posti = [figli.index(controllo) for controllo in ordine]
+        assert posti == sorted(posti)
+    finally:
+        dialogo.Destroy()
+
+
+def test_gli_elenchi_vuoti_escono_dal_giro_del_tab(finestra, monkeypatch):
+    dialogo = _finestra_della_barra(finestra)
+    chiamati = []
+    try:
+        # La barra di serie usa tutti i dati: Dati disponibili è vuoto e non disponibile.
+        assert not dialogo.disponibili.IsEnabled() and dialogo.della_riga.IsEnabled()
+        dialogo.della_riga.SetSelection(0)
+        dialogo.togli_dato()
+        assert dialogo.disponibili.IsEnabled() and dialogo.disponibili.GetCount() == 1
+        # Il dato torna nella riga: i disponibili finiscono, e il fuoco che stava lì passa ai dati della riga.
+        monkeypatch.setattr(gui_barra, "controllo_col_fuoco", lambda: dialogo.disponibili)
+        monkeypatch.setattr(dialogo.della_riga, "SetFocus", lambda: chiamati.append("della riga"))
+        dialogo.disponibili.SetSelection(0)
+        dialogo.aggiungi_dato()
+        assert not dialogo.disponibili.IsEnabled() and chiamati == ["della riga"]
+        # Una riga che si svuota manda il fuoco ai disponibili; con tutti e due gli elenchi vuoti, alla scelta Riga.
+        dialogo._carica([["gloria"], ["cassa"]])
+        dialogo._scrivi(0, 0, 0)
+        monkeypatch.setattr(gui_barra, "controllo_col_fuoco", lambda: dialogo.della_riga)
+        monkeypatch.setattr(dialogo.disponibili, "SetFocus", lambda: chiamati.append("disponibili"))
+        dialogo.della_riga.SetSelection(0)
+        dialogo.togli_dato()
+        assert not dialogo.della_riga.IsEnabled() and chiamati == ["della riga", "disponibili"]
+    finally:
+        dialogo.Destroy()

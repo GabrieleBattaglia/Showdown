@@ -1,1 +1,9 @@
-Collaudo della barra di stato su misura, decisione D38, del 25 ottobre 2026. Cancella ogni riga che passa; scrivi i commenti sulla riga che non va.
+Collaudo dei ritocchi della barra di stato del 25 ottobre 2026. Cancella ogni riga che passa; scrivi i commenti sulla riga che non va.
+Sulla barra, con le frecce su e giù, Pagina su e giù, Ctrl+Inizio e Ctrl+Fine cambi riga senza sentire il nome dei dati.
+Con le frecce a destra e a sinistra, Inizio e Fine il nome si sente entrando in un dato con la sigla, come prima.
+Col cursor routing del display braille, premendo su un dato con la sigla, il nome si sente entro un attimo.
+Fermo 10 secondi in un dato di cui hai sentito il nome, senti anche la sua spiegazione lunga, una volta sola; muovendoti dentro il dato i 10 secondi ripartono.
+Uscendo dalla barra prima dei 10 secondi, per esempio con F5, la spiegazione lunga non arriva.
+Nella finestra Barra di stato il fuoco parte dalla scelta Riga, e il Tab va ad Aggiungi riga, Togli riga, Dati della riga, Spiegazione, Sposta su, Sposta giù, Dati disponibili, Anteprima, Barra di serie, Salva e Annulla.
+Con la barra di serie Dati disponibili è vuoto e il Tab lo salta, senza sconosciuto.
+Togliendo l'ultimo dato di una riga il fuoco passa a Dati disponibili; aggiungendo l'ultimo dei disponibili passa a Dati della riga.

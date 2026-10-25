@@ -10,6 +10,11 @@ come sarebbe adesso; Barra di serie, che rimette la barra di partenza, Salva e A
 cui sei da un elenco all'altro, Canc lo toglie dalla riga. Non c'è un pulsante predefinito: Invio fa soltanto quello
 che fa sull'elenco, e Salva si preme. Ogni evento ha il suo suono. Le chiavi che questo MESS non conosce, scritte da un
 MESS più nuovo, non si vedono ma restano nella loro riga, in fondo, finché la riga c'è.
+Lo stesso giorno, dal collaudo di Gabriele, il giro del Tab segue il lavoro: la scelta Riga con Aggiungi riga e Togli
+riga, i Dati della riga, la spiegazione, Sposta su e Sposta giù, i Dati disponibili, l'anteprima e i pulsanti della
+barra; il fuoco parte dalla scelta Riga. Un elenco vuoto non è disponibile, così esce dal giro del Tab, dove NVDA lo
+diceva sconosciuto; se aveva il fuoco, il fuoco va all'altro elenco, o alla scelta Riga se sono vuoti tutti e due. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import wx
@@ -41,16 +46,17 @@ class BarraDiStato(_Dialogo):
         self.scelta_riga = self.aggiungi(wx.Choice(self.pannello))
         self.scelta_riga.SetName("Riga")
         self.pulsante_aggiungi_riga, self.pulsante_togli_riga = self.pulsanti((wx.ID_ANY, "&Aggiungi riga"), (wx.ID_ANY, "&Togli riga"), predefinito=False)
-        self.etichetta("&Dati disponibili")
-        self.disponibili = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
-        self.disponibili.SetName("Dati disponibili")
-        self.etichetta("S&piegazione del dato")
-        self.spiegazione = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
-        self.spiegazione.SetName("Spiegazione del dato")
+        # L'ordine dei controlli è quello del Tab, scelto da Gabriele il 25 ottobre 2026.
         self.etichetta("Dati de&lla riga")
         self.della_riga = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         self.della_riga.SetName("Dati della riga")
+        self.etichetta("S&piegazione del dato")
+        self.spiegazione = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
+        self.spiegazione.SetName("Spiegazione del dato")
         self.pulsante_su, self.pulsante_giu = self.pulsanti((wx.ID_ANY, "Sposta s&u"), (wx.ID_ANY, "Sposta &giù"), predefinito=False)
+        self.etichetta("&Dati disponibili")
+        self.disponibili = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
+        self.disponibili.SetName("Dati disponibili")
         self.etichetta("Ant&eprima della riga")
         self.anteprima = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_DONTWRAP))
         self.anteprima.SetName("Anteprima della riga")
@@ -76,12 +82,12 @@ class BarraDiStato(_Dialogo):
         self.Bind(wx.EVT_CHAR_HOOK, self._tasto)
         self.completa((640, 600))
         self._scrivi(0, 0, 0)
-        self._spiega_la_scelta(self.disponibili)
-        wx.CallAfter(self._al_primo_elenco)
+        self._spiega_la_scelta(self.della_riga if self.della_riga.GetCount() else self.disponibili)
+        wx.CallAfter(self._al_primo_controllo)
 
-    def _al_primo_elenco(self):
+    def _al_primo_controllo(self):
         if self:
-            self.disponibili.SetFocus()
+            self.scelta_riga.SetFocus()
 
     # Il modello: le righe coi dati noti, e a parte le chiavi che questo MESS non conosce.
 
@@ -116,6 +122,28 @@ class BarraDiStato(_Dialogo):
         self._riscrivi(self.della_riga, [modulo_barra.CATALOGO[k].etichetta for k in self.righe[self.riga]], posto_della_riga)
         self.anteprima.ChangeValue(modulo_barra.anteprima(self.righe[self.riga], self.contesto()))
         aspetto.ridai_stile(self.anteprima, self.impostazioni)
+        self._elenchi_vuoti_fuori_dal_giro()
+
+    @staticmethod
+    def _stesso(primo, secondo):
+        return primo is not None and (primo is secondo or primo.GetId() == secondo.GetId())
+
+    def _elenchi_vuoti_fuori_dal_giro(self):
+        """
+        Un elenco vuoto non è disponibile, ed esce dal giro del Tab: NVDA lo diceva sconosciuto. Se aveva il fuoco, il fuoco
+        va all'altro elenco, se ha dei dati, altrimenti alla scelta Riga; prima si riaccendono gli elenchi che hanno dati.
+        """
+        elenchi = (self.della_riga, self.disponibili)
+        for elenco in elenchi:
+            if elenco.GetCount() and not elenco.IsEnabled():
+                elenco.Enable()
+        fuoco = controllo_col_fuoco()
+        for elenco, altro in (elenchi, tuple(reversed(elenchi))):
+            if not elenco.GetCount() and self._stesso(fuoco, elenco):
+                (altro if altro.GetCount() else self.scelta_riga).SetFocus()
+        for elenco in elenchi:
+            if not elenco.GetCount() and elenco.IsEnabled():
+                elenco.Disable()
 
     def _spiega(self, chiave):
         self.spiegazione.ChangeValue(modulo_barra.spiegazione(chiave, self.contesto()) if chiave else "Nessun dato.")
@@ -181,7 +209,8 @@ class BarraDiStato(_Dialogo):
         self.righe[self.riga].append(chiave)
         suoni.suona("barra_dato_aggiunto")
         self._scrivi(self.riga, posto, len(self.righe[self.riga]) - 1)
-        self._spiega_la_scelta(self.disponibili)
+        # Coi disponibili finiti il fuoco è passato ai dati della riga, sull'ultimo aggiunto.
+        self._spiega_la_scelta(self.disponibili if self.disponibili.GetCount() else self.della_riga)
 
     def togli_dato(self):
         """Il dato scelto della riga torna fra i disponibili, al suo posto nel catalogo; a riga vuota il fuoco va ai disponibili."""
@@ -193,11 +222,8 @@ class BarraDiStato(_Dialogo):
         self.righe[self.riga].remove(chiave)
         suoni.suona("barra_dato_tolto")
         self._scrivi(self.riga, self.chiavi_disponibili().index(chiave), posto)
-        if self.righe[self.riga]:
-            self._spiega_la_scelta(self.della_riga)
-        else:
-            self.disponibili.SetFocus()
-            self._spiega_la_scelta(self.disponibili)
+        # A riga vuota il fuoco è passato ai disponibili, sul dato appena tolto.
+        self._spiega_la_scelta(self.della_riga if self.righe[self.riga] else self.disponibili)
 
     def sposta(self, verso):
         """Sposta su, con verso -1, e Sposta giù, con 1: il dato scelto della riga cambia posto col vicino."""

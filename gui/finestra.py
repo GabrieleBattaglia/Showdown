@@ -122,6 +122,12 @@ entri in un dato che ha la sigla, la sintesi e il display braille ne dicono il n
 cronaca, e lo ridicono se ne esci e ci rientri. Lo dice soltanto il cursore che si muove, coi tasti o col clic: né
 l'arrivo sulla barra né la riscrittura sotto il cursore. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Lo stesso giorno, dal collaudo di Gabriele: il nome si dice entrando nel dato con le frecce orizzontali, Inizio e Fine, col
+clic o col cursor routing del display braille, che non manda né tasti né clic e si vede perché la finestra, mentre la barra
+ha il fuoco, guarda il cursore ogni 150 millesimi; con le frecce verticali, Pagina su e giù, Ctrl+Inizio e Ctrl+Fine no,
+perché si voleva cambiare riga per leggerla. Se il cursore resta fermo 10 secondi in un dato di cui ha detto il nome,
+parte anche la spiegazione lunga, una volta per ingresso. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import contextlib
@@ -184,6 +190,16 @@ TITOLO = "MESS, Manageriale e Simulatore Showdown"
 # il fischietto si confondeva con l'avvio, collaudo di Gabriele del 23 ottobre 2026. Dalla tappa 14
 # vale anche per la notizia del crash della volta prima.
 PAUSA_NOTIZIA_DELLO_STAFF = 1.0
+# La barra di stato su misura, D38, col collaudo di Gabriele del 25 ottobre 2026. I tasti che cambiano riga: entrando così in
+# un dato il suo nome non si dice, perché si voleva leggere la riga; Inizio e Fine cambiano riga soltanto con Ctrl. I
+# modificatori da soli non spostano il cursore. Ogni quanto si guarda il cursore della barra che ha il fuoco, per il cursor
+# routing del display braille, e dopo quanto parte la spiegazione lunga del dato, in millesimi.
+TASTI_DI_RIGA = frozenset({wx.WXK_UP, wx.WXK_DOWN, wx.WXK_NUMPAD_UP, wx.WXK_NUMPAD_DOWN, wx.WXK_PAGEUP, wx.WXK_PAGEDOWN,
+                           wx.WXK_NUMPAD_PAGEUP, wx.WXK_NUMPAD_PAGEDOWN})
+TASTI_DI_INIZIO_E_FINE = frozenset({wx.WXK_HOME, wx.WXK_END, wx.WXK_NUMPAD_HOME, wx.WXK_NUMPAD_END})
+MODIFICATORI = frozenset({wx.WXK_SHIFT, wx.WXK_CONTROL, wx.WXK_ALT, wx.WXK_WINDOWS_LEFT, wx.WXK_WINDOWS_RIGHT})
+CONTROLLO_DEL_CURSORE = 150
+ATTESA_DELLA_SPIEGAZIONE_LUNGA = 10_000
 # Ogni quanti millesimi la chiusura per l'aggiornamento riprova, finché un messaggio resta aperto.
 RIPROVA_DELLA_CHIUSURA = 200
 # Dopo quanti secondi la chiusura per l'aggiornamento smette di riprovare: lo script di sostituzione
@@ -255,6 +271,13 @@ class FinestraPrincipale(wx.Frame):
         # Le righe della barra coi loro dati, e la chiave del dato su cui stava il cursore, per dirne il nome quando ci entra.
         self._dati_della_barra = []
         self._dato_sotto_il_cursore = None
+        # Dal collaudo dello stesso giorno: la posizione del cursore già vista, il tasto che lo sta muovendo, il dato di cui si
+        # è detto il nome e che aspetta la spiegazione lunga, e le due attese, quella del controllo del cursore e quella lunga.
+        self._posizione_nota = None
+        self._tasto_della_mossa = None
+        self._dato_spiegato = None
+        self._controllo_attivo = False
+        self._attesa_lunga = None
         # Dalla tappa 12, punto 12.10: un modello o una formula dei tornei che non si leggono si dicono in
         # testa alla vista all'avvio, col loro suono, e nella barra una volta per sessione e a ogni cambio.
         self.problemi_all_avvio = self._problemi_del_calendario()
@@ -306,8 +329,10 @@ class FinestraPrincipale(wx.Frame):
         self.barra = wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2 | wx.TE_DONTWRAP)
         self.barra.SetName("Barra di stato")
         self.barra.Bind(wx.EVT_SET_FOCUS, self._alla_barra)
+        self.barra.Bind(wx.EVT_KILL_FOCUS, self._via_dalla_barra)
+        self.barra.Bind(wx.EVT_KEY_DOWN, self._tasto_giu_nella_barra)
         self.barra.Bind(wx.EVT_KEY_UP, self._mossa_nella_barra)
-        self.barra.Bind(wx.EVT_LEFT_UP, self._mossa_nella_barra)
+        self.barra.Bind(wx.EVT_LEFT_UP, lambda event: (event.Skip(), self._segui_il_cursore(None)))
         sizer.Add(self.etichetta_vista, 0, wx.LEFT | wx.RIGHT | wx.TOP, 5)
         sizer.Add(self.vista, 1, wx.EXPAND | wx.ALL, 5)
         sizer.Add(self.etichetta_barra, 0, wx.LEFT | wx.RIGHT, 5)
@@ -616,8 +641,18 @@ class FinestraPrincipale(wx.Frame):
         posizione = self.barra.XYToPosition(colonna, riga)
         if posizione >= 0:
             self.barra.SetInsertionPoint(posizione)
-        # La riscrittura non è una mossa: il dato sotto il cursore si ricorda in silenzio.
-        self._dato_sotto_il_cursore = self._chiave_al_cursore()
+        # La riscrittura non è una mossa: il dato sotto il cursore si ricorda in silenzio, e se non è più quello di prima la
+        # sua spiegazione lunga non parte.
+        self._ricorda_il_cursore()
+
+    def _ricorda_il_cursore(self):
+        """Il dato e la posizione del cursore si ricordano in silenzio; se il dato è un altro, la spiegazione lunga non parte più."""
+        chiave = self._chiave_al_cursore()
+        if chiave != self._dato_sotto_il_cursore:
+            self._ferma_la_spiegazione_lunga()
+            self._dato_spiegato = None
+        self._dato_sotto_il_cursore = chiave
+        self._posizione_nota = self.barra.GetInsertionPoint()
 
     def _dato_al_cursore(self):
         """Il dato della barra su cui sta il cursore, o None sullo spazio fra due dati e dopo la fine della riga."""
@@ -630,28 +665,101 @@ class FinestraPrincipale(wx.Frame):
         dato = self._dato_al_cursore()
         return dato.chiave if dato is not None else None
 
+    def _tasto_giu_nella_barra(self, event):
+        """Si ricorda il tasto che muove il cursore, anche ripetuto; i modificatori da soli non lo muovono."""
+        if event.GetKeyCode() not in MODIFICATORI:
+            self._tasto_della_mossa = (event.GetKeyCode(), event.ControlDown())
+        event.Skip()
+
     def _mossa_nella_barra(self, event):
         """
-        A ogni tasto lasciato e a ogni clic sulla barra: se il cursore è entrato in un dato diverso da quello di prima, e quel
-        dato ha la sigla, la sintesi e il display braille ne dicono il nome, dopo quello che NVDA sta leggendo. Uscendo su
-        uno spazio e rientrando nello stesso dato, lo ridicono. Un tasto tenuto giù parla una volta sola, quando si lascia.
+        A ogni tasto lasciato sulla barra il cursore si segue col tasto che l'ha mosso: con Ctrl+Giù si lascia spesso Ctrl
+        prima della freccia, e conta la freccia. Un tasto tenuto giù parla una volta sola, quando si lascia.
         """
         event.Skip()
+        tasto = self._tasto_della_mossa or (event.GetKeyCode(), event.ControlDown())
+        self._tasto_della_mossa = None
+        self._segui_il_cursore(tasto)
+
+    def _segui_il_cursore(self, tasto):
+        """
+        Il cursore si è forse mosso, col tasto dato, o senza tasti, col clic o col cursor routing del display: se è entrato
+        in un dato che ha la sigla, la sintesi e il display braille ne dicono il nome, dopo quello che NVDA sta leggendo, e
+        parte l'attesa della spiegazione lunga. Con un tasto che cambia riga il dato si ricorda in silenzio. Dentro lo stesso
+        dato, già spiegato col nome, ogni mossa fa ripartire l'attesa; uscendo su uno spazio e rientrando, il nome si ridice.
+        """
+        if not self or self.chiusa:
+            return
+        posizione = self.barra.GetInsertionPoint()
+        if posizione == self._posizione_nota:
+            return
+        self._posizione_nota = posizione
+        di_riga = tasto is not None and (tasto[0] in TASTI_DI_RIGA or (tasto[0] in TASTI_DI_INIZIO_E_FINE and tasto[1]))
         dato = self._dato_al_cursore()
         chiave = dato.chiave if dato is not None else None
         if chiave == self._dato_sotto_il_cursore:
+            if chiave is not None and chiave == self._dato_spiegato:
+                self._aspetta_la_spiegazione_lunga()
             return
         self._dato_sotto_il_cursore = chiave
-        if dato is not None and dato.sigla:
-            annunci_condivisi().breve(dato.nome, self.impostazioni)
+        self._ferma_la_spiegazione_lunga()
+        self._dato_spiegato = None
+        if dato is None or not dato.sigla or di_riga:
+            return
+        self._dato_spiegato = chiave
+        annunci_condivisi().breve(dato.nome, self.impostazioni)
+        self._aspetta_la_spiegazione_lunga()
+
+    def _aspetta_la_spiegazione_lunga(self):
+        self._ferma_la_spiegazione_lunga()
+        self._attesa_lunga = wx.CallLater(ATTESA_DELLA_SPIEGAZIONE_LUNGA, self._spiega_a_lungo)
+
+    def _ferma_la_spiegazione_lunga(self):
+        if self._attesa_lunga is not None:
+            self._attesa_lunga.Stop()
+            self._attesa_lunga = None
+
+    def _spiega_a_lungo(self):
+        """Il cursore è rimasto fermo nel dato di cui si è detto il nome: la spiegazione lunga, una volta sola per ingresso."""
+        self._attesa_lunga = None
+        if not self or self.chiusa:
+            return
+        dato = self._dato_al_cursore()
+        if dato is None or dato.chiave != self._dato_spiegato:
+            return
+        self._dato_spiegato = None
+        annunci_condivisi().breve(dato.spiegazione, self.impostazioni)
+
+    def _controlla_il_cursore(self):
+        """
+        Mentre la barra ha il fuoco, ogni CONTROLLO_DEL_CURSORE millesimi: il cursore mosso senza tasti, dal cursor routing del
+        display braille, si segue come un clic. Mentre un tasto è giù lo segue il tasto, quando si lascia.
+        """
+        if not self or self.chiusa or not self._controllo_attivo:
+            return
+        if self._tasto_della_mossa is None:
+            self._segui_il_cursore(None)
+        wx.CallLater(CONTROLLO_DEL_CURSORE, self._controlla_il_cursore)
 
     def _alla_barra(self, event):
         """
         Quando il cursore arriva sulla barra, la ricalcola prima che lo screen reader la legga. L'arrivo non è una mossa: il
-        dato su cui sta il cursore si ricorda in silenzio, e il suo nome si dice soltanto se ci si entra muovendosi.
+        dato su cui sta il cursore si ricorda in silenzio, e il suo nome si dice soltanto se ci si entra muovendosi. Da qui
+        parte il controllo del cursore, per il cursor routing.
         """
         self.aggiorna_barra()
-        self._dato_sotto_il_cursore = self._chiave_al_cursore()
+        self._tasto_della_mossa = None
+        self._ricorda_il_cursore()
+        if not self._controllo_attivo:
+            self._controllo_attivo = True
+            wx.CallLater(CONTROLLO_DEL_CURSORE, self._controlla_il_cursore)
+        event.Skip()
+
+    def _via_dalla_barra(self, event):
+        """Il fuoco lascia la barra: si fermano il controllo del cursore e l'attesa della spiegazione lunga."""
+        self._controllo_attivo = False
+        self._ferma_la_spiegazione_lunga()
+        self._dato_spiegato = None
         event.Skip()
 
     def _al_rinfresco(self, event):
@@ -1939,6 +2047,8 @@ class FinestraPrincipale(wx.Frame):
         """
         self.chiusa = True
         self.timer.Stop()
+        self._controllo_attivo = False
+        self._ferma_la_spiegazione_lunga()
         if self._per_cambiare_cartella:
             # Il mondo si è appena salvato nella sua cartella, e il file accanto al programma nomina ormai l'altra:
             # un salvataggio adesso finirebbe lì, sopra il mondo che MESS sta per riaprire. Niente riepilogo.
