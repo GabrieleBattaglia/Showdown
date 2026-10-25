@@ -233,7 +233,8 @@ def test_le_chiavi_sconosciute_restano_nella_loro_riga(finestra):
 def _tasto(codice, ripetuto=False, modificatori=False):
     saltati = []
     return types.SimpleNamespace(GetKeyCode=lambda: codice, IsAutoRepeat=lambda: ripetuto, HasAnyModifiers=lambda: modificatori,
-                                 ControlDown=lambda: modificatori, Skip=lambda: saltati.append(True), saltati=saltati)
+                                 ControlDown=lambda: modificatori, AltDown=lambda: False, ShiftDown=lambda: False,
+                                 Skip=lambda: saltati.append(True), saltati=saltati)
 
 
 def test_invio_spazio_e_canc_sugli_elenchi(finestra, suonati, monkeypatch):
@@ -426,7 +427,7 @@ def test_il_giro_del_tab_della_finestra_della_barra(finestra):
     try:
         figli = list(dialogo.pannello.GetChildren())
         ordine = [dialogo.scelta_riga, dialogo.pulsante_aggiungi_riga, dialogo.pulsante_togli_riga, dialogo.della_riga, dialogo.spiegazione,
-                  dialogo.pulsante_su, dialogo.pulsante_giu, dialogo.disponibili, dialogo.anteprima, dialogo.pulsante_di_serie, dialogo.pulsante_salva]
+                  dialogo.disponibili, dialogo.anteprima, dialogo.pulsante_di_serie, dialogo.pulsante_salva]
         posti = [figli.index(controllo) for controllo in ordine]
         assert posti == sorted(posti)
     finally:
@@ -485,3 +486,23 @@ def test_invio_sulla_barra_apre_la_voce_del_dato(finestra, suonati):
     _metti_il_cursore(finestra.barra, 5, 0)
     finestra.invio_nella_barra()
     assert suonati == ["nessuna_selezione", "nessuna_selezione"] and len(chiamate) == 2
+
+
+def test_ctrl_frecce_spostano_i_dati_della_riga(finestra, suonati, monkeypatch):
+    # Dal 25 ottobre 2026, richiesta di Gabriele: al posto dei pulsanti Sposta su e Sposta giù, coi loro suoni.
+    dialogo = _finestra_della_barra(finestra, [["gloria", "cassa", "sponsor"]])
+    monkeypatch.setattr(gui_barra, "controllo_col_fuoco", lambda: dialogo.della_riga)
+    try:
+        assert not hasattr(dialogo, "pulsante_su") and not hasattr(dialogo, "pulsante_giu")
+        dialogo.della_riga.SetSelection(0)
+        dialogo._tasto(_tasto(wx.WXK_DOWN, modificatori=True))
+        assert dialogo.righe[0] == ["cassa", "gloria", "sponsor"] and dialogo.della_riga.GetSelection() == 1
+        dialogo._tasto(_tasto(wx.WXK_NUMPAD_UP, modificatori=True))
+        dialogo._tasto(_tasto(wx.WXK_UP, modificatori=True))
+        assert dialogo.righe[0] == ["gloria", "cassa", "sponsor"] and suonati == ["barra_dato_giu", "barra_dato_su", "barra_dato_al_bordo"]
+        # La freccia senza Ctrl resta all'elenco.
+        freccia = _tasto(wx.WXK_DOWN)
+        dialogo._tasto(freccia)
+        assert freccia.saltati and dialogo.righe[0] == ["gloria", "cassa", "sponsor"]
+    finally:
+        dialogo.Destroy()

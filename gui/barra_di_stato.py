@@ -15,6 +15,9 @@ riga, i Dati della riga, la spiegazione, Sposta su e Sposta giù, i Dati disponi
 barra; il fuoco parte dalla scelta Riga. Un elenco vuoto non è disponibile, così esce dal giro del Tab, dove NVDA lo
 diceva sconosciuto; se aveva il fuoco, il fuoco va all'altro elenco, o alla scelta Riga se sono vuoti tutti e due. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, richiesta di Gabriele, i pulsanti Sposta su e Sposta giù lasciano il posto a Ctrl+Freccia su e Ctrl+Freccia
+giù su Dati della riga, come nell'elenco delle regole della finestra Mercato e ricerca, con gli stessi suoni. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import wx
@@ -53,7 +56,6 @@ class BarraDiStato(_Dialogo):
         self.etichetta("S&piegazione del dato")
         self.spiegazione = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2))
         self.spiegazione.SetName("Spiegazione del dato")
-        self.pulsante_su, self.pulsante_giu = self.pulsanti((wx.ID_ANY, "Sposta s&u"), (wx.ID_ANY, "Sposta &giù"), predefinito=False)
         self.etichetta("&Dati disponibili")
         self.disponibili = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         self.disponibili.SetName("Dati disponibili")
@@ -74,8 +76,6 @@ class BarraDiStato(_Dialogo):
         self.della_riga.Bind(wx.EVT_LISTBOX_DCLICK, lambda event: self.togli_dato())
         self.pulsante_aggiungi_riga.Bind(wx.EVT_BUTTON, lambda event: self.aggiungi_riga())
         self.pulsante_togli_riga.Bind(wx.EVT_BUTTON, lambda event: self.togli_riga())
-        self.pulsante_su.Bind(wx.EVT_BUTTON, lambda event: self.sposta(-1))
-        self.pulsante_giu.Bind(wx.EVT_BUTTON, lambda event: self.sposta(1))
         self.pulsante_di_serie.Bind(wx.EVT_BUTTON, lambda event: self.barra_di_serie())
         self.pulsante_salva.Bind(wx.EVT_BUTTON, lambda event: self.salva())
         # Il gancio dei tasti prima di completa: quello della grazia dell'Invio, legato dopo, wx lo chiama per primo.
@@ -174,13 +174,16 @@ class BarraDiStato(_Dialogo):
     def _tasto(self, event):
         """
         Invio o Spazio su Dati disponibili aggiunge il dato alla riga, su Dati della riga lo toglie; Canc lo toglie. Uno
-        Spazio tenuto giù si ignora, e così un Canc tenuto giù o un secondo Canc entro mezzo secondo. Gli altri tasti
-        proseguono: Invio fuori dagli elenchi non fa niente, perché non c'è un pulsante predefinito.
+        Spazio tenuto giù si ignora, e così un Canc tenuto giù o un secondo Canc entro mezzo secondo. Ctrl+Freccia su e
+        Ctrl+Freccia giù su Dati della riga spostano il dato scelto. Gli altri tasti proseguono: Invio fuori dagli elenchi
+        non fa niente, perché non c'è un pulsante predefinito.
         """
         codice = event.GetKeyCode()
         fuoco = controllo_col_fuoco()
         spazio = codice == wx.WXK_SPACE and not event.IsAutoRepeat()
-        if event.HasAnyModifiers() or fuoco not in (self.disponibili, self.della_riga):
+        if codice in (wx.WXK_UP, wx.WXK_DOWN, wx.WXK_NUMPAD_UP, wx.WXK_NUMPAD_DOWN) and event.ControlDown() and not (event.AltDown() or event.ShiftDown()) and fuoco is self.della_riga:
+            self.sposta(-1 if codice in (wx.WXK_UP, wx.WXK_NUMPAD_UP) else 1)
+        elif event.HasAnyModifiers() or fuoco not in (self.disponibili, self.della_riga):
             event.Skip()
         elif codice in INVIO or spazio:
             if fuoco is self.disponibili:
@@ -226,7 +229,7 @@ class BarraDiStato(_Dialogo):
         self._spiega_la_scelta(self.della_riga if self.righe[self.riga] else self.disponibili)
 
     def sposta(self, verso):
-        """Sposta su, con verso -1, e Sposta giù, con 1: il dato scelto della riga cambia posto col vicino."""
+        """Ctrl+Freccia su, con verso -1, e Ctrl+Freccia giù, con 1: il dato scelto della riga cambia posto col vicino."""
         chiave = self._chiave_scelta(self.della_riga)
         if chiave is None:
             suoni.suona("nessuna_selezione")

@@ -358,9 +358,10 @@ class RinominaPreset(_ConTestiDaLeggere, _Dialogo):
 
 class GestisciPreset(_ConTestiDaLeggere, _Dialogo):
     """
-    La gestione dei tuoi preset, nell'ordine della casella: Rinomina, Elimina, che chiede col No già scelto, Sposta su
-    e Sposta giù. Ogni operazione la fa la finestra, che la passa subito nel mondo e fra i suoi esiti. Invio
-    sull'elenco non fa niente; senza preset i pulsanti suonano il tasto a vuoto.
+    La gestione dei tuoi preset, nell'ordine della casella: Rinomina, Elimina, che chiede col No già scelto, e sull'elenco
+    Ctrl+Freccia su e Ctrl+Freccia giù, che dal 25 ottobre 2026, richiesta di Gabriele, prendono il posto dei pulsanti Sposta
+    su e Sposta giù, come nell'elenco delle regole. Ogni operazione la fa la finestra, che la passa subito nel mondo e fra i
+    suoi esiti. Invio sull'elenco non fa niente; senza preset i pulsanti e i tasti suonano il tasto a vuoto.
     """
 
     GRAZIA_ALL_APERTURA = True
@@ -372,12 +373,10 @@ class GestisciPreset(_ConTestiDaLeggere, _Dialogo):
         self.etichetta("&I tuoi preset, nell'ordine della casella")
         self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE), 1)
         self.elenco.SetMinSize((-1, self.elenco.GetCharHeight() * 8))
-        voci = ((wx.ID_ANY, "&Rinomina..."), (wx.ID_ANY, "&Elimina"), (wx.ID_ANY, "Sposta s&u"), (wx.ID_ANY, "Sposta &giù"), (wx.ID_CLOSE, "&Chiudi"))
-        self.pulsante_rinomina, self.pulsante_elimina, self.pulsante_su, self.pulsante_giu, chiudi = self.pulsanti(*voci, predefinito=False)
+        voci = ((wx.ID_ANY, "&Rinomina..."), (wx.ID_ANY, "&Elimina"), (wx.ID_CLOSE, "&Chiudi"))
+        self.pulsante_rinomina, self.pulsante_elimina, chiudi = self.pulsanti(*voci, predefinito=False)
         self.pulsante_rinomina.Bind(wx.EVT_BUTTON, self.rinomina)
         self.pulsante_elimina.Bind(wx.EVT_BUTTON, self.elimina)
-        self.pulsante_su.Bind(wx.EVT_BUTTON, lambda event: self.sposta(-1))
-        self.pulsante_giu.Bind(wx.EVT_BUTTON, lambda event: self.sposta(1))
         chiudi.Bind(wx.EVT_BUTTON, lambda event: self.chiudi(wx.ID_CLOSE))
         self.Bind(wx.EVT_CHAR_HOOK, self._tasto)
         self.aggiorna(0)
@@ -393,8 +392,13 @@ class GestisciPreset(_ConTestiDaLeggere, _Dialogo):
         self._riscrivi(self.elenco, [p.nome for p in self.preset] or [testi.NESSUN_PRESET], posto)
 
     def _tasto(self, event):
-        # La grazia di Invio l'ha già fatta la base, che lo chiama dopo: sull'elenco Invio non fa niente.
-        if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and _stesso(event.GetEventObject(), self.elenco):
+        # La grazia di Invio l'ha già fatta la base, che lo chiama dopo: sull'elenco Invio non fa niente. Ctrl+Freccia su e
+        # Ctrl+Freccia giù spostano il preset scelto.
+        codice = event.GetKeyCode()
+        if codice in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and _stesso(event.GetEventObject(), self.elenco):
+            return
+        if codice in (wx.WXK_UP, wx.WXK_DOWN, wx.WXK_NUMPAD_UP, wx.WXK_NUMPAD_DOWN) and event.ControlDown() and not (event.AltDown() or event.ShiftDown()) and _stesso(event.GetEventObject(), self.elenco):
+            self.sposta(-1 if codice in (wx.WXK_UP, wx.WXK_NUMPAD_UP) else 1)
             return
         event.Skip()
 
@@ -436,9 +440,7 @@ class GestisciPreset(_ConTestiDaLeggere, _Dialogo):
         self._torna(self.pulsante_elimina)
 
     def sposta(self, verso):
-        pulsante = self.pulsante_su if verso < 0 else self.pulsante_giu
-        if self._ripetuta("su" if verso < 0 else "giu"):
-            return
+        """Ctrl+Freccia su, con verso -1, e Ctrl+Freccia giù, con 1: il preset scelto si sposta di un posto, e la scelta lo segue."""
         preset, posto = self._scelto()
         if preset is None:
             return
@@ -450,7 +452,7 @@ class GestisciPreset(_ConTestiDaLeggere, _Dialogo):
         esito = testi.esito_preset_spostato(preset.nome, nuovo_posto + 1, len(nuovi.preset))
         if self.finestra.preset_cambiati(nuovi, esito, "preset_spostato_su" if verso < 0 else "preset_spostato_giu", self, spostato=preset.numero):
             self.aggiorna(nuovo_posto)
-        self._torna(pulsante)
+        self._torna(self.elenco)
 
 
 class PostoDaOffrire(_ConTestiDaLeggere, _Dialogo):
@@ -797,7 +799,8 @@ class MercatoERicerca(_ConTestiDaLeggere, _Dialogo):
     def _scrivi_le_regole(self, posto=0):
         """L'elenco delle regole, una riga ciascuna, o la riga che dice come si aggiungono; la linguetta e il riquadro della scheda col loro conto."""
         regole = self.filtri.regole
-        righe = [testi.regola_a_parole(regola, i, regole) for i, regola in enumerate(regole)] or [testi.NESSUNA_REGOLA]
+        # Dal 25 ottobre 2026, richiesta di Gabriele, ogni regola ha il suo numero, da 1 per la prima condizione.
+        righe = [f"{i + 1}. {testi.regola_a_parole(regola, i, regole)}" for i, regola in enumerate(regole)] or [testi.NESSUNA_REGOLA]
         self._riscrivi(self.regole, righe, posto)
         testo = testi.linguetta_dei_filtri(len(regole))
         if self.libro.GetPageText(FILTRI) != testo:

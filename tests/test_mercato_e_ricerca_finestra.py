@@ -37,6 +37,7 @@ import os
 import random
 import re
 import sys
+import types
 import uuid
 from ctypes import wintypes
 from pathlib import Path
@@ -377,7 +378,15 @@ def _fuoco_su(controllo):
 
 
 def _righe_delle_regole(f):
-    return [f.regole.GetString(i) for i in range(f.regole.GetCount())]
+    """
+    Le righe dell'elenco delle regole senza il loro numero, che deve contare da 1: dal 25 ottobre 2026, richiesta di
+    Gabriele, ogni regola ha il suo. La riga che dice come si aggiungono le regole non ha numero.
+    """
+    righe = [f.regole.GetString(i) for i in range(f.regole.GetCount())]
+    if not f.filtri.regole:
+        return righe
+    assert all(riga.startswith(f"{numero}. ") for numero, riga in enumerate(righe, start=1)), righe
+    return [riga.split(". ", 1)[1] for riga in righe]
 
 
 # La forma della finestra e le lettere.
@@ -2026,3 +2035,19 @@ def test_un_testo_di_soli_apostrofi_non_conta(banco):
     assert ("La regola in preparazione non conta: il testo ha soltanto apostrofi, trattini o spazi, che il confronto non guarda: ci vuole "
             "almeno una lettera o una cifra.") in f.campo_trovati.GetValue().splitlines()
     assert banco.suonati[-1] == "regola_valore_da_correggere"
+
+
+def test_ctrl_frecce_spostano_i_preset_senza_pulsanti(app_wx, suonati):
+    # Dal 25 ottobre 2026, richiesta di Gabriele: Ctrl+Freccia su e giù al posto dei pulsanti Sposta su e Sposta giù.
+    finestra = types.SimpleNamespace(filtri_di_ricerca=mercato.filtri_di_ricerca_di_serie(), impostazioni=None)
+    dialogo = finestra_mr.GestisciPreset(None, finestra)
+    try:
+        assert not hasattr(dialogo, "pulsante_su") and not hasattr(dialogo, "pulsante_giu")
+        saltati = []
+        evento = types.SimpleNamespace(GetKeyCode=lambda: wx.WXK_DOWN, ControlDown=lambda: True, AltDown=lambda: False, ShiftDown=lambda: False,
+                                       GetEventObject=lambda: dialogo.elenco, Skip=lambda: saltati.append(True))
+        # Senza preset tuoi, il tasto a vuoto, come prima i pulsanti.
+        dialogo._tasto(evento)
+        assert suonati == ["nessuna_selezione"] and not saltati
+    finally:
+        dialogo.Destroy()

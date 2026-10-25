@@ -3,3 +3,6 @@ Invio sulla barra, col cursore su Sfr, apre Sfide in arrivo; su Not, il riepilog
 Invio su Dur, su Cmd, sull'ultimo evento o sullo spazio fra due dati fa sentire il tasto a vuoto.
 Fermo 10 secondi su una sigla, la spiegazione lunga dice anche che cosa apre Invio.
 Domanda: le finestre che Invio apre per ogni dato ti vanno bene? L'elenco intero sta nel manuale, alla barra di stato.
+Nella finestra Barra di stato, su Dati della riga, Ctrl+Freccia su e Ctrl+Freccia giù spostano il dato scelto, coi suoni di prima, e il bordo suona; i pulsanti Sposta su e Sposta giù non ci sono più.
+In Gestisci i preset, Alt+G nella scheda Risultati della finestra Mercato e ricerca, Ctrl+Freccia su e Ctrl+Freccia giù spostano il preset scelto, e il cursore resta sull'elenco.
+Nella scheda Filtri ogni riga dell'elenco delle regole comincia col suo numero, da 1 per la prima, anche dopo Canc, Ctrl+frecce, E ed O.

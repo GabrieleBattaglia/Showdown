@@ -21,7 +21,7 @@ F5, il fuoco va nella vista principale: spostamento_f5.
 F7, il fuoco va nella barra di stato: spostamento_f7.
 Un'operazione annullata, con Esc o con Annulla in un dialogo: meteora_annullamento.
 La chiusura della finestra Mercato e ricerca con degli esiti, compresi i preset, e quella delle vendite, degli arretrati, della sala allenamento, dei contratti, dello staff, del lancio delle sfide, delle sfide in arrivo, del calendario, del pannello dei tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente: terminata.
-Un pulsante premuto senza niente di scelto su cui lavorare; nella scheda Filtri della finestra Mercato e ricerca anche Canc, Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole; nella finestra della barra di stato Invio, Spazio o Canc su un elenco vuoto, e Sposta su o Sposta giù con la riga vuota; Invio sulla barra di stato su un dato che non apre niente, o sullo spazio fra due dati: mess_tasto_a_vuoto.
+Un pulsante premuto senza niente di scelto su cui lavorare; nella scheda Filtri della finestra Mercato e ricerca anche Canc, Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole; nella finestra della barra di stato Invio, Spazio o Canc su un elenco vuoto, e Ctrl+Freccia su o Ctrl+Freccia giù con la riga vuota; Invio sulla barra di stato su un dato che non apre niente, o sullo spazio fra due dati: mess_tasto_a_vuoto.
 Un valore da correggere in un campo, e il dialogo resta aperto: mess_campo_da_correggere.
 Un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre: espelli.
 Un elenco vuoto che torna a riempirsi mentre si scrive o si cambia un filtro: aggiunta_giocatore.
@@ -64,9 +64,9 @@ Finestra, applicazione, la barra di stato su misura, 12 suoni.
 Si apre la finestra della barra di stato, dal menu Impostazioni: mess_barra_di_stato.
 Nella finestra della barra di stato Invio o Spazio su Dati disponibili, e il dato va in fondo alla riga: mess_barra_dato_aggiunto.
 Nella finestra della barra di stato Invio, Spazio o Canc su Dati della riga, e il dato torna fra i disponibili: mess_barra_dato_tolto.
-Nella finestra della barra di stato Sposta su porta il dato scelto della riga un posto più su: mess_barra_dato_su.
-Nella finestra della barra di stato Sposta giù porta il dato scelto della riga un posto più giù: mess_barra_dato_giu.
-Nella finestra della barra di stato Sposta su sul primo dato della riga, o Sposta giù sull'ultimo, che non si sposta oltre: mess_barra_dato_al_bordo.
+Nella finestra della barra di stato Ctrl+Freccia su porta il dato scelto della riga un posto più su: mess_barra_dato_su.
+Nella finestra della barra di stato Ctrl+Freccia giù porta il dato scelto della riga un posto più giù: mess_barra_dato_giu.
+Nella finestra della barra di stato Ctrl+Freccia su sul primo dato della riga, o Ctrl+Freccia giù sull'ultimo, che non si sposta oltre: mess_barra_dato_al_bordo.
 Nella finestra della barra di stato Aggiungi riga mette una riga vuota dopo quella scelta: mess_barra_riga_aggiunta.
 Nella finestra della barra di stato Togli riga toglie la riga scelta, e i suoi dati tornano disponibili: mess_barra_riga_tolta.
 Nella finestra della barra di stato Aggiungi riga con già sedici righe, il massimo, e un avviso lo dice: mess_barra_righe_piene.
@@ -154,9 +154,9 @@ Salva filtri salva un preset nuovo, in fondo ai tuoi: mess_preset_salvato.
 Salva filtri col nome di un tuo preset, e dopo il Sì il preset prende i filtri nuovi, col suo nome e il suo posto: mess_preset_sostituito.
 Un tuo preset dei filtri rinominato, nella gestione dei preset: mess_preset_rinominato.
 Un tuo preset dei filtri eliminato, nella gestione dei preset, dopo il Sì alla domanda: mess_preset_eliminato.
-Nella gestione dei preset Sposta su porta il preset scelto un posto più su: mess_preset_spostato_su.
-Nella gestione dei preset Sposta giù porta il preset scelto un posto più giù: mess_preset_spostato_giu.
-Nella gestione dei preset Sposta su sul primo preset, o Sposta giù sull'ultimo, che non si sposta oltre: mess_preset_al_bordo.
+Nella gestione dei preset Ctrl+Freccia su porta il preset scelto un posto più su: mess_preset_spostato_su.
+Nella gestione dei preset Ctrl+Freccia giù porta il preset scelto un posto più giù: mess_preset_spostato_giu.
+Nella gestione dei preset Ctrl+Freccia su sul primo preset, o Ctrl+Freccia giù sull'ultimo, che non si sposta oltre: mess_preset_al_bordo.
 Nella finestra Mercato e ricerca Invio o Esc nel campo della scheda della persona riportano il fuoco all'elenco, sulla stessa riga: mess_ritorno_all_elenco.
 La finestra Mercato e ricerca si chiude senza esiti da riassumere, come offerte, sfide o preset, e la vista resta com'era: mess_finestra_senza_esiti.
 Finestra, mercato e ricerca, la regola in preparazione, 14 suoni.

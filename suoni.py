@@ -688,7 +688,7 @@ AZIONI = {
                         "tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente"),
     "nessuna_selezione": ("un pulsante premuto senza niente di scelto su cui lavorare; nella scheda Filtri della finestra Mercato e ricerca anche Canc, "
                           "Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole; nella finestra della barra di stato "
-                          "Invio, Spazio o Canc su un elenco vuoto, e Sposta su o Sposta giù con la riga vuota; Invio sulla barra di stato su un dato che non apre "
+                          "Invio, Spazio o Canc su un elenco vuoto, e Ctrl+Freccia su o Ctrl+Freccia giù con la riga vuota; Invio sulla barra di stato su un dato che non apre "
                           "niente, o sullo spazio fra due dati"),
     "campo_da_correggere": "un valore da correggere in un campo, e il dialogo resta aperto",
     "elenco_svuotato": "un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre",
@@ -728,9 +728,9 @@ AZIONI = {
     "dialogo_barra_di_stato": "si apre la finestra della barra di stato, dal menu Impostazioni",
     "barra_dato_aggiunto": "nella finestra della barra di stato Invio o Spazio su Dati disponibili, e il dato va in fondo alla riga",
     "barra_dato_tolto": "nella finestra della barra di stato Invio, Spazio o Canc su Dati della riga, e il dato torna fra i disponibili",
-    "barra_dato_su": "nella finestra della barra di stato Sposta su porta il dato scelto della riga un posto più su",
-    "barra_dato_giu": "nella finestra della barra di stato Sposta giù porta il dato scelto della riga un posto più giù",
-    "barra_dato_al_bordo": "nella finestra della barra di stato Sposta su sul primo dato della riga, o Sposta giù sull'ultimo, che non si sposta oltre",
+    "barra_dato_su": "nella finestra della barra di stato Ctrl+Freccia su porta il dato scelto della riga un posto più su",
+    "barra_dato_giu": "nella finestra della barra di stato Ctrl+Freccia giù porta il dato scelto della riga un posto più giù",
+    "barra_dato_al_bordo": "nella finestra della barra di stato Ctrl+Freccia su sul primo dato della riga, o Ctrl+Freccia giù sull'ultimo, che non si sposta oltre",
     "barra_riga_aggiunta": "nella finestra della barra di stato Aggiungi riga mette una riga vuota dopo quella scelta",
     "barra_riga_tolta": "nella finestra della barra di stato Togli riga toglie la riga scelta, e i suoi dati tornano disponibili",
     "barra_righe_piene": "nella finestra della barra di stato Aggiungi riga con già sedici righe, il massimo, e un avviso lo dice",
@@ -811,9 +811,9 @@ AZIONI = {
     "preset_sostituito": "Salva filtri col nome di un tuo preset, e dopo il Sì il preset prende i filtri nuovi, col suo nome e il suo posto",
     "preset_rinominato": "un tuo preset dei filtri rinominato, nella gestione dei preset",
     "preset_eliminato": "un tuo preset dei filtri eliminato, nella gestione dei preset, dopo il Sì alla domanda",
-    "preset_spostato_su": "nella gestione dei preset Sposta su porta il preset scelto un posto più su",
-    "preset_spostato_giu": "nella gestione dei preset Sposta giù porta il preset scelto un posto più giù",
-    "preset_non_si_sposta": "nella gestione dei preset Sposta su sul primo preset, o Sposta giù sull'ultimo, che non si sposta oltre",
+    "preset_spostato_su": "nella gestione dei preset Ctrl+Freccia su porta il preset scelto un posto più su",
+    "preset_spostato_giu": "nella gestione dei preset Ctrl+Freccia giù porta il preset scelto un posto più giù",
+    "preset_non_si_sposta": "nella gestione dei preset Ctrl+Freccia su sul primo preset, o Ctrl+Freccia giù sull'ultimo, che non si sposta oltre",
     "ritorno_all_elenco": "nella finestra Mercato e ricerca Invio o Esc nel campo della scheda della persona riportano il fuoco all'elenco, sulla stessa riga",
     "finestra_chiusa_senza_esiti": "la finestra Mercato e ricerca si chiude senza esiti da riassumere, come offerte, sfide o preset, e la vista resta com'era",
     "bersaglio_allenatori": "nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione passa allo staff",
