@@ -227,6 +227,7 @@ code { font-family: Consolas, "Courier New", monospace; font-size: 0.95em; }
 <p>Alcuni dati sono della polisportiva attiva, altri di tutte le tue polisportive, altri del mondo intero: l'elenco qui sotto lo dice gruppo per gruppo. Nelle gare e nelle classifiche i tuoi atleti sono quelli di tutte le tue polisportive, come nei tornei. Le ore sono di due tipi: Ora è l'ora del giorno simulato, mentre Pav, Uav e la scadenza delle riserve dello staff sono ore vere, del tuo orologio.</p>
 <p>Quando ci arriva il cursore, la barra si ricalcola prima che lo screen reader la legga, e <kbd>F7</kbd> premuto sulla barra la rifà tutta. Ogni 20 secondi, quanto dura un minuto simulato, la barra si rinfresca anche con il cursore sopra, che resta sulla stessa riga e nella stessa colonna, o va a fine riga se la riga si è accorciata: puoi leggerla con calma mentre il tempo corre. <kbd>Ctrl+Inizio</kbd> porta all'inizio della prima riga e <kbd>Ctrl+Fine</kbd> alla fine dell'ultima, dove la barra di serie tiene l'ultimo evento. La legenda delle righe che hai scelto è anche in fondo alla guida ai comandi, <kbd>F1</kbd>.</p>
 <p>Le sigle sono tante, e non serve ricordarle tutte: quando ti muovi col cursore lungo una riga della barra, con le frecce a destra e a sinistra, con Inizio e Fine, con un clic o col cursor routing del display braille, ed entri in un dato che ha la sigla, la sintesi e il display braille ne dicono il nome, dopo quello che legge lo screen reader. Con le frecce su e giù, Pagina su e Pagina giù, <kbd>Ctrl+Inizio</kbd> e <kbd>Ctrl+Fine</kbd> cambi riga in silenzio, perché vuoi leggerla. Entrando in Glo:138, per esempio, senti gloria. Mentre resti nello stesso dato il nome non si ripete; se esci sullo spazio e ci rientri, lo senti di nuovo. Un tasto tenuto giù lo dice una volta sola, quando lo lasci. Se resti fermo 10 secondi nel dato di cui hai sentito il nome, senti anche la sua spiegazione lunga, una volta per ogni ingresso; muoverti dentro il dato fa ripartire i 10 secondi. Il nome non si dice quando arrivi sulla barra con <kbd>F7</kbd> o <kbd>Tab</kbd>, né quando la barra si riscrive da sola sotto il cursore. La voce è quella scelta in Annunci della cronaca, nel menu Impostazioni.</p>
+<p>Invio sulla barra apre la finestra o il testo del dato su cui sta il cursore, come la sua voce di menu: su Sfr le sfide in arrivo, su Not il riepilogo dell'ultimo avanzamento, sui soldi il bilancio. È un altro modo di raggiungere le parti di MESS. Invio apre soltanto finestre e testi da leggere, mai azioni come giocare le amichevoli: l'elenco qui sotto dice per ogni dato che cosa apre. Sui dati che non aprono niente, come Dur, Cmd e l'ultimo evento, e sullo spazio fra due dati, si sente il tasto a vuoto. La spiegazione lunga dei 10 secondi dice anche che cosa apre Invio.</p>
 <p>La barra di serie ha dieci righe:</p>
 <ol>
 <li>Il tempo: Dat:26/10/2026 lunedì Ora:10:21 Fra:4h33m Pav:18:51 Uav:10:51 Pri:6g.</li>
@@ -243,126 +244,126 @@ code { font-family: Consolas, "Courier New", monospace; font-size: 0.95em; }
 <p>Se un salvataggio non riesce, in testa alla prima riga compare Slv:fallito, o Slv:bloccato, e ci resta finché il mondo non torna a salvarsi. Ecco tutti i dati, gruppo per gruppo.</p>
 <p>Il tempo, uguale per tutto il mondo.</p>
 <ul>
-<li>Dat, la data simulata, che avanza di un giorno a ogni avanzamento, cioè ogni 8 ore vere. Per esempio Dat:26/10/2026.</li>
-<li>Il giorno della settimana, a parole. Gli open si giocano il martedì, il giovedì, il sabato e la domenica. Per esempio: lunedì.</li>
-<li>Ora, l'ora del giorno simulato: parte da 00:00 a ogni avanzamento e corre di tre minuti simulati per ogni minuto vero, fino alle 23:59 quando matura il giorno dopo. Per esempio Ora:10:21.</li>
-<li>Fra, il tempo vero che manca al prossimo avanzamento, in ore e minuti. Per esempio Fra:4h33m.</li>
-<li>Pav, l'ora vera del prossimo avanzamento. Non cambia fino all'avanzamento. Per esempio Pav:18:51.</li>
-<li>Uav, l'ora vera dell'ultimo avanzamento, da cui si contano le 8 ore. Per esempio Uav:10:51.</li>
-<li>Pri, i giorni simulati che mancano al primo del mese, quando arrivano sponsor e stipendi, due sfide da lanciare e le scadenze dei contratti. Ogni giorno simulato dura 8 ore vere. Per esempio Pri:6g.</li>
+<li>Dat, la data simulata, che avanza di un giorno a ogni avanzamento, cioè ogni 8 ore vere. Per esempio Dat:26/10/2026. Invio apre Data e prossimo avanzamento.</li>
+<li>Il giorno della settimana, a parole. Gli open si giocano il martedì, il giovedì, il sabato e la domenica. Per esempio: lunedì. Invio apre Data e prossimo avanzamento.</li>
+<li>Ora, l'ora del giorno simulato: parte da 00:00 a ogni avanzamento e corre di tre minuti simulati per ogni minuto vero, fino alle 23:59 quando matura il giorno dopo. Per esempio Ora:10:21. Invio apre Data e prossimo avanzamento.</li>
+<li>Fra, il tempo vero che manca al prossimo avanzamento, in ore e minuti. Per esempio Fra:4h33m. Invio apre Data e prossimo avanzamento.</li>
+<li>Pav, l'ora vera del prossimo avanzamento. Non cambia fino all'avanzamento. Per esempio Pav:18:51. Invio apre Data e prossimo avanzamento.</li>
+<li>Uav, l'ora vera dell'ultimo avanzamento, da cui si contano le 8 ore. Per esempio Uav:10:51. Invio apre Data e prossimo avanzamento.</li>
+<li>Pri, i giorni simulati che mancano al primo del mese, quando arrivano sponsor e stipendi, due sfide da lanciare e le scadenze dei contratti. Ogni giorno simulato dura 8 ore vere. Per esempio Pri:6g. Invio apre Data e prossimo avanzamento.</li>
 </ul>
 <p>La polisportiva attiva.</p>
 <ul>
-<li>Il nome della polisportiva attiva, senza abbreviazione. Per esempio: Magnavacca.</li>
-<li>Glo, la gloria della polisportiva attiva. Per esempio Glo:138.</li>
-<li>Pos, il posto per gloria fra tutte le polisportive del mondo, sul numero delle polisportive. Per esempio Pos:3/4.</li>
-<li>Med, le medaglie dei tesserati, nell'ordine oro, argento, bronzo e legno. Per esempio Med:1-1-1-0.</li>
-<li>Cop, le coppe, nell'ordine oro, argento, bronzo e legno. Per esempio Cop:0-0-0-0.</li>
-<li>Pal, il palmarès degli ultimi cinque anni, che fa la gloria: i punti delle medaglie più quelli delle coppe. Per esempio Pal:50+0.</li>
+<li>Il nome della polisportiva attiva, senza abbreviazione. Per esempio: Magnavacca. Invio apre Scheda della polisportiva attiva.</li>
+<li>Glo, la gloria della polisportiva attiva. Per esempio Glo:138. Invio apre Scheda della polisportiva attiva.</li>
+<li>Pos, il posto per gloria fra tutte le polisportive del mondo, sul numero delle polisportive. Per esempio Pos:3/4. Invio apre Scheda della polisportiva attiva.</li>
+<li>Med, le medaglie dei tesserati, nell'ordine oro, argento, bronzo e legno. Per esempio Med:1-1-1-0. Invio apre Scheda della polisportiva attiva.</li>
+<li>Cop, le coppe, nell'ordine oro, argento, bronzo e legno. Per esempio Cop:0-0-0-0. Invio apre Scheda della polisportiva attiva.</li>
+<li>Pal, il palmarès degli ultimi cinque anni, che fa la gloria: i punti delle medaglie più quelli delle coppe. Per esempio Pal:50+0. Invio apre Scheda della polisportiva attiva.</li>
 </ul>
 <p>I soldi della polisportiva attiva, in euro.</p>
 <ul>
-<li>Cas, la cassa, in euro. Per esempio Cas:6.640.</li>
-<li>Mrg, il margine al primo del mese: la cassa più lo sponsor, meno gli stipendi dei tesserati, gli arretrati e lo staff. Il primo del mese i tesserati si pagano tutti o nessuno, e chi dello staff non è pagato se ne va subito: con il margine sotto zero qualcuno resta senza stipendio. Per esempio Mrg:6.460.</li>
-<li>Sal, il saldo del mese, lo sponsor meno gli stipendi di tesserati e staff. Per esempio Sal:-180.</li>
-<li>Aut, l'autonomia: quanti primi del mese di fila la cassa riesce a pagare per intero, arretrati e staff compresi, se niente cambia. Zero se già il prossimo non si paga, sempre se il saldo non perde e il prossimo si paga. Per esempio Aut:36.</li>
-<li>Arr, gli arretrati da pagare ai tesserati, in euro. Per esempio Arr:0.</li>
-<li>Paz, la pazienza: quanti primi del mese senza stipendio bastano perché il tesserato meno paziente se ne vada, bandiere escluse; 1 vuol dire al prossimo. Si vede quando ci sono arretrati o il margine è sotto zero, altrimenti è no. Per esempio Paz:no.</li>
-<li>Spo, lo sponsor del mese, che dipende dalla rosa e dalla gloria. Per esempio Spo:2.730.</li>
-<li>Sti, gli stipendi dei tesserati, ogni mese. Per esempio Sti:2.890.</li>
-<li>Sst, gli stipendi dello staff, ogni mese. Per esempio Sst:20.</li>
-<li>Quo, le quote d'iscrizione ai tornei pagate nel mese, rimborsi tolti. Per esempio Quo:30.</li>
-<li>Vin, le vincite, cioè i premi dei tornei del mese. Per esempio Vin:38.</li>
-<li>Flu, il flusso del mese in corso, le entrate meno le uscite fin qui, cioè mercato e tornei. Sponsor e stipendi non ci sono, perché il primo del mese entrano nel mese che si chiude. Per esempio Flu:-13.360.</li>
-<li>Bil, il bilancio dell'ultimo mese chiuso, le entrate meno le uscite; no finché nessun mese si è chiuso. Per esempio Bil:-2.626.</li>
+<li>Cas, la cassa, in euro. Per esempio Cas:6.640. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Mrg, il margine al primo del mese: la cassa più lo sponsor, meno gli stipendi dei tesserati, gli arretrati e lo staff. Il primo del mese i tesserati si pagano tutti o nessuno, e chi dello staff non è pagato se ne va subito: con il margine sotto zero qualcuno resta senza stipendio. Per esempio Mrg:6.460. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Sal, il saldo del mese, lo sponsor meno gli stipendi di tesserati e staff. Per esempio Sal:-180. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Aut, l'autonomia: quanti primi del mese di fila la cassa riesce a pagare per intero, arretrati e staff compresi, se niente cambia. Zero se già il prossimo non si paga, sempre se il saldo non perde e il prossimo si paga. Per esempio Aut:36. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Arr, gli arretrati da pagare ai tesserati, in euro. Per esempio Arr:0. Invio apre Paga gli arretrati.</li>
+<li>Paz, la pazienza: quanti primi del mese senza stipendio bastano perché il tesserato meno paziente se ne vada, bandiere escluse; 1 vuol dire al prossimo. Si vede quando ci sono arretrati o il margine è sotto zero, altrimenti è no. Per esempio Paz:no. Invio apre Paga gli arretrati.</li>
+<li>Spo, lo sponsor del mese, che dipende dalla rosa e dalla gloria. Per esempio Spo:2.730. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Sti, gli stipendi dei tesserati, ogni mese. Per esempio Sti:2.890. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Sst, gli stipendi dello staff, ogni mese. Per esempio Sst:20. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Quo, le quote d'iscrizione ai tornei pagate nel mese, rimborsi tolti. Per esempio Quo:30. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Vin, le vincite, cioè i premi dei tornei del mese. Per esempio Vin:38. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Flu, il flusso del mese in corso, le entrate meno le uscite fin qui, cioè mercato e tornei. Sponsor e stipendi non ci sono, perché il primo del mese entrano nel mese che si chiude. Per esempio Flu:-13.360. Invio apre Bilancio della polisportiva attiva.</li>
+<li>Bil, il bilancio dell'ultimo mese chiuso, le entrate meno le uscite; no finché nessun mese si è chiuso. Per esempio Bil:-2.626. Invio apre Bilancio della polisportiva attiva.</li>
 </ul>
 <p>Il mercato.</p>
 <ul>
-<li>Mos, le mosse di mercato che restano oggi alla polisportiva attiva; tornano a 5 a ogni avanzamento. Per esempio Mos:3.</li>
-<li>Vnd, i tesserati della polisportiva attiva che hai messo in vendita. Per esempio Vnd:0.</li>
-<li>Mer, i giocatori in vendita in tutto il mondo. Per esempio Mer:345.</li>
+<li>Mos, le mosse di mercato che restano oggi alla polisportiva attiva; tornano a 5 a ogni avanzamento. Per esempio Mos:3. Invio apre Mercato.</li>
+<li>Vnd, i tesserati della polisportiva attiva che hai messo in vendita. Per esempio Vnd:0. Invio apre Vendite dei tesserati.</li>
+<li>Mer, i giocatori in vendita in tutto il mondo. Per esempio Mer:345. Invio apre Mercato.</li>
 </ul>
 <p>La rosa della polisportiva attiva.</p>
 <ul>
-<li>Tes, i tesserati sul massimo. Per esempio Tes:13/15.</li>
-<li>Dsp, i disponibili, cioè chi può scendere in campo. Per esempio Dsp:13.</li>
-<li>Ami, le amichevoli che puoi ancora giocare oggi, cioè i tesserati liberi da impegni. Per esempio Ami:2.</li>
-<li>Imp, i tesserati che oggi hanno già giocato. Per esempio Imp:11.</li>
-<li>Inf, gli infortunati. Per esempio Inf:0.</li>
-<li>Acc, gli acciaccati, che per qualche giorno rendono un poco meno. Per esempio Acc:0.</li>
-<li>Gua, il giorno simulato in cui guarisce il primo infortunato; no senza infortunati. Per esempio Gua:29/10.</li>
-<li>Pun, i punti allenamento da spendere in sala. Per esempio Pun:53.</li>
-<li>Its, i tesserati che si allenano all'intensità intensa, e possono infortunarsi in seduta. Per esempio Its:3.</li>
-<li>Man, i tesserati con l'iscrizione automatica ai tornei spenta. Per esempio Man:2.</li>
-<li>Usc, i contratti che scadono al prossimo primo del mese senza rinnovo, compresi quelli di chi non tratta più: i tesserati che stai per perdere. Per esempio Usc:1.</li>
-<li>Sca, i contratti negli ultimi tre mesi, quelli della finestra dei rinnovi, ancora senza rinnovo. Per esempio Sca:0.</li>
-<li>Rin, i rinnovi che puoi proporre oggi ai tesserati. Per esempio Rin:0.</li>
-<li>Mig, la classe del tesserato che vale di più; no senza tesserati. Per esempio Mig:F3.</li>
-<li>Val, il valore collettivo della rosa. Per esempio Val:1.681,9.</li>
-<li>Vdm, il valore di mercato della rosa, in euro. Per esempio Vdm:17.400.</li>
-<li>Eta, l'età media, in anni simulati; no senza tesserati. Per esempio Eta:25,0.</li>
-<li>Ses, gli uomini e le donne in rosa: 10u3d sono 10 uomini e 3 donne. Sfide e Coppa vogliono squadre miste. Per esempio Ses:10u3d.</li>
+<li>Tes, i tesserati sul massimo. Per esempio Tes:13/15. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Dsp, i disponibili, cioè chi può scendere in campo. Per esempio Dsp:13. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Ami, le amichevoli che puoi ancora giocare oggi, cioè i tesserati liberi da impegni. Per esempio Ami:2. Invio apre Amichevole.</li>
+<li>Imp, i tesserati che oggi hanno già giocato. Per esempio Imp:11. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Inf, gli infortunati. Per esempio Inf:0. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Acc, gli acciaccati, che per qualche giorno rendono un poco meno. Per esempio Acc:0. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Gua, il giorno simulato in cui guarisce il primo infortunato; no senza infortunati. Per esempio Gua:29/10. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Pun, i punti allenamento da spendere in sala. Per esempio Pun:53. Invio apre Sala allenamento.</li>
+<li>Its, i tesserati che si allenano all'intensità intensa, e possono infortunarsi in seduta. Per esempio Its:3. Invio apre Sala allenamento.</li>
+<li>Man, i tesserati con l'iscrizione automatica ai tornei spenta. Per esempio Man:2. Invio apre Iscrizioni dei tuoi atleti.</li>
+<li>Usc, i contratti che scadono al prossimo primo del mese senza rinnovo, compresi quelli di chi non tratta più: i tesserati che stai per perdere. Per esempio Usc:1. Invio apre Contratti e rinnovi.</li>
+<li>Sca, i contratti negli ultimi tre mesi, quelli della finestra dei rinnovi, ancora senza rinnovo. Per esempio Sca:0. Invio apre Contratti e rinnovi.</li>
+<li>Rin, i rinnovi che puoi proporre oggi ai tesserati. Per esempio Rin:0. Invio apre Contratti e rinnovi.</li>
+<li>Mig, la classe del tesserato che vale di più; no senza tesserati. Per esempio Mig:F3. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Val, il valore collettivo della rosa. Per esempio Val:1.681,9. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Vdm, il valore di mercato della rosa, in euro. Per esempio Vdm:17.400. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Eta, l'età media, in anni simulati; no senza tesserati. Per esempio Eta:25,0. Invio apre Tesserati della polisportiva attiva.</li>
+<li>Ses, gli uomini e le donne in rosa: 10u3d sono 10 uomini e 3 donne. Sfide e Coppa vogliono squadre miste. Per esempio Ses:10u3d. Invio apre Tesserati della polisportiva attiva.</li>
 </ul>
 <p>Lo staff.</p>
 <ul>
-<li>Tec, la classe del capo allenatore della polisportiva attiva; no col posto vuoto. Per esempio Tec:G4.</li>
-<li>Stf, i posti dello staff occupati, sui tre. Per esempio Stf:1/3.</li>
-<li>Qua, la qualità dello staff. Per esempio Qua:19%.</li>
-<li>Rst, i rinnovi dello staff che puoi proporre oggi. Per esempio Rst:0.</li>
-<li>Ris, gli allenatori liberi riservati a te, con l'ora vera in cui scade la prima riserva. Una riserva dura due ore vere. Per esempio Ris:2-18:40.</li>
-<li>Prl, gli allenatori su cui hai la prelazione, con il giorno simulato in cui scade la prima. La prelazione dura 10 giorni simulati. Per esempio Prl:1-05/11.</li>
-<li>Alb, gli allenatori liberi sul mercato, in tutto il mondo. Per esempio Alb:3.911.</li>
+<li>Tec, la classe del capo allenatore della polisportiva attiva; no col posto vuoto. Per esempio Tec:G4. Invio apre Staff della polisportiva attiva.</li>
+<li>Stf, i posti dello staff occupati, sui tre. Per esempio Stf:1/3. Invio apre Staff della polisportiva attiva.</li>
+<li>Qua, la qualità dello staff. Per esempio Qua:19%. Invio apre Staff della polisportiva attiva.</li>
+<li>Rst, i rinnovi dello staff che puoi proporre oggi. Per esempio Rst:0. Invio apre Staff della polisportiva attiva.</li>
+<li>Ris, gli allenatori liberi riservati a te, con l'ora vera in cui scade la prima riserva. Una riserva dura due ore vere. Per esempio Ris:2-18:40. Invio apre Mercato degli allenatori.</li>
+<li>Prl, gli allenatori su cui hai la prelazione, con il giorno simulato in cui scade la prima. La prelazione dura 10 giorni simulati. Per esempio Prl:1-05/11. Invio apre Mercato degli allenatori.</li>
+<li>Alb, gli allenatori liberi sul mercato, in tutto il mondo. Per esempio Alb:3.911. Invio apre Mercato degli allenatori.</li>
 </ul>
 <p>Le gare. Le sfide ricevute e quelle di domani, i tornei, le iscrizioni e le differite contano tutte le tue polisportive.</p>
 <ul>
-<li>Sfl, le sfide che la polisportiva attiva può ancora lanciare. Per esempio Sfl:2.</li>
-<li>Sfr, le sfide ricevute che aspettano la tua risposta, in tutte le tue polisportive. La risposta va data in giornata. Per esempio Sfr:1.</li>
-<li>Sfd, le sfide accettate dalle tue polisportive, che si giocano al prossimo avanzamento. Per esempio Sfd:0.</li>
-<li>Sfv, le sfide vinte e perse dalla polisportiva attiva. Per esempio Sfv:3-1.</li>
-<li>Tor, le sedi di torneo in corso con tuoi atleti. Per esempio Tor:1.</li>
-<li>Gar, i tuoi atleti ancora in gara in quelle sedi. Per esempio Gar:3.</li>
-<li>Isc, le iscrizioni dei tuoi atleti alle edizioni aperte. Per esempio Isc:2.</li>
-<li>Ptr, il giorno in cui comincia il prossimo torneo dei tuoi; no se non ne hai. Per esempio Ptr:27/10.</li>
-<li>Dif, gli incontri di torneo dei tuoi ancora da ascoltare in differita. Per esempio Dif:5.</li>
-<li>Cit, i tuoi atleti convocati ai campionati italiani. Per esempio Cit:0.</li>
-<li>Cdp, la Coppa delle polisportive per la polisportiva attiva. Fino alla qualificazione, all'apertura delle iscrizioni, è il posto per gloria sui posti della coppa; per giocarla serve anche una squadra valida, due atleti di un sesso e uno dell'altro, liberi in quei giorni. Dalla qualificazione alla fine della coppa è gioca se sei in gara, fuori se non ti sei qualificato o sei uscito. Per esempio Cdp:3/64.</li>
-<li>Ape, le edizioni di tutto il calendario con le iscrizioni aperte. Per esempio Ape:11.</li>
-<li>Cal, il giorno in cui comincia il prossimo torneo del calendario. Per esempio Cal:27/10.</li>
-<li>Nap, il giorno della prossima apertura delle iscrizioni. Per esempio Nap:27/10.</li>
+<li>Sfl, le sfide che la polisportiva attiva può ancora lanciare. Per esempio Sfl:2. Invio apre Lancia una sfida.</li>
+<li>Sfr, le sfide ricevute che aspettano la tua risposta, in tutte le tue polisportive. La risposta va data in giornata. Per esempio Sfr:1. Invio apre Sfide in arrivo.</li>
+<li>Sfd, le sfide accettate dalle tue polisportive, che si giocano al prossimo avanzamento. Per esempio Sfd:0. Invio apre Storico delle sfide.</li>
+<li>Sfv, le sfide vinte e perse dalla polisportiva attiva. Per esempio Sfv:3-1. Invio apre Storico delle sfide.</li>
+<li>Tor, le sedi di torneo in corso con tuoi atleti. Per esempio Tor:1. Invio apre Tornei in corso.</li>
+<li>Gar, i tuoi atleti ancora in gara in quelle sedi. Per esempio Gar:3. Invio apre Tornei in corso.</li>
+<li>Isc, le iscrizioni dei tuoi atleti alle edizioni aperte. Per esempio Isc:2. Invio apre Iscrizioni dei tuoi atleti.</li>
+<li>Ptr, il giorno in cui comincia il prossimo torneo dei tuoi; no se non ne hai. Per esempio Ptr:27/10. Invio apre Iscrizioni dei tuoi atleti.</li>
+<li>Dif, gli incontri di torneo dei tuoi ancora da ascoltare in differita. Per esempio Dif:5. Invio apre Tornei in corso.</li>
+<li>Cit, i tuoi atleti convocati ai campionati italiani. Per esempio Cit:0. Invio apre Iscrizioni dei tuoi atleti.</li>
+<li>Cdp, la Coppa delle polisportive per la polisportiva attiva. Fino alla qualificazione, all'apertura delle iscrizioni, è il posto per gloria sui posti della coppa; per giocarla serve anche una squadra valida, due atleti di un sesso e uno dell'altro, liberi in quei giorni. Dalla qualificazione alla fine della coppa è gioca se sei in gara, fuori se non ti sei qualificato o sei uscito. Per esempio Cdp:3/64. Invio apre Calendario e iscrizioni.</li>
+<li>Ape, le edizioni di tutto il calendario con le iscrizioni aperte. Per esempio Ape:11. Invio apre Calendario e iscrizioni.</li>
+<li>Cal, il giorno in cui comincia il prossimo torneo del calendario. Per esempio Cal:27/10. Invio apre Calendario e iscrizioni.</li>
+<li>Nap, il giorno della prossima apertura delle iscrizioni. Per esempio Nap:27/10. Invio apre Calendario e iscrizioni.</li>
 </ul>
 <p>Le classifiche dei tuoi atleti, di tutte le tue polisportive.</p>
 <ul>
 <li>Anm, il posto del tuo miglior uomo nella classifica dell'anno, quella dei punti degli ultimi 365 giorni simulati che convoca il campionato italiano, sui posti dei convocati: sopra l'ultimo posto non sarebbe convocato. Per esempio Anm:12/32.</li>
 <li>Anf, lo stesso per la tua miglior donna. Per esempio Anf:41/32.</li>
-<li>Clm, il posto del tuo miglior uomo nella classifica nazionale, quella per sempre, vecchie glorie comprese; no se nessuno dei tuoi è in classifica. Per esempio Clm:97.</li>
-<li>Clf, lo stesso per la tua miglior donna. Per esempio Clf:41.</li>
+<li>Clm, il posto del tuo miglior uomo nella classifica nazionale, quella per sempre, vecchie glorie comprese; no se nessuno dei tuoi è in classifica. Per esempio Clm:97. Invio apre Classifica nazionale.</li>
+<li>Clf, lo stesso per la tua miglior donna. Per esempio Clf:41. Invio apre Classifica nazionale.</li>
 </ul>
 <p>Tutte le tue polisportive insieme. Le abbreviazioni con la T davanti alle prime due lettere di un'altra sommano quel dato su tutte le tue polisportive: Tca la cassa, Tam le amichevoli, Tpu i punti allenamento, Tme le medaglie, Tco le coppe; Tgl prende la gloria più alta.</p>
 <ul>
-<li>Tue, le tue polisportive. Per esempio Tue:2.</li>
-<li>Tca, il capitale, cioè la cassa di tutte le tue polisportive. Per esempio Tca:15.680.</li>
-<li>Atl, gli atleti tesserati in tutte le tue polisportive. Per esempio Atl:24.</li>
-<li>Tam, le amichevoli giocabili oggi in tutte le tue polisportive, quelle di Gioca tutte le amichevoli di tutte le tue polisportive. Per esempio Tam:2.</li>
-<li>Tpu, i punti allenamento di tutte le tue polisportive. Per esempio Tpu:53.</li>
-<li>Tgl, la gloria più alta fra le tue polisportive. Per esempio Tgl:155.</li>
-<li>Tme, le medaglie di tutte le tue polisportive. Per esempio Tme:2-1-1-0.</li>
-<li>Tco, le coppe di tutte le tue polisportive. Per esempio Tco:0-0-0-0.</li>
+<li>Tue, le tue polisportive. Per esempio Tue:2. Invio apre Elenco delle polisportive.</li>
+<li>Tca, il capitale, cioè la cassa di tutte le tue polisportive. Per esempio Tca:15.680. Invio apre Elenco delle polisportive.</li>
+<li>Atl, gli atleti tesserati in tutte le tue polisportive. Per esempio Atl:24. Invio apre Elenco delle polisportive.</li>
+<li>Tam, le amichevoli giocabili oggi in tutte le tue polisportive, quelle di Gioca tutte le amichevoli di tutte le tue polisportive. Per esempio Tam:2. Invio apre Amichevole.</li>
+<li>Tpu, i punti allenamento di tutte le tue polisportive. Per esempio Tpu:53. Invio apre Sala allenamento.</li>
+<li>Tgl, la gloria più alta fra le tue polisportive. Per esempio Tgl:155. Invio apre Elenco delle polisportive.</li>
+<li>Tme, le medaglie di tutte le tue polisportive. Per esempio Tme:2-1-1-0. Invio apre Elenco delle polisportive.</li>
+<li>Tco, le coppe di tutte le tue polisportive. Per esempio Tco:0-0-0-0. Invio apre Elenco delle polisportive.</li>
 </ul>
 <p>Il mondo.</p>
 <ul>
-<li>Lib, i giocatori liberi, senza contratto. Per esempio Lib:2.196.</li>
-<li>Sot, i giocatori sotto contratto con una polisportiva. Per esempio Sot:18.550.</li>
-<li>Fer, i giocatori fermi, ritirati o infortunati. Per esempio Fer:6.908.</li>
-<li>Pop, la popolazione, tutti i giocatori, cioè liberi, sotto contratto e fermi. Per esempio Pop:27.654.</li>
-<li>Pol, le polisportive del mondo. Per esempio Pol:1.265.</li>
-<li>Vec, le vecchie glorie. Per esempio Vec:141.</li>
-<li>Nuo, i giocatori nuovi arrivati da quando hai aperto MESS. Per esempio Nuo:329.</li>
-<li>Rit, i giocatori ritirati da quando hai aperto MESS. Per esempio Rit:0.</li>
+<li>Lib, i giocatori liberi, senza contratto. Per esempio Lib:2.196. Invio apre Statistiche nazionali.</li>
+<li>Sot, i giocatori sotto contratto con una polisportiva. Per esempio Sot:18.550. Invio apre Statistiche nazionali.</li>
+<li>Fer, i giocatori fermi, ritirati o infortunati. Per esempio Fer:6.908. Invio apre Statistiche nazionali.</li>
+<li>Pop, la popolazione, tutti i giocatori, cioè liberi, sotto contratto e fermi. Per esempio Pop:27.654. Invio apre Statistiche nazionali.</li>
+<li>Pol, le polisportive del mondo. Per esempio Pol:1.265. Invio apre Statistiche nazionali.</li>
+<li>Vec, le vecchie glorie. Per esempio Vec:141. Invio apre Vecchie glorie.</li>
+<li>Nuo, i giocatori nuovi arrivati da quando hai aperto MESS. Per esempio Nuo:329. Invio apre Nuovi arrivati della sessione.</li>
+<li>Rit, i giocatori ritirati da quando hai aperto MESS. Per esempio Rit:0. Invio apre Ritirati della sessione.</li>
 </ul>
 <p>La sessione e le notizie.</p>
 <ul>
 <li>Slv, il salvataggio, soltanto quando non va: fallito se l'ultimo non è riuscito, bloccato se il salvataggio esiste ma non si legge e MESS non salva più niente. Per esempio Slv:fallito.</li>
-<li>Not, le notizie dei tuoi nell'ultimo avanzamento. L'ultimo evento ne dice una sola, la più importante; tutte le altre sono nel riepilogo. Per esempio Not:3.</li>
+<li>Not, le notizie dei tuoi nell'ultimo avanzamento. L'ultimo evento ne dice una sola, la più importante; tutte le altre sono nel riepilogo. Per esempio Not:3. Invio apre Riepilogo dell'ultimo avanzamento.</li>
 <li>Dur, da quanto tempo è aperto MESS, in ore e minuti. Per esempio Dur:1h12m.</li>
 <li>Cmd, i comandi che hai dato da quando hai aperto MESS. Per esempio Cmd:35.</li>
 <li>L'ultimo evento, a parole e senza abbreviazione: il comando appena dato, il salvataggio, oppure la notizia più importante dell'ultimo avanzamento. Per esempio: sfida da PoliTeam07, rispondi oggi.</li>

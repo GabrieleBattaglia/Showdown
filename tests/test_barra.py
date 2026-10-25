@@ -291,7 +291,7 @@ def test_la_legenda_dice_le_righe_scelte():
 def test_spiegazione_e_anteprima(mondo):
     contesto = _contesto(mondo)
     assert barra.spiegazione("gloria", contesto) == ("La polisportiva attiva: Glo, gloria. La gloria della polisportiva attiva. Esempio: Glo:138. "
-                                                      "Adesso: Glo:100.")
+                                                      "Adesso: Glo:100. Invio sulla barra apre Scheda della polisportiva attiva.")
     assert barra.spiegazione("stato_salvataggio", contesto).endswith("Adesso non si vede.")
     assert barra.anteprima(["gloria", "cassa"], contesto) == "Glo:100 Cas:20.000"
     assert barra.anteprima([], contesto) == "La riga è vuota, e non si salverà."
@@ -308,3 +308,13 @@ def test_il_dato_sotto_ogni_colonna(mondo):
     assert chiavi[:13] == ["nome_polisportiva"] * 13 and chiavi[13] is None
     assert chiavi[14:21] == ["gloria"] * 7 and chiavi[21] is None
     assert chiavi[22:32] == ["cassa"] * 10 and chiavi[32:] == [None, None]
+
+
+def test_le_voci_dei_dati_per_invio():
+    # Ogni voce è di un dato del catalogo, e le voci di Invio non sono mai azioni.
+    assert set(barra.VOCI_DEI_DATI) <= set(barra.CATALOGO)
+    azioni = {"Salva il mondo", "Esci", "Gioca tutte le amichevoli di tutte le tue polisportive", "Salva la cronaca", "Chiudi la polisportiva attiva"}
+    assert not set(barra.VOCI_DEI_DATI.values()) & azioni
+    assert barra.voce_di_menu("Sala &allenamento...") == "Sala allenamento" and barra.voce_di_menu("Gialli &&& Verdi") == "Gialli & Verdi"
+    assert barra.spiegazione_lunga(barra.CATALOGO["sfide_ricevute"]).endswith(" Invio apre Sfide in arrivo.")
+    assert barra.spiegazione_lunga(barra.CATALOGO["durata_sessione"]) == barra.CATALOGO["durata_sessione"].spiegazione

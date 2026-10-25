@@ -921,6 +921,52 @@ _DATI = (
          "dell'ultimo avanzamento.", "sfida da PoliTeam07, rispondi oggi", _ultimo_evento, RINFRESCO),
 )
 CATALOGO = {d.chiave: d for d in _DATI}
+
+# Invio sulla barra, idea di Gabriele del 25 ottobre 2026: la voce di menu che apre la finestra o il testo di ogni dato, col
+# nome che ha nel menu, senza la lettera sottolineata e senza i puntini. Soltanto finestre e testi da leggere, mai azioni come
+# giocare le amichevoli o salvare il mondo; i dati che non sono qui, Invio non li apre.
+_GRUPPI_DI_VOCI = (
+    ("Data e prossimo avanzamento", ("data_simulata", "giorno_della_settimana", "ora_simulata", "prossimo_avanzamento_fra",
+                                     "prossimo_avanzamento_alle", "ultimo_avanzamento_alle", "giorni_al_primo_del_mese")),
+    ("Scheda della polisportiva attiva", ("nome_polisportiva", "gloria", "posto_per_gloria", "medaglie", "coppe", "palmares_cinque_anni")),
+    ("Bilancio della polisportiva attiva", ("cassa", "margine_al_primo", "saldo_mensile", "autonomia", "sponsor", "stipendi_tesserati",
+                                            "stipendi_staff", "quote_del_mese", "premi_del_mese", "movimenti_del_mese", "bilancio_ultimo_mese")),
+    ("Paga gli arretrati", ("arretrati", "pazienza_minima")),
+    ("Mercato", ("mosse_rimaste", "in_vendita_nel_mondo")),
+    ("Vendite dei tesserati", ("tuoi_in_vendita",)),
+    ("Tesserati della polisportiva attiva", ("tesserati", "disponibili", "impegnati_oggi", "infortunati", "acciaccati", "prossima_guarigione",
+                                             "migliore", "valore_collettivo", "valore_di_mercato", "eta_media", "uomini_donne")),
+    ("Amichevole", ("amichevoli_giocabili", "amichevoli_di_tutte")),
+    ("Sala allenamento", ("punti_allenamento", "intensita_intensa", "punti_di_tutte")),
+    ("Contratti e rinnovi", ("contratti_in_uscita", "contratti_in_scadenza", "rinnovi_da_proporre")),
+    ("Staff della polisportiva attiva", ("capo_allenatore", "posti_staff", "qualita_staff", "rinnovi_staff")),
+    ("Mercato degli allenatori", ("riservati_a_te", "prelazioni", "allenatori_liberi")),
+    ("Lancia una sfida", ("sfide_da_lanciare",)),
+    ("Sfide in arrivo", ("sfide_ricevute",)),
+    ("Storico delle sfide", ("sfide_di_domani", "sfide_vinte_perse")),
+    ("Tornei in corso", ("tornei_in_corso", "tuoi_in_gara", "differite_da_ascoltare")),
+    ("Iscrizioni dei tuoi atleti", ("iscrizioni_dei_tuoi", "prossimo_torneo_dei_tuoi", "convocati_campionato", "iscrizione_manuale")),
+    ("Calendario e iscrizioni", ("coppa_delle_polisportive", "edizioni_aperte", "prossimo_torneo_del_calendario", "prossima_apertura")),
+    ("Classifica nazionale", ("classifica_uomini", "classifica_donne")),
+    ("Elenco delle polisportive", ("polisportive_tue", "capitale", "atleti_in_tutto", "gloria_piu_alta", "medaglie_di_tutte", "coppe_di_tutte")),
+    ("Statistiche nazionali", ("liberi_nel_mondo", "sotto_contratto_nel_mondo", "fermi_nel_mondo", "popolazione", "polisportive_nel_mondo")),
+    ("Vecchie glorie", ("vecchie_glorie",)),
+    ("Nuovi arrivati della sessione", ("nuovi_della_sessione",)),
+    ("Ritirati della sessione", ("ritirati_della_sessione",)),
+    ("Riepilogo dell'ultimo avanzamento", ("notizie_ultimo_avanzamento",)),
+)
+VOCI_DEI_DATI = {chiave: voce for voce, chiavi in _GRUPPI_DI_VOCI for chiave in chiavi}
+
+
+def voce_di_menu(testo):
+    """Il nome di una voce di menu come lo usa VOCI_DEI_DATI: senza la lettera sottolineata e senza i puntini."""
+    return testo.replace("&&", "\x00").replace("&", "").replace("\x00", "&").rstrip(".")
+
+
+def spiegazione_lunga(dato):
+    """La spiegazione lunga di un dato nella barra, con la voce che Invio apre, se ce n'è una."""
+    voce = VOCI_DEI_DATI.get(dato.chiave)
+    return f"{dato.spiegazione} Invio apre {voce}." if voce else dato.spiegazione
 BARRA_DI_SERIE = impostazioni.BARRA_DI_SERIE
 RIGHE_MASSIME = impostazioni.RIGHE_MASSIME
 
@@ -993,8 +1039,9 @@ def spiegazione(chiave, contesto):
     """Il dato spiegato, per la finestra della barra: il gruppo, la sigla e il nome, la spiegazione, l'esempio e il testo di adesso."""
     dato = CATALOGO[chiave]
     adesso = dato.testo(_Calcolo(contesto))
+    voce = VOCI_DEI_DATI.get(chiave)
     return (f"{dato.gruppo}: {dato.etichetta}. {dato.spiegazione} Esempio: {dato.esempio}. "
-            + (f"Adesso: {adesso}." if adesso else "Adesso non si vede."))
+            + (f"Adesso: {adesso}." if adesso else "Adesso non si vede.") + (f" Invio sulla barra apre {voce}." if voce else ""))
 
 
 def anteprima(riga, contesto):

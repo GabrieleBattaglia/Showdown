@@ -128,6 +128,9 @@ ha il fuoco, guarda il cursore ogni 150 millesimi; con le frecce verticali, Pagi
 perché si voleva cambiare riga per leggerla. Se il cursore resta fermo 10 secondi in un dato di cui ha detto il nome,
 parte anche la spiegazione lunga, una volta per ingresso. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Lo stesso giorno, idea di Gabriele: Invio sulla barra apre la finestra o il testo del dato su cui sta il cursore, cioè
+esegue la sua voce di menu, da barra.VOCI_DEI_DATI; su un dato che non ne ha, il tasto a vuoto. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -587,8 +590,12 @@ class FinestraPrincipale(wx.Frame):
         Il gancio dei tasti della finestra, che wx chiama prima dei tasti rapidi dei menu. Windows non
         manda il comando di una voce disattivata, e Ctrl+K o Ctrl+Maiusc+G a mosse finite resterebbero muti:
         qui, se la voce non è disponibile, il suo tasto rapido esegue lo stesso il comando, che dice nella
-        vista che per oggi le mosse sono finite. Ogni altro tasto prosegue come sempre.
+        vista che per oggi le mosse sono finite. Dalla barra su misura di D38, Invio sulla barra apre la voce del dato su cui
+        sta il cursore. Ogni altro tasto prosegue come sempre.
         """
+        if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.HasAnyModifiers() and self.barra.HasFocus():
+            self.invio_nella_barra()
+            return
         for comando in self._comandi_del_mercato():
             voce = self.voci_del_menu[comando]
             rapido = voce.GetAccel()
@@ -728,7 +735,28 @@ class FinestraPrincipale(wx.Frame):
         if dato is None or dato.chiave != self._dato_spiegato:
             return
         self._dato_spiegato = None
-        annunci_condivisi().breve(dato.spiegazione, self.impostazioni)
+        annunci_condivisi().breve(modulo_barra.spiegazione_lunga(dato), self.impostazioni)
+
+    def comando_della_voce(self, voce):
+        """Il comando della voce di menu col nome dato, come lo scrive barra.voce_di_menu; None se non c'è."""
+        for _titolo, voci in self.voci_menu():
+            for testo, _tasto, comando in filter(None, voci):
+                if modulo_barra.voce_di_menu(testo) == voce:
+                    return comando
+        return None
+
+    def invio_nella_barra(self):
+        """
+        Invio sulla barra, idea di Gabriele del 25 ottobre 2026: apre la finestra o il testo del dato su cui sta il cursore,
+        come la sua voce di menu, che conta fra i comandi. Sullo spazio fra due dati, o su un dato che non apre niente, come
+        la durata della sessione, il tasto a vuoto.
+        """
+        dato = self._dato_al_cursore()
+        comando = self.comando_della_voce(modulo_barra.VOCI_DEI_DATI.get(dato.chiave)) if dato is not None else None
+        if comando is None:
+            suoni.suona("nessuna_selezione")
+            return
+        self._esegui(comando)
 
     def _controlla_il_cursore(self):
         """

@@ -688,7 +688,8 @@ AZIONI = {
                         "tornei o degli editor, che la vista riassume, anche quando non si è cambiato niente"),
     "nessuna_selezione": ("un pulsante premuto senza niente di scelto su cui lavorare; nella scheda Filtri della finestra Mercato e ricerca anche Canc, "
                           "Ctrl+Su, Ctrl+Giù, E od O sull'elenco delle regole quando non ci sono regole, e Azzera senza regole; nella finestra della barra di stato "
-                          "Invio, Spazio o Canc su un elenco vuoto, e Sposta su o Sposta giù con la riga vuota"),
+                          "Invio, Spazio o Canc su un elenco vuoto, e Sposta su o Sposta giù con la riga vuota; Invio sulla barra di stato su un dato che non apre "
+                          "niente, o sullo spazio fra due dati"),
     "campo_da_correggere": "un valore da correggere in un campo, e il dialogo resta aperto",
     "elenco_svuotato": "un elenco che si restringe mentre si scrive o si cambia un filtro, e resta vuoto, o che è già vuoto quando il dialogo si apre",
     "elenco_ripopolato": "un elenco vuoto che torna a riempirsi mentre si scrive o si cambia un filtro",

@@ -1,0 +1,5 @@
+Collaudo del 25 ottobre 2026: Invio sulla barra di stato, e Ctrl+frecce al posto di Sposta su e giù. Cancella ogni riga che passa; scrivi i commenti sulla riga che non va.
+Invio sulla barra, col cursore su Sfr, apre Sfide in arrivo; su Not, il riepilogo dell'ultimo avanzamento; su Cas, il bilancio; su Glo, la scheda della polisportiva.
+Invio su Dur, su Cmd, sull'ultimo evento o sullo spazio fra due dati fa sentire il tasto a vuoto.
+Fermo 10 secondi su una sigla, la spiegazione lunga dice anche che cosa apre Invio.
+Domanda: le finestre che Invio apre per ogni dato ti vanno bene? L'elenco intero sta nel manuale, alla barra di stato.

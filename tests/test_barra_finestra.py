@@ -401,7 +401,7 @@ def test_dieci_secondi_fermi_nel_dato_e_parte_la_spiegazione_lunga(finestra, voc
     _con_tasto(finestra, 3, 0, wx.WXK_RIGHT)
     assert finestra._attesa_lunga is not attesa and finestra._attesa_lunga.IsRunning() and not attesa.IsRunning()
     finestra._spiega_a_lungo()
-    lunga = barra.CATALOGO["gloria"].spiegazione
+    lunga = barra.spiegazione_lunga(barra.CATALOGO["gloria"])
     assert _detti(voce_finta) == ["cassa", "gloria", lunga]
     # Una volta sola per ingresso.
     _con_tasto(finestra, 4, 0, wx.WXK_RIGHT)
@@ -458,3 +458,30 @@ def test_gli_elenchi_vuoti_escono_dal_giro_del_tab(finestra, monkeypatch):
         assert not dialogo.della_riga.IsEnabled() and chiamati == ["della riga", "disponibili"]
     finally:
         dialogo.Destroy()
+
+
+# Invio sulla barra, idea di Gabriele del 25 ottobre 2026.
+
+def test_ogni_voce_di_invio_sta_nei_menu(finestra):
+    assert all(finestra.comando_della_voce(voce) is not None for voce in set(barra.VOCI_DEI_DATI.values()))
+
+
+def test_invio_sulla_barra_apre_la_voce_del_dato(finestra, suonati):
+    chiamate = []
+    finestra.sfide_in_arrivo = lambda: chiamate.append("sfide in arrivo")
+    finestra.riepilogo = lambda: chiamate.append("riepilogo")
+    _con_la_barra(finestra, [["sfide_ricevute", "durata_sessione"], ["notizie_ultimo_avanzamento", "ultimo_evento"]])
+    assert finestra.barra.GetValue().startswith("Sfr:0 Dur:")
+    comandi = finestra.comandi
+    _metti_il_cursore(finestra.barra, 2, 0)
+    finestra.invio_nella_barra()
+    _metti_il_cursore(finestra.barra, 1, 1)
+    finestra.invio_nella_barra()
+    assert chiamate == ["sfide in arrivo", "riepilogo"] and finestra.comandi == comandi + 2
+    # La durata della sessione non apre niente, e nemmeno lo spazio fra due dati: il tasto a vuoto.
+    suonati.clear()
+    _metti_il_cursore(finestra.barra, 7, 0)
+    finestra.invio_nella_barra()
+    _metti_il_cursore(finestra.barra, 5, 0)
+    finestra.invio_nella_barra()
+    assert suonati == ["nessuna_selezione", "nessuna_selezione"] and len(chiamate) == 2
