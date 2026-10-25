@@ -160,7 +160,7 @@ Nella gestione dei preset Sposta su sul primo preset, o Sposta giù sull'ultimo,
 Nella finestra Mercato e ricerca Invio o Esc nel campo della scheda della persona riportano il fuoco all'elenco, sulla stessa riga: mess_ritorno_all_elenco.
 La finestra Mercato e ricerca si chiude senza esiti da riassumere, come offerte, sfide o preset, e la vista resta com'era: mess_finestra_senza_esiti.
 Finestra, mercato e ricerca, la regola in preparazione, 14 suoni.
-Nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione passa agli allenatori: mess_bersaglio_allenatori.
+Nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione passa allo staff: mess_bersaglio_allenatori.
 Nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione torna ai giocatori: mess_bersaglio_giocatori.
 Nella scheda Filtri della finestra Mercato e ricerca il collegamento della regola in preparazione passa alla e, a ogni freccia, o la lettera E sull'elenco delle regole lega con la e la regola scelta a quella di sopra: mess_collegamento_e.
 Nella scheda Filtri della finestra Mercato e ricerca il collegamento della regola in preparazione passa alla o, a ogni freccia, o la lettera O sull'elenco delle regole fa cominciare dalla regola scelta un'alternativa nuova: mess_collegamento_o.

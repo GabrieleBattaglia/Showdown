@@ -39,7 +39,7 @@ La sera dello stesso giorno, con la richiesta di Gabriele sulla finestra a quatt
 per filtro, il costruttore di regole, e le schede tornano due. Risultati resta com'era, con la Situazione, la casella
 dei preset, l'elenco dei trovati, la scheda della persona, le azioni e Gestisci i preset, Alt+G. Filtri ha il campo
 Trovati, una riga per informazione; la regola in preparazione, nel suo riquadro, col collegamento, e oppure o, che si
-vede soltanto quando ci sono regole, il bersaglio, Giocatori o Allenatori, la caratteristica, l'operatore e il valore,
+vede soltanto quando ci sono regole, il bersaglio, Giocatori o Staff, la caratteristica, l'operatore e il valore,
 una scelta o un campo secondo la caratteristica, con l'etichetta che dice che cosa scrivere; Aggiungi regola e Azzera;
 l'elenco delle regole, dove Canc ne toglie una, Ctrl+Su e Ctrl+Giù la spostano e le lettere E e O cambiano il suo
 collegamento; Ordina per, che fa parte del preset; e Salva filtri, che mette nel preset anche la regola in preparazione

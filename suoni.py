@@ -815,7 +815,7 @@ AZIONI = {
     "preset_non_si_sposta": "nella gestione dei preset Sposta su sul primo preset, o Sposta giù sull'ultimo, che non si sposta oltre",
     "ritorno_all_elenco": "nella finestra Mercato e ricerca Invio o Esc nel campo della scheda della persona riportano il fuoco all'elenco, sulla stessa riga",
     "finestra_chiusa_senza_esiti": "la finestra Mercato e ricerca si chiude senza esiti da riassumere, come offerte, sfide o preset, e la vista resta com'era",
-    "bersaglio_allenatori": "nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione passa agli allenatori",
+    "bersaglio_allenatori": "nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione passa allo staff",
     "bersaglio_giocatori": "nella scheda Filtri della finestra Mercato e ricerca il bersaglio della regola in preparazione torna ai giocatori",
     "collegamento_e": ("nella scheda Filtri della finestra Mercato e ricerca il collegamento della regola in preparazione passa alla e, a ogni "
                        "freccia, o la lettera E sull'elenco delle regole lega con la e la regola scelta a quella di sopra"),

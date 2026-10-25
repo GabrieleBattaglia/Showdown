@@ -353,7 +353,7 @@ def test_le_righe_dell_elenco_delle_regole():
     assert righe == [
         "Giocatori, stato: è sul mercato",
         "e età: minore o uguale a 20 anni",
-        "Alternativa 2: allenatori, stato: è capo allenatore",
+        "Alternativa 2: staff, stato: è capo allenatore",
         'e nome o numero: contiene "ros"',
         "e giocatori, costo: non ha il dato",
         "Alternativa 3: giocatori, mancino: sì",

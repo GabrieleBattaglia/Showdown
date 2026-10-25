@@ -932,7 +932,7 @@ def sfida_possibile(mondo, poli, riga):
 
 
 # Il costruttore di regole della finestra Mercato e ricerca, D36 della sera del 24 ottobre 2026, idea di Gabriele: al
-# posto di un controllo per ogni filtro, le regole, ciascuna con un bersaglio, Giocatori o Allenatori, una caratteristica
+# posto di un controllo per ogni filtro, le regole, ciascuna con un bersaglio, Giocatori o Staff, una caratteristica
 # del catalogo, un operatore e un valore, e dalla seconda un collegamento, e oppure o, con la e che lega prima della o.
 # La macchina che le prova sta in regole.py; qui il catalogo, che legge il mondo, la ricerca, i preset di regole, le
 # porte e il salvataggio nel formato 10. Col cambio della finestra, la stessa sera, il motore a schede di prima è uscito,
@@ -941,7 +941,8 @@ def sfida_possibile(mondo, poli, riga):
 GIOCATORI = "giocatori"
 ALLENATORI = "allenatori"
 BERSAGLI = (GIOCATORI, ALLENATORI)
-NOMI_DEI_BERSAGLI = {GIOCATORI: "Giocatori", ALLENATORI: "Allenatori"}
+# Il bersaglio degli allenatori si chiama Staff dal 25 ottobre 2026, richiesta di Gabriele: ci sono anche gli assistenti.
+NOMI_DEI_BERSAGLI = {GIOCATORI: "Giocatori", ALLENATORI: "Staff"}
 E = modulo_regole.E
 O = modulo_regole.O
 COLLEGAMENTI = modulo_regole.COLLEGAMENTI

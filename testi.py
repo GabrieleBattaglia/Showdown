@@ -1589,10 +1589,10 @@ NESSUN_VALORE = "nessun valore"
 
 
 def domanda_cambio_di_bersaglio(quante, bersaglio):
-    """La domanda, col No già scelto, quando si cambia bersaglio con delle regole: giocatori e allenatori non si mescolano."""
-    nuovo = "agli allenatori" if bersaglio == mercato.ALLENATORI else "ai giocatori"
+    """La domanda, col No già scelto, quando si cambia bersaglio con delle regole: giocatori e staff non si mescolano."""
+    nuovo = "allo staff" if bersaglio == mercato.ALLENATORI else "ai giocatori"
     regole = "la regola" if quante == 1 else f"le {quante} regole"
-    return f"Passare {nuovo} toglie {regole} di adesso, perché giocatori e allenatori non si mescolano. Continuare?"
+    return f"Passare {nuovo} toglie {regole} di adesso, perché giocatori e staff non si mescolano. Continuare?"
 
 
 def domanda_azzera_le_regole(quante):
