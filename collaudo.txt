@@ -1,0 +1,23 @@
+Collaudo della barra di stato su misura, decisione D38, del 25 ottobre 2026. Cancella ogni riga che passa; scrivi i commenti sulla riga che non va.
+Avvia MESS dai sorgenti, in mine\showdown, e premi F7: la barra ha dieci righe, e l'ultimo evento sta in fondo all'ultima.
+Leggi la barra con le frecce e lascia il cursore a metà di una riga per un minuto: ogni 20 secondi la barra si riscrive, e NVDA non deve leggere niente da solo.
+Dopo la riscrittura le frecce ripartono dal punto in cui eri, sulla stessa riga e nella stessa colonna.
+Sulla prima riga il dato Ora corre di un minuto ogni 20 secondi, e Fra scende di un minuto ogni minuto.
+Ctrl+Fine porta in fondo all'ultima riga, sull'ultimo evento; Ctrl+Inizio all'inizio della prima.
+Premi F7 con il cursore già sulla barra: la barra si rifà tutta, col suono di F7.
+Apri il menu Impostazioni e scegli Barra di stato, con la B: si sente il suono della finestra, che si apre massimizzata con il fuoco su Dati disponibili, vuoto finché la barra è quella di serie.
+Con Alt+L vai su Dati della riga: Invio, Spazio e Canc tolgono il dato, ciascuno col suono del dato tolto, e il dato torna in Dati disponibili.
+Con Alt+D torni su Dati disponibili: Invio e Spazio rimettono il dato in fondo alla riga, col suono del dato aggiunto.
+Tenendo giù Spazio o Canc si sposta un dato solo.
+La Spiegazione del dato, Alt+P, dice il gruppo, la sigla col nome, la spiegazione, un esempio e il testo di adesso del dato su cui eri.
+Sposta su e Sposta giù, Alt+U e Alt+G, spostano il dato scelto della riga, ciascuno col suo suono; in cima o in fondo si sente il bordo.
+La scelta Riga, Alt+R, cambia riga, e ogni voce dice quanti dati ha la riga.
+Aggiungi riga, Alt+A, mette una riga vuota dopo quella scelta; Togli riga, Alt+T, la toglie, e i suoi dati tornano disponibili.
+Con sedici righe Aggiungi riga dice che è il massimo; con una riga sola Togli riga dice che si può svuotare ma non togliere.
+L'Anteprima della riga, Alt+E, dice la riga come sarebbe adesso.
+Barra di serie, Alt+B, rimette la barra di partenza; Salva, Alt+S, chiude, e la barra nuova si vede subito nella finestra principale, alta quanto le sue righe.
+Riapri la finestra ed esci con Esc: si sente l'annullamento, e la barra resta com'era.
+Invio sulla scelta Riga o su un pulsante non salva e non chiude: Salva si preme.
+Domanda: i dodici suoni nuovi ti sembrano adatti ai loro eventi, e distinti fra loro?
+Domanda: la barra di serie ti va bene così, o vuoi spostare qualche dato?
+Domanda: tornando sulla barra con F7 il cursore resta dove l'avevi lasciato, invece di ripartire dalla prima riga: ti va bene?
