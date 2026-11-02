@@ -100,6 +100,10 @@ davanti al formato 11, crederebbe rovinato il salvataggio e ripiegherebbe sulla 
 al primo salvataggio dopo una migrazione anche la copia si scrive nel formato nuovo. E dal formato 12 un formato più recente non
 è più un file rovinato: leggi solleva FormatoPiuRecente, che il caricamento non intercetta, e all'avvio MESS chiede di essere
 aggiornato ed esce senza toccare i file. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la quinta tranche di D40, il formato 11 ha anche due voci nuove nei conti di ogni polisportiva, i fondi
+ricevuti e quelli versati con Sposta fondi; la migrazione dal 10 le aggiunge a zero, nel mese in corso e nei bilanci dei
+mesi passati, come quelle del 7. Il formato resta l'11, perché nessun mondo vero lo ha ancora. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -189,6 +193,8 @@ SCALA_A_FORMATO_5 = -82.61
 SCALA_B_FORMATO_5 = 1.3878
 # Le voci dei conti che nascono col formato 7: le iscrizioni ai tornei, i premi e i rimborsi.
 VOCI_NUOVE_DEL_FORMATO_7 = ("iscrizioni", "premi", "rimborsi")
+# Le voci dei conti che nascono col formato 11, decisione D40: i fondi ricevuti e quelli versati con Sposta fondi.
+VOCI_NUOVE_DEL_FORMATO_11 = ("fondi_ricevuti", "fondi_versati")
 
 
 class ErroreSalvataggio(Exception):
@@ -724,7 +730,8 @@ def _dal_formato_10(documento):
     Dal formato 10 all'11, con la decisione D40 del 2 novembre 2026, aggiungendo soltanto. Il contatore delle fondazioni
     parte dalle polisportive dell'utente aperte; la firma con la polisportiva di oggi resta vuota per tutti i giocatori,
     perché nessuno la ricorda, e vuota vuol dire firmata prima del formato 11; nessun allenatore è tenuto lontano
-    dall'utente. Gli allenatori da far nascere, di un mondo che viene dal 7, nascono già col campo vuoto.
+    dall'utente. Gli allenatori da far nascere, di un mondo che viene dal 7, nascono già col campo vuoto. Dalla quinta
+    tranche di D40 le due voci dei conti di Sposta fondi, a zero, nel mese in corso e in ogni bilancio, come le voci del 7.
     """
     dati = documento["mondo"]
     dati.setdefault("fondazioni_di_sempre", sum(1 for p in dati["polisportive"].values() if not p["is_cpu_controlled"]))
@@ -732,6 +739,11 @@ def _dal_formato_10(documento):
         g.setdefault("tesserato_dal", None)
     for a in dati["allenatori"] or ():
         a.setdefault("escluso_dall_utente_fino", None)
+    for p in dati["polisportive"].values():
+        for voce in VOCI_NUOVE_DEL_FORMATO_11:
+            p["conti_del_mese"].setdefault(voce, 0)
+            for bilancio in p["bilanci"]:
+                bilancio.setdefault(voce, 0)
     documento["formato"] = 11
 
 

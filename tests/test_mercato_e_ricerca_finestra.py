@@ -1496,6 +1496,25 @@ def test_l_ingaggio_rifiutato_di_un_allenatore_usa_la_mossa(banco, monkeypatch):
     assert f"Rifiuta l'offerta di {attiva.nome}, un ingaggio di " in testi.diario_allenatore(a)
 
 
+def test_l_allenatore_licenziato_da_una_tua_polisportiva_ha_il_suo_suono(banco):
+    # La quinta tranche di D40: chi una tua polisportiva ha licenziato da meno di 30 giorni non firma con le tue. Alt+O dice il
+    # perché col suo suono, prima della scelta del posto, anche a cassa vuota; il diario non dice chi l'ha licenziato, e la
+    # frase dice una tua polisportiva.
+    mondo = banco.mondo
+    mondo.miapolisportiva_attiva.cassa = 0
+    f = banco.apri("allenatori")
+    r = f.righe[0]
+    a = r.persona
+    a.escluso_dall_utente_fino = mondo.datetime_corrente_simulazione + datetime.timedelta(days=20)
+    _scegli_persona(f, r.numero, allenatore=True)
+    banco.suonati.clear()
+    banco.dialoghi.aperti.clear()
+    _clic(f.pulsante_offerta)
+    assert banco.suonati == ["allenatore_escluso"] and banco.dialoghi.aperti == ["Avviso"]
+    assert banco.dialoghi.letti[-1] == f"{mondo.licenziato_dall_utente(a)}." and " è stat" in banco.dialoghi.letti[-1]
+    assert " da una tua polisportiva il " in banco.dialoghi.letti[-1] and a.libero
+
+
 def test_gli_allenatori_senza_mosse_senza_cassa_e_in_prelazione(banco):
     mondo = banco.mondo
     attiva = mondo.miapolisportiva_attiva

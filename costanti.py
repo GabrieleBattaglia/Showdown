@@ -17,6 +17,8 @@ amichevoli, 15 livelli in su o in giù, scelto da Gabriele. È di Gabriele Batta
 Dal 2 novembre 2026, con la decisione D40, i numeri delle fondazioni dell'utente: il capitale alle prime due, i prezzi
 dalla terza polisportiva aperta e il ripensamento. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Lo stesso giorno, con la quinta tranche di D40, i giorni in cui un allenatore licenziato dall'utente non firma con le sue
+polisportive. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -672,6 +674,9 @@ QUOTA_VEDENTI_ALLENATORI = 75.0
 MEDIA_CLASSE_NATI_ALLENATORI = 12.0
 # La prelazione dell'utente su un suo tesserato che si ritira e può allenare, risposta 21.
 GIORNI_PRELAZIONE = 10
+# Decisione D40, scelta di Gabriele: un allenatore licenziato da una polisportiva dell'utente non firma con le sue
+# polisportive per tanti giorni simulati; il computer può assumerlo subito.
+GIORNI_DOPO_IL_LICENZIAMENTO = 30
 # Regola di Gabriele del 21 ottobre 2026, risposta 29: quando qualcuno diventa allenatore, perché nasce
 # o perché si ritira dal gioco, resta riservato all'utente per tanti minuti veri, poi il computer lo
 # può assumere. I minuti contano dal momento in cui il mondo lo fa nascere, recupero dei giorni

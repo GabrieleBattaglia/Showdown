@@ -112,9 +112,9 @@ def test_ogni_voce_dei_menu_che_mostra_un_testo(finestra):
             provate += 1
     # Salva la cronaca, senza un'amichevole nella sessione, lo dice nella vista; dalla tappa 12 c'è anche la classifica mondiale.
     # Dal collaudo di gioco del 24 ottobre 2026 le due voci di Gioca tutte le amichevoli, che riassumono la serie nella vista;
-    # dalla issue 8 Risultati della ricerca non c'è più.
-    assert provate == 25
-    assert finestra.comandi == 25
+    # dalla issue 8 Risultati della ricerca non c'è più. Dalla decisione D40 Sposta fondi, che con una polisportiva sola dice perché non c'è.
+    assert provate == 26
+    assert finestra.comandi == 26
 
 
 def test_i_menu_hanno_tasti_e_lettere_non_ripetuti(finestra):
@@ -952,6 +952,8 @@ MF_BYCOMMAND, MF_GRAYED = 0x0, 0x1
 WM_KEYDOWN, WM_KEYUP = 0x0100, 0x0101
 VK_G, VK_K, VK_SHIFT, VK_CONTROL, VK_MENU, VK_LWIN, VK_RWIN = 0x47, 0x4B, 0x10, 0x11, 0x12, 0x5B, 0x5C
 VK_LSHIFT, VK_RSHIFT, VK_LCONTROL, VK_RCONTROL, VK_LMENU, VK_RMENU = 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5
+# Dalla decisione D40 la I di Sposta fondi, Ctrl+Maiusc+I.
+VK_I = 0x49
 # Ctrl+K vuole il solo Ctrl sinistro giù: Maiuscolo, Alt e i tasti di Windows su, o il tasto rapido non corrisponde.
 MODIFICATORI_DI_CTRL_K = {VK_CONTROL: True, VK_LCONTROL: True, VK_RCONTROL: False, VK_SHIFT: False, VK_LSHIFT: False, VK_RSHIFT: False,
                           VK_MENU: False, VK_LMENU: False, VK_RMENU: False, VK_LWIN: False, VK_RWIN: False}
@@ -1211,6 +1213,80 @@ def test_ctrl_maiusc_g_a_mosse_finite_come_ctrl_k(finestra, suonati):
     suonati.clear()
     _ctrl_maiusc_g(finestra, gancio=False)
     assert "dialogo_mercato_allenatori" in suonati and voce.IsEnabled() and finestra.comandi == comandi + 3, (list(suonati), voce.IsEnabled())
+
+
+def test_sposta_fondi_con_una_polisportiva_sola(finestra, suonati, monkeypatch):
+    # La decisione D40: con una polisportiva sola Sposta fondi non è disponibile, NVDA la legge così, e Ctrl+Maiusc+I dice perché.
+    mondo = finestra.mondo
+    voce = finestra.voci_del_menu[finestra.sposta_fondi]
+    assert voce.GetAccel().GetKeyCode() == ord("I") and not voce.IsEnabled() and _grigia_per_windows(finestra, voce)
+    aperti = []
+    monkeypatch.setattr(dialoghi.SpostaFondi, "ShowModal", lambda self: aperti.append(self) or wx.ID_CANCEL)
+    # Senza il gancio Windows prende il tasto della voce disattivata e non manda niente; col gancio la vista dice perché.
+    finestra.vista.ChangeValue("Il testo di prima.")
+    comandi = finestra.comandi
+    _ctrl_k(finestra, False, VK_I, maiuscolo=True)
+    assert finestra.comandi == comandi and finestra.vista.GetValue() == "Il testo di prima."
+    suonati.clear()
+    _ctrl_k(finestra, True, VK_I, maiuscolo=True)
+    assert not aperti and suonati == ["sposta_fondi_non_disponibile"] and finestra.comandi == comandi + 1
+    assert finestra.vista.GetValue() == "Sposta fondi passa i soldi fra le tue polisportive, e ne hai una sola: fondane un'altra con Ctrl+N."
+    # Con la seconda polisportiva la voce torna disponibile alla fine di un comando, e il tasto apre il dialogo.
+    mondo.fonda_polisportiva("Seconda squadra", attiva=False)
+    finestra._esegui(finestra.bilancio)
+    assert voce.IsEnabled() and not _grigia_per_windows(finestra, voce)
+    suonati.clear()
+    _ctrl_k(finestra, True, VK_I, maiuscolo=True)
+    assert len(aperti) == 1 and "dialogo_sposta_fondi" in suonati, list(suonati)
+
+
+def test_sposta_fondi_dal_dialogo(finestra, suonati, monkeypatch):
+    # La decisione D40: da quale polisportiva, a quale e quanto, con il limite nell'etichetta della cifra.
+    mondo = finestra.mondo
+    attiva = mondo.miapolisportiva_attiva
+    seconda = mondo.fonda_polisportiva("Seconda squadra", attiva=False)
+    spostabile = mondo.spostabile(attiva)
+    assert 0 < spostabile < attiva.cassa
+    avvisi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo) or wx.OK)
+
+    def sposta(self):
+        # Da parte dalla polisportiva attiva e A dall'altra; l'etichetta della cifra, che NVDA legge sulla cifra, dice il limite.
+        assert self._scelta(self.da) is attiva and self._scelta(self.a) is seconda
+        assert [self.da.GetString(i) for i in range(2)] == ["Club Di Prova, attiva, in cassa 20.000 euro", "Seconda squadra, in cassa 20.000 euro"]
+        assert self.etichetta_cifra.GetLabel() == f"&Cifra da spostare, in euro. {mondo.limite_dei_fondi(attiva)}"
+        # Oltre la riserva: l'avviso col suo suono, e il dialogo resta aperto.
+        self.cifra.SetValue(spostabile + 1)
+        self.conferma()
+        assert avvisi[-1] == mondo.problema_sposta_fondi(attiva, seconda, spostabile + 1) and suonati[-1] == "fondi_oltre_la_riserva"
+        # La stessa polisportiva nei due campi è un campo da correggere.
+        self.a.SetSelection(0)
+        self.conferma()
+        assert avvisi[-1].startswith("Da Club Di Prova a Club Di Prova non si sposta niente") and suonati[-1] == "campo_da_correggere"
+        assert self.risultato is None
+        # Chi paga cambia, e l'etichetta dice il suo limite.
+        self.da.SetSelection(1)
+        self.al_cambio_di_chi_paga()
+        assert self.etichetta_cifra.GetLabel() == f"&Cifra da spostare, in euro. {mondo.limite_dei_fondi(seconda)}"
+        self.da.SetSelection(0)
+        self.al_cambio_di_chi_paga()
+        self.a.SetSelection(1)
+        self.cifra.SetValue(spostabile)
+        self.conferma()
+        return self.GetReturnCode()
+
+    monkeypatch.setattr(dialoghi.SpostaFondi, "ShowModal", sposta)
+    suonati.clear()
+    finestra.sposta_fondi()
+    assert suonati[0] == "dialogo_sposta_fondi" and suonati[-1] == "fondi_spostati"
+    assert attiva.cassa == mondo.riserva(attiva) and seconda.cassa == 20_000 + spostabile
+    assert finestra.vista.GetValue().startswith(f"Spostati {testi.euro(spostabile)} da Club Di Prova a Seconda squadra. Ora Club Di Prova ha in cassa ")
+    assert finestra.ultimo_evento == f"spostati {testi.euro(spostabile)}"
+    # Annulla non sposta niente.
+    monkeypatch.setattr(dialoghi.SpostaFondi, "ShowModal", lambda self: wx.ID_CANCEL)
+    suonati.clear()
+    finestra.sposta_fondi()
+    assert suonati == ["dialogo_sposta_fondi", "annullato"] and seconda.cassa == 20_000 + spostabile
 
 
 def test_i_tre_esiti_del_pagamento(finestra, suonati, monkeypatch):

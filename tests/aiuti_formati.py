@@ -4,7 +4,8 @@ riportato com'era nel formato 6 o nel formato 5, da cui le prove dei formati pi�
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-09 con la tappa 11 e il formato 6; dal 2026-10-13, con la tappa 12, anche il formato 7.
 Dal 2026-11-02, con la decisione D40, anche il formato 10, di un documento del formato 11. È di Gabriele Battaglia
-(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode). Con la quinta tranche di D40 il formato 10 perde anche le due voci dei
+conti di Sposta fondi. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -29,10 +30,15 @@ ARCHETIPO_DELL_INDOLE = {indole: archetipo for archetipo, indole in MAPPA_ARCHET
 CAMPI_MONDO_DEL_FORMATO_11 = ("fondazioni_di_sempre",)
 CAMPI_DEL_FORMATO_11 = ("tesserato_dal",)
 CAMPI_ALLENATORE_DEL_FORMATO_11 = ("escluso_dall_utente_fino",)
+# Le voci dei conti che nascono con la quinta tranche di D40, sempre nel formato 11: i fondi di Sposta fondi.
+VOCI_DEL_FORMATO_11 = ("fondi_ricevuti", "fondi_versati")
 
 
 def al_formato_10(contenuto):
-    """Un documento del formato 11 com'era nel formato 10: senza il contatore delle fondazioni, la firma dei giocatori e il giorno degli allenatori."""
+    """
+    Un documento del formato 11 com'era nel formato 10: senza il contatore delle fondazioni, la firma dei giocatori, il giorno
+    degli allenatori e le voci dei conti di Sposta fondi.
+    """
     vecchio = copy.deepcopy(contenuto)
     for campo in CAMPI_MONDO_DEL_FORMATO_11:
         del vecchio["mondo"][campo]
@@ -42,6 +48,11 @@ def al_formato_10(contenuto):
     for a in vecchio["mondo"]["allenatori"]:
         for campo in CAMPI_ALLENATORE_DEL_FORMATO_11:
             del a[campo]
+    for p in vecchio["mondo"]["polisportive"].values():
+        for voce in VOCI_DEL_FORMATO_11:
+            del p["conti_del_mese"][voce]
+            for bilancio in p["bilanci"]:
+                del bilancio[voce]
     vecchio["formato"] = 10
     return vecchio
 

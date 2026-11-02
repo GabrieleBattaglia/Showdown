@@ -37,8 +37,8 @@ def _poli():
 
 
 def test_le_voci_nuove_dei_conti_e_il_bilancio():
-    # Le voci della tappa 12, e dalla tappa 13 gli stipendi dello staff.
-    assert VOCI_CONTI[-4:] == ("iscrizioni", "premi", "rimborsi", "staff") and set(conti_vuoti()) == set(VOCI_CONTI)
+    # Le voci della tappa 12, dalla tappa 13 gli stipendi dello staff, e dalla decisione D40 i fondi di Sposta fondi.
+    assert VOCI_CONTI[-6:] == ("iscrizioni", "premi", "rimborsi", "staff", "fondi_ricevuti", "fondi_versati") and set(conti_vuoti()) == set(VOCI_CONTI)
     mondo = Mondo()
     mondo.datetime_corrente_simulazione = OGGI
     poli = _poli()

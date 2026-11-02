@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 379 suoni, 352 della finestra e 27 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 384 suoni, 357 della finestra e 27 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -112,7 +112,7 @@ Nell'avanzamento del giorno qualcuno si ritira: mess_giorno_di_congedo.
 Nell'avanzamento del giorno qualcuno lascia lo showdown prima del tempo: mess_giorno_di_partenza.
 Nell'avanzamento del giorno nasce una polisportiva del computer: meditimer_banco_avvio.
 Nell'avanzamento del giorno chiude una polisportiva del computer: mess_motore_che_si_spegne.
-Finestra, polisportive, fondazione, cambio e password, 13 suoni.
+Finestra, polisportive, fondazione, cambio e password, 17 suoni.
 Si apre il dialogo della nuova polisportiva, con Ctrl+N: mess_quinte_sovrapposte.
 Una polisportiva fondata: mess_fischio_d_inizio.
 Si apre il dialogo per cambiare la polisportiva attiva, con Ctrl+Shift+C: mess_scambio_di_posto.
@@ -126,6 +126,10 @@ La polisportiva protetta da una password: mess_chiave_che_chiude.
 La password della polisportiva tolta: mess_chiave_che_apre.
 Nuova polisportiva, con Ctrl+N, quando la fondazione costa e la polisportiva attiva, oltre la sua riserva, non ha abbastanza per pagarla, o non c'è una polisportiva attiva: il dialogo non si apre: mess_fondazione_non_possibile.
 Una polisportiva fondata a pagamento, dalla terza aperta, col prezzo pagato dalla polisportiva attiva: mess_fondazione_a_pagamento.
+Si apre il dialogo di Sposta fondi, con Ctrl+Shift+I, per passare soldi da una tua polisportiva a un'altra: mess_sposta_fondi.
+Sposta fondi passa la cifra scelta da una tua polisportiva a un'altra: mess_fondi_spostati.
+Nel dialogo di Sposta fondi la cifra supera quello che la polisportiva che paga ha oltre la sua riserva, cioè oltre quello che deve al prossimo primo del mese, e il dialogo resta aperto: mess_fondi_oltre_la_riserva.
+Sposta fondi, con Ctrl+Shift+I, quando hai una sola polisportiva o nessuna: la voce del menu non è disponibile, e il tasto rapido lo dice: mess_sposta_fondi_non_disponibile.
 Finestra, polisportive, chiusura, schede e svincolo, 12 suoni.
 La richiesta della password prima di chiudere una polisportiva protetta: mess_bussare_alla_porta.
 La domanda se chiudere per sempre la polisportiva attiva: mess_campana_a_martello.
@@ -283,7 +287,7 @@ Finestra, contratti e allenamento, le notizie, 3 suoni.
 Nell'avanzamento il contratto di un tuo tesserato entra negli ultimi tre mesi, o nell'ultimo: mess_contratti_in_scadenza.
 Nell'avanzamento il contratto di un tuo tesserato scade senza rinnovo, e lui torna libero: mess_contratto_scaduto.
 Nell'avanzamento un tuo tesserato si infortuna nella seduta d'allenamento: mess_infortunio_in_allenamento.
-Finestra, staff, gli allenatori, 14 suoni.
+Finestra, staff, gli allenatori, 15 suoni.
 Si apre il dialogo dello staff della polisportiva, con Ctrl+H: mess_staff_aperto.
 Si apre la finestra Mercato e ricerca sugli allenatori, con Ctrl+Shift+G o con Assumi nel dialogo dello staff: mess_mercato_allenatori.
 Si apre il dialogo della cifra d'ingaggio di un allenatore: mess_cifra_ingaggio_allenatore.
@@ -295,6 +299,7 @@ L'allenatore rifiuta il rinnovo, e si può riprovare un altro giorno: mess_staff
 Il terzo rifiuto del rinnovo, e l'allenatore non tratta più: mess_staff_rinnovo_chiuso.
 Si vuole assumere per un posto dello staff già occupato, o, nella finestra Mercato e ricerca, si fa un'offerta a un allenatore libero con lo staff al completo: mess_staff_posto_occupato.
 Si vuole assumere un allenatore in prelazione per un'altra tua polisportiva: mess_allenatore_in_prelazione.
+Nella finestra Mercato e ricerca si vuole assumere un allenatore che una tua polisportiva ha licenziato da meno di 30 giorni, e che fino ad allora non firma con le tue: mess_allenatore_escluso.
 Si apre la scheda di un allenatore, nello staff, o nella finestra Mercato e ricerca con Invio sull'elenco: mess_scheda_allenatore.
 Si apre il diario di un allenatore: mess_diario_allenatore.
 Nella finestra Mercato e ricerca cambia il posto da offrire a un allenatore libero: mess_staff_posto_scelto.

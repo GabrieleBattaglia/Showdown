@@ -154,6 +154,14 @@ che si fermano a metà, due monete deboli e una scivolata grave; la fondazione a
 escono, il fischio d'inizio in breve e una quinta che si apre; e il ripensamento, la chiusura che annulla una fondazione di
 pochi giorni mai usata, un nastro che si riavvolge, uno scatto indietro e una scivolata calma. La fondazione gratis suona
 come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la quinta tranche di D40, cinque suoni nuovi, tutti mess_ e nella collezione di GBUtils. Quattro sono
+di Sposta fondi, Ctrl+Maiusc+I, e hanno tutti una moneta: l'apertura del dialogo, una moneta che scivola da sinistra a destra
+e la cassa che la riceve; lo spostamento fatto, tre monete che passano salendo e una quinta che le accoglie; la cifra oltre la
+riserva di chi paga, la stessa moneta che si ferma a metà e torna indietro, fino a un colpo sordo; e la voce non disponibile
+con una polisportiva sola, una moneta che aspetta una risposta e sente soltanto la sua eco. Il quinto è dell'allenatore
+licenziato da una tua polisportiva, che per 30 giorni non firma con le tue: l'eco breve del fischio finale del licenziamento
+e due colpi su una porta che resta chiusa. Il dialogo, quando la cifra è zero o le due polisportive sono la stessa, suona
+come un campo da correggere. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -337,6 +345,12 @@ GRUPPI = (
         # Decisione D40: la fondazione che la polisportiva attiva non può pagare, e quella a pagamento, dalla terza aperta.
         "fondazione_non_possibile": "mess_fondazione_non_possibile",
         "polisportiva_fondata_a_pagamento": "mess_fondazione_a_pagamento",
+        # Decisione D40, Sposta fondi: il dialogo, lo spostamento fatto, quello che supera la riserva di chi paga, e la voce
+        # che non c'è con una polisportiva sola.
+        "dialogo_sposta_fondi": "mess_sposta_fondi",
+        "fondi_spostati": "mess_fondi_spostati",
+        "fondi_oltre_la_riserva": "mess_fondi_oltre_la_riserva",
+        "sposta_fondi_non_disponibile": "mess_sposta_fondi_non_disponibile",
     }),
     ("Polisportive, chiusura, schede e svincolo", {
         "richiesta_password": "mess_bussare_alla_porta",
@@ -573,6 +587,8 @@ GRUPPI = (
         "staff_posto_occupato": "mess_staff_posto_occupato",
         # Dalla revisione del 22 ottobre 2026: l'allenatore in prelazione per un'altra tua polisportiva.
         "allenatore_in_prelazione": "mess_allenatore_in_prelazione",
+        # Decisione D40: l'allenatore licenziato da una tua polisportiva, che per 30 giorni non firma con le tue.
+        "allenatore_escluso": "mess_allenatore_escluso",
         "scheda_allenatore": "mess_scheda_allenatore",
         "diario_allenatore": "mess_diario_allenatore",
         # Scatta a ogni freccia sul posto da offrire a un allenatore libero, nella finestra Mercato e ricerca: un tocco minimo.
@@ -819,6 +835,12 @@ AZIONI = {
     "fondazione_non_possibile": ("Nuova polisportiva, con Ctrl+N, quando la fondazione costa e la polisportiva attiva, oltre la sua riserva, non ha "
                                  "abbastanza per pagarla, o non c'è una polisportiva attiva: il dialogo non si apre"),
     "polisportiva_fondata_a_pagamento": "una polisportiva fondata a pagamento, dalla terza aperta, col prezzo pagato dalla polisportiva attiva",
+    "dialogo_sposta_fondi": "si apre il dialogo di Sposta fondi, con Ctrl+Shift+I, per passare soldi da una tua polisportiva a un'altra",
+    "fondi_spostati": "Sposta fondi passa la cifra scelta da una tua polisportiva a un'altra",
+    "fondi_oltre_la_riserva": ("nel dialogo di Sposta fondi la cifra supera quello che la polisportiva che paga ha oltre la sua riserva, "
+                               "cioè oltre quello che deve al prossimo primo del mese, e il dialogo resta aperto"),
+    "sposta_fondi_non_disponibile": ("Sposta fondi, con Ctrl+Shift+I, quando hai una sola polisportiva o nessuna: la voce del menu non è "
+                                     "disponibile, e il tasto rapido lo dice"),
     "richiesta_password": "la richiesta della password prima di chiudere una polisportiva protetta",
     "domanda_chiusura_polisportiva": "la domanda se chiudere per sempre la polisportiva attiva",
     "polisportiva_chiusa": "una polisportiva chiusa per sempre",
@@ -997,6 +1019,8 @@ AZIONI = {
     "staff_posto_occupato": ("si vuole assumere per un posto dello staff già occupato, o, nella finestra Mercato e ricerca, si fa un'offerta a un "
                              "allenatore libero con lo staff al completo"),
     "allenatore_in_prelazione": "si vuole assumere un allenatore in prelazione per un'altra tua polisportiva",
+    "allenatore_escluso": ("nella finestra Mercato e ricerca si vuole assumere un allenatore che una tua polisportiva ha licenziato da meno "
+                           "di 30 giorni, e che fino ad allora non firma con le tue"),
     "scheda_allenatore": "si apre la scheda di un allenatore, nello staff, o nella finestra Mercato e ricerca con Invio sull'elenco",
     "diario_allenatore": "si apre il diario di un allenatore",
     "staff_posto_scelto": "nella finestra Mercato e ricerca cambia il posto da offrire a un allenatore libero",

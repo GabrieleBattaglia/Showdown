@@ -38,6 +38,9 @@ ultimo_impegno, perché la regola di un impegno al giorno vale per amichevoli, t
 Dal 2026-11-02, decisione D40, il formato 11: il giocatore ricorda il giorno in cui ha firmato con la
 polisportiva di oggi, tesserato_dal, vuoto per chi è libero e per chi ha firmato prima del formato 11.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la quinta tranche di D40, i conti di un mese hanno due voci nuove, i fondi ricevuti e quelli versati
+con Sposta fondi fra le polisportive dell'utente, sempre nel formato 11. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -188,7 +191,10 @@ CONTI = "conti"
 # Dalla tappa 12, D32 e punto 9.1 del progetto, le iscrizioni ai tornei, che escono all'iscrizione, i
 # premi, che entrano alla chiusura, e i rimborsi delle iscrizioni, che entrano nel mese in cui arrivano:
 # così nessuna voce va mai sotto zero, anche quando l'iscrizione era del mese prima.
-VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti", "buonuscite", "iscrizioni", "premi", "rimborsi", "staff")
+# Dalla decisione D40, formato 11, i soldi che Sposta fondi passa fra le polisportive dell'utente: ricevuti ed entrati
+# nella cassa, versati e usciti, in due voci, perché nessuna vada sotto zero.
+VOCI_CONTI = ("sponsor", "vendite", "stipendi", "arretrati", "ingaggi", "acquisti", "buonuscite", "iscrizioni", "premi", "rimborsi", "staff",
+              "fondi_ricevuti", "fondi_versati")
 # Dalla tappa 12, formato 7: i punti della classifica dell'ultimo anno, coppie di giorno ordinale e
 # punti; i titoli, i podi dei tornei più importanti; il palmarès recente di una polisportiva, dal mese
 # AAAA-MM alla coppia di punti delle medaglie e delle coppe.

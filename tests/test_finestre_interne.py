@@ -89,6 +89,8 @@ FABBRICHE = {
     "EffettiSonori": lambda s: dialoghi.EffettiSonori(None, 80),
     "NuovaPolisportiva": lambda s: dialoghi.NuovaPolisportiva(None, s.mondo, proposta="Bologna"),
     "CambiaPolisportiva": lambda s: dialoghi.CambiaPolisportiva(None, s.mondo),
+    # Dal 2 novembre 2026 Sposta fondi, decisione D40: con una polisportiva sola la finestra non lo apre, ma il dialogo regge.
+    "SpostaFondi": lambda s: dialoghi.SpostaFondi(None, s.mondo),
     "PasswordPolisportiva": lambda s: dialoghi.PasswordPolisportiva(None, s.club),
     "ChiediPassword": lambda s: dialoghi.ChiediPassword(None, s.club, "Per chiudere Club Di Prova serve la sua password."),
     "Cifra": lambda s: dialoghi.Cifra(None, "Ingaggio", "Spiegazione.", "&Ingaggio", 500, 1000),

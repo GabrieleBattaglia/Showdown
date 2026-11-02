@@ -131,6 +131,11 @@ UltraCode).
 Lo stesso giorno, idea di Gabriele: Invio sulla barra apre la finestra o il testo del dato su cui sta il cursore, cioè
 esegue la sua voce di menu, da barra.VOCI_DEI_DATI; su un dato che non ne ha, il tasto a vuoto. È di Gabriele Battaglia
 (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2 novembre 2026, con la quinta tranche della decisione D40, il menu Polisportive ha Sposta fondi, Ctrl+Maiusc+I, subito
+dopo Cambia polisportiva attiva: il dialogo sceglie da quale tua polisportiva, a quale e quanto, la vista dice l'esito e il
+mondo si salva. Con una polisportiva sola, o nessuna, la voce non è disponibile, e NVDA la legge così; come Ctrl+K a mosse
+finite, Ctrl+Maiusc+I la trova lo stesso col gancio dei tasti, e la vista dice perché, col suo suono. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -176,6 +181,7 @@ from gui.dialoghi import (
     PasswordPolisportiva,
     SalaAllenamento,
     SceltaGiocatore,
+    SpostaFondi,
     Staff,
     VelocitaDiGioco,
     Vendite,
@@ -363,6 +369,8 @@ class FinestraPrincipale(wx.Frame):
             ("&Polisportive", (
                 ("&Nuova polisportiva...", "Ctrl+N", self.nuova_polisportiva),
                 ("&Cambia polisportiva attiva...", "Ctrl+Shift+C", self.cambia_polisportiva),
+                # Decisione D40: i soldi fra le tue polisportive; con una sola la voce non è disponibile.
+                ("Sp&osta fondi...", "Ctrl+Shift+I", self.sposta_fondi),
                 None,
                 ("&Mercato...", "Ctrl+K", self.mercato),
                 ("&Vendite dei tesserati...", None, self.vendite),
@@ -557,12 +565,20 @@ class FinestraPrincipale(wx.Frame):
         """I comandi delle voci che a mosse finite non sono disponibili: Mercato, Ctrl+K, e Mercato degli allenatori, Ctrl+Maiusc+G."""
         return (self.mercato, self.mercato_allenatori)
 
+    def _comandi_che_parlano(self):
+        """
+        I comandi delle voci che possono non essere disponibili, e il cui tasto rapido parla lo stesso: quelli del mercato e,
+        dalla decisione D40, Sposta fondi, Ctrl+Maiusc+I.
+        """
+        return (*self._comandi_del_mercato(), self.sposta_fondi)
+
     def aggiorna_le_voci(self):
         """
         Rimette in pari le voci Mercato e Mercato degli allenatori: non disponibili quando la polisportiva attiva
         ha finito le mosse di mercato, e NVDA le legge così, di nuovo disponibili appena le mosse tornano o cambia
         la polisportiva attiva. Senza polisportiva attiva restano disponibili. Dal 24 ottobre 2026 anche la voce
-        delle amichevoli in serie della polisportiva attiva, che ne dice il nome.
+        delle amichevoli in serie della polisportiva attiva, che ne dice il nome. Dalla decisione D40 anche Sposta
+        fondi, disponibile soltanto con almeno due tue polisportive.
         """
         if not self or self.chiusa:
             return
@@ -571,6 +587,10 @@ class FinestraPrincipale(wx.Frame):
             voce = self.voci_del_menu[comando]
             if voce.IsEnabled() != disponibile:
                 voce.Enable(disponibile)
+        voce = self.voci_del_menu[self.sposta_fondi]
+        disponibile = len(self.mondo.tue_polisportive()) >= 2
+        if voce.IsEnabled() != disponibile:
+            voce.Enable(disponibile)
         voce = self.voci_del_menu[self.amichevoli_dell_attiva]
         testo = self._voce_delle_amichevoli_dell_attiva()
         if voce.GetItemLabel() != testo:
@@ -591,12 +611,13 @@ class FinestraPrincipale(wx.Frame):
         manda il comando di una voce disattivata, e Ctrl+K o Ctrl+Maiusc+G a mosse finite resterebbero muti:
         qui, se la voce non è disponibile, il suo tasto rapido esegue lo stesso il comando, che dice nella
         vista che per oggi le mosse sono finite. Dalla barra su misura di D38, Invio sulla barra apre la voce del dato su cui
-        sta il cursore. Ogni altro tasto prosegue come sempre.
+        sta il cursore. Dalla decisione D40 vale anche per Sposta fondi, Ctrl+Maiusc+I, che con una polisportiva sola dice
+        perché non c'è. Ogni altro tasto prosegue come sempre.
         """
         if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER) and not event.HasAnyModifiers() and self.barra.HasFocus():
             self.invio_nella_barra()
             return
-        for comando in self._comandi_del_mercato():
+        for comando in self._comandi_che_parlano():
             voce = self.voci_del_menu[comando]
             rapido = voce.GetAccel()
             if rapido is None or event.GetKeyCode() != rapido.GetKeyCode() or event.GetModifiers() != _modificatori(rapido.GetFlags()):
@@ -1044,6 +1065,29 @@ class FinestraPrincipale(wx.Frame):
             dialogo.Destroy()
         self.mondo.miapolisportiva_attiva = p
         self._concludi(testi.scheda_polisportiva(p, self.mondo), f"attiva {p.nome}", "polisportiva_attivata")
+
+    def sposta_fondi(self):
+        """
+        Ctrl+Maiusc+I, Sposta fondi, decisione D40: il dialogo sceglie da quale tua polisportiva, a quale e quanto, e chi paga
+        non scende sotto la sua riserva; senza mosse e senza limiti di tempo. L'esito dice le due casse, col suo suono, e il
+        mondo si salva. Con una polisportiva sola, o nessuna, la voce non è disponibile, e Ctrl+Maiusc+I arriva qui dal gancio
+        dei tasti: la vista dice perché, col suo suono, e il dialogo non si apre.
+        """
+        quante = len(self.mondo.tue_polisportive())
+        if quante < 2:
+            self.mostra(testi.sposta_fondi_non_disponibile(quante), "sposta fondi non disponibile", "sposta_fondi_non_disponibile")
+            return
+        dialogo = SpostaFondi(self, self.mondo)
+        try:
+            suoni.suona("dialogo_sposta_fondi")
+            if self._modale(dialogo) != wx.ID_OK or dialogo.risultato is None:
+                suoni.suona("annullato")
+                return
+            da, a, cifra = dialogo.risultato
+        finally:
+            dialogo.Destroy()
+        self.mondo.sposta_fondi(da, a, cifra)
+        self._concludi(testi.fondi_spostati(da, a, cifra), f"spostati {testi.euro(cifra)}", "fondi_spostati")
 
     def _mosse_finite(self, p):
         """Vero se per oggi la polisportiva p ha finito le mosse di mercato, e allora lo dice nella vista, col suo suono."""

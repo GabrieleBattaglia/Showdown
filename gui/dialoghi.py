@@ -71,6 +71,9 @@ Lo stesso giorno, coi collegamenti della finestra, escono il dialogo del mercato
 allenatori e quello della ricerca, che vivono nella finestra Mercato e ricerca, in gui/mercato_e_ricerca.py: Assumi dello
 staff apre lei, sugli allenatori liberi col posto già scelto, e lo staff tiene le offerte agli allenatori fra i suoi esiti
 e il resto fra quelli della finestra. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2 novembre 2026, con la quinta tranche della decisione D40, c'è il dialogo di Sposta fondi: da quale tua polisportiva, a
+quale e quanto, con l'etichetta della cifra che dice fino a quanto si può spostare, e la cifra oltre la riserva di chi paga
+che ha il suo avviso e il suo suono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -660,6 +663,67 @@ class CambiaPolisportiva(_Dialogo):
             self.avvisa(f"La password di {poli.nome} non è giusta.", self.password, "password_sbagliata")
             return
         self.scelta = poli
+        self.chiudi(wx.ID_OK)
+
+
+class SpostaFondi(_Dialogo):
+    """
+    Sposta fondi, decisione D40: da quale tua polisportiva, a quale e quanto. L'etichetta della cifra dice fino a quanto si può
+    spostare dalla polisportiva scelta in Da, e cambia con lei: NVDA la legge quando il cursore arriva sulla cifra. La cifra
+    non ha un massimo, così quella che supera la riserva di chi paga ha il suo avviso e il suo suono; gli altri errori
+    suonano come un campo da correggere. In risultato restano le due polisportive e la cifra. L'apertura conta come un Invio,
+    come nella cifra delle offerte.
+    """
+
+    GRAZIA_ALL_APERTURA = True
+
+    def __init__(self, genitore, mondo):
+        super().__init__(genitore, "Sposta fondi")
+        self.mondo = mondo
+        self.risultato = None
+        self.tue = mondo.tue_polisportive()
+        righe = [testi.riga_dei_fondi(p, mondo) for p in self.tue]
+        self.etichetta("&Da quale polisportiva")
+        self.da = self.aggiungi(wx.Choice(self.pannello, choices=righe))
+        self.etichetta("&A quale polisportiva")
+        self.a = self.aggiungi(wx.Choice(self.pannello, choices=righe))
+        self.etichetta_cifra = self.etichetta("")
+        self.cifra = self.aggiungi(wx.SpinCtrl(self.pannello, min=0, max=100_000_000, initial=0))
+        sposta, _annulla = self.pulsanti((wx.ID_OK, "&Sposta"), (wx.ID_CANCEL, "Annulla"))
+        sposta.Bind(wx.EVT_BUTTON, self.conferma)
+        self.da.Bind(wx.EVT_CHOICE, self.al_cambio_di_chi_paga)
+        attiva = mondo.miapolisportiva_attiva
+        primo = self.tue.index(attiva) if attiva in self.tue else 0
+        self.da.SetSelection(primo)
+        self.a.SetSelection(1 if primo == 0 and len(self.tue) > 1 else 0)
+        self.al_cambio_di_chi_paga()
+        self.completa((480, 320))
+        self.da.SetFocus()
+
+    def _scelta(self, scelta):
+        indice = scelta.GetSelection()
+        return self.tue[indice] if 0 <= indice < len(self.tue) else None
+
+    def al_cambio_di_chi_paga(self, event=None):
+        """L'etichetta della cifra dice il limite di chi paga; la e commerciale di un nome resta una."""
+        da = self._scelta(self.da)
+        limite = self.mondo.limite_dei_fondi(da).replace("&", "&&") if da is not None else ""
+        self.etichetta_cifra.SetLabel(f"&Cifra da spostare, in euro. {limite}".rstrip())
+        self.pannello.Layout()
+
+    def conferma(self, event=None):
+        """
+        Sposta, o Invio: le due polisportive e la cifra, se vanno; altrimenti l'avviso col perché, sul campo da correggere. La
+        cifra oltre la riserva di chi paga ha il suo suono, fondi_oltre_la_riserva.
+        """
+        da, a, cifra = self._scelta(self.da), self._scelta(self.a), self.cifra.GetValue()
+        problema = self.mondo.problema_sposta_fondi(da, a, cifra)
+        if problema:
+            scelte_buone = da is not None and a is not None and da is not a
+            oltre = scelte_buone and cifra >= 1
+            self.avvisa(problema, self.cifra if scelte_buone else self.a, "fondi_oltre_la_riserva" if oltre else "campo_da_correggere")
+            return
+        self.risultato = (da, a, cifra)
         self.chiudi(wx.ID_OK)
 
 

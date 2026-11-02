@@ -83,6 +83,12 @@ la paga la polisportiva attiva con quello che ha oltre la sua riserva, come dico
 problema_fondazione. fonda_polisportiva fa salire il contatore, e la chiusura di una polisportiva di pochi giorni, vuota e
 con la cassa ancora piena, lo riporta indietro di uno: il ripensamento di giorni_del_ripensamento. Il computer fonda come
 prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la quinta tranche di D40, Sposta fondi: sposta_fondi passa i soldi da una polisportiva dell'utente a
+un'altra, senza mosse e senza limiti di tempo, alle voci nuove dei conti, e problema_sposta_fondi e limite_dei_fondi non
+lasciano scendere chi paga sotto la sua riserva. E un allenatore licenziato da una polisportiva dell'utente non firma con le
+sue polisportive per 30 giorni simulati: licenzia_allenatore scrive il giorno della fine, problema_assunzione lo rifiuta con
+la frase di licenziato_dall_utente, e il computer lo assume come prima. Lo staff congedato da una chiusura non è licenziato.
+È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -122,6 +128,7 @@ from costanti import (
     FONDAZIONI_COL_CAPITALE,
     GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET,
     GIORNI_DEL_RIPENSAMENTO,
+    GIORNI_DOPO_IL_LICENZIAMENTO,
     GIORNI_PRELAZIONE,
     IMPORTANZA_MASSIMA,
     INTENSITA,
@@ -176,7 +183,7 @@ from economia import (
 from modelli import Giocatore, Polisportiva, conti_vuoti, normalizza_nome, probabilita_accettazione
 from nomi import genera_nome_casuale
 from premiazioni import posto_a_parole
-from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale, senza_raccolta
+from utilita import MESI, accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale, senza_raccolta
 
 ORE_PER_TICK = 8
 DURATA_TICK = datetime.timedelta(hours=ORE_PER_TICK)
@@ -246,6 +253,21 @@ def _silenzio(*_args, **_kwargs):
 
 def nome_completo(g):
     return f"{g.nome} {g.cognome}"
+
+
+def _chi_lo_ha_licenziato(a, giorno):
+    """
+    Decisione D40: la polisportiva che, secondo il diario dell'allenatore, l'ha licenziato il giorno dato, dalla voce scritta da
+    licenzia_allenatore; None se il diario non la ricorda.
+    """
+    prefisso = f"{accorda(a.sesso, 'Licenziato')} da "
+    for voce in a.diario:
+        testo = voce.get("testo")
+        if testo and testo.startswith(prefisso) and voce["data"].date() == giorno.date():
+            nome, trovato, _resto = testo[len(prefisso):].partition(", con una buonuscita di ")
+            if trovato:
+                return nome
+    return None
 
 
 def _con_le_cifre(buonuscita, altro, nome_altro):
@@ -805,8 +827,27 @@ class Mondo:
                 a.prelazione = a.prelazione_fino = None
         poli.staff = [0, 0, 0]
 
+    def licenziato_dall_utente(self, a):
+        """
+        Decisione D40: se l'allenatore, licenziato da una polisportiva dell'utente, oggi non firma con le sue polisportive, la
+        frase che lo dice, senza il punto finale, come quelle di problema_assunzione; altrimenti None. Il giorno del
+        licenziamento viene GIORNI_DOPO_IL_LICENZIAMENTO giorni prima della fine, e chi l'ha licenziato si legge nel suo diario;
+        se il diario non lo ricorda più, la frase dice una tua polisportiva. Lo staff congedato da una chiusura non è licenziato.
+        """
+        fino = a.escluso_dall_utente_fino
+        if fino is None or self.datetime_corrente_simulazione.date() >= fino.date():
+            return None
+        il_giorno = fino - datetime.timedelta(days=GIORNI_DOPO_IL_LICENZIAMENTO)
+        da = _chi_lo_ha_licenziato(a, il_giorno) or "una tua polisportiva"
+        return (f"{nome_completo(a)} è {accorda(a.sesso, 'stato')} {accorda(a.sesso, 'licenziato')} da {da} il {data_breve(il_giorno)}: "
+                f"non firma con le tue polisportive fino al {data_breve(fino)}")
+
     def problema_assunzione(self, poli, a, posto, ingaggio):
-        """Perché la polisportiva non può assumere l'allenatore nel posto con quell'ingaggio, o None se può."""
+        """
+        Perché la polisportiva non può assumere l'allenatore nel posto con quell'ingaggio, o None se può. Dalla decisione D40
+        una polisportiva dell'utente non assume chi una sua ha licenziato da meno di GIORNI_DOPO_IL_LICENZIAMENTO giorni; il
+        computer sì.
+        """
         if not 0 <= posto < modulo_staff.POSTI:
             return "quel posto dello staff non esiste"
         if poli.staff[posto]:
@@ -815,6 +856,8 @@ class Mondo:
             return f"{nome_completo(a)} allena già {a.polisportiva}"
         if a.prelazione is not None and a.prelazione != poli.nome:
             return f"fino al {data_breve(a.prelazione_fino)} {nome_completo(a)} può {'assumerla' if a.sesso == 'f' else 'assumerlo'} soltanto {a.prelazione}"
+        if not poli.is_cpu_controlled and (licenziato := self.licenziato_dall_utente(a)):
+            return licenziato
         if ingaggio > poli.cassa:
             return f"l'ingaggio di {scritta_in_euro(ingaggio)} supera la cassa, {scritta_in_euro(poli.cassa)}"
         return None
@@ -893,7 +936,10 @@ class Mondo:
         """
         La polisportiva licenzia l'allenatore a contratto in corso: usa una mossa, paga la buonuscita, metà
         degli stipendi che restano, come per i giocatori, e l'allenatore torna libero. Restituisce la
-        buonuscita; ValueError se non si può.
+        buonuscita; ValueError se non si può. Dalla decisione D40, quando lo licenzia una polisportiva dell'utente,
+        l'allenatore non firma con le sue polisportive per GIORNI_DOPO_IL_LICENZIAMENTO giorni, e il diario della
+        polisportiva lo dice; il diario dell'allenatore resta com'era, perché licenziato_dall_utente vi legge chi l'ha
+        licenziato.
         """
         problema = self.problema_licenziamento(poli, a)
         if problema:
@@ -902,8 +948,12 @@ class Mondo:
         oggi = data or self.datetime_corrente_simulazione
         buonuscita = self._paga_buonuscita(poli, a, oggi)
         nome_ruolo = modulo_staff.nome_del_ruolo(a)
+        lontano = ""
+        if not poli.is_cpu_controlled:
+            a.escluso_dall_utente_fino = oggi + datetime.timedelta(days=GIORNI_DOPO_IL_LICENZIAMENTO)
+            lontano = f" Fino al {data_breve(a.escluso_dall_utente_fino)} non firma con le tue polisportive."
         self._lascia_lo_staff(poli, a, oggi, f"{accorda(a.sesso, 'Licenziato')} da {poli.nome}, con una buonuscita di {scritta_in_euro(buonuscita)}.",
-                              f"Licenzia {nome_completo(a)}, {nome_ruolo}, con una buonuscita di {scritta_in_euro(buonuscita)}.")
+                              f"Licenzia {nome_completo(a)}, {nome_ruolo}, con una buonuscita di {scritta_in_euro(buonuscita)}.{lontano}")
         return buonuscita
 
     def problema_rinnovo_allenatore(self, poli, a, stipendio_offerto=None, mesi=None):
@@ -1180,6 +1230,71 @@ class Mondo:
         polisportiva dell'utente copre la chiusura di un'altra sua; non è la riserva degli allenatori, _riserva.
         """
         return sum(stipendio_pagato(g) + g.arretrati for g in self._rosa(poli)) + self.monte_dello_staff(poli)
+
+    # Sposta fondi, decisione D40, scelta di Gabriele al posto del movimento ogni 30 giorni: i soldi passano fra le polisportive
+    # dell'utente senza mosse e senza limiti di tempo, ma quella che paga non scende sotto la sua riserva.
+
+    def tue_polisportive(self):
+        """Le polisportive dell'utente, in ordine di nome."""
+        return sorted((p for p in self.polisportive.values() if not p.is_cpu_controlled), key=lambda p: p.nome.casefold())
+
+    def spostabile(self, poli):
+        """Quanto può uscire dalla polisportiva con Sposta fondi: la cassa oltre la sua riserva, mai meno di zero."""
+        return max(0, poli.cassa - self.riserva(poli))
+
+    def limite_dei_fondi(self, poli, chiesti=None):
+        """
+        La frase del limite di Sposta fondi per la polisportiva che paga: fino a quanto può spostare e perché non di più; con
+        chiesti, la cifra che supera il limite. La riserva è per il prossimo primo del mese: anche il primo del mese è quello
+        del mese seguente, perché i conti del giorno sono già fatti.
+        """
+        massimo = self.spostabile(poli)
+        primo = contratti.aggiungi_mesi(self.datetime_corrente_simulazione, 1)
+        debiti = "agli stipendi e agli arretrati" if any(g.arretrati for g in self._rosa(poli)) else "agli stipendi"
+        quando = f"{debiti} del primo {MESI[primo.month - 1]}"
+        if poli.cassa <= 0:
+            return f"Da {poli.nome} non puoi spostare niente: la sua cassa è vuota."
+        if not massimo:
+            return f"Da {poli.nome} non puoi spostare niente: la sua cassa, {scritta_in_euro(poli.cassa)}, serve tutta {quando}."
+        oltre = f", non {scritta_in_euro(chiesti)}" if chiesti else ""
+        if massimo == poli.cassa:
+            return f"Da {poli.nome} puoi spostare fino a {scritta_in_euro(massimo)}{oltre}: è tutta la cassa, perché il primo {MESI[primo.month - 1]} non deve niente."
+        return f"Da {poli.nome} puoi spostare fino a {scritta_in_euro(massimo)}{oltre}: il resto serve {quando}."
+
+    def problema_sposta_fondi(self, da, a, cifra):
+        """
+        Perché Sposta fondi non può passare la cifra dalla polisportiva da alla polisportiva a, oppure None, decisione D40: le due
+        devono essere dell'utente e diverse, la cifra di almeno un euro, e quella che paga non scende sotto la sua riserva, con
+        la frase di limite_dei_fondi.
+        """
+        if da is None or a is None:
+            return "Scegli da quale polisportiva e a quale spostare i fondi."
+        if da.is_cpu_controlled or a.is_cpu_controlled:
+            return "Sposta fondi passa soldi soltanto fra le tue polisportive."
+        if da is a:
+            return f"Da {da.nome} a {da.nome} non si sposta niente: scegli due polisportive diverse."
+        if cifra < 1:
+            return "La cifra deve essere di almeno 1 euro."
+        if cifra > self.spostabile(da):
+            return self.limite_dei_fondi(da, cifra)
+        return None
+
+    def sposta_fondi(self, da, a, cifra):
+        """
+        Sposta fondi, decisione D40: la cifra passa dalla cassa di da a quella di a, senza mosse, alle voci fondi_versati e
+        fondi_ricevuti dei loro conti del mese, con una voce nei due diari. ValueError col perché di problema_sposta_fondi se
+        non si può.
+        """
+        cifra = int(cifra)
+        problema = self.problema_sposta_fondi(da, a, cifra)
+        if problema:
+            raise ValueError(problema)
+        da.cassa -= cifra
+        a.cassa += cifra
+        da.conti_del_mese["fondi_versati"] += cifra
+        a.conti_del_mese["fondi_ricevuti"] += cifra
+        self.annota(da, f"Versa {scritta_in_euro(cifra)} a {a.nome}, con Sposta fondi.")
+        self.annota(a, f"Riceve {scritta_in_euro(cifra)} da {da.nome}, con Sposta fondi.")
 
     def sponsor(self, poli):
         """Lo sponsor del mese della polisportiva, con la sua rosa di oggi."""

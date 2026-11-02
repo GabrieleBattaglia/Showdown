@@ -10,6 +10,10 @@ cifra nei conti del mese, nella barra, nella scheda, nel bilancio e nei contratt
 La quarta tranche, le fondazioni: le prime due col capitale, dalla terza aperta a pagamento, pagate dalla polisportiva attiva
 oltre la sua riserva, il capitale dopo le chiusure e per chi riparte da zero, e il ripensamento, che vale soltanto per una
 polisportiva di pochi giorni, vuota e con la cassa ancora piena.
+La quinta tranche: Sposta fondi, che passa i soldi fra le tue polisportive senza mosse e senza limiti di tempo ma non sotto
+la riserva di chi paga, con le frasi del limite, le voci dei conti e i diari; e l'allenatore licenziato da una tua
+polisportiva, che per 30 giorni non firma con le tue, mentre il computer lo assume subito e lo staff di una chiusura non è
+licenziato.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -588,3 +592,155 @@ def test_il_ripensamento_non_vale_per_una_polisportiva_usata():
         assert "mai usata" not in testi.domanda_chiusura(p, mondo.piano_di_chiusura(p))
         mondo.chiudi_polisportiva(p)
     assert mondo.fondazioni_di_sempre == 5 and not mondo.polisportive
+
+
+# Sposta fondi, quinta tranche.
+
+def test_sposta_fondi_passa_i_soldi_oltre_la_riserva():
+    mondo, _cpu, bologna, milano = _mondo()
+    riserva = mondo.riserva(bologna)
+    spostabile = 20_000 - riserva
+    assert 0 < riserva < 20_000 and mondo.spostabile(bologna) == spostabile
+    limite = f"Da Pat-Bologna puoi spostare fino a {_euro(spostabile)}: il resto serve agli stipendi del primo novembre."
+    assert mondo.limite_dei_fondi(bologna) == limite
+    # Oltre la riserva non si sposta, e niente cambia.
+    assert mondo.problema_sposta_fondi(bologna, milano, spostabile + 1) == (
+        f"Da Pat-Bologna puoi spostare fino a {_euro(spostabile)}, non {_euro(spostabile + 1)}: il resto serve agli stipendi del primo novembre.")
+    with pytest.raises(ValueError, match="puoi spostare fino a"):
+        mondo.sposta_fondi(bologna, milano, spostabile + 1)
+    assert bologna.cassa == 20_000 and milano.cassa == 8_000 and bologna.diario[0]["testo"] == milano.diario[0]["testo"] == "Fondata."
+    # Fino alla riserva sì: le due casse, le voci dei conti, i diari, e nessuna mossa.
+    mondo.sposta_fondi(bologna, milano, spostabile)
+    assert bologna.cassa == riserva and milano.cassa == 8_000 + spostabile
+    assert bologna.conti_del_mese["fondi_versati"] == spostabile and milano.conti_del_mese["fondi_ricevuti"] == spostabile
+    assert bologna.conti_del_mese["fondi_ricevuti"] == milano.conti_del_mese["fondi_versati"] == 0
+    assert bologna.movimenti_oggi == milano.movimenti_oggi == 0
+    assert bologna.diario[0]["testo"] == f"Versa {_euro(spostabile)} a Pat-Milano, con Sposta fondi."
+    assert milano.diario[0]["testo"] == f"Riceve {_euro(spostabile)} da Pat-Bologna, con Sposta fondi."
+    assert mondo.limite_dei_fondi(bologna) == f"Da Pat-Bologna non puoi spostare niente: la sua cassa, {_euro(riserva)}, serve tutta agli stipendi del primo novembre."
+    # Il bilancio e la barra li contano: per chi riceve un'entrata, per chi versa un'uscita.
+    assert f"fondi ricevuti dalle tue polisportive {_euro(spostabile)}" in testi.bilancio(milano, mondo)
+    assert f"fondi versati alle tue polisportive {_euro(spostabile)}" in testi.bilancio(bologna, mondo)
+    assert barra._saldo(milano.conti_del_mese) == spostabile and barra._saldo(bologna.conti_del_mese) == -spostabile
+    # Nessun limite di tempo: i soldi tornano subito indietro, quelli che Milano ha oltre la sua riserva.
+    mondo.sposta_fondi(milano, bologna, 1_000)
+    assert bologna.cassa == riserva + 1_000 and bologna.conti_del_mese["fondi_ricevuti"] == 1_000
+    # Il primo del mese chi ha pagato paga tutti, e i conti vanno nel bilancio.
+    primo = datetime.datetime(2026, 11, 1, 9, 0)
+    mondo._primo_del_mese(primo, Mondo.rapporto_vuoto(primo))
+    assert not any(mondo.giocatori[gid].arretrati for gid in bologna.tesserati)
+    assert bologna.bilanci[0]["fondi_versati"] == spostabile and bologna.bilanci[0]["fondi_ricevuti"] == 1_000
+    assert bologna.conti_del_mese["fondi_versati"] == 0
+    # Il primo del mese i conti sono già fatti: la riserva è per il primo del mese dopo.
+    mondo.datetime_corrente_simulazione = primo
+    assert mondo.limite_dei_fondi(milano).endswith("serve agli stipendi del primo dicembre.")
+
+
+def test_le_frasi_e_i_rifiuti_di_sposta_fondi():
+    mondo, cpu, bologna, milano = _mondo()
+    roma = polisportiva(mondo, "Pat-Roma", cpu=False, cassa=20_000)
+    assert [p.nome for p in mondo.tue_polisportive()] == ["Pat-Bologna", "Pat-Milano", "Pat-Roma"]
+    # Senza stipendi da pagare si sposta tutta la cassa.
+    assert mondo.riserva(roma) == 0 and mondo.limite_dei_fondi(roma) == (
+        "Da Pat-Roma puoi spostare fino a 20.000 euro: è tutta la cassa, perché il primo novembre non deve niente.")
+    # Gli arretrati entrano nella riserva, e la frase li dice.
+    mondo.giocatori[12].arretrati = 500
+    assert mondo.limite_dei_fondi(milano).endswith(": il resto serve agli stipendi e agli arretrati del primo novembre.")
+    roma.cassa = 0
+    assert mondo.limite_dei_fondi(roma) == "Da Pat-Roma non puoi spostare niente: la sua cassa è vuota."
+    assert mondo.problema_sposta_fondi(roma, bologna, 1) == "Da Pat-Roma non puoi spostare niente: la sua cassa è vuota."
+    assert mondo.problema_sposta_fondi(bologna, bologna, 100) == "Da Pat-Bologna a Pat-Bologna non si sposta niente: scegli due polisportive diverse."
+    assert mondo.problema_sposta_fondi(bologna, milano, 0) == "La cifra deve essere di almeno 1 euro."
+    assert mondo.problema_sposta_fondi(bologna, cpu, 100) == mondo.problema_sposta_fondi(cpu, bologna, 100) == (
+        "Sposta fondi passa soldi soltanto fra le tue polisportive.")
+    assert mondo.problema_sposta_fondi(None, bologna, 100) == "Scegli da quale polisportiva e a quale spostare i fondi."
+    assert mondo.problema_sposta_fondi(bologna, milano, 100) is None
+    # Le frasi della finestra.
+    assert testi.sposta_fondi_non_disponibile(1) == "Sposta fondi passa i soldi fra le tue polisportive, e ne hai una sola: fondane un'altra con Ctrl+N."
+    assert testi.sposta_fondi_non_disponibile(0) == "Sposta fondi passa i soldi fra le tue polisportive, e non ne hai nessuna: fondane una con Ctrl+N."
+    assert testi.riga_dei_fondi(bologna, mondo) == "Pat-Bologna, attiva, in cassa 20.000 euro"
+    assert testi.riga_dei_fondi(milano, mondo) == "Pat-Milano, in cassa 8.000 euro"
+    mondo.sposta_fondi(bologna, milano, 2_000)
+    assert testi.fondi_spostati(bologna, milano, 2_000) == ("Spostati 2.000 euro da Pat-Bologna a Pat-Milano. Ora Pat-Bologna ha in cassa 18.000 euro, "
+                                                            "e Pat-Milano 10.000 euro.")
+
+
+def test_fondare_e_portare_via_il_capitale_non_annulla_la_fondazione():
+    # Il ripensamento vuole la cassa ancora piena: chi sposta altrove il capitale della nuova non riavrà il capitale dopo.
+    mondo = mondo_di_prova(20, 20)
+    prima = mondo.fonda_polisportiva("Pat-Bologna")
+    seconda = mondo.fonda_polisportiva("Pat-Milano")
+    mondo.sposta_fondi(seconda, prima, mondo.spostabile(seconda))
+    assert prima.cassa == 40_000 and seconda.cassa == 0 and mondo.giorni_del_ripensamento(seconda) is None
+    mondo.chiudi_polisportiva(seconda)
+    assert mondo.fondazioni_di_sempre == 2 and mondo.conto_della_fondazione().capitale == 0
+
+
+# L'allenatore licenziato, quinta tranche.
+
+def _frase_del_licenziamento(a, da, il_giorno, fino):
+    return (f"{_nome(a)} è {testi.accorda(a, 'stato')} {testi.accorda(a, 'licenziato')} da {da} il {il_giorno}: "
+            f"non firma con le tue polisportive fino al {fino}")
+
+
+def test_l_allenatore_licenziato_non_firma_con_le_tue_per_30_giorni():
+    mondo, _cpu, bologna, milano = _mondo()
+    a = _con_lo_staff(mondo, bologna)
+    assert testi.domanda_licenziamento(a, bologna, mondo).endswith(" Per 30 giorni non firmerà con nessuna delle tue polisportive.")
+    buonuscita = mondo.licenzia_allenatore(bologna, a)
+    assert a.libero and a.escluso_dall_utente_fino == OGGI + datetime.timedelta(days=30)
+    assert testi.esito_licenziamento(a, bologna, buonuscita).endswith(" Fino al 4 novembre 2026 non firma con le tue polisportive.")
+    assert bologna.diario[0]["testo"].endswith("Fino al 4 novembre 2026 non firma con le tue polisportive.")
+    frase = _frase_del_licenziamento(a, "Pat-Bologna", "5 ottobre 2026", "4 novembre 2026")
+    assert mondo.licenziato_dall_utente(a) == frase
+    # Nessuna tua polisportiva lo assume, nemmeno quella che l'ha licenziato.
+    for poli in (milano, bologna):
+        assert mondo.problema_assunzione(poli, a, 1, 0) == frase
+        assert mondo.problema_offerta_allenatore(poli, a, 1) == f"{frase}."
+        with pytest.raises(ValueError, match="non firma con le tue polisportive"):
+            mondo.assumi_allenatore(poli, a, 1)
+    # Il mercato lo dice sulla riga e nella scheda, e l'offerta ha il suo perché, prima del posto e della cassa.
+    riga = next(r for r in mercato.Memoria(mondo).righe_di(mercato.ALLENATORI) if r.persona is a)
+    milano.staff = [99, 98, 97]
+    milano.cassa = 0
+    assert mercato.offerta_possibile(mondo, milano, riga) == (mercato.INGAGGIO_ALLENATORE, f"{frase}.", mercato.ALLENATORE_ESCLUSO)
+    milano.staff = [0, 0, 0]
+    milano.cassa = 8_000
+    assert "non firma con le tue polisportive fino al 4 novembre 2026" in testi.riga_allenatore(a, mondo)
+    assert f"\n{frase}.\n" in testi.scheda_allenatore(a, mondo)
+    # Se il diario non ricorda più chi l'ha licenziato, la frase dice una tua polisportiva.
+    diario = a.diario
+    a.diario = []
+    assert mondo.licenziato_dall_utente(a) == _frase_del_licenziamento(a, "una tua polisportiva", "5 ottobre 2026", "4 novembre 2026")
+    a.diario = diario
+    # Il ventinovesimo giorno ancora no, il trentesimo sì.
+    mondo.datetime_corrente_simulazione = OGGI + datetime.timedelta(days=29)
+    assert mondo.problema_assunzione(milano, a, 1, 0) == frase
+    mondo.datetime_corrente_simulazione = OGGI + datetime.timedelta(days=30)
+    assert mondo.licenziato_dall_utente(a) is None and mondo.problema_assunzione(milano, a, 1, 0) is None
+    assert "non firma con le tue" not in testi.riga_allenatore(a, mondo) and "non firma con le tue" not in testi.scheda_allenatore(a, mondo)
+    assert mercato.offerta_possibile(mondo, milano, riga).motivo is None
+    mondo.assumi_allenatore(milano, a, 1)
+    assert a.polisportiva == "Pat-Milano"
+
+
+def test_il_computer_assume_subito_e_la_chiusura_non_licenzia():
+    mondo, cpu, bologna, milano = _mondo()
+    a = _con_lo_staff(mondo, bologna)
+    mondo.licenzia_allenatore(bologna, a)
+    # Il computer lo vede e lo assume subito, come prima.
+    assert mondo._visibile_al_computer(a) and mondo.problema_assunzione(cpu, a, 0, 0) is None
+    mondo.assumi_allenatore(cpu, a, 0, OGGI)
+    assert a.polisportiva == cpu.nome
+    # Se poi lo licenzia anche il computer, i 30 giorni dell'utente restano; chi licenzia soltanto il computer non è tenuto
+    # lontano dalle tue polisportive.
+    mondo.licenzia_allenatore(cpu, a)
+    assert a.escluso_dall_utente_fino == OGGI + datetime.timedelta(days=30) and mondo.licenziato_dall_utente(a)
+    b = _con_lo_staff(mondo, cpu)
+    mondo.licenzia_allenatore(cpu, b)
+    assert b.escluso_dall_utente_fino is None and mondo.problema_assunzione(milano, b, 0, 0) is None
+    # Lo staff che se ne va per la chiusura di una tua polisportiva non è licenziato.
+    roma = polisportiva(mondo, "Pat-Roma", cpu=False, cassa=20_000)
+    c = _con_lo_staff(mondo, roma)
+    mondo.chiudi_polisportiva(roma)
+    assert c.libero and c.escluso_dall_utente_fino is None and mondo.problema_assunzione(bologna, c, 0, 0) is None

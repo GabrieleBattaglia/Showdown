@@ -74,6 +74,9 @@ Dal 2 novembre 2026, con la decisione D40, un tuo tesserato in vendita da un'alt
 ha costo, e chi è convocato in una sfida accettata o sta nella rosa di una Coppa non si compra e non riceve offerte
 d'acquisto: offerta_possibile lo dice coi perché vendita_fra_tue e convocato_bloccato, ciascuno col suo suono, prima della
 cassa vuota, che non li toglierebbe. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la quinta tranche di D40, un allenatore licenziato da una tua polisportiva non firma con le tue per 30
+giorni simulati: offerta_possibile lo dice col perché allenatore_escluso e il suo suono, prima del posto e della cassa, e la
+riga lo dice. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -806,6 +809,9 @@ NESSUNA_POLISPORTIVA_ATTIVA = "nessuna_polisportiva_attiva"
 # squadre non si compra fino alla partita.
 VENDITA_FRA_TUE = "vendita_fra_tue"
 CONVOCATO_BLOCCATO = "convocato_bloccato"
+# Il perché della quinta tranche di D40, col suo suono: l'allenatore licenziato da una tua polisportiva non firma con le tue
+# per 30 giorni simulati.
+ALLENATORE_ESCLUSO = "allenatore_escluso"
 
 
 def _nome(persona):
@@ -831,6 +837,11 @@ def _offerta_all_allenatore(mondo, poli, riga, posto):
     a = riga.persona
     if not a.libero:
         return Possibile(None, f"{_nome(a)} allena già {a.polisportiva}: non si possono fare offerte.", OFFERTA_NON_POSSIBILE)
+    # Decisione D40: chi una tua polisportiva ha licenziato non firma con le tue per 30 giorni, un divieto che viene prima
+    # del posto e della cassa.
+    licenziato = mondo.licenziato_dall_utente(a)
+    if licenziato:
+        return Possibile(INGAGGIO_ALLENATORE, f"{licenziato}.", ALLENATORE_ESCLUSO)
     if posto is None:
         posto = next((i for i, numero in enumerate(poli.staff) if not numero), None)
         if posto is None:
@@ -861,7 +872,8 @@ def offerta_possibile(mondo, poli, riga, posto=None):
     mondo si controlla la cassa vuota. Dalla decisione D40 un tuo tesserato in vendita da un'altra tua
     polisportiva non si compra, col perché vendita_fra_tue, e chi è convocato in una gara a squadre non si
     compra e non riceve offerte d'acquisto, col perché convocato_bloccato: sono divieti che nessuna cassa
-    toglie, e vengono prima della cassa vuota.
+    toglie, e vengono prima della cassa vuota. Dalla quinta tranche di D40 anche l'allenatore che una tua
+    polisportiva ha licenziato da meno di 30 giorni, col perché allenatore_escluso, prima del posto e della cassa.
     """
     if poli is None:
         return _senza_attiva("le offerte le fa la polisportiva attiva")

@@ -8,6 +8,8 @@ migrazione dal 10, che aggiunge soltanto, su un mondo piccolo come quello di Gab
 copia di sicurezza, che al primo salvataggio dopo la migrazione si scrive anche lei nel formato nuovo, perché una
 macchina col codice di prima non ripieghi su una copia del 10 coprendo il mondo. E il formato più recente, dal 12, che
 ferma il caricamento senza ripiego, senza copie messe da parte e senza toccare i file.
+Dalla quinta tranche di D40 la migrazione aggiunge anche le due voci dei conti di Sposta fondi, a zero, nel mese in corso e
+nei bilanci.
 """
 
 import datetime
@@ -17,12 +19,12 @@ import os
 import random
 
 import pytest
-from aiuti_formati import CAMPI_ALLENATORE_DEL_FORMATO_11, CAMPI_DEL_FORMATO_11, CAMPI_MONDO_DEL_FORMATO_11, al_formato_10
+from aiuti_formati import CAMPI_ALLENATORE_DEL_FORMATO_11, CAMPI_DEL_FORMATO_11, CAMPI_MONDO_DEL_FORMATO_11, VOCI_DEL_FORMATO_11, al_formato_10
 
 import archivio
 import cartella_del_mondo as cdm
 from costanti import FILE_MONDO, FILE_MONDO_COPIA
-from modelli import Polisportiva
+from modelli import Polisportiva, conti_vuoti
 from mondo import Mondo
 
 INIZIO = datetime.datetime(2026, 10, 24, 9, 0)
@@ -150,6 +152,8 @@ def test_i_campi_nuovi_non_validi_si_rifiutano(dove, campo, valore):
 
 def test_la_migrazione_dal_formato_10_aggiunge_soltanto():
     m = _mondo_con_due_polisportive()
+    # Un mese già chiuso, perché le voci nuove dei conti arrivino anche nei bilanci.
+    m.polisportive["Magnavacca"].bilanci = [{"data": INIZIO, "cassa": 1_000, **conti_vuoti(), "sponsor": 1_500}]
     vecchio = al_formato_10(archivio.componi(m))
     aggiornato = json.loads(json.dumps(vecchio))
     archivio.MIGRAZIONI[10](aggiornato)
@@ -158,6 +162,10 @@ def test_la_migrazione_dal_formato_10_aggiunge_soltanto():
     assert aggiornato["mondo"]["fondazioni_di_sempre"] == 2
     assert all(g["tesserato_dal"] is None for g in aggiornato["mondo"]["giocatori"])
     assert len(aggiornato["mondo"]["allenatori"]) == 3 and all(a["escluso_dall_utente_fino"] is None for a in aggiornato["mondo"]["allenatori"])
+    # Dalla quinta tranche le voci dei conti di Sposta fondi, a zero nel mese in corso e in ogni bilancio.
+    polisportive = aggiornato["mondo"]["polisportive"].values()
+    assert all(conti[voce] == 0 for p in polisportive for conti in (p["conti_del_mese"], *p["bilanci"]) for voce in VOCI_DEL_FORMATO_11)
+    assert any(p["bilanci"] for p in polisportive)
     # Tolti i campi nuovi, il documento è quello di prima.
     for campo in CAMPI_MONDO_DEL_FORMATO_11:
         del aggiornato["mondo"][campo]
@@ -165,6 +173,10 @@ def test_la_migrazione_dal_formato_10_aggiunge_soltanto():
         for voce in aggiornato["mondo"][chi]:
             for campo in campi:
                 del voce[campo]
+    for p in polisportive:
+        for conti in (p["conti_del_mese"], *p["bilanci"]):
+            for voce in VOCI_DEL_FORMATO_11:
+                del conti[voce]
     assert aggiornato["mondo"] == vecchio["mondo"]
     assert set(archivio.MIGRAZIONI) == set(range(1, archivio.FORMATO))
 

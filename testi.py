@@ -120,6 +120,10 @@ Lo stesso giorno, con la quarta tranche di D40, le parole delle fondazioni: il c
 dice prima del nome, gratis o quanto costa e chi la paga, con quanta cassa parte la nuova; l'esito con la cassa vuota e chi
 ha pagato; e il ripensamento, nella domanda e nell'esito della chiusura. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la quinta tranche di D40, le parole di Sposta fondi: perché non c'è con una polisportiva sola, le
+righe delle due scelte del dialogo e l'esito con le due casse; nel bilancio i fondi ricevuti e quelli versati. E l'allenatore
+licenziato da una tua polisportiva, che per 30 giorni non firma con le tue: la domanda e l'esito del licenziamento, la riga
+del mercato e la scheda lo dicono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -160,6 +164,7 @@ from costanti import (
     FASCE_TEMPERAMENTO,
     FILE_MONDO,
     GIOCATORI_AL_TAVOLO,
+    GIORNI_DOPO_IL_LICENZIAMENTO,
     INDOLI,
     LIMITE_MOVIMENTI_PER_TICK,
     MAX_TESSERATI_POLISPORTIVA,
@@ -882,6 +887,9 @@ def riga_allenatore(a, mondo, ordine=None):
         testa.append(f"numero {a.numero}")
     if a.prelazione:
         coda.append(f"in prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}")
+    # Dalla decisione D40: licenziato da una tua polisportiva, per 30 giorni non firma con le tue.
+    if mondo.licenziato_dall_utente(a):
+        coda.append(f"non firma con le tue polisportive fino al {data_breve(a.escluso_dall_utente_fino)}")
     if a.riservato_fino is not None and a.riservato_fino > adesso_utc():
         coda.append(f"{'riservata' if a.sesso == 'f' else 'riservato'} a te fino alle {in_ora_locale(a.riservato_fino):%H:%M}")
     coda.append(regione_del_comune(a.luogo))
@@ -916,6 +924,9 @@ def scheda_allenatore(a, mondo):
                      f"{euro(staff.stipendio_richiesto(a, staff.ASSISTENTE))} da assistente.")
     if a.prelazione:
         righe.append(f"In prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}.")
+    # Dalla decisione D40: licenziato da una tua polisportiva, per 30 giorni non firma con le tue.
+    if licenziato := mondo.licenziato_dall_utente(a):
+        righe.append(f"{licenziato}.")
     # Dal collaudo del 23 ottobre 2026 l'anno del calendario simulato, con le parole di Gabriele, al posto di
     # "Smetterà di allenare fra circa 30 anni simulati". Il giro del giorno in cui compie eta_fine lo toglie
     # dal mondo, quindi l'ultimo giorno in attività è quello prima: conta per chi smette il primo gennaio.
@@ -1034,19 +1045,27 @@ def esito_rinnovo_staff(a, p, accettato, richiesta, mesi):
 
 
 def domanda_licenziamento(a, p, mondo):
-    """La domanda del licenziamento, con la buonuscita e la mossa."""
+    """
+    La domanda del licenziamento, con la buonuscita e la mossa. Dalla decisione D40, per una tua polisportiva, anche i giorni
+    in cui l'allenatore non firmerà con le tue polisportive.
+    """
     buonuscita = contratti.buonuscita(a, mondo.datetime_corrente_simulazione)
     costo = f"la buonuscita è di {euro(buonuscita)}" if buonuscita else "non c'è buonuscita"
     fine = f"Il contratto finirebbe il {data_breve(a.contratto_scadenza)}"
     if contratti.ha_rinnovo(a):
         fine += f", e il rinnovo già concordato il {data_breve(a.rinnovo_scadenza)}"
+    lontano = "" if p.is_cpu_controlled else f" Per {GIORNI_DOPO_IL_LICENZIAMENTO} giorni non firmerà con nessuna delle tue polisportive."
     return (f"Licenziare {nome_completo(a)}, {staff.nome_del_ruolo(a)} di {p.nome}? {fine}: "
-            f"{costo}. Tornerà {accorda_sesso(a.sesso, 'libero')}, e userai {_mossa(p, mondo)}.")
+            f"{costo}. Tornerà {accorda_sesso(a.sesso, 'libero')}, e userai {_mossa(p, mondo)}.{lontano}")
 
 
 def esito_licenziamento(a, p, buonuscita):
+    """L'esito del licenziamento; dalla decisione D40, per una tua polisportiva, anche fino a quando non firma con le tue."""
     con = f", con una buonuscita di {euro(buonuscita)}" if buonuscita else ""
-    return f"{nome_completo(a)} non è più nello staff di {p.nome}{con}: è {accorda_sesso(a.sesso, 'libero')}."
+    lontano = ""
+    if not p.is_cpu_controlled and a.escluso_dall_utente_fino is not None:
+        lontano = f" Fino al {data_breve(a.escluso_dall_utente_fino)} non firma con le tue polisportive."
+    return f"{nome_completo(a)} non è più nello staff di {p.nome}{con}: è {accorda_sesso(a.sesso, 'libero')}.{lontano}"
 
 
 def voce_del_posto(p, posto, mondo):
@@ -1236,7 +1255,9 @@ def _voci_di_un_mese(conti):
     """Le voci diverse da zero dei conti di un mese, a parole."""
     nomi = (("sponsor", "sponsor"), ("vendite", "vendite"), ("stipendi", "stipendi"), ("arretrati", "arretrati pagati"),
             ("ingaggi", "ingaggi"), ("acquisti", "acquisti"), ("buonuscite", "buonuscite"), ("iscrizioni", "iscrizioni ai tornei"),
-            ("premi", "premi dei tornei"), ("rimborsi", "rimborsi delle iscrizioni"), ("staff", "stipendi dello staff"))
+            ("premi", "premi dei tornei"), ("rimborsi", "rimborsi delle iscrizioni"), ("staff", "stipendi dello staff"),
+            # Dalla decisione D40 i soldi di Sposta fondi.
+            ("fondi_ricevuti", "fondi ricevuti dalle tue polisportive"), ("fondi_versati", "fondi versati alle tue polisportive"))
     return unisci([f"{nome} {euro(conti[voce])}" for voce, nome in nomi if conti[voce]]) or "nessun movimento"
 
 
@@ -1352,6 +1373,26 @@ def fondata(p, mondo, conto=None):
     elif conto is not None and not conto.capitale:
         conto_detto = ", con la cassa vuota"
     return f"Hai fondato {p.nome}{protetta}{conto_detto}.{attiva}\n{scheda_polisportiva(p, mondo)}"
+
+
+# Sposta fondi, decisione D40.
+
+def sposta_fondi_non_disponibile(quante):
+    """Perché Sposta fondi non c'è, con quante polisportive ha l'utente: ne servono almeno due."""
+    if quante:
+        return "Sposta fondi passa i soldi fra le tue polisportive, e ne hai una sola: fondane un'altra con Ctrl+N."
+    return "Sposta fondi passa i soldi fra le tue polisportive, e non ne hai nessuna: fondane una con Ctrl+N."
+
+
+def riga_dei_fondi(p, mondo):
+    """Una polisportiva nelle due scelte di Sposta fondi: il nome, se è attiva, e la cassa."""
+    attiva = ", attiva" if p is mondo.miapolisportiva_attiva else ""
+    return f"{p.nome}{attiva}, in cassa {euro(p.cassa)}"
+
+
+def fondi_spostati(da, a, cifra):
+    """L'esito di Sposta fondi: la cifra, da dove e dove, e le due casse di adesso."""
+    return f"Spostati {euro(cifra)} da {da.nome} a {a.nome}. Ora {da.nome} ha in cassa {euro(da.cassa)}, e {a.nome} {euro(a.cassa)}."
 
 
 def info_mercato(p, mondo):

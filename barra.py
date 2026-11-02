@@ -24,6 +24,8 @@ dati, e dato_alla_colonna dice quale dato sta sotto una colonna. È di Gabriele 
 Dal 2 novembre 2026, con la decisione D40, lo sponsor della polisportiva attiva paga la gloria per i tesserati in attività
 su 15: Spo e i dati che lo usano lo leggono da Mondo.sponsor, come i conti del mese, e la spiegazione di Spo lo dice. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la quinta tranche di D40, i fondi ricevuti con Sposta fondi sono un'entrata, e quelli versati
+un'uscita: Flu e Bil li contano. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import dataclasses
@@ -68,8 +70,9 @@ RINFRESCO = "rinfresco"
 COMANDO = "comando"
 # Il rinfresco della barra, in millesimi: ogni minuto simulato, cioè ogni 20 secondi veri, così l'ora non resta indietro.
 RINFRESCO_MILLESIMI = 20_000
-# Le voci dei conti di un mese che entrano nella cassa; tutte le altre ne escono.
-ENTRATE = ("sponsor", "vendite", "premi", "rimborsi")
+# Le voci dei conti di un mese che entrano nella cassa; tutte le altre ne escono. Dalla decisione D40 anche i fondi
+# ricevuti da un'altra polisportiva dell'utente con Sposta fondi.
+ENTRATE = ("sponsor", "vendite", "premi", "rimborsi", "fondi_ricevuti")
 # Il tetto dei primi del mese senza stipendio che la pazienza conta: oltre, nessuno se ne va, e il dato dice no.
 MESI_DI_PAZIENZA_CONTATI = 1200
 NO = "no"
@@ -790,7 +793,7 @@ _DATI = (
          "Le quote d'iscrizione ai tornei pagate nel mese, rimborsi tolti.", "Quo:30", _quote_del_mese),
     Dato("premi_del_mese", "Vin", "vincite del mese", SOLDI, DELL_ATTIVA, "Le vincite, cioè i premi dei tornei del mese.", "Vin:38", _premi_del_mese),
     Dato("movimenti_del_mese", "Flu", "flusso del mese", SOLDI, DELL_ATTIVA,
-         "Il flusso del mese in corso, le entrate meno le uscite fin qui, cioè mercato e tornei. Sponsor e stipendi non ci sono, perché il "
+         "Il flusso del mese in corso, le entrate meno le uscite fin qui, cioè mercato, tornei e Sposta fondi. Sponsor e stipendi non ci sono, perché il "
          "primo del mese entrano nel mese che si chiude.", "Flu:-13.360", _movimenti_del_mese),
     Dato("bilancio_ultimo_mese", "Bil", "bilancio dell'ultimo mese", SOLDI, DELL_ATTIVA,
          "Il bilancio dell'ultimo mese chiuso, le entrate meno le uscite; no finché nessun mese si è chiuso.", "Bil:-2.626", _bilancio_ultimo_mese),
