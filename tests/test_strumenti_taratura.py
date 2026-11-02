@@ -268,6 +268,24 @@ def test_lo_scenario_dell_utente_spende_con_la_regola_della_1_60_11():
     assert differenza == pytest.approx((18_500 - costanti.SOGLIA_CASSA_PIENA_CPU) / costanti.MESI_CASSA_PIENA_CPU) and differenza > 1000
 
 
+def test_lo_scenario_dell_utente_stima_lo_sponsor_con_la_gloria_del_posto_nuovo(monkeypatch):
+    # Decisione D40: la polisportiva dell'utente nasce vuota e lo sponsor le paga la gloria per i tesserati su 15. Lo
+    # scenario, prima di tesserare, stima lo sponsor con la rosa che avrà, gloria del posto nuovo compresa.
+    from aiuti_calendario import mondo_di_prova
+
+    import economia
+
+    mondo = mondo_di_prova(10, 10)
+    scenario = sl.ScenarioUtente(1, 7)
+    scenario.poli = mondo.fonda_polisportiva(sl.NOME_UTENTE, attiva=True)
+    stime = []
+    monkeypatch.setattr(sl, "spesa_mensile_utente", lambda sponsor, _cassa: stime.append(sponsor) or 0)
+    scenario._tessera(mondo)
+    primo = next(g for g in mondo.trova_giocatori_liberi_ordinati().values() if g.puo_giocare and g.eta_anni <= sl.ETA_MASSIMA_UTENTE)
+    assert mondo.sponsor(scenario.poli) == 0 and not scenario.poli.tesserati
+    assert stime[0] == economia.sponsor_mensile(scenario.poli, [primo]) > economia.arrotonda(costanti.QUOTA_SPONSOR_SUL_VALORE * economia.valore_di_mercato_pieno(primo))
+
+
 def test_la_simulazione_salva_il_mondo_alla_fine(tmp_path, monkeypatch):
     # Con salva la simulazione scrive il mondo e lo stato del caso, per misurare il giorno a regime;
     # il mondo riletto ha gli stessi giocatori, e il caso di chi chiama resta com'era.

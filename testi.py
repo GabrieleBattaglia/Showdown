@@ -110,6 +110,9 @@ Dal 2 novembre 2026, con la prima tranche dei rimedi della decisione D40, le par
 domanda dice quanto costa chiudere, fra buonuscite e arretrati dei tesserati e buonuscite e stipendi maturati dello staff,
 chi paga che cosa e quanta cassa va persa, e l'esito quanto è costata; la domanda e l'esito dello svincolo dicono anche
 gli arretrati, che lo svincolo salda. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la seconda tranche di D40, lo sponsor di una tua polisportiva con la rosa non piena: la scheda e la
+testata dei contratti dicono per quanti tesserati è pagata la gloria, e il bilancio anche quanto costa un posto vuoto. È
+di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -152,6 +155,7 @@ from costanti import (
     GIOCATORI_AL_TAVOLO,
     INDOLI,
     LIMITE_MOVIMENTI_PER_TICK,
+    MAX_TESSERATI_POLISPORTIVA,
     MAX_TOTALE_PRECISIONE_RESISTENZA,
     MAX_TOTALE_SKILL_GIOCO,
     NOME_ATTR_TO_DISPLAY_MAP,
@@ -1130,6 +1134,39 @@ def lista_usciti(mondo):
 
 # Le polisportive.
 
+def gloria_dello_sponsor(p, mondo):
+    """
+    Decisione D40: per una tua polisportiva con dei posti senza un tesserato in attività, come lo sponsor paga la gloria,
+    con la gloria pagata per 8 tesserati su 15; vuoto per il computer e per la rosa piena.
+    """
+    attivi = mondo.tesserati_nello_sponsor(p)
+    if attivi is None or attivi >= MAX_TESSERATI_POLISPORTIVA:
+        return ""
+    if not attivi:
+        return "senza la gloria, perché non ha tesserati"
+    return f"con la gloria pagata per {conta(attivi, 'tesserato', 'tesserati')} su {MAX_TESSERATI_POLISPORTIVA}"
+
+
+def _sponsor_al_mese(p, mondo):
+    """Lo sponsor del mese a parole, 1.800 euro al mese, e per una tua polisportiva con la rosa non piena per quanti è pagata la gloria."""
+    gloria = gloria_dello_sponsor(p, mondo)
+    return f"{euro(mondo.sponsor(p))} al mese" + (f", {gloria}" if gloria else "")
+
+
+def posti_vuoti_nello_sponsor(p, mondo):
+    """
+    Decisione D40, nel bilancio di una tua polisportiva con la rosa non piena: per quanti tesserati lo sponsor paga la
+    gloria e quanto costa al mese un posto vuoto; vuoto per il computer e per la rosa piena.
+    """
+    attivi = mondo.tesserati_nello_sponsor(p)
+    if attivi is None or attivi >= MAX_TESSERATI_POLISPORTIVA:
+        return ""
+    posto = euro(economia.gloria_di_un_posto(p))
+    if not attivi:
+        return f"Senza tesserati lo sponsor non paga la gloria: ogni posto vuoto costa {posto} al mese."
+    return f"Lo sponsor paga la gloria per {conta(attivi, 'tesserato', 'tesserati')} su {MAX_TESSERATI_POLISPORTIVA}: ogni posto vuoto costa {posto} al mese."
+
+
 def scheda_polisportiva(p, mondo):
     """La scheda di una polisportiva, nello stile delle schede di Terminal Beast."""
     righe = [f"[{'COMPUTER' if p.is_cpu_controlled else 'TUA'}] {p.nome} | Gloria: {p.gloria} | Tesserati: {len(p.tesserati)} su {p.maxtesserati} | Valore collettivo: {numero(p.indicecollettivotesserati)}"]
@@ -1143,7 +1180,7 @@ def scheda_polisportiva(p, mondo):
     righe.append(mosse)
     righe.append("[CONTI]")
     arretrati = sum(mondo.giocatori[gid].arretrati for gid in p.tesserati if gid in mondo.giocatori)
-    conti = f"Cassa: {euro(p.cassa)} | Sponsor: {euro(mondo.sponsor(p))} al mese | Stipendi: {euro(mondo.monte_stipendi(p))} al mese"
+    conti = f"Cassa: {euro(p.cassa)} | Sponsor: {_sponsor_al_mese(p, mondo)} | Stipendi: {euro(mondo.monte_stipendi(p))} al mese"
     if arretrati:
         conti += f" | Arretrati da pagare: {euro(arretrati)}"
     righe.append(conti)
@@ -1203,6 +1240,9 @@ def bilancio(p, mondo):
     righe = [f"Bilancio di {p.nome}: in cassa {euro(p.cassa)}."]
     righe.append(f"Ogni mese entrano {euro(sponsor)} di sponsor ed escono {euro(monte)} di stipendi: "
                  + (f"restano {euro(saldo)}." if saldo >= 0 else f"mancano {euro(-saldo)}."))
+    # Dalla decisione D40, con la rosa non piena, per quanti è pagata la gloria e quanto costa un posto vuoto.
+    if posti_vuoti := posti_vuoti_nello_sponsor(p, mondo):
+        righe.append(posti_vuoti)
     debitori = [mondo.giocatori[gid] for gid in p.tesserati if gid in mondo.giocatori and mondo.giocatori[gid].arretrati]
     if debitori:
         righe.append(f"Arretrati da pagare: {euro(sum(g.arretrati for g in debitori))}, a {conta(len(debitori), 'tesserato', 'tesserati')}.")
@@ -3980,7 +4020,7 @@ def riepilogo_sala(p, esiti, cambi=()):
 
 def testata_contratti(p, mondo):
     """In testa al dialogo dei contratti: la cassa, lo sponsor e il monte stipendi."""
-    return f"{p.nome}: cassa {euro(p.cassa)}, sponsor {euro(mondo.sponsor(p))} al mese, stipendi {euro(mondo.monte_stipendi(p))} al mese."
+    return f"{p.nome}: cassa {euro(p.cassa)}, sponsor {_sponsor_al_mese(p, mondo)}, stipendi {euro(mondo.monte_stipendi(p))} al mese."
 
 
 def riga_contratto(g, p, mondo):

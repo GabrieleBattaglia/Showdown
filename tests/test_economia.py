@@ -98,7 +98,9 @@ def test_ingaggio_reputazione_e_sponsor(mondo):
     poli.gloria = 1
     assert economia.fattore_reputazione(g, poli) == 2.
     poli.gloria = 100
-    # Dalla tappa 11 lo sponsor è metà per la gloria e metà per il valore della rosa.
+    # Dalla tappa 11 lo sponsor è metà per la gloria e metà per il valore della rosa. Così lo incassa il computer, anche
+    # senza tesserati; dalla decisione D40 l'utente incassa la gloria per i tesserati su 15, in test_piu_polisportive.
+    poli.is_cpu_controlled = True
     assert economia.sponsor_mensile(poli, []) == economia.arrotonda(100 * SPONSOR_PER_GLORIA)
     rosa = [mondo.giocatori[gid] for gid in (1, 2, 3)]
     atteso = economia.arrotonda(100 * SPONSOR_PER_GLORIA + QUOTA_SPONSOR_SUL_VALORE * sum(economia.valore_di_mercato_pieno(g) for g in rosa))

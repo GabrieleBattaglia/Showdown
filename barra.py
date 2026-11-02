@@ -21,6 +21,9 @@ Lo stesso giorno, richiesta di Gabriele: le sigle sono tante da ricordare, e la 
 che ha la sigla, ne dice il nome alla sintesi e al display braille. Per questo le righe si possono avere anche coi loro
 dati, e dato_alla_colonna dice quale dato sta sotto una colonna. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
 5.5, UltraCode).
+Dal 2 novembre 2026, con la decisione D40, lo sponsor della polisportiva attiva paga la gloria per i tesserati in attività
+su 15: Spo e i dati che lo usano lo leggono da Mondo.sponsor, come i conti del mese, e la spiegazione di Spo lo dice. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import dataclasses
@@ -780,7 +783,7 @@ _DATI = (
     Dato("pazienza_minima", "Paz", "pazienza", SOLDI, DELL_ATTIVA,
          "La pazienza: quanti primi del mese senza stipendio bastano perché il tesserato meno paziente se ne vada, bandiere escluse; 1 vuol "
          "dire al prossimo. Si vede quando ci sono arretrati o il margine è sotto zero, altrimenti è no.", "Paz:no", _pazienza_minima),
-    Dato("sponsor", "Spo", "sponsor", SOLDI, DELL_ATTIVA, "Lo sponsor del mese, che dipende dalla rosa e dalla gloria.", "Spo:2.730", _sponsor),
+    Dato("sponsor", "Spo", "sponsor", SOLDI, DELL_ATTIVA, "Lo sponsor del mese, che dipende dalla rosa e dalla gloria; la gloria è pagata per i tesserati in attività, su 15.", "Spo:2.730", _sponsor),
     Dato("stipendi_tesserati", "Sti", "stipendi dei tesserati", SOLDI, DELL_ATTIVA, "Gli stipendi dei tesserati, ogni mese.", "Sti:2.890", _stipendi_tesserati),
     Dato("stipendi_staff", "Sst", "stipendi dello staff", SOLDI, DELL_ATTIVA, "Gli stipendi dello staff, ogni mese.", "Sst:20", _stipendi_staff),
     Dato("quote_del_mese", "Quo", "quote del mese", SOLDI, DELL_ATTIVA,

@@ -63,6 +63,10 @@ come fa il programma dopo ogni salvataggio, e lo scenario dell'utente spende con
 Dalla tappa 13, il 2026-10-21, progetto 6.1 e 6.3, misura anche lo staff del computer: le polisportive con
 un capo e con lo staff pieno, la qualità, la parte dello staff nel monte e gli allenatori liberi per
 lettera, coi bersagli dello staff in controlli_della_tappa_13.
+Dal 2 novembre 2026, con la decisione D40, lo sponsor della polisportiva dell'utente paga la gloria per i tesserati in
+attività su 15, e la polisportiva dello scenario nasce vuota: lo sponsor dopo un tesseramento si stima con
+economia.sponsor_mensile sulla rosa che avrà, gloria del posto nuovo compresa. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/simulazione_lunga.py
     python strumenti/simulazione_lunga.py --giorni 1095 --seme 2026 --rapporto calendario.txt
@@ -1219,7 +1223,8 @@ class ScenarioUtente:
                 return
             ingaggio = economia.arrotonda(economia.ingaggio_richiesto(g, poli) * RIALZO_INGAGGIO_UTENTE)
             monte = mondo.monte_stipendi(poli) + economia.stipendio(g)
-            sponsor = mondo.sponsor(poli) + costanti.QUOTA_SPONSOR_SUL_VALORE * economia.valore_di_mercato_pieno(g)
+            # Lo sponsor dopo la firma, con la rosa che avrà: dalla decisione D40 cresce anche della gloria del posto nuovo.
+            sponsor = economia.sponsor_mensile(poli, [*mondo._rosa(poli), g])
             if ingaggio + monte > poli.cassa or monte > spesa_mensile_utente(sponsor, poli.cassa - ingaggio):
                 continue
             if mondo.problema_offerta(poli, g, ingaggio) is None:

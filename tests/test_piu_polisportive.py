@@ -5,6 +5,8 @@ lo svincolo e la vendita che saldano gli arretrati, col computer che non compra 
 salda tutto, con le altre tue polisportive oltre la loro riserva, dalla più ricca, e che non si fa quando non basta, dicendo
 chi la blocca; i convocati delle sfide accettate e le rose della Coppa, fermi sul mercato fino alla partita, che escono
 dalla vendita, e la rosa che non entra in due polisportive della stessa coppa. Il computer resta com'era.
+La seconda tranche, lo sponsor delle tue polisportive, che paga la gloria per i tesserati in attività su 15: la stessa
+cifra nei conti del mese, nella barra, nella scheda, nel bilancio e nei contratti, e le frasi della rosa non piena.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -13,14 +15,16 @@ import datetime
 import pytest
 from aiuti_calendario import OGGI, apri, giorno, mondo_di_prova, polisportiva, solo
 
+import barra
 import contratti
 import economia
 import iscrizioni
 import mercato
 import sfide
 import testi
-from costanti import FEDELTA_BANDIERA
+from costanti import FEDELTA_BANDIERA, QUOTA_SPONSOR_SUL_VALORE, SPONSOR_PER_GLORIA
 from mondo import VENDITA_FRA_TUE, Mondo, _Mercato
+from utilita import adesso_utc
 
 DOMANI = OGGI + datetime.timedelta(days=1)
 
@@ -373,3 +377,79 @@ def test_i_convocati_si_leggono_da_sfide_e_coppe():
     # Una sfida proposta non ferma nessuno.
     s.stato = sfide.PROPOSTA
     assert sfide.convocazioni(mondo) == {} and sfide.impegno_di_squadra(mondo, mondo.giocatori[9]) is None
+
+
+# Lo sponsor paga la gloria per i tesserati in attività.
+
+# I quindici liberi del mondo di prova, per una rosa piena.
+LIBERI = (5, 6, 7, 8, 14, 15, 16, 17, 18, 19, 20, 23, 24, 29, 30)
+
+
+def _con_la_gloria(mondo, gloria=150):
+    """Tutte le polisportive del mondo con la stessa gloria: 150 punti fanno 1.260 euro al mese, e un posto 84, cioè 80 euro."""
+    for poli in mondo.polisportive.values():
+        poli.gloria = gloria
+    return gloria * SPONSOR_PER_GLORIA
+
+
+def _parte_del_valore(mondo, poli):
+    return QUOTA_SPONSOR_SUL_VALORE * sum(economia.valore_di_mercato_pieno(g) for g in mondo._rosa(poli) if not g.ritirato)
+
+
+def test_lo_sponsor_paga_la_gloria_per_i_tesserati_in_attivita():
+    mondo, cpu, bologna, milano = _mondo()
+    vuota = polisportiva(mondo, "Pat-Vuota", cpu=False)
+    piena = polisportiva(mondo, "Pat-Piena", cpu=False, ids=LIBERI)
+    gloria = _con_la_gloria(mondo)
+    # Pat-Bologna ha 6 tesserati su 15, e la gloria si paga per 6; il computer, con 6 anche lui, la incassa tutta.
+    assert mondo.tesserati_nello_sponsor(bologna) == 6 and mondo.tesserati_nello_sponsor(cpu) is None
+    assert mondo.sponsor(bologna) == economia.arrotonda(gloria * 6 / 15 + _parte_del_valore(mondo, bologna))
+    assert mondo.sponsor(cpu) == economia.arrotonda(gloria + _parte_del_valore(mondo, cpu))
+    # Chi si è ritirato non conta, né nella gloria né nel valore.
+    rosa = mondo._rosa(bologna)
+    rosa[0].ritirato = True
+    assert economia.sponsor_mensile(bologna, rosa) == economia.arrotonda(gloria * 5 / 15 + _parte_del_valore(mondo, bologna))
+    rosa[0].ritirato = False
+    # Una polisportiva vuota non incassa niente; con la rosa piena la gloria si paga tutta, come al computer.
+    assert mondo.tesserati_nello_sponsor(vuota) == 0 and mondo.sponsor(vuota) == 0
+    assert mondo.tesserati_nello_sponsor(piena) == 15 and mondo.sponsor(piena) == economia.arrotonda(gloria + _parte_del_valore(mondo, piena))
+    # Dividere non rende: i 9 tesserati di Bologna e Milano portano la stessa gloria che porterebbero insieme.
+    insieme = economia.quota_della_gloria(mondo._rosa(bologna) + mondo._rosa(milano))
+    assert economia.quota_della_gloria(mondo._rosa(bologna)) + economia.quota_della_gloria(mondo._rosa(milano)) == pytest.approx(insieme) == 9 / 15
+    assert economia.gloria_di_un_posto(bologna) == 80
+
+
+def test_conti_barra_scheda_e_bilancio_dicono_la_stessa_cifra():
+    mondo, _cpu, bologna, _milano = _mondo()
+    _con_la_gloria(mondo)
+    sponsor = mondo.sponsor(bologna)
+    cifra = _euro(sponsor)
+    assert f"| Sponsor: {cifra} al mese, con la gloria pagata per 6 tesserati su 15 | Stipendi: " in testi.scheda_polisportiva(bologna, mondo)
+    bilancio = testi.bilancio(bologna, mondo)
+    assert f"\nOgni mese entrano {cifra} di sponsor ed escono " in bilancio
+    assert "\nLo sponsor paga la gloria per 6 tesserati su 15: ogni posto vuoto costa 80 euro al mese.\n" in bilancio
+    assert testi.testata_contratti(bologna, mondo).startswith(f"Pat-Bologna: cassa 20.000 euro, sponsor {cifra} al mese, con la gloria pagata per 6 tesserati su 15, stipendi ")
+    assert barra.CATALOGO["sponsor"].testo(barra._Calcolo(barra.Contesto(mondo, adesso_utc()))) == f"Spo:{testi.intero(sponsor)}"
+    # I conti del primo del mese incassano proprio quella cifra.
+    primo = datetime.datetime(2026, 11, 1, 9, 0)
+    mondo._primo_del_mese(primo, Mondo.rapporto_vuoto(primo))
+    assert bologna.bilanci[0]["sponsor"] == sponsor
+
+
+def test_le_frasi_dello_sponsor_con_la_rosa_non_piena():
+    mondo, cpu, bologna, milano = _mondo()
+    _con_la_gloria(mondo)
+    # Il computer e la rosa piena non dicono niente di nuovo.
+    assert testi.gloria_dello_sponsor(cpu, mondo) == testi.posti_vuoti_nello_sponsor(cpu, mondo) == ""
+    assert f"| Sponsor: {_euro(mondo.sponsor(cpu))} al mese | Stipendi: " in testi.scheda_polisportiva(cpu, mondo)
+    for gid in LIBERI[:9]:
+        mondo._entra(bologna, mondo.giocatori[gid])
+    assert testi.gloria_dello_sponsor(bologna, mondo) == "" and "posto vuoto" not in testi.bilancio(bologna, mondo)
+    # Un tesserato solo, e nessuno.
+    for gid in (13, 28):
+        mondo._lascia(milano, mondo.giocatori[gid])
+    assert testi.gloria_dello_sponsor(milano, mondo) == "con la gloria pagata per 1 tesserato su 15"
+    assert testi.posti_vuoti_nello_sponsor(milano, mondo) == "Lo sponsor paga la gloria per 1 tesserato su 15: ogni posto vuoto costa 80 euro al mese."
+    mondo._lascia(milano, mondo.giocatori[12])
+    assert "| Sponsor: 0 euro al mese, senza la gloria, perché non ha tesserati | Stipendi: " in testi.scheda_polisportiva(milano, mondo)
+    assert testi.posti_vuoti_nello_sponsor(milano, mondo) == "Senza tesserati lo sponsor non paga la gloria: ogni posto vuoto costa 80 euro al mese."

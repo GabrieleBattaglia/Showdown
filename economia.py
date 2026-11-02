@@ -17,6 +17,11 @@ oltre una soglia la cassa in più si conta spesa in qualche mese, e un mese di q
 agli stipendi che si permette. Non al prezzo che paga per un giocatore in vendita, che resta entro il
 valore di mercato col rialzo del computer: la verifica del 15 ottobre 2026 lo ha tolto, perché faceva
 comprare a più volte il loro valore i giocatori che l'utente metteva in vendita a un prezzo gonfiato.
+Dal 2 novembre 2026, con la decisione D40, lo sponsor delle polisportive dell'utente paga la parte della
+gloria in proporzione ai tesserati in attività sul massimo dei posti: una polisportiva vuota non la
+incassa, e dividere i giocatori fra più polisportive non rende più. La parte sul valore della rosa e lo
+sponsor del computer restano come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import math
@@ -29,6 +34,7 @@ from costanti import (
     FATTORE_GLORIA_RICHIESTA_GIOCO_RAPIDO,
     FEDELTA_BANDIERA,
     FEDELTA_PER_MESE_DI_PAZIENZA,
+    MAX_TESSERATI_POLISPORTIVA,
     MESI_CASSA_PIENA_CPU,
     MESI_DI_INGAGGIO,
     MESI_DI_VALORE,
@@ -131,9 +137,30 @@ def sponsor_mensile(poli, rosa):
     per il valore della rosa, cioè una quota del valore di mercato pieno dei tesserati in attività.
     La rosa la passa chi chiama, con i tesserati vivi: è il guadagno di chi allena di D31, perché
     durante il contratto lo stipendio è fisso e lo sponsor cresce col valore.
+    Dalla decisione D40, nelle polisportive dell'utente la parte della gloria si paga per i tesserati in
+    attività sul massimo dei posti, quota_della_gloria; il computer non cambia. Tutte le cifre dello
+    sponsor, nei conti del mese, nella barra, nella scheda e nei bilanci, passano di qui.
     """
     valore_della_rosa = sum(valore_di_mercato_pieno(g) for g in rosa if not g.ritirato)
-    return arrotonda(poli.gloria * SPONSOR_PER_GLORIA + QUOTA_SPONSOR_SUL_VALORE * valore_della_rosa)
+    gloria = poli.gloria * SPONSOR_PER_GLORIA
+    if not poli.is_cpu_controlled:
+        gloria *= quota_della_gloria(rosa)
+    return arrotonda(gloria + QUOTA_SPONSOR_SUL_VALORE * valore_della_rosa)
+
+
+def tesserati_in_attivita(rosa):
+    """Quanti tesserati della rosa sono in attività, cioè non ritirati, fino al massimo dei posti: quelli che lo sponsor dell'utente paga nella gloria."""
+    return min(MAX_TESSERATI_POLISPORTIVA, sum(1 for g in rosa if not g.ritirato))
+
+
+def quota_della_gloria(rosa):
+    """La parte della gloria che lo sponsor paga a una polisportiva dell'utente, decisione D40: i tesserati in attività sul massimo dei posti."""
+    return tesserati_in_attivita(rosa) / MAX_TESSERATI_POLISPORTIVA
+
+
+def gloria_di_un_posto(poli):
+    """Quanto costa al mese un posto vuoto nello sponsor di una polisportiva dell'utente: la parte della gloria divisa per i posti, arrotondata alla decina."""
+    return arrotonda(poli.gloria * SPONSOR_PER_GLORIA / MAX_TESSERATI_POLISPORTIVA)
 
 
 def premio_cassa_piena(cassa):

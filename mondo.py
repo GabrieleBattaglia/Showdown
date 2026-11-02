@@ -69,6 +69,10 @@ dell'utente salda buonuscite e arretrati dei tesserati, buonuscite e stipendi ma
 altre sue polisportive oltre la loro riserva, dalla più ricca, e se i soldi non bastano non si fa. Chi è convocato in una
 gara a squadre, fino alla partita, non si vende, non si compra e non si svincola, e il computer non lo compra. Il computer
 fra sé chiude, svincola e vende come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la seconda tranche di D40, lo sponsor delle polisportive dell'utente paga la gloria per i tesserati
+in attività su 15, dentro economia.sponsor_mensile: Mondo.sponsor, i conti del primo del mese e tutto quello che lo
+mostra dicono la stessa cifra, e tesserati_nello_sponsor dice ai testi per quanti la gloria è pagata. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -149,6 +153,7 @@ from economia import (
     sponsor_mensile,
     stipendio,
     stipendio_pagato,
+    tesserati_in_attivita,
     valore_di_mercato,
 )
 from modelli import Giocatore, Polisportiva, conti_vuoti, normalizza_nome, probabilita_accettazione
@@ -1087,6 +1092,13 @@ class Mondo:
     def sponsor(self, poli):
         """Lo sponsor del mese della polisportiva, con la sua rosa di oggi."""
         return sponsor_mensile(poli, self._rosa(poli))
+
+    def tesserati_nello_sponsor(self, poli):
+        """
+        Decisione D40: per una polisportiva dell'utente, i tesserati in attività per cui lo sponsor paga la gloria, su
+        MAX_TESSERATI_POLISPORTIVA; None per il computer, che la incassa tutta.
+        """
+        return None if poli.is_cpu_controlled else tesserati_in_attivita(self._rosa(poli))
 
     def _conto_memorizzato(self, poli, posto, calcolo):
         """
