@@ -25,8 +25,10 @@ from aiuti_barra import evento_della_barra
 
 import archivio
 import impostazioni
+import iscrizioni
 import mercato
 import partita_sonora
+import sfide
 import suoni
 import testi
 from costanti import FILE_MONDO, LIMITE_MOVIMENTI_PER_TICK, VERSIONE
@@ -1252,6 +1254,62 @@ def test_i_suoni_delle_vendite(finestra, suonati, monkeypatch):
     finally:
         dialogo.Destroy()
     assert suonati == ["messo_in_vendita", "prezzo_di_vendita_cambiato", "tolto_dalla_vendita", "vendita_non_attiva"]
+
+
+def _convocati_domani(mondo, poli, ids):
+    """Una sfida accettata della polisportiva per domani, coi convocati dati: la decisione D40 li ferma sul mercato."""
+    oggi = mondo.datetime_corrente_simulazione.date()
+    s = sfide.Sfida(mondo.sfide.nuovo_id(), iscrizioni.club_della(poli), {"nome": "PoliTeam01 Prova", "fondazione": "2026-01-01"}, oggi, oggi,
+                    sfide.ACCETTATA, oggi + datetime.timedelta(days=1), {"sfidante": list(ids), "sfidata": []})
+    mondo.sfide.attive.append(s)
+    return s
+
+
+def test_le_vendite_che_la_decisione_d40_rifiuta(finestra, suonati, monkeypatch):
+    # Il prezzo che con la cassa non salda gli arretrati, e il convocato, ciascuno col suo avviso e il suo suono.
+    avvisi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo) or wx.OK)
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    dialogo = dialoghi.Vendite(finestra, mondo, poli)
+    try:
+        g = dialogo.rosa[0]
+        g.arretrati = poli.cassa + 1000
+        dialogo.prezzo.SetValue(1)
+        dialogo.metti()
+        assert suonati == ["prezzo_sotto_gli_arretrati"] and avvisi == [mondo.problema_vendita(poli, g, 1)] and "mancano 999 euro" in avvisi[0]
+        g.arretrati = 0
+        _convocati_domani(mondo, poli, [g.id])
+        dialogo.metti()
+        assert suonati[-1] == "convocato_bloccato" and avvisi[-1] == mondo.impegno_di_squadra(g) and g.id not in poli.in_vendita
+    finally:
+        dialogo.Destroy()
+
+
+def test_lo_svincolo_di_un_convocato_ha_il_suo_suono(finestra, suonati, monkeypatch):
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    _convocati_domani(mondo, poli, [2, 5])
+
+    def scegli(self):
+        self.conferma()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.SceltaGiocatore, "ShowModal", scegli)
+    finestra.svincola()
+    assert suonati[-1] == "convocato_bloccato" and finestra.vista.GetValue() == mondo.impegno_di_squadra(mondo.giocatori[2])
+    assert poli.tesserati == [2, 5]
+
+
+def test_la_chiusura_che_non_si_puo_fare_ha_il_suo_suono(finestra, suonati):
+    # La decisione D40: la chiusura salda tutti i debiti, e se i soldi non bastano non si fa, col suo perché e il suo suono.
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    poli.imposta_password("")
+    mondo.giocatori[2].arretrati = poli.cassa + 10_000
+    finestra.chiudi_polisportiva()
+    assert finestra.vista.GetValue() == mondo.problema_chiusura(poli) and finestra.vista.GetValue().startswith("Per chiudere Club Di Prova servono ")
+    assert suonati[-1] == "chiusura_non_possibile" and poli.nome in mondo.polisportive
 
 
 def test_il_volume_degli_effetti(finestra, suonati, monkeypatch, cartella_di_prova):

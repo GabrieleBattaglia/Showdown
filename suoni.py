@@ -136,6 +136,13 @@ Dal 2026-10-25, con la barra di stato su misura della decisione D38, la sua fine
 della V235 di GBUtils: l'apertura e il salvataggio, il dato aggiunto, tolto, spostato su e giù o al bordo, la riga
 aggiunta o tolta, le sedici righe già piene, la riga sola che non si toglie e la barra di serie rimessa. Il tasto a vuoto
 dice anche gli elenchi vuoti della finestra. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2026-11-02, con la prima tranche dei rimedi della decisione D40, quattro suoni nuovi, tutti mess_ e nella collezione di
+GBUtils, per quattro rifiuti: l'acquisto di un tuo tesserato in vendita da un'altra tua polisportiva, due mani che si passano
+la stessa nota e la riportano giù; il convocato in una sfida accettata o nella rosa di una Coppa, che fino alla partita non
+si vende, non si compra e non si svincola, un richiamo che sale e si ferma; il prezzo che con la cassa non salda gli
+arretrati di chi si vende, le monete che non bastano; e la chiusura che i soldi non bastano a pagare, la campana della
+domanda di chiusura che si ferma e ricade. Lo svincolo che salda anche gli arretrati, quando la cassa non basta, suona
+ancora come la cassa insufficiente. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -326,6 +333,8 @@ GRUPPI = (
         "dialogo_svincolo": "mess_porta_che_cigola",
         "tesserato_svincolato": "mess_contratto_strappato",
         "rosa_vuota": "mess_eco_nello_spogliatoio",
+        # Decisione D40: la chiusura che i soldi non bastano a pagare, la campana della domanda che si ferma.
+        "chiusura_non_possibile": "mess_chiusura_non_possibile",
     }),
     ("Polisportive, le notizie dei tuoi tesserati", {
         "tuo_tesserato_bandiera": "mess_fanfara_della_bandiera",
@@ -414,6 +423,9 @@ GRUPPI = (
         "cassa_insufficiente": "mess_cassa_vuota",
         "mosse_finite": "mess_mosse_finite",
         "rosa_piena": "pokermachine_scudi_pieni",
+        # Decisione D40: i giocatori che non passano fra le tue polisportive, e i convocati fermi fino alla partita.
+        "vendita_fra_tue": "mess_vendita_fra_tue",
+        "convocato_bloccato": "mess_convocato_bloccato",
     }),
     ("Economia, vendite e arretrati", {
         "dialogo_vendite": "mess_vendite_aperte",
@@ -421,6 +433,8 @@ GRUPPI = (
         "prezzo_di_vendita_cambiato": "meteora_marker_rinominato",
         "tolto_dalla_vendita": "meteora_marker_eliminato",
         "vendita_non_attiva": "mess_vendita_non_attiva",
+        # Decisione D40: il prezzo che con la cassa non salda gli arretrati di chi si vende.
+        "prezzo_sotto_gli_arretrati": "mess_prezzo_sotto_gli_arretrati",
         "dialogo_arretrati": "mess_arretrati_aperti",
         "nessun_arretrato": "mess_conti_a_posto",
         # I tre gradini del pagamento: in parte, saldato, e tutti saldati.
@@ -794,6 +808,8 @@ AZIONI = {
     "tesserato_svincolato": "un tesserato svincolato, che torna libero",
     "rosa_vuota": ("un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue "
                    "polisportive quando nessuna ne ha"),
+    "chiusura_non_possibile": ("Chiudi la polisportiva attiva quando la sua cassa e le altre tue polisportive, oltre la loro riserva, non bastano "
+                               "per buonuscite, arretrati e stipendi maturati"),
     "tuo_tesserato_bandiera": "nell'avanzamento un tuo tesserato diventa una bandiera del club",
     "tuo_tesserato_ritirato": "nell'avanzamento un tuo tesserato si ritira",
     "tuo_tesserato_uscito_di_scena": "nell'avanzamento un tuo tesserato muore o lascia lo showdown",
@@ -869,11 +885,15 @@ AZIONI = {
     "cassa_insufficiente": "i soldi in cassa non bastano",
     "mosse_finite": "le mosse di mercato del giorno sono finite",
     "rosa_piena": "la rosa della polisportiva è piena",
+    "vendita_fra_tue": "nella finestra Mercato e ricerca l'acquisto di un tuo tesserato in vendita da un'altra tua polisportiva, che non si fa",
+    "convocato_bloccato": ("chi è convocato in una sfida accettata o sta nella rosa di una Coppa non si mette in vendita, non si compra, non riceve "
+                           "offerte d'acquisto e non si svincola: nelle Vendite, nella finestra Mercato e ricerca e nello svincolo"),
     "dialogo_vendite": "si apre il dialogo delle vendite dei tesserati",
     "messo_in_vendita": "un tesserato messo in vendita",
     "prezzo_di_vendita_cambiato": "il prezzo di un tesserato già in vendita cambiato",
     "tolto_dalla_vendita": "un tesserato tolto dalla vendita",
     "vendita_non_attiva": "si vuole togliere dalla vendita un tesserato che in vendita non c'è",
+    "prezzo_sotto_gli_arretrati": "nelle Vendite un prezzo che, con la cassa, non salda gli arretrati del tesserato",
     "dialogo_arretrati": "si apre il pagamento degli arretrati, con Ctrl+Shift+P",
     "nessun_arretrato": "nessun tesserato aspetta arretrati",
     "arretrati_pagati_in_parte": "arretrati pagati in parte, e il tesserato aspetta ancora",

@@ -15,7 +15,7 @@ import mercato
 import testi
 from archivio import CARICATO, NATO
 from modelli import Polisportiva
-from mondo import Mondo
+from mondo import Mondo, PianoDiChiusura
 
 ORA = datetime.datetime(2026, 10, 6, 18, 0)
 # Lo stesso istante nel mondo reale, in UTC come lo conta il mondo.
@@ -184,7 +184,10 @@ def test_testi_del_mercato_e_delle_polisportive(mondo):
     assert riepilogo.startswith("Mercato e ricerca di Club Di Prova: 2 offerte ai giocatori, 1 riuscita.\nPrimo esito.\nSecondo esito.")
     assert riepilogo.endswith("Club Di Prova: cassa 20.000 euro, gloria 100, tesserati 3 su 15, mosse rimaste 1 su 5.")
     assert testi.riepilogo_mercato_e_ricerca(p, mondo, []) is None
-    assert testi.domanda_chiusura(p) == "Chiudere per sempre Club Di Prova? I suoi 3 tesserati torneranno liberi, e non si torna indietro."
+    # Dalla decisione D40 la domanda dice anche i debiti e la cassa che va persa: senza debiti, soltanto la cassa.
+    senza_debiti = PianoDiChiusura(0, [], [], 20_000, 0)
+    assert testi.domanda_chiusura(p, senza_debiti) == ("Chiudere per sempre Club Di Prova? Non ha debiti da saldare. La cassa che resta, 20.000 euro, andrà persa. "
+                                                       "I suoi 3 tesserati torneranno liberi, e non si torna indietro.")
     assert testi.chiusa("Club Di Prova", 1).startswith("Club Di Prova ha chiuso per sempre: 1 giocatore torna libero.")
     assert testi.chiusa("Club Di Prova", 0).startswith("Club Di Prova ha chiuso per sempre, senza tesserati.")
     assert testi.password_cambiata(p) == "Club Di Prova ora è protetta da password."

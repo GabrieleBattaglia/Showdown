@@ -1306,6 +1306,18 @@ def test_i_perche_delle_offerte_che_non_si_fanno(banco):
     assert banco.suonati[-1] == "offerta_non_possibile" and "è già tu" in banco.dialoghi.letti[-1]
 
 
+def test_da_un_altra_tua_polisportiva_non_si_compra(banco):
+    # La decisione D40: il 6, in vendita da Pat-Milano a 1 euro, non si compra da Pat-Bologna; Alt+O dice il perché col suo suono, e la domanda non parte.
+    f = banco.apri("ricerca")
+    _con_le_regole(f, _stato(mercato.TUO))
+    _scegli_persona(f, 6)
+    banco.suonati.clear()
+    banco.dialoghi.aperti.clear()
+    _clic(f.pulsante_offerta)
+    assert banco.suonati == ["vendita_fra_tue"] and banco.dialoghi.letti[-1] == "Fra le tue polisportive i giocatori non si vendono."
+    assert "Domanda" not in banco.dialoghi.aperti and 6 in banco.mondo.polisportive["Pat-Milano"].tesserati
+
+
 def test_l_offerta_d_acquisto_e_l_ingaggio_di_un_allenatore(banco):
     random.seed(7)
     f = banco.apri("ricerca")

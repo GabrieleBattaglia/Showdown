@@ -886,10 +886,16 @@ class Vendite(_Dialogo):
     def metti(self, event=None):
         """
         Mette in vendita il tesserato scelto, o gli cambia il prezzo: il messaggio è lo stesso, e
-        solo il suono dice se era già in vendita.
+        solo il suono dice se era già in vendita. Dalla decisione D40 non si mette in vendita chi è
+        convocato in una gara a squadre, né a un prezzo che con la cassa non salda i suoi arretrati:
+        un avviso lo dice, col suo suono, e lascia il cursore sul prezzo.
         """
         g, indice = self._scelto()
         if g is None:
+            return
+        problema = self.mondo.problema_vendita(self.poli, g, self.prezzo.GetValue())
+        if problema:
+            self.avvisa(problema, self.prezzo, "convocato_bloccato" if self.mondo.impegno_di_squadra(g) else "prezzo_sotto_gli_arretrati")
             return
         suono = "prezzo_di_vendita_cambiato" if g.id in self.poli.in_vendita else "messo_in_vendita"
         self.mondo.metti_in_vendita(self.poli, g, self.prezzo.GetValue())

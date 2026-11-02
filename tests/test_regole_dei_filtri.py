@@ -261,8 +261,8 @@ def test_le_voci_dello_stato_valgono_insieme(mondo):
     # Il 10 è del computer, e il computer lo vende: in attività, sul mercato, in vendita da altri e tesserato del computer.
     assert righe[10].stati == {mercato.IN_ATTIVITA, mercato.SUL_MERCATO, mercato.IN_VENDITA, mercato.DEL_COMPUTER} and righe[10].stato == mercato.IN_VENDITA
     assert righe[10].polisportiva is cpu0 and righe[10].prezzo == righe[10].costo == 3000
-    # Il 6 è tuo, in vendita da Pat-Milano a 1 euro: resta tuo, e non è in vendita da altri.
-    assert righe[6].stati == {mercato.IN_ATTIVITA, mercato.TUO} and righe[6].costo == 1 and righe[6].di_chi == mercato.TUA_ALTRA
+    # Il 6 è tuo, in vendita da Pat-Milano a 1 euro: resta tuo, e non è in vendita da altri; dalla decisione D40 non si compra, e non ha costo.
+    assert righe[6].stati == {mercato.IN_ATTIVITA, mercato.TUO} and righe[6].costo is None and righe[6].di_chi == mercato.TUA_ALTRA
     assert righe[1].stati == {mercato.IN_ATTIVITA, mercato.TUO} and righe[1].costo is None and righe[1].prezzo == 500
     assert righe[11].stati == {mercato.IN_ATTIVITA, mercato.DEL_COMPUTER}
     assert righe[40].stati == {mercato.RITIRATO} and righe[45].stati == {mercato.USCITO}

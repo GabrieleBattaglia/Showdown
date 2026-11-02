@@ -61,6 +61,14 @@ Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Lo stesso giorno, coi collegamenti della finestra, il mondo non tiene più i risultati dell'ultima ricerca, che servivano
 alla ricerca che stampava nella vista e a Risultati della ricerca, Ctrl+R, usciti con la finestra. È di Gabriele Battaglia
 (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2 novembre 2026, con la prima tranche dei rimedi della decisione D40, le regole fra più polisportive dell'utente che
+non chiedono campi nuovi nel salvataggio. Fra le sue polisportive i giocatori non si vendono, e al computer sì. La riserva
+dice quello che una polisportiva deve al prossimo primo del mese. Lo svincolo e la vendita dell'utente saldano anche gli
+arretrati, e il computer non compra un suo giocatore quando prezzo e cassa non li coprono. La chiusura di una polisportiva
+dell'utente salda buonuscite e arretrati dei tesserati, buonuscite e stipendi maturati dello staff, col soccorso delle
+altre sue polisportive oltre la loro riserva, dalla più ricca, e se i soldi non bastano non si fa. Chi è convocato in una
+gara a squadre, fino alla partita, non si vende, non si compra e non si svincola, e il computer non lo compra. Il computer
+fra sé chiude, svincola e vende come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -68,6 +76,7 @@ import calendar
 import datetime
 import math
 import random
+from collections import namedtuple
 
 import calendario
 import classe as modulo_classe
@@ -178,6 +187,13 @@ CHIAVI_RAPPORTO = ("ticks", "giorni", "guariti", "ritirati", "usciti", "morti", 
 CONSERVAZIONE_PREDEFINITA = {"giocatori": 0, "polisportive": 0}
 USCITA_PREMATURA = "Uscita Prematura"
 DECESSO = "Decesso Naturale"
+# Decisione D40: fra le polisportive dell'utente i giocatori non si vendono; al computer sì.
+VENDITA_FRA_TUE = "Fra le tue polisportive i giocatori non si vendono."
+# Decisione D40, la chiusura di una polisportiva dell'utente: il debito con una persona, tesserato o allenatore dello staff,
+# fatto della buonuscita e dell'altra parte, gli arretrati del tesserato o lo stipendio maturato dell'allenatore; e il
+# piano di chi paga, col costo, i debiti, le polisportive che pagano con la loro quota, la cassa che va persa e quanto manca.
+Debito = namedtuple("Debito", "persona allenatore buonuscita altro")
+PianoDiChiusura = namedtuple("PianoDiChiusura", "costo debiti paganti cassa_persa manca")
 
 
 def _silenzio(*_args, **_kwargs):
@@ -186,6 +202,21 @@ def _silenzio(*_args, **_kwargs):
 
 def nome_completo(g):
     return f"{g.nome} {g.cognome}"
+
+
+def _con_le_cifre(buonuscita, altro, nome_altro):
+    """Le cifre pagate a chi se ne va, per i diari: , con una buonuscita di 1.380 euro e 1.020 euro di arretrati; vuoto se non c'è niente."""
+    parti = []
+    if buonuscita:
+        parti.append(f"una buonuscita di {scritta_in_euro(buonuscita)}")
+    if altro:
+        parti.append(f"{scritta_in_euro(altro)} {nome_altro}")
+    return f", con {' e '.join(parti)}" if parti else ""
+
+
+def _ricevuto(debito, nome_altro):
+    """Le cifre di un Debito saldato dalla chiusura, decisione D40, per il diario di chi lo riceve; vuoto senza debito."""
+    return "" if debito is None else _con_le_cifre(debito.buonuscita, debito.altro, nome_altro)
 
 
 class _Vetrina:
@@ -625,14 +656,24 @@ class Mondo:
         """
         if a.contratto_stipendio <= 0:
             return 0
-        if data.day == 1:
-            dovuto = a.contratto_stipendio
-        else:
-            dovuto = round(a.contratto_stipendio * (data.day - 1) / calendar.monthrange(data.year, data.month)[1])
-        pagato = min(dovuto, max(0, poli.cassa))
+        pagato = min(self._maturato(a, data), max(0, poli.cassa))
         poli.cassa -= pagato
         poli.conti_del_mese["staff"] += pagato
         return pagato
+
+    @staticmethod
+    def _maturato(a, data, mese_intero_il_primo=True):
+        """
+        Lo stipendio maturato di un allenatore al giorno dato: la parte dei giorni del mese già passati e, il primo del
+        mese, il mese intero, come in _paga_il_maturato. Senza mese_intero_il_primo il primo del mese vale zero: serve alla
+        chiusura di una polisportiva dell'utente, decisione D40, che arriva dopo i conti del giorno, quando il mese finito è
+        già pagato.
+        """
+        if a.contratto_stipendio <= 0:
+            return 0
+        if data.day == 1 and mese_intero_il_primo:
+            return a.contratto_stipendio
+        return round(a.contratto_stipendio * (data.day - 1) / calendar.monthrange(data.year, data.month)[1])
 
     def _invecchia_lo_staff(self, data, rapporto=None):
         """
@@ -650,16 +691,18 @@ class Mondo:
             elif a.prelazione_fino is not None and data >= a.prelazione_fino:
                 a.prelazione = a.prelazione_fino = None
 
-    def _congeda_lo_staff(self, poli, data):
+    def _congeda_lo_staff(self, poli, data, pagati=None):
         """
         La polisportiva chiude: il suo staff torna libero, senza contratto, e decade la prelazione sui suoi
-        ritirati, che restava su un club che non c'era più, revisione del 22 ottobre 2026.
+        ritirati, che restava su un club che non c'era più, revisione del 22 ottobre 2026. Dalla decisione D40
+        pagati sono i debiti saldati dalla chiusura di una polisportiva dell'utente, per numero, che il diario dice.
         """
         for numero in poli.staff:
             a = self.allenatori.get(numero) if numero else None
             if a is not None:
                 modulo_staff.libera(a)
-                a.annota(data, f"Torna {'libera' if a.sesso == 'f' else 'libero'}: {poli.nome} ha chiuso.")
+                ricevuto = _ricevuto((pagati or {}).get(numero), "di stipendio maturato")
+                a.annota(data, f"Torna {'libera' if a.sesso == 'f' else 'libero'}: {poli.nome} ha chiuso{ricevuto}.")
         for a in self.allenatori.values():
             if a.prelazione == poli.nome:
                 a.prelazione = a.prelazione_fino = None
@@ -1033,6 +1076,14 @@ class Mondo:
         """Quanto la polisportiva paga ogni mese allo staff, tappa 13."""
         return sum(a.contratto_stipendio for numero in poli.staff if numero and (a := self.allenatori.get(numero)) is not None)
 
+    def riserva(self, poli):
+        """
+        La riserva della polisportiva, decisione D40: quello che deve al prossimo primo del mese, cioè gli stipendi dei
+        tesserati come li paga il conto del mese, i loro arretrati e lo stipendio dello staff. Oltre la riserva una
+        polisportiva dell'utente copre la chiusura di un'altra sua; non è la riserva degli allenatori, _riserva.
+        """
+        return sum(stipendio_pagato(g) + g.arretrati for g in self._rosa(poli)) + self.monte_dello_staff(poli)
+
     def sponsor(self, poli):
         """Lo sponsor del mese della polisportiva, con la sua rosa di oggi."""
         return sponsor_mensile(poli, self._rosa(poli))
@@ -1094,13 +1145,50 @@ class Mondo:
         g.pazienza = min(100., g.pazienza + importo * pazienza_per_euro(g))
         g.arretrati -= importo
 
-    def metti_in_vendita(self, poli, g, prezzo):
-        """Mette in vendita un tesserato al prezzo dato, o glielo cambia; ValueError se non si può."""
-        prezzo = int(prezzo)
+    def impegno_di_squadra(self, g):
+        """
+        La frase della gara a squadre che ferma il giocatore sul mercato, decisione D40: convocato in una sfida accettata o
+        nella rosa di una Coppa con la sua polisportiva, fino alla partita non si vende, non si compra e non si svincola.
+        None se non è impegnato. Vedi sfide.impegno_di_squadra.
+        """
+        return sfide.impegno_di_squadra(self, g)
+
+    def arretrati_scoperti(self, poli, g, prezzo):
+        """
+        Quanto manca perché la vendita del tesserato al prezzo dato saldi tutti i suoi arretrati, prima dal prezzo e poi
+        dalla cassa di chi vende, decisione D40; zero se bastano. Il computer salda fino al prezzo, come prima, e per lui
+        non manca mai niente.
+        """
+        if poli.is_cpu_controlled:
+            return 0
+        return max(0, g.arretrati - prezzo - max(0, poli.cassa))
+
+    def problema_vendita(self, poli, g, prezzo):
+        """
+        Perché la polisportiva non può mettere in vendita il tesserato al prezzo dato, oppure None se può. Dalla decisione
+        D40, per l'utente, anche chi è convocato in una gara a squadre e il prezzo che con la cassa non salda gli arretrati.
+        """
         if g.id not in poli.tesserati:
-            raise ValueError(f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}.")
+            return f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}."
         if prezzo <= 0:
-            raise ValueError("Il prezzo deve essere di almeno 1 euro.")
+            return "Il prezzo deve essere di almeno 1 euro."
+        if poli.is_cpu_controlled:
+            return None
+        impegno = self.impegno_di_squadra(g)
+        if impegno:
+            return impegno
+        manca = self.arretrati_scoperti(poli, g, prezzo)
+        if manca:
+            return (f"A {scritta_in_euro(prezzo)} mancano {scritta_in_euro(manca)}: la vendita salda i {scritta_in_euro(g.arretrati)} di arretrati di "
+                    f"{nome_completo(g)}, prima dal prezzo e poi dalla cassa di {poli.nome}, che ne ha {scritta_in_euro(max(0, poli.cassa))}.")
+        return None
+
+    def metti_in_vendita(self, poli, g, prezzo):
+        """Mette in vendita un tesserato al prezzo dato, o glielo cambia; ValueError se non si può, col perché di problema_vendita."""
+        prezzo = int(prezzo)
+        problema = self.problema_vendita(poli, g, prezzo)
+        if problema:
+            raise ValueError(problema)
         poli.in_vendita[g.id] = prezzo
         self.annota(poli, f"Mette in vendita {nome_completo(g)} a {scritta_in_euro(prezzo)}.")
         self.annota(g, f"{accorda(g.sesso, 'Messo')} in vendita da {poli.nome} a {scritta_in_euro(prezzo)}.")
@@ -1122,6 +1210,12 @@ class Mondo:
             return f"{nome_completo(g)} non è in vendita."
         if venditore is poli:
             return f"{nome_completo(g)} è già di {poli.nome}."
+        # Decisione D40: fra le polisportive dell'utente non si vende, e chi è convocato in una gara a squadre non si compra.
+        if not venditore.is_cpu_controlled and not poli.is_cpu_controlled:
+            return VENDITA_FRA_TUE
+        impegno = self.impegno_di_squadra(g)
+        if impegno:
+            return impegno
         if self.mosse_rimaste(poli) <= 0:
             return self._senza_mosse(poli)
         if len(poli.tesserati) >= poli.maxtesserati:
@@ -1165,6 +1259,10 @@ class Mondo:
         venditore = self.polisportive.get(g.appartenenza)
         if venditore is None or not venditore.is_cpu_controlled:
             return f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con una polisportiva del computer."
+        # Decisione D40: chi è convocato in una gara a squadre non riceve offerte d'acquisto.
+        impegno = self.impegno_di_squadra(g)
+        if impegno:
+            return impegno
         if self.mosse_rimaste(compratore) <= 0:
             return self._senza_mosse(compratore)
         if len(compratore.tesserati) >= compratore.maxtesserati:
@@ -1196,9 +1294,11 @@ class Mondo:
     def _vendi(self, venditore, compratore, g, prezzo, data=None):
         """
         Il passaggio di un giocatore da una polisportiva all'altra: il compratore paga, il venditore
-        incassa e dal prezzo salda gli arretrati che il giocatore aspettava.
+        incassa e dal prezzo salda gli arretrati che il giocatore aspettava. Dalla decisione D40 una
+        polisportiva dell'utente li salda tutti, prima dal prezzo e poi dalla cassa, e i diari dicono la
+        cifra; il computer li salda fino al prezzo, come prima.
         """
-        saldati = min(g.arretrati, prezzo)
+        saldati = min(g.arretrati, prezzo) if venditore.is_cpu_controlled else g.arretrati
         compratore.cassa -= prezzo
         compratore.conti_del_mese["acquisti"] += prezzo
         venditore.cassa += prezzo - saldati
@@ -1207,19 +1307,35 @@ class Mondo:
         self._lascia(venditore, g)
         self._entra(compratore, g, data)
         cifra = scritta_in_euro(prezzo)
-        self.annota(g, f"{accorda(g.sesso, 'Venduto')} da {venditore.nome} a {compratore.nome} per {cifra}.", data)
-        self.annota(venditore, f"Venduto {nome_completo(g)} a {compratore.nome} per {cifra}.", data)
+        dell_utente = saldati and not venditore.is_cpu_controlled
+        ricevuti = f": riceve {scritta_in_euro(saldati)} di arretrati" if dell_utente else ""
+        con_arretrati = f", e salda {scritta_in_euro(saldati)} di arretrati" if dell_utente else ""
+        self.annota(g, f"{accorda(g.sesso, 'Venduto')} da {venditore.nome} a {compratore.nome} per {cifra}{ricevuti}.", data)
+        self.annota(venditore, f"Venduto {nome_completo(g)} a {compratore.nome} per {cifra}{con_arretrati}.", data)
         self.annota(compratore, f"Comprato {nome_completo(g)} da {venditore.nome} per {cifra}.", data)
 
     def problema_svincolo(self, poli, g):
-        """Perché la polisportiva non può svincolare il tesserato, oppure None: dalla tappa 11 anche la cassa che non basta per la buonuscita."""
+        """
+        Perché la polisportiva non può svincolare il tesserato, oppure None: dalla tappa 11 anche la cassa che non basta per
+        la buonuscita. Dalla decisione D40, per l'utente, chi è convocato in una gara a squadre, e la cassa che deve bastare
+        anche per gli arretrati, che lo svincolo salda.
+        """
         if g.id not in poli.tesserati:
             return f"{nome_completo(g)} non è {accorda(g.sesso, 'tesserato')} con {poli.nome}."
+        impegno = None if poli.is_cpu_controlled else self.impegno_di_squadra(g)
+        if impegno:
+            return impegno
         if self.mosse_rimaste(poli) <= 0:
             return self._senza_mosse(poli)
         buonuscita = contratti.buonuscita(g, self.datetime_corrente_simulazione)
-        if buonuscita > poli.cassa:
-            return f"Svincolare {nome_completo(g)} costa una buonuscita di {scritta_in_euro(buonuscita)}, e la cassa di {poli.nome} ne ha {scritta_in_euro(poli.cassa)}."
+        arretrati = 0 if poli.is_cpu_controlled else g.arretrati
+        if buonuscita + arretrati > poli.cassa:
+            cassa = f"e la cassa di {poli.nome} ne ha {scritta_in_euro(poli.cassa)}"
+            if not arretrati:
+                return f"Svincolare {nome_completo(g)} costa una buonuscita di {scritta_in_euro(buonuscita)}, {cassa}."
+            costo = f"{scritta_in_euro(buonuscita)} di buonuscita e {scritta_in_euro(arretrati)} di arretrati" if buonuscita else \
+                f"{scritta_in_euro(arretrati)} di arretrati"
+            return f"Svincolare {nome_completo(g)} costa {costo}, {cassa}."
         return None
 
     def _paga_buonuscita(self, poli, g, data=None):
@@ -1232,16 +1348,20 @@ class Mondo:
     def svincola(self, poli, g):
         """
         L'utente svincola un suo tesserato, che torna libero: usa una mossa, e dalla tappa 11 paga la
-        buonuscita, metà degli stipendi che restano del contratto. Restituisce la buonuscita;
-        ValueError se non si può.
+        buonuscita, metà degli stipendi che restano del contratto. Dalla decisione D40 paga anche gli
+        arretrati, che prima lo svincolo cancellava, alla voce arretrati dei conti. Restituisce la
+        buonuscita; ValueError se non si può.
         """
         problema = self.problema_svincolo(poli, g)
         if problema:
             raise ValueError(problema)
         self._usa_mossa(poli)
         buonuscita = self._paga_buonuscita(poli, g)
+        arretrati = 0 if poli.is_cpu_controlled else g.arretrati
+        if arretrati:
+            self._paga_arretrati(poli, g, arretrati)
         self._lascia(poli, g)
-        con = f", con una buonuscita di {scritta_in_euro(buonuscita)}" if buonuscita else ""
+        con = _con_le_cifre(buonuscita, arretrati, "di arretrati")
         self.annota(g, f"{accorda(g.sesso, 'Svincolato')} da {poli.nome}{con}.")
         self.annota(poli, f"Svincolato {nome_completo(g)}{con}.")
         return buonuscita
@@ -1310,18 +1430,142 @@ class Mondo:
         self.annota(g, testo, data)
         self.annota(poli, f"{nome_completo(g)}. {testo}", data)
 
+    # La chiusura di una polisportiva dell'utente, che dalla decisione D40 salda tutto.
+
+    def debiti_di_chiusura(self, poli):
+        """
+        Quello che la chiusura della polisportiva paga, persona per persona, decisione D40: a ogni tesserato la
+        buonuscita e gli arretrati, a ogni allenatore dello staff la buonuscita e lo stipendio maturato nei giorni
+        del mese già passati. Un Debito per chi ha qualcosa da ricevere, prima i tesserati e poi lo staff.
+        """
+        oggi = self.datetime_corrente_simulazione
+        debiti = [Debito(g, False, contratti.buonuscita(g, oggi), g.arretrati) for g in self._rosa(poli)]
+        for numero in poli.staff:
+            a = self.allenatori.get(numero) if numero else None
+            if a is not None:
+                debiti.append(Debito(a, True, contratti.buonuscita(a, oggi), self._maturato(a, oggi, mese_intero_il_primo=False)))
+        return [d for d in debiti if d.buonuscita or d.altro]
+
+    def piano_di_chiusura(self, poli):
+        """
+        Chi paga la chiusura della polisportiva, decisione D40: prima la sua cassa, che si perde comunque; quello che
+        manca lo coprono le altre polisportive dell'utente, ciascuna soltanto oltre la sua riserva, dalla più ricca.
+        La copertura delle altre vale soltanto per la chiusura. Restituisce un PianoDiChiusura, con manca a zero
+        quando si può chiudere.
+        """
+        debiti = self.debiti_di_chiusura(poli)
+        costo = sum(d.buonuscita + d.altro for d in debiti)
+        cassa = max(0, poli.cassa)
+        propria = min(costo, cassa)
+        paganti = [(poli, propria)] if propria else []
+        resto = costo - propria
+        altre = sorted((p for p in self.polisportive.values() if not p.is_cpu_controlled and p is not poli), key=lambda p: (-p.cassa, p.nome))
+        for p in altre:
+            if resto <= 0:
+                break
+            quota = min(resto, max(0, p.cassa - self.riserva(p)))
+            if quota > 0:
+                paganti.append((p, quota))
+                resto -= quota
+        return PianoDiChiusura(costo, debiti, paganti, cassa - propria, resto)
+
+    def problema_chiusura(self, poli):
+        """
+        Perché la polisportiva dell'utente non si può chiudere, oppure None, decisione D40: i soldi della sua cassa e
+        delle altre polisportive dell'utente oltre la loro riserva non bastano per i suoi debiti. La frase dice quanto
+        serve, quanto c'è, quanto manca e chi la blocca: i debiti più grandi, dal primo, quanti ne servono a fare la
+        cifra che manca, con le bandiere, che non se ne vanno da sole.
+        """
+        if poli.is_cpu_controlled:
+            return None
+        piano = self.piano_di_chiusura(poli)
+        if piano.manca <= 0:
+            return None
+        propria = sum(quota for p, quota in piano.paganti if p is poli)
+        altre = piano.costo - piano.manca - propria
+        frase = f"Per chiudere {poli.nome} servono {scritta_in_euro(piano.costo)}: la sua cassa ne ha {scritta_in_euro(propria)}"
+        if any(not p.is_cpu_controlled and p is not poli for p in self.polisportive.values()):
+            frase += f", le tue altre polisportive, oltre la loro riserva, {scritta_in_euro(altre)}"
+        frase += f", e mancano {scritta_in_euro(piano.manca)}."
+        bloccano = []
+        somma = 0
+        for d in sorted(piano.debiti, key=lambda d: (-(d.buonuscita + d.altro), nome_completo(d.persona))):
+            if somma >= piano.manca:
+                break
+            bloccano.append(d)
+            somma += d.buonuscita + d.altro
+        nomi = [self._chi_blocca(d) for d in bloccano[:3]]
+        if len(bloccano) > 3:
+            nomi.append("un'altra persona" if len(bloccano) == 4 else f"altre {len(bloccano) - 3} persone")
+        if len(nomi) == 1:
+            frase += f" La blocca il debito con {nomi[0]}."
+        else:
+            frase += f" La bloccano i debiti con {', con '.join(nomi[:-1])} e con {nomi[-1]}."
+        if any(not d.allenatore and bandiera_attiva(d.persona) for d in bloccano):
+            frase += " Una bandiera non se ne va da sola, nemmeno senza stipendio."
+        return frase
+
+    @staticmethod
+    def _chi_blocca(d):
+        """Una persona che blocca la chiusura, per problema_chiusura: Mario Rossi, bandiera, per 1.800 euro; Anna Neri, dello staff, per 300 euro."""
+        if d.allenatore:
+            chi = f"{nome_completo(d.persona)}, dello staff,"
+        elif bandiera_attiva(d.persona):
+            chi = f"{nome_completo(d.persona)}, bandiera,"
+        else:
+            chi = nome_completo(d.persona)
+        return f"{chi} per {scritta_in_euro(d.buonuscita + d.altro)}"
+
+    def _paga_la_chiusura(self, poli, piano):
+        """
+        I debiti della chiusura, decisione D40, pagati da chi dice il piano, nell'ordine: ogni cifra va nei conti di chi
+        la paga, alla voce buonuscite, arretrati o staff; le altre polisportive che contribuiscono lo scrivono nel diario.
+        """
+        cassette = [[p, quota] for p, quota in piano.paganti]
+
+        def paga(voce, importo):
+            while importo > 0 and cassette:
+                pagante = cassette[0]
+                parte = min(importo, pagante[1])
+                pagante[0].cassa -= parte
+                pagante[0].conti_del_mese[voce] += parte
+                pagante[1] -= parte
+                importo -= parte
+                if pagante[1] <= 0:
+                    cassette.pop(0)
+
+        for d in piano.debiti:
+            paga("buonuscite", d.buonuscita)
+            paga("staff" if d.allenatore else "arretrati", d.altro)
+        for p, quota in piano.paganti:
+            if p is not poli:
+                self.annota(p, f"Paga {scritta_in_euro(quota)} dei debiti di {poli.nome}, che chiude: buonuscite, arretrati e stipendi che la sua cassa non copriva.")
+
     def chiudi_polisportiva(self, poli):
-        """Chiude per sempre una polisportiva: i tesserati tornano liberi. Restituisce quanti sono."""
+        """
+        Chiude per sempre una polisportiva: i tesserati tornano liberi. Restituisce quanti sono. Dalla decisione D40 una
+        polisportiva dell'utente salda prima tutti i suoi debiti, come dice piano_di_chiusura; se i soldi non bastano,
+        ValueError col perché di problema_chiusura, e la polisportiva resta.
+        """
+        pagati = {}
+        if not poli.is_cpu_controlled:
+            problema = self.problema_chiusura(poli)
+            if problema:
+                raise ValueError(problema)
+            piano = self.piano_di_chiusura(poli)
+            self._paga_la_chiusura(poli, piano)
+            pagati = {(d.allenatore, d.persona.numero if d.allenatore else d.persona.id): d for d in piano.debiti}
         liberati = 0
         for gid in list(poli.tesserati):
             g = self.giocatori.get(gid)
             if g is not None:
+                ricevuto = _ricevuto(pagati.get((False, gid)), "di arretrati")
                 self._lascia(poli, g)
-                self.annota(g, f"Torna {accorda(g.sesso, 'libero')}: {poli.nome} ha chiuso.")
+                self.annota(g, f"Torna {accorda(g.sesso, 'libero')}: {poli.nome} ha chiuso{ricevuto}.")
                 liberati += 1
         poli.tesserati.clear()
         poli.indicecollettivotesserati = 0.
-        self._congeda_lo_staff(poli, self.datetime_corrente_simulazione)
+        self._congeda_lo_staff(poli, self.datetime_corrente_simulazione, {numero: d for (allenatore, numero), d in pagati.items() if allenatore})
         self._fattori_staff.pop(poli.nome, None)
         del self.polisportive[poli.nome]
         if self.miapolisportiva_attiva is poli:
@@ -1579,14 +1823,34 @@ class Mondo:
         polisportive e le loro vendite si scorrono, così la scelta resta quella di prima: dalla tappa
         11 il valore di mercato dipende dalla scadenza, e rifarne il conto per ogni polisportiva
         costava troppo.
+        Dalla decisione D40, fra i giocatori dell'utente, il computer salta chi è convocato in una gara
+        a squadre e chi ha più arretrati di quanti il prezzo e la cassa di chi vende ne possano saldare.
+        La cassa deve bastare per tutte le vendite del giorno insieme, perché ognuna la cambia: i giocatori
+        che il computer potrebbe comprare se la dividono nell'ordine delle vendite, e chi non ci sta
+        aspetta un altro giorno. I giocatori del computer restano come prima.
         """
         righe = []
+        impegni = None
+        dalle_casse = {}
         for venditore in self.polisportive.values():
+            dell_utente = not venditore.is_cpu_controlled
             for gid, prezzo in venditore.in_vendita.items():
                 g = self.giocatori.get(gid)
                 # Il ritirato non si compra: serve ai salvataggi in cui un morto era rimasto in vendita.
                 if g is not None and not g.ritirato:
-                    righe.append((g, venditore, prezzo, valore_di_mercato(g, oggi) * RIALZO_CPU, stipendio(g)))
+                    massimo = valore_di_mercato(g, oggi) * RIALZO_CPU
+                    if dell_utente:
+                        if impegni is None:
+                            impegni = sfide.convocazioni(self)
+                        if sfide.convocazione(self, g, impegni) is not None:
+                            continue
+                        # Quello che il prezzo non copre, se il computer può pagarlo, lo copre la cassa di chi vende.
+                        dalla_cassa = max(0, g.arretrati - prezzo) if prezzo <= massimo else 0
+                        gia = dalle_casse.get(venditore.nome, 0)
+                        if gia + dalla_cassa > max(0, venditore.cassa):
+                            continue
+                        dalle_casse[venditore.nome] = gia + dalla_cassa
+                    righe.append((g, venditore, prezzo, massimo, stipendio(g)))
         return righe
 
     def _compra_dal_mercato(self, poli, data, mercato=None):

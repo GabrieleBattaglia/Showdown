@@ -146,8 +146,8 @@ def test_costi_e_stipendi_delle_righe(mondo):
     libero = _cerca(mondo, _stato(mercato.LIBERO))[0]
     assert libero.costo == economia.ingaggio_richiesto(libero.persona, mia) and libero.stipendio == economia.stipendio(libero.persona)
     tuoi = {r.persona.id: r for r in _cerca(mondo, _stato(mercato.TUO))}
-    # Da un'altra tua polisportiva oggi si compra al prezzo; dalla attiva no, è già sua.
-    assert (tuoi[6].di_chi, tuoi[6].prezzo, tuoi[6].costo) == (mercato.TUA_ALTRA, 1, 1)
+    # Dalla decisione D40 i tuoi non si comprano, nemmeno da un'altra tua polisportiva: niente costo, come dalla attiva.
+    assert (tuoi[6].di_chi, tuoi[6].prezzo, tuoi[6].costo) == (mercato.TUA_ALTRA, 1, None)
     assert (tuoi[1].di_chi, tuoi[1].prezzo, tuoi[1].costo) == (mercato.TUA_ATTIVA, 500, None)
     assert tuoi[2].costo is None and tuoi[2].stipendio == economia.stipendio_pagato(mondo.giocatori[2])
     assert all(r.stipendio is None and r.costo is None for r in _cerca(mondo, _stato(mercato.RITIRATO)))
@@ -354,8 +354,11 @@ def test_quale_offerta_si_puo_fare_a_ogni_riga(mondo):
     assert mercato.offerta_possibile(mondo, mia, _riga(mondo, libero)) == (mercato.INGAGGIO, None, None)
     assert mercato.offerta_possibile(mondo, mia, _riga(mondo, 10)) == (mercato.ACQUISTO, None, None)
     assert mercato.offerta_possibile(mondo, mia, _riga(mondo, 11)) == (mercato.OFFERTA_D_ACQUISTO, None, None)
-    # Da un'altra tua polisportiva oggi si compra; i tuoi della attiva e chi non è in vendita no.
-    assert mercato.offerta_possibile(mondo, mia, _riga(mondo, 6)) == (mercato.ACQUISTO, None, None)
+    # Dalla decisione D40 da un'altra tua polisportiva non si compra, col suo perché; i tuoi della attiva e chi non è in vendita nemmeno.
+    assert mercato.offerta_possibile(mondo, mia, _riga(mondo, 6)) == (None, "Fra le tue polisportive i giocatori non si vendono.", mercato.VENDITA_FRA_TUE)
+    mia.cassa = 0
+    assert mercato.offerta_possibile(mondo, mia, _riga(mondo, 6)).motivo == mercato.VENDITA_FRA_TUE
+    mia.cassa = 20_000
     for gid in (1, 2, 7, 40, 45):
         azione, problema, motivo = mercato.offerta_possibile(mondo, mia, _riga(mondo, gid))
         assert azione is None and problema and motivo == mercato.OFFERTA_NON_POSSIBILE, gid

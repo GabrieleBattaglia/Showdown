@@ -70,6 +70,10 @@ tutto com'era, anche in cima; Canc sulla prima regola di un'alternativa la fa ap
 nella prima; E ed O che non cambiano niente lo dicono con None, anche su una regola che ha già quel collegamento; e
 dalla seconda alternativa la ricerca guarda soltanto chi non è già passato. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Dal 2 novembre 2026, con la decisione D40, un tuo tesserato in vendita da un'altra tua polisportiva non si compra e non
+ha costo, e chi è convocato in una sfida accettata o sta nella rosa di una Coppa non si compra e non riceve offerte
+d'acquisto: offerta_possibile lo dice coi perché vendita_fra_tue e convocato_bloccato, ciascuno col suo suono, prima della
+cassa vuota, che non li toglierebbe. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -605,8 +609,9 @@ class Memoria:
         """Costo e stipendio di una riga di un giocatore: subito quelli che si sanno, da calcolare gli altri."""
         if r.stato in (RITIRATO, USCITO):
             return None, None
+        # Dalla decisione D40 un tuo tesserato non si compra, nemmeno da un'altra tua polisportiva: non ha un costo.
         if r.stato == TUO:
-            return (r.prezzo if r.di_chi == TUA_ALTRA else None), _DA_CALCOLARE
+            return None, _DA_CALCOLARE
         if r.stato == IN_VENDITA:
             return r.prezzo, _DA_CALCOLARE
         return _DA_CALCOLARE, _DA_CALCOLARE
@@ -697,8 +702,8 @@ class Riga:
     DEL_COMPUTER, TUO, RITIRATO o USCITO di scena; per gli allenatori LIBERO, DEL_COMPUTER o TUO. La
     polisportiva è il suo club, che è anche chi la vende, e di_chi dice di chi è. Il costo è quanto costa
     averla, None se non si può avere o non si sa: l'ingaggio chiesto alla polisportiva attiva da un libero, il
-    prezzo da chi è in vendita, anche da un'altra tua polisportiva, il valore di mercato di un tesserato del
-    computer, che fa da riferimento. Lo stipendio è quello che chiede oggi, per chi firmerebbe un contratto
+    prezzo da chi è in vendita, il valore di mercato di un tesserato del computer, che fa da riferimento; dalla
+    decisione D40 i tuoi, anche quelli in vendita da un'altra tua polisportiva, non hanno costo. Lo stipendio è quello che chiede oggi, per chi firmerebbe un contratto
     nuovo, quello del contratto per i tuoi, None per i ritirati; per gli allenatori quello chiesto da capo.
     Dal costruttore di regole della sera del 24 ottobre 2026 le righe le costruisce anche la memoria della
     finestra, una volta sola: stati sono allora le voci dello Stato che valgono insieme, posto il suo posto
@@ -797,6 +802,10 @@ OFFERTA_NON_POSSIBILE = "offerta_non_possibile"
 NON_GIOCA_OGGI = "non_gioca_oggi"
 CLUB_NON_SFIDABILE = "club_non_sfidabile"
 NESSUNA_POLISPORTIVA_ATTIVA = "nessuna_polisportiva_attiva"
+# I due perché della decisione D40, coi loro suoni: fra le tue polisportive non si vende, e chi è convocato in una gara a
+# squadre non si compra fino alla partita.
+VENDITA_FRA_TUE = "vendita_fra_tue"
+CONVOCATO_BLOCCATO = "convocato_bloccato"
 
 
 def _nome(persona):
@@ -845,11 +854,14 @@ def _offerta_all_allenatore(mondo, poli, riga, posto):
 def offerta_possibile(mondo, poli, riga, posto=None):
     """
     Quale offerta la polisportiva può fare alla persona della riga, o perché no, come Possibile: l'azione,
-    il problema, None se l'offerta si può fare, e il motivo. A un libero l'ingaggio; a chi è in vendita,
-    anche da un'altra tua polisportiva, l'acquisto al prezzo; a un tesserato del computer l'offerta
-    d'acquisto; a un allenatore libero l'ingaggio per il posto dato, o per il primo vuoto. A ritirati,
-    usciti di scena, tuoi tesserati non in vendita e allenatori già impiegati non si fanno offerte, e
-    l'azione è None. Come nel mercato di oggi, prima del mondo si controlla la cassa vuota.
+    il problema, None se l'offerta si può fare, e il motivo. A un libero l'ingaggio; a chi è in vendita
+    l'acquisto al prezzo; a un tesserato del computer l'offerta d'acquisto; a un allenatore libero
+    l'ingaggio per il posto dato, o per il primo vuoto. A ritirati, usciti di scena, tuoi tesserati e
+    allenatori già impiegati non si fanno offerte, e l'azione è None. Come nel mercato di oggi, prima del
+    mondo si controlla la cassa vuota. Dalla decisione D40 un tuo tesserato in vendita da un'altra tua
+    polisportiva non si compra, col perché vendita_fra_tue, e chi è convocato in una gara a squadre non si
+    compra e non riceve offerte d'acquisto, col perché convocato_bloccato: sono divieti che nessuna cassa
+    toglie, e vengono prima della cassa vuota.
     """
     if poli is None:
         return _senza_attiva("le offerte le fa la polisportiva attiva")
@@ -863,12 +875,17 @@ def offerta_possibile(mondo, poli, riga, posto=None):
     if riga.stato == TUO and (riga.prezzo is None or riga.polisportiva is poli):
         return Possibile(None, f"{_nome(g)} è già {accorda(g.sesso, 'tuo')}: è {accorda(g.sesso, 'tesserato')} con {riga.polisportiva.nome}.",
                          OFFERTA_NON_POSSIBILE)
+    if riga.stato == TUO:
+        return Possibile(None, mondo.problema_acquisto(poli, g), VENDITA_FRA_TUE)
     if riga.stato == LIBERO:
         azione, problema, costo = INGAGGIO, mondo.problema_offerta(poli, g), None
-    elif riga.stato in (IN_VENDITA, TUO):
+    elif riga.stato == IN_VENDITA:
         azione, problema, costo = ACQUISTO, mondo.problema_acquisto(poli, g), riga.prezzo
     else:
         azione, problema, costo = OFFERTA_D_ACQUISTO, mondo.problema_offerta_d_acquisto(poli, g), None
+    impegno = mondo.impegno_di_squadra(g) if azione != INGAGGIO else None
+    if impegno:
+        return Possibile(azione, impegno, CONVOCATO_BLOCCATO)
     if poli.cassa <= 0:
         return Possibile(azione, f"La cassa di {poli.nome} è vuota.", "cassa_insufficiente")
     if problema is None:

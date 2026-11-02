@@ -106,6 +106,10 @@ Lo stesso giorno, con le verifiche del costruttore di regole: il perché di un t
 e spazi; e il campo Trovati dice in quale alternativa va la regola in preparazione soltanto quando conta, e prima
 contava un'alternativa in più quando aveva la o e il Valore vuoto. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
 Opus 5.5, UltraCode).
+Dal 2 novembre 2026, con la prima tranche dei rimedi della decisione D40, le parole della chiusura che salda tutto: la
+domanda dice quanto costa chiudere, fra buonuscite e arretrati dei tesserati e buonuscite e stipendi maturati dello staff,
+chi paga che cosa e quanta cassa va persa, e l'esito quanto è costata; la domanda e l'esito dello svincolo dicono anche
+gli arretrati, che lo svincolo salda. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -1824,8 +1828,12 @@ def riga_vendita(g, p, oggi=None):
     return riga + (f", in vendita a {euro(p.in_vendita[g.id])}" if g.id in p.in_vendita else "")
 
 
-def svincolato(g, p, mondo, buonuscita=0):
-    pagata = f", con una buonuscita di {euro(buonuscita)}," if buonuscita else ""
+def svincolato(g, p, mondo, buonuscita=0, arretrati=0):
+    """L'esito dello svincolo, con la buonuscita e, dalla decisione D40, gli arretrati che lo svincolo ha saldato."""
+    cifre = [f"una buonuscita di {euro(buonuscita)}"] if buonuscita else []
+    if arretrati:
+        cifre.append(f"{euro(arretrati)} di arretrati")
+    pagata = f", con {unisci(cifre)}," if cifre else ""
     return f"{nome_completo(g)} è {accorda(g, 'svincolato')} da {p.nome}{pagata} e torna {accorda(g, 'libero')}. {info_mercato(p, mondo)}"
 
 
@@ -1848,25 +1856,72 @@ def mesi_che_restano(g, oggi):
 
 
 def domanda_svincolo(g, p, mondo):
-    """La domanda dello svincolo, con la buonuscita: Svincolare Mario Rossi? Gli restano 10 mesi di contratto: la buonuscita è di 1.100 euro."""
+    """
+    La domanda dello svincolo, con la buonuscita: Svincolare Mario Rossi? Gli restano 10 mesi di contratto: la buonuscita è di 1.100 euro.
+    Dalla decisione D40, per le tue polisportive, anche gli arretrati, che lo svincolo salda.
+    """
     oggi = mondo.datetime_corrente_simulazione
     buonuscita = contratti.buonuscita(g, oggi)
     mosse = f"userai una delle {mondo.mosse_rimaste(p)} mosse che ti restano oggi"
+    arretrati = 0 if p.is_cpu_controlled else g.arretrati
+    saldati = f" Lo svincolo salda anche i {euro(arretrati)} di arretrati che aspetta." if arretrati else ""
     if not buonuscita:
-        return f"Svincolare {nome_completo(g)}? Tornerà {accorda(g, 'libero')}, e {mosse}."
-    return f"Svincolare {nome_completo(g)}? {mesi_che_restano(g, oggi)}: la buonuscita è di {euro(buonuscita)}. Tornerà {accorda(g, 'libero')}, e {mosse}."
+        return f"Svincolare {nome_completo(g)}?{saldati} Tornerà {accorda(g, 'libero')}, e {mosse}."
+    return f"Svincolare {nome_completo(g)}? {mesi_che_restano(g, oggi)}: la buonuscita è di {euro(buonuscita)}.{saldati} Tornerà {accorda(g, 'libero')}, e {mosse}."
 
 
-def domanda_chiusura(p):
+def _costo_della_chiusura(piano):
+    """Il costo di una chiusura, decisione D40: Costa 4.090 euro: ai tesserati 2.800 euro di buonuscite e 400 euro di arretrati, allo staff 700 euro di buonuscite."""
+    parti = []
+    for chi, allenatori, altro in (("ai tesserati", False, "di arretrati"), ("allo staff", True, "di stipendi maturati")):
+        debiti = [d for d in piano.debiti if d.allenatore == allenatori]
+        buonuscite, resto = sum(d.buonuscita for d in debiti), sum(d.altro for d in debiti)
+        cifre = unisci([f"{euro(buonuscite)} di buonuscite" if buonuscite else "", f"{euro(resto)} {altro}" if resto else ""])
+        if cifre:
+            parti.append(f"{chi} {cifre}")
+    return f"Costa {euro(piano.costo)}: {', '.join(parti)}."
+
+
+def _chi_paga_la_chiusura(p, piano):
+    """Chi paga una chiusura, decisione D40: la cassa della polisportiva che chiude e, per il resto, le altre tue oltre la loro riserva."""
+    propria = sum(quota for pagante, quota in piano.paganti if pagante is p)
+    altre = unisci([f"{pagante.nome} {euro(quota)}" for pagante, quota in piano.paganti if pagante is not p])
+    if not altre:
+        return "Li paga la sua cassa."
+    sua = f"La sua cassa ne paga {euro(propria)}, e il resto" if propria else "La sua cassa è vuota, e tutto"
+    return f"{sua} lo coprono le tue altre polisportive, oltre la loro riserva: {altre}."
+
+
+def domanda_chiusura(p, piano):
+    """
+    La domanda della chiusura per sempre. Dalla decisione D40 dice anche quanto costa chiudere, fra buonuscite e arretrati
+    dei tesserati e buonuscite e stipendi maturati dello staff, chi paga che cosa e quanta cassa resta e va persa. piano è
+    quello di Mondo.piano_di_chiusura, per una chiusura che si può fare.
+    """
+    righe = [f"Chiudere per sempre {p.nome}?"]
+    if piano.costo:
+        righe += [_costo_della_chiusura(piano), _chi_paga_la_chiusura(p, piano)]
+    else:
+        righe.append("Non ha debiti da saldare.")
+    righe.append(f"La cassa che resta, {euro(piano.cassa_persa)}, andrà persa." if piano.cassa_persa else "Della cassa non resta niente.")
     if not p.tesserati:
-        return f"Chiudere per sempre {p.nome}? Non si torna indietro."
-    tesserati = conta(len(p.tesserati), "tesserato tornerà libero", "tesserati torneranno liberi")
-    return f"Chiudere per sempre {p.nome}? I suoi {tesserati}, e non si torna indietro." if len(p.tesserati) > 1 else f"Chiudere per sempre {p.nome}? Il suo unico tesserato tornerà libero, e non si torna indietro."
+        righe.append("Non si torna indietro.")
+    elif len(p.tesserati) > 1:
+        righe.append(f"I suoi {conta(len(p.tesserati), 'tesserato tornerà libero', 'tesserati torneranno liberi')}, e non si torna indietro.")
+    else:
+        righe.append("Il suo unico tesserato tornerà libero, e non si torna indietro.")
+    return " ".join(righe)
 
 
-def chiusa(nome, liberati):
+def chiusa(nome, liberati, piano=None):
+    """L'esito della chiusura; dalla decisione D40, col piano, anche quanto è costata e chi l'ha pagata."""
     tesserati = f": {conta(liberati, 'giocatore torna libero', 'giocatori tornano liberi')}" if liberati else ", senza tesserati"
-    return f"{nome} ha chiuso per sempre{tesserati}. Non hai più una polisportiva attiva: fondane una con Ctrl+N, o scegline un'altra con Ctrl+Maiusc+C."
+    pagata = ""
+    if piano is not None and piano.costo:
+        altre = unisci([f"{pagante.nome} {euro(quota)}" for pagante, quota in piano.paganti if pagante.nome != nome])
+        pagata = f" Ha saldato {euro(piano.costo)} di debiti" + (f", con l'aiuto di {altre}." if altre else ".")
+    return (f"{nome} ha chiuso per sempre{tesserati}.{pagata} Non hai più una polisportiva attiva: fondane una con Ctrl+N, o scegline un'altra "
+            "con Ctrl+Maiusc+C.")
 
 
 def password_cambiata(p):

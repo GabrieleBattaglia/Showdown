@@ -1221,15 +1221,20 @@ class FinestraPrincipale(wx.Frame):
             g = dialogo.scelto
         finally:
             dialogo.Destroy()
-        # Dalla tappa 11 lo svincolo a contratto in corso costa una buonuscita: se la cassa non basta, si dice prima.
+        # Dalla tappa 11 lo svincolo a contratto in corso costa una buonuscita: se la cassa non basta, si dice prima. Dalla
+        # decisione D40 salda anche gli arretrati, e chi è convocato in una gara a squadre non si svincola, col suo suono.
         problema = self.mondo.problema_svincolo(p, g)
         if problema:
-            self.mostra(problema, "cassa insufficiente", "cassa_insufficiente")
+            if self.mondo.impegno_di_squadra(g):
+                self.mostra(problema, "convocato", "convocato_bloccato")
+            else:
+                self.mostra(problema, "cassa insufficiente", "cassa_insufficiente")
             return
         if self._domanda(testi.domanda_svincolo(g, p, self.mondo), "Svincolo") != wx.YES:
             return
+        arretrati = g.arretrati
         buonuscita = self.mondo.svincola(p, g)
-        self._concludi(testi.svincolato(g, p, self.mondo, buonuscita), f"svincolato {testi.nome_completo(g)}", "tesserato_svincolato")
+        self._concludi(testi.svincolato(g, p, self.mondo, buonuscita, arretrati), f"svincolato {testi.nome_completo(g)}", "tesserato_svincolato")
 
     def password_polisportiva(self):
         p = self._attiva()
@@ -1259,10 +1264,16 @@ class FinestraPrincipale(wx.Frame):
                     return
             finally:
                 dialogo.Destroy()
-        if self._domanda(testi.domanda_chiusura(p), "Chiusura", "domanda_chiusura_polisportiva") != wx.YES:
+        # Dalla decisione D40 la chiusura salda tutti i debiti: se i soldi non bastano lo dice, col suo suono, e chi la blocca.
+        problema = self.mondo.problema_chiusura(p)
+        if problema:
+            self.mostra(problema, "chiusura non possibile", "chiusura_non_possibile")
+            return
+        piano = self.mondo.piano_di_chiusura(p)
+        if self._domanda(testi.domanda_chiusura(p, piano), "Chiusura", "domanda_chiusura_polisportiva") != wx.YES:
             return
         liberati = self.mondo.chiudi_polisportiva(p)
-        self._concludi(testi.chiusa(p.nome, liberati), f"chiusa {p.nome}", "polisportiva_chiusa")
+        self._concludi(testi.chiusa(p.nome, liberati, piano), f"chiusa {p.nome}", "polisportiva_chiusa")
 
     # L'amichevole, tappa 9.
 

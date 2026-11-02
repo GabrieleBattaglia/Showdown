@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 371 suoni, 344 della finestra e 27 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 375 suoni, 348 della finestra e 27 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -123,7 +123,7 @@ La password e la sua conferma non coincidono: mess_due_voci_stonate.
 Si apre il dialogo della password della polisportiva attiva: mess_tastierino_del_codice.
 La polisportiva protetta da una password: mess_chiave_che_chiude.
 La password della polisportiva tolta: mess_chiave_che_apre.
-Finestra, polisportive, chiusura, schede e svincolo, 10 suoni.
+Finestra, polisportive, chiusura, schede e svincolo, 11 suoni.
 La richiesta della password prima di chiudere una polisportiva protetta: mess_bussare_alla_porta.
 La domanda se chiudere per sempre la polisportiva attiva: mess_campana_a_martello.
 Una polisportiva chiusa per sempre: mess_triplice_fischio.
@@ -134,6 +134,7 @@ L'elenco delle polisportive, con Ctrl+Shift+E: mess_albo_che_scorre.
 Si apre la scelta del tesserato da svincolare, con Ctrl+Shift+S: mess_porta_che_cigola.
 Un tesserato svincolato, che torna libero: mess_contratto_strappato.
 Un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue polisportive quando nessuna ne ha: mess_eco_nello_spogliatoio.
+Chiudi la polisportiva attiva quando la sua cassa e le altre tue polisportive, oltre la loro riserva, non bastano per buonuscite, arretrati e stipendi maturati: mess_chiusura_non_possibile.
 Finestra, polisportive, le notizie dei tuoi tesserati, 3 suoni.
 Nell'avanzamento un tuo tesserato diventa una bandiera del club: mess_fanfara_della_bandiera.
 Nell'avanzamento un tuo tesserato si ritira: mess_scarpe_al_chiodo.
@@ -189,7 +190,7 @@ Nella finestra Mercato e ricerca l'offerta a un allenatore libero apre la scelta
 Nella finestra Mercato e ricerca un'offerta che a quella persona non si può fare, come a un allenatore che allena già, a un ritirato, a chi è uscito di scena o a un tuo tesserato non in vendita: mess_offerta_non_possibile.
 Nella finestra Mercato e ricerca Amichevole su chi oggi non può giocare: un allenatore, un ritirato, chi è uscito di scena, un infortunato o chi oggi ha già giocato; o sull'unico tuo tesserato che oggi può giocare, che non affronta sé stesso: mess_non_gioca_oggi.
 Nella finestra Mercato e ricerca Sfida il suo club su chi non gioca e non allena per una polisportiva del computer: mess_club_non_sfidabile.
-Finestra, economia, le offerte, 11 suoni.
+Finestra, economia, le offerte, 13 suoni.
 Si apre il dialogo della cifra d'ingaggio di un libero: mess_cifra_ingaggio.
 La probabilità che il libero, o l'allenatore libero, accetti, mentre si scrive la cifra: più è alta, più è acuto: mess_probabilita.
 Si apre il dialogo della cifra da offrire per un tesserato di un'altra polisportiva: mess_cifra_offerta.
@@ -201,12 +202,15 @@ La polisportiva del computer rifiuta l'offerta: mess_offerta_rifiutata.
 I soldi in cassa non bastano: mess_cassa_vuota.
 Le mosse di mercato del giorno sono finite: mess_mosse_finite.
 La rosa della polisportiva è piena: pokermachine_scudi_pieni.
-Finestra, economia, vendite e arretrati, 11 suoni.
+Nella finestra Mercato e ricerca l'acquisto di un tuo tesserato in vendita da un'altra tua polisportiva, che non si fa: mess_vendita_fra_tue.
+Chi è convocato in una sfida accettata o sta nella rosa di una Coppa non si mette in vendita, non si compra, non riceve offerte d'acquisto e non si svincola: nelle Vendite, nella finestra Mercato e ricerca e nello svincolo: mess_convocato_bloccato.
+Finestra, economia, vendite e arretrati, 12 suoni.
 Si apre il dialogo delle vendite dei tesserati: mess_vendite_aperte.
 Un tesserato messo in vendita: meteora_marker_messo.
 Il prezzo di un tesserato già in vendita cambiato: meteora_marker_rinominato.
 Un tesserato tolto dalla vendita: meteora_marker_eliminato.
 Si vuole togliere dalla vendita un tesserato che in vendita non c'è: mess_vendita_non_attiva.
+Nelle Vendite un prezzo che, con la cassa, non salda gli arretrati del tesserato: mess_prezzo_sotto_gli_arretrati.
 Si apre il pagamento degli arretrati, con Ctrl+Shift+P: mess_arretrati_aperti.
 Nessun tesserato aspetta arretrati: mess_conti_a_posto.
 Arretrati pagati in parte, e il tesserato aspetta ancora: mess_arretrati_in_parte.

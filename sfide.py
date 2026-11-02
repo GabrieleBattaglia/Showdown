@@ -40,6 +40,13 @@ Dal 24 ottobre 2026, con la issue 8 e la decisione D36, i divieti del lancio che
 formazione stanno da soli in problema_bersaglio, perché la finestra unica Mercato e ricerca dice prima di
 aprire il lancio se il club di una persona trovata si può sfidare. È di Gabriele Battaglia (IZ4APU) &
 ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2 novembre 2026, con la decisione D40, le gare a squadre fermano il mercato: convocazioni dice chi è
+convocato in una sfida accettata e chi sta nella rosa di una Coppa, dalla qualificazione alla fine, e
+impegno_di_squadra la frase che lo ferma fino alla partita, con la polisportiva di oggi. I tuoi convocati
+che erano in vendita ne escono quando la sfida è accettata, alla qualificazione e quando cambi la rosa,
+con una voce nei diari; la formazione proposta lascia fuori chi hai messo in vendita; e la rosa della
+Coppa rifiuta chi sta già in quella di un'altra polisportiva iscritta. È di Gabriele Battaglia (IZ4APU)
+& ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -70,7 +77,7 @@ from motore import ESSENZIALE, SQUADRE, TAVOLINO, Incontro, Squadra, a_tavolino
 from motore.squadre import composizione_valida
 from partita import MotorePartita, differita_squadre
 from premiazioni import COPPE_A_PAROLE
-from utilita import caso, data_breve
+from utilita import accorda, caso, data_breve
 
 PROPOSTA = "proposta"
 ACCETTATA = "accettata"
@@ -407,6 +414,97 @@ class RegistroSfide:
         return registro
 
 
+# Le gare a squadre che fermano il mercato, decisione D40.
+
+def _giorno_del_torneo(data):
+    return datetime.date.fromisoformat(data) if isinstance(data, str) else _giorno(data)
+
+
+def convocazioni(mondo):
+    """
+    Chi è impegnato con una polisportiva in una gara a squadre, decisione D40: i convocati delle sfide accettate, fino
+    alla partita, e le rose della Coppa, dalla qualificazione alla fine. Per giocatore, l'elenco dei suoi impegni come
+    terne del nome del club, del nome della gara, None per una sfida, e del giorno, quello del gioco per una sfida e
+    quello d'inizio per la Coppa.
+    """
+    impegni = {}
+    for s in mondo.sfide.attive:
+        if s.stato == ACCETTATA:
+            for lato in LATI:
+                for gid in s.convocati[lato]:
+                    impegni.setdefault(gid, []).append((s.club(lato)["nome"], None, s.data_gioco))
+    calendario = mondo.calendario
+    for ed in calendario.edizioni:
+        if not ed.individuale:
+            for iscritto in ed.iscritti:
+                club = (iscritto.get("club") or {}).get("nome", iscritto["id"])
+                for gid in iscritto.get("rosa", ()):
+                    impegni.setdefault(gid, []).append((club, ed.nome, ed.data_inizio))
+    for torneo in calendario.tornei:
+        if torneo.squadre:
+            for info in torneo.info.values():
+                club = (info.get("club") or {}).get("nome")
+                for gid in info.get("rosa", ()):
+                    impegni.setdefault(gid, []).append((club, torneo.modello["nome"], _giorno_del_torneo(torneo.data_inizio)))
+    return impegni
+
+
+def convocazione(mondo, g, impegni=None):
+    """
+    L'impegno di squadra del giocatore con la polisportiva di oggi, decisione D40, come terna di convocazioni, oppure
+    None: la rosa di un club che ha lasciato non lo ferma più. impegni, se c'è, è quello di convocazioni già fatto.
+    """
+    if impegni is None:
+        impegni = convocazioni(mondo)
+    return next((impegno for impegno in impegni.get(g.id, ()) if impegno[0] == g.appartenenza), None)
+
+
+def _dove_e_impegnato(g, impegno):
+    """Dove il giocatore è impegnato, a parole: convocato nella sfida del 25 novembre 2026, nella rosa della Coppa delle polisportive del 15 giugno 2027."""
+    _club, gara, giorno = impegno
+    if gara is None:
+        return f"{accorda(g.sesso, 'convocato')} nella sfida del {data_breve(giorno)}"
+    return f"nella rosa {torneo_con_preposizione(gara, 'di')} del {data_breve(giorno)}"
+
+
+def impegno_di_squadra(mondo, g, impegni=None):
+    """
+    La frase che ferma il giocatore sul mercato, decisione D40, oppure None: chi è convocato in una sfida accettata, o sta
+    nella rosa di una Coppa, fino alla partita non si mette in vendita, non si compra, non riceve offerte d'acquisto e
+    non si svincola.
+    """
+    impegno = convocazione(mondo, g, impegni)
+    if impegno is None:
+        return None
+    fino = "alla partita" if impegno[1] is None else "alla fine della coppa"
+    return f"{nome_completo(g)} è {_dove_e_impegnato(g, impegno)}: fino {fino} non si vende, non si compra e non si svincola."
+
+
+def fuori_dalla_vendita(mondo, poli, ids, gara, giorno):
+    """
+    I convocati della tua polisportiva che erano in vendita ne escono, decisione D40, con una voce nei due diari: fino alla
+    partita non si vendono. Si chiama quando la sfida è accettata, con gara None e il giorno del gioco, o quando la rosa
+    della Coppa è fatta, col nome della coppa e il suo giorno d'inizio. Restituisce i loro nomi.
+    """
+    nomi = []
+    for gid in ids:
+        g = mondo.giocatori.get(gid)
+        if g is None or poli.in_vendita.pop(gid, None) is None:
+            continue
+        dove = _dove_e_impegnato(g, (poli.nome, gara, giorno))
+        mondo.annota(poli, f"Toglie {nome_completo(g)} dalla vendita: è {dove}.")
+        mondo.annota(g, f"Esce dalla vendita di {poli.nome}: è {dove}.")
+        nomi.append(nome_completo(g))
+    return nomi
+
+
+def _usciti_dalla_vendita(nomi):
+    """La frase dei convocati usciti dalla vendita, per i messaggi: Mario Rossi esce dalla vendita; vuota senza nessuno."""
+    if not nomi:
+        return ""
+    return f" {_unisci(nomi)} {'esce' if len(nomi) == 1 else 'escono'} dalla vendita fino alla partita."
+
+
 def descrivi(mondo, g, oggi):
     """Che cosa ha giocato oggi il giocatore fra le sfide, per la regola di un impegno al giorno: una sfida, oppure None."""
     registro = mondo.sfide
@@ -669,8 +767,12 @@ def giorno_del_gioco(mondo):
 
 
 def proposta(mondo, poli):
-    """La formazione proposta per una tua sfida, per il giorno del gioco: gli identificativi, titolari e riserve, oppure una lista vuota."""
-    convocati = convoca(mondo, poli, giorno_del_gioco(mondo))
+    """
+    La formazione proposta per una tua sfida, per il giorno del gioco: gli identificativi, titolari e riserve, oppure una
+    lista vuota. Dalla decisione D40 la proposta lascia fuori chi hai messo in vendita: se lo convochi tu, accettata la
+    sfida esce dalla vendita.
+    """
+    convocati = forma(g for g in convocabili(mondo, poli, giorno_del_gioco(mondo)) if g.id not in poli.in_vendita)
     return [g.id for g in convocati] if convocati else []
 
 
@@ -737,7 +839,9 @@ def lancia(mondo, poli, nome_bersaglio, ids):
     mondo.sfide.attive.append(s)
     cognomi = _unisci([g.cognome for g in formazione[:GIOCATORI_AL_TAVOLO]])
     mondo.annota(poli, f"Lancia una sfida a {bersaglio.nome}, che accetta: si gioca il {data_breve(giorno_gioco)}, con {cognomi}.")
-    return s, f"{bersaglio.nome} accetta: si gioca domani, con {cognomi}."
+    # Decisione D40: i tuoi convocati che erano in vendita ne escono.
+    usciti = _usciti_dalla_vendita(fuori_dalla_vendita(mondo, poli, ids, None, giorno_gioco))
+    return s, f"{bersaglio.nome} accetta: si gioca domani, con {cognomi}.{usciti}"
 
 
 def in_arrivo(mondo, poli):
@@ -785,7 +889,9 @@ def accetta(mondo, id_sfida, poli, ids):
     s.convocati = {"sfidante": [g.id for g in sua], "sfidata": list(ids)}
     cognomi = _unisci([mondo.giocatori[gid].cognome for gid in ids[:GIOCATORI_AL_TAVOLO]])
     mondo.annota(poli, f"Accetta la sfida di {sfidante.nome}: si gioca il {data_breve(giorno_gioco)}, con {cognomi}.")
-    return f"Sfida accettata: si gioca domani contro {sfidante.nome}, con {cognomi}."
+    # Decisione D40: i tuoi convocati che erano in vendita ne escono.
+    usciti = _usciti_dalla_vendita(fuori_dalla_vendita(mondo, poli, ids, None, giorno_gioco))
+    return f"Sfida accettata: si gioca domani contro {sfidante.nome}, con {cognomi}.{usciti}"
 
 
 def rifiuta(mondo, id_sfida, poli):
@@ -847,6 +953,8 @@ def qualifica_coppa(mondo, calendario, ed, rapporto, quante=None):
             rapporto["notizie"].append(f"{poli.nome} è qualificata {torneo_con_preposizione(ed.nome)}.")
             cognomi = _unisci([g.cognome for g in rosa])
             mondo.annota(poli, f"Qualificata {torneo_con_preposizione(ed.nome)}, dal {data_breve(ed.data_inizio)}, con {cognomi}.")
+            # Decisione D40: chi della rosa era in vendita ne esce, fino alla fine della coppa.
+            fuori_dalla_vendita(mondo, poli, [g.id for g in rosa], ed.nome, ed.data_inizio)
 
 
 def rimpiazza_le_chiuse(mondo, calendario, ed, rapporto):
@@ -863,7 +971,9 @@ def problema_rosa(mondo, id_edizione, poli, ids):
     """
     Perché la tua polisportiva non può iscrivere questa rosa alla coppa, in una frase, oppure None: fino
     al sorteggio, da tre a sei tesserati senza doppioni, il due più uno fra i primi tre, e nessuno con
-    un altro impegno nei giorni della coppa. L'infortunato si può mettere, a suo rischio.
+    un altro impegno nei giorni della coppa. L'infortunato si può mettere, a suo rischio. Dalla decisione
+    D40 nemmeno chi sta già nella rosa di un'altra polisportiva iscritta alla stessa coppa, che il
+    calendario non vede, perché per lui l'edizione è una sola.
     """
     calendario = mondo.calendario
     ed = calendario.edizione(id_edizione)
@@ -877,12 +987,16 @@ def problema_rosa(mondo, id_edizione, poli, ids):
     if len(set(ids)) != len(ids):
         return "Lo stesso giocatore compare due volte nella rosa."
     impegni = calendario.impegni(mondo, esclusa=ed)
+    altre_rose = {gid: (iscritto.get("club") or {}).get("nome", iscritto["id"]) for iscritto in ed.iscritti if iscritto["id"] != poli.nome
+                  for gid in iscritto.get("rosa", ())}
     for gid in ids:
         g = mondo.giocatori.get(gid)
         if g is None or gid not in poli.tesserati:
             return f"Il giocatore {gid} non è un tesserato di {poli.nome}."
         if g.ritirato:
             return f"{nome_completo(g)} si è {'ritirato' if g.sesso == 'm' else 'ritirata'} dall'attività."
+        if gid in altre_rose:
+            return f"{nome_completo(g)} è già nella rosa di {altre_rose[gid]} {torneo_con_preposizione(ed.nome, 'per')}."
         if not _libero_nei_giorni(impegni, gid, ed.data_inizio, ed.data_fine):
             return f"{nome_completo(g)} nei giorni della coppa ha già un altro impegno."
     if not composizione_valida([mondo.giocatori[gid] for gid in ids[:GIOCATORI_AL_TAVOLO]]):
@@ -891,13 +1005,17 @@ def problema_rosa(mondo, id_edizione, poli, ids):
 
 
 def cambia_rosa(mondo, id_edizione, poli, ids):
-    """La tua polisportiva cambia la rosa della coppa, nell'ordine della formazione; ValueError col motivo."""
+    """
+    La tua polisportiva cambia la rosa della coppa, nell'ordine della formazione; ValueError col motivo. Dalla decisione
+    D40 chi entra nella rosa ed era in vendita ne esce, come alla qualificazione.
+    """
     problema = problema_rosa(mondo, id_edizione, poli, ids)
     if problema:
         raise ValueError(problema)
     ed = mondo.calendario.edizione(id_edizione)
     ed.iscritto(poli.nome)["rosa"] = list(ids)
     mondo.annota(poli, f"Cambia la rosa {torneo_con_preposizione(ed.nome, 'per')}: {_unisci([mondo.giocatori[gid].cognome for gid in ids])}.")
+    fuori_dalla_vendita(mondo, poli, ids, ed.nome, ed.data_inizio)
 
 
 def schiera_coppa(mondo, poli, rosa, tua_polisportiva=None):

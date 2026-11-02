@@ -141,11 +141,13 @@ def test_svincolo_e_chiusura(mondo, monkeypatch):
     assert mondo.giocatori[2].diario[0]["testo"].endswith(f" da Club di prova, con una buonuscita di {economia.scritta_in_euro(buonuscita)}.")
     with pytest.raises(ValueError, match="non è"):
         mondo.svincola(poli, mondo.giocatori[2])
+    # Dalla decisione D40 la chiusura paga la buonuscita a chi torna libero, e il diario la dice.
+    buonuscita_1 = economia.scritta_in_euro(mondo.debiti_di_chiusura(poli)[0].buonuscita)
     assert mondo.chiudi_polisportiva(poli) == 2
     assert "Club di prova" not in mondo.polisportive
     assert mondo.miapolisportiva_attiva is None
     assert mondo.giocatori[1].appartenenza == "*"
-    assert mondo.giocatori[1].diario[0]["testo"].endswith(": Club di prova ha chiuso.")
+    assert mondo.giocatori[1].diario[0]["testo"].endswith(f": Club di prova ha chiuso, con una buonuscita di {buonuscita_1}.")
 
 
 def test_chi_si_ritira_o_muore_libera_il_posto(mondo, monkeypatch):
