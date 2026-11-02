@@ -16,6 +16,7 @@ import datetime
 import errno
 import faulthandler
 import functools
+import gzip
 import itertools
 import json
 import os
@@ -222,6 +223,19 @@ def _mondo_del_futuro(cartella):
     os.makedirs(cartella, exist_ok=True)
     with open(os.path.join(cartella, FILE_MONDO), "w", encoding="utf-8") as f:
         json.dump({**documento, "firma": archivio.firma(documento)}, f)
+
+
+def _mondo_a_meta(cartella):
+    """
+    Un salvataggio arrivato a metà, come quello di un cloud che lo sta ancora scaricando: compresso e firmato, ma tronco.
+    Dalla decisione D40 il mondo del futuro ha il suo messaggio e non apre più l'avviso del salvataggio illeggibile, con
+    Riprova e le copie messe da parte: le prove di quell'avviso usano questo.
+    """
+    documento = {"applicazione": "MESS", "formato": archivio.FORMATO, "versione": "2.0.0", "salvato": OGGI.isoformat(), "mondo": {}}
+    os.makedirs(cartella, exist_ok=True)
+    dati = gzip.compress(json.dumps({**documento, "firma": archivio.firma(documento)}).encode("utf-8"))
+    with open(os.path.join(cartella, FILE_MONDO), "wb") as f:
+        f.write(dati[:len(dati) // 2])
 
 
 def test_la_data_dal_salvataggio_dalla_copia_o_il_perche(tmp_path):
@@ -630,7 +644,7 @@ def test_la_notizia_dei_dati_in_riserva_tiene_il_suo_tipo_anche_dopo_riprova(avv
     # non si legge ancora; con Riprova si legge, e la finestra riceve la notizia del primo giro, col tipo che la fa suonare come i dati in riserva.
     os.remove(percorsi.file_della_cartella())
     mondo = programma_di_prova / "Mondo"
-    _mondo_del_futuro(str(mondo))
+    _mondo_a_meta(str(mondo))
     _salva_in(str(programma_di_prova), OGGI, _mondo(4))
     monkeypatch.setattr(cdm, "adesso", lambda: ADESSO)
     avviso = AvvisoFinto([(dialoghi.RIPROVA, lambda: _salva_in(str(mondo), OGGI, _mondo(8)))])
@@ -1290,7 +1304,8 @@ def avvio_intero(avvio, monkeypatch):
 
 def test_il_salvataggio_illeggibile_all_avvio_e_un_altra_cartella(avvio_intero, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
     # Revisione del 23 ottobre 2026, difetto 4: il mondo di una versione più recente nella cartella scelta fermava MESS a ogni avvio.
-    _mondo_del_futuro(str(cartella_di_prova))
+    # Dalla decisione D40 quel mondo ha il suo messaggio, che chiede di aggiornare MESS: qui il salvataggio è arrivato a metà.
+    _mondo_a_meta(str(cartella_di_prova))
     illeggibile = (cartella_di_prova / FILE_MONDO).read_bytes()
     buona = tmp_path_factory.mktemp("buona")
     _salva_in(str(buona), OGGI)
@@ -1300,7 +1315,7 @@ def test_il_salvataggio_illeggibile_all_avvio_e_un_altra_cartella(avvio_intero, 
     assert Showdown.avvia_finestra() == Showdown.APERTA
     assert suonati == ["salvataggio_illeggibile", "salvataggio_illeggibile", "cartella_mondo"]
     righe = avviso.testi[0].splitlines()
-    assert righe[0].startswith(f"Il salvataggio del mondo, nella cartella {cartella_di_prova}, c'è ma non si può leggere: il file viene da una versione")
+    assert righe[0].startswith(f"Il salvataggio del mondo, nella cartella {cartella_di_prova}, c'è ma non si può leggere: il file compresso è rovinato")
     assert righe[-1] == "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra. Esci, o Esc, chiude MESS senza toccare niente."
     # MESS si apre sul mondo della cartella scelta, e quello illeggibile resta com'era.
     assert len(avvio_intero) == 1 and avvio_intero[0].origine == archivio.CARICATO and percorsi.cartella() == str(buona)
@@ -1326,7 +1341,7 @@ def _riga_delle_copie(cartella):
 
 
 def test_carica_puo_non_mettere_da_parte_i_file_illeggibili(cartella_di_prova):
-    _mondo_del_futuro(str(cartella_di_prova))
+    _mondo_a_meta(str(cartella_di_prova))
     with pytest.raises(archivio.SalvataggioIllegibile) as errore:
         archivio.carica(Mondo(), metti_da_parte=False)
     assert errore.value.cartella is None and not (cartella_di_prova / archivio.CARTELLA_QUARANTENA).exists()
@@ -1338,9 +1353,9 @@ def test_carica_puo_non_mettere_da_parte_i_file_illeggibili(cartella_di_prova):
 def test_due_riprova_sullo_stesso_salvataggio_illeggibile_fanno_una_cartella_di_copie_sola(avvio_intero, suonati, monkeypatch, cartella_di_prova,
                                                                                            tmp_path_factory):
     # Ogni Riprova rifaceva le copie, in una cartella datata nuova a ogni secondo: col cloud, dove il testo consiglia di riprovare, si moltiplicavano.
-    _mondo_del_futuro(str(cartella_di_prova))
+    _mondo_a_meta(str(cartella_di_prova))
     altra = tmp_path_factory.mktemp("altra")
-    _mondo_del_futuro(str(altra))
+    _mondo_a_meta(str(altra))
     # Un secondo in più a ogni lettura dell'orologio: senza la correzione, ogni Riprova avrebbe la sua cartella.
     secondi = itertools.count()
     monkeypatch.setattr(archivio, "adesso", lambda: OGGI + datetime.timedelta(seconds=next(secondi)))
@@ -1361,7 +1376,7 @@ def test_due_riprova_sullo_stesso_salvataggio_illeggibile_fanno_una_cartella_di_
 
 
 def test_le_copie_che_non_riescono_si_riprovano(avvio_intero, monkeypatch, cartella_di_prova):
-    _mondo_del_futuro(str(cartella_di_prova))
+    _mondo_a_meta(str(cartella_di_prova))
     vera, chiamate = archivio._metti_da_parte, []
 
     def metti_da_parte(*file):
@@ -1382,7 +1397,7 @@ def test_le_copie_che_non_riescono_si_riprovano(avvio_intero, monkeypatch, carte
 def test_la_notizia_dei_dati_spostati_resta_nel_registro(avvio_intero, suonati, monkeypatch, programma_di_prova):
     # Alla prima partenza i dati accanto al programma si spostavano, poi il mondo non si leggeva, e con Esci la notizia non compariva mai.
     os.remove(percorsi.file_della_cartella())
-    _mondo_del_futuro(str(programma_di_prova))
+    _mondo_a_meta(str(programma_di_prova))
     avviso = AvvisoFinto([(dialoghi.ESCI, None)])
     monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", avviso)
     acceso = faulthandler.is_enabled()

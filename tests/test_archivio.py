@@ -177,8 +177,10 @@ def test_formato_piu_recente_rifiutato(cartella_di_prova):
     contenuto["formato"] = archivio.FORMATO + 1
     percorso = cartella_di_prova / FILE_MONDO
     percorso.write_text(json.dumps({**contenuto, "firma": archivio.firma(contenuto)}), encoding="utf-8")
-    with pytest.raises(archivio.ErroreSalvataggio, match="più recente"):
+    # Dalla decisione D40 con un'eccezione sua, che non è un ErroreSalvataggio: il caricamento non la intercetta.
+    with pytest.raises(archivio.FormatoPiuRecente, match="più recente") as errore:
         archivio.leggi(percorso)
+    assert not isinstance(errore.value, archivio.ErroreSalvataggio) and (errore.value.formato, errore.value.massimo) == (archivio.FORMATO + 1, archivio.FORMATO)
 
 
 def test_un_dato_non_valido_lascia_il_mondo_com_era():
@@ -358,7 +360,7 @@ def test_un_salvataggio_del_formato_4_si_aggiorna(cartella_di_prova):
     assert not ricaricato.giocatori[4].puo_giocare and ricaricato.giocatori[4].infortunio_sede == "non_precisata"
     assert archivio.salva(ricaricato)
     riletto = _ricarica()
-    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 10
+    assert archivio.leggi(percorso)["formato"] == archivio.FORMATO == 11
     for gid, g in riletto.giocatori.items():
         assert vars(g) == vars(ricaricato.giocatori[gid])
 

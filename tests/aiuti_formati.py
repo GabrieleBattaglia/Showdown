@@ -3,6 +3,8 @@ Strumenti comuni alle prove delle migrazioni del salvataggio: un documento del f
 riportato com'era nel formato 6 o nel formato 5, da cui le prove dei formati più vecchi tolgono il resto.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, modalità auto).
 Nasce il 2026-10-09 con la tappa 11 e il formato 6; dal 2026-10-13, con la tappa 12, anche il formato 7.
+Dal 2026-11-02, con la decisione D40, anche il formato 10, di un documento del formato 11. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -23,6 +25,25 @@ RINOMINATI_DEL_FORMATO_7 = {"ultima_amichevole": "ultimo_impegno"}
 CAMPI_POLISPORTIVA_DEL_FORMATO_7 = ("palmares_recente", "sfide_da_lanciare", "ultima_sfida", "sfide_vinte", "sfide_perse")
 VOCI_DEL_FORMATO_7 = ("iscrizioni", "premi", "rimborsi")
 ARCHETIPO_DELL_INDOLE = {indole: archetipo for archetipo, indole in MAPPA_ARCHETIPI_INDOLI.items()}
+# I campi che nascono con il formato 11, della decisione D40: nel mondo, in ogni giocatore e in ogni allenatore.
+CAMPI_MONDO_DEL_FORMATO_11 = ("fondazioni_di_sempre",)
+CAMPI_DEL_FORMATO_11 = ("tesserato_dal",)
+CAMPI_ALLENATORE_DEL_FORMATO_11 = ("escluso_dall_utente_fino",)
+
+
+def al_formato_10(contenuto):
+    """Un documento del formato 11 com'era nel formato 10: senza il contatore delle fondazioni, la firma dei giocatori e il giorno degli allenatori."""
+    vecchio = copy.deepcopy(contenuto)
+    for campo in CAMPI_MONDO_DEL_FORMATO_11:
+        del vecchio["mondo"][campo]
+    for g in vecchio["mondo"]["giocatori"]:
+        for campo in CAMPI_DEL_FORMATO_11:
+            del g[campo]
+    for a in vecchio["mondo"]["allenatori"]:
+        for campo in CAMPI_ALLENATORE_DEL_FORMATO_11:
+            del a[campo]
+    vecchio["formato"] = 10
+    return vecchio
 
 
 def al_formato_6(contenuto):

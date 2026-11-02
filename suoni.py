@@ -143,6 +143,11 @@ si vende, non si compra e non si svincola, un richiamo che sale e si ferma; il p
 arretrati di chi si vende, le monete che non bastano; e la chiusura che i soldi non bastano a pagare, la campana della
 domanda di chiusura che si ferma e ricade. Lo svincolo che salda anche gli arretrati, quando la cassa non basta, suona
 ancora come la cassa insufficiente. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la terza tranche di D40 e il formato 11, un suono nuovo, mess_mondo_piu_recente, nella collezione di
+GBUtils: all'avvio il mondo viene da una versione più recente di MESS, e MESS chiede di essere aggiornato ed esce senza
+toccare i file. L'inizio del motivo di mess_avvio, che cerca una nota troppo alta, la sente allontanarsi e torna giù da dove
+era partito. Prima suonava come il salvataggio illeggibile. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import sys
@@ -172,6 +177,8 @@ GRUPPI = (
         "salvataggio_con_avviso": "mess_salvataggio_con_avviso",
         "salvataggio_non_riuscito": "mess_salvataggio_non_riuscito",
         "salvataggio_illeggibile": "mess_salvataggio_illeggibile",
+        # Dalla decisione D40: all'avvio il mondo viene da una versione più recente di MESS, che va aggiornato.
+        "mondo_piu_recente": "mess_mondo_piu_recente",
         # Un'eccezione che nessuno aspettava, e il comando si interrompe: l'allarme vero.
         "errore_imprevisto": "sirena_d_allarme_1",
         # Dal collaudo di gioco: l'errore che ferma MESS, la stessa sirena che crolla come un motore che si spegne.
@@ -690,6 +697,8 @@ AZIONI = {
     "salvataggio_non_riuscito": ("un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, dopo un avanzamento del mondo, che la barra di stato dice "
                                  "non salvato, o quando si cambia la cartella del mondo, e allora la cartella non cambia"),
     "salvataggio_illeggibile": "all'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire",
+    "mondo_piu_recente": ("all'avvio il mondo viene da una versione più recente di MESS, col formato del salvataggio che questa non sa leggere: "
+                          "un messaggio chiede di aggiornare MESS, che esce senza toccare i file del mondo"),
     "errore_imprevisto": ("un errore imprevisto interrompe un comando, e MESS resta aperto; o, senza messaggio, succede quando la finestra "
                           "non c'è più mentre MESS si chiude"),
     "errore_fatale": "un errore imprevisto ferma MESS, e un messaggio dice dove sta il resoconto da allegare quando si chiede aiuto",

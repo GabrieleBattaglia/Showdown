@@ -62,6 +62,12 @@ NASCITA_DEL_MONDO = datetime.datetime(2026, 1, 1, 9, 0, tzinfo=datetime.UTC)
 CAMPI_DEL_MONDO_REALE = ("salvato", "versione", "ultimo_avanzamento")
 CAMPI_REALI_GIOCATORE = ("datacreazione_reale", "versione")
 CAMPI_REALI_POLISPORTIVA = ("datacreazione_reale", "datetime_ultimo_movimento", "versione_creazione")
+# Le impronte dei mondi sono del formato 10. Il formato 11 della decisione D40 aggiunge tre campi che il mondo che gioca
+# scrive e non legge: il contatore delle fondazioni dell'utente, il giorno della firma di ogni giocatore e il giorno fino
+# al quale un allenatore non firma con l'utente. L'impronta li toglie e rimette il formato 10, così resta quella di prima
+# e controlla che col formato nuovo nient'altro cambi.
+FORMATO_DELLE_IMPRONTE = 10
+CAMPI_DEL_FORMATO_11 = {"mondo": ("fondazioni_di_sempre",), "giocatori": ("tesserato_dal",), "allenatori": ("escluso_dall_utente_fino",)}
 # Le gare dei giocatori del mondo, dalla tappa 12, punti 6.4 e 13.3 del progetto: con le fonti nuove
 # l'esperienza del club scende, e senza le gare il mondo sintetico avrebbe il 60 per cento
 # d'esperienza in meno di quello vero, e meno punti allenamento, perché nel mondo che gioca i tesserati
@@ -271,7 +277,7 @@ def avanza(mondo, giorni, seme):
 
 
 def documento_senza_istanti_reali(mondo):
-    """Il salvataggio del mondo come lo compone l'archivio, senza gli istanti del mondo reale né le versioni del programma."""
+    """Il salvataggio del mondo come lo compone l'archivio, senza gli istanti del mondo reale né le versioni del programma, nel formato delle impronte."""
     documento = archivio.componi(mondo)
     for campo in CAMPI_DEL_MONDO_REALE:
         documento.pop(campo, None)
@@ -282,6 +288,13 @@ def documento_senza_istanti_reali(mondo):
     for p in documento["mondo"]["polisportive"].values():
         for campo in CAMPI_REALI_POLISPORTIVA:
             p.pop(campo, None)
+    documento["formato"] = FORMATO_DELLE_IMPRONTE
+    for campo in CAMPI_DEL_FORMATO_11["mondo"]:
+        documento["mondo"].pop(campo, None)
+    for chi in ("giocatori", "allenatori"):
+        for voce in documento["mondo"][chi]:
+            for campo in CAMPI_DEL_FORMATO_11[chi]:
+                voce.pop(campo, None)
     # Anche le vecchie glorie scrivono la versione con cui il giocatore era nato: si vedeva soltanto al primo
     # cambio di versione dopo le impronte, il 21 ottobre 2026. Le voci sono quelle del mondo: si copiano.
     documento["mondo"]["vecchie_glorie"] = [{chiave: valore for chiave, valore in voce.items() if chiave not in CAMPI_REALI_GIOCATORE}

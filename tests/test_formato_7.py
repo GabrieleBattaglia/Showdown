@@ -201,5 +201,5 @@ def test_un_formato_piu_recente_si_rifiuta(cartella_di_prova):
     contenuto["formato"] = archivio.FORMATO + 1
     percorso = cartella_di_prova / FILE_MONDO
     percorso.write_text(json.dumps({**contenuto, "firma": archivio.firma(contenuto)}), encoding="utf-8")
-    with pytest.raises(archivio.ErroreSalvataggio, match=f"formato {archivio.FORMATO + 1}"):
+    with pytest.raises(archivio.FormatoPiuRecente, match=f"formato {archivio.FORMATO + 1}"):
         archivio.leggi(percorso)

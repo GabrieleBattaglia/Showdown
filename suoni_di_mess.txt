@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 375 suoni, 348 della finestra e 27 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 376 suoni, 349 della finestra e 27 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -8,11 +8,12 @@ L'avvio con le collezioni di nomi e cognomi difettose: mess_avvio_con_avvisi.
 L'uscita dal programma con il mondo salvato: mess_uscita.
 L'uscita dal programma quando il salvataggio finale non riesce: mess_uscita_senza_salvataggio.
 Si apre MESS mentre è già aperto, e la finestra aperta torna in primo piano: mess_primo_piano.
-Finestra, applicazione, i salvataggi e gli errori gravi, 7 suoni.
+Finestra, applicazione, i salvataggi e gli errori gravi, 8 suoni.
 Il mondo salvato con Ctrl+S: meditimer_banco_salvato.
 Il mondo salvato con Ctrl+S, ma con un avviso dell'archivio: mess_salvataggio_con_avviso.
 Un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, dopo un avanzamento del mondo, che la barra di stato dice non salvato, o quando si cambia la cartella del mondo, e allora la cartella non cambia: mess_salvataggio_non_riuscito.
 All'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire: mess_salvataggio_illeggibile.
+All'avvio il mondo viene da una versione più recente di MESS, col formato del salvataggio che questa non sa leggere: un messaggio chiede di aggiornare MESS, che esce senza toccare i file del mondo: mess_mondo_piu_recente.
 Un errore imprevisto interrompe un comando, e MESS resta aperto; o, senza messaggio, succede quando la finestra non c'è più mentre MESS si chiude: sirena_d_allarme_1.
 Un errore imprevisto ferma MESS, e un messaggio dice dove sta il resoconto da allegare quando si chiede aiuto: mess_errore_fatale.
 All'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto: mess_crash_precedente.

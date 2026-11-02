@@ -150,7 +150,9 @@ def test_l_aggiornamento_dal_formato_8_da_una_sede_a_tutte(cartella_di_prova):
     archivio.MIGRAZIONI[8](contenuto)
     assert contenuto["formato"] == 9
     archivio.MIGRAZIONI[9](contenuto)
-    assert contenuto["formato"] == archivio.FORMATO == 10
+    assert contenuto["formato"] == 10
+    archivio.MIGRAZIONI[10](contenuto)
+    assert contenuto["formato"] == archivio.FORMATO == 11
     nuovo = Mondo()
     archivio.costruisci(contenuto, nuovo)
     # Anche quella dell'utente riceve il comune estratto dal nome: nel formato 8 nessuno l'aveva scelto.

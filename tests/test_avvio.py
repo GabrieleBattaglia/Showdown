@@ -10,11 +10,16 @@ Dalla revisione del 23 ottobre 2026 una prova fa girare il vero avvia_finestra f
 normale, che deve dare zero e scrivere MESS si chiude: le altre lo sostituivano, e non vedevano che
 restituiva un esito che non c'era.
 Dal 2026-10-24, col collaudo di gioco, l'errore che ferma MESS col suo suono, errore_fatale, e non più quello del comando interrotto.
+Dal 2026-11-02, con la decisione D40 e il formato 11, il mondo di una versione più recente ferma MESS col suo suono e un messaggio,
+senza l'avviso del salvataggio illeggibile e senza toccare i file.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
 import faulthandler
+import gzip
+import json
+import os
 import random
 import sys
 import threading
@@ -27,6 +32,8 @@ import istanza
 import percorsi
 import registro
 import Showdown
+import suoni
+import testi
 from costanti import FILE_MONDO, FILE_MONDO_COPIA, VERSIONE
 from gui import dialoghi
 from gui import finestra as finestra_modulo
@@ -124,7 +131,7 @@ def test_il_salvataggio_illeggibile_da_il_codice_uno(monkeypatch, programma_di_p
     assert (programma_di_prova / registro.FILE_DEGLI_ERRORI).read_text(encoding="utf-8").rstrip().endswith("MESS si ferma: il salvataggio non si legge.")
 
 
-@pytest.mark.parametrize(("esito", "codice"), [(Showdown.SENZA_CARTELLA, 0), (Showdown.NON_SPOSTATI, 1)])
+@pytest.mark.parametrize(("esito", "codice"), [(Showdown.SENZA_CARTELLA, 0), (Showdown.NON_SPOSTATI, 1), (Showdown.PIU_RECENTE, 1)])
 def test_gli_esiti_della_cartella_del_mondo(monkeypatch, programma_di_prova, esito, codice):
     # Dal 23 ottobre 2026: uscire perché la cartella del mondo non c'è è una scelta, i dati che non si spostano un guasto.
     monkeypatch.setattr(Showdown, "avvia_finestra", lambda *_a: esito)
@@ -171,6 +178,40 @@ def test_il_salvataggio_rovinato_ferma_il_gioco(app_wx, monkeypatch, cartella_di
     assert suonati == ["salvataggio_illeggibile"]
     assert (cartella_di_prova / FILE_MONDO).read_text(encoding="utf-8") == "non è un salvataggio"
     assert not (cartella_di_prova / FILE_MONDO_COPIA).exists()
+
+
+def test_il_mondo_di_una_versione_piu_recente_ferma_mess_senza_toccare_i_file(app_wx, monkeypatch, cartella_di_prova, suonati):
+    # Decisione D40: un salvataggio del formato 12, con la sua copia buona accanto. Niente avviso del salvataggio illeggibile,
+    # niente ripiego e niente copie messe da parte: il suono, il messaggio che chiede di aggiornare MESS, e i file restano identici.
+    random.seed(12)
+    ora = adesso()
+    m = Mondo()
+    m.datetime_corrente_simulazione = ora
+    m.datetime_ultimo_run_reale = adesso_utc() - datetime.timedelta(minutes=5)
+    m.crea_giocatori_casuali(6, ora)
+    principale, copia = cartella_di_prova / FILE_MONDO, cartella_di_prova / FILE_MONDO_COPIA
+    archivio.scrivi(m, str(principale), str(copia))
+    contenuto = archivio.componi(m)
+    contenuto["formato"] = archivio.FORMATO + 1
+    archivio.scrivi(m, str(principale), str(copia))
+    principale.write_bytes(gzip.compress(json.dumps({**contenuto, "firma": archivio.firma(contenuto)}).encode("utf-8")))
+    prima = {nome: (cartella_di_prova / nome).read_bytes() for nome in os.listdir(cartella_di_prova)}
+    messaggi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, titolo, *a, **k: messaggi.append((testo, titolo)))
+    monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", lambda dialogo: pytest.fail("non è un salvataggio illeggibile"))
+    monkeypatch.setattr(finestra_modulo, "FinestraPrincipale", _non_si_apre)
+    assert Showdown.avvia_finestra() == Showdown.PIU_RECENTE
+    assert suonati == ["mondo_piu_recente"] and suonati.dettagli[0]["sync"] == suoni.ATTESA_USCITA
+    assert messaggi == [(testi.mondo_piu_recente(12, 11, str(cartella_di_prova)), "MESS")]
+    assert {nome: (cartella_di_prova / nome).read_bytes() for nome in os.listdir(cartella_di_prova)} == prima
+    assert set(prima) == {FILE_MONDO, FILE_MONDO_COPIA}
+
+
+def test_il_messaggio_del_mondo_piu_recente():
+    assert testi.mondo_piu_recente(12, 11, r"Z:\Mondo SD") == (
+        "Il mondo viene da una versione più recente di MESS: il salvataggio è del formato 12, e questa versione legge fino al formato 11.\n"
+        "Per aprirlo, aggiorna MESS e poi riaprilo.\n"
+        "MESS ora si chiude, e non tocca i file del mondo, nella cartella Z:\\Mondo SD.")
 
 
 def test_la_chiusura_normale_da_zero_e_lo_scrive(app_wx, monkeypatch, cartella_di_prova, programma_di_prova, suonati):

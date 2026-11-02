@@ -91,6 +91,15 @@ davvero, sempre senza cambiare numero: il salvataggio scrive regole, ordine e re
 dà filtri_di_ricerca_del_formato_10, che perde il suo _a_regole, e le costanti a schede di prima diventano _a_schede e
 restano soltanto per le prove della lettura, che le riconosce e torna ai filtri di serie con un avviso. È di Gabriele
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Il formato 11, del 2 novembre 2026, con la decisione D40 di Gabriele sui trucchi fra le polisportive dell'utente: il mondo
+ricorda quante polisportive l'utente ha fondato, fondazioni_di_sempre; ogni giocatore il giorno in cui ha firmato con la
+polisportiva di oggi, tesserato_dal; ogni allenatore il giorno fino al quale non firma con le polisportive dell'utente. La
+migrazione dal 10 fa partire il contatore dalle polisportive dell'utente aperte e lascia vuote le due date: la firma vuota vuol
+dire firmata prima del formato 11. Il mondo di Gabriele sta su Google Drive e lo aprono tre macchine: una col codice di prima,
+davanti al formato 11, crederebbe rovinato il salvataggio e ripiegherebbe sulla copia, ancora del 10, che lo coprirebbe. Perciò
+al primo salvataggio dopo una migrazione anche la copia si scrive nel formato nuovo. E dal formato 12 un formato più recente non
+è più un file rovinato: leggi solleva FormatoPiuRecente, che il caricamento non intercetta, e all'avvio MESS chiede di essere
+aggiornato ed esce senza toccare i file. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -153,7 +162,7 @@ from sfide import RegistroSfide
 from utilita import adesso, adesso_utc, senza_raccolta
 
 APPLICAZIONE = "MESS"
-FORMATO = 10
+FORMATO = 11
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Il segnaposto dei giocatori mentre si scrive il resto del documento, _testo_firmato: due caratteri
@@ -196,6 +205,20 @@ class SalvataggioIllegibile(Exception):
     def __init__(self, motivo, cartella=None):
         super().__init__(motivo)
         self.cartella = cartella
+
+
+class FormatoPiuRecente(Exception):
+    """
+    Un file del mondo scritto da una versione più recente di MESS, col formato dato, che questa non sa leggere. Dalla
+    decisione D40 non è un ErroreSalvataggio, e il caricamento non lo intercetta: un file rovinato fa ripiegare sulla
+    copia, e la copia, ancora del formato di prima, coprirebbe il mondo nuovo. Qui ci si ferma e basta: niente ripiego,
+    niente copie messe da parte, niente blocco dei salvataggi, e i file restano come sono.
+    """
+
+    def __init__(self, formato):
+        super().__init__(f"il file viene da una versione più recente del gioco, con il formato {formato}, mentre questa legge fino al formato {FORMATO}")
+        self.formato = formato
+        self.massimo = FORMATO
 
 
 def firma(documento):
@@ -289,14 +312,26 @@ def componi(mondo):
             "prossimo_allenatore": mondo.prossimo_allenatore,
             # Dalla issue 8, formato 10: i preset dei filtri della finestra Mercato e ricerca e lo stato di ogni porta d'ingresso.
             "filtri_di_ricerca": mercato.filtri_di_ricerca_da_salvare(mondo),
+            # Dalla decisione D40, formato 11: quante polisportive l'utente ha fondato.
+            "fondazioni_di_sempre": mondo.fondazioni_di_sempre,
         },
     }
+
+
+def _scrivi_su_disco(percorso, dati):
+    """Scrive i dati nel file, forzati su disco prima di tornare."""
+    with open(percorso, "wb") as f:
+        f.write(dati)
+        f.flush()
+        os.fsync(f.fileno())
 
 
 def scrivi(mondo, percorso, percorso_copia):
     """
     Scrive il mondo nel file indicato con la scrittura sicura, e il salvataggio precedente nella
     copia. Restituisce il documento scritto e gli avvisi, cioè le cose andate storte senza danno.
+    Dalla decisione D40, il primo salvataggio di un mondo letto da un formato vecchio scrive il mondo
+    anche nella copia, e poi il mondo ricorda di essere nel formato di adesso.
     """
     with senza_raccolta():
         contenuto = componi(mondo)
@@ -305,20 +340,30 @@ def scrivi(mondo, percorso, percorso_copia):
     temporaneo = percorso + ".tmp"
     avvisi = []
     try:
-        with open(temporaneo, "wb") as f:
-            f.write(dati)
-            f.flush()
-            os.fsync(f.fileno())
-        if os.path.exists(percorso):
-            try:
-                shutil.copy2(percorso, percorso_copia)
-            except OSError as e:
-                avvisi.append(f"La copia di sicurezza non si è potuta aggiornare: {e}.")
+        if mondo.formato_letto is not None and mondo.formato_letto < FORMATO:
+            # D40: il mondo di Gabriele sta su Google Drive, e lo aprono tre macchine. Una col codice di prima, davanti al
+            # formato nuovo, crederebbe rovinato il salvataggio e ripiegherebbe sulla copia: se la copia fosse il salvataggio
+            # precedente, del formato vecchio, la leggerebbe e la metterebbe al posto del mondo nuovo. Perciò al primo
+            # salvataggio dopo una migrazione la copia riceve lo stesso mondo, nel formato nuovo, e prima del salvataggio: il
+            # codice di prima trova due file che non sa leggere, si ferma con l'avviso e non tocca niente. Se la copia non si
+            # scrive, il salvataggio non si fa, perché il mondo nuovo accanto alla copia vecchia è proprio il caso da evitare;
+            # se si ferma dopo la copia, restano la copia nuova e il salvataggio vecchio, e tutti e due si leggono.
+            _scrivi_su_disco(temporaneo, dati)
+            os.replace(temporaneo, percorso_copia)
+            _scrivi_su_disco(temporaneo, dati)
+        else:
+            _scrivi_su_disco(temporaneo, dati)
+            if os.path.exists(percorso):
+                try:
+                    shutil.copy2(percorso, percorso_copia)
+                except OSError as e:
+                    avvisi.append(f"La copia di sicurezza non si è potuta aggiornare: {e}.")
         os.replace(temporaneo, percorso)
     finally:
         if os.path.exists(temporaneo):
             with contextlib.suppress(OSError):
                 os.remove(temporaneo)
+    mondo.formato_letto = FORMATO
     return contenuto, avvisi
 
 
@@ -326,7 +371,13 @@ def leggi(percorso):
     """
     Legge e verifica un file del mondo e restituisce il documento senza la firma; ErroreSalvataggio
     se non va. Il file può essere compresso, come lo scrive il gioco dalla tappa 7, oppure testo.
+    Dalla decisione D40, il file di un formato più recente solleva FormatoPiuRecente.
     """
+    return _leggi(percorso)[0]
+
+
+def _leggi(percorso):
+    """Legge un file del mondo come leggi, e restituisce il documento aggiornato e il formato in cui era scritto."""
     try:
         with open(percorso, "rb") as f:
             dati = f.read()
@@ -352,7 +403,7 @@ def leggi(percorso):
     if not isinstance(formato, int) or isinstance(formato, bool) or formato < 1:
         raise ErroreSalvataggio(f"il numero di formato non è valido: {formato!r}")
     if formato > FORMATO:
-        raise ErroreSalvataggio(f"il file viene da una versione più recente del gioco, con il formato {formato}, mentre questa legge fino al {FORMATO}")
+        raise FormatoPiuRecente(formato)
     if formato == 5:
         _completa_formato_5(documento)
     while documento["formato"] < FORMATO:
@@ -360,7 +411,7 @@ def leggi(percorso):
             MIGRAZIONI[documento["formato"]](documento)
         except (KeyError, TypeError, ValueError, AttributeError) as e:
             raise ErroreSalvataggio(f"il salvataggio del formato {documento['formato']} non si è potuto aggiornare: {e}") from e
-    return documento
+    return documento, formato
 
 
 def _completa_formato_5(documento):
@@ -668,8 +719,24 @@ def _dal_formato_9(documento):
     documento["formato"] = 10
 
 
+def _dal_formato_10(documento):
+    """
+    Dal formato 10 all'11, con la decisione D40 del 2 novembre 2026, aggiungendo soltanto. Il contatore delle fondazioni
+    parte dalle polisportive dell'utente aperte; la firma con la polisportiva di oggi resta vuota per tutti i giocatori,
+    perché nessuno la ricorda, e vuota vuol dire firmata prima del formato 11; nessun allenatore è tenuto lontano
+    dall'utente. Gli allenatori da far nascere, di un mondo che viene dal 7, nascono già col campo vuoto.
+    """
+    dati = documento["mondo"]
+    dati.setdefault("fondazioni_di_sempre", sum(1 for p in dati["polisportive"].values() if not p["is_cpu_controlled"]))
+    for g in dati["giocatori"]:
+        g.setdefault("tesserato_dal", None)
+    for a in dati["allenatori"] or ():
+        a.setdefault("escluso_dall_utente_fino", None)
+    documento["formato"] = 11
+
+
 MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5, 6: _dal_formato_6,
-              7: _dal_formato_7, 8: _dal_formato_8, 9: _dal_formato_9}
+              7: _dal_formato_7, 8: _dal_formato_8, 9: _dal_formato_9, 10: _dal_formato_10}
 
 
 def _conservazione_da_json(valore):
@@ -733,6 +800,10 @@ def costruisci(documento, mondo):
         # Dalla issue 8, formato 10: i preset e le porte della finestra Mercato e ricerca. È la sola lettura indulgente,
         # scelta di Gabriele del 24 ottobre 2026: quello che non si legge torna ai filtri di serie, con un avviso.
         filtri_di_ricerca, avvisi_dei_filtri = mercato.filtri_di_ricerca_da_dizionario(dati.get("filtri_di_ricerca"))
+        # Dalla decisione D40, formato 11: il contatore delle fondazioni dell'utente.
+        fondazioni = da_json(dati["fondazioni_di_sempre"], int, "Mondo", "fondazioni_di_sempre")
+        if fondazioni < 0:
+            raise ValueError(f"Mondo: il campo fondazioni_di_sempre non è valido: {fondazioni!r}")
     except KeyError as e:
         raise ErroreSalvataggio(f"manca il dato {e}") from e
     except (TypeError, ValueError, AttributeError) as e:
@@ -750,6 +821,7 @@ def costruisci(documento, mondo):
     mondo.allenatori = allenatori
     mondo.prossimo_allenatore = max(prossimo_allenatore, max(allenatori, default=0) + 1)
     mondo.filtri_di_ricerca = filtri_di_ricerca
+    mondo.fondazioni_di_sempre = fondazioni
     if da_far_nascere:
         mondo.fai_nascere_lo_staff()
     mondo.aggiorna_fattori_staff()
@@ -878,6 +950,9 @@ def carica(mondo, metti_da_parte=True):
     spenta: riaccesa prima, ripasserebbe tutto il mondo appena caricato come oggetti giovani, un terzo di
     secondo nel mondo di sessant'anni, subito prima della raccolta completa. Se il caricamento non
     riesce, la raccolta si riaccende lo stesso. Il mondo caricato non cambia.
+    Dalla decisione D40, se il file che si legge, il salvataggio o, quando quello non va, la copia, viene da un
+    formato più recente, passa FormatoPiuRecente: niente ripiego, niente copie messe da parte, niente blocco, e i
+    file restano come sono.
     """
     with senza_raccolta():
         origine = _carica(mondo, metti_da_parte)
@@ -899,9 +974,10 @@ def _carica(mondo, metti_da_parte=True):
         _fai_nascere(mondo)
         return NATO
     motivo = f"il file {os.path.basename(principale)} non c'è"
+    # Dalla decisione D40 FormatoPiuRecente non si intercetta: né dal salvataggio né dalla copia, ferma il caricamento.
     if esiste_principale:
         try:
-            costruisci(leggi(principale), mondo)
+            _apri(principale, mondo)
         except ErroreSalvataggio as e:
             motivo = str(e)
         else:
@@ -909,7 +985,7 @@ def _carica(mondo, metti_da_parte=True):
             return CARICATO
     if esiste_copia:
         try:
-            costruisci(leggi(copia), mondo)
+            _apri(copia, mondo)
         except ErroreSalvataggio as e:
             motivo = f"{motivo}; e la copia di sicurezza nemmeno, perché {e}"
         else:
@@ -917,6 +993,13 @@ def _carica(mondo, metti_da_parte=True):
             return DALLA_COPIA
     mondo.salvataggio_bloccato = True
     raise SalvataggioIllegibile(motivo, _metti_da_parte(principale, copia) if metti_da_parte else None)
+
+
+def _apri(percorso, mondo):
+    """Legge il file e ne porta il contenuto nel mondo, che dalla decisione D40 ricorda il formato in cui il file era scritto."""
+    documento, formato = _leggi(percorso)
+    costruisci(documento, mondo)
+    mondo.formato_letto = formato
 
 
 def _annuncia_ripiego(mondo, motivo, principale, copia, esiste_principale):

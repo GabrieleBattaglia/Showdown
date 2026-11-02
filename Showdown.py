@@ -47,6 +47,10 @@ Dal collaudo di gioco di Gabriele, il 24 ottobre 2026, per la regola di un suono
 che ferma MESS ha il suo suono, errore_fatale, la sirena che crolla come un motore che si spegne: prima
 suonava come l'errore che interrompe un comando e lascia MESS aperto, che resta errore_imprevisto. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 2 novembre 2026, con la decisione D40 e il formato 11, un mondo salvato da una versione più recente di
+MESS non è più un salvataggio illeggibile, con Riprova e le copie messe da parte: il suo suono e un messaggio
+dicono il formato del salvataggio e chiedono di aggiornare MESS, che esce senza toccare i file del mondo. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -61,17 +65,20 @@ import testi
 from mondo import Mondo
 
 # Come finisce avvia_finestra: la finestra aperta e poi chiusa, il salvataggio che non si legge, la
-# cartella del mondo che non c'è e si sceglie di uscire, i dati accanto al programma che non si spostano.
+# cartella del mondo che non c'è e si sceglie di uscire, i dati accanto al programma che non si spostano,
+# e dalla decisione D40 il mondo di una versione più recente di MESS.
 # Per ciascuno il codice d'uscita del programma e la riga del registro.
 APERTA = "aperta"
 ILLEGGIBILE = "illeggibile"
 SENZA_CARTELLA = "senza cartella"
 NON_SPOSTATI = "non spostati"
+PIU_RECENTE = "più recente"
 ESITI = {
     APERTA: (0, "MESS si chiude."),
     ILLEGGIBILE: (1, "MESS si ferma: il salvataggio non si legge."),
     SENZA_CARTELLA: (0, "MESS si chiude: la cartella del mondo non c'è."),
     NON_SPOSTATI: (1, "MESS si ferma: i dati accanto al programma non si sono potuti spostare nella cartella del mondo."),
+    PIU_RECENTE: (1, "MESS si ferma: il mondo viene da una versione più recente di MESS, da aggiornare."),
 }
 
 
@@ -180,7 +187,12 @@ def _carica_o_scegli(mondo, accettata, copie=None):
     alla cartella dove sono le copie dei suoi file illeggibili: si fanno soltanto la prima volta per
     quella cartella, o finché non riescono, e non a ogni Riprova, che col cloud si ripete; alle volte
     seguenti l'avviso nomina la cartella delle copie della prima.
+    Dalla decisione D40 il mondo di una versione più recente di MESS non è un salvataggio illeggibile:
+    il suo suono e un messaggio che chiede di aggiornare MESS, poi l'esito PIU_RECENTE, e MESS esce
+    senza toccare i file del mondo.
     """
+    import wx
+
     import percorsi
     from gui.dialoghi import ESCI, UN_ALTRA_CARTELLA, MondoIllegibile
 
@@ -189,6 +201,11 @@ def _carica_o_scegli(mondo, accettata, copie=None):
     chiave = percorsi.normale(cartella)
     try:
         return archivio.carica(mondo, metti_da_parte=copie.get(chiave) is None), None, accettata
+    except archivio.FormatoPiuRecente as errore:
+        # Come per il salvataggio illeggibile, il suono finisce prima della spiegazione.
+        suoni.suona("mondo_piu_recente", sync=suoni.ATTESA_USCITA)
+        wx.MessageBox(testi.mondo_piu_recente(errore.formato, errore.massimo, cartella), "MESS", wx.OK | wx.ICON_WARNING)
+        return None, PIU_RECENTE, accettata
     except archivio.SalvataggioIllegibile as errore:
         if errore.cartella is None:
             errore.cartella = copie.get(chiave)
@@ -213,7 +230,7 @@ def avvia_finestra(crash_precedente=None, finestre=None):
     """
     Prepara la cartella del mondo, poi crea, carica e fa avanzare il mondo, e apre la finestra fino
     all'uscita. Restituisce uno degli ESITI: APERTA, ILLEGGIBILE se il salvataggio non si leggeva e si è
-    scelto di uscire, SENZA_CARTELLA o NON_SPOSTATI. crash_precedente è il resoconto del crash della
+    scelto di uscire, SENZA_CARTELLA, NON_SPOSTATI o PIU_RECENTE. crash_precedente è il resoconto del crash della
     volta prima, che la vista dice all'apertura; finestre, se data, riceve la finestra appena nasce, per
     l'ascolto dell'istanza unica.
     """
@@ -330,8 +347,8 @@ def main(argomenti=None):
     """
     L'avvio di MESS. Restituisce il codice d'uscita: zero se tutto è andato bene, anche quando questa
     copia lascia il posto a quella già aperta o si esce perché la cartella del mondo non c'è; uno se il
-    salvataggio non si leggeva, i dati accanto al programma non si spostavano o MESS si è fermato per
-    un errore. argomenti sono quelli della riga di comando, senza il nome del programma: con --attendi
+    salvataggio non si leggeva, veniva da una versione più recente, i dati accanto al programma non si
+    spostavano o MESS si è fermato per un errore. argomenti sono quelli della riga di comando, senza il nome del programma: con --attendi
     e un numero di processo, la copia che si riapre aspetta prima che quel processo sia uscito.
     """
     import istanza

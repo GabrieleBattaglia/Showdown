@@ -73,6 +73,10 @@ Lo stesso giorno, con la seconda tranche di D40, lo sponsor delle polisportive d
 in attività su 15, dentro economia.sponsor_mensile: Mondo.sponsor, i conti del primo del mese e tutto quello che lo
 mostra dicono la stessa cifra, e tesserati_nello_sponsor dice ai testi per quanti la gloria è pagata. È di Gabriele
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la terza tranche di D40 e il formato 11 del salvataggio, il mondo tiene il contatore delle polisportive
+che l'utente ha fondato, fondazioni_di_sempre, che le regole delle fondazioni useranno, e il formato del salvataggio da cui
+viene, per la copia di sicurezza dell'archivio; _entra scrive in ogni giocatore il giorno della firma, anche per il computer,
+e _lascia lo cancella. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -373,6 +377,10 @@ class Mondo:
         # Dalla issue 8, D36, i preset dei filtri della finestra Mercato e ricerca e lo stato di ogni porta d'ingresso,
         # un mercato.FiltriDiRicerca; None finché non servono, e allora valgono quelli di serie.
         self.filtri_di_ricerca = None
+        # Dalla decisione D40, formato 11: quante polisportive l'utente ha fondato, un contatore che non scende.
+        self.fondazioni_di_sempre = 0
+        # Il formato del salvataggio da cui viene il mondo, None se è nato adesso: l'archivio lo legge e lo scrive.
+        self.formato_letto = None
 
     # Probabilità, ricerche, diari.
 
@@ -478,15 +486,18 @@ class Mondo:
         arretrato. Dalla tappa 11 firma un contratto, ed è il solo punto da cui si firma: ci passano
         l'ingaggio, le mosse del computer e gli acquisti, perché comprare vuol dire firmare un
         contratto nuovo col compratore. Lo stipendio è quello che chiede oggi, la durata quella che
-        propone; il programma riparte dalla sua indole, a intensità normale.
+        propone; il programma riparte dalla sua indole, a intensità normale. Dalla decisione D40 il
+        giocatore ricorda il giorno della firma, per tutte le polisportive, anche del computer.
         """
+        quando = data or self.datetime_corrente_simulazione
         g.appartenenza = poli.nome
         poli.aggiungi_tesserato(g.id, g.indice_collettivo_valore)
         self._fattori_del_giocatore(g)
         g.fedelta = 0.
         g.pazienza = 100.
         g.arretrati = 0
-        contratti.stipula(g, data or self.datetime_corrente_simulazione, stipendio(g), contratti.durata_proposta(g))
+        g.tesserato_dal = quando
+        contratti.stipula(g, quando, stipendio(g), contratti.durata_proposta(g))
         g.programma = g.indole
         g.intensita = INTENSITA_PREDEFINITA
         # Dalla tappa 12 l'iscrizione automatica ai tornei è accesa per chi si tessera, risposta 17 di Gabriele.
@@ -503,7 +514,7 @@ class Mondo:
         Il giocatore esce dall'elenco dei tesserati e torna libero, senza voci di diario: le
         scrive chi chiama. Esce anche dalla vendita, e i suoi arretrati non li aspetta più. Dalla
         tappa 11 il contratto si cancella, con rinnovo e proposte, e programma e intensità tornano
-        quelli della sua indole.
+        quelli della sua indole. Dalla decisione D40 si cancella anche il giorno della firma.
         """
         poli.rimuovi_tesserato(g.id, g.indice_collettivo_valore)
         poli.in_vendita.pop(g.id, None)
@@ -512,6 +523,7 @@ class Mondo:
         g.fedelta = 0.
         g.pazienza = 100.
         g.arretrati = 0
+        g.tesserato_dal = None
         g.annulla_contratto()
         g.programma = g.indole
         g.intensita = INTENSITA_PREDEFINITA

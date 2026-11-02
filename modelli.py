@@ -35,6 +35,9 @@ per ogni spesa d'allenamento. Il salvataggio passa al formato 6.
 Dalla tappa 12, il 2026-10-13, decisione D32, il formato 7: il giocatore ha un acciacco, con la data
 in cui finisce, il calo del primo giorno, i giorni e la sede; la data dell'ultima amichevole diventa
 ultimo_impegno, perché la regola di un impegno al giorno vale per amichevoli, tornei e sfide.
+Dal 2026-11-02, decisione D40, il formato 11: il giocatore ricorda il giorno in cui ha firmato con la
+polisportiva di oggi, tesserato_dal, vuoto per chi è libero e per chi ha firmato prima del formato 11.
+È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -227,6 +230,8 @@ CAMPI_GIOCATORE = (
     ("gare_squadre_vinte", int), ("gare_squadre_perse", int),
     # Dalla tappa 13, formato 8: il punteggio di classe più alto della carriera, D33 risposta 9, e il comune di provenienza.
     ("classe_migliore", float), ("luogo", str),
+    # Dalla decisione D40, formato 11: il giorno della firma con la polisportiva di oggi, vuoto per chi è libero e per chi ha firmato prima.
+    ("tesserato_dal", DATA_O_NULLA),
 )
 
 
@@ -642,6 +647,8 @@ class Giocatore:
             setattr(self, campo, vuoto)
         self.prossimo_torneo = ritmo_iniziale(id_giocatore, datetime_creazione_sim) if isinstance(datetime_creazione_sim, datetime.datetime) else None
         self.iscrizione_automatica = True
+        # Dalla decisione D40 il giorno della firma con la polisportiva di oggi: chi nasce è libero.
+        self.tesserato_dal = None
         self.nome = "*"
         self.cognome = "*"
         self.appartenenza = "*"

@@ -124,7 +124,7 @@ def carica_mondo_salvato():
     mondo = Mondo()
     try:
         archivio.costruisci(archivio.leggi(percorso), mondo)
-    except archivio.ErroreSalvataggio as e:
+    except (archivio.ErroreSalvataggio, archivio.FormatoPiuRecente) as e:
         sys.exit(f"Il mondo salvato in {percorso} non si può usare: {e}. Senza --mondo salvato il banco usa una popolazione di prova.")
     return list(mondo.giocatori.values())
 

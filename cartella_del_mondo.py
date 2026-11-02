@@ -103,7 +103,9 @@ def salvato(cartella):
     nello stesso ordine, come archivio._carica: il salvataggio e la sua copia, compressi, o quelli di
     prima della tappa 7 se dei compressi non c'è nessuno. Vale il primo che si legge, perché è quello che
     MESS caricherebbe: se il salvataggio è rovinato e la copia no, la data è quella della copia. Se non si
-    legge nessuno dei due, la data del file del primo e il perché, con le parole del caricamento.
+    legge nessuno dei due, la data del file del primo e il perché, con le parole del caricamento. Dalla
+    decisione D40 un file di un formato più recente ferma la ricerca come ferma il caricamento: la sua data
+    e il perché, senza guardare la copia.
     """
     principale, copia = (os.path.join(cartella, nome) for nome in (FILE_MONDO, FILE_MONDO_COPIA))
     if not os.path.exists(principale) and not os.path.exists(copia):
@@ -115,6 +117,9 @@ def salvato(cartella):
     for file in esistenti:
         try:
             documento = archivio.leggi(file)
+        except archivio.FormatoPiuRecente as errore:
+            # Dalla decisione D40 il caricamento si ferma lì, senza la copia: quel mondo questa versione non lo apre.
+            return Salvato(_data_del_file(file), False, str(errore))
         except archivio.ErroreSalvataggio as errore:
             motivo = f"{motivo}; e la copia di sicurezza nemmeno, perché {errore}" if file == copia else str(errore)
             continue

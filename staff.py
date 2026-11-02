@@ -11,6 +11,9 @@ Ogni polisportiva ha un capo e due posti d'assistente, nel campo staff, coi nume
 per un posto vuoto. La qualità dello staff, da 0 a 1, dà tre fattori: l'allenamento, il rischio
 d'infortunio e la crescita della fedeltà, ciascuno con le tre ancore di costanti.py.
 Non conosce wx né il mondo: il mondo tiene gli allenatori in mondo.allenatori e chiama queste regole.
+Dal 2026-11-02, decisione D40, il formato 11: ogni allenatore ricorda il giorno simulato fino al quale non
+firma con le polisportive dell'utente, escluso_dall_utente_fino, vuoto per tutti finché una regola non lo
+scrive. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -76,6 +79,8 @@ CAMPI_ALLENATORE = (
     ("rinnovo_stipendio", int), ("rinnovo_scadenza", DATA_O_NULLA), ("proposte_rinnovo", int), ("ultima_trattativa", DATA_O_NULLA),
     ("prelazione", TESTO_O_NULLA), ("prelazione_fino", DATA_O_NULLA), ("riservato_fino", DATA_O_NULLA), ("diario", DIARIO),
     ("luogo", str),
+    # Dalla decisione D40, formato 11: il giorno simulato fino al quale non firma con le polisportive dell'utente.
+    ("escluso_dall_utente_fino", DATA_O_NULLA),
 )
 _CONVERSIONI_ALLENATORE = tuple((campo, conversione_a_json(tipo)) for campo, tipo in CAMPI_ALLENATORE)
 
@@ -113,6 +118,8 @@ class Allenatore:
         self.prelazione_fino = None
         # L'istante vero fino a cui è riservato all'utente, MINUTI_RISERVA_UTENTE, o None: il computer non lo vede.
         self.riservato_fino = None
+        # Dalla decisione D40 il giorno simulato fino al quale non firma con le polisportive dell'utente, o None.
+        self.escluso_dall_utente_fino = None
         # Vero se la fine è il minimo oltre l'età estratta, per sparpaglia_la_fine: un dato di lavoro, non si salva.
         self.fine_minima = False
         # Il comune di provenienza: l'ex giocatore tiene il suo, il nato lo riceve dal suo numero.

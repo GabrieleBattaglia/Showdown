@@ -113,6 +113,9 @@ gli arretrati, che lo svincolo salda. È di Gabriele Battaglia (IZ4APU) & ClaudI
 Lo stesso giorno, con la seconda tranche di D40, lo sponsor di una tua polisportiva con la rosa non piena: la scheda e la
 testata dei contratti dicono per quanti tesserati è pagata la gloria, e il bilancio anche quanto costa un posto vuoto. È
 di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la terza tranche di D40 e il formato 11, il messaggio dell'avvio quando il mondo viene da una
+versione più recente di MESS: il formato del salvataggio, quello fino al quale si legge, l'aggiornamento che serve e i
+file del mondo che restano come sono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -3107,6 +3110,16 @@ def mondo_illeggibile_all_avvio(errore, cartella):
               "salvato una versione di MESS più recente, aggiorna MESS.",
               "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra. Esci, o Esc, chiude MESS senza toccare niente."]
     return "\n".join(righe)
+
+
+def mondo_piu_recente(formato, massimo, cartella):
+    """
+    Il messaggio dell'avvio quando il mondo viene da una versione più recente di MESS, decisione D40: il formato del
+    salvataggio e quello fino al quale questa versione legge, l'aggiornamento che serve, e i file che restano come sono.
+    """
+    return (f"Il mondo viene da una versione più recente di MESS: il salvataggio è del formato {formato}, e questa versione legge "
+            f"fino al formato {massimo}.\nPer aprirlo, aggiorna MESS e poi riaprilo.\nMESS ora si chiude, e "
+            f"non tocca i file del mondo, nella cartella {cartella}.")
 
 
 def nessun_mondo_nella_cartella(nuova):
