@@ -148,6 +148,12 @@ GBUtils: all'avvio il mondo viene da una versione più recente di MESS, e MESS c
 toccare i file. L'inizio del motivo di mess_avvio, che cerca una nota troppo alta, la sente allontanarsi e torna giù da dove
 era partito. Prima suonava come il salvataggio illeggibile. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Lo stesso giorno, con la quarta tranche di D40, le fondazioni, tre suoni nuovi, tutti mess_ e nella collezione di GBUtils:
+la fondazione che la polisportiva attiva non può pagare oltre la sua riserva, le quinte del dialogo della nuova polisportiva
+che si fermano a metà, due monete deboli e una scivolata grave; la fondazione a pagamento, dalla terza aperta, tre monete che
+escono, il fischio d'inizio in breve e una quinta che si apre; e il ripensamento, la chiusura che annulla una fondazione di
+pochi giorni mai usata, un nastro che si riavvolge, uno scatto indietro e una scivolata calma. La fondazione gratis suona
+come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -328,6 +334,9 @@ GRUPPI = (
         "dialogo_password": "mess_tastierino_del_codice",
         "password_impostata": "mess_chiave_che_chiude",
         "password_tolta": "mess_chiave_che_apre",
+        # Decisione D40: la fondazione che la polisportiva attiva non può pagare, e quella a pagamento, dalla terza aperta.
+        "fondazione_non_possibile": "mess_fondazione_non_possibile",
+        "polisportiva_fondata_a_pagamento": "mess_fondazione_a_pagamento",
     }),
     ("Polisportive, chiusura, schede e svincolo", {
         "richiesta_password": "mess_bussare_alla_porta",
@@ -342,6 +351,8 @@ GRUPPI = (
         "rosa_vuota": "mess_eco_nello_spogliatoio",
         # Decisione D40: la chiusura che i soldi non bastano a pagare, la campana della domanda che si ferma.
         "chiusura_non_possibile": "mess_chiusura_non_possibile",
+        # Decisione D40: il ripensamento, la chiusura che annulla una fondazione di pochi giorni mai usata.
+        "fondazione_annullata": "mess_fondazione_annullata",
     }),
     ("Polisportive, le notizie dei tuoi tesserati", {
         "tuo_tesserato_bandiera": "mess_fanfara_della_bandiera",
@@ -805,6 +816,9 @@ AZIONI = {
     "dialogo_password": "si apre il dialogo della password della polisportiva attiva",
     "password_impostata": "la polisportiva protetta da una password",
     "password_tolta": "la password della polisportiva tolta",
+    "fondazione_non_possibile": ("Nuova polisportiva, con Ctrl+N, quando la fondazione costa e la polisportiva attiva, oltre la sua riserva, non ha "
+                                 "abbastanza per pagarla, o non c'è una polisportiva attiva: il dialogo non si apre"),
+    "polisportiva_fondata_a_pagamento": "una polisportiva fondata a pagamento, dalla terza aperta, col prezzo pagato dalla polisportiva attiva",
     "richiesta_password": "la richiesta della password prima di chiudere una polisportiva protetta",
     "domanda_chiusura_polisportiva": "la domanda se chiudere per sempre la polisportiva attiva",
     "polisportiva_chiusa": "una polisportiva chiusa per sempre",
@@ -819,6 +833,8 @@ AZIONI = {
                    "polisportive quando nessuna ne ha"),
     "chiusura_non_possibile": ("Chiudi la polisportiva attiva quando la sua cassa e le altre tue polisportive, oltre la loro riserva, non bastano "
                                "per buonuscite, arretrati e stipendi maturati"),
+    "fondazione_annullata": ("una polisportiva chiusa entro 10 giorni dalla fondazione, senza tesserati né staff e con ancora almeno 20.000 euro "
+                             "di cassa, che si perdono: la sua fondazione non conta più"),
     "tuo_tesserato_bandiera": "nell'avanzamento un tuo tesserato diventa una bandiera del club",
     "tuo_tesserato_ritirato": "nell'avanzamento un tuo tesserato si ritira",
     "tuo_tesserato_uscito_di_scena": "nell'avanzamento un tuo tesserato muore o lascia lo showdown",

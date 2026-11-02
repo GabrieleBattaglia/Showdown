@@ -529,6 +529,8 @@ class NuovaPolisportiva(_Dialogo):
     nell'elenco: prima fondavano in silenzio a Roma, il primo dell'elenco pieno, o nel primo comune di
     un nome scritto a metà. In risultato restano nome, password, se renderla attiva e comune; il comune
     è vuoto soltanto se la collezione dei comuni non si legge.
+    Dalla decisione D40 il dialogo dice in cima il conto della fondazione, prima del nome: gratis o quanto costa,
+    chi paga e con quanta cassa parte la nuova.
     """
 
     def __init__(self, genitore, mondo, proposta=None):
@@ -538,6 +540,8 @@ class NuovaPolisportiva(_Dialogo):
         self.comuni = []
         self.elenco_vuoto = _ElencoCheSiRestringe()
         self.ci_sono_comuni = bool(luoghi.candidati(""))
+        self.conto = wx.StaticText(self.pannello, label=testi.conto_della_fondazione(mondo.conto_della_fondazione()))
+        self.sizer.Add(self.conto, 0, wx.ALL, 8)
         self.etichetta(f"&Nome, da {NOME_POLISPORTIVA_MIN} a {NOME_POLISPORTIVA_MAX} caratteri")
         self.nome = self.aggiungi(wx.TextCtrl(self.pannello))
         self.etichetta("&Sede: scrivi il nome del comune per cercarlo")

@@ -1008,6 +1008,14 @@ class FinestraPrincipale(wx.Frame):
         return p
 
     def nuova_polisportiva(self):
+        """
+        Ctrl+N, la fondazione. Dalla decisione D40, quando la fondazione costa e la polisportiva attiva non ha abbastanza oltre
+        la sua riserva, la vista lo dice col suo suono e il dialogo non si apre; la fondazione a pagamento ha il suo suono.
+        """
+        problema = self.mondo.problema_fondazione()
+        if problema:
+            self.mostra(problema, "fondazione non possibile", "fondazione_non_possibile")
+            return
         dialogo = NuovaPolisportiva(self, self.mondo)
         try:
             suoni.suona("dialogo_nuova_polisportiva")
@@ -1017,8 +1025,9 @@ class FinestraPrincipale(wx.Frame):
             nome, password, attiva, luogo = dialogo.risultato
         finally:
             dialogo.Destroy()
+        conto = self.mondo.conto_della_fondazione()
         p = self.mondo.fonda_polisportiva(nome, password, attiva, luogo)
-        self._concludi(testi.fondata(p, self.mondo), f"fondata {p.nome}", "polisportiva_fondata")
+        self._concludi(testi.fondata(p, self.mondo, conto), f"fondata {p.nome}", "polisportiva_fondata_a_pagamento" if conto.prezzo else "polisportiva_fondata")
 
     def cambia_polisportiva(self):
         if all(p.is_cpu_controlled for p in self.mondo.polisportive.values()):
@@ -1270,10 +1279,13 @@ class FinestraPrincipale(wx.Frame):
             self.mostra(problema, "chiusura non possibile", "chiusura_non_possibile")
             return
         piano = self.mondo.piano_di_chiusura(p)
-        if self._domanda(testi.domanda_chiusura(p, piano), "Chiusura", "domanda_chiusura_polisportiva") != wx.YES:
+        # Il ripensamento di D40: la domanda e l'esito dicono che la fondazione non conta, e l'esito ha il suo suono.
+        ripensamento = self.mondo.giorni_del_ripensamento(p)
+        if self._domanda(testi.domanda_chiusura(p, piano, ripensamento), "Chiusura", "domanda_chiusura_polisportiva") != wx.YES:
             return
         liberati = self.mondo.chiudi_polisportiva(p)
-        self._concludi(testi.chiusa(p.nome, liberati, piano), f"chiusa {p.nome}", "polisportiva_chiusa")
+        self._concludi(testi.chiusa(p.nome, liberati, piano, ripensamento), f"chiusa {p.nome}",
+                       "polisportiva_chiusa" if ripensamento is None else "fondazione_annullata")
 
     # L'amichevole, tappa 9.
 

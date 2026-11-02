@@ -1312,6 +1312,52 @@ def test_la_chiusura_che_non_si_puo_fare_ha_il_suo_suono(finestra, suonati):
     assert suonati[-1] == "chiusura_non_possibile" and poli.nome in mondo.polisportive
 
 
+def test_la_fondazione_a_pagamento_e_quella_rifiutata(finestra, suonati, monkeypatch):
+    # La decisione D40: dalla terza polisportiva aperta la fondazione costa, e la paga la polisportiva attiva oltre la sua riserva.
+    mondo = finestra.mondo
+    attiva = mondo.miapolisportiva_attiva
+    mondo.fonda_polisportiva("Seconda squadra", attiva=False)
+    mondo.fondazioni_di_sempre = 2
+    attiva.cassa = mondo.riserva(attiva) + 10_000
+    aperti = []
+    monkeypatch.setattr(dialoghi.NuovaPolisportiva, "ShowModal", lambda self: aperti.append(self) or wx.ID_CANCEL)
+    finestra.nuova_polisportiva()
+    # Quando i soldi non bastano la vista lo dice col suo suono, e il dialogo non si apre.
+    assert not aperti and suonati[-1] == "fondazione_non_possibile" and finestra.vista.GetValue() == mondo.problema_fondazione()
+    assert finestra.vista.GetValue().startswith("La tua terza polisportiva aperta costa 50.000 euro, e mancano 40.000 euro: Club Di Prova, che la paga, ha ")
+    attiva.cassa += 40_000
+
+    def fonda(self):
+        # Il conto, prima del nome.
+        assert self.conto.GetLabel() == "La tua terza polisportiva aperta costa 50.000 euro, pagati da Club Di Prova, e parte con la cassa vuota."
+        self.nome.ChangeValue("Terza squadra")
+        self.sede.SetValue("Bologna")
+        self.conferma()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.NuovaPolisportiva, "ShowModal", fonda)
+    finestra.nuova_polisportiva()
+    terza = mondo.polisportive["Terza squadra"]
+    assert terza.cassa == 0 and attiva.cassa == mondo.riserva(attiva) and mondo.fondazioni_di_sempre == 3
+    assert suonati[-1] == "polisportiva_fondata_a_pagamento"
+    assert finestra.vista.GetValue().startswith("Hai fondato Terza squadra, la tua terza polisportiva aperta: Club Di Prova ha pagato 50.000 euro, e "
+                                                "Terza squadra parte con la cassa vuota. È la tua polisportiva attiva.")
+
+
+def test_il_ripensamento_ha_la_sua_domanda_e_il_suo_suono(finestra, suonati, monkeypatch):
+    # La decisione D40: chiudere entro 10 giorni una polisportiva vuota, con la cassa ancora piena, annulla la sua fondazione.
+    mondo = finestra.mondo
+    mondo.fonda_polisportiva("Seconda squadra")
+    assert mondo.fondazioni_di_sempre == 1
+    domande = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: domande.append(testo) or wx.YES)
+    finestra.chiudi_polisportiva()
+    assert domande == ["Chiudere per sempre Seconda squadra? Fondata oggi e mai usata: la fondazione non conterà, e la cassa, 20.000 euro, si perde. "
+                       "Non si torna indietro."]
+    assert "Seconda squadra" not in mondo.polisportive and mondo.fondazioni_di_sempre == 0 and suonati[-1] == "fondazione_annullata"
+    assert finestra.vista.GetValue().startswith("Seconda squadra ha chiuso per sempre, senza tesserati. La sua fondazione non conta più. ")
+
+
 def test_il_volume_degli_effetti(finestra, suonati, monkeypatch, cartella_di_prova):
     def scegli(volume, volume_partita=None):
         def mostra(self):

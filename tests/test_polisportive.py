@@ -391,6 +391,9 @@ def test_le_polisportive_dell_utente_non_entrano_nel_conto(mondo):
     for g in list(mondo.giocatori.values())[17:]:
         g.ritirato = True
     for nome in ("Club Uno", "Club Due", "Club Tre"):
+        # Dalla decisione D40 la terza aperta costa, e la paga la polisportiva attiva.
+        if mondo.miapolisportiva_attiva is not None:
+            mondo.miapolisportiva_attiva.cassa += mondo.conto_della_fondazione().prezzo
         mondo.fonda_polisportiva(nome)
     # Diciassette attivi: una polisportiva del computer ci sta, anche con tre dell'utente.
     assert mondo._serve_una_polisportiva_cpu(_attivi(mondo))

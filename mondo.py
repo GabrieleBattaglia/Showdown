@@ -77,6 +77,12 @@ Lo stesso giorno, con la terza tranche di D40 e il formato 11 del salvataggio, i
 che l'utente ha fondato, fondazioni_di_sempre, che le regole delle fondazioni useranno, e il formato del salvataggio da cui
 viene, per la copia di sicurezza dell'archivio; _entra scrive in ogni giocatore il giorno della firma, anche per il computer,
 e _lascia lo cancella. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la quarta tranche di D40, le fondazioni dell'utente su quel contatore. Il capitale va soltanto alle
+prime due fondazioni di sempre e a chi riparte senza nessuna polisportiva aperta; dalla terza aperta la fondazione costa, e
+la paga la polisportiva attiva con quello che ha oltre la sua riserva, come dicono conto_della_fondazione e
+problema_fondazione. fonda_polisportiva fa salire il contatore, e la chiusura di una polisportiva di pochi giorni, vuota e
+con la cassa ancora piena, lo riporta indietro di uno: il ripensamento di giorni_del_ripensamento. Il computer fonda come
+prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -99,7 +105,10 @@ import tratti
 from allenamento import allena_secondo_programma, mantenimento_del_mese
 from costanti import (
     ANNO_SIMULAZIONE_GIORNI,
+    APERTE_GRATIS,
     BILANCI_CONSERVATI,
+    CAPITALE_INIZIALE,
+    CASSA_DEL_RIPENSAMENTO,
     COSTANZA_LIBERI,
     CREA_NUOVI_PER_TICK_RANGE,
     DECADIMENTO_COSTANZA,
@@ -110,7 +119,9 @@ from costanti import (
     FEDELTA_BANDIERA,
     FEDELTA_MASSIMA,
     FEDELTA_PER_MESE,
+    FONDAZIONI_COL_CAPITALE,
     GIOCATORI_ATTIVI_PER_POLI_CPU_TARGET,
+    GIORNI_DEL_RIPENSAMENTO,
     GIORNI_PRELAZIONE,
     IMPORTANZA_MASSIMA,
     INTENSITA,
@@ -128,6 +139,8 @@ from costanti import (
     NOME_POLISPORTIVA_MAX,
     NOME_POLISPORTIVA_MIN,
     PA_SEDUTA,
+    PREZZO_FONDAZIONI_SEGUENTI,
+    PREZZO_TERZA_FONDAZIONE,
     PROB_CHIUSURA_BASE_GIORNALIERA,
     PROB_CREAZIONE_POLI_CPU_PER_TICK,
     PROB_SCAMBIO_CPU_GIORNALIERA,
@@ -162,6 +175,7 @@ from economia import (
 )
 from modelli import Giocatore, Polisportiva, conti_vuoti, normalizza_nome, probabilita_accettazione
 from nomi import genera_nome_casuale
+from premiazioni import posto_a_parole
 from utilita import accorda, adesso, adesso_utc, caso, converti_in_tempo, data_breve, formatta_eta_sim, in_ora_locale, senza_raccolta
 
 ORE_PER_TICK = 8
@@ -203,6 +217,27 @@ VENDITA_FRA_TUE = "Fra le tue polisportive i giocatori non si vendono."
 # piano di chi paga, col costo, i debiti, le polisportive che pagano con la loro quota, la cassa che va persa e quanto manca.
 Debito = namedtuple("Debito", "persona allenatore buonuscita altro")
 PianoDiChiusura = namedtuple("PianoDiChiusura", "costo debiti paganti cassa_persa manca")
+# Decisione D40, il conto della prossima fondazione dell'utente: quante sue polisportive sono aperte, il prezzo, la cassa
+# con cui parte la nuova, la polisportiva attiva che paga, quanto ha oltre la sua riserva e quanto manca.
+ContoDellaFondazione = namedtuple("ContoDellaFondazione", "aperte prezzo capitale pagante disponibile manca")
+
+
+def prezzo_della_fondazione(aperte):
+    """
+    Decisione D40: quanto costa all'utente una polisportiva nuova, quando ne ha aperte quante dice aperte. Fino alla seconda è
+    gratis, la terza costa PREZZO_TERZA_FONDAZIONE, e dalla quarta PREZZO_FONDAZIONI_SEGUENTI per il quadrato dei posti oltre il
+    secondo: 320.000 euro la quarta, 720.000 la quinta.
+    """
+    if aperte < APERTE_GRATIS:
+        return 0
+    if aperte == APERTE_GRATIS:
+        return PREZZO_TERZA_FONDAZIONE
+    return PREZZO_FONDAZIONI_SEGUENTI * (aperte + 1 - APERTE_GRATIS) ** 2
+
+
+def la_tua_aperta(aperte):
+    """La polisportiva che l'utente fonda quando ne ha aperte quante dice aperte, a parole: la tua terza polisportiva aperta."""
+    return f"la tua {posto_a_parole(aperte + 1, 'f')} polisportiva aperta"
 
 
 def _silenzio(*_args, **_kwargs):
@@ -410,15 +445,60 @@ class Mondo:
             return f"Esiste già una polisportiva che si chiama {esistente.nome}."
         return None
 
+    def conto_della_fondazione(self):
+        """
+        Il conto della prossima fondazione dell'utente, decisione D40, in un ContoDellaFondazione. Il prezzo conta soltanto le
+        sue polisportive aperte, come dice prezzo_della_fondazione, e lo paga la polisportiva attiva con quello che ha oltre la
+        sua riserva. Il capitale va alle prime FONDAZIONI_COL_CAPITALE fondazioni di sempre e a chi riparte senza nessuna
+        polisportiva aperta; le altre partono con la cassa vuota.
+        """
+        aperte = sum(1 for p in self.polisportive.values() if not p.is_cpu_controlled)
+        prezzo = prezzo_della_fondazione(aperte)
+        capitale = CAPITALE_INIZIALE if self.fondazioni_di_sempre < FONDAZIONI_COL_CAPITALE or not aperte else 0
+        pagante = self.miapolisportiva_attiva if prezzo else None
+        disponibile = max(0, pagante.cassa - self.riserva(pagante)) if pagante is not None else 0
+        return ContoDellaFondazione(aperte, prezzo, capitale, pagante, disponibile, max(0, prezzo - disponibile))
+
+    def problema_fondazione(self, conto=None):
+        """
+        Perché l'utente non può fondare un'altra polisportiva, oppure None, decisione D40: la fondazione costa, e la polisportiva
+        attiva non ha abbastanza oltre la sua riserva, o non c'è una polisportiva attiva che la paghi. La frase dice il prezzo,
+        quanto manca e quanto c'è.
+        """
+        conto = conto or self.conto_della_fondazione()
+        if not conto.manca:
+            return None
+        frase = f"{la_tua_aperta(conto.aperte).capitalize()} costa {scritta_in_euro(conto.prezzo)}"
+        if conto.pagante is None:
+            return f"{frase}, e la paga la polisportiva attiva: scegline una con Ctrl+Maiusc+C."
+        return (f"{frase}, e mancano {scritta_in_euro(conto.manca)}: {conto.pagante.nome}, che la paga, ha "
+                f"{scritta_in_euro(conto.disponibile)} oltre la sua riserva di {scritta_in_euro(self.riserva(conto.pagante))}.")
+
     def fonda_polisportiva(self, nome, password=None, attiva=True, luogo=None):
         """
         Fonda una polisportiva dell'utente, protetta se riceve una password, con la sede nel comune
         scelto o, senza scelta, in quello estratto dal suo nome; ValueError se il nome non va.
+        Dalla decisione D40 la fondazione segue conto_della_fondazione: la polisportiva attiva paga il prezzo, alla voce
+        acquisti dei suoi conti, la nuova parte col capitale o con la cassa vuota, e il contatore delle fondazioni di sempre
+        sale di uno; ValueError col perché di problema_fondazione se i soldi non bastano.
         """
         problema = self.problema_nome_polisportiva(nome)
         if problema:
             raise ValueError(problema)
+        conto = self.conto_della_fondazione()
+        problema = self.problema_fondazione(conto)
+        if problema:
+            raise ValueError(problema)
         poli = Polisportiva(nome=nome, password=password or None, datetime_creazione_sim=self.datetime_corrente_simulazione, luogo=luogo)
+        poli.cassa = conto.capitale
+        if conto.prezzo:
+            conto.pagante.cassa -= conto.prezzo
+            conto.pagante.conti_del_mese["acquisti"] += conto.prezzo
+            self.annota(conto.pagante, f"Paga {scritta_in_euro(conto.prezzo)} per fondare {poli.nome}, {la_tua_aperta(conto.aperte)}.")
+        if not conto.capitale:
+            pagata = f": la fondazione è costata {scritta_in_euro(conto.prezzo)}, pagati da {conto.pagante.nome}" if conto.prezzo else ""
+            self.annota(poli, f"Parte con la cassa vuota{pagata}.")
+        self.fondazioni_di_sempre += 1
         self.polisportive[poli.nome] = poli
         if attiva:
             self.miapolisportiva_attiva = poli
@@ -1565,12 +1645,28 @@ class Mondo:
             if p is not poli:
                 self.annota(p, f"Paga {scritta_in_euro(quota)} dei debiti di {poli.nome}, che chiude: buonuscite, arretrati e stipendi che la sua cassa non copriva.")
 
+    def giorni_del_ripensamento(self, poli):
+        """
+        Il ripensamento della decisione D40: se chiudere oggi la polisportiva dell'utente annulla la sua fondazione, i giorni da
+        quando è stata fondata, altrimenti None. Vale entro GIORNI_DEL_RIPENSAMENTO giorni, senza tesserati né staff e con
+        ancora in cassa almeno CASSA_DEL_RIPENSAMENTO, che con la chiusura si perde: così non rende mai, perché distrugge
+        almeno il capitale che può restituire, e non serve nessun segno nel salvataggio.
+        """
+        if poli.is_cpu_controlled or poli.tesserati or any(poli.staff) or poli.cassa < CASSA_DEL_RIPENSAMENTO:
+            return None
+        if not isinstance(poli.datetime_creazione_sim, datetime.datetime):
+            return None
+        giorni = (self.datetime_corrente_simulazione.date() - poli.datetime_creazione_sim.date()).days
+        return giorni if 0 <= giorni <= GIORNI_DEL_RIPENSAMENTO else None
+
     def chiudi_polisportiva(self, poli):
         """
         Chiude per sempre una polisportiva: i tesserati tornano liberi. Restituisce quanti sono. Dalla decisione D40 una
         polisportiva dell'utente salda prima tutti i suoi debiti, come dice piano_di_chiusura; se i soldi non bastano,
-        ValueError col perché di problema_chiusura, e la polisportiva resta.
+        ValueError col perché di problema_chiusura, e la polisportiva resta. Col ripensamento di giorni_del_ripensamento il
+        contatore delle fondazioni di sempre scende di uno.
         """
+        ripensamento = self.giorni_del_ripensamento(poli)
         pagati = {}
         if not poli.is_cpu_controlled:
             problema = self.problema_chiusura(poli)
@@ -1594,6 +1690,8 @@ class Mondo:
         del self.polisportive[poli.nome]
         if self.miapolisportiva_attiva is poli:
             self.miapolisportiva_attiva = None
+        if ripensamento is not None:
+            self.fondazioni_di_sempre = max(0, self.fondazioni_di_sempre - 1)
         return liberati
 
     def nuovo_id(self):

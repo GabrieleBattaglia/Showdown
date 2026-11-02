@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 376 suoni, 349 della finestra e 27 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 379 suoni, 352 della finestra e 27 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -112,7 +112,7 @@ Nell'avanzamento del giorno qualcuno si ritira: mess_giorno_di_congedo.
 Nell'avanzamento del giorno qualcuno lascia lo showdown prima del tempo: mess_giorno_di_partenza.
 Nell'avanzamento del giorno nasce una polisportiva del computer: meditimer_banco_avvio.
 Nell'avanzamento del giorno chiude una polisportiva del computer: mess_motore_che_si_spegne.
-Finestra, polisportive, fondazione, cambio e password, 11 suoni.
+Finestra, polisportive, fondazione, cambio e password, 13 suoni.
 Si apre il dialogo della nuova polisportiva, con Ctrl+N: mess_quinte_sovrapposte.
 Una polisportiva fondata: mess_fischio_d_inizio.
 Si apre il dialogo per cambiare la polisportiva attiva, con Ctrl+Shift+C: mess_scambio_di_posto.
@@ -124,7 +124,9 @@ La password e la sua conferma non coincidono: mess_due_voci_stonate.
 Si apre il dialogo della password della polisportiva attiva: mess_tastierino_del_codice.
 La polisportiva protetta da una password: mess_chiave_che_chiude.
 La password della polisportiva tolta: mess_chiave_che_apre.
-Finestra, polisportive, chiusura, schede e svincolo, 11 suoni.
+Nuova polisportiva, con Ctrl+N, quando la fondazione costa e la polisportiva attiva, oltre la sua riserva, non ha abbastanza per pagarla, o non c'è una polisportiva attiva: il dialogo non si apre: mess_fondazione_non_possibile.
+Una polisportiva fondata a pagamento, dalla terza aperta, col prezzo pagato dalla polisportiva attiva: mess_fondazione_a_pagamento.
+Finestra, polisportive, chiusura, schede e svincolo, 12 suoni.
 La richiesta della password prima di chiudere una polisportiva protetta: mess_bussare_alla_porta.
 La domanda se chiudere per sempre la polisportiva attiva: mess_campana_a_martello.
 Una polisportiva chiusa per sempre: mess_triplice_fischio.
@@ -136,6 +138,7 @@ Si apre la scelta del tesserato da svincolare, con Ctrl+Shift+S: mess_porta_che_
 Un tesserato svincolato, che torna libero: mess_contratto_strappato.
 Un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue polisportive quando nessuna ne ha: mess_eco_nello_spogliatoio.
 Chiudi la polisportiva attiva quando la sua cassa e le altre tue polisportive, oltre la loro riserva, non bastano per buonuscite, arretrati e stipendi maturati: mess_chiusura_non_possibile.
+Una polisportiva chiusa entro 10 giorni dalla fondazione, senza tesserati né staff e con ancora almeno 20.000 euro di cassa, che si perdono: la sua fondazione non conta più: mess_fondazione_annullata.
 Finestra, polisportive, le notizie dei tuoi tesserati, 3 suoni.
 Nell'avanzamento un tuo tesserato diventa una bandiera del club: mess_fanfara_della_bandiera.
 Nell'avanzamento un tuo tesserato si ritira: mess_scarpe_al_chiodo.

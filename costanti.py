@@ -14,6 +14,9 @@ Le parti nuove sono di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, U
 Dal collaudo di gioco, il 24 ottobre 2026, c'è il raggio delle classi degli avversari di Gioca tutte le
 amichevoli, 15 livelli in su o in giù, scelto da Gabriele. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Dal 2 novembre 2026, con la decisione D40, i numeri delle fondazioni dell'utente: il capitale alle prime due, i prezzi
+dalla terza polisportiva aperta e il ripensamento. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import datetime
@@ -234,6 +237,18 @@ NOME_POLISPORTIVA_MIN = 5
 NOME_POLISPORTIVA_MAX = 50
 # L'economia, tappa 8, decisione D22. Cifre in euro; quelle di partenza si tarano con la simulazione lunga.
 CAPITALE_INIZIALE = 20_000
+# Le fondazioni dell'utente, decisione D40 del 2 novembre 2026. Il capitale va soltanto alle prime FONDAZIONI_COL_CAPITALE
+# fondazioni di sempre e a chi riparte senza nessuna polisportiva aperta. Il prezzo conta le polisportive aperte: con meno
+# di APERTE_GRATIS la nuova è gratis, con APERTE_GRATIS costa PREZZO_TERZA_FONDAZIONE, e dopo PREZZO_FONDAZIONI_SEGUENTI
+# per il quadrato dei posti oltre il secondo, 320.000 euro la quarta e 720.000 la quinta. Il ripensamento: chiudere entro
+# GIORNI_DEL_RIPENSAMENTO una polisportiva senza tesserati né staff, con ancora almeno CASSA_DEL_RIPENSAMENTO, che si
+# perde, riporta indietro il contatore delle fondazioni.
+FONDAZIONI_COL_CAPITALE = 2
+APERTE_GRATIS = 2
+PREZZO_TERZA_FONDAZIONE = 50_000
+PREZZO_FONDAZIONI_SEGUENTI = 80_000
+GIORNI_DEL_RIPENSAMENTO = 10
+CASSA_DEL_RIPENSAMENTO = CAPITALE_INIZIALE
 # Lo sponsor, dalla tappa 11, metà e metà, risposta 5 di Gabriele: SPONSOR_PER_GLORIA euro al mese
 # per ogni punto di gloria, che la simulazione lunga ritocca, più il 9 per cento al mese del valore
 # di mercato pieno dei tesserati, che resta fisso. Fino alla tappa 10 erano 35 euro per la gloria.

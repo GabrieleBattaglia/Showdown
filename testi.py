@@ -116,6 +116,10 @@ di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Lo stesso giorno, con la terza tranche di D40 e il formato 11, il messaggio dell'avvio quando il mondo viene da una
 versione più recente di MESS: il formato del salvataggio, quello fino al quale si legge, l'aggiornamento che serve e i
 file del mondo che restano come sono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la quarta tranche di D40, le parole delle fondazioni: il conto che il dialogo di Nuova polisportiva
+dice prima del nome, gratis o quanto costa e chi la paga, con quanta cassa parte la nuova; l'esito con la cassa vuota e chi
+ha pagato; e il ripensamento, nella domanda e nell'esito della chiusura. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -174,6 +178,7 @@ from costanti import (
     RAGGIO_CLASSI_AMICHEVOLI,
 )
 from grammatica import torneo_con_preposizione
+from mondo import la_tua_aperta
 from motore import cronaca
 from motore.campo import costanza_relativa
 from utilita import MESI, adesso_utc, converti_giorni_sim, data_breve, formatta_eta_sim, in_ora_locale
@@ -1321,11 +1326,32 @@ def riga_mia_polisportiva(p, mondo):
     return ", ".join(parti)
 
 
-def fondata(p, mondo):
-    """La fondazione di una polisportiva, raccontata, con la sua scheda."""
+def conto_della_fondazione(conto):
+    """
+    Il conto della fondazione, decisione D40, che il dialogo di Nuova polisportiva dice prima di chiedere il nome: se è gratis o
+    quanto costa e chi la paga, e con quanta cassa parte la nuova. conto è quello di Mondo.conto_della_fondazione.
+    """
+    cassa = f"{euro(conto.capitale)} di cassa" if conto.capitale else "la cassa vuota"
+    if not conto.prezzo:
+        return f"Fondazione gratis, con {cassa}."
+    pagante = f", pagati da {conto.pagante.nome}" if conto.pagante is not None else ""
+    return f"{la_tua_aperta(conto.aperte).capitalize()} costa {euro(conto.prezzo)}{pagante}, e parte con {cassa}."
+
+
+def fondata(p, mondo, conto=None):
+    """
+    La fondazione di una polisportiva, raccontata, con la sua scheda. Dalla decisione D40, col conto della fondazione, anche
+    la cassa vuota e chi ha pagato.
+    """
     protetta = ", protetta da password" if p.protetta else ""
     attiva = " È la tua polisportiva attiva." if p is mondo.miapolisportiva_attiva else ""
-    return f"Hai fondato {p.nome}{protetta}.{attiva}\n{scheda_polisportiva(p, mondo)}"
+    conto_detto = ""
+    if conto is not None and conto.prezzo:
+        conto_detto = f", {la_tua_aperta(conto.aperte)}: {conto.pagante.nome} ha pagato {euro(conto.prezzo)}, e {p.nome} parte con " + (
+            f"{euro(conto.capitale)} di cassa" if conto.capitale else "la cassa vuota")
+    elif conto is not None and not conto.capitale:
+        conto_detto = ", con la cassa vuota"
+    return f"Hai fondato {p.nome}{protetta}{conto_detto}.{attiva}\n{scheda_polisportiva(p, mondo)}"
 
 
 def info_mercato(p, mondo):
@@ -1935,13 +1961,23 @@ def _chi_paga_la_chiusura(p, piano):
     return f"{sua} lo coprono le tue altre polisportive, oltre la loro riserva: {altre}."
 
 
-def domanda_chiusura(p, piano):
+def fondata_da(giorni):
+    """Da quanto è fondata una polisportiva, per il ripensamento: oggi, ieri, da 3 giorni."""
+    return "oggi" if giorni == 0 else "ieri" if giorni == 1 else f"da {giorni} giorni"
+
+
+def domanda_chiusura(p, piano, ripensamento=None):
     """
     La domanda della chiusura per sempre. Dalla decisione D40 dice anche quanto costa chiudere, fra buonuscite e arretrati
     dei tesserati e buonuscite e stipendi maturati dello staff, chi paga che cosa e quanta cassa resta e va persa. piano è
-    quello di Mondo.piano_di_chiusura, per una chiusura che si può fare.
+    quello di Mondo.piano_di_chiusura, per una chiusura che si può fare. Col ripensamento, i giorni di
+    Mondo.giorni_del_ripensamento, dice subito che la fondazione non conterà e quanta cassa si perde.
     """
     righe = [f"Chiudere per sempre {p.nome}?"]
+    if ripensamento is not None:
+        righe += [f"Fondata {fondata_da(ripensamento)} e mai usata: la fondazione non conterà, e la cassa, {euro(piano.cassa_persa)}, si perde.",
+                  "Non si torna indietro."]
+        return " ".join(righe)
     if piano.costo:
         righe += [_costo_della_chiusura(piano), _chi_paga_la_chiusura(p, piano)]
     else:
@@ -1956,13 +1992,18 @@ def domanda_chiusura(p, piano):
     return " ".join(righe)
 
 
-def chiusa(nome, liberati, piano=None):
-    """L'esito della chiusura; dalla decisione D40, col piano, anche quanto è costata e chi l'ha pagata."""
+def chiusa(nome, liberati, piano=None, ripensamento=None):
+    """
+    L'esito della chiusura; dalla decisione D40, col piano, anche quanto è costata e chi l'ha pagata, e col ripensamento che la
+    sua fondazione non conta più.
+    """
     tesserati = f": {conta(liberati, 'giocatore torna libero', 'giocatori tornano liberi')}" if liberati else ", senza tesserati"
     pagata = ""
     if piano is not None and piano.costo:
         altre = unisci([f"{pagante.nome} {euro(quota)}" for pagante, quota in piano.paganti if pagante.nome != nome])
         pagata = f" Ha saldato {euro(piano.costo)} di debiti" + (f", con l'aiuto di {altre}." if altre else ".")
+    if ripensamento is not None:
+        pagata += " La sua fondazione non conta più."
     return (f"{nome} ha chiuso per sempre{tesserati}.{pagata} Non hai più una polisportiva attiva: fondane una con Ctrl+N, o scegline un'altra "
             "con Ctrl+Maiusc+C.")
 

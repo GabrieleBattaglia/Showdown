@@ -7,6 +7,9 @@ chi la blocca; i convocati delle sfide accettate e le rose della Coppa, fermi su
 dalla vendita, e la rosa che non entra in due polisportive della stessa coppa. Il computer resta com'era.
 La seconda tranche, lo sponsor delle tue polisportive, che paga la gloria per i tesserati in attività su 15: la stessa
 cifra nei conti del mese, nella barra, nella scheda, nel bilancio e nei contratti, e le frasi della rosa non piena.
+La quarta tranche, le fondazioni: le prime due col capitale, dalla terza aperta a pagamento, pagate dalla polisportiva attiva
+oltre la sua riserva, il capitale dopo le chiusure e per chi riparte da zero, e il ripensamento, che vale soltanto per una
+polisportiva di pochi giorni, vuota e con la cassa ancora piena.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -22,8 +25,8 @@ import iscrizioni
 import mercato
 import sfide
 import testi
-from costanti import FEDELTA_BANDIERA, QUOTA_SPONSOR_SUL_VALORE, SPONSOR_PER_GLORIA
-from mondo import VENDITA_FRA_TUE, Mondo, _Mercato
+from costanti import CAPITALE_INIZIALE, FEDELTA_BANDIERA, QUOTA_SPONSOR_SUL_VALORE, SPONSOR_PER_GLORIA
+from mondo import VENDITA_FRA_TUE, Mondo, _Mercato, prezzo_della_fondazione
 from utilita import adesso_utc
 
 DOMANI = OGGI + datetime.timedelta(days=1)
@@ -453,3 +456,135 @@ def test_le_frasi_dello_sponsor_con_la_rosa_non_piena():
     mondo._lascia(milano, mondo.giocatori[12])
     assert "| Sponsor: 0 euro al mese, senza la gloria, perché non ha tesserati | Stipendi: " in testi.scheda_polisportiva(milano, mondo)
     assert testi.posti_vuoti_nello_sponsor(milano, mondo) == "Senza tesserati lo sponsor non paga la gloria: ogni posto vuoto costa 80 euro al mese."
+
+
+# Le fondazioni: due col capitale, poi a pagamento, e il ripensamento.
+
+def test_le_prime_due_fondazioni_sono_gratis_e_dalla_terza_si_paga():
+    mondo = mondo_di_prova(20, 20)
+    # La prima e la seconda sono gratis, coi 20.000 euro del capitale, e il contatore sale a ogni fondazione.
+    conto = mondo.conto_della_fondazione()
+    assert conto == (0, 0, CAPITALE_INIZIALE, None, 0, 0) and testi.conto_della_fondazione(conto) == "Fondazione gratis, con 20.000 euro di cassa."
+    prima = mondo.fonda_polisportiva("Pat-Bologna")
+    assert prima.cassa == 20_000 and mondo.fondazioni_di_sempre == 1 and testi.fondata(prima, mondo, conto).startswith("Hai fondato Pat-Bologna. È la tua ")
+    seconda = mondo.fonda_polisportiva("Pat-Milano")
+    assert seconda.cassa == 20_000 and mondo.fondazioni_di_sempre == 2 and mondo.miapolisportiva_attiva is seconda
+    # La terza costa 50.000 euro, li paga la polisportiva attiva alla voce acquisti, e la nuova parte con la cassa vuota.
+    mondo._entra(seconda, mondo.giocatori[1])
+    seconda.cassa = mondo.riserva(seconda) + 60_000
+    cassa = seconda.cassa
+    conto = mondo.conto_della_fondazione()
+    assert conto == (2, 50_000, 0, seconda, 60_000, 0) and mondo.problema_fondazione() is None
+    assert testi.conto_della_fondazione(conto) == "La tua terza polisportiva aperta costa 50.000 euro, pagati da Pat-Milano, e parte con la cassa vuota."
+    terza = mondo.fonda_polisportiva("Pat-Roma")
+    assert terza.cassa == 0 and seconda.cassa == cassa - 50_000 and seconda.conti_del_mese["acquisti"] == 50_000 and mondo.fondazioni_di_sempre == 3
+    assert seconda.diario[0]["testo"] == "Paga 50.000 euro per fondare Pat-Roma, la tua terza polisportiva aperta."
+    assert terza.diario[0]["testo"] == "Parte con la cassa vuota: la fondazione è costata 50.000 euro, pagati da Pat-Milano."
+    assert testi.fondata(terza, mondo, conto).startswith("Hai fondato Pat-Roma, la tua terza polisportiva aperta: Pat-Milano ha pagato 50.000 euro, e "
+                                                         "Pat-Roma parte con la cassa vuota. È la tua polisportiva attiva.\n")
+    # La quarta costa 80.000 euro per il quadrato dei posti oltre il secondo, 320.000 euro, e la quinta 720.000.
+    terza.cassa = 400_000
+    conto = mondo.conto_della_fondazione()
+    assert conto.prezzo == 320_000 and conto.pagante is terza and conto.capitale == 0
+    quarta = mondo.fonda_polisportiva("Pat-Napoli")
+    assert terza.cassa == 80_000 and quarta.cassa == 0 and mondo.fondazioni_di_sempre == 4
+    assert mondo.conto_della_fondazione().prezzo == 720_000
+    assert [prezzo_della_fondazione(aperte) for aperte in range(6)] == [0, 0, 50_000, 320_000, 720_000, 1_280_000]
+    # Il computer fonda come prima: coi 20.000 euro, senza prezzo e senza toccare il contatore, e non entra nel conto.
+    cpu = mondo.polisportive[mondo.crea_polisportiva_cpu(OGGI)]
+    assert cpu.cassa == CAPITALE_INIZIALE and mondo.fondazioni_di_sempre == 4 and mondo.conto_della_fondazione().aperte == 4
+
+
+def test_il_capitale_dopo_le_chiusure_e_chi_riparte_da_zero():
+    mondo = mondo_di_prova(20, 20)
+    bologna = mondo.fonda_polisportiva("Pat-Bologna")
+    milano = mondo.fonda_polisportiva("Pat-Milano")
+    # Tutte e due usate, con un tesserato: chiuderle non è un ripensamento.
+    mondo._entra(bologna, mondo.giocatori[1])
+    mondo._entra(milano, mondo.giocatori[2])
+    mondo.chiudi_polisportiva(milano)
+    assert mondo.fondazioni_di_sempre == 2
+    # Il prezzo conta soltanto le aperte, e la nuova è gratis; ma il capitale è già andato alle prime due fondazioni.
+    conto = mondo.conto_della_fondazione()
+    assert conto == (1, 0, 0, None, 0, 0) and testi.conto_della_fondazione(conto) == "Fondazione gratis, con la cassa vuota."
+    roma = mondo.fonda_polisportiva("Pat-Roma")
+    assert roma.cassa == 0 and mondo.fondazioni_di_sempre == 3 and roma.diario[0]["testo"] == "Parte con la cassa vuota."
+    assert testi.fondata(roma, mondo, conto).startswith("Hai fondato Pat-Roma, con la cassa vuota. È la tua polisportiva attiva.\n")
+    # Chi resta senza nessuna polisportiva aperta riparte col capitale, e la fondazione conta come le altre.
+    mondo.chiudi_polisportiva(roma)
+    mondo.chiudi_polisportiva(bologna)
+    assert mondo.fondazioni_di_sempre == 3
+    conto = mondo.conto_della_fondazione()
+    assert conto == (0, 0, CAPITALE_INIZIALE, None, 0, 0) and testi.conto_della_fondazione(conto) == "Fondazione gratis, con 20.000 euro di cassa."
+    napoli = mondo.fonda_polisportiva("Pat-Napoli")
+    assert napoli.cassa == 20_000 and mondo.fondazioni_di_sempre == 4
+    # La sorella di chi è ripartito è gratis, ma vuota.
+    assert mondo.conto_della_fondazione() == (1, 0, 0, None, 0, 0)
+
+
+def test_la_fondazione_che_la_riserva_non_lascia_pagare():
+    mondo, _cpu, bologna, _milano = _mondo()
+    mondo.fondazioni_di_sempre = 2
+    riserva = mondo.riserva(bologna)
+    bologna.cassa = riserva + 49_000
+    # La polisportiva del computer non entra nel conto: le tue aperte sono due, e la nuova è la terza.
+    conto = mondo.conto_della_fondazione()
+    assert conto == (2, 50_000, 0, bologna, 49_000, 1_000) and riserva > 0
+    atteso = (f"La tua terza polisportiva aperta costa 50.000 euro, e mancano 1.000 euro: Pat-Bologna, che la paga, ha 49.000 euro oltre la sua "
+              f"riserva di {_euro(riserva)}.")
+    assert mondo.problema_fondazione() == atteso
+    with pytest.raises(ValueError, match=r"mancano 1\.000 euro"):
+        mondo.fonda_polisportiva("Pat-Roma")
+    assert "Pat-Roma" not in mondo.polisportive and mondo.fondazioni_di_sempre == 2
+    assert bologna.cassa == riserva + 49_000 and bologna.conti_del_mese["acquisti"] == 0 and bologna.diario[0]["testo"] == "Fondata."
+    # Con mille euro in più si fonda, e la cassa scende proprio fino alla riserva.
+    bologna.cassa += 1_000
+    roma = mondo.fonda_polisportiva("Pat-Roma")
+    assert bologna.cassa == riserva and roma.cassa == 0 and mondo.fondazioni_di_sempre == 3
+    # Senza una polisportiva attiva nessuno paga: la quarta costa 320.000 euro, e la vista dice come sceglierne una.
+    mondo.miapolisportiva_attiva = None
+    assert mondo.problema_fondazione() == ("La tua quarta polisportiva aperta costa 320.000 euro, e la paga la polisportiva attiva: scegline una "
+                                          "con Ctrl+Maiusc+C.")
+    with pytest.raises(ValueError, match="la paga la polisportiva attiva"):
+        mondo.fonda_polisportiva("Pat-Napoli")
+
+
+def test_il_ripensamento_riporta_indietro_il_contatore():
+    mondo = mondo_di_prova(20, 20)
+    mondo.fonda_polisportiva("Pat-Bologna")
+    seconda = mondo.fonda_polisportiva("Pat-Milano")
+    assert mondo.fondazioni_di_sempre == 2 and mondo.giorni_del_ripensamento(seconda) == 0
+    # Tre giorni dopo, senza tesserati né staff e coi suoi 20.000 euro: chiuderla annulla la fondazione, e la cassa si perde.
+    mondo.datetime_corrente_simulazione = OGGI + datetime.timedelta(days=3)
+    assert mondo.giorni_del_ripensamento(seconda) == 3
+    piano = mondo.piano_di_chiusura(seconda)
+    assert piano.costo == 0 and piano.cassa_persa == 20_000
+    assert testi.domanda_chiusura(seconda, piano, 3) == ("Chiudere per sempre Pat-Milano? Fondata da 3 giorni e mai usata: la fondazione non "
+                                                         "conterà, e la cassa, 20.000 euro, si perde. Non si torna indietro.")
+    assert mondo.chiudi_polisportiva(seconda) == 0 and mondo.fondazioni_di_sempre == 1
+    assert testi.chiusa("Pat-Milano", 0, piano, 3).startswith("Pat-Milano ha chiuso per sempre, senza tesserati. La sua fondazione non conta più. ")
+    # La prossima fondazione riceve di nuovo il capitale e il contatore torna a 2: il giro non rende niente.
+    assert mondo.conto_della_fondazione().capitale == CAPITALE_INIZIALE
+    assert mondo.fonda_polisportiva("Pat-Roma").cassa == 20_000 and mondo.fondazioni_di_sempre == 2
+    # Il giorno della fondazione, il giorno dopo e il decimo valgono ancora.
+    assert [testi.fondata_da(giorni) for giorni in (0, 1, 10)] == ["oggi", "ieri", "da 10 giorni"]
+    decimo = polisportiva(mondo, "Pat-Decimo", cpu=False, cassa=20_000, fondazione_giorni=10)
+    assert mondo.giorni_del_ripensamento(decimo) == 10
+
+
+def test_il_ripensamento_non_vale_per_una_polisportiva_usata():
+    mondo = mondo_di_prova(20, 20)
+    mondo.fondazioni_di_sempre = 5
+    vecchia = polisportiva(mondo, "Pat-Vecchia", cpu=False, cassa=20_000, fondazione_giorni=11)
+    con_tesserato = polisportiva(mondo, "Pat-Tesserato", cpu=False, cassa=20_000, fondazione_giorni=1, ids=(1,))
+    con_lo_staff = polisportiva(mondo, "Pat-Staff", cpu=False, cassa=20_000, fondazione_giorni=1)
+    _con_lo_staff(mondo, con_lo_staff)
+    povera = polisportiva(mondo, "Pat-Povera", cpu=False, cassa=19_999, fondazione_giorni=0)
+    cpu = polisportiva(mondo, "PoliTeam01 Prova", cassa=20_000, fondazione_giorni=0)
+    for p in (vecchia, con_tesserato, con_lo_staff, povera, cpu):
+        assert mondo.giorni_del_ripensamento(p) is None, p.nome
+    # Chiuderle non tocca il contatore, e la domanda non parla di ripensamento.
+    for p in (vecchia, con_tesserato, con_lo_staff, povera, cpu):
+        assert "mai usata" not in testi.domanda_chiusura(p, mondo.piano_di_chiusura(p))
+        mondo.chiudi_polisportiva(p)
+    assert mondo.fondazioni_di_sempre == 5 and not mondo.polisportive

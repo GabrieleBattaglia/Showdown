@@ -254,7 +254,12 @@ def test_i_fattori_sui_giocatori(mondo):
 
 def test_la_norma_toglie_lo_scalino_del_primo_allenatore(mondo):
     # Prima della risposta 35, in un mondo senza allenatori, al primo assunto tutti gli altri scendevano di colpo a 0,85.
-    clubs = [mondo.fonda_polisportiva(f"Club {i}") for i in range(10)]
+    clubs = []
+    for i in range(10):
+        # Dalla decisione D40 dalla terza aperta la fondazione costa, e la paga la polisportiva attiva.
+        if mondo.miapolisportiva_attiva is not None:
+            mondo.miapolisportiva_attiva.cassa += mondo.conto_della_fondazione().prezzo
+        clubs.append(mondo.fonda_polisportiva(f"Club {i}"))
     for club, gid in zip(clubs, range(1, 11), strict=True):
         mondo._tessera(club, mondo.giocatori[gid])
     _nello_staff(mondo, clubs[0], _allenatore(mondo, 60), 1)
