@@ -16,8 +16,8 @@ per gli allenatori i liberi, chi allena per il computer e il tuo staff. Poi i fi
 Altri filtri: quelli che per chi si cerca non contano si ignorano invece di svuotare l'elenco, e quelli
 che si escludono a vicenda si segnalano. Gli ordini hanno la direzione nel nome, comprese le 24
 caratteristiche, i punti della classifica nazionale e l'euro per punto di valore, e a parità decide il
-numero; le ricerche pronte sono tredici. Che cosa è tuo lo dice una funzione sola, di_chi, con il posto
-per i magnati di D35. Le funzioni pure offerta_possibile, amichevole_possibile e sfida_possibile dicono
+numero; le ricerche pronte sono tredici. Che cosa è tuo lo dice una funzione sola, di_chi.
+Le funzioni pure offerta_possibile, amichevole_possibile e sfida_possibile dicono
 per ogni riga che cosa si può fare, o perché no: i divieti restano in mondo.problema_* e in
 sfide.problema_bersaglio. La Memoria tiene classe e valore di mercato per la durata della finestra, e chi
 è in vendita si legge dalle liste in_vendita delle polisportive. Lo stato dei filtri di ogni porta
@@ -106,8 +106,7 @@ LIBERO = "libero"
 IN_VENDITA = "in_vendita"
 DEL_COMPUTER = "del_computer"
 
-# Di chi è una polisportiva, per chi guarda dalla polisportiva attiva. Col magnate di D35 si aggiungerà
-# DI_UN_ALTRO_MAGNATE, per le polisportive di un altro magnate: oggi tutte quelle dell'utente sono tue.
+# Di chi è una polisportiva, per chi guarda dalla polisportiva attiva: tutte quelle dell'utente sono tue.
 TUA_ATTIVA = "tua_attiva"
 TUA_ALTRA = "tua_altra"
 TUE = (TUA_ATTIVA, TUA_ALTRA)
@@ -117,7 +116,7 @@ def di_chi(mondo, poli):
     """
     Di chi è la polisportiva, la sola regola del motore: TUA_ATTIVA, TUA_ALTRA, una tua che non è l'attiva,
     DEL_COMPUTER, oppure None se non c'è. Fino alla finestra unica la regola era sparsa fra la finestra e il
-    mercato; col magnate di D35 qui si distingueranno le polisportive degli altri magnati.
+    mercato.
     """
     if poli is None:
         return None
@@ -237,8 +236,7 @@ class FiltriDiRicerca:
     """
     I filtri della finestra Mercato e ricerca che il mondo ricorda e salva: i preset di Gabriele, nell'ordine della
     casella; il numero del prossimo preset, che non torna mai indietro, così il numero di un preset eliminato non passa
-    a un altro, e una porta che lo ricordava non riapre il preset sbagliato; lo stato di ogni porta d'ingresso. Col
-    magnate di D35, nel formato 11, ogni magnate avrà il suo.
+    a un altro, e una porta che lo ricordava non riapre il preset sbagliato; lo stato di ogni porta d'ingresso.
     """
     preset: list = field(default_factory=list)
     prossimo_preset: int = 1

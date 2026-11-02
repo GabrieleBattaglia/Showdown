@@ -67,9 +67,9 @@ Il formato 10, del 2026-10-24, con la issue 8 e la decisione D36, scelta di Gabr
 finestra unica Mercato e ricerca, uno stato per ogni porta d'ingresso, Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O, coi
 filtri di adesso, la ricerca pronta da cui vengono e quelli fatti a mano prima. La migrazione dal 9 dà a ogni porta il
 suo stato predefinito, quello della sua ricerca pronta, e non tocca altro; alla lettura ogni campo si controlla, e uno
-stato che non va fa rifiutare il salvataggio, col ripiego sulla copia di sempre. Col magnate di D35 andrà per magnate.
+stato che non va fa rifiutare il salvataggio, col ripiego sulla copia di sempre.
 Con le verifiche dello stesso giorno lo stato che la migrazione dal 9 dà alle porte è una costante storica del formato
-10, come lo stipendio della 1.50.0, e non viene più dal mercato di oggi: quando i filtri cambieranno forma, col magnate,
+10, come lo stipendio della 1.50.0, e non viene più dal mercato di oggi: quando i filtri cambieranno forma,
 un mondo del formato 9 diventerà sempre un documento del formato 10 vero, che la migrazione seguente sa leggere.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Lo stesso giorno, con le scelte di Gabriele dopo la prova del prototipo, il formato 10 cambia forma senza cambiare
@@ -77,9 +77,8 @@ numero, perché nessun mondo vero lo ha ancora: conserva i preset dei filtri di 
 ogni porta la voce della casella scelta coi filtri attuali, non salvati. Dopo la migrazione dal 9 non c'è nessun
 preset, il prossimo ha il numero 1 e ogni porta sta sul suo preset di serie. La lettura di quel blocco non rifiuta più il mondo, scelta
 di Gabriele: quello che non si legge torna ai filtri di serie, un preset si ripara invece di sparire, e a mondo pronto
-ogni riparazione va nel registro degli errori, col dato originale in JSON. Col magnate di D35, nel formato 11, il
-blocco andrà dentro ogni magnate, e alla conversione al primo. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
-5.5, UltraCode).
+ogni riparazione va nel registro degli errori, col dato originale in JSON. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 La sera dello stesso giorno, col motore del costruttore di regole chiesto da Gabriele, il formato 10 avrà ancora un'altra
 forma, sempre senza cambiare numero: il 24 ottobre sera i mondi di Gabriele, quello in gioco e le sue copie, sono tutti
 del formato 9. I preset e i filtri attuali di ogni porta saranno regole con un ordine, e ogni porta avrà la sua regola in
