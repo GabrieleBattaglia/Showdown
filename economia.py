@@ -22,6 +22,11 @@ gloria in proporzione ai tesserati in attività sul massimo dei posti: una polis
 incassa, e dividere i giocatori fra più polisportive non rende più. La parte sul valore della rosa e lo
 sponsor del computer restano come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Dal 3 novembre 2026, con la sesta tranche di D40, il commercio dei liberi: rivendita_dal dice da quando il
+computer compra un tesserato dell'utente, MESI_PRIMA_DELLA_RIVENDITA mesi dopo la firma; e il valore di una
+vendita dell'utente non conta il rinnovo concordato, che il compratore annulla, ma la scadenza vera. Fra le
+polisportive del computer il valore resta quello di prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import math
@@ -38,6 +43,7 @@ from costanti import (
     MESI_CASSA_PIENA_CPU,
     MESI_DI_INGAGGIO,
     MESI_DI_VALORE,
+    MESI_PRIMA_DELLA_RIVENDITA,
     MESI_VALORE_PIENO,
     PARTI_DI_CASSA_PER_STIPENDI,
     QUOTA_SPONSOR_SUL_VALORE,
@@ -107,13 +113,15 @@ def valore_di_mercato_pieno(g):
     return arrotonda(stipendio(g) * MESI_DI_VALORE, 100)
 
 
-def fattore_scadenza(g, oggi=None):
+def fattore_scadenza(g, oggi=None, col_rinnovo=True):
     """
     Quanto scende il valore di mercato verso la scadenza: 1 per i liberi, per chi ha già un rinnovo
     concordato e per chi ha almeno tre mesi di contratto; sotto, in linea retta fino al 40 per cento
-    alla scadenza. Senza la data di oggi, 1.
+    alla scadenza. Senza la data di oggi, 1. Senza col_rinnovo il rinnovo concordato non conta, e
+    vale la scadenza vera: è il valore di una vendita dell'utente, decisione D40, perché chi compra
+    firma un contratto nuovo e il rinnovo si annulla.
     """
-    if oggi is None or not contratti.ha_contratto(g) or contratti.ha_rinnovo(g):
+    if oggi is None or not contratti.ha_contratto(g) or (col_rinnovo and contratti.ha_rinnovo(g)):
         return 1.0
     mesi = contratti.mesi_al_termine(g, oggi)
     if mesi >= MESI_VALORE_PIENO:
@@ -121,14 +129,28 @@ def fattore_scadenza(g, oggi=None):
     return VALORE_A_SCADENZA + (1.0 - VALORE_A_SCADENZA) * mesi / MESI_VALORE_PIENO
 
 
-def valore_di_mercato(g, oggi=None):
+def valore_di_mercato(g, oggi=None, col_rinnovo=True):
     """
     Quanto vale il giocatore sul mercato delle vendite, il giorno dato: il prezzo di partenza, e il
     metro del computer. È il valore pieno per il fattore della scadenza, arrotondato al centinaio.
+    Senza col_rinnovo, per le vendite dell'utente, il rinnovo concordato non lo tiene pieno.
     """
     pieno = valore_di_mercato_pieno(g)
-    fattore = fattore_scadenza(g, oggi)
+    fattore = fattore_scadenza(g, oggi, col_rinnovo)
     return pieno if fattore >= 1.0 else arrotonda(pieno * fattore, 100)
+
+
+def rivendita_dal(g, poli, oggi):
+    """
+    Il giorno dal quale il computer comprerà un tesserato della polisportiva dell'utente, decisione D40:
+    MESI_PRIMA_DELLA_RIVENDITA mesi simulati dopo la firma, lo stesso giorno del mese. None se il computer
+    lo compra già oggi: quando la polisportiva è del computer, quando il giocatore ha firmato prima del
+    formato 11 e non ha il giorno della firma, e da quel giorno in poi.
+    """
+    if poli.is_cpu_controlled or g.tesserato_dal is None:
+        return None
+    dal = contratti.stesso_giorno_dopo(g.tesserato_dal, MESI_PRIMA_DELLA_RIVENDITA)
+    return dal if oggi.date() < dal.date() else None
 
 
 def sponsor_mensile(poli, rosa):

@@ -14,10 +14,15 @@ La quinta tranche: Sposta fondi, che passa i soldi fra le tue polisportive senza
 la riserva di chi paga, con le frasi del limite, le voci dei conti e i diari; e l'allenatore licenziato da una tua
 polisportiva, che per 30 giorni non firma con le tue, mentre il computer lo assume subito e lo staff di una chiusura non è
 licenziato.
+La sesta tranche: il computer non compra un tuo tesserato firmato da meno di dodici mesi, e lo compra dal giorno esatto;
+chi ha firmato prima del formato 11 si compra come prima, e fra le polisportive del computer niente cambia. Il valore di una
+tua vendita non conta il rinnovo concordato; le Vendite, la riga del mercato e la scheda dicono da quando il computer
+comprerà. Le prove delle tranche di prima in cui il computer compra un tuo tesserato spostano la firma un anno indietro.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
+import math
 
 import pytest
 from aiuti_calendario import OGGI, apri, giorno, mondo_di_prova, polisportiva, solo
@@ -29,7 +34,7 @@ import iscrizioni
 import mercato
 import sfide
 import testi
-from costanti import CAPITALE_INIZIALE, FEDELTA_BANDIERA, QUOTA_SPONSOR_SUL_VALORE, SPONSOR_PER_GLORIA
+from costanti import CAPITALE_INIZIALE, FEDELTA_BANDIERA, MESI_PRIMA_DELLA_RIVENDITA, QUOTA_SPONSOR_SUL_VALORE, RIALZO_CPU, SPONSOR_PER_GLORIA
 from mondo import VENDITA_FRA_TUE, Mondo, _Mercato, prezzo_della_fondazione
 from utilita import adesso_utc
 
@@ -57,6 +62,12 @@ def _mondo():
     return mondo, cpu, bologna, milano
 
 
+def _firmati_un_anno_fa(*giocatori):
+    """La firma dei giocatori un anno prima di OGGI: dalla sesta tranche di D40 il computer compra un tuo tesserato soltanto dodici mesi dopo."""
+    for g in giocatori:
+        g.tesserato_dal = contratti.stesso_giorno_dopo(OGGI, -MESI_PRIMA_DELLA_RIVENDITA)
+
+
 @pytest.fixture
 def larga(monkeypatch):
     """Ogni polisportiva accetta qualunque rapporto di forza, e il computer non lancia sfide da sé."""
@@ -78,7 +89,8 @@ def test_fra_le_tue_polisportive_i_giocatori_non_si_vendono():
     riga = next(r for r in mercato.Memoria(mondo).righe_di(mercato.GIOCATORI) if r.persona.id == 12)
     bologna.cassa = 0
     assert mercato.offerta_possibile(mondo, bologna, riga) == (None, VENDITA_FRA_TUE, mercato.VENDITA_FRA_TUE) and riga.costo is None
-    # Al computer la vendita resta com'era.
+    # Al computer la vendita resta com'era, dodici mesi dopo la firma.
+    _firmati_un_anno_fa(g)
     prezzo = max(1, economia.valore_di_mercato(g, OGGI))
     mondo.metti_in_vendita(milano, g, prezzo)
     cpu.cassa = 1_000_000
@@ -161,6 +173,7 @@ def test_il_computer_non_compra_se_gli_arretrati_restano_scoperti():
     altra = polisportiva(mondo, "PoliTeam02 Prova", ids=(5, 6))
     cpu.cassa = altra.cassa = 1_000_000
     primo, secondo = mondo.giocatori[10], mondo.giocatori[11]
+    _firmati_un_anno_fa(primo, secondo)
     prezzi = {}
     for g in (primo, secondo):
         prezzi[g.id] = max(1, economia.valore_di_mercato(g, OGGI))
@@ -310,6 +323,7 @@ def test_chi_e_convocato_in_una_sfida_non_si_muove_fino_alla_partita(larga):
     assert mercato.offerta_possibile(mondo, bologna, righe[suoi[1]]) == (mercato.OFFERTA_D_ACQUISTO, _frase_della_sfida(mondo.giocatori[suoi[1]], DOMANI),
                                                                         mercato.CONVOCATO_BLOCCATO)
     # Il computer non compra i tuoi convocati; i suoi, fra sé, sì, come prima.
+    _firmati_un_anno_fa(mondo.giocatori[10], mondo.giocatori[26])
     bologna.in_vendita[10] = 1
     bologna.in_vendita[26] = 1
     assert {riga[0].id for riga in mondo._vendibili(OGGI) if riga[1] is bologna} == {26}
@@ -744,3 +758,108 @@ def test_il_computer_assume_subito_e_la_chiusura_non_licenzia():
     c = _con_lo_staff(mondo, roma)
     mondo.chiudi_polisportiva(roma)
     assert c.libero and c.escluso_dall_utente_fino is None and mondo.problema_assunzione(bologna, c, 0, 0) is None
+
+
+# La rivendita al computer dopo dodici mesi, e il valore senza il rinnovo concordato.
+
+def test_il_computer_non_compra_un_tuo_tesserato_firmato_da_poco():
+    mondo, cpu, bologna, _milano = _mondo()
+    cpu.cassa = 1_000_000
+    g = mondo.giocatori[9]
+    dal = datetime.datetime(2027, 10, 5, 9, 0)
+    assert g.tesserato_dal == OGGI and economia.rivendita_dal(g, bologna, OGGI) == dal == contratti.stesso_giorno_dopo(OGGI, MESI_PRIMA_DELLA_RIVENDITA)
+    # La messa in vendita resta possibile, ma il computer non lo vede e non lo compra.
+    assert mondo.problema_vendita(bologna, g, 1) is None
+    mondo.metti_in_vendita(bologna, g, 1)
+    assert mondo._vendibili(OGGI) == [] and not mondo._compra_dal_mercato(cpu, OGGI)
+    assert g.appartenenza == bologna.nome and bologna.in_vendita == {9: 1} and cpu.movimenti_oggi == 0
+    # Il giorno prima ancora no; il giorno esatto, dodici mesi dopo la firma, sì, e la firma col computer è di quel giorno.
+    vigilia = datetime.datetime(2027, 10, 4, 23, 59)
+    assert economia.rivendita_dal(g, bologna, vigilia) == dal and mondo._vendibili(vigilia) == []
+    mattina = datetime.datetime(2027, 10, 5, 0, 1)
+    assert economia.rivendita_dal(g, bologna, mattina) is None and [riga[0] for riga in mondo._vendibili(mattina)] == [g]
+    assert mondo._compra_dal_mercato(cpu, mattina)
+    assert g.appartenenza == cpu.nome and g.tesserato_dal == mattina and bologna.cassa == 20_001
+    # Lo stesso giorno del mese, o l'ultimo se quel giorno non c'è.
+    assert contratti.stesso_giorno_dopo(datetime.datetime(2028, 2, 29, 9, 0), 12) == datetime.datetime(2029, 2, 28, 9, 0)
+    assert contratti.stesso_giorno_dopo(datetime.datetime(2027, 1, 31), 1) == datetime.datetime(2027, 2, 28)
+    assert contratti.stesso_giorno_dopo(datetime.datetime(2027, 3, 31), -1) == datetime.datetime(2027, 2, 28)
+
+
+def test_chi_ha_firmato_prima_del_formato_11_si_compra_come_prima():
+    mondo, cpu, bologna, _milano = _mondo()
+    cpu.cassa = 1_000_000
+    g = mondo.giocatori[10]
+    # La migrazione dal formato 10 lascia vuoto il giorno della firma: il computer lo compra da subito.
+    g.tesserato_dal = None
+    assert economia.rivendita_dal(g, bologna, OGGI) is None and testi.rivendita(g, bologna, OGGI) == ""
+    mondo.metti_in_vendita(bologna, g, 1)
+    assert [riga[0] for riga in mondo._vendibili(OGGI)] == [g]
+    assert mondo._compra_dal_mercato(cpu, OGGI) and g.appartenenza == cpu.nome and g.tesserato_dal == OGGI
+
+
+def test_il_computer_fra_se_compra_come_prima():
+    mondo, cpu, _bologna, _milano = _mondo()
+    altra = polisportiva(mondo, "PoliTeam02 Prova", ids=(5, 6))
+    altra.cassa = 1_000_000
+    g = mondo.giocatori[1]
+    # Firmato oggi, e con un rinnovo concordato a meno di un mese dalla scadenza: fra le polisportive del computer il
+    # giorno della firma non conta, e il rinnovo tiene pieno il valore, come prima.
+    g.contratto_scadenza = contratti.aggiungi_mesi(OGGI, 1)
+    contratti.concorda_rinnovo(g, economia.stipendio(g), 12)
+    pieno = economia.valore_di_mercato_pieno(g)
+    assert g.tesserato_dal == OGGI and economia.rivendita_dal(g, cpu, OGGI) is None and testi.rivendita(g, cpu, OGGI) == ""
+    mondo.metti_in_vendita(cpu, g, pieno)
+    assert [(riga[0], riga[3]) for riga in mondo._vendibili(OGGI)] == [(g, pieno * RIALZO_CPU)]
+    assert mondo._compra_dal_mercato(altra, OGGI) and g.appartenenza == altra.nome
+
+
+def test_il_valore_della_tua_vendita_non_conta_il_rinnovo_concordato():
+    mondo, cpu, bologna, _milano = _mondo()
+    cpu.cassa = 1_000_000
+    g = mondo.giocatori[9]
+    _firmati_un_anno_fa(g)
+    g.contratto_scadenza = contratti.aggiungi_mesi(OGGI, 1)
+    pieno = economia.valore_di_mercato_pieno(g)
+    senza = economia.valore_di_mercato(g, OGGI)
+    assert senza < pieno
+    contratti.concorda_rinnovo(g, economia.stipendio(g), 12)
+    # Il rinnovo concordato tiene pieno il valore di mercato, ma non quello di una tua vendita: il compratore lo annulla.
+    assert economia.valore_di_mercato(g, OGGI) == pieno and economia.valore_di_mercato(g, OGGI, col_rinnovo=False) == senza
+    assert economia.fattore_scadenza(g, OGGI) == 1.0 and economia.fattore_scadenza(g, OGGI, col_rinnovo=False) < 1.0
+    mondo.metti_in_vendita(bologna, g, pieno)
+    assert [riga[3] for riga in mondo._vendibili(OGGI)] == [senza * RIALZO_CPU]
+    assert not mondo._compra_dal_mercato(cpu, OGGI) and g.appartenenza == bologna.nome
+    # Le Vendite dicono il valore che il computer paga.
+    assert testi.riga_vendita(g, bologna, OGGI) == (f"{_nome(g)}, valore {testi.numero(g.indice_collettivo_valore)}, "
+                                                   f"stipendio {_euro(economia.stipendio_pagato(g))}, valore di mercato {_euro(senza)}, "
+                                                   f"senza il rinnovo concordato, in vendita a {_euro(pieno)}")
+    tetto = math.floor(senza * RIALZO_CPU)
+    mondo.metti_in_vendita(bologna, g, tetto)
+    assert mondo._compra_dal_mercato(cpu, OGGI) and g.appartenenza == cpu.nome and g.rinnovo_scadenza is None
+
+
+def test_vendite_mercato_e_scheda_dicono_da_quando_il_computer_compra():
+    mondo, cpu, bologna, milano = _mondo()
+    g, lei = mondo.giocatori[9], mondo.giocatori[25]
+    assert testi.rivendita(g, bologna, OGGI) == "il computer lo comprerà dal 5 ottobre 2027"
+    assert testi.avviso_di_rivendita(lei, bologna, OGGI) == "Il computer la comprerà dal 5 ottobre 2027."
+    assert testi.riga_vendita(g, bologna, OGGI).endswith(f"valore di mercato {_euro(economia.valore_di_mercato(g, OGGI))}, il computer lo comprerà dal 5 ottobre 2027")
+    mondo.metti_in_vendita(bologna, g, 700)
+    assert testi.riga_vendita(g, bologna, OGGI).endswith(", in vendita a 700 euro, il computer lo comprerà dal 5 ottobre 2027")
+    assert testi.messo_in_vendita(g, bologna, 700, OGGI) == f"{_nome(g)} è in vendita a 700 euro. Il computer lo comprerà dal 5 ottobre 2027."
+    # La riga del mercato lo dice per i tuoi in vendita, da qualunque tua polisportiva, e la scheda anche; chi non è in
+    # vendita non ne ha bisogno.
+    mondo.metti_in_vendita(milano, mondo.giocatori[28], 300)
+    righe = {r.persona.id: r for r in mercato.Memoria(mondo).righe_di(mercato.GIOCATORI)}
+    assert "tuo, in vendita da Pat-Bologna a 700 euro, il computer lo comprerà dal 5 ottobre 2027" in testi.riga_trovato(righe[9], mondo)
+    assert "tua, in vendita da Pat-Milano a 300 euro, il computer la comprerà dal 5 ottobre 2027" in testi.riga_trovato(righe[28], mondo)
+    assert "comprerà" not in testi.riga_trovato(righe[10], mondo)
+    assert "In vendita a 700 euro. Il computer lo comprerà dal 5 ottobre 2027." in testi.scheda_giocatore(g, mondo)
+    # Dal dodicesimo mese, senza il giorno della firma e per i giocatori del computer, niente avviso.
+    assert testi.rivendita(g, bologna, datetime.datetime(2027, 10, 5, 9, 0)) == ""
+    mondo.metti_in_vendita(cpu, mondo.giocatori[1], 500)
+    assert testi.rivendita(mondo.giocatori[1], cpu, OGGI) == "" and "In vendita a 500 euro." in testi.scheda_giocatore(mondo.giocatori[1], mondo)
+    g.tesserato_dal = None
+    assert testi.messo_in_vendita(g, bologna, 700, OGGI) == f"{_nome(g)} è in vendita a 700 euro." and "comprerà" not in testi.riga_vendita(g, bologna, OGGI)
+    assert "In vendita a 700 euro.\n" in testi.scheda_giocatore(g, mondo) + "\n"

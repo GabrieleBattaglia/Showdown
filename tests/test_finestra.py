@@ -24,6 +24,7 @@ import wx
 from aiuti_barra import evento_della_barra
 
 import archivio
+import economia
 import impostazioni
 import iscrizioni
 import mercato
@@ -1358,6 +1359,34 @@ def test_le_vendite_che_la_decisione_d40_rifiuta(finestra, suonati, monkeypatch)
         _convocati_domani(mondo, poli, [g.id])
         dialogo.metti()
         assert suonati[-1] == "convocato_bloccato" and avvisi[-1] == mondo.impegno_di_squadra(g) and g.id not in poli.in_vendita
+    finally:
+        dialogo.Destroy()
+
+
+def test_la_vendita_di_un_tesserato_firmato_da_poco_ha_il_suo_suono(finestra, suonati, monkeypatch):
+    # La sesta tranche di D40: chi è tesserato da poco si mette in vendita lo stesso, e la riga e l'esito dicono da quando il
+    # computer lo comprerà, con un suono suo, che vale anche per il prezzo cambiato.
+    avvisi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo) or wx.OK)
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    oggi = mondo.datetime_corrente_simulazione
+    for gid in poli.tesserati:
+        mondo.giocatori[gid].tesserato_dal = oggi
+    dialogo = dialoghi.Vendite(finestra, mondo, poli)
+    try:
+        g = dialogo.rosa[0]
+        frase = f"il computer {'la' if g.sesso == 'f' else 'lo'} comprerà dal {testi.data_breve(economia.rivendita_dal(g, poli, oggi))}"
+        assert dialogo.elenco.GetString(0).endswith(f", {frase}")
+        dialogo.metti()
+        dialogo.metti()
+        assert suonati == ["rivendita_in_attesa", "rivendita_in_attesa"] and g.id in poli.in_vendita
+        prezzo = testi.euro(dialogo.prezzo.GetValue())
+        assert avvisi[-1] == dialogo.fatte[-1] == f"{testi.nome_completo(g)} è in vendita a {prezzo}. {frase[0].upper()}{frase[1:]}."
+        # Chi ha firmato prima del formato 11 il computer lo compra già: suona come prima, senza l'avviso.
+        g.tesserato_dal = None
+        dialogo.metti()
+        assert suonati[-1] == "prezzo_di_vendita_cambiato" and avvisi[-1] == f"{testi.nome_completo(g)} è in vendita a {prezzo}."
     finally:
         dialogo.Destroy()
 

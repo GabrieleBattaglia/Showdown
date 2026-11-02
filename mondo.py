@@ -89,6 +89,11 @@ lasciano scendere chi paga sotto la sua riserva. E un allenatore licenziato da u
 sue polisportive per 30 giorni simulati: licenzia_allenatore scrive il giorno della fine, problema_assunzione lo rifiuta con
 la frase di licenziato_dall_utente, e il computer lo assume come prima. Lo staff congedato da una chiusura non è licenziato.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con la sesta tranche di D40, il commercio dei liberi: in _vendibili il computer non compra un tesserato
+dell'utente firmato da meno di MESI_PRIMA_DELLA_RIVENDITA mesi, come dice economia.rivendita_dal, e per i giocatori
+dell'utente paga al più il valore di mercato senza il rinnovo concordato, che con l'acquisto si annulla. La messa in
+vendita resta libera, e fra le polisportive del computer gli acquisti restano come prima. È di Gabriele Battaglia (IZ4APU)
+& ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -172,6 +177,7 @@ from economia import (
     ingaggio_richiesto,
     mesi_di_pazienza,
     pazienza_per_euro,
+    rivendita_dal,
     scritta_in_euro,
     spesa_mensile_cpu,
     sponsor_mensile,
@@ -2065,6 +2071,10 @@ class Mondo:
         La cassa deve bastare per tutte le vendite del giorno insieme, perché ognuna la cambia: i giocatori
         che il computer potrebbe comprare se la dividono nell'ordine delle vendite, e chi non ci sta
         aspetta un altro giorno. I giocatori del computer restano come prima.
+        Dalla sesta tranche di D40 il computer salta anche chi l'utente ha tesserato da meno di
+        MESI_PRIMA_DELLA_RIVENDITA mesi, con rivendita_dal; chi non ha il giorno della firma si compra come
+        prima. E il prezzo più alto che paga per un giocatore dell'utente non conta il rinnovo concordato,
+        che con l'acquisto si annulla.
         """
         righe = []
         impegni = None
@@ -2075,7 +2085,9 @@ class Mondo:
                 g = self.giocatori.get(gid)
                 # Il ritirato non si compra: serve ai salvataggi in cui un morto era rimasto in vendita.
                 if g is not None and not g.ritirato:
-                    massimo = valore_di_mercato(g, oggi) * RIALZO_CPU
+                    if dell_utente and rivendita_dal(g, venditore, oggi) is not None:
+                        continue
+                    massimo = valore_di_mercato(g, oggi, not dell_utente) * RIALZO_CPU
                     if dell_utente:
                         if impegni is None:
                             impegni = sfide.convocazioni(self)

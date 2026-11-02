@@ -107,6 +107,10 @@ I soldi passano fra le tue polisportive con Sposta fondi, Ctrl+Maiusc+I, nel men
 
 Un allenatore licenziato da una tua polisportiva non firma con nessuna delle tue per 30 giorni simulati, nemmeno con quella che l'ha licenziato (decisione D40). La domanda di Licenzia, nello staff, lo dice, e l'esito e il diario della polisportiva dicono fino a quando; nella finestra Mercato e ricerca la sua riga lo dice, e la sua scheda; Fai un'offerta, Alt+O, lo rifiuta col suo suono, come Mario Rossi è stato licenziato da Magnavacca il 3 novembre 2026: non firma con le tue polisportive fino al 3 dicembre 2026. Le polisportive del computer possono assumerlo subito, come prima, e lo staff che se ne va per la chiusura di una tua polisportiva non è licenziato.
 
+Le polisportive del computer non comprano un tuo tesserato firmato con la tua polisportiva da meno di 12 mesi simulati (decisione D40): tesserare un libero e rivenderlo subito al computer non è più un commercio. Il computer lo compra dallo stesso giorno, dodici mesi dopo la firma, e chi era già tesserato prima del formato 11 si compra come prima. La messa in vendita resta libera: in Vendite dei tesserati la riga di chi è firmato da poco lo dice, e Metti in vendita, Alt+M, lo accetta con un avviso, come Mario Rossi è in vendita a 1.000 euro. Il computer lo comprerà dal 23 maggio 2027, col suo suono, anche quando cambi il prezzo; nella finestra Mercato e ricerca la riga di un tuo tesserato in vendita, e la sua scheda, dicono lo stesso. Le polisportive del computer, fra loro, comprano come prima.
+
+Quando vendi al computer, il valore di mercato non conta più il rinnovo concordato (decisione D40): chi compra firma un contratto nuovo e il rinnovo si annulla, quindi negli ultimi tre mesi di contratto il computer paga al più il valore della scadenza vera, col suo rialzo. Vendite dei tesserati parte da quel valore, e la riga lo dice, come valore di mercato 600 euro, senza il rinnovo concordato. Fra le polisportive del computer il rinnovo tiene pieno il valore, come prima.
+
 ## [1.94.6] - 2026-10-23
 
 Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.

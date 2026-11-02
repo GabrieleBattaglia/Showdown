@@ -199,6 +199,8 @@ def test_la_firma_allo_scambio_e_agli_acquisti(mondo, monkeypatch):
     assert _firmato(altro, mondo)
     terzo = _cpu(mondo, ())
     mondo.metti_in_vendita(mia, altro, 100)
+    # Dalla decisione D40 il computer compra un tuo tesserato soltanto dodici mesi dopo la firma: la firma va indietro di un anno.
+    altro.tesserato_dal = contratti.stesso_giorno_dopo(INIZIO, -12)
     assert mondo._compra_dal_mercato(terzo, INIZIO)
     assert altro.appartenenza == terzo.nome and _firmato(altro, mondo)
 

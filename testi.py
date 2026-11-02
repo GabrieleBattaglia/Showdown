@@ -124,6 +124,10 @@ Lo stesso giorno, con la quinta tranche di D40, le parole di Sposta fondi: perch
 righe delle due scelte del dialogo e l'esito con le due casse; nel bilancio i fondi ricevuti e quelli versati. E l'allenatore
 licenziato da una tua polisportiva, che per 30 giorni non firma con le tue: la domanda e l'esito del licenziamento, la riga
 del mercato e la scheda lo dicono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con la sesta tranche di D40, da quando il computer comprerà un tuo tesserato firmato da poco: le righe
+delle Vendite, l'esito della messa in vendita, la riga del mercato e la scheda lo dicono, con rivendita e avviso_di_rivendita.
+Le righe delle Vendite danno il valore di mercato senza il rinnovo concordato, che il compratore annulla. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -725,7 +729,9 @@ def _economia_del_giocatore(g, mondo):
         if economia.bandiera_attiva(g):
             righe.append(f"Bandiera di {club.nome}: gioca per il club anche senza stipendio.")
         if g.id in club.in_vendita:
-            righe.append(f"In vendita a {euro(club.in_vendita[g.id])}.")
+            # Dalla decisione D40, per un tuo tesserato firmato da poco, anche da quando il computer lo comprerà.
+            avviso = avviso_di_rivendita(g, club, oggi)
+            righe.append(f"In vendita a {euro(club.in_vendita[g.id])}." + (f" {avviso}" if avviso else ""))
     return righe
 
 
@@ -1480,8 +1486,11 @@ def _contratto_in_riga(g):
     return f"contratto fino {'ad' if mese[0] in 'aeiou' else 'a'} {mese}"
 
 
-def _stato_e_costo(r):
-    """Lo stato del giocatore di una riga della finestra, col costo, e dopo lo stato l'infortunio, come in stato."""
+def _stato_e_costo(r, oggi=None):
+    """
+    Lo stato del giocatore di una riga della finestra, col costo, e dopo lo stato l'infortunio, come in stato. Dalla decisione
+    D40 un tuo tesserato in vendita dice anche da quando il computer lo comprerà, se non lo compra già.
+    """
     g = r.persona
     if r.stato == mercato.LIBERO:
         testo = f"chiede {euro(r.costo)} d'ingaggio" if r.costo is not None else accorda(g, "libero")
@@ -1491,7 +1500,8 @@ def _stato_e_costo(r):
         testo = f"{accorda(g, 'tesserato')} con {r.polisportiva.nome}, valore di mercato {euro(r.costo)}"
     elif r.stato == mercato.TUO:
         dove = f"in vendita da {r.polisportiva.nome} a {euro(r.prezzo)}" if r.prezzo is not None else f"di {r.polisportiva.nome}"
-        testo = f"{accorda(g, 'tuo')}, {dove}"
+        attesa = rivendita(g, r.polisportiva, oggi) if r.prezzo is not None else ""
+        testo = f"{accorda(g, 'tuo')}, {dove}" + (f", {attesa}" if attesa else "")
     elif r.stato == mercato.RITIRATO:
         testo = accorda(g, "ritirato")
     else:
@@ -1542,7 +1552,7 @@ def riga_trovato(r, mondo, ordine=None, memoria=None):
     parti = {
         "valore": f"valore {numero(g.indice_collettivo_valore)}",
         "stipendio": f"stipendio {euro(r.stipendio)}" if r.stipendio is not None else "",
-        "stato": _stato_e_costo(r),
+        "stato": _stato_e_costo(r, mondo.datetime_corrente_simulazione),
         "contratto": _contratto_in_riga(g),
         "tratti": ", ".join(tratti_speciali(g)),
         "regione": regione_del_comune(g.luogo),
@@ -1932,10 +1942,42 @@ def riga_arretrati(g):
 
 
 def riga_vendita(g, p, oggi=None):
-    """Un tesserato nella finestra delle vendite: quanto vale, il giorno dato, e se è già in vendita."""
-    riga = (f"{nome_completo(g)}, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio_pagato(g))}, "
-            f"valore di mercato {euro(economia.valore_di_mercato(g, oggi))}")
-    return riga + (f", in vendita a {euro(p.in_vendita[g.id])}" if g.id in p.in_vendita else "")
+    """
+    Un tesserato nella finestra delle vendite: quanto vale, il giorno dato, e se è già in vendita. Dalla decisione D40, per
+    l'utente, il valore di mercato è quello che il computer paga, senza il rinnovo concordato, e la riga dice da quando il
+    computer lo comprerà, se non lo compra già.
+    """
+    valore = economia.valore_di_mercato(g, oggi, p.is_cpu_controlled)
+    riga = f"{nome_completo(g)}, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio_pagato(g))}, valore di mercato {euro(valore)}"
+    if valore < economia.valore_di_mercato(g, oggi):
+        riga += ", senza il rinnovo concordato"
+    if g.id in p.in_vendita:
+        riga += f", in vendita a {euro(p.in_vendita[g.id])}"
+    attesa = rivendita(g, p, oggi)
+    return riga + (f", {attesa}" if attesa else "")
+
+
+def rivendita(g, p, oggi):
+    """
+    Da quando il computer comprerà un tesserato dell'utente firmato da poco, decisione D40, a metà frase: il computer lo
+    comprerà dal 23 maggio 2027. Stringa vuota se lo compra già, o senza la data di oggi.
+    """
+    dal = economia.rivendita_dal(g, p, oggi) if oggi is not None else None
+    if dal is None:
+        return ""
+    return f"il computer {'la' if g.sesso == 'f' else 'lo'} comprerà dal {data_breve(dal)}"
+
+
+def avviso_di_rivendita(g, p, oggi):
+    """La frase di rivendita, da sola: Il computer lo comprerà dal 23 maggio 2027. Stringa vuota se lo compra già."""
+    attesa = rivendita(g, p, oggi)
+    return f"{attesa[0].upper()}{attesa[1:]}." if attesa else ""
+
+
+def messo_in_vendita(g, p, prezzo, oggi):
+    """L'esito della messa in vendita nelle Vendite, e dalla decisione D40 l'avviso di quando il computer lo comprerà."""
+    avviso = avviso_di_rivendita(g, p, oggi)
+    return f"{nome_completo(g)} è in vendita a {euro(prezzo)}." + (f" {avviso}" if avviso else "")
 
 
 def svincolato(g, p, mondo, buonuscita=0, arretrati=0):

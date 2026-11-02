@@ -162,6 +162,11 @@ con una polisportiva sola, una moneta che aspetta una risposta e sente soltanto 
 licenziato da una tua polisportiva, che per 30 giorni non firma con le tue: l'eco breve del fischio finale del licenziamento
 e due colpi su una porta che resta chiusa. Il dialogo, quando la cifra è zero o le due polisportive sono la stessa, suona
 come un campo da correggere. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con la sesta tranche di D40, un suono nuovo, mess_ e nella collezione di GBUtils: nelle Vendite, la
+messa in vendita di un tesserato firmato da poco, che il computer comprerà soltanto da un giorno più avanti. È un avviso e
+non un rifiuto: la puntina della messa in vendita, in sinusoide, poi il tic tac di un orologio fra sinistra e destra e una
+nota che sale di un tono e resta sospesa. Vale anche per il prezzo cambiato di un tesserato che il computer non compra
+ancora. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -467,6 +472,8 @@ GRUPPI = (
         "vendita_non_attiva": "mess_vendita_non_attiva",
         # Decisione D40: il prezzo che con la cassa non salda gli arretrati di chi si vende.
         "prezzo_sotto_gli_arretrati": "mess_prezzo_sotto_gli_arretrati",
+        # Decisione D40: la messa in vendita di un tesserato firmato da poco, che il computer comprerà più avanti.
+        "rivendita_in_attesa": "mess_rivendita_in_attesa",
         "dialogo_arretrati": "mess_arretrati_aperti",
         "nessun_arretrato": "mess_conti_a_posto",
         # I tre gradini del pagamento: in parte, saldato, e tutti saldati.
@@ -941,6 +948,8 @@ AZIONI = {
     "tolto_dalla_vendita": "un tesserato tolto dalla vendita",
     "vendita_non_attiva": "si vuole togliere dalla vendita un tesserato che in vendita non c'è",
     "prezzo_sotto_gli_arretrati": "nelle Vendite un prezzo che, con la cassa, non salda gli arretrati del tesserato",
+    "rivendita_in_attesa": ("nelle Vendite un tesserato messo in vendita, o col prezzo cambiato, che il computer comprerà soltanto più avanti, "
+                            "perché è tesserato da poco: l'esito dice da quale giorno"),
     "dialogo_arretrati": "si apre il pagamento degli arretrati, con Ctrl+Shift+P",
     "nessun_arretrato": "nessun tesserato aspetta arretrati",
     "arretrati_pagati_in_parte": "arretrati pagati in parte, e il tesserato aspetta ancora",

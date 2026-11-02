@@ -16,8 +16,12 @@ Un mese di contratto è un mese del calendario simulato: circa trenta giorni sim
 anni d'età e dieci giorni veri. Scadenze e inizi cadono sempre il primo del mese.
 Come economia.py, qui ci sono soltanto calcoli: le operazioni che firmano, rinnovano e lasciano
 scadere i contratti sono regole del mondo, e stanno in mondo.py.
+Dal 3 novembre 2026, con la sesta tranche della decisione D40, anche la stessa data tanti mesi dopo, che
+non cade per forza il primo del mese: il giorno dal quale il computer compra un tesserato dell'utente. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
+import calendar
 import itertools
 import math
 
@@ -79,6 +83,13 @@ def aggiungi_mesi(data, mesi):
     """Il primo del mese che viene tanti mesi dopo quello della data."""
     indice = data.year * 12 + data.month - 1 + mesi
     return primo_del_mese(data).replace(year=indice // 12, month=indice % 12 + 1)
+
+
+def stesso_giorno_dopo(data, mesi):
+    """La stessa data tanti mesi dopo, o l'ultimo giorno del mese se quel giorno non c'è: dal 31 gennaio, un mese dopo, il 28 febbraio."""
+    indice = data.year * 12 + data.month - 1 + mesi
+    anno, mese = indice // 12, indice % 12 + 1
+    return data.replace(year=anno, month=mese, day=min(data.day, calendar.monthrange(anno, mese)[1]))
 
 
 def inizio(data):

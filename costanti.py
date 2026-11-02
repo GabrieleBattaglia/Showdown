@@ -19,6 +19,8 @@ dalla terza polisportiva aperta e il ripensamento. È di Gabriele Battaglia (IZ4
 UltraCode).
 Lo stesso giorno, con la quinta tranche di D40, i giorni in cui un allenatore licenziato dall'utente non firma con le sue
 polisportive. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Con la sesta tranche di D40, i mesi dopo la firma prima dei quali il computer non compra un tesserato dell'utente, per ora
+12, in attesa della misura. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -300,6 +302,9 @@ BILANCI_CONSERVATI = 12
 RIALZO_CPU = 1.15
 MESI_DI_RISERVA_CPU = 1
 PARTI_DI_CASSA_PER_STIPENDI = 24
+# Decisione D40: il computer non compra un tesserato dell'utente firmato con la polisportiva di oggi da meno di tanti mesi
+# simulati, perché tesserare un libero e rivenderglielo subito non sia un commercio. Il numero lo fissa una misura; per ora 12.
+MESI_PRIMA_DELLA_RIVENDITA = 12
 # Quanti candidati troppo cari il computer scorre in un giorno, prima di lasciar perdere.
 SCARTI_MASSIMI_CPU = 30
 # Il computer spende secondo la cassa, decisione 1 di Gabriele del 14 ottobre 2026: con la cassa piena

@@ -213,6 +213,8 @@ def test_il_computer_senza_soldi_paga_i_meno_pazienti_e_vende(mondo, monkeypatch
 def test_il_computer_compra_chi_e_in_vendita(mondo):
     mia = _club(mondo, 1)
     g = mondo.giocatori[1]
+    # Firmato prima del formato 11, senza il giorno della firma: dalla decisione D40 il computer lo compra subito.
+    g.tesserato_dal = None
     for gid, altro in mondo.giocatori.items():
         if gid != 1:
             altro.ritirato = True
@@ -297,6 +299,8 @@ def test_il_computer_ricco_non_compra_a_tre_volte_il_valore(mondo):
     # sessant'anni, e una cassa ricchissima.
     mia = _club(mondo, 1)
     g = mondo.giocatori[1]
+    # Firmato prima del formato 11, senza il giorno della firma: dalla decisione D40 il computer lo compra subito.
+    g.tesserato_dal = None
     for gid, altro in mondo.giocatori.items():
         if gid != 1:
             altro.ritirato = True

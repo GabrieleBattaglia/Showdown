@@ -74,6 +74,9 @@ e il resto fra quelli della finestra. È di Gabriele Battaglia (IZ4APU) & ClaudI
 Dal 2 novembre 2026, con la quinta tranche della decisione D40, c'è il dialogo di Sposta fondi: da quale tua polisportiva, a
 quale e quanto, con l'etichetta della cifra che dice fino a quanto si può spostare, e la cifra oltre la riserva di chi paga
 che ha il suo avviso e il suo suono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con la sesta tranche di D40, le Vendite dicono da quando il computer comprerà un tesserato firmato da
+poco, nella riga e nell'esito della messa in vendita, col suono rivendita_in_attesa, e partono dal valore di mercato senza
+il rinnovo concordato. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -937,12 +940,16 @@ class Vendite(_Dialogo):
         self.al_giocatore()
 
     def al_giocatore(self, event=None):
-        """Il prezzo parte da quello di vendita, se il tesserato è già in vendita, o dal suo valore di mercato."""
+        """
+        Il prezzo parte da quello di vendita, se il tesserato è già in vendita, o dal suo valore di mercato: dalla decisione D40
+        quello che il computer paga, senza il rinnovo concordato.
+        """
         indice = self.elenco.GetSelection()
         if indice == wx.NOT_FOUND:
             return
         g = self.rosa[indice]
-        self.prezzo.SetValue(self.poli.in_vendita.get(g.id, max(1, economia.valore_di_mercato(g, self.mondo.datetime_corrente_simulazione))))
+        valore = economia.valore_di_mercato(g, self.mondo.datetime_corrente_simulazione, self.poli.is_cpu_controlled)
+        self.prezzo.SetValue(self.poli.in_vendita.get(g.id, max(1, valore)))
 
     def _scelto(self):
         indice = self.elenco.GetSelection()
@@ -956,7 +963,9 @@ class Vendite(_Dialogo):
         Mette in vendita il tesserato scelto, o gli cambia il prezzo: il messaggio è lo stesso, e
         solo il suono dice se era già in vendita. Dalla decisione D40 non si mette in vendita chi è
         convocato in una gara a squadre, né a un prezzo che con la cassa non salda i suoi arretrati:
-        un avviso lo dice, col suo suono, e lascia il cursore sul prezzo.
+        un avviso lo dice, col suo suono, e lascia il cursore sul prezzo. Dalla sesta tranche di D40 chi è
+        tesserato da poco si mette in vendita lo stesso, ma l'esito dice da quando il computer lo comprerà,
+        col suono rivendita_in_attesa, che vale per la messa in vendita e per il prezzo cambiato.
         """
         g, indice = self._scelto()
         if g is None:
@@ -965,10 +974,14 @@ class Vendite(_Dialogo):
         if problema:
             self.avvisa(problema, self.prezzo, "convocato_bloccato" if self.mondo.impegno_di_squadra(g) else "prezzo_sotto_gli_arretrati")
             return
-        suono = "prezzo_di_vendita_cambiato" if g.id in self.poli.in_vendita else "messo_in_vendita"
+        oggi = self.mondo.datetime_corrente_simulazione
+        if testi.rivendita(g, self.poli, oggi):
+            suono = "rivendita_in_attesa"
+        else:
+            suono = "prezzo_di_vendita_cambiato" if g.id in self.poli.in_vendita else "messo_in_vendita"
         self.mondo.metti_in_vendita(self.poli, g, self.prezzo.GetValue())
         suoni.suona(suono)
-        testo = f"{testi.nome_completo(g)} è in vendita a {testi.euro(self.prezzo.GetValue())}."
+        testo = testi.messo_in_vendita(g, self.poli, self.prezzo.GetValue(), oggi)
         self.fatte.append(testo)
         wx.MessageBox(testo, "Vendite", wx.OK | wx.ICON_INFORMATION, self)
         self.aggiorna(indice)
