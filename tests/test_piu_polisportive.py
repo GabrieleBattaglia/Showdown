@@ -18,11 +18,16 @@ La sesta tranche: il computer non compra un tuo tesserato firmato da meno di dod
 chi ha firmato prima del formato 11 si compra come prima, e fra le polisportive del computer niente cambia. Il valore di una
 tua vendita non conta il rinnovo concordato; le Vendite, la riga del mercato e la scheda dicono da quando il computer
 comprerà. Le prove delle tranche di prima in cui il computer compra un tuo tesserato spostano la firma un anno indietro.
+Con la rampa del prezzo scelta da Gabriele il 3 novembre 2026, al posto dei dodici mesi: il tetto del computer parte
+dall'ingaggio il giorno della firma e sale giorno per giorno fino al valore pieno col rialzo, dove arriva dopo
+MESI_DELLA_RAMPA mesi; vale subito pieno per chi ha firmato prima del formato 11 e quando la partenza non sta sotto il
+pieno; il computer compra al tetto del giorno e non sopra. Le Vendite partono dal tetto e lo dicono, la riga del mercato e
+la scheda lo dicono durante la rampa, e l'esito di un prezzo sopra il tetto dice da quando il computer lo comprerà, o che
+non lo comprerà. Le prove delle tranche di prima spostano la firma alla fine della rampa.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
-import math
 
 import pytest
 from aiuti_calendario import OGGI, apri, giorno, mondo_di_prova, polisportiva, solo
@@ -34,7 +39,7 @@ import iscrizioni
 import mercato
 import sfide
 import testi
-from costanti import CAPITALE_INIZIALE, FEDELTA_BANDIERA, MESI_PRIMA_DELLA_RIVENDITA, QUOTA_SPONSOR_SUL_VALORE, RIALZO_CPU, SPONSOR_PER_GLORIA
+from costanti import CAPITALE_INIZIALE, FEDELTA_BANDIERA, MESI_DELLA_RAMPA, QUOTA_SPONSOR_SUL_VALORE, RIALZO_CPU, SPONSOR_PER_GLORIA
 from mondo import VENDITA_FRA_TUE, Mondo, _Mercato, prezzo_della_fondazione
 from utilita import adesso_utc
 
@@ -62,10 +67,13 @@ def _mondo():
     return mondo, cpu, bologna, milano
 
 
-def _firmati_un_anno_fa(*giocatori):
-    """La firma dei giocatori un anno prima di OGGI: dalla sesta tranche di D40 il computer compra un tuo tesserato soltanto dodici mesi dopo."""
+def _firmati_a_rampa_finita(*giocatori):
+    """
+    La firma dei giocatori MESI_DELLA_RAMPA mesi prima di OGGI: dalla rampa del prezzo di D40 il computer paga il valore pieno
+    di un tuo tesserato soltanto da quel giorno, e prima al più il tetto della rampa.
+    """
     for g in giocatori:
-        g.tesserato_dal = contratti.stesso_giorno_dopo(OGGI, -MESI_PRIMA_DELLA_RIVENDITA)
+        g.tesserato_dal = contratti.stesso_giorno_dopo(OGGI, -MESI_DELLA_RAMPA)
 
 
 @pytest.fixture
@@ -89,8 +97,8 @@ def test_fra_le_tue_polisportive_i_giocatori_non_si_vendono():
     riga = next(r for r in mercato.Memoria(mondo).righe_di(mercato.GIOCATORI) if r.persona.id == 12)
     bologna.cassa = 0
     assert mercato.offerta_possibile(mondo, bologna, riga) == (None, VENDITA_FRA_TUE, mercato.VENDITA_FRA_TUE) and riga.costo is None
-    # Al computer la vendita resta com'era, dodici mesi dopo la firma.
-    _firmati_un_anno_fa(g)
+    # Al computer la vendita resta com'era, a rampa finita.
+    _firmati_a_rampa_finita(g)
     prezzo = max(1, economia.valore_di_mercato(g, OGGI))
     mondo.metti_in_vendita(milano, g, prezzo)
     cpu.cassa = 1_000_000
@@ -173,7 +181,7 @@ def test_il_computer_non_compra_se_gli_arretrati_restano_scoperti():
     altra = polisportiva(mondo, "PoliTeam02 Prova", ids=(5, 6))
     cpu.cassa = altra.cassa = 1_000_000
     primo, secondo = mondo.giocatori[10], mondo.giocatori[11]
-    _firmati_un_anno_fa(primo, secondo)
+    _firmati_a_rampa_finita(primo, secondo)
     prezzi = {}
     for g in (primo, secondo):
         prezzi[g.id] = max(1, economia.valore_di_mercato(g, OGGI))
@@ -323,7 +331,7 @@ def test_chi_e_convocato_in_una_sfida_non_si_muove_fino_alla_partita(larga):
     assert mercato.offerta_possibile(mondo, bologna, righe[suoi[1]]) == (mercato.OFFERTA_D_ACQUISTO, _frase_della_sfida(mondo.giocatori[suoi[1]], DOMANI),
                                                                         mercato.CONVOCATO_BLOCCATO)
     # Il computer non compra i tuoi convocati; i suoi, fra sé, sì, come prima.
-    _firmati_un_anno_fa(mondo.giocatori[10], mondo.giocatori[26])
+    _firmati_a_rampa_finita(mondo.giocatori[10], mondo.giocatori[26])
     bologna.in_vendita[10] = 1
     bologna.in_vendita[26] = 1
     assert {riga[0].id for riga in mondo._vendibili(OGGI) if riga[1] is bologna} == {26}
@@ -760,42 +768,82 @@ def test_il_computer_assume_subito_e_la_chiusura_non_licenzia():
     assert c.libero and c.escluso_dall_utente_fino is None and mondo.problema_assunzione(bologna, c, 0, 0) is None
 
 
-# La rivendita al computer dopo dodici mesi, e il valore senza il rinnovo concordato.
+# La rampa del prezzo al posto dei dodici mesi, e il valore senza il rinnovo concordato.
 
-def test_il_computer_non_compra_un_tuo_tesserato_firmato_da_poco():
+def _dopo(giorni, ora=9, minuto=0):
+    """Il giorno che viene tanti giorni dopo OGGI, all'ora data."""
+    return (OGGI + datetime.timedelta(days=giorni)).replace(hour=ora, minute=minuto)
+
+
+def test_la_rampa_del_prezzo_sale_dall_ingaggio_al_valore_pieno():
     mondo, cpu, bologna, _milano = _mondo()
     cpu.cassa = 1_000_000
     g = mondo.giocatori[9]
-    dal = datetime.datetime(2027, 10, 5, 9, 0)
-    assert g.tesserato_dal == OGGI and economia.rivendita_dal(g, bologna, OGGI) == dal == contratti.stesso_giorno_dopo(OGGI, MESI_PRIMA_DELLA_RIVENDITA)
-    # La messa in vendita resta possibile, ma il computer non lo vede e non lo compra.
-    assert mondo.problema_vendita(bologna, g, 1) is None
-    mondo.metti_in_vendita(bologna, g, 1)
-    assert mondo._vendibili(OGGI) == [] and not mondo._compra_dal_mercato(cpu, OGGI)
-    assert g.appartenenza == bologna.nome and bologna.in_vendita == {9: 1} and cpu.movimenti_oggi == 0
-    # Il giorno prima ancora no; il giorno esatto, dodici mesi dopo la firma, sì, e la firma col computer è di quel giorno.
-    vigilia = datetime.datetime(2027, 10, 4, 23, 59)
-    assert economia.rivendita_dal(g, bologna, vigilia) == dal and mondo._vendibili(vigilia) == []
-    mattina = datetime.datetime(2027, 10, 5, 0, 1)
-    assert economia.rivendita_dal(g, bologna, mattina) is None and [riga[0] for riga in mondo._vendibili(mattina)] == [g]
-    assert mondo._compra_dal_mercato(cpu, mattina)
-    assert g.appartenenza == cpu.nome and g.tesserato_dal == mattina and bologna.cassa == 20_001
+    # Un contratto più lungo della rampa, così il valore pieno resta lo stesso fino alla fine.
+    g.contratto_scadenza = contratti.aggiungi_mesi(OGGI, MESI_DELLA_RAMPA + 6)
+    partenza = economia.ingaggio_richiesto(g, bologna)
+    pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
+    fine = contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA)
+    giorni = (fine - OGGI).days
+    assert g.tesserato_dal == OGGI and pieno == round(economia.valore_di_mercato(g, OGGI, col_rinnovo=False) * RIALZO_CPU) and partenza < pieno
+    # Il giorno della firma il computer paga al più l'ingaggio, poi il tetto sale in linea retta, giorno per giorno.
+    assert economia.tetto_di_rivendita(g, bologna, OGGI) == partenza and economia.rivendita_piena_dal(g, bologna, OGGI) == fine
+    meta = giorni // 2
+    assert economia.tetto_di_rivendita(g, bologna, _dopo(meta)) == partenza + (pieno - partenza) * meta // giorni
+    # Il giorno prima della fine il tetto non è ancora pieno; il giorno esatto, dalla mezzanotte, sì.
+    vigilia = _dopo(giorni - 1, 23, 59)
+    assert economia.tetto_di_rivendita(g, bologna, vigilia) < pieno and economia.rivendita_piena_dal(g, bologna, vigilia) == fine
+    mattina = _dopo(giorni, 0, 1)
+    assert economia.tetto_di_rivendita(g, bologna, mattina) == pieno and economia.rivendita_piena_dal(g, bologna, mattina) is None
+    assert economia.tetto_di_rivendita(g, bologna, _dopo(giorni + 30)) == pieno
+    # Il computer compra al tetto del giorno, non sopra: un euro oltre l'ingaggio lo compra dal primo giorno in cui il tetto ci
+    # arriva, e la firma col computer è di quel giorno.
+    prezzo = partenza + 1
+    assert mondo.problema_vendita(bologna, g, prezzo) is None
+    mondo.metti_in_vendita(bologna, g, prezzo)
+    assert [(riga[0], riga[3]) for riga in mondo._vendibili(OGGI)] == [(g, partenza)] and not mondo._compra_dal_mercato(cpu, OGGI)
+    primo = -(-giorni // (pieno - partenza))
+    dal = economia.rivendita_al_prezzo_dal(g, bologna, prezzo, OGGI)
+    assert dal == OGGI + datetime.timedelta(days=primo) and economia.rivendita_al_prezzo_dal(g, bologna, partenza, OGGI) == OGGI
+    assert economia.rivendita_al_prezzo_dal(g, bologna, pieno, OGGI) == fine and economia.rivendita_al_prezzo_dal(g, bologna, pieno + 1, OGGI) is None
+    giorno_prima = _dopo(primo - 1)
+    assert economia.tetto_di_rivendita(g, bologna, giorno_prima) == partenza and not mondo._compra_dal_mercato(cpu, giorno_prima)
+    assert g.appartenenza == bologna.nome and cpu.movimenti_oggi == 0
+    assert economia.tetto_di_rivendita(g, bologna, dal) >= prezzo and economia.rivendita_al_prezzo_dal(g, bologna, prezzo, dal) == dal
+    assert mondo._compra_dal_mercato(cpu, dal)
+    assert g.appartenenza == cpu.nome and g.tesserato_dal == dal and bologna.cassa == 20_000 + prezzo
     # Lo stesso giorno del mese, o l'ultimo se quel giorno non c'è.
     assert contratti.stesso_giorno_dopo(datetime.datetime(2028, 2, 29, 9, 0), 12) == datetime.datetime(2029, 2, 28, 9, 0)
     assert contratti.stesso_giorno_dopo(datetime.datetime(2027, 1, 31), 1) == datetime.datetime(2027, 2, 28)
     assert contratti.stesso_giorno_dopo(datetime.datetime(2027, 3, 31), -1) == datetime.datetime(2027, 2, 28)
 
 
-def test_chi_ha_firmato_prima_del_formato_11_si_compra_come_prima():
+def test_chi_ha_firmato_prima_del_formato_11_vale_subito_il_tetto_pieno():
     mondo, cpu, bologna, _milano = _mondo()
     cpu.cassa = 1_000_000
     g = mondo.giocatori[10]
-    # La migrazione dal formato 10 lascia vuoto il giorno della firma: il computer lo compra da subito.
+    # La migrazione dal formato 10 lascia vuoto il giorno della firma: il computer lo paga subito al tetto pieno.
     g.tesserato_dal = None
-    assert economia.rivendita_dal(g, bologna, OGGI) is None and testi.rivendita(g, bologna, OGGI) == ""
-    mondo.metti_in_vendita(bologna, g, 1)
-    assert [riga[0] for riga in mondo._vendibili(OGGI)] == [g]
+    pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
+    assert economia.tetto_di_rivendita(g, bologna, OGGI) == pieno and economia.rivendita_piena_dal(g, bologna, OGGI) is None
+    assert testi.rivendita(g, bologna, OGGI) == "" and testi.rivendita(g, bologna, OGGI, anche_pieno=True) == f"il computer lo paga fino a {_euro(pieno)}"
+    assert economia.rivendita_al_prezzo_dal(g, bologna, pieno, OGGI) == OGGI and economia.rivendita_al_prezzo_dal(g, bologna, pieno + 1, OGGI) is None
+    mondo.metti_in_vendita(bologna, g, pieno)
+    assert [(riga[0], riga[3]) for riga in mondo._vendibili(OGGI)] == [(g, pieno)]
     assert mondo._compra_dal_mercato(cpu, OGGI) and g.appartenenza == cpu.nome and g.tesserato_dal == OGGI
+
+
+def test_la_partenza_sopra_il_tetto_pieno_vale_il_tetto_pieno():
+    mondo, _cpu, bologna, _milano = _mondo()
+    g = mondo.giocatori[11]
+    # Un contratto che scade oggi, al 40% del valore, e una polisportiva senza gloria, a cui il giocatore chiede l'ingaggio
+    # più alto: la partenza della rampa supera il tetto pieno, e vale il tetto pieno da subito.
+    g.contratto_scadenza = OGGI
+    bologna.gloria = 1
+    pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
+    assert g.tesserato_dal == OGGI and economia.ingaggio_richiesto(g, bologna) > pieno
+    assert economia.tetto_di_rivendita(g, bologna, OGGI) == pieno and economia.rivendita_piena_dal(g, bologna, OGGI) is None
+    assert testi.rivendita(g, bologna, OGGI) == "" and testi.riga_vendita(g, bologna, OGGI).endswith(f", il computer lo paga fino a {_euro(pieno)}")
 
 
 def test_il_computer_fra_se_compra_come_prima():
@@ -808,7 +856,8 @@ def test_il_computer_fra_se_compra_come_prima():
     g.contratto_scadenza = contratti.aggiungi_mesi(OGGI, 1)
     contratti.concorda_rinnovo(g, economia.stipendio(g), 12)
     pieno = economia.valore_di_mercato_pieno(g)
-    assert g.tesserato_dal == OGGI and economia.rivendita_dal(g, cpu, OGGI) is None and testi.rivendita(g, cpu, OGGI) == ""
+    assert g.tesserato_dal == OGGI and economia.rivendita_piena_dal(g, cpu, OGGI) is None and testi.rivendita(g, cpu, OGGI, anche_pieno=True) == ""
+    assert economia.tetto_di_rivendita(g, cpu, OGGI) == round(pieno * RIALZO_CPU) and testi.sopra_il_tetto(g, cpu, 10 * pieno, OGGI) == ""
     mondo.metti_in_vendita(cpu, g, pieno)
     assert [(riga[0], riga[3]) for riga in mondo._vendibili(OGGI)] == [(g, pieno * RIALZO_CPU)]
     assert mondo._compra_dal_mercato(altra, OGGI) and g.appartenenza == altra.nome
@@ -818,7 +867,7 @@ def test_il_valore_della_tua_vendita_non_conta_il_rinnovo_concordato():
     mondo, cpu, bologna, _milano = _mondo()
     cpu.cassa = 1_000_000
     g = mondo.giocatori[9]
-    _firmati_un_anno_fa(g)
+    _firmati_a_rampa_finita(g)
     g.contratto_scadenza = contratti.aggiungi_mesi(OGGI, 1)
     pieno = economia.valore_di_mercato_pieno(g)
     senza = economia.valore_di_mercato(g, OGGI)
@@ -828,38 +877,79 @@ def test_il_valore_della_tua_vendita_non_conta_il_rinnovo_concordato():
     assert economia.valore_di_mercato(g, OGGI) == pieno and economia.valore_di_mercato(g, OGGI, col_rinnovo=False) == senza
     assert economia.fattore_scadenza(g, OGGI) == 1.0 and economia.fattore_scadenza(g, OGGI, col_rinnovo=False) < 1.0
     mondo.metti_in_vendita(bologna, g, pieno)
-    assert [riga[3] for riga in mondo._vendibili(OGGI)] == [senza * RIALZO_CPU]
+    tetto = economia.tetto_di_rivendita(g, bologna, OGGI)
+    assert [riga[3] for riga in mondo._vendibili(OGGI)] == [tetto] and tetto == round(senza * RIALZO_CPU)
     assert not mondo._compra_dal_mercato(cpu, OGGI) and g.appartenenza == bologna.nome
-    # Le Vendite dicono il valore che il computer paga.
+    # Le Vendite dicono il valore che il computer paga, e il tetto da cui partono.
     assert testi.riga_vendita(g, bologna, OGGI) == (f"{_nome(g)}, valore {testi.numero(g.indice_collettivo_valore)}, "
                                                    f"stipendio {_euro(economia.stipendio_pagato(g))}, valore di mercato {_euro(senza)}, "
-                                                   f"senza il rinnovo concordato, in vendita a {_euro(pieno)}")
-    tetto = math.floor(senza * RIALZO_CPU)
+                                                   f"senza il rinnovo concordato, in vendita a {_euro(pieno)}, il computer lo paga fino a {_euro(tetto)}")
     mondo.metti_in_vendita(bologna, g, tetto)
     assert mondo._compra_dal_mercato(cpu, OGGI) and g.appartenenza == cpu.nome and g.rinnovo_scadenza is None
 
 
-def test_vendite_mercato_e_scheda_dicono_da_quando_il_computer_compra():
+def _fino_al_pieno(lui, g, poli, oggi=OGGI):
+    """La frase della rampa, a metà riga: il computer oggi lo paga fino a 2.300 euro, il valore pieno dal 5 ottobre 2028."""
+    fine = testi.con_articolo("dal", testi.data_breve(contratti.stesso_giorno_dopo(g.tesserato_dal, MESI_DELLA_RAMPA)))
+    return f"il computer oggi {lui} paga fino a {_euro(economia.tetto_di_rivendita(g, poli, oggi))}, il valore pieno {fine}"
+
+
+def test_vendite_mercato_e_scheda_dicono_il_tetto_di_oggi():
     mondo, cpu, bologna, milano = _mondo()
     g, lei = mondo.giocatori[9], mondo.giocatori[25]
-    assert testi.rivendita(g, bologna, OGGI) == "il computer lo comprerà dal 5 ottobre 2027"
-    assert testi.avviso_di_rivendita(lei, bologna, OGGI) == "Il computer la comprerà dal 5 ottobre 2027."
-    assert testi.riga_vendita(g, bologna, OGGI).endswith(f"valore di mercato {_euro(economia.valore_di_mercato(g, OGGI))}, il computer lo comprerà dal 5 ottobre 2027")
+    tetto = economia.tetto_di_rivendita(g, bologna, OGGI)
+    assert tetto == economia.ingaggio_richiesto(g, bologna)
+    frase = f"il computer oggi lo paga fino a {_euro(tetto)}, il valore pieno dal {testi.data_breve(contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA))}"
+    assert testi.rivendita(g, bologna, OGGI) == frase == _fino_al_pieno("lo", g, bologna)
+    assert testi.avviso_di_rivendita(lei, bologna, OGGI) == f"{_fino_al_pieno('la', lei, bologna)[0].upper()}{_fino_al_pieno('la', lei, bologna)[1:]}."
+    assert testi.riga_vendita(g, bologna, OGGI).endswith(f"valore di mercato {_euro(economia.valore_di_mercato(g, OGGI))}, {frase}")
     mondo.metti_in_vendita(bologna, g, 700)
-    assert testi.riga_vendita(g, bologna, OGGI).endswith(", in vendita a 700 euro, il computer lo comprerà dal 5 ottobre 2027")
-    assert testi.messo_in_vendita(g, bologna, 700, OGGI) == f"{_nome(g)} è in vendita a 700 euro. Il computer lo comprerà dal 5 ottobre 2027."
+    assert testi.riga_vendita(g, bologna, OGGI).endswith(f", in vendita a 700 euro, {frase}")
     # La riga del mercato lo dice per i tuoi in vendita, da qualunque tua polisportiva, e la scheda anche; chi non è in
     # vendita non ne ha bisogno.
     mondo.metti_in_vendita(milano, mondo.giocatori[28], 300)
     righe = {r.persona.id: r for r in mercato.Memoria(mondo).righe_di(mercato.GIOCATORI)}
-    assert "tuo, in vendita da Pat-Bologna a 700 euro, il computer lo comprerà dal 5 ottobre 2027" in testi.riga_trovato(righe[9], mondo)
-    assert "tua, in vendita da Pat-Milano a 300 euro, il computer la comprerà dal 5 ottobre 2027" in testi.riga_trovato(righe[28], mondo)
-    assert "comprerà" not in testi.riga_trovato(righe[10], mondo)
-    assert "In vendita a 700 euro. Il computer lo comprerà dal 5 ottobre 2027." in testi.scheda_giocatore(g, mondo)
-    # Dal dodicesimo mese, senza il giorno della firma e per i giocatori del computer, niente avviso.
-    assert testi.rivendita(g, bologna, datetime.datetime(2027, 10, 5, 9, 0)) == ""
+    assert f"tuo, in vendita da Pat-Bologna a 700 euro, {frase}" in testi.riga_trovato(righe[9], mondo)
+    assert f"tua, in vendita da Pat-Milano a 300 euro, {_fino_al_pieno('la', mondo.giocatori[28], milano)}" in testi.riga_trovato(righe[28], mondo)
+    assert "paga fino" not in testi.riga_trovato(righe[10], mondo)
+    assert f"In vendita a 700 euro. {frase[0].upper()}{frase[1:]}." in testi.scheda_giocatore(g, mondo)
+    # A rampa finita, senza il giorno della firma e per i giocatori del computer, niente frase; le Vendite dicono soltanto
+    # il tetto pieno.
+    fine = contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA)
+    pieno = economia.tetto_pieno_di_rivendita(g, bologna, fine)
+    assert testi.rivendita(g, bologna, fine) == "" and testi.riga_vendita(g, bologna, fine).endswith(f", in vendita a 700 euro, il computer lo paga fino a {_euro(pieno)}")
     mondo.metti_in_vendita(cpu, mondo.giocatori[1], 500)
     assert testi.rivendita(mondo.giocatori[1], cpu, OGGI) == "" and "In vendita a 500 euro." in testi.scheda_giocatore(mondo.giocatori[1], mondo)
+    assert "paga fino" not in testi.riga_vendita(mondo.giocatori[1], cpu, OGGI)
     g.tesserato_dal = None
-    assert testi.messo_in_vendita(g, bologna, 700, OGGI) == f"{_nome(g)} è in vendita a 700 euro." and "comprerà" not in testi.riga_vendita(g, bologna, OGGI)
     assert "In vendita a 700 euro.\n" in testi.scheda_giocatore(g, mondo) + "\n"
+    assert testi.riga_vendita(g, bologna, OGGI).endswith(f", il computer lo paga fino a {_euro(economia.tetto_pieno_di_rivendita(g, bologna, OGGI))}")
+
+
+def test_l_esito_di_un_prezzo_sopra_il_tetto_dice_da_quando_il_computer_compra():
+    mondo, _cpu, bologna, _milano = _mondo()
+    g, lei = mondo.giocatori[9], mondo.giocatori[25]
+    tetto = economia.tetto_di_rivendita(g, bologna, OGGI)
+    pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
+    # Fino al tetto di oggi l'esito non ha avvisi.
+    assert testi.sopra_il_tetto(g, bologna, tetto, OGGI) == ""
+    assert testi.messo_in_vendita(g, bologna, tetto, OGGI) == f"{_nome(g)} è in vendita a {_euro(tetto)}."
+    # Sopra il tetto, fino al tetto pieno, il giorno in cui la rampa arriva al prezzo, con l'articolo eliso se serve.
+    prezzo = (tetto + pieno) // 2
+    dal = economia.rivendita_al_prezzo_dal(g, bologna, prezzo, OGGI)
+    assert OGGI < dal < contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA)
+    avviso = f"Il computer oggi lo paga fino a {_euro(tetto)}: a questo prezzo lo comprerà {testi.con_articolo('dal', testi.data_breve(dal))}."
+    assert testi.sopra_il_tetto(g, bologna, prezzo, OGGI) == avviso
+    assert testi.messo_in_vendita(g, bologna, prezzo, OGGI) == f"{_nome(g)} è in vendita a {_euro(prezzo)}. {avviso}"
+    # Sopra il tetto pieno il computer, col valore di oggi, non lo compra.
+    assert testi.sopra_il_tetto(lei, bologna, 10 * pieno, OGGI) == (f"Il computer la paga al più {_euro(economia.tetto_pieno_di_rivendita(lei, bologna, OGGI))}, "
+                                                                 "a valore pieno: a questo prezzo, col valore di oggi, non la comprerà.")
+    # Anche a rampa finita, o senza il giorno della firma, un prezzo sopra il tetto pieno ha il suo avviso.
+    g.tesserato_dal = None
+    assert testi.sopra_il_tetto(g, bologna, pieno, OGGI) == ""
+    assert testi.messo_in_vendita(g, bologna, pieno + 1, OGGI) == (f"{_nome(g)} è in vendita a {_euro(pieno + 1)}. Il computer lo paga al più "
+                                                                   f"{_euro(pieno)}, a valore pieno: a questo prezzo, col valore di oggi, non lo comprerà.")
+    # Le date con l'articolo eliso: chi ha firmato l'8 settembre ha il valore pieno dall'8 settembre, MESI_DELLA_RAMPA mesi dopo.
+    lei.tesserato_dal = datetime.datetime(2026, 9, 8, 9, 0)
+    fine = contratti.stesso_giorno_dopo(lei.tesserato_dal, MESI_DELLA_RAMPA)
+    assert testi.rivendita(lei, bologna, OGGI).endswith(f", il valore pieno dall'8 settembre {fine.year}")

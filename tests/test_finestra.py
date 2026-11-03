@@ -611,7 +611,10 @@ def test_arretrati_e_vendite(finestra, monkeypatch):
     finestra.vendite()
     primo = max((mondo.giocatori[gid] for gid in poli.tesserati), key=lambda x: x.indice_collettivo_valore)
     assert poli.in_vendita == {primo.id: 1500}
-    assert finestra.vista.GetValue() == f"{_nome(primo)} è in vendita a 1.500 euro."
+    # Dalla rampa del prezzo di D40 un prezzo sopra quello che il computer paga ha il suo avviso, anche nella vista.
+    avviso = testi.sopra_il_tetto(primo, poli, 1500, mondo.datetime_corrente_simulazione)
+    assert avviso.endswith("a questo prezzo, col valore di oggi, non lo comprerà.") or avviso.endswith("non la comprerà.")
+    assert finestra.vista.GetValue() == f"{_nome(primo)} è in vendita a 1.500 euro. {avviso}"
     finestra.bilancio()
     assert finestra.vista.GetValue().startswith(f"Bilancio di Club Di Prova: in cassa {testi.euro(poli.cassa)}.")
 
@@ -1363,9 +1366,10 @@ def test_le_vendite_che_la_decisione_d40_rifiuta(finestra, suonati, monkeypatch)
         dialogo.Destroy()
 
 
-def test_la_vendita_di_un_tesserato_firmato_da_poco_ha_il_suo_suono(finestra, suonati, monkeypatch):
-    # La sesta tranche di D40: chi è tesserato da poco si mette in vendita lo stesso, e la riga e l'esito dicono da quando il
-    # computer lo comprerà, con un suono suo, che vale anche per il prezzo cambiato.
+def test_il_prezzo_sopra_il_tetto_ha_i_suoi_due_suoni(finestra, suonati, monkeypatch):
+    # La rampa del prezzo di D40: le Vendite partono dal tetto di oggi e la riga lo dice; un prezzo sopra il tetto si accetta,
+    # e l'esito dice da quando il computer lo comprerà, o che non lo comprerà, con due suoni, uno per la messa in vendita e
+    # uno per il prezzo cambiato, così il suono dice ancora se il tesserato era già in vendita.
     avvisi = []
     monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo) or wx.OK)
     mondo = finestra.mondo
@@ -1376,17 +1380,36 @@ def test_la_vendita_di_un_tesserato_firmato_da_poco_ha_il_suo_suono(finestra, su
     dialogo = dialoghi.Vendite(finestra, mondo, poli)
     try:
         g = dialogo.rosa[0]
-        frase = f"il computer {'la' if g.sesso == 'f' else 'lo'} comprerà dal {testi.data_breve(economia.rivendita_dal(g, poli, oggi))}"
-        assert dialogo.elenco.GetString(0).endswith(f", {frase}")
+        nome = testi.nome_completo(g)
+        tetto = economia.tetto_di_rivendita(g, poli, oggi)
+        pieno = economia.tetto_pieno_di_rivendita(g, poli, oggi)
+        assert dialogo.elenco.GetString(0).endswith(f", {testi.rivendita(g, poli, oggi)}") and "il valore pieno" in dialogo.elenco.GetString(0)
+        assert dialogo.prezzo.GetValue() == tetto
+        # Al tetto di oggi: i suoni di sempre, senza avviso.
         dialogo.metti()
+        assert suonati == ["messo_in_vendita"] and avvisi[-1] == f"{nome} è in vendita a {testi.euro(tetto)}."
+        # Il prezzo cambiato sopra il tetto, che la rampa raggiunge più avanti.
+        dialogo.prezzo.SetValue(tetto + 1)
         dialogo.metti()
-        assert suonati == ["rivendita_in_attesa", "rivendita_in_attesa"] and g.id in poli.in_vendita
-        prezzo = testi.euro(dialogo.prezzo.GetValue())
-        assert avvisi[-1] == dialogo.fatte[-1] == f"{testi.nome_completo(g)} è in vendita a {prezzo}. {frase[0].upper()}{frase[1:]}."
-        # Chi ha firmato prima del formato 11 il computer lo compra già: suona come prima, senza l'avviso.
+        avviso = testi.sopra_il_tetto(g, poli, tetto + 1, oggi)
+        lo = "la" if g.sesso == "f" else "lo"
+        assert suonati[-1] == "prezzo_cambiato_in_attesa" and avviso.startswith(f"Il computer oggi {lo} paga fino a {testi.euro(tetto)}: a questo prezzo {lo} comprerà ")
+        assert avvisi[-1] == dialogo.fatte[-1] == f"{nome} è in vendita a {testi.euro(tetto + 1)}. {avviso}"
+        # La messa in vendita sopra il tetto, dopo averlo tolto: l'altro suono.
+        dialogo.togli()
+        dialogo.prezzo.SetValue(tetto + 1)
+        dialogo.metti()
+        assert suonati[-2:] == ["tolto_dalla_vendita", "rivendita_in_attesa"] and avvisi[-1] == f"{nome} è in vendita a {testi.euro(tetto + 1)}. {avviso}"
+        # Sopra il tetto pieno il computer, col valore di oggi, non lo compra.
+        dialogo.prezzo.SetValue(pieno + 1)
+        dialogo.metti()
+        assert suonati[-1] == "prezzo_cambiato_in_attesa" and avvisi[-1].endswith(f"a questo prezzo, col valore di oggi, non {lo} comprerà.")
+        # Chi ha firmato prima del formato 11 vale subito il tetto pieno: al tetto suona come prima, senza l'avviso.
         g.tesserato_dal = None
+        dialogo.prezzo.SetValue(pieno)
         dialogo.metti()
-        assert suonati[-1] == "prezzo_di_vendita_cambiato" and avvisi[-1] == f"{testi.nome_completo(g)} è in vendita a {prezzo}."
+        assert suonati[-1] == "prezzo_di_vendita_cambiato" and avvisi[-1] == f"{nome} è in vendita a {testi.euro(pieno)}."
+        assert dialogo.elenco.GetString(0).endswith(f", in vendita a {testi.euro(pieno)}, il computer {lo} paga fino a {testi.euro(pieno)}")
     finally:
         dialogo.Destroy()
 

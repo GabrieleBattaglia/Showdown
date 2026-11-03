@@ -167,6 +167,12 @@ messa in vendita di un tesserato firmato da poco, che il computer comprerà solt
 non un rifiuto: la puntina della messa in vendita, in sinusoide, poi il tic tac di un orologio fra sinistra e destra e una
 nota che sale di un tono e resta sospesa. Vale anche per il prezzo cambiato di un tesserato che il computer non compra
 ancora. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la rampa del prezzo scelta da Gabriele, che vale come D40, rivendita_in_attesa suona per la messa in
+vendita sopra il prezzo che il computer paga oggi, e il prezzo cambiato sopra quel prezzo ha un suono nuovo, mess_ e nella
+collezione di GBUtils, prezzo_cambiato_in_attesa: la puntina riscritta del prezzo cambiato, due tocchi sul si 6 e la discesa
+al mi 6, in sinusoide, poi il tic tac dell'orologio, stavolta da destra a sinistra, e una nota che sale di un tono, dal re 5
+al mi 5, e resta sospesa. Così il suono dice ancora se il tesserato era già in vendita. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -472,8 +478,10 @@ GRUPPI = (
         "vendita_non_attiva": "mess_vendita_non_attiva",
         # Decisione D40: il prezzo che con la cassa non salda gli arretrati di chi si vende.
         "prezzo_sotto_gli_arretrati": "mess_prezzo_sotto_gli_arretrati",
-        # Decisione D40: la messa in vendita di un tesserato firmato da poco, che il computer comprerà più avanti.
+        # Decisione D40, con la rampa del prezzo: la messa in vendita e il prezzo cambiato sopra quello che il computer paga
+        # oggi, che comprerà soltanto più avanti, o mai a quel prezzo.
         "rivendita_in_attesa": "mess_rivendita_in_attesa",
+        "prezzo_cambiato_in_attesa": "mess_prezzo_cambiato_in_attesa",
         "dialogo_arretrati": "mess_arretrati_aperti",
         "nessun_arretrato": "mess_conti_a_posto",
         # I tre gradini del pagamento: in parte, saldato, e tutti saldati.
@@ -948,8 +956,10 @@ AZIONI = {
     "tolto_dalla_vendita": "un tesserato tolto dalla vendita",
     "vendita_non_attiva": "si vuole togliere dalla vendita un tesserato che in vendita non c'è",
     "prezzo_sotto_gli_arretrati": "nelle Vendite un prezzo che, con la cassa, non salda gli arretrati del tesserato",
-    "rivendita_in_attesa": ("nelle Vendite un tesserato messo in vendita, o col prezzo cambiato, che il computer comprerà soltanto più avanti, "
-                            "perché è tesserato da poco: l'esito dice da quale giorno"),
+    "rivendita_in_attesa": ("nelle Vendite un tesserato messo in vendita sopra il prezzo che il computer paga oggi: l'esito dice da "
+                            "quale giorno lo comprerà a quel prezzo, o che non lo comprerà"),
+    "prezzo_cambiato_in_attesa": ("nelle Vendite il prezzo cambiato di un tesserato già in vendita, sopra quello che il computer paga oggi: "
+                                  "l'esito dice da quale giorno lo comprerà a quel prezzo, o che non lo comprerà"),
     "dialogo_arretrati": "si apre il pagamento degli arretrati, con Ctrl+Shift+P",
     "nessun_arretrato": "nessun tesserato aspetta arretrati",
     "arretrati_pagati_in_parte": "arretrati pagati in parte, e il tesserato aspetta ancora",

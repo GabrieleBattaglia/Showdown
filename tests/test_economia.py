@@ -213,7 +213,8 @@ def test_il_computer_senza_soldi_paga_i_meno_pazienti_e_vende(mondo, monkeypatch
 def test_il_computer_compra_chi_e_in_vendita(mondo):
     mia = _club(mondo, 1)
     g = mondo.giocatori[1]
-    # Firmato prima del formato 11, senza il giorno della firma: dalla decisione D40 il computer lo compra subito.
+    # Firmato prima del formato 11, senza il giorno della firma: dalla decisione D40 il computer lo paga subito al tetto
+    # pieno, senza la rampa del prezzo.
     g.tesserato_dal = None
     for gid, altro in mondo.giocatori.items():
         if gid != 1:
@@ -299,25 +300,27 @@ def test_il_computer_ricco_non_compra_a_tre_volte_il_valore(mondo):
     # sessant'anni, e una cassa ricchissima.
     mia = _club(mondo, 1)
     g = mondo.giocatori[1]
-    # Firmato prima del formato 11, senza il giorno della firma: dalla decisione D40 il computer lo compra subito.
+    # Firmato prima del formato 11, senza il giorno della firma: dalla decisione D40 il computer lo paga subito al tetto
+    # pieno, il valore col rialzo in euro interi, senza la rampa del prezzo.
     g.tesserato_dal = None
     for gid, altro in mondo.giocatori.items():
         if gid != 1:
             altro.ritirato = True
     cpu = _cpu(mondo, ())
     valore = economia.valore_di_mercato(g, INIZIO)
-    tetto = valore * RIALZO_CPU
+    tetto = economia.tetto_di_rivendita(g, mia, INIZIO)
+    assert tetto == round(valore * RIALZO_CPU) == valore * 115 // 100
     for cassa in (45_061, 92_556, 1_000_000):
         cpu.cassa = cassa
         # Con la regola del primo passo il tetto più il premio copriva tre volte il valore.
         assert tetto + economia.premio_cassa_piena(cassa) >= 3 * valore
-        for prezzo in (3 * valore, math.floor(tetto) + 1):
+        for prezzo in (3 * valore, tetto + 1):
             mondo.metti_in_vendita(mia, g, prezzo)
             assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 0)
             assert g.appartenenza == mia.nome and mia.cassa == CAPITALE_INIZIALE
-    mondo.metti_in_vendita(mia, g, math.floor(tetto))
+    mondo.metti_in_vendita(mia, g, tetto)
     assert mondo._esegui_logica_cpu_polisportive(INIZIO) == (0, 0, 1)
-    assert g.appartenenza == cpu.nome and cpu.conti_del_mese["acquisti"] == math.floor(tetto)
+    assert g.appartenenza == cpu.nome and cpu.conti_del_mese["acquisti"] == tetto
 
 
 def test_con_la_cassa_piena_il_computer_tessera_chi_chiede_di_piu(mondo, monkeypatch):

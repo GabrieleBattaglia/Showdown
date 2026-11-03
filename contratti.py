@@ -18,7 +18,8 @@ Come economia.py, qui ci sono soltanto calcoli: le operazioni che firmano, rinno
 scadere i contratti sono regole del mondo, e stanno in mondo.py.
 Dal 3 novembre 2026, con la sesta tranche della decisione D40, anche la stessa data tanti mesi dopo, che
 non cade per forza il primo del mese: il giorno dal quale il computer compra un tesserato dell'utente. È di
-Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode). Lo stesso giorno, con la rampa del prezzo scelta da
+Gabriele, la stessa data segna il giorno dal quale il computer paga il valore pieno.
 """
 
 import calendar

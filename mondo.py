@@ -94,6 +94,10 @@ dell'utente firmato da meno di MESI_PRIMA_DELLA_RIVENDITA mesi, come dice econom
 dell'utente paga al più il valore di mercato senza il rinnovo concordato, che con l'acquisto si annulla. La messa in
 vendita resta libera, e fra le polisportive del computer gli acquisti restano come prima. È di Gabriele Battaglia (IZ4APU)
 & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la scelta di Gabriele che vale come D40, la rampa del prezzo al posto dei mesi d'attesa: in _vendibili
+il prezzo più alto che il computer paga per un tesserato dell'utente è economia.tetto_di_rivendita, che parte dall'ingaggio
+il giorno della firma e sale fino al valore pieno col rialzo in MESI_DELLA_RAMPA mesi. Fra le polisportive del computer gli
+acquisti restano come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -177,13 +181,13 @@ from economia import (
     ingaggio_richiesto,
     mesi_di_pazienza,
     pazienza_per_euro,
-    rivendita_dal,
     scritta_in_euro,
     spesa_mensile_cpu,
     sponsor_mensile,
     stipendio,
     stipendio_pagato,
     tesserati_in_attivita,
+    tetto_di_rivendita,
     valore_di_mercato,
 )
 from modelli import Giocatore, Polisportiva, conti_vuoti, normalizza_nome, probabilita_accettazione
@@ -2071,10 +2075,12 @@ class Mondo:
         La cassa deve bastare per tutte le vendite del giorno insieme, perché ognuna la cambia: i giocatori
         che il computer potrebbe comprare se la dividono nell'ordine delle vendite, e chi non ci sta
         aspetta un altro giorno. I giocatori del computer restano come prima.
-        Dalla sesta tranche di D40 il computer salta anche chi l'utente ha tesserato da meno di
-        MESI_PRIMA_DELLA_RIVENDITA mesi, con rivendita_dal; chi non ha il giorno della firma si compra come
-        prima. E il prezzo più alto che paga per un giocatore dell'utente non conta il rinnovo concordato,
-        che con l'acquisto si annulla.
+        Dalla sesta tranche di D40 il prezzo più alto che il computer paga per un giocatore dell'utente non
+        conta il rinnovo concordato, che con l'acquisto si annulla. Dalla scelta di Gabriele del 3 novembre
+        2026, che vale come D40, è il tetto della rampa, economia.tetto_di_rivendita: l'ingaggio il giorno
+        della firma, poi in linea retta fino al valore pieno col rialzo in MESI_DELLA_RAMPA mesi; chi non ha
+        il giorno della firma vale subito il tetto pieno. Al posto della rampa la sesta tranche saltava chi
+        era tesserato da meno di 12 mesi.
         """
         righe = []
         impegni = None
@@ -2085,9 +2091,7 @@ class Mondo:
                 g = self.giocatori.get(gid)
                 # Il ritirato non si compra: serve ai salvataggi in cui un morto era rimasto in vendita.
                 if g is not None and not g.ritirato:
-                    if dell_utente and rivendita_dal(g, venditore, oggi) is not None:
-                        continue
-                    massimo = valore_di_mercato(g, oggi, not dell_utente) * RIALZO_CPU
+                    massimo = tetto_di_rivendita(g, venditore, oggi) if dell_utente else valore_di_mercato(g, oggi) * RIALZO_CPU
                     if dell_utente:
                         if impegni is None:
                             impegni = sfide.convocazioni(self)

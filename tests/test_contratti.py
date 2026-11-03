@@ -14,6 +14,7 @@ import contratti
 import economia
 import mondo as modulo_mondo
 import testi
+from costanti import MESI_DELLA_RAMPA
 from modelli import Polisportiva
 from mondo import Mondo
 
@@ -199,8 +200,9 @@ def test_la_firma_allo_scambio_e_agli_acquisti(mondo, monkeypatch):
     assert _firmato(altro, mondo)
     terzo = _cpu(mondo, ())
     mondo.metti_in_vendita(mia, altro, 100)
-    # Dalla decisione D40 il computer compra un tuo tesserato soltanto dodici mesi dopo la firma: la firma va indietro di un anno.
-    altro.tesserato_dal = contratti.stesso_giorno_dopo(INIZIO, -12)
+    # Dalla decisione D40 il computer paga il valore pieno di un tuo tesserato soltanto alla fine della rampa del prezzo: la
+    # firma va indietro di MESI_DELLA_RAMPA mesi.
+    altro.tesserato_dal = contratti.stesso_giorno_dopo(INIZIO, -MESI_DELLA_RAMPA)
     assert mondo._compra_dal_mercato(terzo, INIZIO)
     assert altro.appartenenza == terzo.nome and _firmato(altro, mondo)
 

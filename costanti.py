@@ -25,6 +25,10 @@ Il 3 novembre 2026, con la settima tranche, la misura, strumenti/misura_rivendit
 commercio della polisportiva gloriosa, e i mesi restano 12 finché Gabriele sceglie fra una rampa del prezzo e un margine
 lecito; i numeri stanno in strumenti/rivendita_d40.txt. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Lo stesso giorno Gabriele ha scelto la rampa del prezzo, che vale come D40: MESI_DELLA_RAMPA, 24, i mesi dalla firma in cui
+il prezzo più alto che il computer paga per un tesserato dell'utente sale in linea retta dall'ingaggio al valore pieno. Prende
+il posto di MESI_PRIMA_DELLA_RIVENDITA e dei suoi 12 mesi d'attesa. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
+5.5, UltraCode).
 """
 
 import datetime
@@ -306,10 +310,12 @@ BILANCI_CONSERVATI = 12
 RIALZO_CPU = 1.15
 MESI_DI_RISERVA_CPU = 1
 PARTI_DI_CASSA_PER_STIPENDI = 24
-# Decisione D40: il computer non compra un tesserato dell'utente firmato con la polisportiva di oggi da meno di tanti mesi
-# simulati, perché tesserare un libero e rivenderglielo subito non sia un commercio. La misura della settima tranche,
-# strumenti/rivendita_d40.txt, dice che nessun numero fino a 12 basta: resta 12 finché Gabriele non sceglie.
-MESI_PRIMA_DELLA_RIVENDITA = 12
+# Decisione D40, scelta di Gabriele del 3 novembre 2026: per un tesserato dell'utente il computer paga al più, il giorno
+# della firma con la polisportiva di oggi, l'ingaggio che il giocatore chiede; poi il tetto sale in linea retta, giorno per
+# giorno, fino al valore pieno col rialzo, lo stesso giorno del mese tanti mesi dopo la firma. Così tesserare un libero e
+# rivenderglielo subito non è un commercio. Prende il posto dei 12 mesi d'attesa, che la misura della settima tranche,
+# strumenti/rivendita_d40.txt, aveva trovato troppo pochi.
+MESI_DELLA_RAMPA = 24
 # Quanti candidati troppo cari il computer scorre in un giorno, prima di lasciar perdere.
 SCARTI_MASSIMI_CPU = 30
 # Il computer spende secondo la cassa, decisione 1 di Gabriele del 14 ottobre 2026: con la cassa piena

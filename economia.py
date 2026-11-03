@@ -27,8 +27,15 @@ computer compra un tesserato dell'utente, MESI_PRIMA_DELLA_RIVENDITA mesi dopo l
 vendita dell'utente non conta il rinnovo concordato, che il compratore annulla, ma la scadenza vera. Fra le
 polisportive del computer il valore resta quello di prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la scelta di Gabriele che vale come D40, al posto dell'attesa la rampa del prezzo:
+tetto_di_rivendita dice il prezzo più alto che il computer paga oggi per un tesserato dell'utente, che parte
+dall'ingaggio il giorno della firma e sale in linea retta fino al tetto pieno, tetto_pieno_di_rivendita, in
+MESI_DELLA_RAMPA mesi; rivendita_piena_dal dice il giorno del tetto pieno, e rivendita_al_prezzo_dal il giorno
+in cui il tetto arriva a un prezzo dato. rivendita_dal non c'è più. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
+import datetime
 import math
 
 import contratti
@@ -41,14 +48,15 @@ from costanti import (
     FEDELTA_PER_MESE_DI_PAZIENZA,
     MAX_TESSERATI_POLISPORTIVA,
     MESI_CASSA_PIENA_CPU,
+    MESI_DELLA_RAMPA,
     MESI_DI_INGAGGIO,
     MESI_DI_VALORE,
-    MESI_PRIMA_DELLA_RIVENDITA,
     MESI_VALORE_PIENO,
     PARTI_DI_CASSA_PER_STIPENDI,
     QUOTA_SPONSOR_SUL_VALORE,
     REPUTAZIONE_MASSIMA,
     REPUTAZIONE_MINIMA,
+    RIALZO_CPU,
     SCALA_STIPENDIO,
     SOGLIA_CASSA_PIENA_CPU,
     SPONSOR_PER_GLORIA,
@@ -140,17 +148,83 @@ def valore_di_mercato(g, oggi=None, col_rinnovo=True):
     return pieno if fattore >= 1.0 else arrotonda(pieno * fattore, 100)
 
 
-def rivendita_dal(g, poli, oggi):
+def tetto_pieno_di_rivendita(g, poli, oggi):
     """
-    Il giorno dal quale il computer comprerà un tesserato della polisportiva dell'utente, decisione D40:
-    MESI_PRIMA_DELLA_RIVENDITA mesi simulati dopo la firma, lo stesso giorno del mese. None se il computer
-    lo compra già oggi: quando la polisportiva è del computer, quando il giocatore ha firmato prima del
-    formato 11 e non ha il giorno della firma, e da quel giorno in poi.
+    Il prezzo più alto che il computer paga per un giocatore della polisportiva a rampa finita, in euro interi: il
+    valore di mercato del giorno col rialzo del computer. Per l'utente, decisione D40, senza il rinnovo concordato,
+    che il compratore annulla; per il computer col rinnovo, il valore che Mondo._vendibili usa, dove però il tetto
+    delle sue vendite resta quello di prima, in virgola mobile. Il valore è un multiplo di 100, quindi col rialzo
+    del 15% fa un multiplo di 5, e l'arrotondamento toglie soltanto l'errore della virgola mobile: prima, per circa
+    metà dei valori, il prodotto cadeva appena sotto, e il computer non pagava il 15% pieno ma un euro di meno.
+    """
+    return round(valore_di_mercato(g, oggi, poli.is_cpu_controlled) * RIALZO_CPU)
+
+
+def _rampa(g, poli, oggi, pieno):
+    """
+    La rampa del prezzo di un tesserato dell'utente, se il tetto non è ancora pieno: la partenza, cioè l'ingaggio che
+    il giocatore chiede alla polisportiva, i giorni passati dalla firma, quelli dalla firma al tetto pieno e il giorno
+    del tetto pieno. None quando il tetto è già pieno: polisportiva del computer, firma prima del formato 11 senza il
+    giorno, partenza che non sta sotto il tetto pieno, e dal giorno del tetto pieno in poi.
     """
     if poli.is_cpu_controlled or g.tesserato_dal is None:
         return None
-    dal = contratti.stesso_giorno_dopo(g.tesserato_dal, MESI_PRIMA_DELLA_RIVENDITA)
-    return dal if oggi.date() < dal.date() else None
+    partenza = ingaggio_richiesto(g, poli)
+    if partenza >= pieno:
+        return None
+    fine = contratti.stesso_giorno_dopo(g.tesserato_dal, MESI_DELLA_RAMPA)
+    giorni = (fine.date() - g.tesserato_dal.date()).days
+    passati = max(0, (oggi.date() - g.tesserato_dal.date()).days)
+    if passati >= giorni:
+        return None
+    return partenza, passati, giorni, fine
+
+
+def tetto_di_rivendita(g, poli, oggi):
+    """
+    Il prezzo più alto che il computer paga oggi per un giocatore della polisportiva, in euro interi: il computer lo
+    compra soltanto a un prezzo che non lo supera. Decisione D40, scelta di Gabriele del 3 novembre 2026, per un
+    tesserato dell'utente: il giorno della firma con la polisportiva di oggi il tetto è l'ingaggio che il giocatore le
+    chiede, cioè circa quello che è costato, e sale in linea retta, giorno per giorno, fino al tetto pieno di oggi,
+    tetto_pieno_di_rivendita, lo stesso giorno del mese MESI_DELLA_RAMPA mesi dopo la firma. Se la partenza non sta
+    sotto il tetto pieno vale il tetto pieno, e così per chi ha firmato prima del formato 11, senza il giorno della
+    firma. Per le polisportive del computer è il tetto pieno, senza rampa: Mondo._vendibili non lo usa per loro, e
+    le loro vendite restano quelle di prima.
+    """
+    pieno = tetto_pieno_di_rivendita(g, poli, oggi)
+    rampa = _rampa(g, poli, oggi, pieno)
+    if rampa is None:
+        return pieno
+    partenza, passati, giorni, _fine = rampa
+    return partenza + (pieno - partenza) * passati // giorni
+
+
+def rivendita_piena_dal(g, poli, oggi):
+    """
+    Il giorno dal quale il computer paga il tetto pieno per un tesserato dell'utente, decisione D40: lo stesso giorno del
+    mese MESI_DELLA_RAMPA mesi dopo la firma. None se il tetto è già pieno oggi, come dice tetto_di_rivendita.
+    """
+    rampa = _rampa(g, poli, oggi, tetto_pieno_di_rivendita(g, poli, oggi))
+    return None if rampa is None else rampa[3]
+
+
+def rivendita_al_prezzo_dal(g, poli, prezzo, oggi):
+    """
+    Il giorno dal quale il tetto di tetto_di_rivendita arriva al prezzo dato, coi valori di oggi: oggi se ci arriva già,
+    None se il prezzo supera il tetto pieno, e allora il computer, col valore di oggi, non lo compra. Il giorno è il primo
+    in cui la retta della rampa tocca il prezzo, contato coi numeri interi, come il tetto.
+    """
+    pieno = tetto_pieno_di_rivendita(g, poli, oggi)
+    if prezzo > pieno:
+        return None
+    rampa = _rampa(g, poli, oggi, pieno)
+    if rampa is None:
+        return oggi
+    partenza, passati, giorni, _fine = rampa
+    salita = pieno - partenza
+    # Il primo giorno n dalla firma in cui partenza + salita * n // giorni arriva al prezzo.
+    n = max(passati, -(-(prezzo - partenza) * giorni // salita))
+    return oggi if n == passati else g.tesserato_dal + datetime.timedelta(days=n)
 
 
 def sponsor_mensile(poli, rosa):

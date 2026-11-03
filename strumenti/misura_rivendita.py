@@ -41,6 +41,9 @@ temporanee, che alla fine si cancellano; i mondi e le partenze vivono nella cart
 Uso: python -B strumenti/misura_rivendita.py [--semi 11 2026 7 13] [--giorni-dei-mondi 730 3650]
 [--mesi 0 3 6 9 12 18 24] [--durata 36] [--gloria 275] [--gloria-media 150] [--club gloriosa media] [--processi 16]
 [--cartella C] [--salva risultati.json]
+Il 3 novembre 2026 Gabriele ha scelto la rampa del prezzo, e MESI_PRIMA_DELLA_RIVENDITA ha lasciato il posto a
+MESI_DELLA_RAMPA: lo strumento cambia quella costante, e col prezzo sempre al tetto pieno misura ancora l'attesa fino alla
+fine della rampa. La misura della rampa, col prezzo che sale, è un lavoro a parte.
 """
 
 import argparse
@@ -371,14 +374,17 @@ def corsa(seme, giorni, club, strategia, mesi, durata, cartella):
     Una strategia per tanti mesi di calendario, dalla partenza comune: rivendi, coi mesi della rivendita, o tieni.
     Restituisce le voci dei conti sommate, il saldo e i conteggi di firme, vendite, uscite e rinnovi. I mesi della
     rivendita prendono il posto della costante, in economia, dove la legge rivendita_dal, e alla fine la costante torna.
+    Dalla rampa del prezzo scelta da Gabriele il 3 novembre 2026 la costante è MESI_DELLA_RAMPA, e la legge
+    tetto_di_rivendita: col prezzo al tetto pieno il computer compra alla fine della rampa, come prima alla fine
+    dell'attesa. La misura della rampa vera la rifà un altro passo.
     """
-    costante = economia.MESI_PRIMA_DELLA_RIVENDITA
+    costante = economia.MESI_DELLA_RAMPA
     if strategia == "rivendi":
-        economia.MESI_PRIMA_DELLA_RIVENDITA = mesi
+        economia.MESI_DELLA_RAMPA = mesi
     try:
         return _corsa(seme, giorni, club, strategia, mesi, durata, cartella)
     finally:
-        economia.MESI_PRIMA_DELLA_RIVENDITA = costante
+        economia.MESI_DELLA_RAMPA = costante
 
 
 def _corsa(seme, giorni, club, strategia, mesi, durata, cartella):

@@ -128,6 +128,12 @@ Dal 3 novembre 2026, con la sesta tranche di D40, da quando il computer comprer�
 delle Vendite, l'esito della messa in vendita, la riga del mercato e la scheda lo dicono, con rivendita e avviso_di_rivendita.
 Le righe delle Vendite danno il valore di mercato senza il rinnovo concordato, che il compratore annulla. È di Gabriele
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la rampa del prezzo scelta da Gabriele, che vale come D40, al posto dell'attesa: rivendita dice fino a
+quanto il computer paga oggi un tuo tesserato, e durante la rampa il giorno del valore pieno, come il computer oggi lo paga
+fino a 2.300 euro, il valore pieno dal 3 novembre 2028; le righe delle Vendite lo dicono sempre, la riga del mercato di un
+tuo tesserato in vendita e la scheda durante la rampa. sopra_il_tetto dice, all'esito di una messa in vendita o di un
+prezzo cambiato sopra il tetto di oggi, da quando il computer lo comprerà a quel prezzo, o che non lo comprerà. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -729,7 +735,8 @@ def _economia_del_giocatore(g, mondo):
         if economia.bandiera_attiva(g):
             righe.append(f"Bandiera di {club.nome}: gioca per il club anche senza stipendio.")
         if g.id in club.in_vendita:
-            # Dalla decisione D40, per un tuo tesserato firmato da poco, anche da quando il computer lo comprerà.
+            # Dalla decisione D40, per un tuo tesserato durante la rampa del prezzo, anche fino a quanto il computer lo paga
+            # oggi, e da quando al valore pieno.
             avviso = avviso_di_rivendita(g, club, oggi)
             righe.append(f"In vendita a {euro(club.in_vendita[g.id])}." + (f" {avviso}" if avviso else ""))
     return righe
@@ -1489,7 +1496,8 @@ def _contratto_in_riga(g):
 def _stato_e_costo(r, oggi=None):
     """
     Lo stato del giocatore di una riga della finestra, col costo, e dopo lo stato l'infortunio, come in stato. Dalla decisione
-    D40 un tuo tesserato in vendita dice anche da quando il computer lo comprerà, se non lo compra già.
+    D40 un tuo tesserato in vendita, durante la rampa del prezzo, dice anche fino a quanto il computer lo paga oggi e da
+    quando lo paga al valore pieno.
     """
     g = r.persona
     if r.stato == mercato.LIBERO:
@@ -1944,8 +1952,8 @@ def riga_arretrati(g):
 def riga_vendita(g, p, oggi=None):
     """
     Un tesserato nella finestra delle vendite: quanto vale, il giorno dato, e se è già in vendita. Dalla decisione D40, per
-    l'utente, il valore di mercato è quello che il computer paga, senza il rinnovo concordato, e la riga dice da quando il
-    computer lo comprerà, se non lo compra già.
+    l'utente, il valore di mercato è quello senza il rinnovo concordato, e la riga dice fino a quanto il computer lo paga
+    oggi, che è il prezzo da cui partono le Vendite, e durante la rampa da quando lo paga al valore pieno.
     """
     valore = economia.valore_di_mercato(g, oggi, p.is_cpu_controlled)
     riga = f"{nome_completo(g)}, valore {numero(g.indice_collettivo_valore)}, stipendio {euro(economia.stipendio_pagato(g))}, valore di mercato {euro(valore)}"
@@ -1953,30 +1961,63 @@ def riga_vendita(g, p, oggi=None):
         riga += ", senza il rinnovo concordato"
     if g.id in p.in_vendita:
         riga += f", in vendita a {euro(p.in_vendita[g.id])}"
-    attesa = rivendita(g, p, oggi)
-    return riga + (f", {attesa}" if attesa else "")
+    tetto = rivendita(g, p, oggi, anche_pieno=True)
+    return riga + (f", {tetto}" if tetto else "")
 
 
-def rivendita(g, p, oggi):
+def _lo(g):
+    """Il pronome del giocatore, lo o la secondo il sesso."""
+    return "la" if g.sesso == "f" else "lo"
+
+
+def rivendita(g, p, oggi, anche_pieno=False):
     """
-    Da quando il computer comprerà un tesserato dell'utente firmato da poco, decisione D40, a metà frase: il computer lo
-    comprerà dal 23 maggio 2027. Stringa vuota se lo compra già, o senza la data di oggi.
+    Fino a quanto il computer paga oggi un tesserato dell'utente, decisione D40 con la rampa del prezzo, a metà frase:
+    durante la rampa col giorno del valore pieno, il computer oggi lo paga fino a 2.300 euro, il valore pieno dal 3
+    novembre 2028; con anche_pieno, a rampa finita, il computer lo paga fino a 4.140 euro. Stringa vuota a rampa
+    finita senza anche_pieno, per le polisportive del computer e senza la data di oggi.
     """
-    dal = economia.rivendita_dal(g, p, oggi) if oggi is not None else None
-    if dal is None:
+    if oggi is None or p.is_cpu_controlled:
         return ""
-    return f"il computer {'la' if g.sesso == 'f' else 'lo'} comprerà dal {data_breve(dal)}"
+    tetto = euro(economia.tetto_di_rivendita(g, p, oggi))
+    pieno_dal = economia.rivendita_piena_dal(g, p, oggi)
+    if pieno_dal is None:
+        return f"il computer {_lo(g)} paga fino a {tetto}" if anche_pieno else ""
+    return f"il computer oggi {_lo(g)} paga fino a {tetto}, il valore pieno {con_articolo('dal', data_breve(pieno_dal))}"
 
 
 def avviso_di_rivendita(g, p, oggi):
-    """La frase di rivendita, da sola: Il computer lo comprerà dal 23 maggio 2027. Stringa vuota se lo compra già."""
-    attesa = rivendita(g, p, oggi)
-    return f"{attesa[0].upper()}{attesa[1:]}." if attesa else ""
+    """
+    La frase di rivendita durante la rampa, da sola: Il computer oggi lo paga fino a 2.300 euro, il valore pieno dal 3
+    novembre 2028. Stringa vuota a rampa finita.
+    """
+    tetto = rivendita(g, p, oggi)
+    return f"{tetto[0].upper()}{tetto[1:]}." if tetto else ""
+
+
+def sopra_il_tetto(g, p, prezzo, oggi):
+    """
+    L'avviso di un prezzo sopra quello che il computer paga oggi per un tesserato dell'utente, decisione D40 con la rampa
+    del prezzo: da quando lo comprerà a quel prezzo, coi valori di oggi, come Il computer oggi lo paga fino a 2.300 euro:
+    a questo prezzo lo comprerà dal 5 maggio 2027; o che non lo comprerà, quando il prezzo supera anche il valore pieno.
+    Stringa vuota quando il prezzo non supera il tetto di oggi, per le polisportive del computer e senza la data di oggi.
+    """
+    if oggi is None or p.is_cpu_controlled or prezzo <= economia.tetto_di_rivendita(g, p, oggi):
+        return ""
+    dal = economia.rivendita_al_prezzo_dal(g, p, prezzo, oggi)
+    if dal is None:
+        pieno = euro(economia.tetto_pieno_di_rivendita(g, p, oggi))
+        return f"Il computer {_lo(g)} paga al più {pieno}, a valore pieno: a questo prezzo, col valore di oggi, non {_lo(g)} comprerà."
+    tetto = euro(economia.tetto_di_rivendita(g, p, oggi))
+    return f"Il computer oggi {_lo(g)} paga fino a {tetto}: a questo prezzo {_lo(g)} comprerà {con_articolo('dal', data_breve(dal))}."
 
 
 def messo_in_vendita(g, p, prezzo, oggi):
-    """L'esito della messa in vendita nelle Vendite, e dalla decisione D40 l'avviso di quando il computer lo comprerà."""
-    avviso = avviso_di_rivendita(g, p, oggi)
+    """
+    L'esito della messa in vendita nelle Vendite, e dalla decisione D40, quando il prezzo supera quello che il computer
+    paga oggi, l'avviso di sopra_il_tetto.
+    """
+    avviso = sopra_il_tetto(g, p, prezzo, oggi)
     return f"{nome_completo(g)} è in vendita a {euro(prezzo)}." + (f" {avviso}" if avviso else "")
 
 

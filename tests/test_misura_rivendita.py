@@ -20,7 +20,7 @@ import mondi_sintetici as ms
 import contratti
 import economia
 import palmares
-from costanti import MAX_TESSERATI_POLISPORTIVA, MESI_PRIMA_DELLA_RIVENDITA
+from costanti import MAX_TESSERATI_POLISPORTIVA, MESI_DELLA_RAMPA
 
 OGGI = datetime.datetime(2027, 3, 15, 9, 0)
 
@@ -86,7 +86,7 @@ def test_la_misura_su_un_mondo_piccolo(tmp_path, monkeypatch):
         assert 20 < poli.gloria < 275 and poli.palmares_recente[partenza["chiave"]][0] < 0
         corse = [mr.corsa(11, 365, "gloriosa", "tieni", None, 1, cartella), mr.corsa(11, 365, "gloriosa", "rivendi", 0, 1, cartella),
                  mr.corsa(11, 365, "gloriosa", "rivendi", 3, 1, cartella)]
-        assert economia.MESI_PRIMA_DELLA_RIVENDITA == MESI_PRIMA_DELLA_RIVENDITA
+        assert economia.MESI_DELLA_RAMPA == MESI_DELLA_RAMPA
         tieni, subito, tre = corse
         assert all(r["saldo"] == r["somma_delle_voci"] and r["gloria_minima"] == r["gloria_massima"] == 275 for r in corse)
         assert tieni["vendite"] == tieni["voci"]["vendite"] == 0 and subito["vendite"] > MAX_TESSERATI_POLISPORTIVA
