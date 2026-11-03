@@ -5,7 +5,8 @@ rinnovo, la gloria tenuta al bersaglio senza le medaglie, la differenza, anche a
 più, e una misura intera su un mondo piccolo, dalla nascita alla tabella, con la cassa che torna con le voci, il
 margine che torna con la rosa pari, la rampa del gioco lasciata com'era e il caso del mondo lasciato com'era.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
-Nasce il 3 novembre 2026 con la settima tranche di D40; lo stesso giorno passa alla misura della rampa del prezzo.
+Nasce il 3 novembre 2026 con la settima tranche di D40; lo stesso giorno passa alla misura della rampa del prezzo, e
+prova anche la rampa di un'altra durata, --mesi-della-rampa, nei processi figli e nel principale.
 """
 
 import contextlib
@@ -13,6 +14,8 @@ import datetime
 import random
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "strumenti"))
 
@@ -66,6 +69,37 @@ def test_il_tetto_atteso_e_la_rampa_del_gioco():
     # Tesserato oggi, coi valori di oggi la rampa del gioco dice lo stesso, finché il contratto è lontano dalla scadenza.
     mondo._entra(poli, g, oggi)
     assert [economia.tetto_di_rivendita(g, poli, oggi + datetime.timedelta(days=n)) for n in giorni] == attesi
+
+
+def test_la_rampa_di_un_altra_durata_vale_nei_figli_e_nei_conti(monkeypatch):
+    # Di serie la rampa del gioco; --mesi-della-rampa la cambia, e meno di zero mesi è un errore.
+    assert mr.argomenti([]).mesi_della_rampa == MESI_DELLA_RAMPA
+    assert mr.argomenti(["--mesi-della-rampa", "42"]).mesi_della_rampa == 42
+    with pytest.raises(SystemExit):
+        mr.argomenti(["--mesi-della-rampa", "-1"])
+    mondo, poli, g = bottega_e_libero()
+    oggi = mondo.datetime_corrente_simulazione
+    pieno = economia.tetto_pieno_di_rivendita(g, poli, oggi)
+    def fine(mesi):
+        return (contratti.stesso_giorno_dopo(oggi, mesi).date() - oggi.date()).days
+    giorni = (0, 45, 150, fine(MESI_DELLA_RAMPA), fine(42) - 1, fine(42))
+    del_gioco = [mr.tetto_atteso(g, poli, oggi, n) for n in giorni]
+    assert del_gioco[3] == pieno
+    # Nel processo figlio dello strumento, con l'inizializzatore, la rampa dura 42 mesi: sale più piano, e il tetto pieno
+    # arriva soltanto a 42 mesi dalla firma. Il processo della prova resta alla rampa del gioco.
+    with mr.esecutore(1, 42) as figli:
+        nei_figli = list(figli.map(mr.tetto_atteso, [g] * len(giorni), [poli] * len(giorni), [oggi] * len(giorni), giorni))
+    assert economia.MESI_DELLA_RAMPA == MESI_DELLA_RAMPA
+    assert nei_figli[0] == del_gioco[0] == economia.ingaggio_richiesto(g, poli)
+    assert all(lenta < veloce for lenta, veloce in zip(nei_figli[1:4], del_gioco[1:4], strict=True))
+    assert nei_figli == sorted(nei_figli) and nei_figli[4] < pieno == nei_figli[5]
+    # Nel processo principale imposta_la_rampa fa lo stesso, e il tetto del gioco, che il computer usa per comprare,
+    # segue la rampa dello strumento finché il contratto è lontano dalla scadenza.
+    monkeypatch.setattr(economia, "MESI_DELLA_RAMPA", economia.MESI_DELLA_RAMPA)
+    mr.imposta_la_rampa(42)
+    assert [mr.tetto_atteso(g, poli, oggi, n) for n in giorni] == nei_figli
+    mondo._entra(poli, g, oggi)
+    assert [economia.tetto_di_rivendita(g, poli, oggi + datetime.timedelta(days=n)) for n in giorni[:3]] == nei_figli[:3]
 
 
 def test_la_partenza_a_regime_sposta_firma_contratto_e_fedelta():
@@ -168,7 +202,7 @@ def test_la_misura_su_un_mondo_piccolo(tmp_path, monkeypatch):
         assert 20 < poli.gloria < 275 and poli.palmares_recente[partenza["chiave"]][0] < 0
         corse = [mr.corsa(11, 365, "gloriosa", "tieni", None, 1, cartella), mr.corsa(11, 365, "gloriosa", "rivendi", 0, 1, cartella),
                  mr.corsa(11, 365, "gloriosa", "rivendi", 3, 1, cartella)]
-        assert economia.MESI_DELLA_RAMPA == MESI_DELLA_RAMPA
+        assert economia.MESI_DELLA_RAMPA == MESI_DELLA_RAMPA and all(r["mesi_della_rampa"] == MESI_DELLA_RAMPA for r in corse)
         tieni, subito, tre = corse
         assert all(r["saldo"] == r["somma_delle_voci"] and r["gloria_minima"] == r["gloria_massima"] == 275 for r in corse)
         assert tieni["vendite"] == tieni["voci"]["vendite"] == 0 and subito["vendite"] > MAX_TESSERATI_POLISPORTIVA
