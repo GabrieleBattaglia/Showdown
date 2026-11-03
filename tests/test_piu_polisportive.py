@@ -38,7 +38,9 @@ Con le scelte di Gabriele del 3 novembre 2026 che valgono come D40, dopo la misu
 l'ingaggio che chiedeva parte da quello pagato, che non cambia con la gloria; l'acquisto dal computer parte dal prezzo, e
 sopra il tetto pieno non ha rampa; l'offerta d'acquisto accettata parte dall'offerta; la vendita al computer ricorda il
 prezzo, e il computer resta senza rampa; chi esce lo dimentica; e senza quello pagato, come chi ha firmato nel formato 11
-prima del cambio, la rampa parte dall'ingaggio chiesto oggi.
+prima del cambio, la rampa parte dall'ingaggio chiesto oggi. Con la revisione: zero euro è una cifra pagata, e la rampa di un libero tesserato
+con un'offerta di zero parte da zero; l'acquisto dal computer di un giocatore con arretrati ricorda tutto il prezzo, anche se il
+venditore ne salda una parte.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -55,7 +57,7 @@ import mercato
 import mondo as modulo_mondo
 import sfide
 import testi
-from costanti import CAPITALE_INIZIALE, FEDELTA_BANDIERA, MESI_DELLA_RAMPA, QUOTA_SPONSOR_SUL_VALORE, RIALZO_CPU, SPONSOR_PER_GLORIA
+from costanti import ACCETTAZIONE_PROB_MIN, CAPITALE_INIZIALE, FEDELTA_BANDIERA, MESI_DELLA_RAMPA, QUOTA_SPONSOR_SUL_VALORE, RIALZO_CPU, SPONSOR_PER_GLORIA
 from mondo import VENDITA_FRA_TUE, Mondo, _Mercato, fondi_senza_password, prezzo_della_fondazione
 from utilita import adesso_utc
 
@@ -1166,7 +1168,7 @@ def test_il_valore_della_tua_vendita_non_conta_il_rinnovo_concordato():
 
 
 def _fino_al_pieno(lui, g, poli, oggi=OGGI):
-    """La frase della rampa, a metà riga: il computer oggi lo paga fino a 2.300 euro, il valore pieno dal 5 ottobre 2028."""
+    """La frase della rampa, a metà riga: il computer oggi lo paga fino a 2.300 euro, il valore pieno dal 5 ottobre 2029."""
     fine = testi.con_articolo("dal", testi.data_breve(contratti.stesso_giorno_dopo(g.tesserato_dal, MESI_DELLA_RAMPA)))
     return f"il computer oggi {lui} paga fino a {_euro(economia.tetto_di_rivendita(g, poli, oggi))}, il valore pieno {fine}"
 
@@ -1330,3 +1332,36 @@ def test_senza_quello_pagato_la_rampa_parte_dall_ingaggio_di_oggi():
     bologna.gloria = 1
     oggi = economia.ingaggio_richiesto(g, bologna)
     assert oggi != chiesto and economia.tetto_di_rivendita(g, bologna, OGGI) == min(oggi, pieno)
+
+
+def test_lo_zero_pagato_fa_partire_la_rampa_da_zero(monkeypatch):
+    monkeypatch.setattr(modulo_mondo, "caso", lambda _p: True)
+    mondo, _cpu, bologna, _milano = _mondo()
+    g = next(g for g in mondo.giocatori.values() if g.appartenenza == "*" and economia.ingaggio_richiesto(g, bologna) > 0)
+    # Un'offerta di zero euro passa con la probabilità più bassa, come ogni offerta molto sotto il chiesto, ed è una cifra
+    # pagata, non il vuoto: la rampa parte da zero, e non dall'ingaggio che il giocatore chiede oggi, la regola di prima.
+    assert mondo.offerta(bologna, g, 0) == (True, ACCETTAZIONE_PROB_MIN) and g.pagato_alla_firma == 0
+    _contratto_oltre_la_rampa(g)
+    pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
+    assert economia.partenza_della_rampa(g, bologna) == 0 == economia.tetto_di_rivendita(g, bologna, OGGI) < economia.ingaggio_richiesto(g, bologna)
+    assert economia.tetto_di_rivendita(g, bologna, _dopo(400)) == _tetto_atteso(0, pieno, 400) > 0
+    assert economia.rivendita_piena_dal(g, bologna, OGGI) == contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA)
+
+
+def test_l_acquisto_con_arretrati_ricorda_tutto_il_prezzo():
+    mondo, cpu, bologna, _milano = _mondo()
+    bologna.cassa = 1_000_000
+    g = mondo.giocatori[1]
+    prezzo = round(economia.valore_di_mercato_pieno(g) * RIALZO_CPU) // 2
+    arretrati = prezzo // 3
+    assert 0 < arretrati < prezzo
+    g.arretrati = arretrati
+    cassa_cpu = cpu.cassa
+    mondo.metti_in_vendita(cpu, g, prezzo)
+    # Il computer salda gli arretrati del giocatore dal prezzo, ma la tua polisportiva paga il prezzo intero: la rampa
+    # parte da quello, non da quello che resta al venditore.
+    assert mondo.acquista(bologna, g) == prezzo and bologna.cassa == 1_000_000 - prezzo
+    assert cpu.cassa == cassa_cpu + prezzo - arretrati and cpu.conti_del_mese["arretrati"] == arretrati
+    assert g.pagato_alla_firma == prezzo
+    _contratto_oltre_la_rampa(g)
+    assert economia.tetto_di_rivendita(g, bologna, OGGI) == prezzo < economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
