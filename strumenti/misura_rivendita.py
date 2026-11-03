@@ -26,6 +26,23 @@ inizializzatore del ProcessPoolExecutor, in ogni processo figlio, e tetto_atteso
 per il computer che compra, Mondo._vendibili, per il commerciante che mette in vendita e per la scelta dei liberi da
 tesserare. Di serie è la rampa del gioco, MESI_DELLA_RAMPA. La misura a 42 mesi e la proiezione per altre durate
 stanno nella terza parte di strumenti/rivendita_d40.txt.
+Lo stesso giorno, dopo la scelta di una rampa di 36 mesi e prima della decisione, Gabriele ha chiesto di misurare la
+rampa che parte dall'ingaggio della firma. Nel gioco la rampa parte dall'ingaggio che il giocatore chiede il giorno
+della vendita, e quell'ingaggio cresce mentre il giocatore resta in rosa e si allena: con --partenza-della-rampa firma
+parte invece, in tutti i processi della corsa, dall'ingaggio che il giocatore ha chiesto alla polisportiva il giorno
+della firma, cioè quello pagato, e resta quello per tutta la rampa; il tetto pieno resta quello del giorno della
+vendita, e il resto della regola non cambia. Il giocatore del gioco ricorda soltanto il giorno della firma: l'ingaggio
+lo scrive lo strumento, ricorda_la_firma, sul giocatore, ingaggio_della_firma, insieme al giorno della firma, quando
+lo tessera e, per i quindici della partenza, all'inizio della corsa, dopo a_regime, con l'ingaggio chiesto quel
+giorno, che è quello pagato. tetto_di_rivendita legge economia._rampa da economia a ogni chiamata, e imposta_la_rampa,
+nel processo principale e come inizializzatore in ogni figlio, mette al suo posto rampa_dalla_firma, la stessa regola
+con l'altra partenza. Così la stessa partenza vale per il computer che compra, Mondo._vendibili, per il commerciante
+che mette in vendita, per la rosa pari e per il margine delle vendite, che contano l'ingaggio della firma con tutte e
+due le partenze; tetto_atteso resta com'è, perché il giorno della firma le due partenze coincidono. Di serie la
+partenza è vendita, la regola del gioco: costanti.py, economia.py e mondo.py restano come sono. Ogni corsa scrive nel
+risultato la partenza che ha visto, e per ogni vendita conta anche il margine pieno, il tetto pieno meno l'ingaggio
+della firma, e quanto è cresciuto in rosa l'ingaggio chiesto. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
+5.5, UltraCode); la misura sta nella quarta parte di strumenti/rivendita_d40.txt.
 I mondi nascono col codice di oggi, con mondi_sintetici.mondo_nato, uno per seme, e si salvano alle età date, di
 serie 730 e 3.650 giorni, nella cartella di lavoro. In ogni mondo nascono, ciascuna da sola, due polisportive
 dell'utente: la gloriosa, con la gloria tenuta a 275, e la media, a 150, la gloria che una polisportiva
@@ -67,8 +84,8 @@ Non tocca mai il mondo salvato: ogni processo sposta la cartella del programma e
 temporanee, che alla fine si cancellano; i mondi e le partenze vivono nella cartella di lavoro, che senza
 --cartella è temporanea anche lei. Le corse vanno in parallelo, al più --processi insieme.
 Uso: python -B strumenti/misura_rivendita.py [--semi 11 2026 7 13] [--giorni-dei-mondi 730 3650]
-[--mesi 0 1 3 6 12 18 24] [--durata 36] [--mesi-della-rampa 24] [--gloria 275] [--gloria-media 150]
-[--club gloriosa media] [--processi 16] [--cartella C] [--salva risultati.json]
+[--mesi 0 1 3 6 12 18 24] [--durata 36] [--mesi-della-rampa 24] [--partenza-della-rampa vendita] [--gloria 275]
+[--gloria-media 150] [--club gloriosa media] [--processi 16] [--cartella C] [--salva risultati.json]
 """
 
 import argparse
@@ -134,6 +151,13 @@ CLUB = {"gloriosa": ("Bottega Gloriosa", 1), "media": ("Bottega Media", 2)}
 ENTRATE = ("sponsor", "vendite", "premi", "rimborsi", "fondi_ricevuti")
 # Le voci dette una per una nella tabella; le altre vanno insieme in tornei e resto.
 VOCI_DETTE = ("vendite", "ingaggi", "stipendi", "sponsor", "buonuscite", "arretrati")
+# Da dove parte la rampa del tetto: dall'ingaggio chiesto il giorno della vendita, come nel gioco, o da quello della firma.
+PARTENZE_DELLA_RAMPA = ("vendita", "firma")
+# La rampa del gioco, presa prima di ogni sostituzione: con la partenza vendita torna lei.
+RAMPA_DEL_GIOCO = economia._rampa
+# Le volte in cui, con la partenza firma, la rampa di un tesserato non trova l'ingaggio della sua firma e parte da quello
+# di oggi; ogni corsa lo azzera e lo scrive nel risultato, e deve restare zero.
+SENZA_FIRMA = {"volte": 0}
 
 
 @contextmanager
@@ -235,20 +259,74 @@ def tetto(g):
     return int(economia.valore_di_mercato_pieno(g) * RIALZO_CPU)
 
 
-def imposta_la_rampa(mesi):
+def ricorda_la_firma(g, poli):
     """
-    La durata della rampa del prezzo in questo processo, in mesi, per --mesi-della-rampa. economia importa
-    MESI_DELLA_RAMPA dalle costanti col suo nome, e la rampa di tetto_di_rivendita lo legge da lì a ogni chiamata:
-    basta cambiare quel nome, che vale per Mondo._vendibili, per metti_in_vendita_alla_rampa e per tetto_atteso.
-    Cambiare costanti.MESI_DELLA_RAMPA non servirebbe, perché economia ha già il suo. Vale soltanto nel processo che la
-    chiama: main la chiama per sé e la passa ai figli come inizializzatore, con esecutore.
+    L'ingaggio che il giocatore chiede oggi alla polisportiva, scritto sul giocatore insieme al giorno della firma,
+    ingaggio_della_firma, e restituito. Si chiama il giorno della firma, quando l'ingaggio chiesto è quello pagato, e
+    per i quindici della partenza all'inizio della corsa: è il costo di ognuno, da cui partono il margine e la rosa pari
+    con tutte e due le partenze, e la rampa con la partenza firma. Il gioco non lo salva: lo scrive lo strumento, e non
+    finisce nei pickle, perché le corse non salvano il mondo.
+    """
+    ingaggio = economia.ingaggio_richiesto(g, poli)
+    g.ingaggio_della_firma = (g.tesserato_dal, ingaggio)
+    return ingaggio
+
+
+def ingaggio_della_firma(g, poli):
+    """
+    L'ingaggio della firma che ricorda_la_firma ha scritto sul giocatore, se il giorno è quello della sua firma di oggi;
+    senza, l'ingaggio che chiede oggi, come nel gioco, e la volta si conta in SENZA_FIRMA.
+    """
+    firma = getattr(g, "ingaggio_della_firma", None)
+    if firma is not None and firma[0] == g.tesserato_dal:
+        return firma[1]
+    SENZA_FIRMA["volte"] += 1
+    return economia.ingaggio_richiesto(g, poli)
+
+
+def rampa_dalla_firma(g, poli, oggi, pieno):
+    """
+    economia._rampa con la partenza all'ingaggio della firma, per --partenza-della-rampa firma: la stessa regola del
+    gioco, con la durata economia.MESI_DELLA_RAMPA del processo, ma la rampa parte dall'ingaggio che il giocatore ha
+    pagato il giorno della firma, e non da quello che chiede oggi. Se la partenza non sta sotto il tetto pieno di oggi
+    vale il tetto pieno, e così dal giorno del tetto pieno in poi.
+    """
+    if poli.is_cpu_controlled or g.tesserato_dal is None:
+        return None
+    partenza = ingaggio_della_firma(g, poli)
+    if partenza >= pieno:
+        return None
+    fine = contratti.stesso_giorno_dopo(g.tesserato_dal, economia.MESI_DELLA_RAMPA)
+    giorni = (fine.date() - g.tesserato_dal.date()).days
+    passati = max(0, (oggi.date() - g.tesserato_dal.date()).days)
+    if passati >= giorni:
+        return None
+    return partenza, passati, giorni, fine
+
+
+def imposta_la_rampa(mesi, partenza="vendita"):
+    """
+    La durata della rampa del prezzo in questo processo, in mesi, per --mesi-della-rampa, e la sua partenza, per
+    --partenza-della-rampa. economia importa MESI_DELLA_RAMPA dalle costanti col suo nome, e la rampa di
+    tetto_di_rivendita lo legge da lì a ogni chiamata: basta cambiare quel nome, che vale per Mondo._vendibili, per
+    metti_in_vendita_alla_rampa e per tetto_atteso. Cambiare costanti.MESI_DELLA_RAMPA non servirebbe, perché economia
+    ha già il suo. Allo stesso modo tetto_di_rivendita chiama economia._rampa, che con la partenza firma diventa
+    rampa_dalla_firma, e con la partenza vendita torna la rampa del gioco; Mondo._vendibili importa tetto_di_rivendita
+    col suo nome, ma la funzione cerca _rampa in economia. Vale soltanto nel processo che la chiama: main la chiama per
+    sé e la passa ai figli come inizializzatore, con esecutore.
     """
     economia.MESI_DELLA_RAMPA = mesi
+    economia._rampa = rampa_dalla_firma if partenza == "firma" else RAMPA_DEL_GIOCO
 
 
-def esecutore(processi, mesi_della_rampa):
-    """I processi figli della corsa, al più tanti insieme, ognuno con la rampa di tanti mesi."""
-    return ProcessPoolExecutor(max_workers=max(1, processi), initializer=imposta_la_rampa, initargs=(mesi_della_rampa,))
+def partenza_vista():
+    """La partenza della rampa in questo processo, come la vede tetto_di_rivendita: firma o vendita."""
+    return "firma" if economia._rampa is rampa_dalla_firma else "vendita"
+
+
+def esecutore(processi, mesi_della_rampa, partenza="vendita"):
+    """I processi figli della corsa, al più tanti insieme, ognuno con la rampa di tanti mesi e con la partenza data."""
+    return ProcessPoolExecutor(max_workers=max(1, processi), initializer=imposta_la_rampa, initargs=(mesi_della_rampa, partenza))
 
 
 def tetto_atteso(g, poli, oggi, giorni):
@@ -256,7 +334,8 @@ def tetto_atteso(g, poli, oggi, giorni):
     Il tetto della rampa, economia.tetto_di_rivendita, tanti giorni dopo una firma di oggi, coi valori di oggi: l'ingaggio
     che il giocatore chiede alla polisportiva, poi in linea retta fino al tetto pieno, lo stesso giorno del mese
     economia.MESI_DELLA_RAMPA mesi dopo, la rampa del processo, e da lì il tetto pieno. Chi chiede un ingaggio che non
-    sta sotto il tetto pieno vale subito il tetto pieno, come nel gioco.
+    sta sotto il tetto pieno vale subito il tetto pieno, come nel gioco. Vale per tutte e due le partenze della rampa,
+    perché il giorno della firma l'ingaggio chiesto oggi e quello della firma sono lo stesso.
     """
     pieno = economia.tetto_pieno_di_rivendita(g, poli, oggi)
     partenza = economia.ingaggio_richiesto(g, poli)
@@ -489,10 +568,14 @@ def corsa(seme, giorni, club, strategia, mesi, durata, cartella):
     commerciante mette in vendita, o tieni. Restituisce le voci dei conti sommate, il saldo e i conteggi di firme,
     vendite, uscite e rinnovi. Fino alla settima tranche i mesi prendevano il posto della costante dell'attesa; dalla
     rampa del prezzo, scelta da Gabriele il 3 novembre 2026, la rampa è quella del processo, imposta_la_rampa, e i mesi
-    sono la scelta del commerciante; il risultato dice anche la durata della rampa che la corsa ha visto. Nella
-    rivendita i quindici della partenza vanno a regime con a_regime.
+    sono la scelta del commerciante; il risultato dice anche la durata della rampa che la corsa ha visto, e da dove
+    parte, partenza_vista. Nella rivendita i quindici della partenza vanno a regime con a_regime. Per ogni vendita conta
+    il margine, il prezzo meno l'ingaggio della firma, il margine pieno, il tetto pieno del giorno prima della vendita
+    meno l'ingaggio della firma, e la crescita dell'ingaggio, quello chiesto il giorno prima della vendita meno quello
+    della firma; ingaggi_alla_firma somma gli ingaggi ricordati di chi firma nella corsa, e deve fare la voce ingaggi.
     """
     inizio = time.perf_counter()
+    SENZA_FIRMA["volte"] = 0
     with cartelle_temporanee():
         partenza = carica(file_della_partenza(cartella, seme, giorni, club))
         mondo, dati = partenza["mondo"], partenza["dati"]
@@ -511,13 +594,14 @@ def corsa(seme, giorni, club, strategia, mesi, durata, cartella):
                 spostamento = round(mesi * GIORNI_PER_MESE * (i + 0.5) / len(tesserati))
                 a_regime(mondo, poli, mondo.giocatori[gid], spostamento)
                 firmato[gid] = -spostamento
-        # L'ingaggio di ognuno, dove parte la sua rampa: il margine di una vendita è il prezzo meno questo.
-        pagato = {gid: economia.ingaggio_richiesto(mondo.giocatori[gid], poli) for gid in poli.tesserati}
+        # L'ingaggio della firma di ognuno, ricordato sul giocatore: il margine di una vendita è il prezzo meno questo, e
+        # con la partenza firma la rampa parte da qui.
+        pagato = {gid: ricorda_la_firma(mondo.giocatori[gid], poli) for gid in poli.tesserati}
         rosa_iniziale = sum(pagato.values())
         cassa_iniziale = poli.cassa
         totali = dict.fromkeys(VOCI_CONTI, 0)
         conti = {"firme": 0, "rifiuti": 0, "rinnovi": 0, "rinnovi_rifiutati": 0, "vendite": 0, "usciti": 0, "giorni_tenuti": 0, "margini": 0,
-                 "sotto_l_ingaggio": 0}
+                 "sotto_l_ingaggio": 0, "margini_pieni": 0, "crescita_degli_ingaggi": 0, "ingaggi_alla_firma": 0}
         glorie, posti_giorno, giorno = [], 0, 0
         while mondo.datetime_corrente_simulazione < fine:
             tieni_la_gloria(mondo, poli, bersaglio, chiave)
@@ -527,7 +611,8 @@ def corsa(seme, giorni, club, strategia, mesi, durata, cartella):
             for gid in poli.tesserati:
                 if gid not in firmato:
                     firmato[gid] = giorno
-                    pagato[gid] = economia.ingaggio_richiesto(mondo.giocatori[gid], poli)
+                    pagato[gid] = ricorda_la_firma(mondo.giocatori[gid], poli)
+                    conti["ingaggi_alla_firma"] += pagato[gid]
             if rivendi:
                 metti_in_vendita_alla_rampa(mondo, poli, mesi)
             tieni_la_gloria(mondo, poli, bersaglio, chiave)
@@ -539,6 +624,9 @@ def corsa(seme, giorni, club, strategia, mesi, durata, cartella):
             # Chi domani esce dalla rosa ed entra in una del computer è venduto se era in vendita, ma non se il contratto
             # gli scade domani senza rinnovo: torna libero, e il computer può tesserarlo lo stesso giorno.
             vendibili = {gid: prezzo for gid, prezzo in poli.in_vendita.items() if not scade_entro(mondo.giocatori[gid], domani)}
+            # Il tetto pieno di domani e l'ingaggio chiesto oggi, coi valori di oggi, per il margine pieno e la crescita.
+            pieni = {gid: (economia.tetto_pieno_di_rivendita(mondo.giocatori[gid], poli, domani), economia.ingaggio_richiesto(mondo.giocatori[gid], poli))
+                     for gid in vendibili}
             prima = set(poli.tesserati)
             ms.avanza_un_giorno(mondo)
             giorno += 1
@@ -550,6 +638,8 @@ def corsa(seme, giorni, club, strategia, mesi, durata, cartella):
                     conti["giorni_tenuti"] += giorno - quando
                     conti["margini"] += vendibili[gid] - spesa
                     conti["sotto_l_ingaggio"] += vendibili[gid] < spesa
+                    conti["margini_pieni"] += pieni[gid][0] - spesa
+                    conti["crescita_degli_ingaggi"] += pieni[gid][1] - spesa
                 else:
                     conti["usciti"] += 1
             if mondo.datetime_corrente_simulazione.day == 1:
@@ -562,7 +652,8 @@ def corsa(seme, giorni, club, strategia, mesi, durata, cartella):
         somma = sum(totali[voce] if voce in ENTRATE else -totali[voce] for voce in VOCI_CONTI)
         rosa = mondo._rosa(poli)
         return {"seme": seme, "giorni": giorni, "club": club, "strategia": strategia, "mesi": mesi, "durata": durata,
-                "mesi_della_rampa": economia.MESI_DELLA_RAMPA, "giorni_corsi": giorno,
+                "mesi_della_rampa": economia.MESI_DELLA_RAMPA, "partenza_della_rampa": partenza_vista(), "rampe_senza_firma": SENZA_FIRMA["volte"],
+                "giorni_corsi": giorno,
                 "saldo": saldo, "somma_delle_voci": somma, "voci": totali, **conti, "posti_giorno": posti_giorno,
                 "gloria_minima": min(glorie) if glorie else poli.gloria, "gloria_massima": max(glorie) if glorie else poli.gloria,
                 "tesserati_alla_fine": len(rosa), "valore_alla_fine": sum(economia.valore_di_mercato_pieno(g) for g in rosa),
@@ -589,8 +680,8 @@ def decimale(numero, cifre=1):
 
 def a_rosa_pari(r):
     """
-    Il saldo della corsa con la rosa contata al suo costo, l'ingaggio da cui parte la rampa di ognuno: più la rosa della
-    fine, meno quella della partenza. Toglie l'effetto di una rosa che alla fine non è quella della partenza, come nella
+    Il saldo della corsa con la rosa contata al suo costo, l'ingaggio della firma di ognuno, da cui parte la rampa il
+    giorno della firma, e con la partenza firma per tutta la rampa: più la rosa della fine, meno quella della partenza. Toglie l'effetto di una rosa che alla fine non è quella della partenza, come nella
     vendita a 0 mesi, dove il computer compra più in fretta di quanto il commerciante tesseri e la rosa si svuota: i
     quindici della partenza non sono costati niente nella corsa, quelli della fine sì.
     """
@@ -730,6 +821,9 @@ def argomenti(argv=None):
     parser.add_argument("--durata", type=int, default=DURATA_MESI, help="mesi di calendario di ogni corsa")
     parser.add_argument("--mesi-della-rampa", type=int, default=MESI_DELLA_RAMPA,
                         help=f"i mesi dalla firma al tetto pieno, in tutti i processi della corsa; di serie {MESI_DELLA_RAMPA}, quelli del gioco")
+    parser.add_argument("--partenza-della-rampa", choices=PARTENZE_DELLA_RAMPA, default=PARTENZE_DELLA_RAMPA[0],
+                        help="da dove parte la rampa del tetto, in tutti i processi della corsa: vendita, l'ingaggio chiesto il giorno "
+                             "della vendita, come nel gioco, di serie; firma, l'ingaggio pagato il giorno della firma")
     parser.add_argument("--processi", type=int, default=PROCESSI)
     parser.add_argument("--gloria", type=int, default=GLORIA_GLORIOSA, help="la gloria della polisportiva gloriosa")
     parser.add_argument("--gloria-media", type=int, default=GLORIA_MEDIA, help="la gloria della polisportiva media")
@@ -744,7 +838,7 @@ def argomenti(argv=None):
 
 def main():
     args = argomenti()
-    imposta_la_rampa(args.mesi_della_rampa)
+    imposta_la_rampa(args.mesi_della_rampa, args.partenza_della_rampa)
     # Lo stesso ordine degli insiemi in tutti i processi, perché la stessa corsa dia gli stessi numeri.
     os.environ.setdefault("PYTHONHASHSEED", "0")
     temporanea = args.cartella is None
@@ -756,9 +850,11 @@ def main():
         print(f"{time.perf_counter() - inizio:7.0f} s. {testo}", flush=True)
 
     del_gioco = "quella del gioco" if args.mesi_della_rampa == MESI_DELLA_RAMPA else f"al posto dei {MESI_DELLA_RAMPA} del gioco"
-    racconta(f"Rampa del prezzo di {testi.conta(args.mesi_della_rampa, 'mese', 'mesi')}, {del_gioco}.")
+    dalla = ("dall'ingaggio pagato il giorno della firma, al posto di quello chiesto il giorno della vendita"
+             if args.partenza_della_rampa == "firma" else "dall'ingaggio chiesto il giorno della vendita, la partenza del gioco")
+    racconta(f"Rampa del prezzo di {testi.conta(args.mesi_della_rampa, 'mese', 'mesi')}, {del_gioco}; parte {dalla}.")
     try:
-        with cartelle_temporanee(), esecutore(args.processi, args.mesi_della_rampa) as figli:
+        with cartelle_temporanee(), esecutore(args.processi, args.mesi_della_rampa, args.partenza_della_rampa) as figli:
             mancanti = [s for s in args.semi if not all(file_del_mondo(cartella, s, g).exists() for g in args.giorni_dei_mondi)]
             in_parallelo(figli, [(fai_nascere, (s, args.giorni_dei_mondi, cartella)) for s in mancanti],
                          lambda r: racconta(f"Nato il mondo del seme {r[0]}, in {r[1]:.0f} s."))
@@ -783,6 +879,15 @@ def main():
             if r["mesi_della_rampa"] != args.mesi_della_rampa:
                 racconta(f"Attenzione: la corsa {r['strategia']} {r['mesi']}, seme {r['seme']}, mondo di {r['giorni']}, {r['club']}, "
                          f"ha visto una rampa di {r['mesi_della_rampa']} mesi.")
+            if r["partenza_della_rampa"] != args.partenza_della_rampa:
+                racconta(f"Attenzione: la corsa {r['strategia']} {r['mesi']}, seme {r['seme']}, mondo di {r['giorni']}, {r['club']}, "
+                         f"ha visto la partenza {r['partenza_della_rampa']} al posto di {args.partenza_della_rampa}.")
+            if r["rampe_senza_firma"]:
+                racconta(f"Attenzione: nella corsa {r['strategia']} {r['mesi']}, seme {r['seme']}, mondo di {r['giorni']}, {r['club']}, "
+                         f"la rampa non ha trovato l'ingaggio della firma {testi.conta(r['rampe_senza_firma'], 'volta', 'volte')}.")
+            if r["ingaggi_alla_firma"] != r["voci"]["ingaggi"]:
+                racconta(f"Attenzione: nella corsa {r['strategia']} {r['mesi']}, seme {r['seme']}, mondo di {r['giorni']}, {r['club']}, "
+                         f"gli ingaggi ricordati fanno {euro(r['ingaggi_alla_firma'])} e quelli pagati {euro(r['voci']['ingaggi'])}.")
         conto = differenze(risultati, args.durata)
         for riga in tabella(conto, partenze, args.durata) + residuo(conto) + residuo(conto, "a_rosa_pari"):
             print(riga, flush=True)
@@ -790,7 +895,8 @@ def main():
             gruppi_json = [{"giorni": g, "club": c, "mesi": m, "semi": righe} for (g, c, m), righe in sorted(conto.items())]
             migliori = [{"giorni": g, "club": c, "chiave": chiave, "mesi": m, "media": media, "scarto": scarto}
                         for chiave in ("differenza", "a_rosa_pari") for (g, c), (m, media, scarto) in piu_redditizio(conto, chiave).items()]
-            args.salva.write_text(json.dumps({"mesi_della_rampa": args.mesi_della_rampa, "partenze": partenze, "corse": risultati,
+            args.salva.write_text(json.dumps({"mesi_della_rampa": args.mesi_della_rampa, "partenza_della_rampa": args.partenza_della_rampa,
+                                              "partenze": partenze, "corse": risultati,
                                               "differenze": gruppi_json, "piu_redditizio": migliori}, ensure_ascii=False, indent=1), encoding="utf-8")
         racconta("Fine.")
     finally:
