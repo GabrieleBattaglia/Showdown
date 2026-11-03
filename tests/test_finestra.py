@@ -1643,6 +1643,19 @@ def test_la_fondazione_a_pagamento_e_quella_rifiutata(finestra, suonati, monkeyp
                                                 "Terza squadra parte con la cassa vuota. È la tua polisportiva attiva.")
 
 
+def test_il_conto_della_fondazione_tiene_la_e_commerciale(finestra, monkeypatch):
+    # Chi paga la fondazione si chiama Pat & Co: nel conto la e commerciale resta tale, e non fa una lettera di scelta rapida.
+    mondo = finestra.mondo
+    mondo.fondazioni_di_sempre = 0
+    pat = mondo.fonda_polisportiva("Pat & Co", attiva=True)
+    pat.cassa = mondo.riserva(pat) + 60_000
+    etichette = []
+    monkeypatch.setattr(dialoghi.NuovaPolisportiva, "ShowModal", lambda self: etichette.append((self.conto.GetLabel(), self.conto.GetLabelText())) or wx.ID_CANCEL)
+    finestra.nuova_polisportiva()
+    etichetta, testo = etichette[0]
+    assert "pagati da Pat && Co," in etichetta and "pagati da Pat & Co," in testo
+
+
 def test_il_ripensamento_ha_la_sua_domanda_e_il_suo_suono(finestra, suonati, monkeypatch):
     # La decisione D40: chiudere entro 10 giorni una polisportiva vuota, con la cassa ancora piena, annulla la sua fondazione.
     mondo = finestra.mondo

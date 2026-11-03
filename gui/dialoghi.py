@@ -548,7 +548,8 @@ class NuovaPolisportiva(_Dialogo):
     è vuoto soltanto se la collezione dei comuni non si legge.
     Dalla decisione D40 il dialogo dice in cima il conto della fondazione, prima del nome: gratis o quanto costa,
     chi paga e con quanta cassa parte la nuova. Dalla scelta di Gabriele del 3 novembre 2026 il conto dice anche
-    quante polisportive hai fondato finora e a chi va il capitale, testi.fondazioni_finora.
+    quante polisportive hai fondato finora e a chi va il capitale, testi.fondazioni_finora. La e commerciale nel nome di
+    chi paga si raddoppia, come in Sposta fondi: un nome come Pat & Co non diventa una lettera di scelta rapida.
     """
 
     def __init__(self, genitore, mondo, proposta=None):
@@ -558,7 +559,8 @@ class NuovaPolisportiva(_Dialogo):
         self.comuni = []
         self.elenco_vuoto = _ElencoCheSiRestringe()
         self.ci_sono_comuni = bool(luoghi.candidati(""))
-        self.conto = wx.StaticText(self.pannello, label=testi.conto_della_fondazione(mondo.conto_della_fondazione(), mondo.fondazioni_di_sempre))
+        conto = testi.conto_della_fondazione(mondo.conto_della_fondazione(), mondo.fondazioni_di_sempre)
+        self.conto = wx.StaticText(self.pannello, label=conto.replace("&", "&&"))
         self.sizer.Add(self.conto, 0, wx.ALL, 8)
         self.etichetta(f"&Nome, da {NOME_POLISPORTIVA_MIN} a {NOME_POLISPORTIVA_MAX} caratteri")
         self.nome = self.aggiungi(wx.TextCtrl(self.pannello))
