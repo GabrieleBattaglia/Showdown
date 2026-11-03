@@ -81,6 +81,9 @@ Lo stesso giorno, con la rampa del prezzo scelta da Gabriele, che vale come D40,
 prezzo più alto che il computer paga, e la riga lo dice; un prezzo sopra il tetto ha l'avviso di testi.sopra_il_tetto, col
 suono rivendita_in_attesa per la messa in vendita e prezzo_cambiato_in_attesa per il prezzo cambiato, così il suono dice
 ancora se il tesserato era già in vendita. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con un'altra scelta di Gabriele che vale come D40, il conto di Nuova polisportiva dice anche quante
+polisportive hai fondato finora e a chi va il capitale, e Cambia polisportiva attiva lo dice in cima, in un testo che NVDA
+legge all'apertura, come il conto. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -540,7 +543,8 @@ class NuovaPolisportiva(_Dialogo):
     un nome scritto a metà. In risultato restano nome, password, se renderla attiva e comune; il comune
     è vuoto soltanto se la collezione dei comuni non si legge.
     Dalla decisione D40 il dialogo dice in cima il conto della fondazione, prima del nome: gratis o quanto costa,
-    chi paga e con quanta cassa parte la nuova.
+    chi paga e con quanta cassa parte la nuova. Dalla scelta di Gabriele del 3 novembre 2026 il conto dice anche
+    quante polisportive hai fondato finora e a chi va il capitale, testi.fondazioni_finora.
     """
 
     def __init__(self, genitore, mondo, proposta=None):
@@ -550,7 +554,7 @@ class NuovaPolisportiva(_Dialogo):
         self.comuni = []
         self.elenco_vuoto = _ElencoCheSiRestringe()
         self.ci_sono_comuni = bool(luoghi.candidati(""))
-        self.conto = wx.StaticText(self.pannello, label=testi.conto_della_fondazione(mondo.conto_della_fondazione()))
+        self.conto = wx.StaticText(self.pannello, label=testi.conto_della_fondazione(mondo.conto_della_fondazione(), mondo.fondazioni_di_sempre))
         self.sizer.Add(self.conto, 0, wx.ALL, 8)
         self.etichetta(f"&Nome, da {NOME_POLISPORTIVA_MIN} a {NOME_POLISPORTIVA_MAX} caratteri")
         self.nome = self.aggiungi(wx.TextCtrl(self.pannello))
@@ -641,12 +645,19 @@ class NuovaPolisportiva(_Dialogo):
 
 
 class CambiaPolisportiva(_Dialogo):
-    """La scelta della polisportiva attiva fra quelle dell'utente, con la password se è protetta."""
+    """
+    La scelta della polisportiva attiva fra quelle dell'utente, con la password se è protetta. Dalla scelta di Gabriele
+    del 3 novembre 2026, che vale come D40, in cima, prima dell'elenco, un testo dice quante polisportive hai fondato
+    finora e a chi va il capitale, testi.fondazioni_finora: come il conto di Nuova polisportiva è un testo senza lettera,
+    che NVDA legge all'apertura del dialogo, prima dell'elenco.
+    """
 
     def __init__(self, genitore, mondo):
         super().__init__(genitore, "Cambia polisportiva attiva")
         self.mondo = mondo
         self.scelta = None
+        self.fondazioni = wx.StaticText(self.pannello, label=testi.fondazioni_finora(mondo.fondazioni_di_sempre))
+        self.sizer.Add(self.fondazioni, 0, wx.ALL, 8)
         self.mie = sorted((p for p in mondo.polisportive.values() if not p.is_cpu_controlled), key=lambda p: p.nome.casefold())
         self.etichetta("&Le tue polisportive")
         self.elenco = self.aggiungi(wx.ListBox(self.pannello, style=wx.LB_SINGLE, choices=[testi.riga_mia_polisportiva(p, mondo) for p in self.mie]), 1)

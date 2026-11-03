@@ -134,6 +134,9 @@ fino a 2.300 euro, il valore pieno dal 3 novembre 2028; le righe delle Vendite l
 tuo tesserato in vendita e la scheda durante la rampa. sopra_il_tetto dice, all'esito di una messa in vendita o di un
 prezzo cambiato sopra il tetto di oggi, da quando il computer lo comprerà a quel prezzo, o che non lo comprerà. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con un'altra scelta di Gabriele che vale come D40, fondazioni_finora: quante polisportive hai fondato
+finora e a chi va il capitale, nel conto della fondazione di Nuova polisportiva e in cima al dialogo Cambia polisportiva
+attiva. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -163,6 +166,7 @@ from archivio import CARTELLA_QUARANTENA, NATO
 from costanti import (
     ANNO_SIMULAZIONE_GIORNI,
     ATTRIBUTI_BASE_CON_ALLENABILI,
+    CAPITALE_INIZIALE,
     CARATTERISTICHE_ATTACCO_BASE,
     CARATTERISTICHE_CONTROLLO_BASE,
     CARATTERISTICHE_DIFESA_BASE,
@@ -1360,16 +1364,36 @@ def riga_mia_polisportiva(p, mondo):
     return ", ".join(parti)
 
 
-def conto_della_fondazione(conto):
+def conto_della_fondazione(conto, fondazioni=None):
     """
     Il conto della fondazione, decisione D40, che il dialogo di Nuova polisportiva dice prima di chiedere il nome: se è gratis o
-    quanto costa e chi la paga, e con quanta cassa parte la nuova. conto è quello di Mondo.conto_della_fondazione.
+    quanto costa e chi la paga, e con quanta cassa parte la nuova. conto è quello di Mondo.conto_della_fondazione. Dalla scelta
+    di Gabriele del 3 novembre 2026, con fondazioni, cioè Mondo.fondazioni_di_sempre, il conto dice anche quante polisportive
+    hai fondato finora e a chi va il capitale, con fondazioni_finora.
     """
     cassa = f"{euro(conto.capitale)} di cassa" if conto.capitale else "la cassa vuota"
+    finora = "" if fondazioni is None else f" {fondazioni_finora(fondazioni)}"
     if not conto.prezzo:
-        return f"Fondazione gratis, con {cassa}."
+        return f"Fondazione gratis, con {cassa}.{finora}"
     pagante = f", pagati da {conto.pagante.nome}" if conto.pagante is not None else ""
-    return f"{la_tua_aperta(conto.aperte).capitalize()} costa {euro(conto.prezzo)}{pagante}, e parte con {cassa}."
+    return f"{la_tua_aperta(conto.aperte).capitalize()} costa {euro(conto.prezzo)}{pagante}, e parte con {cassa}.{finora}"
+
+
+def fondazioni_finora(fondazioni):
+    """
+    Quante polisportive l'utente ha fondato finora, cioè Mondo.fondazioni_di_sempre, e a chi va il capitale: scelta di Gabriele
+    del 3 novembre 2026, che vale come D40. Il conto di Nuova polisportiva e il dialogo Cambia polisportiva attiva la dicono in
+    cima, come Finora hai fondato 3 polisportive: il capitale di 20.000 euro va soltanto alle prime due, e a chi riparte senza
+    nessuna polisportiva aperta. Le prime due sono FONDAZIONI_COL_CAPITALE; il conteggio è quello che il ripensamento riporta
+    indietro.
+    """
+    if not fondazioni:
+        finora = "Non hai ancora fondato nessuna polisportiva"
+    elif fondazioni == 1:
+        finora = "Finora hai fondato una polisportiva"
+    else:
+        finora = f"Finora hai fondato {intero(fondazioni)} polisportive"
+    return f"{finora}: il capitale di {euro(CAPITALE_INIZIALE)} va soltanto alle prime due, e a chi riparte senza nessuna polisportiva aperta."
 
 
 def fondata(p, mondo, conto=None):

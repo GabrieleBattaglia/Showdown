@@ -616,6 +616,33 @@ def test_il_ripensamento_non_vale_per_una_polisportiva_usata():
     assert mondo.fondazioni_di_sempre == 5 and not mondo.polisportive
 
 
+def test_il_conto_dice_le_fondazioni_di_sempre():
+    # Scelta di Gabriele del 3 novembre 2026, che vale come D40: il conto di Nuova polisportiva e il dialogo Cambia polisportiva
+    # attiva dicono quante polisportive hai fondato finora, chiuse comprese, e a chi va il capitale.
+    coda = ": il capitale di 20.000 euro va soltanto alle prime due, e a chi riparte senza nessuna polisportiva aperta."
+    assert testi.fondazioni_finora(0) == "Non hai ancora fondato nessuna polisportiva" + coda
+    assert testi.fondazioni_finora(1) == "Finora hai fondato una polisportiva" + coda
+    assert testi.fondazioni_finora(3) == "Finora hai fondato 3 polisportive" + coda
+    assert testi.fondazioni_finora(1_000) == "Finora hai fondato 1.000 polisportive" + coda
+    mondo = mondo_di_prova(20, 20)
+    conto = mondo.conto_della_fondazione()
+    # Senza il conteggio il conto resta quello di prima; col conteggio lo aggiunge in fondo, gratis o a pagamento.
+    assert testi.conto_della_fondazione(conto) == "Fondazione gratis, con 20.000 euro di cassa."
+    assert testi.conto_della_fondazione(conto, mondo.fondazioni_di_sempre) == "Fondazione gratis, con 20.000 euro di cassa. " + testi.fondazioni_finora(0)
+    bologna = mondo.fonda_polisportiva("Pat-Bologna")
+    mondo._entra(bologna, mondo.giocatori[1])
+    milano = mondo.fonda_polisportiva("Pat-Milano")
+    milano.cassa = 60_000
+    assert testi.conto_della_fondazione(mondo.conto_della_fondazione(), mondo.fondazioni_di_sempre) == (
+        "La tua terza polisportiva aperta costa 50.000 euro, pagati da Pat-Milano, e parte con la cassa vuota. Finora hai fondato 2 polisportive" + coda)
+    # Il ripensamento riporta indietro il contatore, e il conto lo segue; una chiusura vera no.
+    assert mondo.chiudi_polisportiva(milano) == 0 and mondo.fondazioni_di_sempre == 1
+    assert testi.conto_della_fondazione(mondo.conto_della_fondazione(), mondo.fondazioni_di_sempre).endswith(" Finora hai fondato una polisportiva" + coda)
+    mondo.chiudi_polisportiva(bologna)
+    assert testi.conto_della_fondazione(mondo.conto_della_fondazione(), mondo.fondazioni_di_sempre) == (
+        "Fondazione gratis, con 20.000 euro di cassa. Finora hai fondato una polisportiva" + coda)
+
+
 # Sposta fondi, quinta tranche.
 
 def test_sposta_fondi_passa_i_soldi_oltre_la_riserva():

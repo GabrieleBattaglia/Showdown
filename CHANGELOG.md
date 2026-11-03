@@ -111,6 +111,8 @@ Il prezzo che le polisportive del computer pagano per un tuo tesserato sale con 
 
 Quando vendi al computer, il valore di mercato non conta più il rinnovo concordato (decisione D40): chi compra firma un contratto nuovo e il rinnovo si annulla, quindi negli ultimi tre mesi di contratto il computer paga al più il valore della scadenza vera, col suo rialzo. La riga di Vendite dei tesserati lo dice, come valore di mercato 600 euro, senza il rinnovo concordato. Fra le polisportive del computer il rinnovo tiene pieno il valore, come prima.
 
+Il conto in cima a Nuova polisportiva, Ctrl+N, dice anche quante polisportive hai fondato finora, comprese quelle che hai chiuso e senza i ripensamenti, e a chi va il capitale (decisione D40), come Finora hai fondato 3 polisportive: il capitale di 20.000 euro va soltanto alle prime due, e a chi riparte senza nessuna polisportiva aperta. La stessa frase sta in cima a Cambia polisportiva attiva, Ctrl+Maiusc+C, prima dell'elenco, e NVDA la legge quando il dialogo si apre.
+
 ## [1.94.6] - 2026-10-23
 
 Le correzioni del collaudo con NVDA della 1.94.0, fatto da Gabriele il 23 ottobre 2026.

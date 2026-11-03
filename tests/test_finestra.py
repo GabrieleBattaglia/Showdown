@@ -427,6 +427,27 @@ def test_cambia_polisportiva(finestra, monkeypatch):
     assert finestra.vista.GetValue().startswith("[TUA] Seconda squadra")
 
 
+def test_cambia_polisportiva_dice_le_fondazioni_di_sempre(finestra):
+    # Scelta di Gabriele del 3 novembre 2026, che vale come D40: in cima al dialogo, prima dell'elenco, quante polisportive hai
+    # fondato finora e a chi va il capitale. È un testo senza lettera, come il conto di Nuova polisportiva: non fa da etichetta
+    # a un controllo, perché subito dopo viene quella dell'elenco, e NVDA lo legge all'apertura come testo del dialogo.
+    mondo = finestra.mondo
+    mondo.fonda_polisportiva("Seconda squadra", attiva=False)
+    assert mondo.fondazioni_di_sempre == 1
+    mondo.fondazioni_di_sempre = 3
+    dialogo = dialoghi.CambiaPolisportiva(finestra, mondo)
+    try:
+        figli = list(dialogo.pannello.GetChildren())
+        assert figli[0] is dialogo.fondazioni and isinstance(figli[0], wx.StaticText) and "&" not in dialogo.fondazioni.GetLabel()
+        assert dialogo.fondazioni.GetLabel() == ("Finora hai fondato 3 polisportive: il capitale di 20.000 euro va soltanto alle prime due, e a chi "
+                                                 "riparte senza nessuna polisportiva aperta.")
+        assert isinstance(figli[1], wx.StaticText) and figli[1].GetLabel() == "&Le tue polisportive" and figli[2] is dialogo.elenco
+        # Il fuoco va sull'elenco, come prima.
+        assert dialogo.elenco.GetCount() == 2
+    finally:
+        dialogo.Destroy()
+
+
 # La finestra Mercato e ricerca dalle sue porte, issue 8 e decisione D36: Ctrl+K, Ctrl+Maiusc+G, Ctrl+F e Ctrl+O la aprono,
 # e alla chiusura la vista riassume i suoi esiti, e il mondo si salva, oppure resta com'era.
 
@@ -1456,8 +1477,10 @@ def test_la_fondazione_a_pagamento_e_quella_rifiutata(finestra, suonati, monkeyp
     attiva.cassa += 40_000
 
     def fonda(self):
-        # Il conto, prima del nome.
-        assert self.conto.GetLabel() == "La tua terza polisportiva aperta costa 50.000 euro, pagati da Club Di Prova, e parte con la cassa vuota."
+        # Il conto, prima del nome, con le fondazioni di sempre dalla scelta di Gabriele del 3 novembre 2026.
+        assert self.conto.GetLabel() == ("La tua terza polisportiva aperta costa 50.000 euro, pagati da Club Di Prova, e parte con la cassa vuota. "
+                                         "Finora hai fondato 2 polisportive: il capitale di 20.000 euro va soltanto alle prime due, e a chi riparte "
+                                         "senza nessuna polisportiva aperta.")
         self.nome.ChangeValue("Terza squadra")
         self.sede.SetValue("Bologna")
         self.conferma()

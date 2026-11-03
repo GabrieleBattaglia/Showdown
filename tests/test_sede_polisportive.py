@@ -223,9 +223,11 @@ def test_il_dialogo_propone_un_comune_e_ogni_controllo_ha_la_sua_lettera(fondazi
     assert d.etichetta_comuni.GetLabel() == "&Comuni trovati: 1" and d.comune_scelto() == "Pescocostanzo"
     # All'apertura l'elenco è pieno: nessun suono.
     assert suonati == []
-    # Dalla decisione D40 in cima c'è il conto della fondazione, prima del nome: un testo da leggere, senza lettera.
+    # Dalla decisione D40 in cima c'è il conto della fondazione, prima del nome: un testo da leggere, senza lettera. Dalla
+    # scelta di Gabriele del 3 novembre 2026 dice anche quante polisportive hai fondato finora.
     figli = list(d.pannello.GetChildren())
-    assert figli[0] is d.conto and d.conto.GetLabel() == "Fondazione gratis, con 20.000 euro di cassa."
+    assert figli[0] is d.conto and d.conto.GetLabel() == ("Fondazione gratis, con 20.000 euro di cassa. Finora hai fondato una polisportiva: il capitale di "
+                                                          "20.000 euro va soltanto alle prime due, e a chi riparte senza nessuna polisportiva aperta.")
     etichette = [c.GetLabel() for c in figli[1:] if isinstance(c, (wx.StaticText, wx.CheckBox, wx.Button)) and c.GetLabel() != "Annulla"]
     lettere = [e[e.index("&") + 1].casefold() for e in etichette]
     assert all(e.count("&") == 1 for e in etichette) and len(lettere) == len(set(lettere)) == 7

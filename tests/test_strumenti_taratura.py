@@ -270,7 +270,8 @@ def test_lo_scenario_dell_utente_spende_con_la_regola_della_1_60_11():
 
 def test_lo_scenario_dell_utente_stima_lo_sponsor_con_la_gloria_del_posto_nuovo(monkeypatch):
     # Decisione D40: la polisportiva dell'utente nasce vuota e lo sponsor le paga la gloria per i tesserati su 15. Lo
-    # scenario, prima di tesserare, stima lo sponsor con la rosa che avrà, gloria del posto nuovo compresa.
+    # scenario, prima di tesserare, stima lo sponsor con la rosa che avrà, gloria del posto nuovo compresa. Qui nessuno si
+    # paga col suo posto, così la regola di spesa, che non ci sta, li lascia tutti fuori.
     from aiuti_calendario import mondo_di_prova
 
     import economia
@@ -280,10 +281,94 @@ def test_lo_scenario_dell_utente_stima_lo_sponsor_con_la_gloria_del_posto_nuovo(
     scenario.poli = mondo.fonda_polisportiva(sl.NOME_UTENTE, attiva=True)
     stime = []
     monkeypatch.setattr(sl, "spesa_mensile_utente", lambda sponsor, _cassa: stime.append(sponsor) or 0)
+    monkeypatch.setattr(sl, "sponsor_del_posto", lambda *_argomenti: -1)
     scenario._tessera(mondo)
     primo = next(g for g in mondo.trova_giocatori_liberi_ordinati().values() if g.puo_giocare and g.eta_anni <= sl.ETA_MASSIMA_UTENTE)
     assert mondo.sponsor(scenario.poli) == 0 and not scenario.poli.tesserati
     assert stime[0] == economia.sponsor_mensile(scenario.poli, [primo]) > economia.arrotonda(costanti.QUOTA_SPONSOR_SUL_VALORE * economia.valore_di_mercato_pieno(primo))
+
+
+def test_lo_scenario_dell_utente_tiene_chi_costa_meno_del_suo_posto(monkeypatch):
+    # Scelta di Gabriele del 3 novembre 2026 sulla decisione D40: un posto vuoto fa perdere allo sponsor la gloria di un
+    # posto e la quota sul valore di chi lo teneva. Lo scenario rinnova e tessera, anche fuori dalla sua regola di spesa, chi
+    # costa al mese non più di quanto il suo posto porta allo sponsor; il gioco non cambia.
+    from aiuti_calendario import mondo_di_prova
+
+    import contratti
+    import economia
+
+    mondo = mondo_di_prova(20, 20)
+    scenario = sl.ScenarioUtente(1, 7)
+    poli = scenario.poli = mondo.fonda_polisportiva(sl.NOME_UTENTE, attiva=True)
+    for gid in (1, 2, 3):
+        mondo._entra(poli, mondo.giocatori[gid])
+    rosa = mondo._rosa(poli)
+    # Il posto di un tesserato vale quello che lo sponsor perderebbe senza di lui, a meno degli arrotondamenti alla decina;
+    # quello di un libero, quello che lo sponsor guadagnerebbe con lui.
+    posti = {g.id: sl.sponsor_del_posto(poli, rosa, g) for g in rosa}
+    assert posti[rosa[0].id] == mondo.sponsor(poli) - economia.sponsor_mensile(poli, rosa[1:])
+    for g in rosa:
+        assert abs(posti[g.id] - economia.gloria_di_un_posto(poli) - costanti.QUOTA_SPONSOR_SUL_VALORE * economia.valore_di_mercato_pieno(g)) <= 15
+    libero = mondo.giocatori[20]
+    assert libero.appartenenza == "*" and sl.sponsor_del_posto(poli, rosa, libero) == economia.sponsor_mensile(poli, [*rosa, libero]) - mondo.sponsor(poli)
+    # Fuori dalla regola di spesa si rinnova soltanto chi chiede non più del suo posto: il primo alla pari, il terzo sotto.
+    richieste = {rosa[0].id: posti[rosa[0].id], rosa[1].id: posti[rosa[1].id] + 10, rosa[2].id: posti[rosa[2].id] - 20}
+    rinnovati = []
+    monkeypatch.setattr(sl, "spesa_mensile_utente", lambda _sponsor, _cassa: 0)
+    monkeypatch.setattr(mondo, "problema_rinnovo", lambda _poli, _g: None)
+    monkeypatch.setattr(contratti, "richiesta_rinnovo", lambda g, _poli, _mesi: richieste[g.id])
+    monkeypatch.setattr(mondo, "rinnova", lambda _poli, g, richiesta, _mesi: rinnovati.append(g.id) or (True, 1.0, richiesta))
+    scenario._rinnovi(mondo, mondo.datetime_corrente_simulazione)
+    assert rinnovati == [rosa[0].id, rosa[2].id] and scenario.anno["rinnovi"] == 2 and scenario.anno["rinnovi_mancati"] == 1
+    # Fuori dalla regola si tessera soltanto chi si paga col suo posto: lo stipendio e l'ingaggio diviso in 12 mesi non
+    # superano quello che il suo posto porta allo sponsor. La gloria alta fa sì che qualcuno ci stia e qualcuno no.
+    poli.gloria = 300
+    offerte = []
+    monkeypatch.setattr(mondo, "problema_offerta", lambda *_argomenti: None)
+    monkeypatch.setattr(mondo, "offerta", lambda _poli, g, _ingaggio: offerte.append(g.id))
+    candidati = [g for g in mondo.trova_giocatori_liberi_ordinati().values() if g.puo_giocare and g.eta_anni <= sl.ETA_MASSIMA_UTENTE]
+
+    def si_paga(g):
+        ingaggio = economia.arrotonda(economia.ingaggio_richiesto(g, poli) * sl.RIALZO_INGAGGIO_UTENTE)
+        return economia.stipendio(g) + ingaggio / sl.MESI_PER_RIPAGARE_L_INGAGGIO <= sl.sponsor_del_posto(poli, rosa, g)
+
+    paganti = [g.id for g in candidati if si_paga(g)]
+    scenario._tessera(mondo)
+    assert offerte == paganti and 0 < len(paganti) < len(candidati)
+
+
+def test_lo_scenario_dell_utente_conta_lo_sponsor_del_primo_del_mese_nella_cassa(monkeypatch):
+    # Scelta di Gabriele del 3 novembre 2026 sulla decisione D40: il primo del mese il gioco incassa lo sponsor prima di pagare
+    # gli stipendi. Per chi si paga col suo posto la cassa deve coprire l'ingaggio e quello che lo sponsor, col posto nuovo,
+    # non copre del monte; per gli altri l'ingaggio e tutto il monte, come prima, che con la rosa corta bloccava ogni firma.
+    from aiuti_calendario import mondo_di_prova
+
+    import economia
+
+    mondo = mondo_di_prova(20, 20)
+    scenario = sl.ScenarioUtente(1, 7)
+    poli = scenario.poli = mondo.fonda_polisportiva(sl.NOME_UTENTE, attiva=True)
+    for gid in (1, 2, 3):
+        mondo._entra(poli, mondo.giocatori[gid])
+    primo = next(g for g in mondo.trova_giocatori_liberi_ordinati().values() if g.puo_giocare and g.eta_anni <= sl.ETA_MASSIMA_UTENTE)
+    ingaggio = economia.arrotonda(economia.ingaggio_richiesto(primo, poli) * sl.RIALZO_INGAGGIO_UTENTE)
+    pieno = ingaggio + mondo.monte_stipendi(poli) + economia.stipendio(primo)
+    netto = pieno - economia.sponsor_mensile(poli, [*mondo._rosa(poli), primo])
+    assert 0 < netto < pieno
+    offerte = []
+    monkeypatch.setattr(sl, "spesa_mensile_utente", lambda _sponsor, _cassa: 10**9)
+    monkeypatch.setattr(mondo, "problema_offerta", lambda *_argomenti: None)
+    monkeypatch.setattr(mondo, "offerta", lambda _poli, g, _ingaggio: offerte.append(g.id))
+    monkeypatch.setattr(mondo, "trova_giocatori_liberi_ordinati", lambda: {primo.id: primo})
+    for posto, soglia in ((10**6, netto), (0, pieno)):
+        monkeypatch.setattr(sl, "sponsor_del_posto", lambda *_argomenti, posto=posto: posto)
+        offerte.clear()
+        poli.cassa = soglia - 1
+        scenario._tessera(mondo)
+        assert offerte == []
+        poli.cassa = soglia
+        scenario._tessera(mondo)
+        assert offerte == [primo.id]
 
 
 def test_la_simulazione_salva_il_mondo_alla_fine(tmp_path, monkeypatch):

@@ -67,6 +67,15 @@ Dal 2 novembre 2026, con la decisione D40, lo sponsor della polisportiva dell'ut
 attività su 15, e la polisportiva dello scenario nasce vuota: lo sponsor dopo un tesseramento si stima con
 economia.sponsor_mensile sulla rosa che avrà, gloria del posto nuovo compresa. È di Gabriele Battaglia (IZ4APU) &
 ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, scelta di Gabriele sulla decisione D40, l'utente dello scenario è più accorto: rinnova e riempie i
+posti contando lo sponsor che un posto vuoto fa perdere, sponsor_del_posto, cioè la gloria di un posto più la quota sul
+valore di chi lo tiene. Rinnova anche fuori dalla regola di spesa chi chiede non più di quel che il suo posto porta allo
+sponsor; tessera anche fuori dalla regola chi si paga col suo posto, con lo stipendio più l'ingaggio diviso in
+MESI_PER_RIPAGARE_L_INGAGGIO mesi, e per lui la cassa deve coprire soltanto l'ingaggio e quello che lo sponsor del primo del
+mese non copre del monte, perché il gioco incassa lo sponsor prima di pagare gli stipendi. Prima la rosa si svuotava: con
+un posto vuoto lo sponsor scendeva quanto gli stipendi, i rinnovi non stavano più nella regola, la cassa restava sotto il
+monte di un mese e nessuno si tesserava più; su dodici semi 23 anni su 120 chiusi sotto i 12 tesserati, con questo utente
+nessuno. Il gioco non cambia. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Uso, dalla cartella del progetto o da qualunque altra:
     python strumenti/simulazione_lunga.py
     python strumenti/simulazione_lunga.py --giorni 1095 --seme 2026 --rapporto calendario.txt
@@ -156,6 +165,10 @@ PRIMI_100_TESSERATI_MINIMI = 80.0
 # palmarès, lo sponsor non scende sotto gli stipendi.
 ANNI_DI_PARTENZA = 3
 SPONSOR_SU_STIPENDI_PARTENZA = 100.0
+# Dalla scelta di Gabriele del 3 novembre 2026 sulla decisione D40: in quanti mesi lo scenario conta di ripagare l'ingaggio di
+# chi si paga col suo posto nello sponsor. Senza ripagarlo, cioè con lo stipendio soltanto, la cassa all'anno 10 scendeva a
+# 814 euro di mediana sui dodici semi, contro i 3.560 di 12 mesi.
+MESI_PER_RIPAGARE_L_INGAGGIO = 12
 
 
 def numero(valore_numerico, decimali=0):
@@ -1112,11 +1125,24 @@ def spesa_mensile_utente(sponsor, cassa):
     return sponsor + cassa / costanti.PARTI_DI_CASSA_PER_STIPENDI
 
 
+def sponsor_del_posto(poli, rosa, g):
+    """
+    Quanto lo sponsor del mese della polisportiva dell'utente deve al posto di g, tesserato o da tesserare: lo sponsor
+    della rosa con lui meno quello della rosa senza di lui, contati da economia.sponsor_mensile. Dalla decisione D40 è la
+    gloria di un posto, economia.gloria_di_un_posto, più la quota sul valore di g: quello che il suo posto vuoto fa perdere.
+    Serve all'utente accorto dello scenario, scelta di Gabriele del 3 novembre 2026; il gioco non lo usa.
+    """
+    senza = [x for x in rosa if x is not g]
+    return economia.sponsor_mensile(poli, [*senza, g]) - economia.sponsor_mensile(poli, senza)
+
+
 class ScenarioUtente:
     """
     L'utente che allena e rinnova, dal giorno in cui nasce la sua polisportiva: tessera i giovani più
     forti fra i liberi, gioca le amichevoli, spende tutti i punti, rinnova chi può pagare e paga gli
-    arretrati. Conta, anno per anno, quello che serve ai bersagli dello scenario.
+    arretrati. Conta, anno per anno, quello che serve ai bersagli dello scenario. Dalla scelta di Gabriele del
+    3 novembre 2026 rinnova e tessera contando lo sponsor che un posto vuoto fa perdere, sponsor_del_posto; lo
+    staff resta con la regola di prima, e i conti dell'anno contano lo sponsor che il gioco paga.
     """
 
     def __init__(self, primo_giorno, seme):
@@ -1212,7 +1238,10 @@ class ScenarioUtente:
     def _tessera(self, mondo):
         """
         Riempie la rosa con i liberi più forti fino a 30 anni, offrendo il 30 per cento in più dell'ingaggio,
-        se il monte stipendi sta nella regola di spesa dell'utente, spesa_mensile_utente.
+        se il monte stipendi sta nella regola di spesa dell'utente, spesa_mensile_utente, e la cassa copre l'ingaggio e il
+        monte. Dalla scelta di Gabriele del 3 novembre 2026 tessera anche fuori dalla regola chi si paga col suo posto, cioè
+        chi costa al mese, stipendio e ingaggio diviso in MESI_PER_RIPAGARE_L_INGAGGIO mesi, non più di sponsor_del_posto; e
+        per lui la cassa deve coprire soltanto l'ingaggio e la parte del monte che lo sponsor, col posto nuovo, non copre.
         """
         poli = self.poli
         if len(poli.tesserati) >= TESSERATI_UTENTE or mondo.mosse_rimaste(poli) <= 0:
@@ -1222,10 +1251,20 @@ class ScenarioUtente:
             if len(poli.tesserati) >= TESSERATI_UTENTE or mondo.mosse_rimaste(poli) <= 0:
                 return
             ingaggio = economia.arrotonda(economia.ingaggio_richiesto(g, poli) * RIALZO_INGAGGIO_UTENTE)
-            monte = mondo.monte_stipendi(poli) + economia.stipendio(g)
+            stipendio = economia.stipendio(g)
+            monte = mondo.monte_stipendi(poli) + stipendio
+            rosa = mondo._rosa(poli)
             # Lo sponsor dopo la firma, con la rosa che avrà: dalla decisione D40 cresce anche della gloria del posto nuovo.
-            sponsor = economia.sponsor_mensile(poli, [*mondo._rosa(poli), g])
-            if ingaggio + monte > poli.cassa or monte > spesa_mensile_utente(sponsor, poli.cassa - ingaggio):
+            sponsor = economia.sponsor_mensile(poli, [*rosa, g])
+            # Dalla scelta di Gabriele del 3 novembre 2026, chi costa al mese, con l'ingaggio diviso nei mesi, non più di quanto il
+            # suo posto porta allo sponsor si paga da sé: si tessera anche quando il monte non sta nella regola, e per lui la cassa
+            # deve coprire l'ingaggio e soltanto quello che lo sponsor del primo del mese, col posto nuovo, non copre del monte,
+            # perché il gioco incassa lo sponsor prima di pagare gli stipendi. Per gli altri la cassa copre l'ingaggio e tutto il
+            # monte, come prima.
+            si_paga = stipendio + ingaggio / MESI_PER_RIPAGARE_L_INGAGGIO <= sponsor_del_posto(poli, rosa, g)
+            if ingaggio + monte - (sponsor if si_paga else 0) > poli.cassa:
+                continue
+            if monte > spesa_mensile_utente(sponsor, poli.cassa - ingaggio) and not si_paga:
                 continue
             if mondo.problema_offerta(poli, g, ingaggio) is None:
                 reputazione = economia.fattore_reputazione(g, poli)
@@ -1253,7 +1292,9 @@ class ScenarioUtente:
     def _rinnovi(self, mondo, oggi):
         """
         Propone il rinnovo a chi è nella finestra, alla richiesta e alla durata proposta, se il monte stipendi
-        nuovo sta nella regola di spesa dell'utente, spesa_mensile_utente.
+        nuovo sta nella regola di spesa dell'utente, spesa_mensile_utente. Dalla scelta di Gabriele del 3 novembre
+        2026 rinnova anche fuori dalla regola chi chiede non più di sponsor_del_posto: chi non rinnova lascia un posto
+        vuoto, che allo sponsor costa più di quanto lui chiede.
         """
         poli = self.poli
         for g in mondo._rosa(poli):
@@ -1263,7 +1304,9 @@ class ScenarioUtente:
             richiesta = contratti.richiesta_rinnovo(g, poli, mesi)
             self.anno["rinnovo_su_richiesta"].append(richiesta / max(1, economia.stipendio(g)))
             monte = mondo.monte_stipendi(poli) - economia.stipendio_pagato(g) + richiesta
-            if monte > spesa_mensile_utente(mondo.sponsor(poli), poli.cassa):
+            # Dalla scelta di Gabriele del 3 novembre 2026 si rinnova anche fuori dalla regola chi chiede non più di quanto il
+            # suo posto porta allo sponsor: lasciarlo andare costerebbe di più.
+            if monte > spesa_mensile_utente(mondo.sponsor(poli), poli.cassa) and richiesta > sponsor_del_posto(poli, mondo._rosa(poli), g):
                 if g.id not in self.mancati:
                     self.mancati.add(g.id)
                     self.anno["rinnovi_mancati"] += 1
@@ -1324,7 +1367,8 @@ def scenario_utente(semi, processi, anni_prima=ANNI_PRIMA_DELL_UTENTE, anni_uten
     righe = [f"Scenario dell'utente che allena e rinnova: la sua polisportiva nasce all'anno {anni_prima} e vive {anni_utente} anni, sui semi "
              f"{', '.join(str(s) for s in semi)}. Tiene {TESSERATI_UTENTE} tesserati, scelti fra i liberi più forti fino a {numero(ETA_MASSIMA_UTENTE)} anni con "
              f"l'ingaggio chiesto più il {numero(100 * (RIALZO_INGAGGIO_UTENTE - 1))} per cento; ognuno gioca un'amichevole ogni due giorni contro un compagno; "
-             "ogni giorno Allena tutti; i rinnovi alla richiesta, se il monte stipendi sta nella regola del computer. Dalla tappa 13 tiene uno staff "
+             "ogni giorno Allena tutti; i rinnovi alla richiesta, se il monte stipendi sta nella regola del computer; rinnova e tessera anche fuori "
+             "dalla regola chi costa non più di quanto il suo posto porta allo sponsor, perché un posto vuoto lo fa perdere. Dalla tappa 13 tiene uno staff "
              "medio: per ogni posto vuoto l'allenatore libero con la qualità più vicina allo staff medio del mondo, se lo paga."]
     esiti = {"sponsor": True, "primi": True, "partenza": True}
     tornei_per_atleta = []
