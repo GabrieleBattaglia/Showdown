@@ -30,6 +30,11 @@ resta impegnata; al sorteggio chi ha chiuso lascia il posto alla prima esclusa; 
 i tre migliori sani della rosa, e chi non ha più una squadra valida perde a tavolino, 31 a 0. Gli
 impegni del calendario comprendono le rose della coppa e le sfide accettate, così l'iscrizione
 automatica non manda nessuno a un torneo nei giorni in cui ha già da giocare.
+Dal 3 novembre 2026, con una scelta di Gabriele che vale come D40, l'iscrizione a mano dell'utente ricorda
+il suo giorno, nel campo facoltativo giorno dell'iscritto, che il salvataggio accetta anche assente: da lì
+iscrizioni.quota_trattenuta sa se toglierla rimborsa ancora la quota. Le iscrizioni del computer, dei
+liberi, automatiche e dei qualificati non cambiano. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude
+Opus 5.5, UltraCode).
 """
 
 import copy
@@ -71,6 +76,17 @@ def _controlla(condizione, motivo):
 
 def _intero(valore):
     return isinstance(valore, int) and not isinstance(valore, bool)
+
+
+def _giorno_valido(giorno):
+    """Il giorno facoltativo di un'iscrizione a mano, dal 3 novembre 2026: assente, oppure una data ISO."""
+    if giorno is None:
+        return True
+    try:
+        datetime.date.fromisoformat(giorno)
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 class Edizione:
@@ -151,11 +167,17 @@ class Edizione:
     def iscritto(self, gid):
         return next((iscritto for iscritto in self.iscritti if iscritto["id"] == gid), None)
 
-    def aggiungi(self, gid, club, pagato, origine, rosa=None):
-        """Un iscritto, col club, la quota e l'origine; nella coppa l'iscritto è la polisportiva, con la sua rosa."""
+    def aggiungi(self, gid, club, pagato, origine, rosa=None, giorno=None):
+        """
+        Un iscritto, col club, la quota e l'origine; nella coppa l'iscritto è la polisportiva, con la sua rosa. Dalla scelta di
+        Gabriele del 3 novembre 2026, che vale come D40, l'iscrizione a mano dell'utente ricorda anche il suo giorno, giorno:
+        da quel giorno iscrizioni.quota_trattenuta sa se toglierla rimborsa ancora la quota. Le altre non lo hanno.
+        """
         iscritto = {"id": gid, "club": copy.deepcopy(club), "pagato": int(pagato), "origine": origine}
         if rosa is not None:
             iscritto["rosa"] = list(rosa)
+        if giorno is not None:
+            iscritto["giorno"] = giorno.isoformat()
         self.iscritti.append(iscritto)
 
     def togli(self, gid):
@@ -182,7 +204,8 @@ class Edizione:
         _controlla(isinstance(dati["iscritti"], list), f"Edizione {dati['id']}: gli iscritti non sono un elenco.")
         for iscritto in dati["iscritti"]:
             rosa = iscritto.get("rosa", []) if isinstance(iscritto, dict) else None
-            _controlla(isinstance(iscritto, dict) and set(iscritto) - {"rosa"} == {"id", "club", "pagato", "origine"} and iscritto["origine"] in iscrizioni.ORIGINI
+            _controlla(isinstance(iscritto, dict) and set(iscritto) - {"rosa", "giorno"} == {"id", "club", "pagato", "origine"} and iscritto["origine"] in iscrizioni.ORIGINI
+                       and _giorno_valido(iscritto.get("giorno"))
                        and isinstance(rosa, list) and all(_intero(gid) for gid in rosa)
                        and _intero(iscritto["pagato"]) and iscritto["pagato"] >= 0 and (_intero(iscritto["id"]) or isinstance(iscritto["id"], str))
                        and (iscritto["club"] is None or (isinstance(iscritto["club"], dict) and set(iscritto["club"]) == {"nome", "fondazione"})),

@@ -136,6 +136,12 @@ dopo Cambia polisportiva attiva: il dialogo sceglie da quale tua polisportiva, a
 mondo si salva. Con una polisportiva sola, o nessuna, la voce non è disponibile, e NVDA la legge così; come Ctrl+K a mosse
 finite, Ctrl+Maiusc+I la trova lo stesso col gancio dei tasti, e la vista dice perché, col suo suono. È di Gabriele Battaglia
 (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con una scelta di Gabriele che vale come D40, la password protegge anche la cassa: Sposta fondi la chiede
+per la polisportiva che paga, se è protetta e non è l'attiva, e senza quella giusta non sposta niente; la chiusura la chiede,
+prima della domanda, per ogni tua polisportiva protetta che ne coprirebbe i debiti, dalla più ricca, dicendo quanto
+pagherebbe. Senza la password quella polisportiva resta fuori, e se i soldi non bastano più la chiusura si blocca, con la
+frase che dice chi la blocca. Ogni passo ha il suo suono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import contextlib
@@ -191,6 +197,7 @@ from gui.editor_tornei import EditorFormule, EditorModelli
 from gui.mercato_e_ricerca import MercatoERicerca
 from gui.sfide import LanciaSfida, SfideInArrivo, StoricoSfide
 from gui.tornei import AlboDOro, CalendarioTornei, PannelloTornei, UltimoIncontro, tuoi_del_mondo
+from mondo import fondi_senza_password
 from partita import MotorePartita
 from utilita import adesso, adesso_utc
 
@@ -1071,7 +1078,10 @@ class FinestraPrincipale(wx.Frame):
         Ctrl+Maiusc+I, Sposta fondi, decisione D40: il dialogo sceglie da quale tua polisportiva, a quale e quanto, e chi paga
         non scende sotto la sua riserva; senza mosse e senza limiti di tempo. L'esito dice le due casse, col suo suono, e il
         mondo si salva. Con una polisportiva sola, o nessuna, la voce non è disponibile, e Ctrl+Maiusc+I arriva qui dal gancio
-        dei tasti: la vista dice perché, col suo suono, e il dialogo non si apre.
+        dei tasti: la vista dice perché, col suo suono, e il dialogo non si apre. Dalla scelta di Gabriele del 3 novembre 2026,
+        che vale come D40, se la polisportiva che paga è protetta e non è l'attiva, dopo il dialogo ChiediPassword vuole la
+        sua password, col suo suono, password_dei_fondi; senza la password giusta non si sposta niente, e la vista lo dice col
+        suo suono, fondi_senza_password.
         """
         quante = len(self.mondo.tue_polisportive())
         if quante < 2:
@@ -1086,7 +1096,18 @@ class FinestraPrincipale(wx.Frame):
             da, a, cifra = dialogo.risultato
         finally:
             dialogo.Destroy()
-        self.mondo.sposta_fondi(da, a, cifra)
+        password = None
+        if self.mondo.serve_la_password_dei_fondi(da):
+            dialogo = ChiediPassword(self, da, testi.password_dei_fondi(da, a, cifra))
+            try:
+                suoni.suona("password_dei_fondi")
+                if self._modale(dialogo) != wx.ID_OK:
+                    self.mostra(fondi_senza_password(da), "fondi non spostati", "fondi_senza_password")
+                    return
+                password = dialogo.password.GetValue()
+            finally:
+                dialogo.Destroy()
+        self.mondo.sposta_fondi(da, a, cifra, password)
         self._concludi(testi.fondi_spostati(da, a, cifra), f"spostati {testi.euro(cifra)}", "fondi_spostati")
 
     def _mosse_finite(self, p):
@@ -1305,6 +1326,13 @@ class FinestraPrincipale(wx.Frame):
         self._concludi(testi.password_cambiata(p), "password" if p.protetta else "senza password", "password_impostata" if p.protetta else "password_tolta")
 
     def chiudi_polisportiva(self):
+        """
+        Chiudi la polisportiva attiva: la sua password, se è protetta; dalla decisione D40 il piano dei debiti, che se i soldi
+        non bastano ferma la chiusura col suo perché e il suo suono; la domanda col costo e chi paga; la chiusura. Dalla scelta
+        di Gabriele del 3 novembre 2026, che vale come D40, prima della domanda la password di ogni tua polisportiva protetta che
+        il piano fa pagare, con _password_delle_sorelle: quelle senza password restano fuori, e se così i soldi non bastano più
+        la vista dice chi blocca la chiusura, comprese loro, col suo suono, chiusura_senza_password.
+        """
         p = self._attiva()
         if p is None:
             return
@@ -1322,14 +1350,44 @@ class FinestraPrincipale(wx.Frame):
         if problema:
             self.mostra(problema, "chiusura non possibile", "chiusura_non_possibile")
             return
-        piano = self.mondo.piano_di_chiusura(p)
+        escluse = self._password_delle_sorelle(p)
+        if escluse:
+            problema = self.mondo.problema_chiusura(p, escluse)
+            if problema:
+                self.mostra(problema, "chiusura non possibile", "chiusura_senza_password")
+                return
+        piano = self.mondo.piano_di_chiusura(p, escluse)
         # Il ripensamento di D40: la domanda e l'esito dicono che la fondazione non conta, e l'esito ha il suo suono.
         ripensamento = self.mondo.giorni_del_ripensamento(p)
-        if self._domanda(testi.domanda_chiusura(p, piano, ripensamento), "Chiusura", "domanda_chiusura_polisportiva") != wx.YES:
+        if self._domanda(testi.domanda_chiusura(p, piano, ripensamento, escluse), "Chiusura", "domanda_chiusura_polisportiva") != wx.YES:
             return
-        liberati = self.mondo.chiudi_polisportiva(p)
+        liberati = self.mondo.chiudi_polisportiva(p, escluse)
         self._concludi(testi.chiusa(p.nome, liberati, piano, ripensamento), f"chiusa {p.nome}",
                        "polisportiva_chiusa" if ripensamento is None else "fondazione_annullata")
+
+    def _password_delle_sorelle(self, p):
+        """
+        Scelta di Gabriele del 3 novembre 2026, che vale come D40: per ogni tua polisportiva protetta che la chiusura di p farebbe
+        pagare, dalla più ricca, ChiediPassword col suo suono, password_della_sorella, e un testo che dice quanto pagherebbe.
+        Senza la password quella polisportiva resta fuori, col suo suono, sorella_fuori, che finisce prima del suono seguente; il
+        piano si rifà senza di lei, e le password si chiedono finché il piano basta, come dice Mondo.password_da_chiedere.
+        Restituisce le polisportive rimaste fuori, nell'ordine.
+        """
+        escluse, sbloccate = [], []
+        while (prossima := self.mondo.password_da_chiedere(p, escluse, sbloccate)) is not None:
+            sorella, quota = prossima
+            dialogo = ChiediPassword(self, sorella, testi.password_della_sorella(p, sorella, quota))
+            try:
+                suoni.suona("password_della_sorella")
+                data = self._modale(dialogo) == wx.ID_OK
+            finally:
+                dialogo.Destroy()
+            if data:
+                sbloccate.append(sorella)
+            else:
+                escluse.append(sorella)
+                suoni.suona("sorella_fuori", sync=suoni.ATTESA_USCITA)
+        return escluse
 
     # L'amichevole, tappa 9.
 

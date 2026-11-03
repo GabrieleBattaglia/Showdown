@@ -104,6 +104,11 @@ Lo stesso giorno, con la quinta tranche di D40, il formato 11 ha anche due voci 
 ricevuti e quelli versati con Sposta fondi; la migrazione dal 10 le aggiunge a zero, nel mese in corso e nei bilanci dei
 mesi passati, come quelle del 7. Il formato resta l'11, perché nessun mondo vero lo ha ancora. È di Gabriele Battaglia
 (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con le scelte di Gabriele che valgono come D40, FormatoPiuRecente dice se del formato più recente è la
+copia di sicurezza, letta perché il salvataggio non si usava, e perché: l'avviso dell'avvio non dice più che è il salvataggio.
+E un'iscrizione a mano ai tornei ricorda il suo giorno, nel campo facoltativo giorno dell'iscritto: un campo del formato 11,
+che nessun mondo vero ha ancora, e senza migrazione, perché un'iscrizione senza giorno si rimborsa come prima. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -219,12 +224,17 @@ class FormatoPiuRecente(Exception):
     decisione D40 non è un ErroreSalvataggio, e il caricamento non lo intercetta: un file rovinato fa ripiegare sulla
     copia, e la copia, ancora del formato di prima, coprirebbe il mondo nuovo. Qui ci si ferma e basta: niente ripiego,
     niente copie messe da parte, niente blocco dei salvataggi, e i file restano come sono.
+    Dal 3 novembre 2026, nota 4 della revisione dei rimedi di D40, l'errore dice anche di quale file si tratta: della_copia
+    è vero quando il formato più recente è quello della copia di sicurezza, letta perché il salvataggio non si usava, e
+    motivo dice allora perché il salvataggio non si usava; altrimenti della_copia è falso e motivo è None.
     """
 
     def __init__(self, formato):
         super().__init__(f"il file viene da una versione più recente del gioco, con il formato {formato}, mentre questa legge fino al formato {FORMATO}")
         self.formato = formato
         self.massimo = FORMATO
+        self.della_copia = False
+        self.motivo = None
 
 
 def firma(documento):
@@ -1000,6 +1010,10 @@ def _carica(mondo, metti_da_parte=True):
             _apri(copia, mondo)
         except ErroreSalvataggio as e:
             motivo = f"{motivo}; e la copia di sicurezza nemmeno, perché {e}"
+        except FormatoPiuRecente as e:
+            # Dal 3 novembre 2026 l'avviso dell'avvio dice che del formato più recente è la copia, e perché il salvataggio non si usava.
+            e.della_copia, e.motivo = True, motivo
+            raise
         else:
             _annuncia_ripiego(mondo, motivo, principale, copia, esiste_principale)
             return DALLA_COPIA

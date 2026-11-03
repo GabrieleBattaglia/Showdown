@@ -111,6 +111,8 @@ FABBRICHE = {
     "MondoGiaPresente": lambda s: dialoghi.MondoGiaPresente(None, "Nella cartella c'è già un mondo.", testi.IL_TUO),
     "CartellaAssente": lambda s: dialoghi.CartellaAssente(None, "MESS non trova il mondo."),
     "MondoIllegibile": lambda s: dialoghi.MondoIllegibile(None, "Il salvataggio c'è ma non si può leggere."),
+    # Dal 3 novembre 2026, scelta di Gabriele che vale come D40: l'avviso del mondo di una versione più recente.
+    "MondoPiuRecente": lambda s: dialoghi.MondoPiuRecente(None, "Il mondo viene da una versione più recente di MESS."),
     "ModelloTorneoDialogo": lambda s: gui_editor.ModelloTorneoDialogo(None, s.gestore.modello("modello_1"), formule.leggi()[0], s.gestore),
     "EditorModelli": lambda s: gui_editor.EditorModelli(None, s.gestore),
     "FaseDialogo": lambda s: gui_editor.FaseDialogo(None, {"tipo": formule.GIRONI, "partecipanti": 8, "gironi": 2, "promossi": 2, "finalina": False}, 0, False),

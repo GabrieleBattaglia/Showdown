@@ -9,7 +9,8 @@ copia di sicurezza, che al primo salvataggio dopo la migrazione si scrive anche 
 macchina col codice di prima non ripieghi su una copia del 10 coprendo il mondo. E il formato più recente, dal 12, che
 ferma il caricamento senza ripiego, senza copie messe da parte e senza toccare i file.
 Dalla quinta tranche di D40 la migrazione aggiunge anche le due voci dei conti di Sposta fondi, a zero, nel mese in corso e
-nei bilanci.
+nei bilanci. Dal 3 novembre 2026 l'errore del formato più recente dice se è della copia di sicurezza, e perché il salvataggio
+non si usava.
 """
 
 import datetime
@@ -268,6 +269,8 @@ def test_il_formato_12_ferma_il_caricamento_senza_toccare_niente(cartella_di_pro
     with pytest.raises(archivio.FormatoPiuRecente) as errore:
         archivio.carica(mondo)
     assert (errore.value.formato, errore.value.massimo) == (12, 11) and "con il formato 12" in str(errore.value)
+    # Dal 3 novembre 2026 l'errore dice di quale file si tratta: qui del salvataggio.
+    assert not errore.value.della_copia and errore.value.motivo is None
     assert _istantanea(cartella_di_prova) == prima and set(prima) == {FILE_MONDO, FILE_MONDO_COPIA}
     assert not mondo.salvataggio_bloccato and mondo.giocatori == {} and messaggi == []
 
@@ -277,9 +280,16 @@ def test_anche_una_copia_del_formato_12_ferma_il_caricamento(cartella_di_prova):
     _mondo_del_formato_12(cartella_di_prova / FILE_MONDO_COPIA)
     prima = _istantanea(cartella_di_prova)
     mondo = Mondo()
-    with pytest.raises(archivio.FormatoPiuRecente):
+    with pytest.raises(archivio.FormatoPiuRecente) as errore:
         archivio.carica(mondo, metti_da_parte=True)
     assert _istantanea(cartella_di_prova) == prima and not mondo.salvataggio_bloccato
+    # Nota 4 della revisione dei rimedi di D40: del formato più recente è la copia, e l'errore dice perché il salvataggio non si usava.
+    assert errore.value.della_copia and errore.value.motivo.startswith("il file non è un JSON valido")
+    # Senza il salvataggio, il perché è che il file non c'è.
+    os.remove(cartella_di_prova / FILE_MONDO)
+    with pytest.raises(archivio.FormatoPiuRecente) as errore:
+        archivio.carica(Mondo())
+    assert errore.value.della_copia and errore.value.motivo == f"il file {FILE_MONDO} non c'è"
 
 
 def test_la_data_di_un_mondo_del_formato_12_non_guarda_la_copia(cartella_di_prova):

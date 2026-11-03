@@ -10,6 +10,8 @@ Scegli un'altra cartella ed Esci, i dati spostati alla prima partenza, --attendi
 la finestra: la voce del menu, la cartella senza mondo, quella con un mondo e le tre scelte, gli errori.
 Nessuna finestra di Windows vera: la scelta della cartella e i dialoghi si sostituiscono; e niente si
 scrive fuori dalle cartelle temporanee delle prove.
+Dal 3 novembre 2026, scelta di Gabriele che vale come D40, l'avviso del mondo di una versione più recente,
+con Scegli un'altra cartella ed Esci, che apre il mondo di un'altra cartella senza copie e senza ripiego.
 """
 
 import datetime
@@ -1197,6 +1199,22 @@ def test_l_avviso_dell_avvio_e_i_suoi_pulsanti(app_wx):
         dialogo.Destroy()
 
 
+def test_l_avviso_del_mondo_piu_recente_e_i_suoi_due_pulsanti(app_wx):
+    # Scelta di Gabriele del 3 novembre 2026: Scegli un'altra cartella ed Esci, che è il predefinito e vale per Esc; Riprova no.
+    dialogo = dialoghi.MondoPiuRecente(None, "Il mondo viene da una versione più recente di MESS.")
+    try:
+        assert dialogo.GetTitle() == "MESS, il mondo viene da una versione più recente"
+        assert [b.GetLabel() for b in dialogo.bottoni] == ["&Scegli un'altra cartella", "&Esci"]
+        assert dialogo.GetDefaultItem() is dialogo.bottoni[1] and dialogo.GetEscapeId() == dialoghi.ESCI
+        for bottone, codice in zip(dialogo.bottoni, (dialoghi.UN_ALTRA_CARTELLA, dialoghi.ESCI), strict=True):
+            evento = wx.CommandEvent(wx.wxEVT_BUTTON, bottone.GetId())
+            evento.SetEventObject(bottone)
+            bottone.GetEventHandler().ProcessEvent(evento)
+            assert dialogo.GetReturnCode() == codice
+    finally:
+        dialogo.Destroy()
+
+
 def test_il_piu_recente_sul_pulsante_del_mio_mondo(app_wx):
     dialogo = dialoghi.MondoGiaPresente(None, "Testo.", testi.IL_TUO)
     try:
@@ -1231,6 +1249,7 @@ class _Tasto:
     (lambda: dialoghi.MondoGiaPresente(None, "Testo.", testi.QUELLO_DELLA_CARTELLA), wx.ID_CANCEL),
     (lambda: dialoghi.CartellaAssente(None, "Testo."), dialoghi.RIPROVA),
     (lambda: dialoghi.MondoIllegibile(None, "Testo."), dialoghi.RIPROVA),
+    (lambda: dialoghi.MondoPiuRecente(None, "Testo."), dialoghi.ESCI),
 ])
 def test_invio_nel_testo_vale_il_predefinito_ma_tenuto_giu_no(app_wx, monkeypatch, fabbrica, predefinito):
     # Revisione del 23 ottobre 2026, osservazione 8: un Invio rimasto dalla finestra di Windows annullava la domanda, o ripeteva Riprova.
@@ -1320,6 +1339,35 @@ def test_il_salvataggio_illeggibile_all_avvio_e_un_altra_cartella(avvio_intero, 
     # MESS si apre sul mondo della cartella scelta, e quello illeggibile resta com'era.
     assert len(avvio_intero) == 1 and avvio_intero[0].origine == archivio.CARICATO and percorsi.cartella() == str(buona)
     assert (cartella_di_prova / FILE_MONDO).read_bytes() == illeggibile
+
+
+def test_il_mondo_piu_recente_all_avvio_e_un_altra_cartella(avvio_intero, suonati, monkeypatch, cartella_di_prova, tmp_path_factory):
+    # Scelta di Gabriele del 3 novembre 2026, che vale come D40: torna la via d'uscita del difetto 4, con Scegli un'altra cartella
+    # ed Esci. Annullata la scelta, l'avviso torna; con un'altra cartella MESS si apre sul suo mondo. Niente copie, niente ripiego.
+    _mondo_del_futuro(str(cartella_di_prova))
+    prima = {nome: (cartella_di_prova / nome).read_bytes() for nome in os.listdir(cartella_di_prova)}
+    buona = tmp_path_factory.mktemp("buona")
+    _salva_in(str(buona), OGGI)
+    scelte = iter([None, str(buona)])
+    monkeypatch.setattr(dialoghi, "scegli_cartella", lambda genitore, titolo, partenza="": next(scelte))
+    monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", lambda dialogo: pytest.fail("non è un salvataggio illeggibile"))
+    avviso = AvvisoFinto([(dialoghi.UN_ALTRA_CARTELLA, None), (dialoghi.UN_ALTRA_CARTELLA, None)])
+    monkeypatch.setattr(dialoghi.MondoPiuRecente, "ShowModal", avviso)
+    assert Showdown.avvia_finestra() == Showdown.APERTA
+    assert suonati == ["mondo_piu_recente", "cartella_mondo", "annullato", "mondo_piu_recente", "cartella_mondo"]
+    assert avviso.testi[0] == testi.mondo_piu_recente(archivio.FORMATO + 1, archivio.FORMATO, str(cartella_di_prova))
+    assert len(avvio_intero) == 1 and avvio_intero[0].origine == archivio.CARICATO and percorsi.cartella() == str(buona)
+    assert {nome: (cartella_di_prova / nome).read_bytes() for nome in os.listdir(cartella_di_prova)} == prima
+    assert not (cartella_di_prova / archivio.CARTELLA_QUARANTENA).exists()
+
+
+def test_il_mondo_piu_recente_all_avvio_ed_esci(avvio_intero, suonati, monkeypatch, cartella_di_prova):
+    # Esci, o Esc, ferma MESS con l'esito del mondo più recente; la finestra non nasce.
+    _mondo_del_futuro(str(cartella_di_prova))
+    avviso = AvvisoFinto([(dialoghi.ESCI, None)])
+    monkeypatch.setattr(dialoghi.MondoPiuRecente, "ShowModal", avviso)
+    assert Showdown.avvia_finestra() == Showdown.PIU_RECENTE
+    assert suonati == ["mondo_piu_recente"] and not avvio_intero and len(avviso.testi) == 1
 
 
 def test_dopo_il_si_a_un_mondo_nuovo_mess_si_apre_senza_altri_avvisi(avvio_intero, suonati, monkeypatch, tmp_path):

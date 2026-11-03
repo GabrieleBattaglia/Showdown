@@ -11,7 +11,8 @@ normale, che deve dare zero e scrivere MESS si chiude: le altre lo sostituivano,
 restituiva un esito che non c'era.
 Dal 2026-10-24, col collaudo di gioco, l'errore che ferma MESS col suo suono, errore_fatale, e non più quello del comando interrotto.
 Dal 2026-11-02, con la decisione D40 e il formato 11, il mondo di una versione più recente ferma MESS col suo suono e un messaggio,
-senza l'avviso del salvataggio illeggibile e senza toccare i file.
+senza l'avviso del salvataggio illeggibile e senza toccare i file. Dal 2026-11-03 il messaggio è l'avviso MondoPiuRecente, con
+Scegli un'altra cartella ed Esci, scelta di Gabriele che vale come D40, e il suo testo dice se del formato più recente è la copia.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -196,13 +197,15 @@ def test_il_mondo_di_una_versione_piu_recente_ferma_mess_senza_toccare_i_file(ap
     archivio.scrivi(m, str(principale), str(copia))
     principale.write_bytes(gzip.compress(json.dumps({**contenuto, "firma": archivio.firma(contenuto)}).encode("utf-8")))
     prima = {nome: (cartella_di_prova / nome).read_bytes() for nome in os.listdir(cartella_di_prova)}
-    messaggi = []
-    monkeypatch.setattr(wx, "MessageBox", lambda testo, titolo, *a, **k: messaggi.append((testo, titolo)))
+    # Dalla scelta di Gabriele del 3 novembre 2026 non è più un messaggio con OK: l'avviso con Scegli un'altra cartella ed Esci.
+    testi_letti = []
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: pytest.fail("nessun messaggio di Windows, solo l'avviso"))
     monkeypatch.setattr(dialoghi.MondoIllegibile, "ShowModal", lambda dialogo: pytest.fail("non è un salvataggio illeggibile"))
+    monkeypatch.setattr(dialoghi.MondoPiuRecente, "ShowModal", lambda dialogo: testi_letti.append(dialogo.testo.GetValue()) or dialoghi.ESCI)
     monkeypatch.setattr(finestra_modulo, "FinestraPrincipale", _non_si_apre)
     assert Showdown.avvia_finestra() == Showdown.PIU_RECENTE
     assert suonati == ["mondo_piu_recente"] and suonati.dettagli[0]["sync"] == suoni.ATTESA_USCITA
-    assert messaggi == [(testi.mondo_piu_recente(12, 11, str(cartella_di_prova)), "MESS")]
+    assert testi_letti == [testi.mondo_piu_recente(12, 11, str(cartella_di_prova))]
     assert {nome: (cartella_di_prova / nome).read_bytes() for nome in os.listdir(cartella_di_prova)} == prima
     assert set(prima) == {FILE_MONDO, FILE_MONDO_COPIA}
 
@@ -210,8 +213,12 @@ def test_il_mondo_di_una_versione_piu_recente_ferma_mess_senza_toccare_i_file(ap
 def test_il_messaggio_del_mondo_piu_recente():
     assert testi.mondo_piu_recente(12, 11, r"Z:\Mondo SD") == (
         "Il mondo viene da una versione più recente di MESS: il salvataggio è del formato 12, e questa versione legge fino al formato 11.\n"
-        "Per aprirlo, aggiorna MESS e poi riaprilo.\n"
-        "MESS ora si chiude, e non tocca i file del mondo, nella cartella Z:\\Mondo SD.")
+        "Per aprirlo, aggiorna MESS e poi riaprilo. MESS non tocca i file del mondo, nella cartella Z:\\Mondo SD, e non torna alla copia di sicurezza.\n"
+        "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra. Esci, o Esc, chiude MESS senza toccare niente.")
+    # Nota 4 della revisione dei rimedi di D40: quando del formato più recente è la copia, il testo non dice che è il salvataggio.
+    assert testi.mondo_piu_recente(12, 11, r"Z:\Mondo SD", "il file compresso è rovinato").splitlines()[0] == (
+        "Il mondo viene da una versione più recente di MESS: il salvataggio non si può usare, perché il file compresso è rovinato, e la sua "
+        "copia di sicurezza è del formato 12, mentre questa versione legge fino al formato 11.")
 
 
 def test_la_chiusura_normale_da_zero_e_lo_scrive(app_wx, monkeypatch, cartella_di_prova, programma_di_prova, suonati):

@@ -12,6 +12,8 @@ Dal 2026-10-24, coi collegamenti della finestra Mercato e ricerca, le quattro po
 riassume i suoi esiti, compresi i preset, o resta com'era, l'amichevole scelta lì, e Ctrl+Maiusc+G a mosse finite
 come Ctrl+K; la ricerca che stampava nella vista e Risultati della ricerca non ci sono più.
 Col passo dei suoni dello stesso giorno ogni evento della finestra ha il suo preset, e le prove usano il registratore di sempre.
+Dal 3 novembre 2026, scelta di Gabriele che vale come D40, la password protegge anche la cassa: Sposta fondi la chiede per la
+polisportiva che paga, protetta e non attiva, e la chiusura per ogni sorella protetta che pagherebbe, coi loro suoni.
 """
 
 import datetime
@@ -1312,6 +1314,127 @@ def test_sposta_fondi_dal_dialogo(finestra, suonati, monkeypatch):
     suonati.clear()
     finestra.sposta_fondi()
     assert suonati == ["dialogo_sposta_fondi", "annullato"] and seconda.cassa == 20_000 + spostabile
+
+
+def test_sposta_fondi_chiede_la_password_di_chi_paga(finestra, suonati, monkeypatch):
+    # Scelta di Gabriele del 3 novembre 2026, che vale come D40: dalla polisportiva protetta che non è l'attiva si sposta con la sua password.
+    mondo = finestra.mondo
+    attiva = mondo.miapolisportiva_attiva
+    seconda = mondo.fonda_polisportiva("Seconda squadra", "due", attiva=False)
+    assert attiva.protetta and seconda.cassa == 20_000
+    avvisi = []
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: avvisi.append(testo) or wx.OK)
+
+    def da_seconda(self):
+        self.da.SetSelection(1)
+        self.al_cambio_di_chi_paga()
+        self.a.SetSelection(0)
+        self.cifra.SetValue(1_000)
+        self.conferma()
+        return self.GetReturnCode()
+
+    monkeypatch.setattr(dialoghi.SpostaFondi, "ShowModal", da_seconda)
+    aperti = []
+    monkeypatch.setattr(dialoghi.ChiediPassword, "ShowModal", lambda self: aperti.append(self.perche.GetLabel()) or wx.ID_CANCEL)
+    # Senza la password non si sposta niente, e la vista lo dice col suo suono.
+    suonati.clear()
+    finestra.sposta_fondi()
+    assert aperti == ["Seconda squadra è protetta: per spostare 1.000 euro a Club Di Prova serve la sua password."]
+    assert suonati == ["dialogo_sposta_fondi", "password_dei_fondi", "fondi_senza_password"]
+    assert finestra.vista.GetValue() == "Nessun fondo spostato: Seconda squadra è protetta, e senza la sua password i suoi soldi restano dove sono."
+    assert seconda.cassa == 20_000 and finestra.ultimo_evento == "fondi non spostati"
+
+    def password(self):
+        # Quella sbagliata ha il suo avviso, e il dialogo resta aperto; con quella giusta si va avanti.
+        self.password.ChangeValue("sbagliata")
+        self.conferma()
+        assert avvisi[-1] == "La password di Seconda squadra non è giusta." and suonati[-1] == "password_sbagliata"
+        self.password.ChangeValue("due")
+        self.conferma()
+        return self.GetReturnCode()
+
+    monkeypatch.setattr(dialoghi.ChiediPassword, "ShowModal", password)
+    suonati.clear()
+    finestra.sposta_fondi()
+    assert suonati == ["dialogo_sposta_fondi", "password_dei_fondi", "password_sbagliata", "fondi_spostati"]
+    assert seconda.cassa == 19_000 and finestra.vista.GetValue().startswith("Spostati 1.000 euro da Seconda squadra a Club Di Prova.")
+    # Dall'attiva, anche protetta, la password non si chiede.
+    monkeypatch.setattr(dialoghi.ChiediPassword, "ShowModal", lambda self: pytest.fail("l'attiva la sua password l'ha già data"))
+
+    def dall_attiva(self):
+        self.cifra.SetValue(500)
+        self.conferma()
+        return self.GetReturnCode()
+
+    monkeypatch.setattr(dialoghi.SpostaFondi, "ShowModal", dall_attiva)
+    suonati.clear()
+    finestra.sposta_fondi()
+    assert suonati == ["dialogo_sposta_fondi", "fondi_spostati"] and seconda.cassa == 19_500
+
+
+def _sorelle_protette(mondo):
+    """La polisportiva attiva senza cassa e con 10.000 euro di arretrati, e due tue polisportive protette che possono pagare tutto."""
+    attiva = mondo.miapolisportiva_attiva
+    attiva.cassa = 0
+    mondo.giocatori[2].arretrati = 10_000
+    costo = sum(d.buonuscita + d.altro for d in mondo.debiti_di_chiusura(attiva))
+    seconda = Polisportiva("Seconda squadra", "due", mondo.datetime_corrente_simulazione)
+    terza = Polisportiva("Terza squadra", "tre", mondo.datetime_corrente_simulazione)
+    seconda.cassa, terza.cassa = costo + 10_000, costo + 5_000
+    mondo.polisportive[seconda.nome] = seconda
+    mondo.polisportive[terza.nome] = terza
+    return attiva, seconda, terza, costo
+
+
+def _password_in_copione(copione, letti):
+    """Al posto di ShowModal di ChiediPassword: per ogni apertura annota il perché, poi dà la password del copione, o Annulla se è None."""
+
+    def mostra(self):
+        letti.append((self.poli.nome, self.perche.GetLabel()))
+        password = copione.pop(0)
+        if password is None:
+            return wx.ID_CANCEL
+        self.password.ChangeValue(password)
+        self.conferma()
+        return self.GetReturnCode()
+
+    return mostra
+
+
+def test_la_chiusura_chiede_la_password_delle_sorelle_protette(finestra, suonati, monkeypatch):
+    # Scelta di Gabriele del 3 novembre 2026, che vale come D40: la più ricca senza password resta fuori, e paga l'altra.
+    mondo = finestra.mondo
+    attiva, seconda, terza, costo = _sorelle_protette(mondo)
+    letti, domande = [], []
+    monkeypatch.setattr(dialoghi.ChiediPassword, "ShowModal", _password_in_copione(["segreta", None, "tre"], letti))
+    monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: domande.append(testo) or wx.YES)
+    cassa_seconda, cassa_terza = seconda.cassa, terza.cassa
+    suonati.clear()
+    finestra.chiudi_polisportiva()
+    assert [nome for nome, _perche in letti] == ["Club Di Prova", "Seconda squadra", "Terza squadra"]
+    assert letti[1][1] == testi.password_della_sorella(attiva, seconda, costo) and letti[2][1] == testi.password_della_sorella(attiva, terza, costo)
+    assert suonati == ["richiesta_password", "password_della_sorella", "sorella_fuori", "password_della_sorella", "domanda_chiusura_polisportiva",
+                       "polisportiva_chiusa"]
+    # Il suono di chi resta fuori finisce prima del seguente.
+    assert suonati.dettagli[2]["sync"] == suoni.ATTESA_USCITA
+    assert "Seconda squadra, protetta, resta fuori: senza la sua password non paga." in domande[0]
+    assert "Club Di Prova" not in mondo.polisportive and seconda.cassa == cassa_seconda and terza.cassa == cassa_terza - costo
+
+
+def test_la_chiusura_senza_le_password_delle_sorelle_si_blocca(finestra, suonati, monkeypatch):
+    mondo = finestra.mondo
+    attiva, seconda, terza, _costo = _sorelle_protette(mondo)
+    letti = []
+    monkeypatch.setattr(dialoghi.ChiediPassword, "ShowModal", _password_in_copione(["segreta", None, None], letti))
+    monkeypatch.setattr(wx, "MessageBox", lambda *a, **k: pytest.fail("la domanda di chiusura non arriva"))
+    suonati.clear()
+    finestra.chiudi_polisportiva()
+    assert suonati == ["richiesta_password", "password_della_sorella", "sorella_fuori", "password_della_sorella", "sorella_fuori",
+                       "chiusura_senza_password"]
+    assert finestra.vista.GetValue() == mondo.problema_chiusura(attiva, [seconda, terza])
+    assert finestra.vista.GetValue().endswith(" La bloccano anche Seconda squadra e Terza squadra, protette, che senza la loro password non pagano: "
+                                              f"oltre la loro riserva hanno {testi.euro(seconda.cassa)} e {testi.euro(terza.cassa)}.")
+    assert "Club Di Prova" in mondo.polisportive and finestra.ultimo_evento == "chiusura non possibile"
 
 
 def test_i_tre_esiti_del_pagamento(finestra, suonati, monkeypatch):

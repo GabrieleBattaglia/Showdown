@@ -137,6 +137,12 @@ Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Lo stesso giorno, con un'altra scelta di Gabriele che vale come D40, fondazioni_finora: quante polisportive hai fondato
 finora e a chi va il capitale, nel conto della fondazione di Nuova polisportiva e in cima al dialogo Cambia polisportiva
 attiva. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con altre scelte di Gabriele che valgono come D40: mondo_piu_recente è il testo dell'avviso con Scegli
+un'altra cartella ed Esci, e dice se del formato più recente è la copia di sicurezza; password_dei_fondi e
+password_della_sorella sono i perché del dialogo della password quando Sposta fondi o la chiusura prendono soldi da una tua
+polisportiva protetta, e la domanda di chiusura dice quali protette restano fuori; domanda_ritiro_senza_rimborso e
+iscrizione_tolta dicono che la quota di un'iscrizione a mano tolta dal primo del mese che segue non torna, e perché. È di
+Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -1432,6 +1438,30 @@ def fondi_spostati(da, a, cifra):
     return f"Spostati {euro(cifra)} da {da.nome} a {a.nome}. Ora {da.nome} ha in cassa {euro(da.cassa)}, e {a.nome} {euro(a.cassa)}."
 
 
+def password_dei_fondi(da, a, cifra):
+    """
+    Scelta di Gabriele del 3 novembre 2026, che vale come D40: il perché in cima al dialogo della password, quando Sposta fondi
+    prende i soldi da una polisportiva protetta che non è l'attiva.
+    """
+    return f"{da.nome} è protetta: per spostare {euro(cifra)} a {a.nome} serve la sua password."
+
+
+def password_della_sorella(chiude, sorella, quota):
+    """
+    Scelta di Gabriele del 3 novembre 2026, che vale come D40: il perché in cima al dialogo della password, quando la chiusura di
+    chiude farebbe pagare parte dei suoi debiti a sorella, una tua polisportiva protetta; quota è quanto pagherebbe.
+    """
+    return (f"Per chiudere {chiude.nome}, {sorella.nome} pagherebbe {euro(quota)} dei suoi debiti, oltre la sua riserva, ed è protetta: "
+            f"serve la sua password. Con Annulla {sorella.nome} non paga, e se le altre tue polisportive non bastano la chiusura non si fa.")
+
+
+def _restano_fuori(escluse):
+    """Le tue polisportive protette che restano fuori dalla chiusura, senza la password, per la domanda di chiusura."""
+    if len(escluse) == 1:
+        return f"{escluse[0].nome}, protetta, resta fuori: senza la sua password non paga."
+    return f"{unisci([p.nome for p in escluse])}, protette, restano fuori: senza la loro password non pagano."
+
+
 def info_mercato(p, mondo):
     """Cassa, gloria, posti e mosse di una polisportiva, in una frase: quello che conta al mercato."""
     return f"{p.nome}: cassa {euro(p.cassa)}, gloria {p.gloria}, tesserati {len(p.tesserati)} su {p.maxtesserati}, mosse rimaste {mondo.mosse_rimaste(p)} su {LIMITE_MOVIMENTI_PER_TICK}."
@@ -2114,12 +2144,14 @@ def fondata_da(giorni):
     return "oggi" if giorni == 0 else "ieri" if giorni == 1 else f"da {giorni} giorni"
 
 
-def domanda_chiusura(p, piano, ripensamento=None):
+def domanda_chiusura(p, piano, ripensamento=None, escluse=()):
     """
     La domanda della chiusura per sempre. Dalla decisione D40 dice anche quanto costa chiudere, fra buonuscite e arretrati
     dei tesserati e buonuscite e stipendi maturati dello staff, chi paga che cosa e quanta cassa resta e va persa. piano è
     quello di Mondo.piano_di_chiusura, per una chiusura che si può fare. Col ripensamento, i giorni di
-    Mondo.giorni_del_ripensamento, dice subito che la fondazione non conterà e quanta cassa si perde.
+    Mondo.giorni_del_ripensamento, dice subito che la fondazione non conterà e quanta cassa si perde. Dalla scelta di
+    Gabriele del 3 novembre 2026, che vale come D40, dice anche quali tue polisportive protette restano fuori, escluse,
+    perché la loro password non è arrivata.
     """
     righe = [f"Chiudere per sempre {p.nome}?"]
     if ripensamento is not None:
@@ -2128,6 +2160,8 @@ def domanda_chiusura(p, piano, ripensamento=None):
         return " ".join(righe)
     if piano.costo:
         righe += [_costo_della_chiusura(piano), _chi_paga_la_chiusura(p, piano)]
+        if escluse:
+            righe.append(_restano_fuori(list(escluse)))
     else:
         righe.append("Non ha debiti da saldare.")
     righe.append(f"La cassa che resta, {euro(piano.cassa_persa)}, andrà persa." if piano.cassa_persa else "Della cassa non resta niente.")
@@ -2692,8 +2726,27 @@ def iscrizione_fatta(g, ed, quota):
     return f"{accorda(g, 'Iscritto')} {nome_completo(g)} {torneo_con_preposizione(ed.nome)} del {data_breve(ed.data_inizio)}" + (f", per {euro(quota)}." if quota else ".")
 
 
-def iscrizione_tolta(g, ed, rimborso):
-    return f"{accorda(g, 'Tolto')} {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')} del {data_breve(ed.data_inizio)}" + (f": rimborso di {euro(rimborso)}." if rimborso else ".")
+def iscrizione_tolta(g, ed, rimborso, trattenuta=None):
+    """
+    L'esito di Togli nel calendario, col rimborso. Dalla scelta di Gabriele del 3 novembre 2026, che vale come D40, con
+    trattenuta, la QuotaTrattenuta di iscrizioni.quota_trattenuta, dice che la quota non torna, e perché.
+    """
+    tolto = f"{accorda(g, 'Tolto')} {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')} {con_articolo('del', data_breve(ed.data_inizio))}"
+    if trattenuta is not None:
+        return f"{tolto}, senza rimborso: {_quota_che_non_torna(g, trattenuta)}"
+    return tolto + (f": rimborso di {euro(rimborso)}." if rimborso else ".")
+
+
+def _quota_che_non_torna(g, trattenuta):
+    """Perché la quota di un'iscrizione a mano non torna, scelta di Gabriele del 3 novembre 2026: il giorno dell'iscrizione e il primo del mese da cui non torna."""
+    return (f"la quota, {euro(trattenuta.quota)}, non torna, perché l'hai {accorda(g, 'iscritto')} a mano {con_articolo('il', data_breve(trattenuta.giorno))}: "
+            f"un'iscrizione a mano si rimborsa soltanto fino alla fine del mese in cui l'hai fatta, e dal primo {MESI[trattenuta.primo.month - 1]} non più.")
+
+
+def domanda_ritiro_senza_rimborso(g, ed, trattenuta):
+    """La domanda di Togli quando la quota non torna, scelta di Gabriele del 3 novembre 2026, che vale come D40: la quota persa e perché."""
+    testo = _quota_che_non_torna(g, trattenuta)
+    return f"Togliere {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')}? {testo[0].upper()}{testo[1:]}"
 
 
 def rosa_iscritta(poli, ed, giocatori):
@@ -3301,14 +3354,23 @@ def mondo_illeggibile_all_avvio(errore, cartella):
     return "\n".join(righe)
 
 
-def mondo_piu_recente(formato, massimo, cartella):
+def mondo_piu_recente(formato, massimo, cartella, salvataggio_scartato=None):
     """
-    Il messaggio dell'avvio quando il mondo viene da una versione più recente di MESS, decisione D40: il formato del
-    salvataggio e quello fino al quale questa versione legge, l'aggiornamento che serve, e i file che restano come sono.
+    Il testo dell'avviso dell'avvio quando il mondo viene da una versione più recente di MESS, decisione D40: il formato del
+    salvataggio e quello fino al quale questa versione legge, l'aggiornamento che serve, e i file che restano come sono. Dalla
+    scelta di Gabriele del 3 novembre 2026 l'avviso ha due pulsanti, Scegli un'altra cartella ed Esci, e il testo li spiega
+    come nell'avviso del salvataggio illeggibile. Con salvataggio_scartato, il perché del salvataggio che non si usava, del
+    formato più recente è la copia di sicurezza, e il testo lo dice: nota 4 della revisione dei rimedi di D40.
     """
-    return (f"Il mondo viene da una versione più recente di MESS: il salvataggio è del formato {formato}, e questa versione legge "
-            f"fino al formato {massimo}.\nPer aprirlo, aggiorna MESS e poi riaprilo.\nMESS ora si chiude, e "
-            f"non tocca i file del mondo, nella cartella {cartella}.")
+    if salvataggio_scartato is None:
+        file = f"il salvataggio è del formato {formato}, e questa versione legge fino al formato {massimo}"
+    else:
+        file = (f"il salvataggio non si può usare, perché {salvataggio_scartato}, e la sua copia di sicurezza è del formato {formato}, "
+                f"mentre questa versione legge fino al formato {massimo}")
+    return "\n".join([f"Il mondo viene da una versione più recente di MESS: {file}.",
+                      f"Per aprirlo, aggiorna MESS e poi riaprilo. MESS non tocca i file del mondo, nella cartella {cartella}, e non torna alla copia di "
+                      "sicurezza.",
+                      "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra. Esci, o Esc, chiude MESS senza toccare niente."])
 
 
 def nessun_mondo_nella_cartella(nuova):

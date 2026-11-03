@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 386 suoni, 359 della finestra e 27 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 392 suoni, 365 della finestra e 27 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -13,7 +13,7 @@ Il mondo salvato con Ctrl+S: meditimer_banco_salvato.
 Il mondo salvato con Ctrl+S, ma con un avviso dell'archivio: mess_salvataggio_con_avviso.
 Un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, dopo un avanzamento del mondo, che la barra di stato dice non salvato, o quando si cambia la cartella del mondo, e allora la cartella non cambia: mess_salvataggio_non_riuscito.
 All'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire: mess_salvataggio_illeggibile.
-All'avvio il mondo viene da una versione più recente di MESS, col formato del salvataggio che questa non sa leggere: un messaggio chiede di aggiornare MESS, che esce senza toccare i file del mondo: mess_mondo_piu_recente.
+All'avvio il mondo viene da una versione più recente di MESS, col formato del salvataggio o della copia che questa non sa leggere: l'avviso chiede di aggiornare MESS, e offre di scegliere un'altra cartella o di uscire senza toccare i file del mondo: mess_mondo_piu_recente.
 Un errore imprevisto interrompe un comando, e MESS resta aperto; o, senza messaggio, succede quando la finestra non c'è più mentre MESS si chiude: sirena_d_allarme_1.
 Un errore imprevisto ferma MESS, e un messaggio dice dove sta il resoconto da allegare quando si chiede aiuto: mess_errore_fatale.
 All'avvio, la notizia che la volta prima MESS si è chiuso di colpo per un errore grave, col resoconto da allegare quando si chiede aiuto: mess_crash_precedente.
@@ -112,7 +112,7 @@ Nell'avanzamento del giorno qualcuno si ritira: mess_giorno_di_congedo.
 Nell'avanzamento del giorno qualcuno lascia lo showdown prima del tempo: mess_giorno_di_partenza.
 Nell'avanzamento del giorno nasce una polisportiva del computer: meditimer_banco_avvio.
 Nell'avanzamento del giorno chiude una polisportiva del computer: mess_motore_che_si_spegne.
-Finestra, polisportive, fondazione, cambio e password, 17 suoni.
+Finestra, polisportive, fondazione, cambio e password, 19 suoni.
 Si apre il dialogo della nuova polisportiva, con Ctrl+N: mess_quinte_sovrapposte.
 Una polisportiva fondata: mess_fischio_d_inizio.
 Si apre il dialogo per cambiare la polisportiva attiva, con Ctrl+Shift+C: mess_scambio_di_posto.
@@ -130,7 +130,9 @@ Si apre il dialogo di Sposta fondi, con Ctrl+Shift+I, per passare soldi da una t
 Sposta fondi passa la cifra scelta da una tua polisportiva a un'altra: mess_fondi_spostati.
 Nel dialogo di Sposta fondi la cifra supera quello che la polisportiva che paga ha oltre la sua riserva, cioè oltre quello che deve al prossimo primo del mese, e il dialogo resta aperto: mess_fondi_oltre_la_riserva.
 Sposta fondi, con Ctrl+Shift+I, quando hai una sola polisportiva o nessuna: la voce del menu non è disponibile, e il tasto rapido lo dice: mess_sposta_fondi_non_disponibile.
-Finestra, polisportive, chiusura, schede e svincolo, 12 suoni.
+Sposta fondi prende i soldi da una tua polisportiva protetta che non è l'attiva, e prima di spostarli si apre la richiesta della sua password: mess_password_dei_fondi.
+Sposta fondi senza la password della tua polisportiva protetta che doveva pagare: non si sposta niente: mess_fondi_senza_password.
+Finestra, polisportive, chiusura, schede e svincolo, 15 suoni.
 La richiesta della password prima di chiudere una polisportiva protetta: mess_bussare_alla_porta.
 La domanda se chiudere per sempre la polisportiva attiva: mess_campana_a_martello.
 Una polisportiva chiusa per sempre: mess_triplice_fischio.
@@ -143,6 +145,9 @@ Un tesserato svincolato, che torna libero: mess_contratto_strappato.
 Un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue polisportive quando nessuna ne ha: mess_eco_nello_spogliatoio.
 Chiudi la polisportiva attiva quando la sua cassa e le altre tue polisportive, oltre la loro riserva, non bastano per buonuscite, arretrati e stipendi maturati: mess_chiusura_non_possibile.
 Una polisportiva chiusa entro 10 giorni dalla fondazione, senza tesserati né staff e con ancora almeno 20.000 euro di cassa, che si perdono: la sua fondazione non conta più: mess_fondazione_annullata.
+Prima della domanda di chiusura, la richiesta della password di un'altra tua polisportiva protetta, che pagherebbe parte dei debiti della polisportiva che chiudi: mess_password_della_sorella.
+Nella chiusura la password di un'altra tua polisportiva protetta non arriva: lei resta fuori, non paga, e il piano dei debiti si rifà senza di lei: mess_sorella_fuori.
+Chiudi la polisportiva attiva quando le tue polisportive protette di cui non hai dato la password restano fuori, e i soldi delle altre non bastano più per i suoi debiti: mess_chiusura_senza_password.
 Finestra, polisportive, le notizie dei tuoi tesserati, 3 suoni.
 Nell'avanzamento un tuo tesserato diventa una bandiera del club: mess_fanfara_della_bandiera.
 Nell'avanzamento un tuo tesserato si ritira: mess_scarpe_al_chiodo.
@@ -312,11 +317,12 @@ Nell'avanzamento un allenatore del tuo staff smette di allenare, muore o lascia 
 Nell'avanzamento un tuo tesserato si ritira e può allenare, e per qualche giorno puoi assumerlo prima degli altri: mess_prelazione.
 Nell'avanzamento il contratto di un allenatore del tuo staff entra nella finestra del rinnovo, o all'ultimo mese: mess_staff_in_scadenza.
 All'apertura col mondo appena aggiornato, la notizia dello staff e del mercato degli allenatori aperto: mess_staff_appena_nato.
-Finestra, tornei, il calendario e le iscrizioni, 10 suoni.
+Finestra, tornei, il calendario e le iscrizioni, 11 suoni.
 Si apre il calendario dei tornei e delle iscrizioni, con Ctrl+U: mess_calendario_tornei.
 Si aprono le iscrizioni dei tuoi atleti alla prima edizione aperta, con Ctrl+J: mess_iscrizioni_tornei.
 Nel calendario un tuo atleta iscritto a un torneo con la quota pagata, o la rosa della tua polisportiva per la coppa: mess_iscrizione_fatta.
 Nel calendario l'iscrizione di un tuo atleta tolta, con la quota rimborsata: mess_iscrizione_tolta.
+Nel calendario l'iscrizione a mano di un tuo atleta tolta dal primo del mese che segue il giorno in cui l'hai fatta: la quota non torna: mess_iscrizione_senza_rimborso.
 Nel calendario la cassa della polisportiva non basta per la quota d'iscrizione: mess_iscrizione_senza_quota.
 Nel calendario l'atleta negli stessi giorni ha già un altro torneo o un'altra sfida: mess_iscrizione_sovrapposta.
 Nel calendario l'atleta non può giocare quel torneo, per sesso, classe, età o qualificazione, o Rosa per la coppa quando la tua polisportiva non è qualificata alla Coppa delle polisportive: mess_iscrizione_non_idoneo.

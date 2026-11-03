@@ -84,6 +84,10 @@ ancora se il tesserato era già in vendita. È di Gabriele Battaglia (IZ4APU) & 
 Lo stesso giorno, con un'altra scelta di Gabriele che vale come D40, il conto di Nuova polisportiva dice anche quante
 polisportive hai fondato finora e a chi va il capitale, e Cambia polisportiva attiva lo dice in cima, in un testo che NVDA
 legge all'apertura, come il conto. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con altre scelte di Gabriele che valgono come D40, l'avviso dell'avvio del mondo di una versione più
+recente, MondoPiuRecente, con Scegli un'altra cartella ed Esci, il predefinito, senza Riprova; e ChiediPassword serve anche
+a Sposta fondi, per la polisportiva che paga, e alla chiusura, per ogni tua polisportiva protetta che ne coprirebbe i
+debiti. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -777,12 +781,19 @@ class PasswordPolisportiva(_Dialogo):
 
 
 class ChiediPassword(_Dialogo):
-    """La password di una polisportiva protetta, prima di un'operazione che non si può annullare."""
+    """
+    La password di una polisportiva protetta, prima di un'operazione che non si può annullare. Il perché sta in un testo in
+    cima, che NVDA legge all'apertura. Dalle scelte di Gabriele del 3 novembre 2026, che valgono come D40, la chiede anche
+    Sposta fondi, per la polisportiva che paga quando è protetta e non è l'attiva, e la chiusura, per ogni tua polisportiva
+    protetta che ne coprirebbe i debiti, col testo che dice quanto pagherebbe.
+    """
 
     def __init__(self, genitore, poli, perche):
         super().__init__(genitore, f"Password di {poli.nome}")
         self.poli = poli
-        self.sizer.Add(wx.StaticText(self.pannello, label=perche), 0, wx.ALL, 8)
+        # La e commerciale di un nome resta una, come nell'etichetta della cifra di Sposta fondi.
+        self.perche = wx.StaticText(self.pannello, label=perche.replace("&", "&&"))
+        self.sizer.Add(self.perche, 0, wx.ALL, 8)
         self.etichetta("&Password")
         self.password = self.aggiungi(wx.TextCtrl(self.pannello, style=wx.TE_PASSWORD))
         ok, _annulla = self.pulsanti((wx.ID_OK, "OK"), (wx.ID_CANCEL, "Annulla"))
@@ -2056,3 +2067,16 @@ class MondoIllegibile(_AvvisoDellAvvio):
 
     def __init__(self, genitore, testo):
         super().__init__(genitore, "MESS, il salvataggio non si legge", testo)
+
+
+class MondoPiuRecente(_SceltaConTesto):
+    """
+    L'avviso dell'avvio quando il mondo viene da una versione più recente di MESS, scelta di Gabriele del 3 novembre 2026 che
+    vale come D40: torna la via d'uscita del difetto 4 della revisione del 23 ottobre 2026, ma con due scelte soltanto, Scegli
+    un'altra cartella ed Esci, che è il predefinito e vale anche per Esc. Riprova non c'è, perché riprovando il file non cambia,
+    e nemmeno le copie, il ripiego sulla copia di sicurezza e l'aggiornamento.
+    """
+
+    def __init__(self, genitore, testo):
+        super().__init__(genitore, "MESS, il mondo viene da una versione più recente", testo,
+                         ((UN_ALTRA_CARTELLA, "&Scegli un'altra cartella"), (ESCI, "&Esci")), ESCI)

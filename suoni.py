@@ -173,6 +173,16 @@ collezione di GBUtils, prezzo_cambiato_in_attesa: la puntina riscritta del prezz
 al mi 6, in sinusoide, poi il tic tac dell'orologio, stavolta da destra a sinistra, e una nota che sale di un tono, dal re 5
 al mi 5, e resta sospesa. Così il suono dice ancora se il tesserato era già in vendita. È di Gabriele Battaglia (IZ4APU) &
 ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con altre scelte di Gabriele che valgono come D40, sei suoni nuovi, tutti mess_ e nella collezione di
+GBUtils. La password protegge anche la cassa. In Sposta fondi, la richiesta della password della polisportiva che paga,
+protetta e non attiva, la moneta che parte e si ferma, e due colpi alla porta della cassa; e lo spostamento che senza
+password non si fa, la moneta che torna indietro e la serratura che resta chiusa. Nella chiusura, la richiesta della
+password di un'altra tua polisportiva protetta che ne pagherebbe i debiti, due rintocchi della campana a martello e due
+colpi alla sua porta; quella che senza password resta fuori, un colpo e una scivolata che si allontana, e finisce prima del
+suono seguente; e la chiusura che così si blocca, la campana di mess_chiusura_non_possibile con due tocchi alla porta
+chiusa. Nel calendario l'iscrizione a mano tolta senza rimborso, il gettone che torna e cade ancora, perso, diverso da quello
+del ritiro rimborsato. L'avviso del mondo di una versione più recente, ora con Scegli un'altra cartella ed Esci, suona come
+prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -362,6 +372,10 @@ GRUPPI = (
         "fondi_spostati": "mess_fondi_spostati",
         "fondi_oltre_la_riserva": "mess_fondi_oltre_la_riserva",
         "sposta_fondi_non_disponibile": "mess_sposta_fondi_non_disponibile",
+        # Scelta di Gabriele del 3 novembre 2026, che vale come D40: la password della polisportiva che paga, protetta e non
+        # attiva, e lo spostamento che senza la password non si fa.
+        "password_dei_fondi": "mess_password_dei_fondi",
+        "fondi_senza_password": "mess_fondi_senza_password",
     }),
     ("Polisportive, chiusura, schede e svincolo", {
         "richiesta_password": "mess_bussare_alla_porta",
@@ -378,6 +392,11 @@ GRUPPI = (
         "chiusura_non_possibile": "mess_chiusura_non_possibile",
         # Decisione D40: il ripensamento, la chiusura che annulla una fondazione di pochi giorni mai usata.
         "fondazione_annullata": "mess_fondazione_annullata",
+        # Scelta di Gabriele del 3 novembre 2026, che vale come D40: la password di ogni tua polisportiva protetta che la chiusura
+        # farebbe pagare, quella che senza password resta fuori, e la chiusura che così i soldi non bastano più a pagare.
+        "password_della_sorella": "mess_password_della_sorella",
+        "sorella_fuori": "mess_sorella_fuori",
+        "chiusura_senza_password": "mess_chiusura_senza_password",
     }),
     ("Polisportive, le notizie dei tuoi tesserati", {
         "tuo_tesserato_bandiera": "mess_fanfara_della_bandiera",
@@ -622,9 +641,11 @@ GRUPPI = (
     ("Tornei, il calendario e le iscrizioni", {
         "dialogo_calendario_tornei": "mess_calendario_tornei",
         "dialogo_iscrizioni_tornei": "mess_iscrizioni_tornei",
-        # Il gettone che entra e quello che torna: l'iscrizione pagata e quella tolta col rimborso.
+        # Il gettone che entra e quello che torna: l'iscrizione pagata e quella tolta col rimborso; dalla scelta di Gabriele
+        # del 3 novembre 2026, che vale come D40, il gettone che non torna, l'iscrizione a mano tolta senza rimborso.
         "iscrizione_fatta": "mess_iscrizione_fatta",
         "iscrizione_tolta": "mess_iscrizione_tolta",
+        "iscrizione_tolta_senza_rimborso": "mess_iscrizione_senza_rimborso",
         # I rifiuti, ciascuno col suo perché: la cassa, i giorni già presi, il torneo per altri; dal collaudo di
         # gioco l'edizione con le iscrizioni non ancora aperte, quella già cominciata, e Togli sulla coppa.
         "iscrizione_cassa_insufficiente": "mess_iscrizione_senza_quota",
@@ -739,8 +760,8 @@ AZIONI = {
     "salvataggio_non_riuscito": ("un salvataggio che non riesce, con Ctrl+S, dopo un'operazione, dopo un avanzamento del mondo, che la barra di stato dice "
                                  "non salvato, o quando si cambia la cartella del mondo, e allora la cartella non cambia"),
     "salvataggio_illeggibile": "all'avvio né il salvataggio né la sua copia si leggono, e l'avviso chiede di riprovare, di scegliere un'altra cartella o di uscire",
-    "mondo_piu_recente": ("all'avvio il mondo viene da una versione più recente di MESS, col formato del salvataggio che questa non sa leggere: "
-                          "un messaggio chiede di aggiornare MESS, che esce senza toccare i file del mondo"),
+    "mondo_piu_recente": ("all'avvio il mondo viene da una versione più recente di MESS, col formato del salvataggio o della copia che questa non sa "
+                          "leggere: l'avviso chiede di aggiornare MESS, e offre di scegliere un'altra cartella o di uscire senza toccare i file del mondo"),
     "errore_imprevisto": ("un errore imprevisto interrompe un comando, e MESS resta aperto; o, senza messaggio, succede quando la finestra "
                           "non c'è più mentre MESS si chiude"),
     "errore_fatale": "un errore imprevisto ferma MESS, e un messaggio dice dove sta il resoconto da allegare quando si chiede aiuto",
@@ -856,6 +877,9 @@ AZIONI = {
                                "cioè oltre quello che deve al prossimo primo del mese, e il dialogo resta aperto"),
     "sposta_fondi_non_disponibile": ("Sposta fondi, con Ctrl+Shift+I, quando hai una sola polisportiva o nessuna: la voce del menu non è "
                                      "disponibile, e il tasto rapido lo dice"),
+    "password_dei_fondi": ("Sposta fondi prende i soldi da una tua polisportiva protetta che non è l'attiva, e prima di spostarli si apre la "
+                           "richiesta della sua password"),
+    "fondi_senza_password": "Sposta fondi senza la password della tua polisportiva protetta che doveva pagare: non si sposta niente",
     "richiesta_password": "la richiesta della password prima di chiudere una polisportiva protetta",
     "domanda_chiusura_polisportiva": "la domanda se chiudere per sempre la polisportiva attiva",
     "polisportiva_chiusa": "una polisportiva chiusa per sempre",
@@ -872,6 +896,12 @@ AZIONI = {
                                "per buonuscite, arretrati e stipendi maturati"),
     "fondazione_annullata": ("una polisportiva chiusa entro 10 giorni dalla fondazione, senza tesserati né staff e con ancora almeno 20.000 euro "
                              "di cassa, che si perdono: la sua fondazione non conta più"),
+    "password_della_sorella": ("prima della domanda di chiusura, la richiesta della password di un'altra tua polisportiva protetta, che "
+                               "pagherebbe parte dei debiti della polisportiva che chiudi"),
+    "sorella_fuori": ("nella chiusura la password di un'altra tua polisportiva protetta non arriva: lei resta fuori, non paga, e il piano dei "
+                      "debiti si rifà senza di lei"),
+    "chiusura_senza_password": ("Chiudi la polisportiva attiva quando le tue polisportive protette di cui non hai dato la password restano fuori, "
+                                "e i soldi delle altre non bastano più per i suoi debiti"),
     "tuo_tesserato_bandiera": "nell'avanzamento un tuo tesserato diventa una bandiera del club",
     "tuo_tesserato_ritirato": "nell'avanzamento un tuo tesserato si ritira",
     "tuo_tesserato_uscito_di_scena": "nell'avanzamento un tuo tesserato muore o lascia lo showdown",
@@ -1053,6 +1083,8 @@ AZIONI = {
     "dialogo_iscrizioni_tornei": "si aprono le iscrizioni dei tuoi atleti alla prima edizione aperta, con Ctrl+J",
     "iscrizione_fatta": "nel calendario un tuo atleta iscritto a un torneo con la quota pagata, o la rosa della tua polisportiva per la coppa",
     "iscrizione_tolta": "nel calendario l'iscrizione di un tuo atleta tolta, con la quota rimborsata",
+    "iscrizione_tolta_senza_rimborso": ("nel calendario l'iscrizione a mano di un tuo atleta tolta dal primo del mese che segue il giorno in cui "
+                                        "l'hai fatta: la quota non torna"),
     "iscrizione_cassa_insufficiente": "nel calendario la cassa della polisportiva non basta per la quota d'iscrizione",
     "iscrizione_sovrapposta": "nel calendario l'atleta negli stessi giorni ha già un altro torneo o un'altra sfida",
     "iscrizione_non_idoneo": ("nel calendario l'atleta non può giocare quel torneo, per sesso, classe, età o qualificazione, o Rosa per la coppa "

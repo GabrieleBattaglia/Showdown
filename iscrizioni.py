@@ -22,7 +22,7 @@ accesa, saltando gli infortunati; se la cassa non basta non iscrive, e lo conta 
 e per edizione; la regola del carico non vale per i tuoi.
 A mano dici tu: un no soltanto se il giocatore non è un tuo tesserato della polisportiva attiva, se
 non è idoneo, se l'edizione è chiusa, se si sovrappone a un altro suo impegno, o se la cassa non ha
-la quota. Iscrivere paga, togliere rimborsa; nessuno dei due tocca la data del ritmo, e un'edizione
+la quota. Iscrivere paga, togliere rimborsa, ma vedi sotto il 3 novembre 2026; nessuno dei due tocca la data del ritmo, e un'edizione
 tolta l'iscrizione automatica non la riprende fino al suo sorteggio.
 Il campionato mondiale convoca all'apertura delle iscrizioni i migliori per i punti dell'ultimo
 anno fra chi può giocarlo, gratis, risposta 10; un'iscrizione che si sovrappone ai suoi giorni si
@@ -36,10 +36,17 @@ la quota torna al club che l'ha pagata, come al mondiale; l'infortunato resta, a
 Dal 2026-10-25, con la barra di stato su misura di D38, qui arrivano da gui/tornei.py i tuoi nei tornei, che la barra
 conta senza wx, e la chiave della classifica dell'anno diventa una funzione, con cui la barra conta chi sta davanti al
 tuo migliore. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con una scelta di Gabriele che vale come D40, togliere non rimborsa sempre: un'iscrizione a mano
+ricorda il suo giorno, e tolta dal primo del mese che segue quel giorno non rimborsa la quota, quota_trattenuta. Così
+non si svuota più la cassa per un giorno, a fine mese, perché il primo del mese il tutto o niente non paghi nessuno, per
+riprendersi poi i soldi: era la scoperta T1 della revisione dei rimedi di D40. Le iscrizioni a mano di prima, senza giorno,
+le automatiche e quelle del computer si rimborsano come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
+5.5, UltraCode).
 """
 
 import datetime
 import random
+from collections import namedtuple
 
 import classe
 import modelli_torneo
@@ -57,7 +64,7 @@ from costanti import (
 )
 from economia import scritta_in_euro
 from grammatica import maiuscola, torneo_con_preposizione
-from utilita import accorda, data_breve
+from utilita import MESI, accorda, data_breve
 
 COMPUTER = "computer"
 MANO = "mano"
@@ -65,6 +72,9 @@ AUTOMATICA = "automatica"
 LIBERO = "libero"
 QUALIFICATO = "qualificato"
 ORIGINI = (COMPUTER, MANO, AUTOMATICA, LIBERO, QUALIFICATO)
+# Scelta di Gabriele del 3 novembre 2026, che vale come D40: la quota di un'iscrizione a mano che il ritiro non rimborsa più,
+# col giorno dell'iscrizione e il primo del mese che lo segue, da cui la quota non torna.
+QuotaTrattenuta = namedtuple("QuotaTrattenuta", "quota giorno primo")
 
 
 def _giorno(data):
@@ -375,13 +385,16 @@ def problema_iscrizione(mondo, id_edizione, g, poli):
 
 
 def iscrivi(mondo, id_edizione, g, poli):
-    """L'utente iscrive a mano il suo tesserato: paga la quota, voce iscrizioni; ValueError col motivo se non si può. La data del ritmo non si tocca."""
+    """
+    L'utente iscrive a mano il suo tesserato: paga la quota, voce iscrizioni; ValueError col motivo se non si può. La data del
+    ritmo non si tocca. Dalla scelta di Gabriele del 3 novembre 2026, che vale come D40, l'iscrizione ricorda il suo giorno.
+    """
     problema = problema_iscrizione(mondo, id_edizione, g, poli)
     if problema:
         raise ValueError(problema)
     ed = _edizione(mondo.calendario, id_edizione)
     paga(poli, ed.quota)
-    ed.aggiungi(g.id, club_di(mondo, g), ed.quota, MANO)
+    ed.aggiungi(g.id, club_di(mondo, g), ed.quota, MANO, giorno=_giorno(mondo.datetime_corrente_simulazione))
     mondo.annota(g, f"{accorda(g.sesso, 'Iscritto')} {torneo_con_preposizione(ed.nome)}, che comincia il {data_breve(ed.data_inizio)}.")
     mondo.annota(poli, f"Iscrive {nome_completo(g)} {torneo_con_preposizione(ed.nome)}" + (f", per {scritta_in_euro(ed.quota)}." if ed.quota else "."))
     return ed
@@ -400,25 +413,66 @@ def problema_ritiro(mondo, id_edizione, g, poli):
     return None
 
 
+def primo_dopo_l_iscrizione(iscritto):
+    """
+    Scelta di Gabriele del 3 novembre 2026, che vale come D40: il primo del mese che segue il giorno di un'iscrizione a mano, da
+    cui toglierla non rimborsa più la quota. None per le altre iscrizioni, del computer, dei liberi, automatiche o dei
+    qualificati, e per quelle a mano fatte prima della regola, che il giorno non lo ricordano e si rimborsano come prima.
+    """
+    giorno = iscritto.get("giorno")
+    if iscritto.get("origine") != MANO or not giorno:
+        return None
+    primo_del_mese = datetime.date.fromisoformat(giorno).replace(day=1)
+    return (primo_del_mese + datetime.timedelta(days=32)).replace(day=1)
+
+
+def quota_trattenuta(mondo, id_edizione, g):
+    """
+    Scelta di Gabriele del 3 novembre 2026, che vale come D40, sulla scoperta T1 della revisione dei rimedi: la riserva cedeva a
+    una spesa che torna indietro. Si iscriveva a mano a fine mese, per svuotare la cassa, il primo del mese il tutto o niente non
+    pagava nessuno, e poi si toglievano le iscrizioni col rimborso intero, per far andare via gratis chi aspettava. Ora
+    un'iscrizione a mano tolta dal primo del mese che segue il suo giorno non rimborsa la quota: il primo del mese i conti si
+    fanno all'inizio del giorno, quindi il primo stesso è già dopo. Restituisce QuotaTrattenuta, con la quota pagata, il giorno
+    dell'iscrizione e quel primo del mese, se togliere oggi il giocatore dall'edizione non la rimborsa; altrimenti None, anche
+    quando la quota è zero.
+    """
+    ed = _edizione(mondo.calendario, id_edizione)
+    iscritto = ed.iscritto(g.id) if ed is not None else None
+    if iscritto is None or iscritto.get("pagato", 0) <= 0:
+        return None
+    primo = primo_dopo_l_iscrizione(iscritto)
+    if primo is None or _giorno(mondo.datetime_corrente_simulazione) < primo:
+        return None
+    return QuotaTrattenuta(iscritto["pagato"], datetime.date.fromisoformat(iscritto["giorno"]), primo)
+
+
 def togli(mondo, id_edizione, g, poli):
     """
     L'utente toglie il suo tesserato dall'edizione, fino al sorteggio: la quota torna, voce rimborsi, e
     l'iscrizione automatica non lo rimette in quell'edizione. Dal mondiale, il posto passa al primo dei
-    non convocati. Restituisce il rimborso; ValueError col motivo.
+    non convocati. Restituisce il rimborso; ValueError col motivo. Dalla scelta di Gabriele del 3 novembre
+    2026, che vale come D40, la quota di un'iscrizione a mano tolta dal primo del mese che segue il suo
+    giorno non torna, come dice quota_trattenuta: il rimborso è zero, e il diario della polisportiva lo dice.
     """
     problema = problema_ritiro(mondo, id_edizione, g, poli)
     if problema:
         raise ValueError(problema)
     calendario = mondo.calendario
     ed = _edizione(calendario, id_edizione)
+    trattenuta = quota_trattenuta(mondo, id_edizione, g)
     iscritto = ed.togli(g.id)
-    euro = rimborsa(mondo, iscritto)
+    euro = 0 if trattenuta else rimborsa(mondo, iscritto)
     # La revisione del 14 ottobre 2026: senza questo ricordo, il giorno dopo l'iscrizione automatica
     # trovava il tesserato di nuovo in attesa, lo riscriveva alla stessa edizione e la quota si pagava
     # di nuovo. Il ricordo dura fino al sorteggio dell'edizione.
     calendario.ricorda_tolta(g.id, ed.id)
     mondo.annota(g, f"Non gioca più {torneo_con_preposizione(ed.nome, None)}: l'iscrizione è tolta.")
-    mondo.annota(poli, f"Toglie {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')}" + (f": rimborso di {scritta_in_euro(euro)}." if euro else "."))
+    if trattenuta:
+        mese = f"{MESI[trattenuta.giorno.month - 1]} {trattenuta.giorno.year}"
+        mondo.annota(poli, f"Toglie {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')}, senza rimborso: la quota di "
+                           f"{scritta_in_euro(trattenuta.quota)}, dell'iscrizione a mano di {mese}, si rimborsava soltanto fino alla fine di quel mese.")
+    else:
+        mondo.annota(poli, f"Toglie {nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')}" + (f": rimborso di {scritta_in_euro(euro)}." if euro else "."))
     if ed.qualificazione == modelli_torneo.PUNTI_ANNO:
         # Chi hai tolto non torna convocato: resta fra gli esclusi, come gli infortunati sostituiti.
         ed.esclusi.append(g.id)

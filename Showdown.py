@@ -51,6 +51,10 @@ Dal 2 novembre 2026, con la decisione D40 e il formato 11, un mondo salvato da u
 MESS non è più un salvataggio illeggibile, con Riprova e le copie messe da parte: il suo suono e un messaggio
 dicono il formato del salvataggio e chiedono di aggiornare MESS, che esce senza toccare i file del mondo. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con la scelta di Gabriele che vale come D40, al posto del messaggio con OK l'avviso MondoPiuRecente,
+col suo suono, con Scegli un'altra cartella ed Esci: torna la via d'uscita dall'app del difetto 4 della revisione del 23
+ottobre 2026, senza Riprova, senza copie, senza ripiego e senza aggiornamento. Il testo dice se del formato più recente è
+la copia di sicurezza. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -179,22 +183,25 @@ def _carica_o_scegli(mondo, accettata, copie=None):
     """
     Carica il mondo. Se il salvataggio c'è ma non si legge, e nemmeno la sua copia, il suono e l'avviso
     con le tre scelte, dalla revisione del 23 ottobre 2026: prima MESS si fermava e basta, e una cartella
-    del mondo scelta con un salvataggio illeggibile, per esempio di una versione più recente sull'altro
-    computer, lo fermava a ogni avvio senza una via d'uscita dall'app. Restituisce la terna di origine,
+    del mondo scelta con un salvataggio illeggibile, per esempio arrivato soltanto a metà dal cloud, lo
+    fermava a ogni avvio senza una via d'uscita dall'app. Restituisce la terna di origine,
     esito e cartella accettata: l'origine del mondo se si è caricato; altrimenti None, con l'esito
-    ILLEGGIBILE se si esce, o None se si riprova, anche con un'altra cartella.
+    ILLEGGIBILE o PIU_RECENTE se si esce, o None se si riprova, anche con un'altra cartella.
     Dalla verifica finale dello stesso giorno, copie va dalla cartella del mondo, in forma confrontabile,
     alla cartella dove sono le copie dei suoi file illeggibili: si fanno soltanto la prima volta per
     quella cartella, o finché non riescono, e non a ogni Riprova, che col cloud si ripete; alle volte
     seguenti l'avviso nomina la cartella delle copie della prima.
-    Dalla decisione D40 il mondo di una versione più recente di MESS non è un salvataggio illeggibile:
-    il suo suono e un messaggio che chiede di aggiornare MESS, poi l'esito PIU_RECENTE, e MESS esce
-    senza toccare i file del mondo.
+    Dalla decisione D40 il mondo di una versione più recente di MESS non è un salvataggio illeggibile, e non
+    passa da quell'avviso: niente Riprova, niente copie in salvataggi_illeggibili e niente ripiego sulla
+    copia di sicurezza. Dalla scelta di Gabriele del 3 novembre 2026, che vale come D40, il suo suono apre
+    l'avviso MondoPiuRecente, che chiede di aggiornare MESS e ha due pulsanti: Scegli un'altra cartella fa
+    la stessa strada dell'avviso del salvataggio illeggibile, e al giro seguente di avvia_finestra si
+    ricarica il mondo della cartella scelta; Esci, o Esc, dà l'esito PIU_RECENTE, e MESS esce senza toccare
+    i file del mondo. Il testo dice se del formato più recente è la copia di sicurezza, e perché il
+    salvataggio non si usava.
     """
-    import wx
-
     import percorsi
-    from gui.dialoghi import ESCI, UN_ALTRA_CARTELLA, MondoIllegibile
+    from gui.dialoghi import ESCI, UN_ALTRA_CARTELLA, MondoIllegibile, MondoPiuRecente
 
     copie = {} if copie is None else copie
     cartella = percorsi.cartella()
@@ -204,8 +211,15 @@ def _carica_o_scegli(mondo, accettata, copie=None):
     except archivio.FormatoPiuRecente as errore:
         # Come per il salvataggio illeggibile, il suono finisce prima della spiegazione.
         suoni.suona("mondo_piu_recente", sync=suoni.ATTESA_USCITA)
-        wx.MessageBox(testi.mondo_piu_recente(errore.formato, errore.massimo, cartella), "MESS", wx.OK | wx.ICON_WARNING)
-        return None, PIU_RECENTE, accettata
+        testo = testi.mondo_piu_recente(errore.formato, errore.massimo, cartella, errore.motivo if errore.della_copia else None)
+        dialogo = MondoPiuRecente(None, testo)
+        try:
+            scelta = dialogo.ShowModal()
+        finally:
+            dialogo.Destroy()
+        if scelta != UN_ALTRA_CARTELLA:
+            return None, PIU_RECENTE, accettata
+        return None, None, _scegli_all_avvio() or accettata
     except archivio.SalvataggioIllegibile as errore:
         if errore.cartella is None:
             errore.cartella = copie.get(chiave)
@@ -230,7 +244,8 @@ def avvia_finestra(crash_precedente=None, finestre=None):
     """
     Prepara la cartella del mondo, poi crea, carica e fa avanzare il mondo, e apre la finestra fino
     all'uscita. Restituisce uno degli ESITI: APERTA, ILLEGGIBILE se il salvataggio non si leggeva e si è
-    scelto di uscire, SENZA_CARTELLA, NON_SPOSTATI o PIU_RECENTE. crash_precedente è il resoconto del crash della
+    scelto di uscire, SENZA_CARTELLA, NON_SPOSTATI, o PIU_RECENTE se il mondo veniva da una versione più
+    recente di MESS e si è scelto di uscire. crash_precedente è il resoconto del crash della
     volta prima, che la vista dice all'apertura; finestre, se data, riceve la finestra appena nasce, per
     l'ascolto dell'istanza unica.
     """

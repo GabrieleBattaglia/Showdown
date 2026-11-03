@@ -41,6 +41,10 @@ calendario non ha ancora tolto, suonano iscrizioni_chiuse. È di Gabriele Battag
 (Claude Opus 5.5, UltraCode). Lo stesso giorno, con la finestra Mercato e ricerca, la pressione ripetuta dei
 pulsanti di Iscrivi e Togli si ignora con la regola che passa nella base dei dialoghi, _ripetuta, uguale per tutti.
 È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con una scelta di Gabriele che vale come D40, Togli su un'iscrizione a mano fatta prima del primo del
+mese passato non rimborsa la quota: lo chiede prima, con la quota persa e il perché, e l'esito lo dice, col suo suono,
+iscrizione_tolta_senza_rimborso, diverso da quello del ritiro rimborsato. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -406,9 +410,15 @@ class CalendarioTornei(_Dialogo):
             if not self._conferma(f"Togliere {testi.nome_completo(g)} {torneo_con_preposizione(ed.nome, 'da')}? Il posto passa al primo dei non convocati, e non si torna indietro."):
                 self.elenco_iscritti.SetFocus()
                 return
+        # Dalla scelta di Gabriele del 3 novembre 2026, che vale come D40: un'iscrizione a mano tolta dal primo del mese che segue
+        # il suo giorno non rimborsa la quota. Si chiede prima, e l'esito lo dice col suo suono.
+        trattenuta = iscrizioni.quota_trattenuta(self.mondo, ed.id, g)
+        if trattenuta is not None and not self._conferma(testi.domanda_ritiro_senza_rimborso(g, ed, trattenuta)):
+            self.elenco_iscritti.SetFocus()
+            return
         rimborso = iscrizioni.togli(self.mondo, ed.id, g, self.poli)
-        self.fatte.append(("tolto", testi.iscrizione_tolta(g, ed, rimborso)))
-        suoni.suona("iscrizione_tolta")
+        self.fatte.append(("tolto", testi.iscrizione_tolta(g, ed, rimborso, trattenuta)))
+        suoni.suona("iscrizione_tolta" if trattenuta is None else "iscrizione_tolta_senza_rimborso")
         self.aggiorna()
 
     def rosa_per_la_coppa(self, ed):

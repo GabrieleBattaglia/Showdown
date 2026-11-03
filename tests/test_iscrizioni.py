@@ -7,6 +7,8 @@ carico per età; i liberi gratis; l'automatica dell'utente e la cassa che non ba
 la regola dei due mesi, con la data aggiornata al sorteggio e non toccata da un'iscrizione tolta né da
 un'edizione annullata; l'iscrizione a mano senza il limite, e l'automatica che dopo aspetta i suoi due
 mesi; la sovrapposizione rifiutata col nome dell'altro impegno.
+Dal 3 novembre 2026, scelta di Gabriele che vale come D40: l'iscrizione a mano ricorda il suo giorno, e tolta dal primo
+del mese che segue non rimborsa la quota; le altre iscrizioni, e quelle a mano senza giorno, si rimborsano come prima.
 """
 
 import datetime
@@ -14,6 +16,7 @@ import datetime
 import pytest
 from aiuti_calendario import OGGI, apri, iscrivi_tutti, mondo_di_prova, polisportiva
 
+import calendario
 import iscrizioni
 import sfide
 from mondo import Mondo
@@ -134,6 +137,55 @@ def test_la_data_del_ritmo_non_si_tocca_togliendo_o_annullando():
     assert any(voce.get("testo") == "Non gioca più l'Open maschile del martedì: l'iscrizione è tolta." for voce in mondo.giocatori[1].diario)
     with pytest.raises(ValueError, match="non è iscritto all'Open maschile del martedì"):
         iscrizioni.togli(mondo, ed.id, mondo.giocatori[1], poli)
+
+
+def test_l_iscrizione_a_mano_tolta_dal_primo_del_mese_seguente_non_si_rimborsa():
+    # Scelta di Gabriele del 3 novembre 2026, che vale come D40, sulla scoperta T1 della revisione dei rimedi: iscritti a mano
+    # l'ultimo del mese per svuotare la cassa, tolti dopo il primo col rimborso intero. Ora dal primo del mese seguente la quota non torna.
+    ottobre = datetime.datetime(2026, 10, 31, 9, 0)
+    mondo = mondo_di_prova(3, 0, data=ottobre)
+    poli = polisportiva(mondo, "Club Di Prova", cpu=False, cassa=100, ids=(1, 2, 3))
+    ed = next(e for e in apri(mondo, ottobre, MARTEDI) if e.data_inizio > datetime.date(2026, 11, 2))
+    for gid in (1, 2, 3):
+        iscrizioni.iscrivi(mondo, ed.id, mondo.giocatori[gid], poli)
+    assert ed.iscritto(1)["giorno"] == "2026-10-31" and ed.iscritto(1)["origine"] == iscrizioni.MANO and poli.cassa == 100 - 3 * ed.quota
+    assert iscrizioni.primo_dopo_l_iscrizione(ed.iscritto(1)) == datetime.date(2026, 11, 1)
+    # Lo stesso mese si toglie col rimborso, come prima.
+    assert iscrizioni.quota_trattenuta(mondo, ed.id, mondo.giocatori[1]) is None
+    assert iscrizioni.togli(mondo, ed.id, mondo.giocatori[1], poli) == ed.quota
+    # Dal primo novembre, compreso: il primo del mese i conti si fanno all'inizio del giorno, quindi il trucco li ha già passati.
+    mondo.datetime_corrente_simulazione = datetime.datetime(2026, 11, 1, 9, 0)
+    g = mondo.giocatori[2]
+    trattenuta = iscrizioni.quota_trattenuta(mondo, ed.id, g)
+    assert trattenuta == iscrizioni.QuotaTrattenuta(ed.quota, datetime.date(2026, 10, 31), datetime.date(2026, 11, 1))
+    cassa = poli.cassa
+    assert iscrizioni.togli(mondo, ed.id, g, poli) == 0
+    assert ed.iscritto(2) is None and poli.cassa == cassa and poli.conti_del_mese["rimborsi"] == ed.quota
+    nome = iscrizioni.nome_completo(g)
+    assert poli.diario[0]["testo"] == (f"Toglie {nome} dall'Open maschile del martedì, senza rimborso: la quota di {ed.quota} euro, dell'iscrizione "
+                                       "a mano di ottobre 2026, si rimborsava soltanto fino alla fine di quel mese.")
+    # Un'iscrizione a mano di prima della regola, senza giorno, si rimborsa come prima.
+    del ed.iscritto(3)["giorno"]
+    assert iscrizioni.quota_trattenuta(mondo, ed.id, mondo.giocatori[3]) is None
+    assert iscrizioni.togli(mondo, ed.id, mondo.giocatori[3], poli) == ed.quota
+
+
+def test_il_giorno_dell_iscrizione_a_mano_si_salva_e_le_altre_non_lo_hanno():
+    mondo = mondo_di_prova(2, 0)
+    poli = polisportiva(mondo, "Club Di Prova", cpu=False, cassa=100, ids=(1, 2))
+    ed = apri(mondo, OGGI, MARTEDI)[1]
+    iscrizioni.iscrivi(mondo, ed.id, mondo.giocatori[1], poli)
+    _automatiche(mondo, OGGI)
+    automatica = next(e.iscritto(2) for e in mondo.calendario.edizioni if e.iscritto(2) is not None)
+    assert automatica["origine"] == iscrizioni.AUTOMATICA and "giorno" not in automatica
+    assert iscrizioni.primo_dopo_l_iscrizione(automatica) is None
+    # Il campo è facoltativo nel salvataggio, ma se c'è dev'essere una data.
+    riletta = calendario.Edizione.da_dizionario(ed.a_dizionario())
+    assert riletta.iscritto(1)["giorno"] == OGGI.date().isoformat()
+    dati = ed.a_dizionario()
+    dati["iscritti"][0]["giorno"] = "il 5 ottobre"
+    with pytest.raises(ValueError, match="un iscritto non è valido"):
+        calendario.Edizione.da_dizionario(dati)
 
 
 def test_l_automatica_non_riprende_l_edizione_che_hai_tolto():

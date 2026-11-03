@@ -12,6 +12,7 @@ chiudono da soli; il lancio e la risposta alle sfide con la formazione; la casel
 scheda, l'acciacco nella formazione; le notizie e il suono unico dell'avanzamento.
 Dal 2026-10-24, col collaudo di gioco, ciascuno col suo suono: Iscrivi e Togli sull'edizione prevista e su quella già cominciata, Togli sulla coppa, il modello e il file delle formule che non si scrivono, il rilancio a chi ha già rifiutato oggi e la sfida in arrivo che non vale più. Con le verifiche anche i ripieghi di Iscrivi e Togli dopo il sorteggio.
 Dal passo della finestra Mercato e ricerca, lo stesso giorno, la pressione ripetuta la guarda la base dei dialoghi, e l'orologio delle prove è il suo.
+Dal 3 novembre 2026, scelta di Gabriele che vale come D40, Togli su un'iscrizione a mano senza rimborso chiede prima, e l'esito lo dice col suo suono.
 """
 
 import datetime
@@ -117,6 +118,37 @@ def test_il_calendario_iscrive_e_toglie_coi_suoni_e_i_rimborsi(calendario, suona
     assert ed.iscritto(1) is None and club.cassa == 1000 and club.conti_del_mese["rimborsi"] == ed.quota
     assert suonati == ["iscrizione_fatta", "iscrizione_tolta"]
     assert testi.riepilogo_calendario(club, dialogo.fatte).splitlines()[0] == "Calendario e iscrizioni di Club Di Prova: 1 iscrizione e 1 iscrizione tolta."
+
+
+def test_togli_senza_rimborso_lo_chiede_e_lo_dice_col_suo_suono(calendario, suonati, messaggi):
+    # Scelta di Gabriele del 3 novembre 2026, che vale come D40: l'iscrizione a mano tolta dal primo del mese che segue non si rimborsa.
+    mondo, club, dialogo = calendario
+    ed = _scegli_edizione(dialogo, "Open maschile del martedì", datetime.date(2026, 10, 6))
+    _scegli(dialogo.elenco_iscrivibili, dialogo.iscrivibili, 1)
+    dialogo.iscrivi()
+    # Un'iscrizione a mano del 30 settembre: oggi, 5 ottobre, il primo ottobre è passato.
+    ed.iscritto(1)["giorno"] = "2026-09-30"
+    g = mondo.giocatori[1]
+    trattenuta = iscrizioni.quota_trattenuta(mondo, ed.id, g)
+    assert trattenuta.quota == ed.quota and trattenuta.primo == datetime.date(2026, 10, 1)
+    nome = testi.nome_completo(g)
+    domanda = (f"Togliere {nome} dall'Open maschile del martedì? La quota, {testi.euro(ed.quota)}, non torna, perché l'hai iscritto a mano il "
+               "30 settembre 2026: un'iscrizione a mano si rimborsa soltanto fino alla fine del mese in cui l'hai fatta, e dal primo ottobre non più.")
+    assert testi.domanda_ritiro_senza_rimborso(g, ed, trattenuta) == domanda
+    # Al no l'iscrizione resta.
+    messaggi.risposta = wx.NO
+    _scegli(dialogo.elenco_iscritti, dialogo.iscritti, 1)
+    dialogo.togli()
+    assert messaggi[-1] == domanda and ed.iscritto(1) is not None and suonati[-2:] == ["domanda", "annullato"]
+    # Al sì si toglie, la quota non torna, e l'esito lo dice col suo suono, diverso da quello del ritiro rimborsato.
+    messaggi.risposta = wx.YES
+    _scegli(dialogo.elenco_iscritti, dialogo.iscritti, 1)
+    dialogo.togli()
+    assert ed.iscritto(1) is None and club.cassa == 1000 - ed.quota and club.conti_del_mese["rimborsi"] == 0
+    assert suonati[-2:] == ["domanda", "iscrizione_tolta_senza_rimborso"]
+    assert dialogo.fatte[-1] == ("tolto", f"Tolto {nome} dall'Open maschile del martedì del 6 ottobre 2026, senza rimborso: la quota, "
+                                          f"{testi.euro(ed.quota)}, non torna, perché l'hai iscritto a mano il 30 settembre 2026: un'iscrizione a "
+                                          "mano si rimborsa soltanto fino alla fine del mese in cui l'hai fatta, e dal primo ottobre non più.")
 
 
 def test_la_pressione_ripetuta_si_ignora(calendario, suonati, orologio, monkeypatch):

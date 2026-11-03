@@ -98,6 +98,12 @@ Lo stesso giorno, con la scelta di Gabriele che vale come D40, la rampa del prez
 il prezzo più alto che il computer paga per un tesserato dell'utente è economia.tetto_di_rivendita, che parte dall'ingaggio
 il giorno della firma e sale fino al valore pieno col rialzo in MESI_DELLA_RAMPA mesi. Fra le polisportive del computer gli
 acquisti restano come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con un'altra scelta di Gabriele che vale come D40, la password protegge anche la cassa. sposta_fondi vuole
+la password della polisportiva che paga quando è protetta e non è l'attiva, serve_la_password_dei_fondi, e senza quella
+giusta rifiuta con fondi_senza_password. La chiusura offre piano_di_chiusura, problema_chiusura e chiudi_polisportiva con
+un insieme di polisportive escluse, le protette di cui la password non è arrivata, che non pagano; password_da_chiedere
+dice, dalla più ricca, di quale protetta la finestra deve chiedere la password e quanto pagherebbe. Il computer chiude
+come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -255,6 +261,19 @@ def prezzo_della_fondazione(aperte):
 def la_tua_aperta(aperte):
     """La polisportiva che l'utente fonda quando ne ha aperte quante dice aperte, a parole: la tua terza polisportiva aperta."""
     return f"la tua {posto_a_parole(aperte + 1, 'f')} polisportiva aperta"
+
+
+def fondi_senza_password(poli):
+    """
+    Scelta di Gabriele del 3 novembre 2026, che vale come D40: Sposta fondi senza la password della polisportiva che paga,
+    protetta e non attiva. È la frase della vista quando la password non arriva, e del rifiuto di Mondo.sposta_fondi.
+    """
+    return f"Nessun fondo spostato: {poli.nome} è protetta, e senza la sua password i suoi soldi restano dove sono."
+
+
+def _elenco(parole):
+    """Le parole unite con le virgole e la e prima dell'ultima: Pat-Milano, Pat-Roma e Pat-Torino."""
+    return parole[0] if len(parole) == 1 else f"{', '.join(parole[:-1])} e {parole[-1]}"
 
 
 def _silenzio(*_args, **_kwargs):
@@ -1289,16 +1308,27 @@ class Mondo:
             return self.limite_dei_fondi(da, cifra)
         return None
 
-    def sposta_fondi(self, da, a, cifra):
+    def serve_la_password_dei_fondi(self, da):
+        """
+        Scelta di Gabriele del 3 novembre 2026, che vale come D40: vero se Sposta fondi deve chiedere la password della
+        polisportiva da, che paga, perché è dell'utente, è protetta e non è la polisportiva attiva, che la sua password l'ha già
+        data con Cambia polisportiva attiva o l'ha messa fondandola. Così la password protegge anche la cassa.
+        """
+        return da is not None and not da.is_cpu_controlled and da.protetta and da is not self.miapolisportiva_attiva
+
+    def sposta_fondi(self, da, a, cifra, password=None):
         """
         Sposta fondi, decisione D40: la cifra passa dalla cassa di da a quella di a, senza mosse, alle voci fondi_versati e
         fondi_ricevuti dei loro conti del mese, con una voce nei due diari. ValueError col perché di problema_sposta_fondi se
-        non si può.
+        non si può. Dalla scelta di Gabriele del 3 novembre 2026, quando serve_la_password_dei_fondi, la password di da deve
+        essere quella giusta, altrimenti ValueError con la frase di fondi_senza_password, e non si sposta niente.
         """
         cifra = int(cifra)
         problema = self.problema_sposta_fondi(da, a, cifra)
         if problema:
             raise ValueError(problema)
+        if self.serve_la_password_dei_fondi(da) and not da.verifica_password(password or ""):
+            raise ValueError(fondi_senza_password(da))
         da.cassa -= cifra
         a.cassa += cifra
         da.conti_del_mese["fondi_versati"] += cifra
@@ -1675,12 +1705,13 @@ class Mondo:
                 debiti.append(Debito(a, True, contratti.buonuscita(a, oggi), self._maturato(a, oggi, mese_intero_il_primo=False)))
         return [d for d in debiti if d.buonuscita or d.altro]
 
-    def piano_di_chiusura(self, poli):
+    def piano_di_chiusura(self, poli, escluse=()):
         """
         Chi paga la chiusura della polisportiva, decisione D40: prima la sua cassa, che si perde comunque; quello che
         manca lo coprono le altre polisportive dell'utente, ciascuna soltanto oltre la sua riserva, dalla più ricca.
         La copertura delle altre vale soltanto per la chiusura. Restituisce un PianoDiChiusura, con manca a zero
-        quando si può chiudere.
+        quando si può chiudere. Dalla scelta di Gabriele del 3 novembre 2026, che vale come D40, le polisportive di
+        escluse non pagano: sono quelle protette di cui la password non è arrivata, come dice password_da_chiedere.
         """
         debiti = self.debiti_di_chiusura(poli)
         costo = sum(d.buonuscita + d.altro for d in debiti)
@@ -1688,7 +1719,8 @@ class Mondo:
         propria = min(costo, cassa)
         paganti = [(poli, propria)] if propria else []
         resto = costo - propria
-        altre = sorted((p for p in self.polisportive.values() if not p.is_cpu_controlled and p is not poli), key=lambda p: (-p.cassa, p.nome))
+        altre = sorted((p for p in self.polisportive.values() if not p.is_cpu_controlled and p is not poli and p not in escluse),
+                       key=lambda p: (-p.cassa, p.nome))
         for p in altre:
             if resto <= 0:
                 break
@@ -1698,16 +1730,18 @@ class Mondo:
                 resto -= quota
         return PianoDiChiusura(costo, debiti, paganti, cassa - propria, resto)
 
-    def problema_chiusura(self, poli):
+    def problema_chiusura(self, poli, escluse=()):
         """
         Perché la polisportiva dell'utente non si può chiudere, oppure None, decisione D40: i soldi della sua cassa e
         delle altre polisportive dell'utente oltre la loro riserva non bastano per i suoi debiti. La frase dice quanto
         serve, quanto c'è, quanto manca e chi la blocca: i debiti più grandi, dal primo, quanti ne servono a fare la
-        cifra che manca, con le bandiere, che non se ne vanno da sole.
+        cifra che manca, con le bandiere, che non se ne vanno da sole. Dalla scelta di Gabriele del 3 novembre 2026, che
+        vale come D40, il piano è senza le escluse, le polisportive protette di cui la password non è arrivata, e la frase
+        dice che bloccano anche loro, con quello che hanno oltre la riserva.
         """
         if poli.is_cpu_controlled:
             return None
-        piano = self.piano_di_chiusura(poli)
+        piano = self.piano_di_chiusura(poli, escluse)
         if piano.manca <= 0:
             return None
         propria = sum(quota for p, quota in piano.paganti if p is poli)
@@ -1732,7 +1766,28 @@ class Mondo:
             frase += f" La bloccano i debiti con {', con '.join(nomi[:-1])} e con {nomi[-1]}."
         if any(not d.allenatore and bandiera_attiva(d.persona) for d in bloccano):
             frase += " Una bandiera non se ne va da sola, nemmeno senza stipendio."
+        fuori = sorted((p for p in escluse if p is not poli and not p.is_cpu_controlled), key=lambda p: (-p.cassa, p.nome))
+        if len(fuori) == 1:
+            frase += (f" La blocca anche {fuori[0].nome}, protetta, che senza la sua password non paga: oltre la sua riserva ha "
+                      f"{scritta_in_euro(self.spostabile(fuori[0]))}.")
+        elif fuori:
+            frase += (f" La bloccano anche {_elenco([p.nome for p in fuori])}, protette, che senza la loro password non pagano: oltre la loro "
+                      f"riserva hanno {_elenco([scritta_in_euro(self.spostabile(p)) for p in fuori])}.")
         return frase
+
+    def password_da_chiedere(self, poli, escluse=(), sbloccate=()):
+        """
+        Scelta di Gabriele del 3 novembre 2026, che vale come D40: la prossima polisportiva protetta di cui la chiusura di poli
+        chiede la password, con la quota che il piano le fa pagare, oppure None. Il piano è quello senza le escluse, le
+        protette di cui la password non è arrivata; le sbloccate l'hanno già data. Si chiede nell'ordine del piano, dalla più
+        ricca, e soltanto finché il piano basta: se manca qualcosa la chiusura è bloccata, e altre password non servono.
+        Togliere dal piano una polisportiva cambia soltanto le quote di quelle che vengono dopo di lei, a cui la password non
+        è ancora stata chiesta: la quota detta a una sbloccata resta quella che pagherà.
+        """
+        piano = self.piano_di_chiusura(poli, escluse)
+        if piano.manca > 0:
+            return None
+        return next(((p, quota) for p, quota in piano.paganti if p is not poli and p.protetta and p not in sbloccate), None)
 
     @staticmethod
     def _chi_blocca(d):
@@ -1784,20 +1839,21 @@ class Mondo:
         giorni = (self.datetime_corrente_simulazione.date() - poli.datetime_creazione_sim.date()).days
         return giorni if 0 <= giorni <= GIORNI_DEL_RIPENSAMENTO else None
 
-    def chiudi_polisportiva(self, poli):
+    def chiudi_polisportiva(self, poli, escluse=()):
         """
         Chiude per sempre una polisportiva: i tesserati tornano liberi. Restituisce quanti sono. Dalla decisione D40 una
         polisportiva dell'utente salda prima tutti i suoi debiti, come dice piano_di_chiusura; se i soldi non bastano,
         ValueError col perché di problema_chiusura, e la polisportiva resta. Col ripensamento di giorni_del_ripensamento il
-        contatore delle fondazioni di sempre scende di uno.
+        contatore delle fondazioni di sempre scende di uno. Dalla scelta di Gabriele del 3 novembre 2026 le polisportive di
+        escluse, protette e senza la password, non pagano; la password la chiede la finestra, con password_da_chiedere.
         """
         ripensamento = self.giorni_del_ripensamento(poli)
         pagati = {}
         if not poli.is_cpu_controlled:
-            problema = self.problema_chiusura(poli)
+            problema = self.problema_chiusura(poli, escluse)
             if problema:
                 raise ValueError(problema)
-            piano = self.piano_di_chiusura(poli)
+            piano = self.piano_di_chiusura(poli, escluse)
             self._paga_la_chiusura(poli, piano)
             pagati = {(d.allenatore, d.persona.numero if d.allenatore else d.persona.id): d for d in piano.debiti}
         liberati = 0

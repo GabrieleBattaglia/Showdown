@@ -24,6 +24,10 @@ MESI_DELLA_RAMPA mesi; vale subito pieno per chi ha firmato prima del formato 11
 pieno; il computer compra al tetto del giorno e non sopra. Le Vendite partono dal tetto e lo dicono, la riga del mercato e
 la scheda lo dicono durante la rampa, e l'esito di un prezzo sopra il tetto dice da quando il computer lo comprerà, o che
 non lo comprerà. Le prove delle tranche di prima spostano la firma alla fine della rampa.
+Con un'altra scelta di Gabriele del 3 novembre 2026, la password che protegge anche la cassa: Sposta fondi vuole quella della
+polisportiva che paga, se è protetta e non è l'attiva, e senza quella giusta non sposta niente; la chiusura chiede quella di
+ogni sorella protetta che il piano fa pagare, dalla più ricca, e chi resta fuori non paga: il piano si rifà senza di lei, e se
+non basta più la chiusura si blocca con la frase che la nomina.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -40,7 +44,7 @@ import mercato
 import sfide
 import testi
 from costanti import CAPITALE_INIZIALE, FEDELTA_BANDIERA, MESI_DELLA_RAMPA, QUOTA_SPONSOR_SUL_VALORE, RIALZO_CPU, SPONSOR_PER_GLORIA
-from mondo import VENDITA_FRA_TUE, Mondo, _Mercato, prezzo_della_fondazione
+from mondo import VENDITA_FRA_TUE, Mondo, _Mercato, fondi_senza_password, prezzo_della_fondazione
 from utilita import adesso_utc
 
 DOMANI = OGGI + datetime.timedelta(days=1)
@@ -712,6 +716,107 @@ def test_le_frasi_e_i_rifiuti_di_sposta_fondi():
     mondo.sposta_fondi(bologna, milano, 2_000)
     assert testi.fondi_spostati(bologna, milano, 2_000) == ("Spostati 2.000 euro da Pat-Bologna a Pat-Milano. Ora Pat-Bologna ha in cassa 18.000 euro, "
                                                             "e Pat-Milano 10.000 euro.")
+
+
+def test_sposta_fondi_vuole_la_password_di_chi_paga_se_e_protetta():
+    # Scelta di Gabriele del 3 novembre 2026, che vale come D40, scoperte A4 e T2: la password protegge anche la cassa.
+    mondo, _cpu, bologna, milano = _mondo()
+    milano.imposta_password("segreta")
+    milano.cassa = mondo.riserva(milano) + 5_000
+    # Bologna è l'attiva: Milano, protetta, paga soltanto con la sua password.
+    assert mondo.serve_la_password_dei_fondi(milano) and not mondo.serve_la_password_dei_fondi(bologna)
+    frase = "Nessun fondo spostato: Pat-Milano è protetta, e senza la sua password i suoi soldi restano dove sono."
+    assert fondi_senza_password(milano) == frase
+    cassa_milano, cassa_bologna = milano.cassa, bologna.cassa
+    for sbagliata in (None, "", "sbagliata"):
+        with pytest.raises(ValueError) as rifiuto:
+            mondo.sposta_fondi(milano, bologna, 1_000, sbagliata)
+        assert str(rifiuto.value) == frase
+    assert milano.cassa == cassa_milano and bologna.cassa == cassa_bologna and milano.conti_del_mese["fondi_versati"] == 0
+    # Il limite della riserva viene prima della password, come nel dialogo.
+    with pytest.raises(ValueError, match="puoi spostare fino a"):
+        mondo.sposta_fondi(milano, bologna, 5_001, "segreta")
+    mondo.sposta_fondi(milano, bologna, 1_000, "segreta")
+    assert milano.cassa == cassa_milano - 1_000 and bologna.cassa == cassa_bologna + 1_000
+    # L'attiva la sua password l'ha già data, anche se è protetta; e chi riceve non la dà.
+    bologna.imposta_password("altra")
+    assert not mondo.serve_la_password_dei_fondi(bologna)
+    mondo.sposta_fondi(bologna, milano, 500)
+    # Diventata attiva, Milano non la chiede più; una polisportiva non protetta non la chiede mai.
+    mondo.miapolisportiva_attiva = milano
+    assert not mondo.serve_la_password_dei_fondi(milano) and mondo.serve_la_password_dei_fondi(bologna)
+    mondo.sposta_fondi(milano, bologna, 500)
+    milano.imposta_password("")
+    mondo.miapolisportiva_attiva = bologna
+    assert not mondo.serve_la_password_dei_fondi(milano) and not mondo.serve_la_password_dei_fondi(None)
+    assert testi.password_dei_fondi(milano, bologna, 1_000) == "Pat-Milano è protetta: per spostare 1.000 euro a Pat-Bologna serve la sua password."
+
+
+def _chiusura_con_due_protette(mondo, bologna, milano, oltre_milano=1_500):
+    """
+    Pat-Bologna chiude, e la sua cassa copre tutto tranne 1.000 euro; Pat-Roma, la più ricca per gli arretrati di un suo
+    tesserato, ha 700 euro oltre la riserva, Pat-Milano oltre_milano. Tutte e due protette. Restituisce Pat-Roma e il costo.
+    """
+    roma = polisportiva(mondo, "Pat-Roma", cpu=False, ids=(14, 29))
+    mondo.giocatori[14].arretrati = 9000
+    costo = sum(d.buonuscita + d.altro for d in mondo.debiti_di_chiusura(bologna))
+    bologna.cassa = costo - 1000
+    roma.cassa = mondo.riserva(roma) + 700
+    milano.cassa = mondo.riserva(milano) + oltre_milano
+    assert roma.cassa > milano.cassa
+    roma.imposta_password("roma")
+    milano.imposta_password("milano")
+    return roma, costo
+
+
+def test_la_chiusura_chiede_la_password_delle_protette_dalla_piu_ricca():
+    # Scelta di Gabriele del 3 novembre 2026, che vale come D40: ogni sorella protetta che il piano fa pagare dà la sua password.
+    mondo, _cpu, bologna, milano = _mondo()
+    roma, costo = _chiusura_con_due_protette(mondo, bologna, milano)
+    # Dalla più ricca, con la quota del piano; quella già sbloccata non si chiede più.
+    assert mondo.password_da_chiedere(bologna) == (roma, 700)
+    assert mondo.password_da_chiedere(bologna, (), [roma]) == (milano, 300)
+    assert mondo.password_da_chiedere(bologna, (), [roma, milano]) is None
+    # Roma resta fuori: il piano si rifà, Milano paga tutto il resto, e la sua quota è quella che le si dice.
+    piano = mondo.piano_di_chiusura(bologna, [roma])
+    assert piano.paganti == [(bologna, costo - 1000), (milano, 1000)] and piano.manca == 0
+    assert mondo.password_da_chiedere(bologna, [roma]) == (milano, 1000)
+    assert mondo.problema_chiusura(bologna, [roma]) is None
+    domanda = testi.domanda_chiusura(bologna, piano, None, [roma])
+    assert ("e il resto lo coprono le tue altre polisportive, oltre la loro riserva: Pat-Milano 1.000 euro. Pat-Roma, protetta, resta fuori: "
+            "senza la sua password non paga. Della cassa non resta niente.") in domanda
+    assert testi.password_della_sorella(bologna, milano, 1000) == (
+        "Per chiudere Pat-Bologna, Pat-Milano pagherebbe 1.000 euro dei suoi debiti, oltre la sua riserva, ed è protetta: serve la sua "
+        "password. Con Annulla Pat-Milano non paga, e se le altre tue polisportive non bastano la chiusura non si fa.")
+    cassa_roma, cassa_milano = roma.cassa, milano.cassa
+    mondo.chiudi_polisportiva(bologna, [roma])
+    assert bologna.nome not in mondo.polisportive and roma.cassa == cassa_roma and milano.cassa == cassa_milano - 1000
+    assert not any("Pat-Bologna" in voce["testo"] for voce in roma.diario)
+    assert milano.diario[0]["testo"].startswith("Paga 1.000 euro dei debiti di Pat-Bologna, che chiude")
+    # Una sorella non protetta non si chiede mai: paga come prima.
+    mondo, _cpu, bologna, milano = _mondo()
+    roma, _costo = _chiusura_con_due_protette(mondo, bologna, milano)
+    roma.imposta_password("")
+    assert mondo.password_da_chiedere(bologna) == (milano, 300)
+
+
+def test_la_chiusura_senza_le_password_si_blocca_e_dice_chi_resta_fuori():
+    mondo, _cpu, bologna, milano = _mondo()
+    roma, costo = _chiusura_con_due_protette(mondo, bologna, milano, oltre_milano=600)
+    # Senza Roma, Milano non basta: la chiusura è bloccata, e altre password non servono.
+    assert mondo.password_da_chiedere(bologna, [roma]) is None
+    problema = mondo.problema_chiusura(bologna, [roma])
+    assert problema.startswith(f"Per chiudere Pat-Bologna servono {_euro(costo)}: la sua cassa ne ha {_euro(costo - 1000)}, le tue altre polisportive, "
+                               "oltre la loro riserva, 600 euro, e mancano 400 euro. ")
+    assert problema.endswith(" La blocca anche Pat-Roma, protetta, che senza la sua password non paga: oltre la sua riserva ha 700 euro.")
+    with pytest.raises(ValueError, match="La blocca anche Pat-Roma"):
+        mondo.chiudi_polisportiva(bologna, [roma])
+    assert bologna.nome in mondo.polisportive and milano.cassa == mondo.riserva(milano) + 600
+    # Fuori tutte e due: le dice tutte, dalla più ricca.
+    assert mondo.problema_chiusura(bologna, [milano, roma]).endswith(
+        " La bloccano anche Pat-Roma e Pat-Milano, protette, che senza la loro password non pagano: oltre la loro riserva hanno 700 euro e 600 euro.")
+    # Con tutte le password la chiusura si fa, come prima.
+    assert mondo.problema_chiusura(bologna) is None
 
 
 def test_fondare_e_portare_via_il_capitale_non_annulla_la_fondazione():
