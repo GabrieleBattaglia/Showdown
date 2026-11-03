@@ -47,6 +47,11 @@ che erano in vendita ne escono quando la sfida è accettata, alla qualificazione
 con una voce nei diari; la formazione proposta lascia fuori chi hai messo in vendita; e la rosa della
 Coppa rifiuta chi sta già in quella di un'altra polisportiva iscritta. È di Gabriele Battaglia (IZ4APU)
 & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con le correzioni della revisione dei rimedi di D40: convocazioni e la rosa di problema_rosa
+contano soltanto i club vivi, riconosciuti da nome e giorno di fondazione come in giorno e rimpiazza_le_chiuse, così la
+sfida accettata e la rosa di una polisportiva chiusa non fermano più chi ha liberato, scoperta A7; rosa_doppia dice
+quando il problema della rosa è chi sta in quella di un'altra, che ha il suo suono, scoperta T6; e le frasi dei convocati
+elidono l'articolo davanti alle date, scoperta T3. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -103,6 +108,13 @@ def _unisci(parti):
     # testi importa l'archivio, che importa il calendario, che importa questo modulo: si legge al momento.
     from testi import unisci
     return unisci(parti)
+
+
+def _con_articolo(articolo, scritto):
+    # Dalla scoperta T3 della revisione dei rimedi di D40, l'articolo eliso davanti alle date: dell'8 novembre. Si legge al
+    # momento, come unisci.
+    from testi import con_articolo
+    return con_articolo(articolo, scritto)
 
 
 def nome_completo(g):
@@ -420,16 +432,29 @@ def _giorno_del_torneo(data):
     return datetime.date.fromisoformat(data) if isinstance(data, str) else _giorno(data)
 
 
+def _vivo(mondo, club):
+    """
+    Vero se il club conservato in una sfida o fra gli iscritti di una coppa è ancora una polisportiva del mondo, con lo
+    stesso nome e lo stesso giorno di fondazione, come lo riconoscono giorno e rimpiazza_le_chiuse.
+    """
+    return iscrizioni.polisportiva_del_club(mondo, club) is not None
+
+
 def convocazioni(mondo):
     """
     Chi è impegnato con una polisportiva in una gara a squadre, decisione D40: i convocati delle sfide accettate, fino
     alla partita, e le rose della Coppa, dalla qualificazione alla fine. Per giocatore, l'elenco dei suoi impegni come
     terne del nome del club, del nome della gara, None per una sfida, e del giorno, quello del gioco per una sfida e
     quello d'inizio per la Coppa.
+    Dal 3 novembre 2026, scoperta A7 della revisione dei rimedi di D40, contano soltanto i club ancora vivi: la sfida
+    accettata con una polisportiva che ha chiuso, che decade al giro seguente, e la rosa di un club chiuso, che resta fra
+    gli iscritti fino al sorteggio o fino alla fine della coppa, non fermano più nessuno, nemmeno sotto un club nuovo con
+    lo stesso nome. Prima la sorella non poteva mettere in rosa un giocatore liberato dalla chiusura, e il club nuovo
+    trovava i suoi giocatori fermi fino alla fine della coppa.
     """
     impegni = {}
     for s in mondo.sfide.attive:
-        if s.stato == ACCETTATA:
+        if s.stato == ACCETTATA and all(_vivo(mondo, s.club(lato)) for lato in LATI):
             for lato in LATI:
                 for gid in s.convocati[lato]:
                     impegni.setdefault(gid, []).append((s.club(lato)["nome"], None, s.data_gioco))
@@ -437,13 +462,17 @@ def convocazioni(mondo):
     for ed in calendario.edizioni:
         if not ed.individuale:
             for iscritto in ed.iscritti:
-                club = (iscritto.get("club") or {}).get("nome", iscritto["id"])
+                if not _vivo(mondo, iscritto.get("club")):
+                    continue
+                club = iscritto["club"]["nome"]
                 for gid in iscritto.get("rosa", ()):
                     impegni.setdefault(gid, []).append((club, ed.nome, ed.data_inizio))
     for torneo in calendario.tornei:
         if torneo.squadre:
             for info in torneo.info.values():
-                club = (info.get("club") or {}).get("nome")
+                if not _vivo(mondo, info.get("club")):
+                    continue
+                club = info["club"]["nome"]
                 for gid in info.get("rosa", ()):
                     impegni.setdefault(gid, []).append((club, torneo.modello["nome"], _giorno_del_torneo(torneo.data_inizio)))
     return impegni
@@ -452,7 +481,9 @@ def convocazioni(mondo):
 def convocazione(mondo, g, impegni=None):
     """
     L'impegno di squadra del giocatore con la polisportiva di oggi, decisione D40, come terna di convocazioni, oppure
-    None: la rosa di un club che ha lasciato non lo ferma più. impegni, se c'è, è quello di convocazioni già fatto.
+    None: la rosa di un club che ha lasciato non lo ferma più. impegni, se c'è, è quello di convocazioni già fatto. Dalla
+    scoperta A7 della revisione dei rimedi di D40 non lo ferma nemmeno la rosa, o la sfida, di un club che ha chiuso,
+    anche se ha lo stesso nome della polisportiva di oggi: convocazioni conta soltanto i club vivi.
     """
     if impegni is None:
         impegni = convocazioni(mondo)
@@ -460,11 +491,14 @@ def convocazione(mondo, g, impegni=None):
 
 
 def _dove_e_impegnato(g, impegno):
-    """Dove il giocatore è impegnato, a parole: convocato nella sfida del 25 novembre 2026, nella rosa della Coppa delle polisportive del 15 giugno 2027."""
+    """
+    Dove il giocatore è impegnato, a parole: convocato nella sfida del 25 novembre 2026, nella rosa della Coppa delle
+    polisportive del 15 giugno 2027; dalla scoperta T3 della revisione dei rimedi di D40 con l'articolo eliso, dell'8 novembre.
+    """
     _club, gara, giorno = impegno
     if gara is None:
-        return f"{accorda(g.sesso, 'convocato')} nella sfida del {data_breve(giorno)}"
-    return f"nella rosa {torneo_con_preposizione(gara, 'di')} del {data_breve(giorno)}"
+        return f"{accorda(g.sesso, 'convocato')} nella sfida {_con_articolo('del', data_breve(giorno))}"
+    return f"nella rosa {torneo_con_preposizione(gara, 'di')} {_con_articolo('del', data_breve(giorno))}"
 
 
 def impegno_di_squadra(mondo, g, impegni=None):
@@ -973,35 +1007,53 @@ def problema_rosa(mondo, id_edizione, poli, ids):
     al sorteggio, da tre a sei tesserati senza doppioni, il due più uno fra i primi tre, e nessuno con
     un altro impegno nei giorni della coppa. L'infortunato si può mettere, a suo rischio. Dalla decisione
     D40 nemmeno chi sta già nella rosa di un'altra polisportiva iscritta alla stessa coppa, che il
-    calendario non vede, perché per lui l'edizione è una sola.
+    calendario non vede, perché per lui l'edizione è una sola. Vedi _problema_della_rosa.
+    """
+    return _problema_della_rosa(mondo, id_edizione, poli, ids)[0]
+
+
+def rosa_doppia(mondo, id_edizione, poli, ids):
+    """
+    Vero se il problema della rosa, quello che problema_rosa dice, è chi sta già nella rosa di un'altra polisportiva
+    iscritta alla stessa coppa, decisione D40: dalla scoperta T6 della revisione dei rimedi ha il suo suono, rosa_doppia,
+    e non più quello della formazione che non va.
+    """
+    return _problema_della_rosa(mondo, id_edizione, poli, ids)[1]
+
+
+def _problema_della_rosa(mondo, id_edizione, poli, ids):
+    """
+    Il problema della rosa per problema_rosa, come coppia: la frase, oppure None, e vero quando è la rosa doppia di
+    rosa_doppia. Dalla scoperta A7 della revisione dei rimedi di D40 la rosa di un club che ha chiuso, che resta fra gli
+    iscritti fino al sorteggio, non rifiuta più nessuno.
     """
     calendario = mondo.calendario
     ed = calendario.edizione(id_edizione)
     if ed is None or ed.data_inizio <= _oggi(mondo):
-        return "Il sorteggio è già fatto: la rosa non si cambia più."
+        return "Il sorteggio è già fatto: la rosa non si cambia più.", False
     if not tua(poli) or ed.iscritto(poli.nome) is None:
-        return f"{poli.nome if poli else 'La polisportiva'} non è qualificata {torneo_con_preposizione(ed.nome)}."
+        return f"{poli.nome if poli else 'La polisportiva'} non è qualificata {torneo_con_preposizione(ed.nome)}.", False
     ids = list(ids)
     if not GIOCATORI_AL_TAVOLO <= len(ids) <= CONVOCATI_SFIDA:
-        return f"La rosa ha da {GIOCATORI_AL_TAVOLO} a {CONVOCATI_SFIDA} giocatori."
+        return f"La rosa ha da {GIOCATORI_AL_TAVOLO} a {CONVOCATI_SFIDA} giocatori.", False
     if len(set(ids)) != len(ids):
-        return "Lo stesso giocatore compare due volte nella rosa."
+        return "Lo stesso giocatore compare due volte nella rosa.", False
     impegni = calendario.impegni(mondo, esclusa=ed)
-    altre_rose = {gid: (iscritto.get("club") or {}).get("nome", iscritto["id"]) for iscritto in ed.iscritti if iscritto["id"] != poli.nome
+    altre_rose = {gid: iscritto["club"]["nome"] for iscritto in ed.iscritti if iscritto["id"] != poli.nome and _vivo(mondo, iscritto.get("club"))
                   for gid in iscritto.get("rosa", ())}
     for gid in ids:
         g = mondo.giocatori.get(gid)
         if g is None or gid not in poli.tesserati:
-            return f"Il giocatore {gid} non è un tesserato di {poli.nome}."
+            return f"Il giocatore {gid} non è un tesserato di {poli.nome}.", False
         if g.ritirato:
-            return f"{nome_completo(g)} si è {'ritirato' if g.sesso == 'm' else 'ritirata'} dall'attività."
+            return f"{nome_completo(g)} si è {'ritirato' if g.sesso == 'm' else 'ritirata'} dall'attività.", False
         if gid in altre_rose:
-            return f"{nome_completo(g)} è già nella rosa di {altre_rose[gid]} {torneo_con_preposizione(ed.nome, 'per')}."
+            return f"{nome_completo(g)} è già nella rosa di {altre_rose[gid]} {torneo_con_preposizione(ed.nome, 'per')}.", True
         if not _libero_nei_giorni(impegni, gid, ed.data_inizio, ed.data_fine):
-            return f"{nome_completo(g)} nei giorni della coppa ha già un altro impegno."
+            return f"{nome_completo(g)} nei giorni della coppa ha già un altro impegno.", False
     if not composizione_valida([mondo.giocatori[gid] for gid in ids[:GIOCATORI_AL_TAVOLO]]):
-        return "Fra i primi tre servono due giocatori di un sesso e uno dell'altro."
-    return None
+        return "Fra i primi tre servono due giocatori di un sesso e uno dell'altro.", False
+    return None, False
 
 
 def cambia_rosa(mondo, id_edizione, poli, ids):

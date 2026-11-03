@@ -28,6 +28,11 @@ Con un'altra scelta di Gabriele del 3 novembre 2026, la password che protegge an
 polisportiva che paga, se è protetta e non è l'attiva, e senza quella giusta non sposta niente; la chiusura chiede quella di
 ogni sorella protetta che il piano fa pagare, dalla più ricca, e chi resta fuori non paga: il piano si rifà senza di lei, e se
 non basta più la chiusura si blocca con la frase che la nomina.
+Con le correzioni della revisione dei rimedi di D40: la rosa della Coppa e la sfida accettata di una polisportiva chiusa non
+fermano più nessuno, né la sorella che firma chi è tornato libero né un club nuovo con lo stesso nome (A7); lo svincolo che
+si ferma per gli arretrati (T6); le date dell'allenatore licenziato e della prelazione, che dicono soltanto dal e si elidono
+(T3 e T8); le frasi dei convocati, dello svincolo, della vendita, di Sposta fondi e della chiusura (T3); e il ripensamento,
+che guarda lo stato di oggi e la domanda lo dice (T4).
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -137,8 +142,18 @@ def test_lo_svincolo_salda_anche_gli_arretrati():
     bologna.cassa = buonuscita + 1019
     assert mondo.problema_svincolo(bologna, g) == (f"Svincolare {_nome(g)} costa {_euro(buonuscita)} di buonuscita e 1.020 euro di arretrati, "
                                                    f"e la cassa di Pat-Bologna ne ha {_euro(buonuscita + 1019)}.")
+    # Scoperta T6 della revisione dei rimedi: a fermarlo sono gli arretrati, che hanno il loro suono; quando la cassa non basta
+    # nemmeno per la buonuscita, no, e il suono resta quello della cassa insufficiente.
+    assert mondo.arretrati_fermano_lo_svincolo(bologna, g)
+    bologna.cassa = buonuscita - 1
+    assert mondo.problema_svincolo(bologna, g) and not mondo.arretrati_fermano_lo_svincolo(bologna, g)
+    bologna.cassa = buonuscita + 1019
     domanda = testi.domanda_svincolo(g, bologna, mondo)
-    assert f"la buonuscita è di {_euro(buonuscita)}. Lo svincolo salda anche i 1.020 euro di arretrati che aspetta. " in domanda
+    assert f"la buonuscita è di {_euro(buonuscita)}. Lo svincolo salda anche gli arretrati che aspetta, 1.020 euro. " in domanda
+    # Scoperta T3 della revisione dei rimedi: la cifra dopo gli arretrati, perché con 800 euro i 800 euro non si dice.
+    g.arretrati = 800
+    assert "Lo svincolo salda anche gli arretrati che aspetta, 800 euro. " in testi.domanda_svincolo(g, bologna, mondo)
+    g.arretrati = 1020
     bologna.cassa += 1
     assert mondo.svincola(bologna, g) == buonuscita
     assert bologna.cassa == 0 and bologna.conti_del_mese["buonuscite"] == buonuscita and bologna.conti_del_mese["arretrati"] == 1020
@@ -150,7 +165,7 @@ def test_lo_svincolo_salda_anche_gli_arretrati():
     tesserato_cpu = mondo.giocatori[1]
     tesserato_cpu.arretrati = 5000
     cpu.cassa = contratti.buonuscita(tesserato_cpu, OGGI)
-    assert mondo.problema_svincolo(cpu, tesserato_cpu) is None
+    assert mondo.problema_svincolo(cpu, tesserato_cpu) is None and not mondo.arretrati_fermano_lo_svincolo(cpu, tesserato_cpu)
 
 
 def test_la_vendita_dell_utente_salda_tutti_gli_arretrati():
@@ -159,7 +174,7 @@ def test_la_vendita_dell_utente_salda_tutti_gli_arretrati():
     g.arretrati = 1500
     bologna.cassa = 300
     assert mondo.arretrati_scoperti(bologna, g, 1000) == 200
-    atteso = f"A 1.000 euro mancano 200 euro: la vendita salda i 1.500 euro di arretrati di {_nome(g)}, prima dal prezzo e poi dalla cassa di Pat-Bologna, che ne ha 300 euro."
+    atteso = f"A 1.000 euro mancano 200 euro: la vendita salda gli arretrati di {_nome(g)}, 1.500 euro, prima dal prezzo e poi dalla cassa di Pat-Bologna, che ne ha 300 euro."
     assert mondo.problema_vendita(bologna, g, 1000) == atteso
     with pytest.raises(ValueError, match="mancano 200 euro"):
         mondo.metti_in_vendita(bologna, g, 1000)
@@ -254,7 +269,8 @@ def test_la_chiusura_salda_tutto_e_le_altre_coprono_oltre_la_riserva():
     assert a.diario[0]["testo"].endswith(f": Pat-Bologna ha chiuso, con una buonuscita di {_euro(a_buonuscita)} e {_euro(maturato)} di stipendio maturato.")
     assert tesserato.arretrati == 0 and a.libero
     assert testi.chiusa("Pat-Bologna", 6, piano).startswith(
-        f"Pat-Bologna ha chiuso per sempre: 6 giocatori tornano liberi. Ha saldato {_euro(costo)} di debiti, con l'aiuto di Pat-Roma 700 euro e Pat-Milano 300 euro. ")
+        f"Pat-Bologna ha chiuso per sempre: 6 giocatori tornano liberi. Ha saldato {_euro(costo)} di debiti, con l'aiuto di Pat-Roma, 700 euro e "
+        "Pat-Milano, 300 euro. ")
 
 
 def test_la_chiusura_che_non_si_puo_fare_dice_chi_la_blocca():
@@ -304,7 +320,7 @@ def test_la_polisportiva_del_computer_chiude_come_prima():
 # I convocati e le rose della Coppa.
 
 def _frase_della_sfida(g, giorno_del_gioco):
-    return (f"{_nome(g)} è {testi.accorda(g, 'convocato')} nella sfida del {testi.data_breve(giorno_del_gioco)}: fino alla partita non si vende, "
+    return (f"{_nome(g)} è {testi.accorda(g, 'convocato')} nella sfida {testi.con_articolo('del', testi.data_breve(giorno_del_gioco))}: fino alla partita non si vende, "
             "non si compra e non si svincola.")
 
 
@@ -407,9 +423,76 @@ def test_i_convocati_si_leggono_da_sfide_e_coppe():
     impegni = sfide.convocazioni(mondo)
     assert impegni[9] == [(bologna.nome, None, DOMANI.date())] and impegni[1] == [(cpu.nome, None, DOMANI.date())]
     assert sfide.convocazione(mondo, mondo.giocatori[9], impegni) == (bologna.nome, None, DOMANI.date())
+    # Scoperta T3 della revisione dei rimedi: davanti all'8 e all'11 l'articolo si elide, nella sfida e nella rosa.
+    g = mondo.giocatori[9]
+    s.data_gioco = datetime.date(2026, 10, 8)
+    assert sfide.impegno_di_squadra(mondo, g).startswith(f"{_nome(g)} è {testi.accorda(g, 'convocato')} nella sfida dell'8 ottobre 2026: ")
+    mondo.metti_in_vendita(bologna, mondo.giocatori[26], 100)
+    sfide.fuori_dalla_vendita(mondo, bologna, [26], "Coppa delle polisportive", datetime.date(2027, 6, 11))
+    assert any(v["testo"] == f"Toglie {_nome(mondo.giocatori[26])} dalla vendita: è nella rosa della Coppa delle polisportive dell'11 giugno 2027."
+               for v in bologna.diario)
+    s.data_gioco = DOMANI.date()
     # Una sfida proposta non ferma nessuno.
     s.stato = sfide.PROPOSTA
     assert sfide.convocazioni(mondo) == {} and sfide.impegno_di_squadra(mondo, mondo.giocatori[9]) is None
+
+
+def _coppa_con_due_tue():
+    """La Coppa delle polisportive con quattro qualificate, due tue, Pat-Bologna e Pat-Milano, il giorno dell'apertura."""
+    mondo, cpu, bologna, milano = _mondo()
+    altra = polisportiva(mondo, "PoliTeam02 Prova", ids=(5, 6, 7, 8, 23, 24))
+    for poli, gloria in ((cpu, 300), (bologna, 250), (milano, 200), (altra, 100)):
+        poli.gloria = gloria
+    for gid in (14, 29):
+        mondo._entra(milano, mondo.giocatori[gid])
+    apertura = datetime.datetime(2027, 5, 26, 9, 0)
+    mondo.datetime_corrente_simulazione = apertura
+    solo(["Coppa delle polisportive"])
+    ed = apri(mondo, apertura, "Coppa delle polisportive")[0]
+    return mondo, bologna, milano, ed
+
+
+def test_la_rosa_di_una_polisportiva_chiusa_non_ferma_piu_nessuno():
+    # Scoperta A7 della revisione dei rimedi di D40: la chiusura lascia il club fra gli iscritti fino al sorteggio, ma la sua
+    # rosa non ferma più i giocatori che ha liberato.
+    mondo, bologna, milano, ed = _coppa_con_due_tue()
+    x = mondo.giocatori[ed.iscritto(bologna.nome)["rosa"][0]]
+    assert mondo.impegno_di_squadra(x) is not None
+    mondo.datetime_corrente_simulazione += datetime.timedelta(days=2)
+    assert mondo.problema_chiusura(bologna) is None
+    mondo.chiudi_polisportiva(bologna)
+    assert ed.iscritto(bologna.nome) is not None and x.id not in sfide.convocazioni(mondo)
+    # Primo caso: la sorella firma chi è tornato libero e lo mette nella sua rosa.
+    mondo._entra(milano, x)
+    rosa = [*ed.iscritto(milano.nome)["rosa"][:2], x.id]
+    assert mondo.impegno_di_squadra(x) is None and sfide.problema_rosa(mondo, ed.id, milano, rosa) is None
+    mondo._lascia(milano, x)
+    # Secondo caso: un club nuovo con lo stesso nome non trova il giocatore fermo dalla rosa del club chiuso.
+    nuova = mondo.fonda_polisportiva("Pat-Bologna", luogo="Bologna")
+    mondo._entra(nuova, x)
+    assert mondo.impegno_di_squadra(x) is None
+    assert mondo.problema_svincolo(nuova, x) is None and mondo.problema_vendita(nuova, x, 100) is None
+
+
+def test_la_sfida_accettata_di_una_polisportiva_chiusa_non_ferma_piu_nessuno(larga):
+    # Scoperta A7 della revisione dei rimedi di D40: la sfida decade al giro seguente, e intanto non ferma nessuno, né i
+    # tuoi convocati liberati dalla chiusura né quelli del computer.
+    mondo, cpu, bologna, milano = _mondo()
+    s = sfide.Sfida(mondo.sfide.nuovo_id(), iscrizioni.club_della(bologna), iscrizioni.club_della(cpu), OGGI.date(), OGGI.date(), sfide.ACCETTATA,
+                    DOMANI.date(), {"sfidante": [9, 10, 25], "sfidata": [1, 2, 21]})
+    mondo.sfide.attive.append(s)
+    tuo, suo = mondo.giocatori[9], mondo.giocatori[1]
+    cpu.in_vendita[suo.id] = 100
+    assert mondo.problema_acquisto(milano, suo) == _frase_della_sfida(suo, DOMANI)
+    assert mondo.problema_chiusura(bologna) is None
+    mondo.chiudi_polisportiva(bologna)
+    assert s in mondo.sfide.attive and sfide.convocazioni(mondo) == {}
+    mondo._entra(milano, tuo)
+    assert mondo.impegno_di_squadra(tuo) is None and mondo.problema_vendita(milano, tuo, 100) is None
+    assert mondo.impegno_di_squadra(suo) is None and mondo.problema_acquisto(milano, suo) is None
+    # Al giro seguente la sfida decade, come prima.
+    sfide.giorno(mondo, OGGI, Mondo.rapporto_vuoto(OGGI))
+    assert s not in mondo.sfide.attive and s.stato == sfide.DECADUTA
 
 
 # Lo sponsor paga la gloria per i tesserati in attività.
@@ -589,8 +672,10 @@ def test_il_ripensamento_riporta_indietro_il_contatore():
     assert mondo.giorni_del_ripensamento(seconda) == 3
     piano = mondo.piano_di_chiusura(seconda)
     assert piano.costo == 0 and piano.cassa_persa == 20_000
-    assert testi.domanda_chiusura(seconda, piano, 3) == ("Chiudere per sempre Pat-Milano? Fondata da 3 giorni e mai usata: la fondazione non "
-                                                         "conterà, e la cassa, 20.000 euro, si perde. Non si torna indietro.")
+    # Dalla scoperta T4 della revisione la frase dice lo stato di oggi, non mai usata; il giorno della fondazione dice ora.
+    assert testi.domanda_chiusura(seconda, piano, 3) == ("Chiudere per sempre Pat-Milano? Fondata da 3 giorni, e oggi senza tesserati né staff: "
+                                                         "la fondazione non conterà, e la cassa, 20.000 euro, si perde. Non si torna indietro.")
+    assert testi.domanda_chiusura(seconda, piano, 0).startswith("Chiudere per sempre Pat-Milano? Fondata oggi, e ora senza tesserati né staff: ")
     assert mondo.chiudi_polisportiva(seconda) == 0 and mondo.fondazioni_di_sempre == 1
     assert testi.chiusa("Pat-Milano", 0, piano, 3).startswith("Pat-Milano ha chiuso per sempre, senza tesserati. La sua fondazione non conta più. ")
     # La prossima fondazione riceve di nuovo il capitale e il contatore torna a 2: il giro non rende niente.
@@ -615,9 +700,21 @@ def test_il_ripensamento_non_vale_per_una_polisportiva_usata():
         assert mondo.giorni_del_ripensamento(p) is None, p.nome
     # Chiuderle non tocca il contatore, e la domanda non parla di ripensamento.
     for p in (vecchia, con_tesserato, con_lo_staff, povera, cpu):
-        assert "mai usata" not in testi.domanda_chiusura(p, mondo.piano_di_chiusura(p))
+        assert "la fondazione non conterà" not in testi.domanda_chiusura(p, mondo.piano_di_chiusura(p))
         mondo.chiudi_polisportiva(p)
     assert mondo.fondazioni_di_sempre == 5 and not mondo.polisportive
+
+
+def test_il_ripensamento_guarda_lo_stato_di_oggi_e_la_domanda_lo_dice():
+    # Scoperta T4 della revisione dei rimedi di D40: chi ha tesserato e poi svincolato, con la cassa di nuovo a 20.000 euro, ha
+    # il ripensamento anche lui, e la domanda non dice più mai usata.
+    mondo = mondo_di_prova(20, 20)
+    usata = polisportiva(mondo, "Pat-Usata", cpu=False, cassa=20_000, fondazione_giorni=3, ids=(1,))
+    assert mondo.giorni_del_ripensamento(usata) is None
+    mondo._lascia(usata, mondo.giocatori[1])
+    assert mondo.giorni_del_ripensamento(usata) == 3
+    domanda = testi.domanda_chiusura(usata, mondo.piano_di_chiusura(usata), 3)
+    assert "Fondata da 3 giorni, e oggi senza tesserati né staff: la fondazione non conterà" in domanda and "mai usata" not in domanda
 
 
 def test_il_conto_dice_le_fondazioni_di_sempre():
@@ -716,6 +813,9 @@ def test_le_frasi_e_i_rifiuti_di_sposta_fondi():
     mondo.sposta_fondi(bologna, milano, 2_000)
     assert testi.fondi_spostati(bologna, milano, 2_000) == ("Spostati 2.000 euro da Pat-Bologna a Pat-Milano. Ora Pat-Bologna ha in cassa 18.000 euro, "
                                                             "e Pat-Milano 10.000 euro.")
+    # Scoperta T3 della revisione dei rimedi: con 1 euro al singolare, anche nella barra.
+    assert testi.fondi_spostati(bologna, milano, 1).startswith("Spostato 1 euro da Pat-Bologna a Pat-Milano.")
+    assert (testi.spostato_o_spostati(1), testi.spostato_o_spostati(2)) == ("spostato", "spostati")
 
 
 def test_sposta_fondi_vuole_la_password_di_chi_paga_se_e_protetta():
@@ -833,8 +933,8 @@ def test_fondare_e_portare_via_il_capitale_non_annulla_la_fondazione():
 # L'allenatore licenziato, quinta tranche.
 
 def _frase_del_licenziamento(a, da, il_giorno, fino):
-    return (f"{_nome(a)} è {testi.accorda(a, 'stato')} {testi.accorda(a, 'licenziato')} da {da} il {il_giorno}: "
-            f"non firma con le tue polisportive fino al {fino}")
+    return (f"{_nome(a)} è {testi.accorda(a, 'stato')} {testi.accorda(a, 'licenziato')} da {da} {testi.con_articolo('il', il_giorno)}: "
+            f"firma con le tue polisportive soltanto {testi.con_articolo('dal', fino)}")
 
 
 def test_l_allenatore_licenziato_non_firma_con_le_tue_per_30_giorni():
@@ -843,15 +943,15 @@ def test_l_allenatore_licenziato_non_firma_con_le_tue_per_30_giorni():
     assert testi.domanda_licenziamento(a, bologna, mondo).endswith(" Per 30 giorni non firmerà con nessuna delle tue polisportive.")
     buonuscita = mondo.licenzia_allenatore(bologna, a)
     assert a.libero and a.escluso_dall_utente_fino == OGGI + datetime.timedelta(days=30)
-    assert testi.esito_licenziamento(a, bologna, buonuscita).endswith(" Fino al 4 novembre 2026 non firma con le tue polisportive.")
-    assert bologna.diario[0]["testo"].endswith("Fino al 4 novembre 2026 non firma con le tue polisportive.")
+    assert testi.esito_licenziamento(a, bologna, buonuscita).endswith(" Firma con le tue polisportive soltanto dal 4 novembre 2026.")
+    assert bologna.diario[0]["testo"].endswith(" Firma con le tue polisportive soltanto dal 4 novembre 2026.")
     frase = _frase_del_licenziamento(a, "Pat-Bologna", "5 ottobre 2026", "4 novembre 2026")
     assert mondo.licenziato_dall_utente(a) == frase
     # Nessuna tua polisportiva lo assume, nemmeno quella che l'ha licenziato.
     for poli in (milano, bologna):
         assert mondo.problema_assunzione(poli, a, 1, 0) == frase
         assert mondo.problema_offerta_allenatore(poli, a, 1) == f"{frase}."
-        with pytest.raises(ValueError, match="non firma con le tue polisportive"):
+        with pytest.raises(ValueError, match="firma con le tue polisportive soltanto dal"):
             mondo.assumi_allenatore(poli, a, 1)
     # Il mercato lo dice sulla riga e nella scheda, e l'offerta ha il suo perché, prima del posto e della cassa.
     riga = next(r for r in mercato.Memoria(mondo).righe_di(mercato.ALLENATORI) if r.persona is a)
@@ -860,7 +960,7 @@ def test_l_allenatore_licenziato_non_firma_con_le_tue_per_30_giorni():
     assert mercato.offerta_possibile(mondo, milano, riga) == (mercato.INGAGGIO_ALLENATORE, f"{frase}.", mercato.ALLENATORE_ESCLUSO)
     milano.staff = [0, 0, 0]
     milano.cassa = 8_000
-    assert "non firma con le tue polisportive fino al 4 novembre 2026" in testi.riga_allenatore(a, mondo)
+    assert "firma con le tue polisportive soltanto dal 4 novembre 2026" in testi.riga_allenatore(a, mondo)
     assert f"\n{frase}.\n" in testi.scheda_allenatore(a, mondo)
     # Se il diario non ricorda più chi l'ha licenziato, la frase dice una tua polisportiva.
     diario = a.diario
@@ -872,10 +972,33 @@ def test_l_allenatore_licenziato_non_firma_con_le_tue_per_30_giorni():
     assert mondo.problema_assunzione(milano, a, 1, 0) == frase
     mondo.datetime_corrente_simulazione = OGGI + datetime.timedelta(days=30)
     assert mondo.licenziato_dall_utente(a) is None and mondo.problema_assunzione(milano, a, 1, 0) is None
-    assert "non firma con le tue" not in testi.riga_allenatore(a, mondo) and "non firma con le tue" not in testi.scheda_allenatore(a, mondo)
+    assert "firma con le tue" not in testi.riga_allenatore(a, mondo) and "firma con le tue" not in testi.scheda_allenatore(a, mondo)
     assert mercato.offerta_possibile(mondo, milano, riga).motivo is None
     mondo.assumi_allenatore(milano, a, 1)
     assert a.polisportiva == "Pat-Milano"
+
+
+def test_le_date_del_licenziato_e_della_prelazione_dicono_dal_e_si_elidono():
+    # Scoperte T3 e T8 della revisione dei rimedi di D40: il giorno della fine è già libero, e la frase dice soltanto dal,
+    # non fino al; davanti all'8 e all'11 l'articolo si elide.
+    mondo, _cpu, bologna, milano = _mondo()
+    a = _con_lo_staff(mondo, bologna)
+    mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 9, 9, 0)
+    buonuscita = mondo.licenzia_allenatore(bologna, a)
+    assert mondo.licenziato_dall_utente(a) == (f"{_nome(a)} è {testi.accorda(a, 'stato')} {testi.accorda(a, 'licenziato')} da Pat-Bologna il 9 ottobre "
+                                               "2026: firma con le tue polisportive soltanto dall'8 novembre 2026")
+    assert testi.esito_licenziamento(a, bologna, buonuscita).endswith(" Firma con le tue polisportive soltanto dall'8 novembre 2026.")
+    assert bologna.diario[0]["testo"].endswith(" Firma con le tue polisportive soltanto dall'8 novembre 2026.")
+    assert "firma con le tue polisportive soltanto dall'8 novembre 2026" in testi.riga_allenatore(a, mondo)
+    b = _con_lo_staff(mondo, bologna)
+    mondo.datetime_corrente_simulazione = datetime.datetime(2026, 10, 11, 9, 0)
+    mondo.licenzia_allenatore(bologna, b)
+    assert mondo.licenziato_dall_utente(b).endswith(" da Pat-Bologna l'11 ottobre 2026: firma con le tue polisportive soltanto dal 10 novembre 2026")
+    # La prelazione di un'altra polisportiva, che finisce l'8 dicembre: da quel giorno la assumono anche le altre.
+    c = mondo._nasce_un_allenatore(OGGI)
+    c.prelazione, c.prelazione_fino = "Pat-Roma", datetime.datetime(2026, 12, 8, 9, 0)
+    lo = "assumerla" if c.sesso == "f" else "assumerlo"
+    assert mondo.problema_assunzione(milano, c, 1, 0) == f"{_nome(c)} può {lo} soltanto Pat-Roma, e le altre polisportive soltanto dall'8 dicembre 2026"
 
 
 def test_il_computer_assume_subito_e_la_chiusura_non_licenzia():

@@ -142,6 +142,9 @@ prima della domanda, per ogni tua polisportiva protetta che ne coprirebbe i debi
 pagherebbe. Senza la password quella polisportiva resta fuori, e se i soldi non bastano più la chiusura si blocca, con la
 frase che dice chi la blocca. Ogni passo ha il suo suono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
 UltraCode).
+Lo stesso giorno, con le correzioni della revisione dei rimedi di D40: lo svincolo che la cassa pagherebbe per la buonuscita
+ma non anche per gli arretrati suona svincolo_sotto_gli_arretrati, scoperta T6, e l'ultimo evento di Sposta fondi dice
+spostato con 1 euro, scoperta T3. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -1108,7 +1111,7 @@ class FinestraPrincipale(wx.Frame):
             finally:
                 dialogo.Destroy()
         self.mondo.sposta_fondi(da, a, cifra, password)
-        self._concludi(testi.fondi_spostati(da, a, cifra), f"spostati {testi.euro(cifra)}", "fondi_spostati")
+        self._concludi(testi.fondi_spostati(da, a, cifra), f"{testi.spostato_o_spostati(cifra)} {testi.euro(cifra)}", "fondi_spostati")
 
     def _mosse_finite(self, p):
         """Vero se per oggi la polisportiva p ha finito le mosse di mercato, e allora lo dice nella vista, col suo suono."""
@@ -1297,10 +1300,14 @@ class FinestraPrincipale(wx.Frame):
             dialogo.Destroy()
         # Dalla tappa 11 lo svincolo a contratto in corso costa una buonuscita: se la cassa non basta, si dice prima. Dalla
         # decisione D40 salda anche gli arretrati, e chi è convocato in una gara a squadre non si svincola, col suo suono.
+        # Dalla scoperta T6 della revisione dei rimedi anche gli arretrati che la cassa non copre, oltre la buonuscita, hanno
+        # il loro suono, come il prezzo che nelle Vendite non li salda.
         problema = self.mondo.problema_svincolo(p, g)
         if problema:
             if self.mondo.impegno_di_squadra(g):
                 self.mostra(problema, "convocato", "convocato_bloccato")
+            elif self.mondo.arretrati_fermano_lo_svincolo(p, g):
+                self.mostra(problema, "arretrati da saldare", "svincolo_sotto_gli_arretrati")
             else:
                 self.mostra(problema, "cassa insufficiente", "cassa_insufficiente")
             return

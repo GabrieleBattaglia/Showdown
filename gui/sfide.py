@@ -33,6 +33,9 @@ polisportive, come le conta il dato Sfr della barra di stato, e non più della s
 e la formazione segue la polisportiva della sfida su cui sei. Sotto l'elenco, il campo Squadra di chi sfida dice la
 polisportiva che sfida con la sua gloria, e i suoi sei nell'ordine del computer, ciascuno con classe, sesso, età e
 acciacco. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con la scoperta T6 della revisione dei rimedi di D40, FormazioneDialogo accetta anche lui il suono
+del problema, come SezioneFormazione, e lo usa anche alla conferma: la rosa della coppa ha così il suono di chi sta già
+nella rosa di un'altra iscritta. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import wx
@@ -140,14 +143,16 @@ class SezioneFormazione:
 class FormazioneDialogo(_Dialogo):
     """
     La formazione in un dialogo a sé, con OK e Annulla: la rosa della tua polisportiva per la Coppa
-    delle polisportive, fino a sei. In risultato restano gli identificativi scelti.
+    delle polisportive, fino a sei. In risultato restano gli identificativi scelti. suono_del_problema,
+    se c'è, è come in SezioneFormazione, e vale anche alla conferma: dalla scoperta T6 della revisione
+    dei rimedi di D40 la rosa che rifiuta chi sta già in quella di un'altra iscritta ha il suo suono.
     """
 
-    def __init__(self, genitore, mondo, titolo, spiegazione, convocabili, proposta, controlla):
+    def __init__(self, genitore, mondo, titolo, spiegazione, convocabili, proposta, controlla, suono_del_problema=None):
         super().__init__(genitore, titolo)
         self.risultato = None
         self.sizer.Add(wx.StaticText(self.pannello, label=spiegazione), 0, wx.ALL, 8)
-        self.formazione = SezioneFormazione(self, mondo, convocabili, proposta, controlla)
+        self.formazione = SezioneFormazione(self, mondo, convocabili, proposta, controlla, suono_del_problema)
         ok, _annulla = self.pulsanti((wx.ID_OK, "&OK"), (wx.ID_CANCEL, "Annulla"))
         ok.Bind(wx.EVT_BUTTON, self.conferma)
         self.completa((560, 560))
@@ -156,7 +161,9 @@ class FormazioneDialogo(_Dialogo):
     def conferma(self, event=None):
         problema = self.formazione.problema()
         if problema:
-            self.avvisa(problema, self.formazione.scelte[0], "formazione_non_valida")
+            ids = self.formazione.ids()
+            suono = self.formazione.suono_del_problema(ids) if self.formazione.suono_del_problema else "formazione_non_valida"
+            self.avvisa(problema, self.formazione.scelte[0], suono)
             return
         self.risultato = self.formazione.ids()
         self.chiudi(wx.ID_OK)

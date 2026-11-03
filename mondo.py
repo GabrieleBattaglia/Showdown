@@ -104,6 +104,12 @@ giusta rifiuta con fondi_senza_password. La chiusura offre piano_di_chiusura, pr
 un insieme di polisportive escluse, le protette di cui la password non è arrivata, che non pagano; password_da_chiedere
 dice, dalla più ricca, di quale protetta la finestra deve chiedere la password e quanto pagherebbe. Il computer chiude
 come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le correzioni della revisione dei rimedi di D40, le frasi: l'allenatore licenziato e quello in
+prelazione per altri firmano soltanto dal giorno della fine, che è già libero, e non più fino al, scoperta T8; davanti alle
+date l'articolo si elide con testi.con_articolo, letto al momento da _con_articolo, e la vendita che non salda gli arretrati
+dice la cifra dopo, scoperta T3. arretrati_fermano_lo_svincolo dice quando lo svincolo di un tesserato dell'utente si ferma
+per gli arretrati, che hanno il loro suono, scoperta T6. Il computer non cambia. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -282,6 +288,16 @@ def _silenzio(*_args, **_kwargs):
 
 def nome_completo(g):
     return f"{g.nome} {g.cognome}"
+
+
+def _con_articolo(articolo, scritto):
+    """
+    testi.con_articolo, l'articolo eliso davanti a una cifra o a una data che si legge con una vocale: dall'8 dicembre, l'11
+    novembre. Dalla scoperta T3 della revisione dei rimedi di D40. testi importa questo modulo: si legge al momento, come in
+    sfide._unisci.
+    """
+    from testi import con_articolo
+    return con_articolo(articolo, scritto)
 
 
 def _chi_lo_ha_licenziato(a, giorno):
@@ -868,8 +884,10 @@ class Mondo:
             return None
         il_giorno = fino - datetime.timedelta(days=GIORNI_DOPO_IL_LICENZIAMENTO)
         da = _chi_lo_ha_licenziato(a, il_giorno) or "una tua polisportiva"
-        return (f"{nome_completo(a)} è {accorda(a.sesso, 'stato')} {accorda(a.sesso, 'licenziato')} da {da} il {data_breve(il_giorno)}: "
-                f"non firma con le tue polisportive fino al {data_breve(fino)}")
+        # Scoperte T3 e T8 della revisione dei rimedi di D40: l'articolo eliso davanti alla data, e soltanto dal giorno della
+        # fine, che è già libero, al posto di fino al, che si intende compreso.
+        return (f"{nome_completo(a)} è {accorda(a.sesso, 'stato')} {accorda(a.sesso, 'licenziato')} da {da} {_con_articolo('il', data_breve(il_giorno))}: "
+                f"firma con le tue polisportive soltanto {_con_articolo('dal', data_breve(fino))}")
 
     def problema_assunzione(self, poli, a, posto, ingaggio):
         """
@@ -884,7 +902,10 @@ class Mondo:
         if not a.libero:
             return f"{nome_completo(a)} allena già {a.polisportiva}"
         if a.prelazione is not None and a.prelazione != poli.nome:
-            return f"fino al {data_breve(a.prelazione_fino)} {nome_completo(a)} può {'assumerla' if a.sesso == 'f' else 'assumerlo'} soltanto {a.prelazione}"
+            # Dalla scoperta T8 della revisione dei rimedi di D40, come per l'allenatore licenziato: le altre polisportive lo
+            # assumono dal giorno in cui la prelazione finisce, compreso, e la frase non dice più fino al.
+            return (f"{nome_completo(a)} può {'assumerla' if a.sesso == 'f' else 'assumerlo'} soltanto {a.prelazione}, e le altre polisportive "
+                    f"soltanto {_con_articolo('dal', data_breve(a.prelazione_fino))}")
         if not poli.is_cpu_controlled and (licenziato := self.licenziato_dall_utente(a)):
             return licenziato
         if ingaggio > poli.cassa:
@@ -980,7 +1001,7 @@ class Mondo:
         lontano = ""
         if not poli.is_cpu_controlled:
             a.escluso_dall_utente_fino = oggi + datetime.timedelta(days=GIORNI_DOPO_IL_LICENZIAMENTO)
-            lontano = f" Fino al {data_breve(a.escluso_dall_utente_fino)} non firma con le tue polisportive."
+            lontano = f" Firma con le tue polisportive soltanto {_con_articolo('dal', data_breve(a.escluso_dall_utente_fino))}."
         self._lascia_lo_staff(poli, a, oggi, f"{accorda(a.sesso, 'Licenziato')} da {poli.nome}, con una buonuscita di {scritta_in_euro(buonuscita)}.",
                               f"Licenzia {nome_completo(a)}, {nome_ruolo}, con una buonuscita di {scritta_in_euro(buonuscita)}.{lontano}")
         return buonuscita
@@ -1438,8 +1459,9 @@ class Mondo:
             return impegno
         manca = self.arretrati_scoperti(poli, g, prezzo)
         if manca:
-            return (f"A {scritta_in_euro(prezzo)} mancano {scritta_in_euro(manca)}: la vendita salda i {scritta_in_euro(g.arretrati)} di arretrati di "
-                    f"{nome_completo(g)}, prima dal prezzo e poi dalla cassa di {poli.nome}, che ne ha {scritta_in_euro(max(0, poli.cassa))}.")
+            # Dalla scoperta T3 della revisione dei rimedi di D40 la cifra viene dopo gli arretrati: i 800 euro non si dice.
+            return (f"A {scritta_in_euro(prezzo)} mancano {scritta_in_euro(manca)}: la vendita salda gli arretrati di {nome_completo(g)}, "
+                    f"{scritta_in_euro(g.arretrati)}, prima dal prezzo e poi dalla cassa di {poli.nome}, che ne ha {scritta_in_euro(max(0, poli.cassa))}.")
         return None
 
     def metti_in_vendita(self, poli, g, prezzo):
@@ -1596,6 +1618,18 @@ class Mondo:
                 f"{scritta_in_euro(arretrati)} di arretrati"
             return f"Svincolare {nome_completo(g)} costa {costo}, {cassa}."
         return None
+
+    def arretrati_fermano_lo_svincolo(self, poli, g):
+        """
+        Vero se a fermare lo svincolo di un tesserato dell'utente sono gli arretrati, decisione D40: la cassa pagherebbe la
+        buonuscita, ma non anche gli arretrati, che lo svincolo salda. Dalla scoperta T6 della revisione dei rimedi ha il suo
+        suono, come il prezzo che nelle Vendite non salda gli arretrati; quando la cassa non basta nemmeno per la buonuscita,
+        il suono resta quello della cassa insufficiente, come prima di D40. Per il computer è sempre falso.
+        """
+        if poli.is_cpu_controlled or g.arretrati <= 0:
+            return False
+        buonuscita = contratti.buonuscita(g, self.datetime_corrente_simulazione)
+        return buonuscita <= poli.cassa < buonuscita + g.arretrati
 
     def _paga_buonuscita(self, poli, g, data=None):
         """La buonuscita di uno svincolo a contratto in corso esce dalla cassa; restituisce quanto."""

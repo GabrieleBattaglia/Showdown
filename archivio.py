@@ -109,6 +109,13 @@ copia di sicurezza, letta perché il salvataggio non si usava, e perché: l'avvi
 E un'iscrizione a mano ai tornei ricorda il suo giorno, nel campo facoltativo giorno dell'iscritto: un campo del formato 11,
 che nessun mondo vero ha ancora, e senza migrazione, perché un'iscrizione senza giorno si rimborsa come prima. È di Gabriele
 Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le correzioni della revisione dei rimedi di D40, due note della lente del salvataggio. Nota 3: quando
+al primo salvataggio dopo una migrazione la copia nel formato nuovo non si scrive, scrivi solleva CopiaNuovaNonScritta, e il
+messaggio spiega che il salvataggio aspetta la copia nuova, oltre all'errore di Windows. Nota 5: _leggi guarda il formato
+prima della firma, così un file di MESS di un formato più recente risulta più recente anche se quella versione ha cambiato la
+firma, e non rovinato, che farebbe tornare alla copia. Un formato futuro che cambiasse la compressione o il JSON resterebbe
+invece un file rovinato: per leggerne il formato servirebbe sapere com'è fatto. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -235,6 +242,19 @@ class FormatoPiuRecente(Exception):
         self.massimo = FORMATO
         self.della_copia = False
         self.motivo = None
+
+
+class CopiaNuovaNonScritta(OSError):
+    """
+    Dal 3 novembre 2026, nota 3 della revisione dei rimedi di D40: al primo salvataggio dopo una migrazione la copia di
+    sicurezza nel formato nuovo non si è scritta, e il salvataggio aspetta la copia nuova, perché il mondo nuovo accanto
+    alla copia di un formato di prima è proprio il caso da evitare. errore è l'errore di Windows. È un OSError, così chi
+    intercetta gli errori del disco la intercetta ancora.
+    """
+
+    def __init__(self, errore):
+        super().__init__(str(errore))
+        self.errore = errore
 
 
 def firma(documento):
@@ -364,8 +384,13 @@ def scrivi(mondo, percorso, percorso_copia):
             # codice di prima trova due file che non sa leggere, si ferma con l'avviso e non tocca niente. Se la copia non si
             # scrive, il salvataggio non si fa, perché il mondo nuovo accanto alla copia vecchia è proprio il caso da evitare;
             # se si ferma dopo la copia, restano la copia nuova e il salvataggio vecchio, e tutti e due si leggono.
+            # Dalla nota 3 della revisione dei rimedi di D40 la copia che non si scrive ha un errore suo, perché il messaggio
+            # dica che il salvataggio aspetta la copia nuova, oltre all'errore di Windows.
             _scrivi_su_disco(temporaneo, dati)
-            os.replace(temporaneo, percorso_copia)
+            try:
+                os.replace(temporaneo, percorso_copia)
+            except OSError as e:
+                raise CopiaNuovaNonScritta(e) from e
             _scrivi_su_disco(temporaneo, dati)
         else:
             _scrivi_su_disco(temporaneo, dati)
@@ -387,9 +412,15 @@ def leggi(percorso):
     """
     Legge e verifica un file del mondo e restituisce il documento senza la firma; ErroreSalvataggio
     se non va. Il file può essere compresso, come lo scrive il gioco dalla tappa 7, oppure testo.
-    Dalla decisione D40, il file di un formato più recente solleva FormatoPiuRecente.
+    Dalla decisione D40, il file di un formato più recente solleva FormatoPiuRecente; dalla nota 5 della
+    revisione dei rimedi anche quando la sua firma non torna, perché un formato futuro può cambiarla.
     """
     return _leggi(percorso)[0]
+
+
+def _formato_valido(formato):
+    """Vero se il numero di formato di un file è un intero da 1 in su."""
+    return isinstance(formato, int) and not isinstance(formato, bool) and formato >= 1
 
 
 def _leggi(percorso):
@@ -408,18 +439,24 @@ def _leggi(percorso):
         documento = json.loads(dati.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError) as e:
         raise ErroreSalvataggio(f"il file non è un JSON valido: {e}") from e
-    if not isinstance(documento, dict) or "firma" not in documento:
+    if not isinstance(documento, dict):
+        raise ErroreSalvataggio("il file non è un salvataggio di MESS")
+    # Dal 3 novembre 2026, nota 5 della revisione dei rimedi di D40: il formato più recente si riconosce prima della firma.
+    # Un MESS che cambiasse la firma, o il modo di calcolarla, scriverebbe un file che qui risulterebbe rovinato, e un file
+    # rovinato fa tornare alla copia, quella che D40 non vuole. Si guarda soltanto un JSON di MESS con un numero di formato
+    # più alto: il caso peggiore, un file manomesso proprio nel formato, ferma il caricamento senza toccare niente.
+    formato = documento.get("formato")
+    if documento.get("applicazione") == APPLICAZIONE and _formato_valido(formato) and formato > FORMATO:
+        raise FormatoPiuRecente(formato)
+    if "firma" not in documento:
         raise ErroreSalvataggio("il file non è un salvataggio di MESS")
     firma_scritta = documento.pop("firma")
     if not isinstance(firma_scritta, str) or not firma_scritta.isascii() or not hmac.compare_digest(firma_scritta, firma(documento)):
         raise ErroreSalvataggio("la firma non corrisponde al contenuto: il file è stato modificato fuori dal gioco, oppure si è rovinato")
     if documento.get("applicazione") != APPLICAZIONE:
         raise ErroreSalvataggio("il file non è un salvataggio di MESS")
-    formato = documento.get("formato")
-    if not isinstance(formato, int) or isinstance(formato, bool) or formato < 1:
+    if not _formato_valido(formato):
         raise ErroreSalvataggio(f"il numero di formato non è valido: {formato!r}")
-    if formato > FORMATO:
-        raise FormatoPiuRecente(formato)
     if formato == 5:
         _completa_formato_5(documento)
     while documento["formato"] < FORMATO:
@@ -1060,6 +1097,13 @@ def salva_con_avvisi(mondo):
     mondo.sfoltisci_diari()
     try:
         contenuto, avvisi = scrivi(mondo, percorsi.percorso(FILE_MONDO), percorsi.percorso(FILE_MONDO_COPIA))
+    except CopiaNuovaNonScritta as e:
+        # Nota 3 della revisione dei rimedi di D40: prima il messaggio diceva soltanto l'errore di Windows sulla copia.
+        mondo.notifica(f"Salvataggio non riuscito: la copia di sicurezza, {FILE_MONDO_COPIA}, non si è potuta scrivere nel formato {FORMATO}: "
+                       f"{e.errore}. Il primo salvataggio nel formato {FORMATO} aspetta la copia nuova, perché un MESS di prima che apra "
+                       "lo stesso mondo non torni a una copia del formato vecchio. Il salvataggio precedente è rimasto com'era, e il "
+                       "prossimo salvataggio ci riprova.")
+        return False, []
     except (OSError, TypeError, ValueError) as e:
         mondo.notifica(f"Salvataggio non riuscito: {e}. Il salvataggio precedente è rimasto com'era.")
         return False, []

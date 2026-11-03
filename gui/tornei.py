@@ -45,6 +45,10 @@ Dal 3 novembre 2026, con una scelta di Gabriele che vale come D40, Togli su un'i
 mese passato non rimborsa la quota: lo chiede prima, con la quota persa e il perché, e l'esito lo dice, col suo suono,
 iscrizione_tolta_senza_rimborso, diverso da quello del ritiro rimborsato. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con la scoperta T6 della revisione dei rimedi di D40, Rosa per la coppa passa alla formazione anche il
+suono del problema: chi sta già nella rosa di un'altra polisportiva iscritta suona rosa_doppia, mentre la si cambia e alla
+conferma, e gli altri problemi della rosa suonano come la formazione che non va. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -428,10 +432,12 @@ class CalendarioTornei(_Dialogo):
             self.avvisa(f"{self.poli.nome} non è qualificata {torneo_con_preposizione(ed.nome)}: si qualificano le polisportive con più gloria.", self.elenco, "iscrizione_non_idoneo")
             return
         convocabili = [g for g in self._tesserati() if not g.ritirato]
+        # Dalla scoperta T6 della revisione dei rimedi di D40: chi sta già nella rosa di un'altra iscritta ha il suo suono.
         dialogo = gui_sfide.FormazioneDialogo(self, self.mondo, f"Rosa {torneo_con_preposizione(ed.nome, 'per')}",
                                               f"La rosa di {self.poli.nome} {torneo_con_preposizione(ed.nome, 'per')}, dal "
                                               f"{testi.data_breve(ed.data_inizio)}: i primi tre giocano ogni incontro, se sono sani, e le riserve li sostituiscono.",
-                                              convocabili, iscritto.get("rosa", []), lambda ids: sfide.problema_rosa(self.mondo, ed.id, self.poli, ids))
+                                              convocabili, iscritto.get("rosa", []), lambda ids: sfide.problema_rosa(self.mondo, ed.id, self.poli, ids),
+                                              lambda ids: "rosa_doppia" if sfide.rosa_doppia(self.mondo, ed.id, self.poli, ids) else "formazione_non_valida")
         try:
             suoni.suona("dialogo_formazione")
             if dialogo.ShowModal() != wx.ID_OK or dialogo.risultato is None:

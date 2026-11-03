@@ -152,7 +152,7 @@ Lo stesso giorno, con la quarta tranche di D40, le fondazioni, tre suoni nuovi, 
 la fondazione che la polisportiva attiva non può pagare oltre la sua riserva, le quinte del dialogo della nuova polisportiva
 che si fermano a metà, due monete deboli e una scivolata grave; la fondazione a pagamento, dalla terza aperta, tre monete che
 escono, il fischio d'inizio in breve e una quinta che si apre; e il ripensamento, la chiusura che annulla una fondazione di
-pochi giorni mai usata, un nastro che si riavvolge, uno scatto indietro e una scivolata calma. La fondazione gratis suona
+pochi giorni, oggi senza tesserati né staff, un nastro che si riavvolge, uno scatto indietro e una scivolata calma. La fondazione gratis suona
 come prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Lo stesso giorno, con la quinta tranche di D40, cinque suoni nuovi, tutti mess_ e nella collezione di GBUtils. Quattro sono
 di Sposta fondi, Ctrl+Maiusc+I, e hanno tutti una moneta: l'apertura del dialogo, una moneta che scivola da sinistra a destra
@@ -183,6 +183,14 @@ suono seguente; e la chiusura che così si blocca, la campana di mess_chiusura_n
 chiusa. Nel calendario l'iscrizione a mano tolta senza rimborso, il gettone che torna e cade ancora, perso, diverso da quello
 del ritiro rimborsato. L'avviso del mondo di una versione più recente, ora con Scegli un'altra cartella ed Esci, suona come
 prima. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le correzioni della revisione dei rimedi di D40, scoperta T6, due suoni nuovi, tutti mess_ e nella
+collezione di GBUtils. Nel calendario la rosa per la coppa che rifiuta chi sta già nella rosa di un'altra polisportiva
+iscritta, rosa_doppia: lo squillo dell'adunata di mess_formazione due volte, a sinistra e a destra, e il secondo che ricade di
+un tritono; prima suonava come la formazione che non va. E lo svincolo che la cassa pagherebbe per la buonuscita ma non anche
+per gli arretrati, svincolo_sotto_gli_arretrati: la porta che comincia ad aprirsi, tre monete a sinistra e la porta che
+ricade chiusa, fratello del prezzo che nelle Vendite non salda gli arretrati; prima suonava come la cassa insufficiente, che
+resta allo svincolo che la cassa non paga nemmeno per la buonuscita. Lo sponsor in proporzione ai tesserati resta senza suono,
+perché non ha un momento in cui suonare. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import sys
@@ -387,10 +395,13 @@ GRUPPI = (
         "elenco_polisportive": "mess_albo_che_scorre",
         "dialogo_svincolo": "mess_porta_che_cigola",
         "tesserato_svincolato": "mess_contratto_strappato",
+        # Decisione D40, scoperta T6 della revisione dei rimedi: lo svincolo che la cassa pagherebbe per la buonuscita ma
+        # non anche per gli arretrati, come il prezzo che nelle Vendite non li salda; prima suonava come la cassa insufficiente.
+        "svincolo_sotto_gli_arretrati": "mess_svincolo_sotto_gli_arretrati",
         "rosa_vuota": "mess_eco_nello_spogliatoio",
         # Decisione D40: la chiusura che i soldi non bastano a pagare, la campana della domanda che si ferma.
         "chiusura_non_possibile": "mess_chiusura_non_possibile",
-        # Decisione D40: il ripensamento, la chiusura che annulla una fondazione di pochi giorni mai usata.
+        # Decisione D40: il ripensamento, la chiusura che annulla una fondazione di pochi giorni, oggi senza tesserati né staff.
         "fondazione_annullata": "mess_fondazione_annullata",
         # Scelta di Gabriele del 3 novembre 2026, che vale come D40: la password di ogni tua polisportiva protetta che la chiusura
         # farebbe pagare, quella che senza password resta fuori, e la chiusura che così i soldi non bastano più a pagare.
@@ -654,6 +665,9 @@ GRUPPI = (
         "iscrizioni_non_ancora_aperte": "mess_iscrizioni_non_ancora",
         "iscrizioni_chiuse": "mess_iscrizioni_chiuse",
         "coppa_solo_con_la_rosa": "mess_coppa_con_la_rosa",
+        # Decisione D40, scoperta T6 della revisione dei rimedi: la rosa della coppa che rifiuta chi sta già nella rosa di
+        # un'altra polisportiva iscritta, che prima suonava come la formazione che non va.
+        "rosa_doppia": "mess_rosa_doppia",
     }),
     ("Tornei, il pannello e le classifiche", {
         "dialogo_tornei_in_corso": "mess_tornei_in_corso",
@@ -890,6 +904,8 @@ AZIONI = {
     "elenco_polisportive": "l'elenco delle polisportive, con Ctrl+Shift+E",
     "dialogo_svincolo": "si apre la scelta del tesserato da svincolare, con Ctrl+Shift+S",
     "tesserato_svincolato": "un tesserato svincolato, che torna libero",
+    "svincolo_sotto_gli_arretrati": ("lo svincolo di un tuo tesserato che non si fa perché la cassa pagherebbe la buonuscita, ma non anche gli "
+                                     "arretrati, che lo svincolo salda"),
     "rosa_vuota": ("un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue "
                    "polisportive quando nessuna ne ha"),
     "chiusura_non_possibile": ("Chiudi la polisportiva attiva quando la sua cassa e le altre tue polisportive, oltre la loro riserva, non bastano "
@@ -1092,6 +1108,8 @@ AZIONI = {
     "iscrizioni_non_ancora_aperte": "nel calendario Iscrivi o Togli su un'edizione prevista, che non ha ancora le iscrizioni aperte",
     "iscrizioni_chiuse": "nel calendario Iscrivi o Togli su un'edizione già cominciata, col sorteggio fatto",
     "coppa_solo_con_la_rosa": "nel calendario Togli sulla Coppa delle polisportive, dove la rosa si cambia con Rosa per la coppa",
+    "rosa_doppia": ("nel calendario la rosa per la coppa rifiuta un giocatore che sta già nella rosa di un'altra polisportiva iscritta alla stessa "
+                    "coppa, mentre la si cambia o alla conferma"),
     "dialogo_tornei_in_corso": "si apre il pannello dei tornei in corso e conclusi di recente, con Ctrl+Y",
     "differita_al_via": "si apre la finestra dal vivo per ascoltare in differita un incontro dei tuoi, di torneo o di sfida",
     "differita_interrotta": "nell'ascolto in differita Esc prima della fine, e l'incontro resta da ascoltare senza svelare il risultato",

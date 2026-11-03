@@ -1,4 +1,4 @@
-I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 392 suoni, 365 della finestra e 27 della partita dal vivo.
+I suoni di MESS e i loro preset nella collezione di GBUtils, da ritoccare con Acu_Maker: 394 suoni, 367 della finestra e 27 della partita dal vivo.
 Ogni riga dice l'azione che fa suonare il preset e, dopo i due punti, il suo nome. Il file lo scrive strumenti/elenco_suoni.py dalle mappe dei suoni: non va modificato a mano.
 Finestra, applicazione, l'avvio e l'uscita, 7 suoni.
 Il programma si apre sul mondo caricato dal salvataggio: mess_avvio.
@@ -132,7 +132,7 @@ Nel dialogo di Sposta fondi la cifra supera quello che la polisportiva che paga 
 Sposta fondi, con Ctrl+Shift+I, quando hai una sola polisportiva o nessuna: la voce del menu non è disponibile, e il tasto rapido lo dice: mess_sposta_fondi_non_disponibile.
 Sposta fondi prende i soldi da una tua polisportiva protetta che non è l'attiva, e prima di spostarli si apre la richiesta della sua password: mess_password_dei_fondi.
 Sposta fondi senza la password della tua polisportiva protetta che doveva pagare: non si sposta niente: mess_fondi_senza_password.
-Finestra, polisportive, chiusura, schede e svincolo, 15 suoni.
+Finestra, polisportive, chiusura, schede e svincolo, 16 suoni.
 La richiesta della password prima di chiudere una polisportiva protetta: mess_bussare_alla_porta.
 La domanda se chiudere per sempre la polisportiva attiva: mess_campana_a_martello.
 Una polisportiva chiusa per sempre: mess_triplice_fischio.
@@ -142,6 +142,7 @@ Il diario della polisportiva attiva, con Ctrl+Shift+M: mess_penna_sul_diario.
 L'elenco delle polisportive, con Ctrl+Shift+E: mess_albo_che_scorre.
 Si apre la scelta del tesserato da svincolare, con Ctrl+Shift+S: mess_porta_che_cigola.
 Un tesserato svincolato, che torna libero: mess_contratto_strappato.
+Lo svincolo di un tuo tesserato che non si fa perché la cassa pagherebbe la buonuscita, ma non anche gli arretrati, che lo svincolo salda: mess_svincolo_sotto_gli_arretrati.
 Un comando che vuole i tesserati quando la polisportiva attiva non ne ha, o Gioca tutte le amichevoli di tutte le tue polisportive quando nessuna ne ha: mess_eco_nello_spogliatoio.
 Chiudi la polisportiva attiva quando la sua cassa e le altre tue polisportive, oltre la loro riserva, non bastano per buonuscite, arretrati e stipendi maturati: mess_chiusura_non_possibile.
 Una polisportiva chiusa entro 10 giorni dalla fondazione, senza tesserati né staff e con ancora almeno 20.000 euro di cassa, che si perdono: la sua fondazione non conta più: mess_fondazione_annullata.
@@ -317,7 +318,7 @@ Nell'avanzamento un allenatore del tuo staff smette di allenare, muore o lascia 
 Nell'avanzamento un tuo tesserato si ritira e può allenare, e per qualche giorno puoi assumerlo prima degli altri: mess_prelazione.
 Nell'avanzamento il contratto di un allenatore del tuo staff entra nella finestra del rinnovo, o all'ultimo mese: mess_staff_in_scadenza.
 All'apertura col mondo appena aggiornato, la notizia dello staff e del mercato degli allenatori aperto: mess_staff_appena_nato.
-Finestra, tornei, il calendario e le iscrizioni, 11 suoni.
+Finestra, tornei, il calendario e le iscrizioni, 12 suoni.
 Si apre il calendario dei tornei e delle iscrizioni, con Ctrl+U: mess_calendario_tornei.
 Si aprono le iscrizioni dei tuoi atleti alla prima edizione aperta, con Ctrl+J: mess_iscrizioni_tornei.
 Nel calendario un tuo atleta iscritto a un torneo con la quota pagata, o la rosa della tua polisportiva per la coppa: mess_iscrizione_fatta.
@@ -329,6 +330,7 @@ Nel calendario l'atleta non può giocare quel torneo, per sesso, classe, età o 
 Nel calendario Iscrivi o Togli su un'edizione prevista, che non ha ancora le iscrizioni aperte: mess_iscrizioni_non_ancora.
 Nel calendario Iscrivi o Togli su un'edizione già cominciata, col sorteggio fatto: mess_iscrizioni_chiuse.
 Nel calendario Togli sulla Coppa delle polisportive, dove la rosa si cambia con Rosa per la coppa: mess_coppa_con_la_rosa.
+Nel calendario la rosa per la coppa rifiuta un giocatore che sta già nella rosa di un'altra polisportiva iscritta alla stessa coppa, mentre la si cambia o alla conferma: mess_rosa_doppia.
 Finestra, tornei, il pannello e le classifiche, 10 suoni.
 Si apre il pannello dei tornei in corso e conclusi di recente, con Ctrl+Y: mess_tornei_in_corso.
 Si apre la finestra dal vivo per ascoltare in differita un incontro dei tuoi, di torneo o di sfida: mess_differita_al_via.

@@ -143,6 +143,12 @@ password_della_sorella sono i perché del dialogo della password quando Sposta f
 polisportiva protetta, e la domanda di chiusura dice quali protette restano fuori; domanda_ritiro_senza_rimborso e
 iscrizione_tolta dicono che la quota di un'iscrizione a mano tolta dal primo del mese che segue non torna, e perché. È di
 Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le correzioni della revisione dei rimedi di D40, le frasi nuove di D40: l'allenatore licenziato firma
+con le tue polisportive soltanto dal giorno della fine, non più fino al, nella riga, nell'esito e nella scheda; davanti alle
+date l'articolo si elide con con_articolo; la domanda dello svincolo dice la cifra dopo gli arretrati; fondi_spostati dice
+Spostato con 1 euro, come spostato_o_spostati; l'esito della chiusura mette la virgola fra la polisportiva che ha aiutato e
+la sua cifra; e la domanda del ripensamento dice che la polisportiva oggi è senza tesserati né staff, non che è mai stata
+usata. Le frasi di prima di D40 restano come sono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -910,9 +916,10 @@ def riga_allenatore(a, mondo, ordine=None):
         testa.append(f"numero {a.numero}")
     if a.prelazione:
         coda.append(f"in prelazione per {a.prelazione} fino al {data_breve(a.prelazione_fino)}")
-    # Dalla decisione D40: licenziato da una tua polisportiva, per 30 giorni non firma con le tue.
+    # Dalla decisione D40: licenziato da una tua polisportiva, per 30 giorni non firma con le tue. Dalle scoperte T3 e T8 della
+    # revisione dei rimedi, soltanto dal giorno della fine, con l'articolo eliso, e non più fino al, che si intende compreso.
     if mondo.licenziato_dall_utente(a):
-        coda.append(f"non firma con le tue polisportive fino al {data_breve(a.escluso_dall_utente_fino)}")
+        coda.append(f"firma con le tue polisportive soltanto {con_articolo('dal', data_breve(a.escluso_dall_utente_fino))}")
     if a.riservato_fino is not None and a.riservato_fino > adesso_utc():
         coda.append(f"{'riservata' if a.sesso == 'f' else 'riservato'} a te fino alle {in_ora_locale(a.riservato_fino):%H:%M}")
     coda.append(regione_del_comune(a.luogo))
@@ -1083,11 +1090,14 @@ def domanda_licenziamento(a, p, mondo):
 
 
 def esito_licenziamento(a, p, buonuscita):
-    """L'esito del licenziamento; dalla decisione D40, per una tua polisportiva, anche fino a quando non firma con le tue."""
+    """
+    L'esito del licenziamento; dalla decisione D40, per una tua polisportiva, anche da quando firma con le tue: dalle scoperte
+    T3 e T8 della revisione dei rimedi, soltanto dal 3 dicembre 2026, e non più fino al, che si intende compreso.
+    """
     con = f", con una buonuscita di {euro(buonuscita)}" if buonuscita else ""
     lontano = ""
     if not p.is_cpu_controlled and a.escluso_dall_utente_fino is not None:
-        lontano = f" Fino al {data_breve(a.escluso_dall_utente_fino)} non firma con le tue polisportive."
+        lontano = f" Firma con le tue polisportive soltanto {con_articolo('dal', data_breve(a.escluso_dall_utente_fino))}."
     return f"{nome_completo(a)} non è più nello staff di {p.nome}{con}: è {accorda_sesso(a.sesso, 'libero')}.{lontano}"
 
 
@@ -1434,8 +1444,16 @@ def riga_dei_fondi(p, mondo):
 
 
 def fondi_spostati(da, a, cifra):
-    """L'esito di Sposta fondi: la cifra, da dove e dove, e le due casse di adesso."""
-    return f"Spostati {euro(cifra)} da {da.nome} a {a.nome}. Ora {da.nome} ha in cassa {euro(da.cassa)}, e {a.nome} {euro(a.cassa)}."
+    """
+    L'esito di Sposta fondi: la cifra, da dove e dove, e le due casse di adesso. Dalla scoperta T3 della revisione dei rimedi
+    di D40 con 1 euro dice Spostato, al singolare.
+    """
+    return f"{spostato_o_spostati(cifra).capitalize()} {euro(cifra)} da {da.nome} a {a.nome}. Ora {da.nome} ha in cassa {euro(da.cassa)}, e {a.nome} {euro(a.cassa)}."
+
+
+def spostato_o_spostati(cifra):
+    """Il participio di Sposta fondi accordato alla cifra: spostato 1 euro, spostati 2 euro."""
+    return "spostato" if cifra == 1 else "spostati"
 
 
 def password_dei_fondi(da, a, cifra):
@@ -2111,7 +2129,8 @@ def domanda_svincolo(g, p, mondo):
     buonuscita = contratti.buonuscita(g, oggi)
     mosse = f"userai una delle {mondo.mosse_rimaste(p)} mosse che ti restano oggi"
     arretrati = 0 if p.is_cpu_controlled else g.arretrati
-    saldati = f" Lo svincolo salda anche i {euro(arretrati)} di arretrati che aspetta." if arretrati else ""
+    # Dalla scoperta T3 della revisione dei rimedi di D40 la cifra viene dopo gli arretrati: i 800 euro non si dice.
+    saldati = f" Lo svincolo salda anche gli arretrati che aspetta, {euro(arretrati)}." if arretrati else ""
     if not buonuscita:
         return f"Svincolare {nome_completo(g)}?{saldati} Tornerà {accorda(g, 'libero')}, e {mosse}."
     return f"Svincolare {nome_completo(g)}? {mesi_che_restano(g, oggi)}: la buonuscita è di {euro(buonuscita)}.{saldati} Tornerà {accorda(g, 'libero')}, e {mosse}."
@@ -2149,14 +2168,19 @@ def domanda_chiusura(p, piano, ripensamento=None, escluse=()):
     La domanda della chiusura per sempre. Dalla decisione D40 dice anche quanto costa chiudere, fra buonuscite e arretrati
     dei tesserati e buonuscite e stipendi maturati dello staff, chi paga che cosa e quanta cassa resta e va persa. piano è
     quello di Mondo.piano_di_chiusura, per una chiusura che si può fare. Col ripensamento, i giorni di
-    Mondo.giorni_del_ripensamento, dice subito che la fondazione non conterà e quanta cassa si perde. Dalla scelta di
+    Mondo.giorni_del_ripensamento, dice subito che la fondazione non conterà e quanta cassa si perde, e che la polisportiva
+    oggi è senza tesserati né staff, come guarda la regola: non dice più mai usata, scoperta T4 della revisione dei rimedi di
+    D40, perché il ripensamento vale anche per chi ha tesserato e poi svincolato. Dalla scelta di
     Gabriele del 3 novembre 2026, che vale come D40, dice anche quali tue polisportive protette restano fuori, escluse,
     perché la loro password non è arrivata.
     """
     righe = [f"Chiudere per sempre {p.nome}?"]
     if ripensamento is not None:
-        righe += [f"Fondata {fondata_da(ripensamento)} e mai usata: la fondazione non conterà, e la cassa, {euro(piano.cassa_persa)}, si perde.",
-                  "Non si torna indietro."]
+        # Dalla scoperta T4 della revisione dei rimedi di D40 la frase dice lo stato di oggi, come la regola, e non più mai
+        # usata: chi ha tesserato, svincolato e riportato la cassa a 20.000 euro ha il ripensamento anche lui.
+        adesso = "ora" if ripensamento == 0 else "oggi"
+        righe += [f"Fondata {fondata_da(ripensamento)}, e {adesso} senza tesserati né staff: la fondazione non conterà, e la cassa, "
+                  f"{euro(piano.cassa_persa)}, si perde.", "Non si torna indietro."]
         return " ".join(righe)
     if piano.costo:
         righe += [_costo_della_chiusura(piano), _chi_paga_la_chiusura(p, piano)]
@@ -2182,7 +2206,8 @@ def chiusa(nome, liberati, piano=None, ripensamento=None):
     tesserati = f": {conta(liberati, 'giocatore torna libero', 'giocatori tornano liberi')}" if liberati else ", senza tesserati"
     pagata = ""
     if piano is not None and piano.costo:
-        altre = unisci([f"{pagante.nome} {euro(quota)}" for pagante, quota in piano.paganti if pagante.nome != nome])
+        # Dalla scoperta T3 della revisione dei rimedi di D40 la virgola fra la polisportiva e la sua cifra: con l'aiuto di Pat-Roma, 17.540 euro.
+        altre = unisci([f"{pagante.nome}, {euro(quota)}" for pagante, quota in piano.paganti if pagante.nome != nome])
         pagata = f" Ha saldato {euro(piano.costo)} di debiti" + (f", con l'aiuto di {altre}." if altre else ".")
     if ripensamento is not None:
         pagata += " La sua fondazione non conta più."

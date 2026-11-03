@@ -10,7 +10,8 @@ macchina col codice di prima non ripieghi su una copia del 10 coprendo il mondo.
 ferma il caricamento senza ripiego, senza copie messe da parte e senza toccare i file.
 Dalla quinta tranche di D40 la migrazione aggiunge anche le due voci dei conti di Sposta fondi, a zero, nel mese in corso e
 nei bilanci. Dal 3 novembre 2026 l'errore del formato più recente dice se è della copia di sicurezza, e perché il salvataggio
-non si usava.
+non si usava. Con le note 3 e 5 della revisione dei rimedi: il messaggio della copia nuova che non si scrive dice che il
+salvataggio la aspetta, e un formato più recente con un'altra firma, o senza firma, risulta più recente e non rovinato.
 """
 
 import datetime
@@ -241,7 +242,12 @@ def test_se_la_copia_nuova_non_si_scrive_il_salvataggio_non_si_fa(cartella_di_pr
     copia.mkdir()
     messaggi.clear()
     assert not archivio.salva(ricaricato)
-    assert messaggi[0].startswith("Salvataggio non riuscito") and messaggi[0].endswith("Il salvataggio precedente è rimasto com'era.")
+    # Nota 3 della revisione dei rimedi di D40: il messaggio dice che il salvataggio aspetta la copia nuova, oltre all'errore di Windows.
+    assert messaggi[0].startswith(f"Salvataggio non riuscito: la copia di sicurezza, {FILE_MONDO_COPIA}, non si è potuta scrivere nel formato 11: ")
+    assert messaggi[0].endswith(". Il primo salvataggio nel formato 11 aspetta la copia nuova, perché un MESS di prima che apra lo stesso mondo non "
+                                "torni a una copia del formato vecchio. Il salvataggio precedente è rimasto com'era, e il prossimo salvataggio ci riprova.")
+    # L'errore di Windows nomina anche lui la copia, col suo percorso.
+    assert messaggi[0].count(FILE_MONDO_COPIA) == 2 and len(messaggi) == 1
     assert principale.read_bytes() == vecchio and ricaricato.formato_letto == 10
     assert set(os.listdir(cartella_di_prova)) == {FILE_MONDO, FILE_MONDO_COPIA}
     copia.rmdir()
@@ -273,6 +279,34 @@ def test_il_formato_12_ferma_il_caricamento_senza_toccare_niente(cartella_di_pro
     assert not errore.value.della_copia and errore.value.motivo is None
     assert _istantanea(cartella_di_prova) == prima and set(prima) == {FILE_MONDO, FILE_MONDO_COPIA}
     assert not mondo.salvataggio_bloccato and mondo.giocatori == {} and messaggi == []
+
+
+def test_il_formato_12_con_un_altra_firma_e_piu_recente_non_rovinato(cartella_di_prova):
+    # Nota 5 della revisione dei rimedi di D40: un MESS futuro che cambiasse la firma, o che non la scrivesse più, non deve
+    # far tornare alla copia di sicurezza; il formato si guarda prima della firma.
+    buono = _mondo_con_due_polisportive()
+    assert archivio.salva(buono) and archivio.salva(buono)
+    principale = cartella_di_prova / FILE_MONDO
+    contenuto = archivio.componi(_mondo_con_due_polisportive())
+    contenuto["formato"] = archivio.FORMATO + 1
+    for firma in ("una firma calcolata in un altro modo", None):
+        documento = contenuto if firma is None else {**contenuto, "firma": firma}
+        with gzip.open(principale, "wt", encoding="utf-8") as f:
+            f.write(json.dumps(documento))
+        prima = _istantanea(cartella_di_prova)
+        with pytest.raises(archivio.FormatoPiuRecente) as errore:
+            archivio.carica(Mondo())
+        assert errore.value.formato == 12 and not errore.value.della_copia
+        assert _istantanea(cartella_di_prova) == prima
+    # Il formato di oggi con la firma sbagliata resta un file rovinato, e così un altro programma col formato 12.
+    with gzip.open(principale, "wt", encoding="utf-8") as f:
+        f.write(json.dumps({**archivio.componi(buono), "firma": "sbagliata"}))
+    with pytest.raises(archivio.ErroreSalvataggio, match="la firma non corrisponde"):
+        archivio.leggi(principale)
+    with gzip.open(principale, "wt", encoding="utf-8") as f:
+        f.write(json.dumps({**contenuto, "applicazione": "Altro", "firma": "sbagliata"}))
+    with pytest.raises(archivio.ErroreSalvataggio, match="la firma non corrisponde"):
+        archivio.leggi(principale)
 
 
 def test_anche_una_copia_del_formato_12_ferma_il_caricamento(cartella_di_prova):

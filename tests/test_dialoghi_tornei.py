@@ -259,6 +259,51 @@ def test_togli_sulla_coppa_rimanda_alla_rosa(app_wx, messaggi, orologio, suonati
         dialogo.Destroy()
 
 
+def test_la_rosa_che_rifiuta_chi_sta_in_un_altra_ha_il_suo_suono(app_wx, messaggi, orologio, suonati, monkeypatch):
+    # Scoperta T6 della revisione dei rimedi di D40: chi sta già nella rosa di un'altra iscritta suona rosa_doppia, mentre
+    # la si cambia e alla conferma; gli altri problemi della rosa suonano ancora come la formazione che non va.
+    mondo = mondo_di_prova(20, 20)
+    altra = polisportiva(mondo, "PoliTeam01 Prova", ids=(1, 2, 3, 21, 22))
+    club = polisportiva(mondo, "Club Di Prova", cpu=False, cassa=1000, ids=(9, 10, 11, 25, 26, 27))
+    seconda = polisportiva(mondo, "Seconda squadra", cpu=False, cassa=1000, ids=(12, 13, 14, 28, 29, 30))
+    altra.gloria, club.gloria, seconda.gloria = 300, 250, 200
+    apertura = datetime.datetime(2027, 5, 26, 9, 0)
+    mondo.datetime_corrente_simulazione = apertura
+    solo(["Coppa delle polisportive"])
+    coppa = apri(mondo, apertura, "Coppa delle polisportive")[0]
+    x = mondo.giocatori[coppa.iscritto(seconda.nome)["rosa"][0]]
+    mondo._lascia(seconda, x)
+    mondo._entra(club, x)
+    rosa = coppa.iscritto(club.nome)["rosa"]
+    doppia, sbagliata = [x.id, *rosa[1:3]], rosa[:3] + rosa[:1]
+    assert sfide.rosa_doppia(mondo, coppa.id, club, doppia) and not sfide.rosa_doppia(mondo, coppa.id, club, sbagliata)
+    visti = []
+
+    def scegli(self):
+        sezione = self.formazione
+        for ids in (doppia, sbagliata):
+            for posto, gid in enumerate(ids[:3]):
+                sezione.scelte[posto].SetSelection(next(i for i, g in enumerate(sezione.convocabili) if g.id == gid))
+            for posto in range(3, len(sezione.scelte)):
+                sezione.scelte[posto].SetSelection(0 if len(ids) <= posto else 1 + next(i for i, g in enumerate(sezione.convocabili) if g.id == ids[posto]))
+            self.conferma()
+            visti.append(suonati[-1])
+        return wx.ID_CANCEL
+
+    monkeypatch.setattr(gui_sfide.FormazioneDialogo, "ShowModal", scegli)
+    dialogo = gui_tornei.CalendarioTornei(None, mondo, club)
+    try:
+        dialogo.elenco.SetSelection(next(i for i, (tipo, ed) in enumerate(dialogo.voci) if tipo == "aperta" and ed is coppa))
+        dialogo.aggiorna_atleti()
+        dialogo.iscrivi()
+        assert visti == ["rosa_doppia", "formazione_non_valida"]
+        assert messaggi[-2] == f"{x.nome} {x.cognome} è già nella rosa di Seconda squadra per la Coppa delle polisportive."
+        assert messaggi[-1] == "Lo stesso giocatore compare due volte nella rosa."
+        assert coppa.iscritto(club.nome)["rosa"] == rosa and suonati[-1] == "annullato"
+    finally:
+        dialogo.Destroy()
+
+
 def test_le_edizioni_in_corso_portano_al_pannello(calendario):
     mondo, _club, dialogo = calendario
     ed = _scegli_edizione(dialogo, "Open maschile del martedì", datetime.date(2026, 10, 6))

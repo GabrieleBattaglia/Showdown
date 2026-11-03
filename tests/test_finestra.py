@@ -1481,9 +1481,15 @@ def test_i_suoni_delle_vendite(finestra, suonati, monkeypatch):
 
 
 def _convocati_domani(mondo, poli, ids):
-    """Una sfida accettata della polisportiva per domani, coi convocati dati: la decisione D40 li ferma sul mercato."""
+    """
+    Una sfida accettata della polisportiva per domani, coi convocati dati: la decisione D40 li ferma sul mercato. Dalla
+    scoperta A7 della revisione dei rimedi di D40 la sfida ferma soltanto se le due polisportive esistono, quindi la
+    sfidata, del computer, entra nel mondo.
+    """
     oggi = mondo.datetime_corrente_simulazione.date()
-    s = sfide.Sfida(mondo.sfide.nuovo_id(), iscrizioni.club_della(poli), {"nome": "PoliTeam01 Prova", "fondazione": "2026-01-01"}, oggi, oggi,
+    sfidata = Polisportiva("PoliTeam01 Prova", None, mondo.datetime_corrente_simulazione - datetime.timedelta(days=400), is_cpu_controlled=True)
+    mondo.polisportive[sfidata.nome] = sfidata
+    s = sfide.Sfida(mondo.sfide.nuovo_id(), iscrizioni.club_della(poli), iscrizioni.club_della(sfidata), oggi, oggi,
                     sfide.ACCETTATA, oggi + datetime.timedelta(days=1), {"sfidante": list(ids), "sfidata": []})
     mondo.sfide.attive.append(s)
     return s
@@ -1573,6 +1579,25 @@ def test_lo_svincolo_di_un_convocato_ha_il_suo_suono(finestra, suonati, monkeypa
     assert poli.tesserati == [2, 5]
 
 
+def test_lo_svincolo_fermato_dagli_arretrati_ha_il_suo_suono(finestra, suonati, monkeypatch):
+    # Scoperta T6 della revisione dei rimedi di D40: la cassa pagherebbe la buonuscita, qui zero, ma non anche gli arretrati.
+    mondo = finestra.mondo
+    poli = mondo.miapolisportiva_attiva
+    g = mondo.giocatori[5]
+    g.arretrati = 500
+    poli.cassa = 300
+
+    def scegli(self):
+        self.elenco.SetSelection(self.visibili.index(g))
+        self.conferma()
+        return wx.ID_OK
+
+    monkeypatch.setattr(dialoghi.SceltaGiocatore, "ShowModal", scegli)
+    finestra.svincola()
+    assert suonati[-1] == "svincolo_sotto_gli_arretrati" and finestra.vista.GetValue() == mondo.problema_svincolo(poli, g)
+    assert finestra.ultimo_evento == "arretrati da saldare" and g.id in poli.tesserati
+
+
 def test_la_chiusura_che_non_si_puo_fare_ha_il_suo_suono(finestra, suonati):
     # La decisione D40: la chiusura salda tutti i debiti, e se i soldi non bastano non si fa, col suo perché e il suo suono.
     mondo = finestra.mondo
@@ -1626,8 +1651,8 @@ def test_il_ripensamento_ha_la_sua_domanda_e_il_suo_suono(finestra, suonati, mon
     domande = []
     monkeypatch.setattr(wx, "MessageBox", lambda testo, *a, **k: domande.append(testo) or wx.YES)
     finestra.chiudi_polisportiva()
-    assert domande == ["Chiudere per sempre Seconda squadra? Fondata oggi e mai usata: la fondazione non conterà, e la cassa, 20.000 euro, si perde. "
-                       "Non si torna indietro."]
+    assert domande == ["Chiudere per sempre Seconda squadra? Fondata oggi, e ora senza tesserati né staff: la fondazione non conterà, e la cassa, "
+                       "20.000 euro, si perde. Non si torna indietro."]
     assert "Seconda squadra" not in mondo.polisportive and mondo.fondazioni_di_sempre == 0 and suonati[-1] == "fondazione_annullata"
     assert finestra.vista.GetValue().startswith("Seconda squadra ha chiuso per sempre, senza tesserati. La sua fondazione non conta più. ")
 
