@@ -33,6 +33,13 @@ dall'ingaggio il giorno della firma e sale in linea retta fino al tetto pieno, t
 MESI_DELLA_RAMPA mesi; rivendita_piena_dal dice il giorno del tetto pieno, e rivendita_al_prezzo_dal il giorno
 in cui il tetto arriva a un prezzo dato. rivendita_dal non c'è più. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le scelte di Gabriele del 3 novembre 2026 che valgono come D40, dopo la misura della rivendita a 36
+mesi con due partenze, strumenti/rivendita_d40.txt: la rampa parte da quello che la polisportiva ha pagato per avere il
+giocatore il giorno della firma, pagato_alla_firma, cioè l'ingaggio dell'offerta accettata per un libero e il prezzo per
+un acquisto, e non più dall'ingaggio che il giocatore chiede il giorno della vendita, che cresceva mentre si allenava in
+rosa e scendeva quando saliva la gloria della polisportiva; MESI_DELLA_RAMPA passa da 24 a 36. Senza pagato_alla_firma,
+per chi ha firmato nel formato 11 prima del cambio, la partenza resta l'ingaggio chiesto oggi. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -160,16 +167,26 @@ def tetto_pieno_di_rivendita(g, poli, oggi):
     return round(valore_di_mercato(g, oggi, poli.is_cpu_controlled) * RIALZO_CPU)
 
 
+def partenza_della_rampa(g, poli):
+    """
+    Da dove parte la rampa del prezzo di un tesserato dell'utente, scelta di Gabriele del 3 novembre 2026 che vale come
+    D40: quello che la polisportiva ha pagato per averlo il giorno della firma, pagato_alla_firma, l'ingaggio dell'offerta
+    accettata o il prezzo dell'acquisto. Il campo è vuoto soltanto per chi ha firmato nel formato 11, prima del cambio, e
+    allora vale la regola di prima, l'ingaggio che il giocatore chiede oggi alla polisportiva.
+    """
+    return ingaggio_richiesto(g, poli) if g.pagato_alla_firma is None else g.pagato_alla_firma
+
+
 def _rampa(g, poli, oggi, pieno):
     """
-    La rampa del prezzo di un tesserato dell'utente, se il tetto non è ancora pieno: la partenza, cioè l'ingaggio che
-    il giocatore chiede alla polisportiva, i giorni passati dalla firma, quelli dalla firma al tetto pieno e il giorno
-    del tetto pieno. None quando il tetto è già pieno: polisportiva del computer, firma prima del formato 11 senza il
-    giorno, partenza che non sta sotto il tetto pieno, e dal giorno del tetto pieno in poi.
+    La rampa del prezzo di un tesserato dell'utente, se il tetto non è ancora pieno: la partenza, cioè quello che la
+    polisportiva ha pagato alla firma, partenza_della_rampa, i giorni passati dalla firma, quelli dalla firma al tetto
+    pieno e il giorno del tetto pieno. None quando il tetto è già pieno: polisportiva del computer, firma prima del
+    formato 11 senza il giorno, partenza che non sta sotto il tetto pieno, e dal giorno del tetto pieno in poi.
     """
     if poli.is_cpu_controlled or g.tesserato_dal is None:
         return None
-    partenza = ingaggio_richiesto(g, poli)
+    partenza = partenza_della_rampa(g, poli)
     if partenza >= pieno:
         return None
     fine = contratti.stesso_giorno_dopo(g.tesserato_dal, MESI_DELLA_RAMPA)
@@ -183,13 +200,13 @@ def _rampa(g, poli, oggi, pieno):
 def tetto_di_rivendita(g, poli, oggi):
     """
     Il prezzo più alto che il computer paga oggi per un giocatore della polisportiva, in euro interi: il computer lo
-    compra soltanto a un prezzo che non lo supera. Decisione D40, scelta di Gabriele del 3 novembre 2026, per un
-    tesserato dell'utente: il giorno della firma con la polisportiva di oggi il tetto è l'ingaggio che il giocatore le
-    chiede, cioè circa quello che è costato, e sale in linea retta, giorno per giorno, fino al tetto pieno di oggi,
-    tetto_pieno_di_rivendita, lo stesso giorno del mese MESI_DELLA_RAMPA mesi dopo la firma. Se la partenza non sta
-    sotto il tetto pieno vale il tetto pieno, e così per chi ha firmato prima del formato 11, senza il giorno della
-    firma. Per le polisportive del computer è il tetto pieno, senza rampa: Mondo._vendibili non lo usa per loro, e
-    le loro vendite restano quelle di prima.
+    compra soltanto a un prezzo che non lo supera. Decisione D40, scelte di Gabriele del 3 novembre 2026, per un
+    tesserato dell'utente: il giorno della firma con la polisportiva di oggi il tetto è quello che la polisportiva ha
+    pagato per averlo, partenza_della_rampa, l'ingaggio o il prezzo d'acquisto, e sale in linea retta, giorno per
+    giorno, fino al tetto pieno di oggi, tetto_pieno_di_rivendita, lo stesso giorno del mese MESI_DELLA_RAMPA mesi dopo
+    la firma. Se la partenza non sta sotto il tetto pieno vale il tetto pieno, e così per chi ha firmato prima del
+    formato 11, senza il giorno della firma. Per le polisportive del computer è il tetto pieno, senza rampa:
+    Mondo._vendibili non lo usa per loro, e le loro vendite restano quelle di prima.
     """
     pieno = tetto_pieno_di_rivendita(g, poli, oggi)
     rampa = _rampa(g, poli, oggi, pieno)

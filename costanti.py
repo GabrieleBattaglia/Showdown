@@ -29,6 +29,10 @@ Lo stesso giorno Gabriele ha scelto la rampa del prezzo, che vale come D40: MESI
 il prezzo più alto che il computer paga per un tesserato dell'utente sale in linea retta dall'ingaggio al valore pieno. Prende
 il posto di MESI_PRIMA_DELLA_RIVENDITA e dei suoi 12 mesi d'attesa. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus
 5.5, UltraCode).
+Lo stesso giorno, dopo la misura della rivendita a 36 mesi con due partenze, nella quarta parte di strumenti/rivendita_d40.txt,
+Gabriele ha scelto la durata e la partenza, che valgono come D40: MESI_DELLA_RAMPA passa da 24 a 36, e la rampa parte da
+quello che la polisportiva ha pagato alla firma, l'ingaggio o il prezzo d'acquisto, e non più dall'ingaggio chiesto il giorno
+della vendita. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -310,12 +314,13 @@ BILANCI_CONSERVATI = 12
 RIALZO_CPU = 1.15
 MESI_DI_RISERVA_CPU = 1
 PARTI_DI_CASSA_PER_STIPENDI = 24
-# Decisione D40, scelta di Gabriele del 3 novembre 2026: per un tesserato dell'utente il computer paga al più, il giorno
-# della firma con la polisportiva di oggi, l'ingaggio che il giocatore chiede; poi il tetto sale in linea retta, giorno per
-# giorno, fino al valore pieno col rialzo, lo stesso giorno del mese tanti mesi dopo la firma. Così tesserare un libero e
-# rivenderglielo subito non è un commercio. Prende il posto dei 12 mesi d'attesa, che la misura della settima tranche,
-# strumenti/rivendita_d40.txt, aveva trovato troppo pochi.
-MESI_DELLA_RAMPA = 24
+# Decisione D40, scelte di Gabriele del 3 novembre 2026: per un tesserato dell'utente il computer paga al più, il giorno
+# della firma con la polisportiva di oggi, quello che la polisportiva ha pagato per averlo, l'ingaggio o il prezzo
+# d'acquisto; poi il tetto sale in linea retta, giorno per giorno, fino al valore pieno col rialzo, lo stesso giorno del
+# mese tanti mesi dopo la firma. Così tesserare un libero e rivenderglielo subito non è un commercio. Prende il posto dei
+# 12 mesi d'attesa, che la misura della settima tranche, strumenti/rivendita_d40.txt, aveva trovato troppo pochi. I mesi
+# erano 24; la misura a 36 mesi con la partenza dalla firma, nella quarta parte della stessa carta, ha portato Gabriele a 36.
+MESI_DELLA_RAMPA = 36
 # Quanti candidati troppo cari il computer scorre in un giorno, prima di lasciar perdere.
 SCARTI_MASSIMI_CPU = 30
 # Il computer spende secondo la cassa, decisione 1 di Gabriele del 14 ottobre 2026: con la cassa piena

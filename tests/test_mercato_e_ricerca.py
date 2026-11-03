@@ -595,7 +595,7 @@ def test_preset_e_porte_vanno_e_tornano_dal_salvataggio(mondo, cartella_di_prova
     assert archivio.salva(mondo)
     letto = archivio.leggi(cartella_di_prova / FILE_MONDO)
     blocco = letto["mondo"]["filtri_di_ricerca"]
-    assert letto["formato"] == archivio.FORMATO == 11 and set(blocco) == {"preset", "prossimo_preset", "porte"} and set(blocco["porte"]) == set(mercato.PORTE)
+    assert letto["formato"] == archivio.FORMATO == 12 and set(blocco) == {"preset", "prossimo_preset", "porte"} and set(blocco["porte"]) == set(mercato.PORTE)
     assert [(p["numero"], p["nome"]) for p in blocco["preset"]] == [(2, "Donne libere"), (3, "Allenatori vedenti")] and blocco["prossimo_preset"] == 4
     assert {porta: stato["scelta"] for porta, stato in blocco["porte"].items()} == {"mercato": 2, "allenatori": 3, "ricerca": None, "amichevole": "piu_forti"}
     assert all(set(stato) == {"scelta", "attuali", "preparazione"} for stato in blocco["porte"].values())

@@ -88,6 +88,10 @@ Lo stesso giorno, con altre scelte di Gabriele che valgono come D40, l'avviso de
 recente, MondoPiuRecente, con Scegli un'altra cartella ed Esci, il predefinito, senza Riprova; e ChiediPassword serve anche
 a Sposta fondi, per la polisportiva che paga, e alla chiusura, per ogni tua polisportiva protetta che ne coprirebbe i
 debiti. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le scelte di Gabriele che valgono come D40 dopo la misura della rivendita a 36 mesi, il tetto da cui
+partono le Vendite segue la rampa nuova: parte da quello che la polisportiva ha pagato alla firma, l'ingaggio o il prezzo
+d'acquisto, e arriva al valore pieno in 36 mesi. Il dialogo non cambia. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -971,7 +975,8 @@ class Vendite(_Dialogo):
         """
         Il prezzo parte da quello di vendita, se il tesserato è già in vendita, o dal suo valore di mercato: dalla decisione D40
         quello che il computer paga, senza il rinnovo concordato. Dalla rampa del prezzo, scelta di Gabriele del 3 novembre
-        2026, parte dal tetto di oggi, il prezzo più alto che il computer paga, che la riga dice.
+        2026, parte dal tetto di oggi, il prezzo più alto che il computer paga, che la riga dice: durante la rampa sta fra
+        quello che la polisportiva ha pagato alla firma e il valore pieno, che arriva in 36 mesi.
         """
         indice = self.elenco.GetSelection()
         if indice == wx.NOT_FOUND:

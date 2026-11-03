@@ -6,6 +6,9 @@ Nasce il 2026-10-09 con la tappa 11 e il formato 6; dal 2026-10-13, con la tappa
 Dal 2026-11-02, con la decisione D40, anche il formato 10, di un documento del formato 11. È di Gabriele Battaglia
 (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode). Con la quinta tranche di D40 il formato 10 perde anche le due voci dei
 conti di Sposta fondi. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con le scelte di Gabriele che valgono come D40, anche il formato 11, di un documento del formato 12,
+senza quello che ogni giocatore ha pagato alla firma; il formato 10 passa da lì. È di Gabriele Battaglia (IZ4APU) & ClaudIA
+(Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -32,14 +35,26 @@ CAMPI_DEL_FORMATO_11 = ("tesserato_dal",)
 CAMPI_ALLENATORE_DEL_FORMATO_11 = ("escluso_dall_utente_fino",)
 # Le voci dei conti che nascono con la quinta tranche di D40, sempre nel formato 11: i fondi di Sposta fondi.
 VOCI_DEL_FORMATO_11 = ("fondi_ricevuti", "fondi_versati")
+# Il campo che nasce con il formato 12, con le scelte di Gabriele del 3 novembre 2026: in ogni giocatore, quello che ha pagato alla firma.
+CAMPI_DEL_FORMATO_12 = ("pagato_alla_firma",)
+
+
+def al_formato_11(contenuto):
+    """Un documento del formato 12 com'era nel formato 11: senza quello che ogni giocatore ha pagato alla firma."""
+    vecchio = copy.deepcopy(contenuto)
+    for g in vecchio["mondo"]["giocatori"]:
+        for campo in CAMPI_DEL_FORMATO_12:
+            del g[campo]
+    vecchio["formato"] = 11
+    return vecchio
 
 
 def al_formato_10(contenuto):
     """
-    Un documento del formato 11 com'era nel formato 10: senza il contatore delle fondazioni, la firma dei giocatori, il giorno
-    degli allenatori e le voci dei conti di Sposta fondi.
+    Un documento del formato 12 com'era nel formato 10: com'era nell'11, e poi senza il contatore delle fondazioni, la firma
+    dei giocatori, il giorno degli allenatori e le voci dei conti di Sposta fondi.
     """
-    vecchio = copy.deepcopy(contenuto)
+    vecchio = al_formato_11(contenuto)
     for campo in CAMPI_MONDO_DEL_FORMATO_11:
         del vecchio["mondo"][campo]
     for g in vecchio["mondo"]["giocatori"]:

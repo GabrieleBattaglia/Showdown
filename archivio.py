@@ -116,6 +116,13 @@ prima della firma, così un file di MESS di un formato più recente risulta più
 firma, e non rovinato, che farebbe tornare alla copia. Un formato futuro che cambiasse la compressione o il JSON resterebbe
 invece un file rovinato: per leggerne il formato servirebbe sapere com'è fatto. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Il formato 12, dello stesso 3 novembre 2026, con le scelte di Gabriele che valgono come D40 dopo la misura della rivendita a
+36 mesi: ogni giocatore ricorda quello che la polisportiva di oggi ha pagato per averlo il giorno della firma,
+pagato_alla_firma, l'ingaggio o il prezzo d'acquisto, da cui parte la rampa del prezzo. La migrazione dall'11 lo lascia
+vuoto per tutti, e un mondo del formato 10, come quello di Gabriele, passa per l'11 e per il 12 nello stesso caricamento.
+Il formato 11 non è mai uscito, ma le macchine di Gabriele col codice di main lo leggono: davanti al 12 si fermano con
+l'avviso del formato più recente, senza toccare i file, e la copia di sicurezza si scrive nel formato 12 come prima
+nell'11. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -178,7 +185,7 @@ from sfide import RegistroSfide
 from utilita import adesso, adesso_utc, senza_raccolta
 
 APPLICAZIONE = "MESS"
-FORMATO = 11
+FORMATO = 12
 CHIAVE_FIRMA = b"MESS_2026_firma_dei_salvataggi_di_Gabriele_e_ClaudIA"
 CARTELLA_QUARANTENA = "salvataggi_illeggibili"
 # Il segnaposto dei giocatori mentre si scrive il resto del documento, _testo_firmato: due caratteri
@@ -794,8 +801,20 @@ def _dal_formato_10(documento):
     documento["formato"] = 11
 
 
+def _dal_formato_11(documento):
+    """
+    Dal formato 11 al 12, con le scelte di Gabriele del 3 novembre 2026 che valgono come D40, aggiungendo soltanto: quello
+    che la polisportiva ha pagato alla firma resta vuoto per tutti i giocatori, perché nessuno lo ricorda. Per chi ha il
+    giorno della firma, firmato nel formato 11, la rampa del prezzo parte allora dall'ingaggio chiesto oggi, la regola di
+    prima; per chi non lo ha, firmato prima del formato 11, vale subito il tetto pieno, come prima.
+    """
+    for g in documento["mondo"]["giocatori"]:
+        g.setdefault("pagato_alla_firma", None)
+    documento["formato"] = 12
+
+
 MIGRAZIONI = {1: _dal_formato_1, 2: _dal_formato_2, 3: _dal_formato_3, 4: _dal_formato_4, 5: _dal_formato_5, 6: _dal_formato_6,
-              7: _dal_formato_7, 8: _dal_formato_8, 9: _dal_formato_9, 10: _dal_formato_10}
+              7: _dal_formato_7, 8: _dal_formato_8, 9: _dal_formato_9, 10: _dal_formato_10, 11: _dal_formato_11}
 
 
 def _conservazione_da_json(valore):

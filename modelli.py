@@ -41,6 +41,11 @@ polisportiva di oggi, tesserato_dal, vuoto per chi è libero e per chi ha firmat
 Lo stesso giorno, con la quinta tranche di D40, i conti di un mese hanno due voci nuove, i fondi ricevuti e quelli versati
 con Sposta fondi fra le polisportive dell'utente, sempre nel formato 11. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Dal 3 novembre 2026, con le scelte di Gabriele che valgono come D40, il formato 12: il giocatore ricorda anche quello che
+la polisportiva di oggi ha pagato per averlo il giorno della firma, pagato_alla_firma, l'ingaggio o il prezzo d'acquisto,
+da cui parte la rampa del prezzo di economia.tetto_di_rivendita; vuoto per chi è libero, per chi ha firmato prima del
+formato 12 e per chi è entrato senza pagare. Il tipo nuovo INTERO_O_NULLA lo salva. È di Gabriele Battaglia (IZ4APU) &
+ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import contextlib
@@ -180,6 +185,8 @@ def e_fisica(nome_allenato):
 DATA = "data"
 DATA_O_NULLA = "data_o_nulla"
 TESTO_O_NULLA = "testo_o_nulla"
+# Dalla decisione D40, formato 12: un intero, o il vuoto, per quello che si è pagato alla firma.
+INTERO_O_NULLA = "intero_o_nulla"
 LISTA_INTERI = "lista_interi"
 DIARIO = "diario"
 # Dalla tappa 8: i giocatori in vendita con il loro prezzo, i bilanci mensili e i conti del mese in corso.
@@ -207,6 +214,7 @@ _CONTROLLI = {
     float: lambda v: isinstance(v, (int, float)) and not isinstance(v, bool),
     str: lambda v: isinstance(v, str),
     TESTO_O_NULLA: lambda v: v is None or isinstance(v, str),
+    INTERO_O_NULLA: lambda v: v is None or (isinstance(v, int) and not isinstance(v, bool)),
     LISTA_INTERI: lambda v: isinstance(v, list) and all(isinstance(x, int) and not isinstance(x, bool) for x in v),
 }
 CAMPI_GIOCATORE = (
@@ -238,6 +246,8 @@ CAMPI_GIOCATORE = (
     ("classe_migliore", float), ("luogo", str),
     # Dalla decisione D40, formato 11: il giorno della firma con la polisportiva di oggi, vuoto per chi è libero e per chi ha firmato prima.
     ("tesserato_dal", DATA_O_NULLA),
+    # Dalla decisione D40, formato 12: quello che la polisportiva di oggi ha pagato per averlo, l'ingaggio o il prezzo, vuoto quando non si sa.
+    ("pagato_alla_firma", INTERO_O_NULLA),
 )
 
 
@@ -466,6 +476,7 @@ _A_JSON = {
     DATA: _data_a_json,
     DATA_O_NULLA: _data_a_json,
     TESTO_O_NULLA: lambda valore: None if valore is None else str(valore),
+    INTERO_O_NULLA: lambda valore: None if valore is None else int(valore),
     LISTA_INTERI: lambda valore: [int(v) for v in valore],
 }
 
@@ -653,8 +664,9 @@ class Giocatore:
             setattr(self, campo, vuoto)
         self.prossimo_torneo = ritmo_iniziale(id_giocatore, datetime_creazione_sim) if isinstance(datetime_creazione_sim, datetime.datetime) else None
         self.iscrizione_automatica = True
-        # Dalla decisione D40 il giorno della firma con la polisportiva di oggi: chi nasce è libero.
+        # Dalla decisione D40 il giorno della firma con la polisportiva di oggi, e dal formato 12 quello che ha pagato: chi nasce è libero.
         self.tesserato_dal = None
+        self.pagato_alla_firma = None
         self.nome = "*"
         self.cognome = "*"
         self.appartenenza = "*"

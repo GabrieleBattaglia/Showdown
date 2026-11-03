@@ -110,6 +110,14 @@ date l'articolo si elide con testi.con_articolo, letto al momento da _con_artico
 dice la cifra dopo, scoperta T3. arretrati_fermano_lo_svincolo dice quando lo svincolo di un tesserato dell'utente si ferma
 per gli arretrati, che hanno il loro suono, scoperta T6. Il computer non cambia. È di Gabriele Battaglia (IZ4APU) & ClaudIA
 (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le scelte di Gabriele che valgono come D40 dopo la misura della rivendita a 36 mesi, la rampa parte
+da quello che la polisportiva ha pagato alla firma: _entra lo scrive nel giocatore, pagato_alla_firma, del formato 12, e
+_lascia lo svuota con il giorno della firma. Lo passano _tessera, con l'ingaggio dell'offerta accettata, anche quando è
+diverso da quello che il giocatore chiedeva; _vendi, col prezzo, per gli acquisti dell'utente dal computer, al prezzo
+chiesto o con un'offerta d'acquisto, per le vendite al computer e per quelle fra le polisportive del computer; e il
+computer che sostituisce un tesserato debole con un libero, con la sua offerta. Chi entra senza pagare, nelle prove e
+negli strumenti, lo ha vuoto. Il computer, che non ha rampa, compra e tessera come prima. È di Gabriele Battaglia
+(IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import bisect
@@ -627,14 +635,16 @@ class Mondo:
         poli.cassa -= ingaggio
         poli.conti_del_mese["ingaggi"] += ingaggio
 
-    def _entra(self, poli, g, data=None):
+    def _entra(self, poli, g, data=None, pagato=None):
         """
         Il giocatore entra nella polisportiva: la fedeltà riparte da zero, la pazienza è piena, nessun
         arretrato. Dalla tappa 11 firma un contratto, ed è il solo punto da cui si firma: ci passano
         l'ingaggio, le mosse del computer e gli acquisti, perché comprare vuol dire firmare un
         contratto nuovo col compratore. Lo stipendio è quello che chiede oggi, la durata quella che
         propone; il programma riparte dalla sua indole, a intensità normale. Dalla decisione D40 il
-        giocatore ricorda il giorno della firma, per tutte le polisportive, anche del computer.
+        giocatore ricorda il giorno della firma, per tutte le polisportive, anche del computer; dal
+        formato 12, scelta di Gabriele del 3 novembre 2026, anche quello che la polisportiva ha pagato
+        per averlo, pagato, l'ingaggio o il prezzo, da cui parte la rampa del prezzo: vuoto se non si dà.
         """
         quando = data or self.datetime_corrente_simulazione
         g.appartenenza = poli.nome
@@ -644,6 +654,7 @@ class Mondo:
         g.pazienza = 100.
         g.arretrati = 0
         g.tesserato_dal = quando
+        g.pagato_alla_firma = None if pagato is None else int(pagato)
         contratti.stipula(g, quando, stipendio(g), contratti.durata_proposta(g))
         g.programma = g.indole
         g.intensita = INTENSITA_PREDEFINITA
@@ -651,7 +662,8 @@ class Mondo:
         g.iscrizione_automatica = True
 
     def _tessera(self, poli, g, data=None, ingaggio=None):
-        self._entra(poli, g, data)
+        """Un libero firma con la polisportiva, e dal formato 12 ricorda l'ingaggio pagato, da cui parte la rampa del prezzo."""
+        self._entra(poli, g, data, ingaggio)
         con_ingaggio = f", con un ingaggio di {scritta_in_euro(ingaggio)}" if ingaggio else ""
         self.annota(g, f"{accorda(g.sesso, 'Tesserato')} con {poli.nome}{con_ingaggio}.", data)
         self.annota(poli, f"Tesserato {nome_completo(g)}{con_ingaggio}.", data)
@@ -661,7 +673,8 @@ class Mondo:
         Il giocatore esce dall'elenco dei tesserati e torna libero, senza voci di diario: le
         scrive chi chiama. Esce anche dalla vendita, e i suoi arretrati non li aspetta più. Dalla
         tappa 11 il contratto si cancella, con rinnovo e proposte, e programma e intensità tornano
-        quelli della sua indole. Dalla decisione D40 si cancella anche il giorno della firma.
+        quelli della sua indole. Dalla decisione D40 si cancella anche il giorno della firma, e dal
+        formato 12 quello che si era pagato.
         """
         poli.rimuovi_tesserato(g.id, g.indice_collettivo_valore)
         poli.in_vendita.pop(g.id, None)
@@ -671,6 +684,7 @@ class Mondo:
         g.pazienza = 100.
         g.arretrati = 0
         g.tesserato_dal = None
+        g.pagato_alla_firma = None
         g.annulla_contratto()
         g.programma = g.indole
         g.intensita = INTENSITA_PREDEFINITA
@@ -1577,7 +1591,8 @@ class Mondo:
         Il passaggio di un giocatore da una polisportiva all'altra: il compratore paga, il venditore
         incassa e dal prezzo salda gli arretrati che il giocatore aspettava. Dalla decisione D40 una
         polisportiva dell'utente li salda tutti, prima dal prezzo e poi dalla cassa, e i diari dicono la
-        cifra; il computer li salda fino al prezzo, come prima.
+        cifra; il computer li salda fino al prezzo, come prima. Dal formato 12 il giocatore ricorda il
+        prezzo pagato dal compratore, da cui parte la rampa del prezzo se il compratore è dell'utente.
         """
         saldati = min(g.arretrati, prezzo) if venditore.is_cpu_controlled else g.arretrati
         compratore.cassa -= prezzo
@@ -1586,7 +1601,7 @@ class Mondo:
         venditore.conti_del_mese["vendite"] += prezzo
         venditore.conti_del_mese["arretrati"] += saldati
         self._lascia(venditore, g)
-        self._entra(compratore, g, data)
+        self._entra(compratore, g, data, prezzo)
         cifra = scritta_in_euro(prezzo)
         dell_utente = saldati and not venditore.is_cpu_controlled
         ricevuti = f": riceve {scritta_in_euro(saldati)} di arretrati" if dell_utente else ""
@@ -2145,7 +2160,7 @@ class Mondo:
         self._paga_buonuscita(poli, debole, data)
         self._lascia(poli, debole)
         self._paga_ingaggio(poli, offerta)
-        self._entra(poli, nuovo, data)
+        self._entra(poli, nuovo, data, offerta)
         vetrina.togli(posto)
         self.annota(nuovo, f"{accorda(nuovo.sesso, 'Tesserato')} con {poli.nome}, con un ingaggio di {scritta_in_euro(offerta)}.", data)
         self.annota(debole, f"{accorda(debole.sesso, 'Svincolato')} da {poli.nome}, che al suo posto ha tesserato {nome_completo(nuovo)}.", data)
@@ -2167,10 +2182,10 @@ class Mondo:
         aspetta un altro giorno. I giocatori del computer restano come prima.
         Dalla sesta tranche di D40 il prezzo più alto che il computer paga per un giocatore dell'utente non
         conta il rinnovo concordato, che con l'acquisto si annulla. Dalla scelta di Gabriele del 3 novembre
-        2026, che vale come D40, è il tetto della rampa, economia.tetto_di_rivendita: l'ingaggio il giorno
-        della firma, poi in linea retta fino al valore pieno col rialzo in MESI_DELLA_RAMPA mesi; chi non ha
-        il giorno della firma vale subito il tetto pieno. Al posto della rampa la sesta tranche saltava chi
-        era tesserato da meno di 12 mesi.
+        2026, che vale come D40, è il tetto della rampa, economia.tetto_di_rivendita: il giorno della firma
+        quello che la polisportiva ha pagato per averlo, l'ingaggio o il prezzo, poi in linea retta fino al
+        valore pieno col rialzo in MESI_DELLA_RAMPA mesi; chi non ha il giorno della firma vale subito il
+        tetto pieno. Al posto della rampa la sesta tranche saltava chi era tesserato da meno di 12 mesi.
         """
         righe = []
         impegni = None

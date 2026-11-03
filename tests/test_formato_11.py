@@ -12,6 +12,9 @@ Dalla quinta tranche di D40 la migrazione aggiunge anche le due voci dei conti d
 nei bilanci. Dal 3 novembre 2026 l'errore del formato più recente dice se è della copia di sicurezza, e perché il salvataggio
 non si usava. Con le note 3 e 5 della revisione dei rimedi: il messaggio della copia nuova che non si scrive dice che il
 salvataggio la aspetta, e un formato più recente con un'altra firma, o senza firma, risulta più recente e non rovinato.
+Dal 3 novembre 2026, col formato 12 delle scelte di Gabriele che valgono come D40, il mondo del 10 arriva fino al formato di
+oggi, e le prove del formato più recente, ora dal 13, stanno in tests/test_formato_12.py. È di Gabriele Battaglia (IZ4APU)
+& ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -24,7 +27,6 @@ import pytest
 from aiuti_formati import CAMPI_ALLENATORE_DEL_FORMATO_11, CAMPI_DEL_FORMATO_11, CAMPI_MONDO_DEL_FORMATO_11, VOCI_DEL_FORMATO_11, al_formato_10
 
 import archivio
-import cartella_del_mondo as cdm
 from costanti import FILE_MONDO, FILE_MONDO_COPIA
 from modelli import Polisportiva, conti_vuoti
 from mondo import Mondo
@@ -70,12 +72,6 @@ def _formato_del_file(percorso):
     return json.loads(gzip.decompress(percorso.read_bytes()).decode("utf-8"))["formato"]
 
 
-def _istantanea(cartella):
-    """Tutti i file della cartella coi loro byte, sottocartelle comprese."""
-    return {os.path.relpath(os.path.join(radice, nome), cartella): open(os.path.join(radice, nome), "rb").read()
-            for radice, _cartelle, nomi in os.walk(cartella) for nome in nomi}
-
-
 # I campi nuovi.
 
 def test_la_firma_si_scrive_entrando_e_si_cancella_uscendo():
@@ -110,9 +106,9 @@ def test_i_campi_nuovi_vanno_e_tornano_dal_salvataggio(cartella_di_prova):
     a.escluso_dall_utente_fino = INIZIO + datetime.timedelta(days=30)
     assert archivio.salva(m)
     letto = archivio.leggi(cartella_di_prova / FILE_MONDO)
-    assert letto["formato"] == archivio.FORMATO == 11 and letto["mondo"]["fondazioni_di_sempre"] == 3
+    assert letto["formato"] == archivio.FORMATO and letto["mondo"]["fondazioni_di_sempre"] == 3
     ricaricato = Mondo()
-    assert archivio.carica(ricaricato) == archivio.CARICATO and ricaricato.formato_letto == 11
+    assert archivio.carica(ricaricato) == archivio.CARICATO and ricaricato.formato_letto == archivio.FORMATO
     assert ricaricato.fondazioni_di_sempre == 3
     assert ricaricato.giocatori[g.id].tesserato_dal == INIZIO - datetime.timedelta(days=40)
     assert ricaricato.allenatori[a.numero].escluso_dall_utente_fino == INIZIO + datetime.timedelta(days=30)
@@ -159,7 +155,7 @@ def test_la_migrazione_dal_formato_10_aggiunge_soltanto():
     vecchio = al_formato_10(archivio.componi(m))
     aggiornato = json.loads(json.dumps(vecchio))
     archivio.MIGRAZIONI[10](aggiornato)
-    assert aggiornato["formato"] == archivio.FORMATO == 11
+    assert aggiornato["formato"] == 11
     # Il contatore parte dalle polisportive dell'utente aperte; la firma e la lontananza restano vuote per tutti.
     assert aggiornato["mondo"]["fondazioni_di_sempre"] == 2
     assert all(g["tesserato_dal"] is None for g in aggiornato["mondo"]["giocatori"])
@@ -205,8 +201,8 @@ def test_il_salvataggio_del_formato_10_si_aggiorna_e_anche_la_copia(cartella_di_
     assert ricaricato.fondazioni_di_sempre == 2 and ricaricato.giocatori[1].punti_allenamento == 33.0
     assert all(g.tesserato_dal is None for g in ricaricato.giocatori.values())
     # Il primo salvataggio scrive il mondo nuovo in tutti e due i file: una macchina col codice di prima non trova più un 10.
-    assert archivio.salva(ricaricato) and ricaricato.formato_letto == 11
-    assert _formato_del_file(principale) == _formato_del_file(copia) == 11
+    assert archivio.salva(ricaricato) and ricaricato.formato_letto == archivio.FORMATO
+    assert _formato_del_file(principale) == _formato_del_file(copia) == archivio.FORMATO
     assert principale.read_bytes() == copia.read_bytes()
     assert set(os.listdir(cartella_di_prova)) == {FILE_MONDO, FILE_MONDO_COPIA}
     # Dal secondo la copia torna a essere il salvataggio precedente.
@@ -215,7 +211,7 @@ def test_il_salvataggio_del_formato_10_si_aggiorna_e_anche_la_copia(cartella_di_
     assert archivio.salva(ricaricato)
     assert copia.read_bytes() == primo and principale.read_bytes() != primo
     riletto = Mondo()
-    assert archivio.carica(riletto) == archivio.CARICATO and riletto.formato_letto == 11 and riletto.fondazioni_di_sempre == 2
+    assert archivio.carica(riletto) == archivio.CARICATO and riletto.formato_letto == archivio.FORMATO and riletto.fondazioni_di_sempre == 2
 
 
 def test_il_mondo_dalla_copia_del_formato_10_riscrive_anche_la_copia(cartella_di_prova):
@@ -227,7 +223,7 @@ def test_il_mondo_dalla_copia_del_formato_10_riscrive_anche_la_copia(cartella_di
     ricaricato = Mondo(notifica=messaggi.append)
     assert archivio.carica(ricaricato) == archivio.DALLA_COPIA and ricaricato.formato_letto == 10
     assert archivio.salva(ricaricato)
-    assert _formato_del_file(principale) == _formato_del_file(copia) == 11
+    assert _formato_del_file(principale) == _formato_del_file(copia) == archivio.FORMATO
 
 
 def test_se_la_copia_nuova_non_si_scrive_il_salvataggio_non_si_fa(cartella_di_prova):
@@ -243,94 +239,15 @@ def test_se_la_copia_nuova_non_si_scrive_il_salvataggio_non_si_fa(cartella_di_pr
     messaggi.clear()
     assert not archivio.salva(ricaricato)
     # Nota 3 della revisione dei rimedi di D40: il messaggio dice che il salvataggio aspetta la copia nuova, oltre all'errore di Windows.
-    assert messaggi[0].startswith(f"Salvataggio non riuscito: la copia di sicurezza, {FILE_MONDO_COPIA}, non si è potuta scrivere nel formato 11: ")
-    assert messaggi[0].endswith(". Il primo salvataggio nel formato 11 aspetta la copia nuova, perché un MESS di prima che apra lo stesso mondo non "
-                                "torni a una copia del formato vecchio. Il salvataggio precedente è rimasto com'era, e il prossimo salvataggio ci riprova.")
+    assert messaggi[0].startswith(f"Salvataggio non riuscito: la copia di sicurezza, {FILE_MONDO_COPIA}, non si è potuta scrivere nel formato {archivio.FORMATO}: ")
+    assert messaggi[0].endswith(f". Il primo salvataggio nel formato {archivio.FORMATO} aspetta la copia nuova, perché un MESS di prima che apra lo stesso "
+                                "mondo non torni a una copia del formato vecchio. Il salvataggio precedente è rimasto com'era, e il prossimo salvataggio ci "
+                                "riprova.")
     # L'errore di Windows nomina anche lui la copia, col suo percorso.
     assert messaggi[0].count(FILE_MONDO_COPIA) == 2 and len(messaggi) == 1
     assert principale.read_bytes() == vecchio and ricaricato.formato_letto == 10
     assert set(os.listdir(cartella_di_prova)) == {FILE_MONDO, FILE_MONDO_COPIA}
     copia.rmdir()
     assert archivio.salva(ricaricato)
-    assert _formato_del_file(principale) == _formato_del_file(copia) == 11
+    assert _formato_del_file(principale) == _formato_del_file(copia) == archivio.FORMATO
 
-
-# Il formato più recente.
-
-def _mondo_del_formato_12(percorso):
-    """Un salvataggio vero, firmato, di un MESS col formato 12, che questa versione non sa leggere."""
-    contenuto = archivio.componi(_mondo_con_due_polisportive())
-    contenuto["formato"] = archivio.FORMATO + 1
-    _scrivi_documento(percorso, contenuto)
-
-
-def test_il_formato_12_ferma_il_caricamento_senza_toccare_niente(cartella_di_prova):
-    # Anche con la copia buona accanto: niente ripiego, niente copie messe da parte, niente blocco dei salvataggi.
-    buono = _mondo_con_due_polisportive()
-    assert archivio.salva(buono) and archivio.salva(buono)
-    _mondo_del_formato_12(cartella_di_prova / FILE_MONDO)
-    prima = _istantanea(cartella_di_prova)
-    messaggi = []
-    mondo = Mondo(notifica=messaggi.append)
-    with pytest.raises(archivio.FormatoPiuRecente) as errore:
-        archivio.carica(mondo)
-    assert (errore.value.formato, errore.value.massimo) == (12, 11) and "con il formato 12" in str(errore.value)
-    # Dal 3 novembre 2026 l'errore dice di quale file si tratta: qui del salvataggio.
-    assert not errore.value.della_copia and errore.value.motivo is None
-    assert _istantanea(cartella_di_prova) == prima and set(prima) == {FILE_MONDO, FILE_MONDO_COPIA}
-    assert not mondo.salvataggio_bloccato and mondo.giocatori == {} and messaggi == []
-
-
-def test_il_formato_12_con_un_altra_firma_e_piu_recente_non_rovinato(cartella_di_prova):
-    # Nota 5 della revisione dei rimedi di D40: un MESS futuro che cambiasse la firma, o che non la scrivesse più, non deve
-    # far tornare alla copia di sicurezza; il formato si guarda prima della firma.
-    buono = _mondo_con_due_polisportive()
-    assert archivio.salva(buono) and archivio.salva(buono)
-    principale = cartella_di_prova / FILE_MONDO
-    contenuto = archivio.componi(_mondo_con_due_polisportive())
-    contenuto["formato"] = archivio.FORMATO + 1
-    for firma in ("una firma calcolata in un altro modo", None):
-        documento = contenuto if firma is None else {**contenuto, "firma": firma}
-        with gzip.open(principale, "wt", encoding="utf-8") as f:
-            f.write(json.dumps(documento))
-        prima = _istantanea(cartella_di_prova)
-        with pytest.raises(archivio.FormatoPiuRecente) as errore:
-            archivio.carica(Mondo())
-        assert errore.value.formato == 12 and not errore.value.della_copia
-        assert _istantanea(cartella_di_prova) == prima
-    # Il formato di oggi con la firma sbagliata resta un file rovinato, e così un altro programma col formato 12.
-    with gzip.open(principale, "wt", encoding="utf-8") as f:
-        f.write(json.dumps({**archivio.componi(buono), "firma": "sbagliata"}))
-    with pytest.raises(archivio.ErroreSalvataggio, match="la firma non corrisponde"):
-        archivio.leggi(principale)
-    with gzip.open(principale, "wt", encoding="utf-8") as f:
-        f.write(json.dumps({**contenuto, "applicazione": "Altro", "firma": "sbagliata"}))
-    with pytest.raises(archivio.ErroreSalvataggio, match="la firma non corrisponde"):
-        archivio.leggi(principale)
-
-
-def test_anche_una_copia_del_formato_12_ferma_il_caricamento(cartella_di_prova):
-    (cartella_di_prova / FILE_MONDO).write_bytes(b"rovinato")
-    _mondo_del_formato_12(cartella_di_prova / FILE_MONDO_COPIA)
-    prima = _istantanea(cartella_di_prova)
-    mondo = Mondo()
-    with pytest.raises(archivio.FormatoPiuRecente) as errore:
-        archivio.carica(mondo, metti_da_parte=True)
-    assert _istantanea(cartella_di_prova) == prima and not mondo.salvataggio_bloccato
-    # Nota 4 della revisione dei rimedi di D40: del formato più recente è la copia, e l'errore dice perché il salvataggio non si usava.
-    assert errore.value.della_copia and errore.value.motivo.startswith("il file non è un JSON valido")
-    # Senza il salvataggio, il perché è che il file non c'è.
-    os.remove(cartella_di_prova / FILE_MONDO)
-    with pytest.raises(archivio.FormatoPiuRecente) as errore:
-        archivio.carica(Mondo())
-    assert errore.value.della_copia and errore.value.motivo == f"il file {FILE_MONDO} non c'è"
-
-
-def test_la_data_di_un_mondo_del_formato_12_non_guarda_la_copia(cartella_di_prova):
-    # Come il caricamento, che non ripiega: la copia buona non rende usabile quel mondo.
-    buono = _mondo_con_due_polisportive()
-    assert archivio.salva(buono) and archivio.salva(buono)
-    _mondo_del_formato_12(cartella_di_prova / FILE_MONDO)
-    data, dal_salvataggio, errore = cdm.salvato(cartella_di_prova)
-    assert data is not None and not dal_salvataggio
-    assert errore == "il file viene da una versione più recente del gioco, con il formato 12, mentre questa legge fino al formato 11"

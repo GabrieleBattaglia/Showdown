@@ -182,7 +182,7 @@ def test_il_salvataggio_rovinato_ferma_il_gioco(app_wx, monkeypatch, cartella_di
 
 
 def test_il_mondo_di_una_versione_piu_recente_ferma_mess_senza_toccare_i_file(app_wx, monkeypatch, cartella_di_prova, suonati):
-    # Decisione D40: un salvataggio del formato 12, con la sua copia buona accanto. Niente avviso del salvataggio illeggibile,
+    # Decisione D40: un salvataggio del formato più recente, dal 3 novembre 2026 il 13, con la sua copia buona accanto. Niente avviso del salvataggio illeggibile,
     # niente ripiego e niente copie messe da parte: il suono, il messaggio che chiede di aggiornare MESS, e i file restano identici.
     random.seed(12)
     ora = adesso()
@@ -205,20 +205,20 @@ def test_il_mondo_di_una_versione_piu_recente_ferma_mess_senza_toccare_i_file(ap
     monkeypatch.setattr(finestra_modulo, "FinestraPrincipale", _non_si_apre)
     assert Showdown.avvia_finestra() == Showdown.PIU_RECENTE
     assert suonati == ["mondo_piu_recente"] and suonati.dettagli[0]["sync"] == suoni.ATTESA_USCITA
-    assert testi_letti == [testi.mondo_piu_recente(12, 11, str(cartella_di_prova))]
+    assert testi_letti == [testi.mondo_piu_recente(13, 12, str(cartella_di_prova))] and archivio.FORMATO == 12
     assert {nome: (cartella_di_prova / nome).read_bytes() for nome in os.listdir(cartella_di_prova)} == prima
     assert set(prima) == {FILE_MONDO, FILE_MONDO_COPIA}
 
 
 def test_il_messaggio_del_mondo_piu_recente():
-    assert testi.mondo_piu_recente(12, 11, r"Z:\Mondo SD") == (
-        "Il mondo viene da una versione più recente di MESS: il salvataggio è del formato 12, e questa versione legge fino al formato 11.\n"
+    assert testi.mondo_piu_recente(13, 12, r"Z:\Mondo SD") == (
+        "Il mondo viene da una versione più recente di MESS: il salvataggio è del formato 13, e questa versione legge fino al formato 12.\n"
         "Per aprirlo, aggiorna MESS e poi riaprilo. MESS non tocca i file del mondo, nella cartella Z:\\Mondo SD, e non torna alla copia di sicurezza.\n"
         "Scegli un'altra cartella apre la finestra di Windows per indicarne un'altra. Esci, o Esc, chiude MESS senza toccare niente.")
     # Nota 4 della revisione dei rimedi di D40: quando del formato più recente è la copia, il testo non dice che è il salvataggio.
-    assert testi.mondo_piu_recente(12, 11, r"Z:\Mondo SD", "il file compresso è rovinato").splitlines()[0] == (
+    assert testi.mondo_piu_recente(13, 12, r"Z:\Mondo SD", "il file compresso è rovinato").splitlines()[0] == (
         "Il mondo viene da una versione più recente di MESS: il salvataggio non si può usare, perché il file compresso è rovinato, e la sua "
-        "copia di sicurezza è del formato 12, mentre questa versione legge fino al formato 11.")
+        "copia di sicurezza è del formato 13, mentre questa versione legge fino al formato 12.")
 
 
 def test_la_chiusura_normale_da_zero_e_lo_scrive(app_wx, monkeypatch, cartella_di_prova, programma_di_prova, suonati):

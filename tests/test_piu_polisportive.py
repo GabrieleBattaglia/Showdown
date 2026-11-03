@@ -33,6 +33,12 @@ fermano più nessuno, né la sorella che firma chi è tornato libero né un club
 si ferma per gli arretrati (T6); le date dell'allenatore licenziato e della prelazione, che dicono soltanto dal e si elidono
 (T3 e T8); le frasi dei convocati, dello svincolo, della vendita, di Sposta fondi e della chiusura (T3); e il ripensamento,
 che guarda lo stato di oggi e la domanda lo dice (T4).
+Con le scelte di Gabriele del 3 novembre 2026 che valgono come D40, dopo la misura della rivendita a 36 mesi: la rampa dura
+36 mesi e parte da quello che la polisportiva ha pagato alla firma, pagato_alla_firma. Il libero pagato sotto o sopra
+l'ingaggio che chiedeva parte da quello pagato, che non cambia con la gloria; l'acquisto dal computer parte dal prezzo, e
+sopra il tetto pieno non ha rampa; l'offerta d'acquisto accettata parte dall'offerta; la vendita al computer ricorda il
+prezzo, e il computer resta senza rampa; chi esce lo dimentica; e senza quello pagato, come chi ha firmato nel formato 11
+prima del cambio, la rampa parte dall'ingaggio chiesto oggi.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
@@ -46,6 +52,7 @@ import contratti
 import economia
 import iscrizioni
 import mercato
+import mondo as modulo_mondo
 import sfide
 import testi
 from costanti import CAPITALE_INIZIALE, FEDELTA_BANDIERA, MESI_DELLA_RAMPA, QUOTA_SPONSOR_SUL_VALORE, RIALZO_CPU, SPONSOR_PER_GLORIA
@@ -1030,18 +1037,22 @@ def _dopo(giorni, ora=9, minuto=0):
     return (OGGI + datetime.timedelta(days=giorni)).replace(hour=ora, minute=minuto)
 
 
-def test_la_rampa_del_prezzo_sale_dall_ingaggio_al_valore_pieno():
+def test_la_rampa_del_prezzo_sale_da_quello_pagato_al_valore_pieno():
     mondo, cpu, bologna, _milano = _mondo()
     cpu.cassa = 1_000_000
     g = mondo.giocatori[9]
     # Un contratto più lungo della rampa, così il valore pieno resta lo stesso fino alla fine.
     g.contratto_scadenza = contratti.aggiungi_mesi(OGGI, MESI_DELLA_RAMPA + 6)
-    partenza = economia.ingaggio_richiesto(g, bologna)
+    # Dalle scelte di Gabriele del 3 novembre 2026 la rampa parte da quello che la polisportiva ha pagato alla firma: qui
+    # 50 euro più dell'ingaggio che il giocatore chiede oggi, e la rampa dura 36 mesi.
+    partenza = economia.ingaggio_richiesto(g, bologna) + 50
+    g.pagato_alla_firma = partenza
     pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
     fine = contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA)
     giorni = (fine - OGGI).days
+    assert MESI_DELLA_RAMPA == 36 and fine == datetime.datetime(2029, 10, 5, 9, 0)
     assert g.tesserato_dal == OGGI and pieno == round(economia.valore_di_mercato(g, OGGI, col_rinnovo=False) * RIALZO_CPU) and partenza < pieno
-    # Il giorno della firma il computer paga al più l'ingaggio, poi il tetto sale in linea retta, giorno per giorno.
+    # Il giorno della firma il computer paga al più quello che è costato, poi il tetto sale in linea retta, giorno per giorno.
     assert economia.tetto_di_rivendita(g, bologna, OGGI) == partenza and economia.rivendita_piena_dal(g, bologna, OGGI) == fine
     meta = giorni // 2
     assert economia.tetto_di_rivendita(g, bologna, _dopo(meta)) == partenza + (pieno - partenza) * meta // giorni
@@ -1051,8 +1062,8 @@ def test_la_rampa_del_prezzo_sale_dall_ingaggio_al_valore_pieno():
     mattina = _dopo(giorni, 0, 1)
     assert economia.tetto_di_rivendita(g, bologna, mattina) == pieno and economia.rivendita_piena_dal(g, bologna, mattina) is None
     assert economia.tetto_di_rivendita(g, bologna, _dopo(giorni + 30)) == pieno
-    # Il computer compra al tetto del giorno, non sopra: un euro oltre l'ingaggio lo compra dal primo giorno in cui il tetto ci
-    # arriva, e la firma col computer è di quel giorno.
+    # Il computer compra al tetto del giorno, non sopra: un euro oltre la partenza lo compra dal primo giorno in cui il tetto ci
+    # arriva, e la firma col computer è di quel giorno, col prezzo che ha pagato.
     prezzo = partenza + 1
     assert mondo.problema_vendita(bologna, g, prezzo) is None
     mondo.metti_in_vendita(bologna, g, prezzo)
@@ -1066,7 +1077,9 @@ def test_la_rampa_del_prezzo_sale_dall_ingaggio_al_valore_pieno():
     assert g.appartenenza == bologna.nome and cpu.movimenti_oggi == 0
     assert economia.tetto_di_rivendita(g, bologna, dal) >= prezzo and economia.rivendita_al_prezzo_dal(g, bologna, prezzo, dal) == dal
     assert mondo._compra_dal_mercato(cpu, dal)
-    assert g.appartenenza == cpu.nome and g.tesserato_dal == dal and bologna.cassa == 20_000 + prezzo
+    assert g.appartenenza == cpu.nome and g.tesserato_dal == dal and g.pagato_alla_firma == prezzo and bologna.cassa == 20_000 + prezzo
+    # Il computer non ha rampa: per lui il tetto è subito pieno, anche col prezzo appena pagato.
+    assert economia.rivendita_piena_dal(g, cpu, dal) is None
     # Lo stesso giorno del mese, o l'ultimo se quel giorno non c'è.
     assert contratti.stesso_giorno_dopo(datetime.datetime(2028, 2, 29, 9, 0), 12) == datetime.datetime(2029, 2, 28, 9, 0)
     assert contratti.stesso_giorno_dopo(datetime.datetime(2027, 1, 31), 1) == datetime.datetime(2027, 2, 28)
@@ -1091,8 +1104,17 @@ def test_chi_ha_firmato_prima_del_formato_11_vale_subito_il_tetto_pieno():
 def test_la_partenza_sopra_il_tetto_pieno_vale_il_tetto_pieno():
     mondo, _cpu, bologna, _milano = _mondo()
     g = mondo.giocatori[11]
-    # Un contratto che scade oggi, al 40% del valore, e una polisportiva senza gloria, a cui il giocatore chiede l'ingaggio
-    # più alto: la partenza della rampa supera il tetto pieno, e vale il tetto pieno da subito.
+    # Pagato quanto il tetto pieno, o di più, il computer lo paga da subito al tetto pieno; un euro sotto, la rampa c'è.
+    pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
+    for pagato in (pieno, pieno + 500):
+        g.pagato_alla_firma = pagato
+        assert economia.tetto_di_rivendita(g, bologna, OGGI) == pieno and economia.rivendita_piena_dal(g, bologna, OGGI) is None
+    g.pagato_alla_firma = pieno - 1
+    assert economia.tetto_di_rivendita(g, bologna, OGGI) == pieno - 1 and economia.rivendita_piena_dal(g, bologna, OGGI) is not None
+    # Senza quello pagato vale l'ingaggio di oggi. Un contratto che scade oggi, al 40% del valore, e una polisportiva senza
+    # gloria, a cui il giocatore chiede l'ingaggio più alto: la partenza della rampa supera il tetto pieno, e vale il tetto
+    # pieno da subito.
+    g.pagato_alla_firma = None
     g.contratto_scadenza = OGGI
     bologna.gloria = 1
     pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
@@ -1152,9 +1174,12 @@ def _fino_al_pieno(lui, g, poli, oggi=OGGI):
 def test_vendite_mercato_e_scheda_dicono_il_tetto_di_oggi():
     mondo, cpu, bologna, milano = _mondo()
     g, lei = mondo.giocatori[9], mondo.giocatori[25]
+    # Il tetto di oggi, il giorno della firma, è quello che la polisportiva ha pagato.
+    g.pagato_alla_firma = economia.ingaggio_richiesto(g, bologna) // 2
     tetto = economia.tetto_di_rivendita(g, bologna, OGGI)
-    assert tetto == economia.ingaggio_richiesto(g, bologna)
+    assert tetto == g.pagato_alla_firma > 0
     frase = f"il computer oggi lo paga fino a {_euro(tetto)}, il valore pieno dal {testi.data_breve(contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA))}"
+    assert frase.endswith(", il valore pieno dal 5 ottobre 2029")
     assert testi.rivendita(g, bologna, OGGI) == frase == _fino_al_pieno("lo", g, bologna)
     assert testi.avviso_di_rivendita(lei, bologna, OGGI) == f"{_fino_al_pieno('la', lei, bologna)[0].upper()}{_fino_al_pieno('la', lei, bologna)[1:]}."
     assert testi.riga_vendita(g, bologna, OGGI).endswith(f"valore di mercato {_euro(economia.valore_di_mercato(g, OGGI))}, {frase}")
@@ -1208,3 +1233,100 @@ def test_l_esito_di_un_prezzo_sopra_il_tetto_dice_da_quando_il_computer_compra()
     lei.tesserato_dal = datetime.datetime(2026, 9, 8, 9, 0)
     fine = contratti.stesso_giorno_dopo(lei.tesserato_dal, MESI_DELLA_RAMPA)
     assert testi.rivendita(lei, bologna, OGGI).endswith(f", il valore pieno dall'8 settembre {fine.year}")
+
+
+# Da dove parte la rampa, scelte di Gabriele del 3 novembre 2026: da quello che la polisportiva ha pagato alla firma.
+
+def _contratto_oltre_la_rampa(g):
+    """Un contratto più lungo della rampa, così il valore pieno resta lo stesso per tutta la rampa."""
+    g.contratto_scadenza = contratti.aggiungi_mesi(OGGI, MESI_DELLA_RAMPA + 6)
+
+
+def _tetto_atteso(partenza, pieno, passati):
+    """Il tetto della rampa tanti giorni dopo una firma di OGGI: in linea retta dalla partenza al tetto pieno, coi numeri interi."""
+    giorni = (contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA) - OGGI).days
+    return partenza + (pieno - partenza) * passati // giorni
+
+
+def test_la_rampa_del_libero_parte_dall_ingaggio_pagato_sotto_o_sopra_il_chiesto(monkeypatch):
+    monkeypatch.setattr(modulo_mondo, "caso", lambda _p: True)
+    mondo, _cpu, bologna, _milano = _mondo()
+    liberi = [g for g in mondo.giocatori.values() if g.appartenenza == "*"
+              and economia.ingaggio_richiesto(g, bologna) + 100 < round(economia.valore_di_mercato_pieno(g) * RIALZO_CPU)]
+    sotto, sopra = liberi[:2]
+    fine = contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA)
+    for g, offerta in ((sotto, economia.ingaggio_richiesto(sotto, bologna) // 2), (sopra, economia.ingaggio_richiesto(sopra, bologna) + 100)):
+        chiesto = economia.ingaggio_richiesto(g, bologna)
+        accetta, _probabilita = mondo.offerta(bologna, g, offerta)
+        assert accetta and g.appartenenza == bologna.nome and g.pagato_alla_firma == offerta != chiesto
+        _contratto_oltre_la_rampa(g)
+        pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
+        # Il giorno della firma il computer paga al più l'ingaggio pagato davvero, non quello chiesto; poi la rampa sale.
+        assert economia.tetto_di_rivendita(g, bologna, OGGI) == offerta < pieno and economia.rivendita_piena_dal(g, bologna, OGGI) == fine
+        assert economia.tetto_di_rivendita(g, bologna, _dopo(400)) == _tetto_atteso(offerta, pieno, 400)
+    # L'ingaggio che il giocatore chiederebbe oggi cambia con la gloria della polisportiva; la partenza resta quella pagata.
+    prima = economia.ingaggio_richiesto(sopra, bologna)
+    bologna.gloria = 1
+    assert economia.ingaggio_richiesto(sopra, bologna) != prima
+    assert economia.tetto_di_rivendita(sopra, bologna, OGGI) == sopra.pagato_alla_firma
+
+
+def test_la_rampa_di_un_acquisto_dal_computer_parte_dal_prezzo():
+    mondo, cpu, bologna, _milano = _mondo()
+    bologna.cassa = 1_000_000
+    sotto, sopra = mondo.giocatori[1], mondo.giocatori[2]
+    pieni = {g.id: round(economia.valore_di_mercato_pieno(g) * RIALZO_CPU) for g in (sotto, sopra)}
+    # Al prezzo chiesto dal computer, sotto il tetto pieno: la rampa parte dal prezzo pagato.
+    prezzo = pieni[sotto.id] // 2
+    mondo.metti_in_vendita(cpu, sotto, prezzo)
+    assert mondo.acquista(bologna, sotto) == prezzo
+    _contratto_oltre_la_rampa(sotto)
+    assert sotto.appartenenza == bologna.nome and sotto.tesserato_dal == OGGI and sotto.pagato_alla_firma == prezzo
+    assert economia.tetto_pieno_di_rivendita(sotto, bologna, OGGI) == pieni[sotto.id]
+    assert economia.tetto_di_rivendita(sotto, bologna, OGGI) == prezzo and economia.rivendita_piena_dal(sotto, bologna, OGGI) == contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA)
+    assert economia.tetto_di_rivendita(sotto, bologna, _dopo(200)) == _tetto_atteso(prezzo, pieni[sotto.id], 200)
+    # Sopra il tetto pieno la rampa non c'è: il computer lo ricompra da subito al tetto pieno, e non oltre.
+    mondo.metti_in_vendita(cpu, sopra, pieni[sopra.id] + 500)
+    assert mondo.acquista(bologna, sopra) == pieni[sopra.id] + 500 == sopra.pagato_alla_firma
+    assert economia.tetto_di_rivendita(sopra, bologna, OGGI) == pieni[sopra.id] and economia.rivendita_piena_dal(sopra, bologna, OGGI) is None
+
+
+def test_l_offerta_d_acquisto_accettata_e_la_partenza_della_rampa():
+    mondo, cpu, bologna, _milano = _mondo()
+    bologna.cassa = 1_000_000
+    # Il più debole della rosa del computer: la soglia di vendita è il suo valore di mercato, sotto il tetto pieno.
+    g = min((mondo.giocatori[gid] for gid in cpu.tesserati), key=lambda g: g.indice_collettivo_valore)
+    offerta = mondo.soglia_di_vendita(cpu, g) + 30
+    assert mondo.offerta_d_acquisto(bologna, g, offerta)
+    _contratto_oltre_la_rampa(g)
+    pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
+    assert g.appartenenza == bologna.nome and g.pagato_alla_firma == offerta < pieno
+    assert economia.tetto_di_rivendita(g, bologna, OGGI) == offerta and economia.tetto_di_rivendita(g, bologna, _dopo(300)) == _tetto_atteso(offerta, pieno, 300)
+
+
+def test_chi_esce_non_ricorda_piu_quello_che_era_costato(monkeypatch):
+    monkeypatch.setattr(modulo_mondo, "caso", lambda _p: True)
+    mondo, _cpu, bologna, milano = _mondo()
+    g = mondo.giocatori[5]
+    assert g.appartenenza == "*" and g.pagato_alla_firma is None
+    assert mondo.offerta(bologna, g, 777)[0] and g.pagato_alla_firma == 777
+    # Lo svincolo lo dimentica, col giorno della firma; la firma nuova ricorda l'ingaggio nuovo.
+    mondo.svincola(bologna, g)
+    assert g.appartenenza == "*" and g.pagato_alla_firma is None and g.tesserato_dal is None
+    assert mondo.offerta(milano, g, 555)[0] and g.pagato_alla_firma == 555
+
+
+def test_senza_quello_pagato_la_rampa_parte_dall_ingaggio_di_oggi():
+    mondo, _cpu, bologna, _milano = _mondo()
+    g = mondo.giocatori[10]
+    # Entrato senza pagare, come chi ha firmato nel formato 11 prima del cambio: la rampa parte dall'ingaggio che chiede oggi.
+    assert g.tesserato_dal == OGGI and g.pagato_alla_firma is None
+    _contratto_oltre_la_rampa(g)
+    pieno = economia.tetto_pieno_di_rivendita(g, bologna, OGGI)
+    chiesto = economia.ingaggio_richiesto(g, bologna)
+    assert economia.partenza_della_rampa(g, bologna) == chiesto == economia.tetto_di_rivendita(g, bologna, OGGI) < pieno
+    assert economia.rivendita_piena_dal(g, bologna, OGGI) == contratti.stesso_giorno_dopo(OGGI, MESI_DELLA_RAMPA)
+    # È l'ingaggio di oggi: con un'altra gloria cambia, e la rampa con lui.
+    bologna.gloria = 1
+    oggi = economia.ingaggio_richiesto(g, bologna)
+    assert oggi != chiesto and economia.tetto_di_rivendita(g, bologna, OGGI) == min(oggi, pieno)

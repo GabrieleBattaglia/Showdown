@@ -17,6 +17,9 @@ le versioni del programma, in un'impronta SHA-256. Due mondi con la stessa impro
 all'ultimo bit di ogni numero: è la prova che un'accelerazione non cambia niente.
 Niente qui scrive nel progetto: chi fa avanzare un mondo sposta prima la cartella del programma,
 come fanno gli strumenti e le prove, perché le uscite di scena scrivono nel registro delle vecchie glorie.
+Dal 3 novembre 2026, con le scelte di Gabriele che valgono come D40 e il formato 12, l'impronta toglie anche
+quello che ogni giocatore ha pagato alla firma, pagato_alla_firma, come i campi del formato 11. È di Gabriele
+Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import datetime
@@ -66,9 +69,11 @@ CAMPI_REALI_POLISPORTIVA = ("datacreazione_reale", "datetime_ultimo_movimento", 
 # scrive e non legge: il contatore delle fondazioni dell'utente, il giorno della firma di ogni giocatore e il giorno fino
 # al quale un allenatore non firma con l'utente. L'impronta li toglie e rimette il formato 10, così resta quella di prima
 # e controlla che col formato nuovo nient'altro cambi. Dalla quinta tranche di D40 toglie anche le due voci dei conti di
-# Sposta fondi, nel mese in corso e nei bilanci di ogni polisportiva, che nei mondi del computer valgono sempre zero.
+# Sposta fondi, nel mese in corso e nei bilanci di ogni polisportiva, che nei mondi del computer valgono sempre zero. Il
+# formato 12 aggiunge quello che ogni giocatore ha pagato alla firma, e l'impronta lo toglie allo stesso modo.
 FORMATO_DELLE_IMPRONTE = 10
 CAMPI_DEL_FORMATO_11 = {"mondo": ("fondazioni_di_sempre",), "giocatori": ("tesserato_dal",), "allenatori": ("escluso_dall_utente_fino",)}
+CAMPI_DEL_FORMATO_12 = {"giocatori": ("pagato_alla_firma",)}
 VOCI_DEL_FORMATO_11 = ("fondi_ricevuti", "fondi_versati")
 # Le gare dei giocatori del mondo, dalla tappa 12, punti 6.4 e 13.3 del progetto: con le fonti nuove
 # l'esperienza del club scende, e senza le gare il mondo sintetico avrebbe il 60 per cento
@@ -295,7 +300,7 @@ def documento_senza_istanti_reali(mondo):
         documento["mondo"].pop(campo, None)
     for chi in ("giocatori", "allenatori"):
         for voce in documento["mondo"][chi]:
-            for campo in CAMPI_DEL_FORMATO_11[chi]:
+            for campo in (*CAMPI_DEL_FORMATO_11[chi], *CAMPI_DEL_FORMATO_12.get(chi, ())):
                 voce.pop(campo, None)
     for p in documento["mondo"]["polisportive"].values():
         for conti in (p["conti_del_mese"], *p["bilanci"]):

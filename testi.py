@@ -149,6 +149,11 @@ date l'articolo si elide con con_articolo; la domanda dello svincolo dice la cif
 Spostato con 1 euro, come spostato_o_spostati; l'esito della chiusura mette la virgola fra la polisportiva che ha aiutato e
 la sua cifra; e la domanda del ripensamento dice che la polisportiva oggi è senza tesserati né staff, non che è mai stata
 usata. Le frasi di prima di D40 restano come sono. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Lo stesso giorno, con le scelte di Gabriele che valgono come D40 dopo la misura della rivendita a 36 mesi, la rampa del
+prezzo parte da quello che la polisportiva ha pagato alla firma, l'ingaggio o il prezzo d'acquisto, e arriva al valore pieno
+in 36 mesi: le frasi restano le stesse, e la cifra di oggi, il giorno del valore pieno e quello in cui il computer comprerà
+a un prezzo dato vengono da economia con la regola nuova, come il computer oggi lo paga fino a 2.300 euro, il valore pieno
+dal 3 novembre 2029. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 """
 
 import copy
@@ -2046,8 +2051,9 @@ def rivendita(g, p, oggi, anche_pieno=False):
     """
     Fino a quanto il computer paga oggi un tesserato dell'utente, decisione D40 con la rampa del prezzo, a metà frase:
     durante la rampa col giorno del valore pieno, il computer oggi lo paga fino a 2.300 euro, il valore pieno dal 3
-    novembre 2028; con anche_pieno, a rampa finita, il computer lo paga fino a 4.140 euro. Stringa vuota a rampa
-    finita senza anche_pieno, per le polisportive del computer e senza la data di oggi.
+    novembre 2029; con anche_pieno, a rampa finita, il computer lo paga fino a 4.140 euro. Stringa vuota a rampa
+    finita senza anche_pieno, per le polisportive del computer e senza la data di oggi. Dal 3 novembre 2026 la rampa
+    parte da quello che la polisportiva ha pagato alla firma e dura 36 mesi, come dice economia.tetto_di_rivendita.
     """
     if oggi is None or p.is_cpu_controlled:
         return ""
@@ -2061,7 +2067,7 @@ def rivendita(g, p, oggi, anche_pieno=False):
 def avviso_di_rivendita(g, p, oggi):
     """
     La frase di rivendita durante la rampa, da sola: Il computer oggi lo paga fino a 2.300 euro, il valore pieno dal 3
-    novembre 2028. Stringa vuota a rampa finita.
+    novembre 2029. Stringa vuota a rampa finita.
     """
     tetto = rivendita(g, p, oggi)
     return f"{tetto[0].upper()}{tetto[1:]}." if tetto else ""
