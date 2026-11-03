@@ -11,6 +11,11 @@ Lo stesso giorno prova anche la rampa che parte dall'ingaggio della firma, --par
 processo figlio il tetto di un tesserato il cui ingaggio chiesto è cresciuto dopo la firma parte da quello pagato, e
 con la partenza di serie, vendita, da quello di oggi; nel principale la rampa sostituita è la regola del gioco con
 un'altra partenza, anche per il computer che compra, e la misura sul mondo piccolo dice la partenza che ha visto.
+Dalle scelte di Gabriele dello stesso giorno, che valgono come D40, la partenza dalla firma è la regola del gioco, col
+campo pagato_alla_firma, e la partenza di serie dello strumento; vendita è la variante, la regola di prima, per
+confronto. Le prove cambiano di conseguenza, e ne arriva una che mancava: nella misura sul mondo piccolo i quindici della
+partenza non hanno quello pagato finché la corsa non lo scrive, e la vendita a 0 mesi vende anche chi firma nella corsa,
+così una rampa che non trova quello pagato, dei quindici o di chi firma, fa fallire la prova.
 """
 
 import contextlib
@@ -43,6 +48,12 @@ def bottega_e_libero(durata_minima=9):
     return mondo, poli, min(liberi, key=lambda g: g.id)
 
 
+def firma_pagando(mondo, poli, g, oggi):
+    """Il libero firma oggi pagando l'ingaggio che chiede, come fa il commerciante: il gioco lo ricorda in pagato_alla_firma."""
+    mondo._entra(poli, g, oggi, economia.ingaggio_richiesto(g, poli))
+    assert g.pagato_alla_firma == economia.ingaggio_richiesto(g, poli)
+
+
 def test_il_ciclo_stimato_aspetta_il_rinnovo_negli_ultimi_tre_mesi():
     mondo = ms.mondo_nato(11)
     g = max(mondo.giocatori.values(), key=lambda g: (contratti.durata_proposta(g), -g.id))
@@ -70,14 +81,15 @@ def test_il_tetto_atteso_e_la_rampa_del_gioco():
     assert attesi[0] == economia.ingaggio_richiesto(g, poli) and attesi == sorted(attesi) and attesi[0] < attesi[-1] < pieno
     rampa = (contratti.stesso_giorno_dopo(oggi, MESI_DELLA_RAMPA).date() - oggi.date()).days
     assert mr.tetto_atteso(g, poli, oggi, rampa - 1) < pieno == mr.tetto_atteso(g, poli, oggi, rampa) == mr.tetto_atteso(g, poli, oggi, rampa + 100)
-    # Tesserato oggi, coi valori di oggi la rampa del gioco dice lo stesso, finché il contratto è lontano dalla scadenza.
-    mondo._entra(poli, g, oggi)
+    # Tesserato oggi all'ingaggio che chiede, coi valori di oggi la rampa del gioco dice lo stesso, finché il contratto è
+    # lontano dalla scadenza: parte da quello pagato, che il giorno della firma è l'ingaggio chiesto.
+    firma_pagando(mondo, poli, g, oggi)
     assert [economia.tetto_di_rivendita(g, poli, oggi + datetime.timedelta(days=n)) for n in giorni] == attesi
 
 
 def test_la_rampa_di_un_altra_durata_vale_nei_figli_e_nei_conti(monkeypatch):
     # Di serie la rampa del gioco; --mesi-della-rampa la cambia, e meno di zero mesi è un errore.
-    assert mr.argomenti([]).mesi_della_rampa == MESI_DELLA_RAMPA
+    assert mr.argomenti([]).mesi_della_rampa == MESI_DELLA_RAMPA == 36
     assert mr.argomenti(["--mesi-della-rampa", "42"]).mesi_della_rampa == 42
     with pytest.raises(SystemExit):
         mr.argomenti(["--mesi-della-rampa", "-1"])
@@ -100,23 +112,23 @@ def test_la_rampa_di_un_altra_durata_vale_nei_figli_e_nei_conti(monkeypatch):
     # Nel processo principale imposta_la_rampa fa lo stesso, e il tetto del gioco, che il computer usa per comprare,
     # segue la rampa dello strumento finché il contratto è lontano dalla scadenza.
     monkeypatch.setattr(economia, "MESI_DELLA_RAMPA", economia.MESI_DELLA_RAMPA)
+    monkeypatch.setattr(economia, "_rampa", economia._rampa)
     mr.imposta_la_rampa(42)
     assert [mr.tetto_atteso(g, poli, oggi, n) for n in giorni] == nei_figli
-    mondo._entra(poli, g, oggi)
+    firma_pagando(mondo, poli, g, oggi)
     assert [economia.tetto_di_rivendita(g, poli, oggi + datetime.timedelta(days=n)) for n in giorni[:3]] == nei_figli[:3]
 
 
 def tesserato_cresciuto():
     """
-    Il libero di bottega_e_libero tesserato oggi, con l'ingaggio della firma ricordato dallo strumento; poi in rosa
+    Il libero di bottega_e_libero tesserato oggi, pagando l'ingaggio che chiede, che il gioco ricorda; poi in rosa
     l'esperienza cresce, e con lei l'ingaggio che chiede, che resta sotto il tetto pieno. Restituisce anche l'ingaggio
     pagato, quello di oggi e i giorni della rampa del gioco.
     """
     mondo, poli, g = bottega_e_libero()
     oggi = mondo.datetime_corrente_simulazione
-    mondo._entra(poli, g, oggi)
-    pagato = mr.ricorda_la_firma(g, poli)
-    assert g.ingaggio_della_firma == (oggi, pagato)
+    firma_pagando(mondo, poli, g, oggi)
+    pagato = g.pagato_alla_firma
     g.esperienza += 10
     cresciuto = economia.ingaggio_richiesto(g, poli)
     assert pagato < cresciuto < economia.tetto_pieno_di_rivendita(g, poli, oggi)
@@ -124,10 +136,10 @@ def tesserato_cresciuto():
     return mondo, poli, g, pagato, cresciuto, giorni
 
 
-def test_la_partenza_della_rampa_dalla_firma_vale_nei_figli():
-    # Di serie la partenza è vendita, quella del gioco; firma la cambia, e un'altra parola è un errore.
-    assert mr.argomenti([]).partenza_della_rampa == "vendita"
-    assert mr.argomenti(["--partenza-della-rampa", "firma"]).partenza_della_rampa == "firma"
+def test_la_partenza_della_rampa_vale_nei_figli():
+    # Di serie la partenza è firma, quella del gioco; vendita è la variante di prima, e un'altra parola è un errore.
+    assert mr.argomenti([]).partenza_della_rampa == "firma"
+    assert mr.argomenti(["--partenza-della-rampa", "vendita"]).partenza_della_rampa == "vendita"
     with pytest.raises(SystemExit):
         mr.argomenti(["--partenza-della-rampa", "oggi"])
     mondo, poli, g, pagato, cresciuto, giorni = tesserato_cresciuto()
@@ -136,65 +148,85 @@ def test_la_partenza_della_rampa_dalla_firma_vale_nei_figli():
     pieni = [economia.tetto_pieno_di_rivendita(g, poli, d) for d in date]
     def rampa(partenza):
         return [partenza + (pieno - partenza) * (d - oggi).days // giorni for d, pieno in zip(date, pieni, strict=True)]
-    # Nel processo della prova la rampa del gioco parte dall'ingaggio che il giocatore chiede oggi, cresciuto in rosa.
-    assert mr.partenza_vista() == "vendita"
-    assert [economia.tetto_di_rivendita(g, poli, d) for d in date] == rampa(cresciuto)
-    # In un vero processo figlio, con la partenza firma, la rampa parte dall'ingaggio pagato, e il tetto sta sotto.
-    with mr.esecutore(1, MESI_DELLA_RAMPA, "firma") as figli:
-        vista = figli.submit(mr.partenza_vista).result()
-        dalla_firma = list(figli.map(economia.tetto_di_rivendita, [g] * len(date), [poli] * len(date), date))
-    assert vista == "firma" and dalla_firma == rampa(pagato)
-    assert all(firma < vendita for firma, vendita in zip(dalla_firma, rampa(cresciuto), strict=True))
-    # Con la partenza di serie il figlio fa come il gioco, e il processo della prova non è cambiato.
-    with mr.esecutore(1, MESI_DELLA_RAMPA) as figli:
+    # Nel processo della prova la rampa del gioco parte da quello pagato alla firma, non dall'ingaggio cresciuto in rosa.
+    assert mr.partenza_vista() == "firma"
+    assert [economia.tetto_di_rivendita(g, poli, d) for d in date] == rampa(pagato)
+    # In un vero processo figlio, con la variante vendita, la rampa parte dall'ingaggio di oggi, e il tetto sta sopra.
+    with mr.esecutore(1, MESI_DELLA_RAMPA, "vendita") as figli:
         vista = figli.submit(mr.partenza_vista).result()
         dalla_vendita = list(figli.map(economia.tetto_di_rivendita, [g] * len(date), [poli] * len(date), date))
     assert vista == "vendita" and dalla_vendita == rampa(cresciuto)
-    assert mr.partenza_vista() == "vendita" and economia._rampa is mr.RAMPA_DEL_GIOCO
+    assert all(firma < vendita for firma, vendita in zip(rampa(pagato), dalla_vendita, strict=True))
+    # Con la partenza di serie il figlio fa come il gioco, e il processo della prova non è cambiato.
+    with mr.esecutore(1, MESI_DELLA_RAMPA) as figli:
+        vista = figli.submit(mr.partenza_vista).result()
+        dalla_firma = list(figli.map(economia.tetto_di_rivendita, [g] * len(date), [poli] * len(date), date))
+    assert vista == "firma" and dalla_firma == rampa(pagato)
+    assert mr.partenza_vista() == "firma" and economia._rampa is mr.RAMPA_DEL_GIOCO
 
 
-def test_la_rampa_dalla_firma_e_la_regola_del_gioco_con_un_altra_partenza(monkeypatch):
+def test_la_variante_vendita_e_la_regola_di_prima(monkeypatch):
     monkeypatch.setattr(economia, "_rampa", economia._rampa)
+    monkeypatch.setattr(mr, "SENZA_FIRMA", {"volte": 0})
+    mondo, poli, g, pagato, cresciuto, giorni = tesserato_cresciuto()
+    oggi = mondo.datetime_corrente_simulazione
+    date = [oggi + datetime.timedelta(days=n) for n in (0, 1, 45, 150)]
+    def rampa(partenza):
+        return [partenza + (economia.tetto_pieno_di_rivendita(g, poli, d) - partenza) * (d - oggi).days // giorni for d in date]
+    del_gioco = [economia.tetto_di_rivendita(g, poli, d) for d in date]
+    assert del_gioco == rampa(pagato)
+    # La partenza di serie è la rampa del gioco: imposta_la_rampa l'avvolge soltanto per contare i ripieghi.
+    mr.imposta_la_rampa(MESI_DELLA_RAMPA)
+    assert mr.partenza_vista() == "firma" and economia._rampa is mr.rampa_del_gioco
+    assert [economia.tetto_di_rivendita(g, poli, d) for d in date] == del_gioco and mr.SENZA_FIRMA["volte"] == 0
+    # Senza quello pagato la rampa del gioco ripiega sull'ingaggio di oggi, e ogni volta si conta.
+    g.pagato_alla_firma = None
+    assert [economia.tetto_di_rivendita(g, poli, d) for d in date] == rampa(cresciuto) and mr.SENZA_FIRMA["volte"] == len(date)
+    g.pagato_alla_firma = pagato
+    # La variante vendita, la regola di prima: parte dall'ingaggio chiesto oggi, cresciuto in rosa, anche per il computer che
+    # compra, Mondo._vendibili, e non conta ripieghi.
+    mr.SENZA_FIRMA["volte"] = 0
+    mr.imposta_la_rampa(MESI_DELLA_RAMPA, "vendita")
+    assert mr.partenza_vista() == "vendita"
+    assert [economia.tetto_di_rivendita(g, poli, d) for d in date] == rampa(cresciuto)
+    assert economia.rivendita_piena_dal(g, poli, oggi) == contratti.stesso_giorno_dopo(oggi, MESI_DELLA_RAMPA)
+    mondo.metti_in_vendita(poli, g, pagato)
+    righe = [riga for riga in mondo._vendibili(date[2]) if riga[0] is g]
+    assert [riga[3] for riga in righe] == [rampa(cresciuto)[2]] and mr.SENZA_FIRMA["volte"] == 0
+    # Una partenza che non sta sotto il tetto pieno vale il tetto pieno, come nel gioco.
+    pieno = economia.tetto_pieno_di_rivendita(g, poli, date[2])
+    monkeypatch.setattr(economia, "ingaggio_richiesto", lambda _g, _p: pieno)
+    assert economia.tetto_di_rivendita(g, poli, date[2]) == pieno and economia.rivendita_piena_dal(g, poli, date[2]) is None
+    # La partenza di serie rimette la rampa del gioco.
+    mr.imposta_la_rampa(MESI_DELLA_RAMPA)
+    assert economia._rampa is mr.rampa_del_gioco and mr.partenza_vista() == "firma"
+
+
+def test_quello_pagato_di_chi_firma_nella_corsa_viene_dal_gioco(tmp_path, monkeypatch):
     monkeypatch.setattr(mr, "SENZA_FIRMA", {"volte": 0})
     mondo, poli, g = bottega_e_libero()
     oggi = mondo.datetime_corrente_simulazione
-    mondo._entra(poli, g, oggi)
-    date = [oggi + datetime.timedelta(days=n) for n in (0, 1, 45, 150)]
-    del_gioco = [economia.tetto_di_rivendita(g, poli, d) for d in date]
-    mr.imposta_la_rampa(MESI_DELLA_RAMPA, "firma")
-    assert mr.partenza_vista() == "firma"
-    # Senza l'ingaggio della firma la rampa parte da quello di oggi, come nel gioco, e ogni volta si conta.
-    assert [economia.tetto_di_rivendita(g, poli, d) for d in date] == del_gioco and mr.SENZA_FIRMA["volte"] == len(date)
-    # Con l'ingaggio della firma, finché l'ingaggio chiesto non cambia, la rampa è quella del gioco, e il tetto pieno
-    # arriva lo stesso giorno.
-    mr.SENZA_FIRMA["volte"] = 0
-    pagato = mr.ricorda_la_firma(g, poli)
-    assert [economia.tetto_di_rivendita(g, poli, d) for d in date] == del_gioco and mr.SENZA_FIRMA["volte"] == 0
-    assert economia.rivendita_piena_dal(g, poli, oggi) == contratti.stesso_giorno_dopo(oggi, MESI_DELLA_RAMPA)
-    # Il computer che compra, Mondo._vendibili, usa la stessa rampa: con l'ingaggio cresciuto il suo tetto parte da
-    # quello pagato.
-    g.esperienza += 10
-    pieno = economia.tetto_pieno_di_rivendita(g, poli, date[2])
-    giorni = (contratti.stesso_giorno_dopo(oggi, MESI_DELLA_RAMPA).date() - oggi.date()).days
-    mondo.metti_in_vendita(poli, g, pagato)
-    righe = [riga for riga in mondo._vendibili(date[2]) if riga[0] is g]
-    assert [riga[3] for riga in righe] == [pagato + (pieno - pagato) * 45 // giorni]
-    # Un ingaggio della firma che non sta sotto il tetto pieno vale il tetto pieno, come nel gioco; quello di un'altra
-    # firma non vale, e la rampa parte dall'ingaggio di oggi.
-    g.ingaggio_della_firma = (oggi, pieno)
-    assert economia.tetto_di_rivendita(g, poli, date[2]) == pieno and mr.SENZA_FIRMA["volte"] == 0
-    g.ingaggio_della_firma = (oggi - datetime.timedelta(days=1), pagato)
-    cresciuto = economia.ingaggio_richiesto(g, poli)
-    assert economia.tetto_di_rivendita(g, poli, date[2]) == cresciuto + (pieno - cresciuto) * 45 // giorni and mr.SENZA_FIRMA["volte"] == 1
-    # La partenza di serie rimette la rampa del gioco.
-    mr.imposta_la_rampa(MESI_DELLA_RAMPA)
-    assert economia._rampa is mr.RAMPA_DEL_GIOCO and mr.partenza_vista() == "vendita"
+    # Chi firma nella corsa ha quello pagato dal gioco, e il margine conta quello.
+    mondo._entra(poli, g, oggi, 123)
+    assert mr.pagato_alla_firma(g, poli) == 123 and mr.SENZA_FIRMA["volte"] == 0
+    # Senza, l'ingaggio che chiede oggi, e la volta si conta.
+    g.pagato_alla_firma = None
+    assert mr.pagato_alla_firma(g, poli) == economia.ingaggio_richiesto(g, poli) and mr.SENZA_FIRMA["volte"] == 1
+    # Un mondo nato col codice di prima del formato 12 non ha il campo: al caricamento lo riceve vuoto, nel mondo nato e
+    # nella partenza.
+    for gid in list(mondo.giocatori)[:5]:
+        del vars(mondo.giocatori[gid])["pagato_alla_firma"]
+    for nome, oggetto in (("mondo.pickle", mondo), ("partenza.pickle", {"mondo": mondo, "nome": poli.nome, "dati": {}})):
+        mr.salva(oggetto, tmp_path / nome)
+        letto = mr.carica(tmp_path / nome)
+        giocatori = (letto["mondo"] if isinstance(letto, dict) else letto).giocatori
+        assert all(vars(x).get("pagato_alla_firma", "manca") is None for x in list(giocatori.values())[:5])
 
 
 def test_la_partenza_a_regime_sposta_firma_contratto_e_fedelta():
     mondo, poli, g = bottega_e_libero(4)
     oggi = mondo.datetime_corrente_simulazione
-    mondo._entra(poli, g, oggi)
+    firma_pagando(mondo, poli, g, oggi)
     durata, fedelta = contratti.durata_proposta(g), g.fedelta
     mr.a_regime(mondo, poli, g, 400)
     firma = oggi - datetime.timedelta(days=400)
@@ -205,6 +237,8 @@ def test_la_partenza_a_regime_sposta_firma_contratto_e_fedelta():
     # La fedeltà dei primi del mese passati, con lo staff che non la sposta.
     assert mondo.fattori_staff(poli)[2] == 1.0
     assert g.fedelta == fedelta + FEDELTA_PER_MESE * contratti.mesi_interi(firma, oggi) > fedelta
+    # All'inizio della corsa quello pagato è l'ingaggio chiesto quel giorno, scritto nel campo del gioco.
+    assert mr.ricorda_la_firma(g, poli) == g.pagato_alla_firma == economia.ingaggio_richiesto(g, poli)
     # Lontano dalla scadenza, il tetto di oggi è quello della rampa a 400 giorni dalla firma.
     assert contratti.mesi_al_termine(g, oggi) >= 3
     assert economia.tetto_di_rivendita(g, poli, oggi) == mr.tetto_atteso(g, poli, firma, 400)
@@ -213,7 +247,7 @@ def test_la_partenza_a_regime_sposta_firma_contratto_e_fedelta():
 def test_il_commerciante_vende_alla_rampa_e_aspetta_il_rinnovo():
     mondo, poli, g = bottega_e_libero()
     oggi = mondo.datetime_corrente_simulazione
-    mondo._entra(poli, g, oggi)
+    firma_pagando(mondo, poli, g, oggi)
     # Prima dei tre mesi di firma non è in vendita.
     mr.metti_in_vendita_alla_rampa(mondo, poli, 3)
     assert g.id not in poli.in_vendita
@@ -221,7 +255,7 @@ def test_il_commerciante_vende_alla_rampa_e_aspetta_il_rinnovo():
     assert mr.in_vendita_dal(g, 3) <= oggi.date()
     mr.metti_in_vendita_alla_rampa(mondo, poli, 3)
     prezzo = poli.in_vendita[g.id]
-    assert prezzo == economia.tetto_di_rivendita(g, poli, oggi) and economia.ingaggio_richiesto(g, poli) < prezzo < economia.tetto_pieno_di_rivendita(g, poli, oggi)
+    assert prezzo == economia.tetto_di_rivendita(g, poli, oggi) and g.pagato_alla_firma < prezzo < economia.tetto_pieno_di_rivendita(g, poli, oggi)
     # Negli ultimi tre mesi di contratto, con un rinnovo concordato, il commerciante aspetta che il rinnovo parta.
     g.contratto_scadenza = contratti.aggiungi_mesi(oggi, 1)
     contratti.concorda_rinnovo(g, g.contratto_stipendio, 12)
@@ -269,8 +303,12 @@ def test_la_differenza_per_posto_e_per_anno_e_i_mesi_piu_redditizi():
 
 
 def test_la_misura_su_un_mondo_piccolo(tmp_path, monkeypatch):
-    # Le cartelle temporanee le dà già la prova; il caso del mondo si rimette com'era alla fine.
+    # Le cartelle temporanee le dà già la prova; il caso del mondo e la rampa si rimettono come erano alla fine. La rampa del
+    # processo è quella che main imposta di serie, la rampa del gioco che conta i ripieghi.
     monkeypatch.setattr(mr, "cartelle_temporanee", contextlib.nullcontext)
+    monkeypatch.setattr(economia, "_rampa", economia._rampa)
+    monkeypatch.setattr(economia, "MESI_DELLA_RAMPA", economia.MESI_DELLA_RAMPA)
+    mr.imposta_la_rampa(MESI_DELLA_RAMPA)
     stato = random.getstate()
     try:
         cartella = tmp_path / "lavoro"
@@ -278,8 +316,18 @@ def test_la_misura_su_un_mondo_piccolo(tmp_path, monkeypatch):
         assert mr.fai_nascere(11, [365], cartella)[0] == 11 and mr.file_del_mondo(cartella, 11, 365).exists()
         partenza = mr.prepara_la_partenza(11, 365, "gloriosa", cartella, 275)
         assert partenza["tesserati"] == MAX_TESSERATI_POLISPORTIVA and partenza["gloria"] == 275 and partenza["firme"] == 15
+        # I quindici hanno firmato pagando, e il gioco lo ricorda. La prova che mancava: la corsa li conta come già pagati e
+        # scrive lei quello pagato, all'inizio; qui lo si toglie, come per chi fosse entrato senza pagare, e la rampa della
+        # vendita a 0 mesi, che li vende nei primi giorni, non deve mai ripiegare sull'ingaggio di oggi.
+        percorso = mr.file_della_partenza(cartella, 11, 365, "gloriosa")
+        da_svuotare = mr.carica(percorso)
+        quindici = [da_svuotare["mondo"].giocatori[gid] for gid in da_svuotare["mondo"].polisportive[da_svuotare["nome"]].tesserati]
+        assert len(quindici) == 15 and all(g.pagato_alla_firma is not None for g in quindici)
+        for g in quindici:
+            g.pagato_alla_firma = None
+        mr.salva(da_svuotare, percorso)
         # La gloria tenuta: le medaglie vere non la spostano, e una rosa che da sola sta sopra il bersaglio resta alla sua.
-        salvata = mr.carica(mr.file_della_partenza(cartella, 11, 365, "gloriosa"))
+        salvata = mr.carica(percorso)
         mondo = salvata["mondo"]
         poli = mondo.polisportive[salvata["nome"]]
         palmares.aggiungi(poli, mondo.datetime_corrente_simulazione, punti_medaglie=400.0, punti_coppe=300.0)
@@ -292,17 +340,16 @@ def test_la_misura_su_un_mondo_piccolo(tmp_path, monkeypatch):
         corse = [mr.corsa(11, 365, "gloriosa", "tieni", None, 1, cartella), mr.corsa(11, 365, "gloriosa", "rivendi", 0, 1, cartella),
                  mr.corsa(11, 365, "gloriosa", "rivendi", 3, 1, cartella)]
         assert economia.MESI_DELLA_RAMPA == MESI_DELLA_RAMPA and all(r["mesi_della_rampa"] == MESI_DELLA_RAMPA for r in corse)
-        # La partenza di serie è vendita; gli ingaggi ricordati alla firma sono quelli pagati, e la rampa non li cerca.
-        assert all(r["partenza_della_rampa"] == "vendita" and r["rampe_senza_firma"] == 0 for r in corse)
+        # La partenza di serie è firma, la regola del gioco; la rampa trova sempre quello pagato, dei quindici e di chi firma
+        # nella corsa, e gli ingaggi della firma sono quelli pagati.
+        assert all(r["partenza_della_rampa"] == "firma" and r["rampe_senza_firma"] == 0 for r in corse)
         assert all(r["ingaggi_alla_firma"] == r["voci"]["ingaggi"] for r in corse)
         tieni, subito, tre = corse
         assert all(r["saldo"] == r["somma_delle_voci"] and r["gloria_minima"] == r["gloria_massima"] == 275 for r in corse)
-        # A 0 mesi il computer compra pochi giorni dopo la firma: il margine pieno resta quasi tutto, e con la partenza del
-        # gioco l'ingaggio cresciuto in quei giorni diventa margine.
-        assert subito["margini_pieni"] > 10 * subito["margini"] and 0 <= subito["crescita_degli_ingaggi"] <= subito["margini"]
-        assert tieni["vendite"] == tieni["voci"]["vendite"] == 0 and subito["vendite"] > MAX_TESSERATI_POLISPORTIVA
-        # A 0 mesi il computer paga l'ingaggio, e qualche euro della rampa se compra qualche giorno dopo.
-        assert 0 <= subito["margini"] < 10 * subito["vendite"] and subito["sotto_l_ingaggio"] == 0
+        # A 0 mesi il computer compra pochi giorni dopo la firma, anche chi firma nella corsa: il margine pieno resta quasi
+        # tutto, e il computer paga quello che è costato e qualche euro della rampa, mai meno.
+        assert tieni["vendite"] == tieni["voci"]["vendite"] == 0 and subito["vendite"] > MAX_TESSERATI_POLISPORTIVA and subito["firme"] > 0
+        assert subito["margini_pieni"] > 10 * subito["margini"] and 0 <= subito["margini"] < 10 * subito["vendite"] and subito["sotto_l_ingaggio"] == 0
         # Senza uscite, il saldo a rosa pari è il margine delle vendite più le voci che non sono vendite e ingaggi.
         for r in corse:
             if r["usciti"] == 0:
@@ -310,12 +357,13 @@ def test_la_misura_su_un_mondo_piccolo(tmp_path, monkeypatch):
         # A 3 mesi, con la partenza a regime, nel primo mese si vendono i più vecchi della partenza, al più 5 su 15, con più
         # di tre mesi di firma.
         assert 0 < tre["vendite"] <= 5 and tre["giorni_tenuti"] >= 89 * tre["vendite"] and tre["margini"] > 0
-        # Con la partenza firma la stessa corsa la dice nel risultato, e la rampa trova sempre l'ingaggio della firma.
-        monkeypatch.setattr(economia, "_rampa", economia._rampa)
-        mr.imposta_la_rampa(MESI_DELLA_RAMPA, "firma")
-        dalla_firma = mr.corsa(11, 365, "gloriosa", "rivendi", 3, 1, cartella)
-        assert dalla_firma["partenza_della_rampa"] == "firma" and dalla_firma["rampe_senza_firma"] == 0 and dalla_firma["vendite"] > 0
-        assert dalla_firma["saldo"] == dalla_firma["somma_delle_voci"] and dalla_firma["ingaggi_alla_firma"] == dalla_firma["voci"]["ingaggi"]
+        # Con la variante vendita la stessa corsa a 0 mesi lo dice nel risultato, e l'ingaggio cresciuto in quei giorni
+        # diventa margine.
+        mr.imposta_la_rampa(MESI_DELLA_RAMPA, "vendita")
+        dalla_vendita = mr.corsa(11, 365, "gloriosa", "rivendi", 0, 1, cartella)
+        assert dalla_vendita["partenza_della_rampa"] == "vendita" and dalla_vendita["rampe_senza_firma"] == 0 and dalla_vendita["vendite"] > 0
+        assert dalla_vendita["saldo"] == dalla_vendita["somma_delle_voci"] and dalla_vendita["ingaggi_alla_firma"] == dalla_vendita["voci"]["ingaggi"]
+        assert 0 <= dalla_vendita["crescita_degli_ingaggi"] <= dalla_vendita["margini"]
         mr.imposta_la_rampa(MESI_DELLA_RAMPA)
         gruppi = mr.differenze(corse, 1)
         assert set(gruppi) == {(365, "gloriosa", 0), (365, "gloriosa", 3)}
