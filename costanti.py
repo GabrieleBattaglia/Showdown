@@ -21,6 +21,10 @@ Lo stesso giorno, con la quinta tranche di D40, i giorni in cui un allenatore li
 polisportive. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Con la sesta tranche di D40, i mesi dopo la firma prima dei quali il computer non compra un tesserato dell'utente, per ora
 12, in attesa della misura. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
+Il 3 novembre 2026, con la settima tranche, la misura, strumenti/misura_rivendita.py: nessun numero fino a 12 chiude il
+commercio della polisportiva gloriosa, e i mesi restano 12 finché Gabriele sceglie fra una rampa del prezzo e un margine
+lecito; i numeri stanno in strumenti/rivendita_d40.txt. È di Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5,
+UltraCode).
 """
 
 import datetime
@@ -303,7 +307,8 @@ RIALZO_CPU = 1.15
 MESI_DI_RISERVA_CPU = 1
 PARTI_DI_CASSA_PER_STIPENDI = 24
 # Decisione D40: il computer non compra un tesserato dell'utente firmato con la polisportiva di oggi da meno di tanti mesi
-# simulati, perché tesserare un libero e rivenderglielo subito non sia un commercio. Il numero lo fissa una misura; per ora 12.
+# simulati, perché tesserare un libero e rivenderglielo subito non sia un commercio. La misura della settima tranche,
+# strumenti/rivendita_d40.txt, dice che nessun numero fino a 12 basta: resta 12 finché Gabriele non sceglie.
 MESI_PRIMA_DELLA_RIVENDITA = 12
 # Quanti candidati troppo cari il computer scorre in un giorno, prima di lasciar perdere.
 SCARTI_MASSIMI_CPU = 30
