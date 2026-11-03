@@ -1,0 +1,27 @@
+Collaudo dei rimedi di D40, sul tuo mondo vero, dai sorgenti. Cancella le righe che vanno bene; dove qualcosa non va, scrivi il commento dopo i due punti.
+Prima: la copia datata della cartella Mondo SD l'ha fatta ClaudIA in E:\git\tmp; fai git pull in E:\git\Mine\Showdown, con MESS chiuso.
+Prima: sulle altre macchine non aprire MESS finché non hai fatto git pull anche lì: il mondo passa al formato 11.
+Passo 1: apri MESS col solito python Showdown.py.
+Domanda 1: il mondo si apre senza avvisi, con le tue polisportive, le rose e le casse di prima?:
+Passo 2: Ctrl+N, Nuova polisportiva, ascolta la riga in cima, poi Annulla.
+Domanda 2: NVDA legge il conto all'apertura, cioè quanto costa la prossima fondazione, chi la paga e "Finora hai fondato 2 polisportive"?:
+Passo 3: apri Cambia polisportiva, ascolta la riga in cima, poi Annulla.
+Domanda 3: NVDA legge quante polisportive hai fondato finora prima dell'elenco?:
+Passo 4: Ctrl+Maiusc+I, Sposta fondi: scegli chi paga e chi riceve, ascolta fino a quanto puoi spostare, sposta 1 euro.
+Domanda 4: il dialogo dice la cifra massima, e l'esito dice "Spostato 1 euro" con le due casse di adesso?:
+Passo 5: se una tua polisportiva protetta, che non è l'attiva, paga in Sposta fondi, dai prima una password sbagliata, poi quella giusta.
+Domanda 5: la password viene chiesta, con un suono suo, e quella sbagliata ferma lo spostamento con un suono diverso?:
+Passo 6: Vendite: metti in vendita al prezzo proposto un tuo tesserato di vecchia data.
+Domanda 6: la riga dice "il computer lo paga fino a" una cifra, senza una data, perché chi ha firmato prima del formato 11 vale subito il valore pieno?:
+Passo 7: cambia il prezzo di quel tesserato a molto sopra la cifra detta.
+Domanda 7: l'esito dice che a quel prezzo il computer non lo comprerà, e il suono è diverso da quello della messa in vendita?:
+Passo 8: tessera un libero, poi mettilo in vendita al prezzo proposto.
+Domanda 8: la riga dice quanto il computer lo paga oggi e da quando lo pagherà per intero, e la cifra di oggi è vicina all'ingaggio?:
+Passo 9: apri Chiudi polisportiva su una tua polisportiva e rispondi No alla domanda; se ti chiede la password di una sorella protetta, prova anche Annulla.
+Domanda 9: la domanda dice quanto costa la chiusura, quanta cassa si perde e chi paga i debiti; senza la password, dice che quella sorella resta fuori?:
+Passo 10: se hai una sfida accettata, prova a mettere in vendita uno dei convocati.
+Domanda 10: la vendita è rifiutata, con la sua frase e il suo suono?:
+Passo 11: iscrivi a mano un tesserato a un torneo e toglilo subito.
+Domanda 11: la quota torna, perché siamo nel mese dell'iscrizione? E se ti capita di toglierne una dal primo del mese seguente, la domanda ha il No già scelto e la quota non torna?:
+Domanda 12: i suoni nuovi che hai sentito si distinguono fra loro e da quelli di prima?:
+Esito:
