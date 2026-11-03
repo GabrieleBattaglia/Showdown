@@ -1,17 +1,23 @@
 """
-La misura della rivendita al computer della decisione D40: quanti mesi, MESI_PRIMA_DELLA_RIVENDITA, il computer
-aspetta prima di comprare un tesserato dell'utente, perché il commercio dei liberi non renda più.
+La misura della rivendita al computer della decisione D40: quanto rende ancora tesserare un libero e rivenderlo al
+computer, con la rampa del prezzo scelta da Gabriele il 3 novembre 2026.
 Autori: Gabriele Battaglia (IZ4APU) & ClaudIA (Claude Opus 5.5, UltraCode).
 Nasce il 2026-11-03 con la settima tranche di D40, dagli script commercio.py e rimedi_commercio.py della verifica
 dei trucchi del 2 novembre 2026, rifatti come chiede la critica alla decisione 6. Il trucco: tesserare un libero
-all'ingaggio che chiede, da 1 a 4 stipendi, e venderlo al computer, che paga fino al valore di mercato col suo
+all'ingaggio che chiede, da 1 a 4 stipendi, e venderlo al computer, che pagava fino al valore di mercato col suo
 rialzo, circa 6,9 stipendi. La misura vecchia contava la cassa meno lo sponsor, e gli stipendi dei mesi d'attesa
 diventavano un costo del trucco; ma in quei mesi il giocatore sta in rosa, e una rosa onesta paga gli stessi
 stipendi e incassa lo stesso sponsor. Qui le strategie sono due, tutte e due con la rosa piena: rivendi e riempi,
-dove ogni tesserato sta in vendita al prezzo più alto che il computer paga, il valore pieno col rialzo, e il posto
-si riempie appena il computer lo compra; tieni e rinnova, dove la rosa si tiene, i contratti si rinnovano e si
-riempie soltanto il posto di chi se ne va. Il risultato è la differenza fra le due, per posto e per anno. I numeri
-della misura del 3 novembre 2026, e il verdetto, stanno in strumenti/rivendita_d40.txt.
+dove il commerciante mette i tesserati in vendita al prezzo più alto che il computer paga e il posto si riempie
+appena il computer lo compra; tieni e rinnova, dove la rosa si tiene, i contratti si rinnovano e si riempie
+soltanto il posto di chi se ne va. Il risultato è la differenza fra le due, per posto e per anno.
+La settima tranche misurava i mesi d'attesa prima della rivendita, MESI_PRIMA_DELLA_RIVENDITA, col prezzo sempre al
+tetto pieno: nessun numero fino a 12 chiudeva il commercio, e Gabriele ha scelto la rampa, economia.tetto_di_rivendita,
+che il giorno della firma vale l'ingaggio chiesto e sale in linea retta fino al tetto pieno in MESI_DELLA_RAMPA mesi.
+Lo stesso giorno lo strumento è passato a misurare la rampa: nella rivendita a t mesi il commerciante mette in
+vendita un tesserato quando ha t mesi di firma, al tetto della rampa del giorno, e il computer compra come nel
+gioco; il risultato dice, per ogni t, quanto rende ancora il commercio, e qual è il t più redditizio. I numeri delle
+due misure, e i verdetti, stanno in strumenti/rivendita_d40.txt.
 I mondi nascono col codice di oggi, con mondi_sintetici.mondo_nato, uno per seme, e si salvano alle età date, di
 serie 730 e 3.650 giorni, nella cartella di lavoro. In ogni mondo nascono, ciascuna da sola, due polisportive
 dell'utente: la gloriosa, con la gloria tenuta a 275, e la media, a 150, la gloria che una polisportiva
@@ -26,24 +32,34 @@ comprare, con l'ingaggio chiesto, che accettano una volta su due, ripetuto finch
 rosa piena si salva, e tutte le strategie partono da lì, con lo stesso caso.
 Ogni giorno simulato, in tutte e due le strategie: Allena tutti, i rinnovi alla richiesta e alla durata proposta,
 come lo scenario dell'utente di simulazione_lunga.py, e i posti vuoti riempiti con la regola della partenza. Nella
-rivendita i posti si riempiono invece col guadagno per giorno del ciclo stimato, dalla firma alla vendita, e
-soltanto con chi non entra nel declino prima della vendita; il prezzo è sempre il tetto pieno, quindi chi è negli
-ultimi tre mesi di contratto aspetta che il rinnovo concordato prenda il suo posto. Nella rivendita con N mesi la
-firma dei quindici della partenza si sposta indietro, a passi regolari fra 0 e N mesi, come se il commercio
-andasse avanti da sempre: le vendite si spargono nel tempo, e la differenza divisa per gli anni misura il guadagno a
-regime anche quando la durata non è un multiplo di N; N prende il posto della costante soltanto durante la corsa,
-in economia, dove lo legge rivendita_dal. I conti sono tutte le voci dei conti del mese: sponsor, con
-la regola della seconda tranche di D40, vendite, stipendi, arretrati, ingaggi, buonuscite, iscrizioni, premi e
-rimborsi; la loro somma è la cassa, e lo strumento lo controlla.
+rivendita i posti si riempiono invece col guadagno per giorno del ciclo stimato, il tetto della rampa il giorno
+della vendita meno l'ingaggio, diviso per i giorni dalla firma alla vendita, soltanto con chi non entra nel declino
+prima della vendita e chi oggi una polisportiva del computer comprerebbe a quel prezzo. Da t mesi dopo la firma il
+tesserato sta in vendita al tetto della rampa del giorno, e il prezzo si rifà ogni volta che il tetto cambia. Negli
+ultimi tre mesi di contratto il tetto scende col valore, che nelle vendite dell'utente non conta il rinnovo
+concordato: con un rinnovo concordato il commerciante toglie il tesserato dalla vendita e aspetta che il rinnovo
+parta, quando il tetto torna pieno; senza, lo lascia in vendita al tetto che scende, per non perderlo libero alla
+scadenza. La rampa resta quella del gioco, di MESI_DELLA_RAMPA mesi: t è la scelta del commerciante.
+La partenza a regime: nella rivendita a t mesi i quindici della partenza diventano i tesserati di un commercio che va
+avanti da sempre. La firma si sposta indietro a passi regolari fra 0 e t mesi, e con lei il contratto, della stessa
+durata e allo stesso stipendio, rinnovato per la stessa durata finché scadrebbe prima di oggi, e la fedeltà cresce
+dei primi del mese passati. Così ogni tesserato arriva alla vendita col tetto della rampa a t mesi e col contratto al
+punto in cui lo avrebbe chi ha firmato t mesi prima, come nei cicli che seguono; le vendite si spargono nel tempo, e
+la differenza divisa per gli anni misura il guadagno a regime anche quando la durata non è un multiplo di t. La
+settima tranche spostava soltanto la firma: col prezzo pieno bastava, con la rampa il prezzo dipende anche dalla
+scadenza, e il primo ciclo trovava il contratto più lungo di quelli che seguono.
+I conti sono tutte le voci dei conti del mese: sponsor, con la regola della seconda tranche di D40, vendite,
+stipendi, arretrati, ingaggi, buonuscite, iscrizioni, premi e rimborsi; la loro somma è la cassa, e lo strumento lo
+controlla. Accanto alla differenza lo strumento dà la differenza a rosa pari, dove ogni rosa conta al suo costo,
+l'ingaggio da cui parte la rampa di ognuno, quella della fine in più e quella della partenza in meno: toglie l'effetto
+di una rosa che alla fine non è come alla partenza, come nella vendita a 0 mesi, dove il computer compra più in fretta
+di quanto il commerciante tesseri. Per ogni vendita conta anche il margine, il prezzo meno l'ingaggio di chi è venduto.
 Non tocca mai il mondo salvato: ogni processo sposta la cartella del programma e quella del mondo in cartelle
 temporanee, che alla fine si cancellano; i mondi e le partenze vivono nella cartella di lavoro, che senza
 --cartella è temporanea anche lei. Le corse vanno in parallelo, al più --processi insieme.
 Uso: python -B strumenti/misura_rivendita.py [--semi 11 2026 7 13] [--giorni-dei-mondi 730 3650]
-[--mesi 0 3 6 9 12 18 24] [--durata 36] [--gloria 275] [--gloria-media 150] [--club gloriosa media] [--processi 16]
+[--mesi 0 1 3 6 12 18 24] [--durata 36] [--gloria 275] [--gloria-media 150] [--club gloriosa media] [--processi 16]
 [--cartella C] [--salva risultati.json]
-Il 3 novembre 2026 Gabriele ha scelto la rampa del prezzo, e MESI_PRIMA_DELLA_RIVENDITA ha lasciato il posto a
-MESI_DELLA_RAMPA: lo strumento cambia quella costante, e col prezzo sempre al tetto pieno misura ancora l'attesa fino alla
-fine della rampa. La misura della rampa, col prezzo che sale, è un lavoro a parte.
 """
 
 import argparse
@@ -75,11 +91,14 @@ import contratti  # noqa: E402
 import economia  # noqa: E402
 import palmares  # noqa: E402
 import percorsi  # noqa: E402
+import testi  # noqa: E402
 import tratti  # noqa: E402
 from costanti import (  # noqa: E402
+    FEDELTA_PER_MESE,
     GIORNI_PER_MESE,
     K_GLORIA_COPPE,
     MAX_TESSERATI_POLISPORTIVA,
+    MESI_DELLA_RAMPA,
     MESI_DI_INGAGGIO,
     MESI_DI_RISERVA_CPU,
     MESI_VALORE_PIENO,
@@ -90,7 +109,8 @@ from modelli import VOCI_CONTI, conti_vuoti  # noqa: E402
 
 SEMI = (11, 2026, 7, 13)
 GIORNI_DEI_MONDI = (730, 3650)
-MESI_PROVATI = (0, 3, 6, 9, 12, 18, 24)
+# I mesi di firma dopo i quali il commerciante mette in vendita: t, nella rivendita.
+MESI_PROVATI = (0, 1, 3, 6, 12, 18, 24)
 DURATA_MESI = 36
 PROCESSI = 16
 GLORIA_GLORIOSA = 275
@@ -199,8 +219,26 @@ def tieni_la_gloria(mondo, poli, bersaglio, chiave):
 
 
 def tetto(g):
-    """Il prezzo più alto che il computer paga per un tesserato col contratto lontano dalla scadenza: il valore pieno col rialzo."""
+    """
+    Il prezzo più alto che il computer pagava per un tesserato col contratto lontano dalla scadenza, prima della rampa: il
+    valore pieno col rialzo. Sceglie i liberi della partenza e del tieni, come nella misura della settima tranche.
+    """
     return int(economia.valore_di_mercato_pieno(g) * RIALZO_CPU)
+
+
+def tetto_atteso(g, poli, oggi, giorni):
+    """
+    Il tetto della rampa, economia.tetto_di_rivendita, tanti giorni dopo una firma di oggi, coi valori di oggi: l'ingaggio
+    che il giocatore chiede alla polisportiva, poi in linea retta fino al tetto pieno, lo stesso giorno del mese
+    MESI_DELLA_RAMPA mesi dopo, e da lì il tetto pieno. Chi chiede un ingaggio che non sta sotto il tetto pieno vale
+    subito il tetto pieno, come nel gioco.
+    """
+    pieno = economia.tetto_pieno_di_rivendita(g, poli, oggi)
+    partenza = economia.ingaggio_richiesto(g, poli)
+    rampa = (contratti.stesso_giorno_dopo(oggi, MESI_DELLA_RAMPA).date() - oggi.date()).days
+    if partenza >= pieno or giorni >= rampa:
+        return pieno
+    return partenza + (pieno - partenza) * max(0, giorni) // rampa
 
 
 def compratori(mondo, oggi):
@@ -234,9 +272,10 @@ def vendibile(g, prezzo, righe):
 
 def ciclo_stimato(g, oggi, mesi):
     """
-    I giorni dalla firma di oggi alla vendita al computer, stimati: il giorno in cui il computer lo compra, o, se
-    il contratto è allora negli ultimi tre mesi, la scadenza, quando il rinnovo prende il suo posto e il valore
-    torna pieno. Un contratto che finisce prima si rinnova per la stessa durata.
+    I giorni dalla firma di oggi alla vendita al computer, stimati: tanti mesi dopo la firma il commerciante lo mette in
+    vendita, e il computer lo compra il giorno dopo; se il contratto è allora negli ultimi tre mesi, il commerciante
+    aspetta la scadenza, quando il rinnovo prende il suo posto e il valore torna pieno. Un contratto che finisce prima
+    si rinnova per la stessa durata.
     """
     durata = contratti.durata_proposta(g)
     scadenza = contratti.scadenza_dopo(oggi, durata)
@@ -250,9 +289,10 @@ def ciclo_stimato(g, oggi, mesi):
 
 def candidati(mondo, poli, mesi):
     """
-    I liberi da tesserare, dal migliore: fino a 30 anni, che possono giocare e rendono, cioè col tetto sopra
-    l'ingaggio chiesto. Senza mesi in ordine di guadagno; coi mesi della rivendita in ordine di guadagno per giorno
-    del ciclo, e soltanto chi non entra nel declino prima della vendita.
+    I liberi da tesserare, dal migliore, ciascuno col prezzo a cui il computer lo comprerà: fino a 30 anni, che possono
+    giocare e rendono, cioè col tetto pieno sopra l'ingaggio chiesto. Senza mesi in ordine di guadagno, col tetto pieno
+    di prima della rampa; coi mesi della rivendita in ordine di guadagno per giorno del ciclo, il tetto della rampa il
+    giorno in cui va in vendita meno l'ingaggio, e soltanto chi non entra nel declino prima della vendita.
     """
     oggi = mondo.datetime_corrente_simulazione
     morti = mondo._ids_morti_processati_sessione
@@ -260,17 +300,22 @@ def candidati(mondo, poli, mesi):
     for gid, g in mondo.giocatori.items():
         if g.appartenenza != "*" or g.ritirato or gid in morti or not g.puo_giocare or g.eta_anni > ETA_MASSIMA:
             continue
-        guadagno = tetto(g) - economia.ingaggio_richiesto(g, poli)
+        ingaggio = economia.ingaggio_richiesto(g, poli)
+        guadagno = tetto(g) - ingaggio
         if guadagno <= 0:
             continue
         if mesi is None:
-            righe.append((guadagno, gid, g))
+            righe.append((guadagno, guadagno, gid, g, tetto(g)))
             continue
         giorni = ciclo_stimato(g, oggi, mesi)
         if g.eta + giorni < tratti.giorni_inizio_declino(g):
-            righe.append((guadagno / giorni, gid, g))
-    righe.sort(key=lambda riga: (-riga[0], riga[1]))
-    return [g for _resa, _gid, g in righe]
+            # Il prezzo si mette il giorno prima di quello in cui il computer compra.
+            prezzo = tetto_atteso(g, poli, oggi, giorni - 1)
+            righe.append(((prezzo - ingaggio) / giorni, guadagno, gid, g, prezzo))
+    # A pari resa vale il guadagno a tetto pieno, come nella partenza: nella vendita a 0 mesi il prezzo è l'ingaggio, la
+    # resa è zero per tutti, e senza questo il commerciante sceglierebbe a caso, e chiuderebbe con una rosa più povera.
+    righe.sort(key=lambda riga: (-riga[0], -riga[1], riga[2]))
+    return [(g, prezzo) for _resa, _guadagno, _gid, g, prezzo in righe]
 
 
 def riempi(mondo, poli, mesi, conti):
@@ -278,12 +323,12 @@ def riempi(mondo, poli, mesi, conti):
     if len(poli.tesserati) >= poli.maxtesserati or mondo.mosse_rimaste(poli) <= 0:
         return
     righe = None
-    for g in candidati(mondo, poli, mesi):
+    for g, prezzo in candidati(mondo, poli, mesi):
         if len(poli.tesserati) >= poli.maxtesserati or mondo.mosse_rimaste(poli) <= 0:
             return
         if righe is None:
             righe = compratori(mondo, mondo.datetime_corrente_simulazione)
-        if not vendibile(g, tetto(g), righe):
+        if not vendibile(g, prezzo, righe):
             continue
         while mondo.mosse_rimaste(poli) > 0:
             try:
@@ -315,13 +360,57 @@ def rinnova_tutti(mondo, poli, conti):
         conti["rinnovi" if accetta else "rinnovi_rifiutati"] += 1
 
 
-def metti_tutti_in_vendita(mondo, poli):
-    """Ogni tesserato in vendita al tetto pieno; il prezzo si rifà soltanto quando il tetto cambia, e chi è convocato aspetta."""
+def in_vendita_dal(g, mesi):
+    """Il giorno dal quale il commerciante mette in vendita il tesserato: lo stesso giorno del mese tanti mesi dopo la firma."""
+    return contratti.stesso_giorno_dopo(g.tesserato_dal, mesi).date()
+
+
+def aspetta_il_rinnovo(g, oggi):
+    """
+    Vero negli ultimi tre mesi di contratto con un rinnovo concordato: il tetto scende col valore, che nelle vendite
+    dell'utente non conta il rinnovo, e torna pieno quando il rinnovo prende il posto del contratto.
+    """
+    return contratti.ha_rinnovo(g) and economia.fattore_scadenza(g, oggi, col_rinnovo=False) < 1.0
+
+
+def metti_in_vendita_alla_rampa(mondo, poli, mesi):
+    """
+    Da tanti mesi dopo la firma ogni tesserato sta in vendita al tetto della rampa di oggi, e il prezzo si rifà ogni
+    volta che il tetto cambia; chi è convocato aspetta. Chi aspetta il rinnovo esce dalla vendita, e chi non ha un
+    rinnovo concordato resta in vendita anche quando il tetto scende con la scadenza.
+    """
+    oggi = mondo.datetime_corrente_simulazione
     for g in mondo._rosa(poli):
-        prezzo = tetto(g)
+        if g.tesserato_dal is None or oggi.date() < in_vendita_dal(g, mesi):
+            continue
+        if aspetta_il_rinnovo(g, oggi):
+            if g.id in poli.in_vendita:
+                mondo.togli_dalla_vendita(poli, g)
+            continue
+        prezzo = economia.tetto_di_rivendita(g, poli, oggi)
         if poli.in_vendita.get(g.id) != prezzo:
             with suppress(ValueError):
                 mondo.metti_in_vendita(poli, g, prezzo)
+
+
+def a_regime(mondo, poli, g, giorni):
+    """
+    Il tesserato della partenza come se avesse firmato tanti giorni prima di oggi, in un commercio che va avanti da
+    sempre: la firma si sposta indietro, e con lei il contratto, della stessa durata e allo stesso stipendio, rinnovato
+    per la stessa durata finché scadrebbe prima di oggi; la fedeltà cresce dei primi del mese passati in più.
+    """
+    oggi = mondo.datetime_corrente_simulazione
+    prima = g.tesserato_dal
+    firma = oggi - datetime.timedelta(days=giorni)
+    durata = contratti.mesi_interi(contratti.inizio(prima), g.contratto_scadenza)
+    scadenza = contratti.scadenza_dopo(firma, durata)
+    while scadenza.date() <= oggi.date():
+        scadenza = contratti.aggiungi_mesi(scadenza, durata)
+    g.tesserato_dal = firma
+    g.contratto_scadenza = scadenza
+    mesi = contratti.mesi_interi(firma, oggi) - contratti.mesi_interi(prima, oggi)
+    if mesi > 0:
+        mondo._aggiungi_fedelta(g, poli, FEDELTA_PER_MESE * mesi, oggi)
 
 
 def prepara_la_partenza(seme, giorni, club, cartella, bersaglio):
@@ -371,24 +460,12 @@ def scade_entro(g, data):
 
 def corsa(seme, giorni, club, strategia, mesi, durata, cartella):
     """
-    Una strategia per tanti mesi di calendario, dalla partenza comune: rivendi, coi mesi della rivendita, o tieni.
-    Restituisce le voci dei conti sommate, il saldo e i conteggi di firme, vendite, uscite e rinnovi. I mesi della
-    rivendita prendono il posto della costante, in economia, dove la legge rivendita_dal, e alla fine la costante torna.
-    Dalla rampa del prezzo scelta da Gabriele il 3 novembre 2026 la costante è MESI_DELLA_RAMPA, e la legge
-    tetto_di_rivendita: col prezzo al tetto pieno il computer compra alla fine della rampa, come prima alla fine
-    dell'attesa. La misura della rampa vera la rifà un altro passo.
+    Una strategia per tanti mesi di calendario, dalla partenza comune: rivendi, coi mesi di firma dopo i quali il
+    commerciante mette in vendita, o tieni. Restituisce le voci dei conti sommate, il saldo e i conteggi di firme,
+    vendite, uscite e rinnovi. Fino alla settima tranche i mesi prendevano il posto della costante dell'attesa; dalla
+    rampa del prezzo, scelta da Gabriele il 3 novembre 2026, la rampa resta quella del gioco, e i mesi sono la scelta del
+    commerciante. Nella rivendita i quindici della partenza vanno a regime con a_regime.
     """
-    costante = economia.MESI_DELLA_RAMPA
-    if strategia == "rivendi":
-        economia.MESI_DELLA_RAMPA = mesi
-    try:
-        return _corsa(seme, giorni, club, strategia, mesi, durata, cartella)
-    finally:
-        economia.MESI_DELLA_RAMPA = costante
-
-
-def _corsa(seme, giorni, club, strategia, mesi, durata, cartella):
-    """Il corpo di corsa, con i mesi della rivendita già al posto della costante."""
     inizio = time.perf_counter()
     with cartelle_temporanee():
         partenza = carica(file_della_partenza(cartella, seme, giorni, club))
@@ -399,16 +476,22 @@ def _corsa(seme, giorni, club, strategia, mesi, durata, cartella):
         random.seed(seme_del_gruppo(seme, giorni, club))
         oggi = mondo.datetime_corrente_simulazione
         fine = contratti.stesso_giorno_dopo(oggi, durata)
+        # Il giorno della corsa in cui ognuno ha firmato: per i quindici della partenza a regime, prima dell'inizio.
         firmato = dict.fromkeys(poli.tesserati, 0)
         if rivendi and mesi:
-            # La partenza a regime: le firme dei quindici sparse a passi regolari negli ultimi N mesi.
+            # La partenza a regime: le firme dei quindici sparse a passi regolari negli ultimi t mesi, coi contratti.
             tesserati = sorted(poli.tesserati)
             for i, gid in enumerate(tesserati):
                 spostamento = round(mesi * GIORNI_PER_MESE * (i + 0.5) / len(tesserati))
-                mondo.giocatori[gid].tesserato_dal = oggi - datetime.timedelta(days=spostamento)
+                a_regime(mondo, poli, mondo.giocatori[gid], spostamento)
+                firmato[gid] = -spostamento
+        # L'ingaggio di ognuno, dove parte la sua rampa: il margine di una vendita è il prezzo meno questo.
+        pagato = {gid: economia.ingaggio_richiesto(mondo.giocatori[gid], poli) for gid in poli.tesserati}
+        rosa_iniziale = sum(pagato.values())
         cassa_iniziale = poli.cassa
         totali = dict.fromkeys(VOCI_CONTI, 0)
-        conti = {"firme": 0, "rifiuti": 0, "rinnovi": 0, "rinnovi_rifiutati": 0, "vendite": 0, "usciti": 0, "giorni_tenuti": 0}
+        conti = {"firme": 0, "rifiuti": 0, "rinnovi": 0, "rinnovi_rifiutati": 0, "vendite": 0, "usciti": 0, "giorni_tenuti": 0, "margini": 0,
+                 "sotto_l_ingaggio": 0}
         glorie, posti_giorno, giorno = [], 0, 0
         while mondo.datetime_corrente_simulazione < fine:
             tieni_la_gloria(mondo, poli, bersaglio, chiave)
@@ -416,9 +499,11 @@ def _corsa(seme, giorni, club, strategia, mesi, durata, cartella):
             rinnova_tutti(mondo, poli, conti)
             riempi(mondo, poli, mesi if rivendi else None, conti)
             for gid in poli.tesserati:
-                firmato.setdefault(gid, giorno)
+                if gid not in firmato:
+                    firmato[gid] = giorno
+                    pagato[gid] = economia.ingaggio_richiesto(mondo.giocatori[gid], poli)
             if rivendi:
-                metti_tutti_in_vendita(mondo, poli)
+                metti_in_vendita_alla_rampa(mondo, poli, mesi)
             tieni_la_gloria(mondo, poli, bersaglio, chiave)
             posti_giorno += len(poli.tesserati)
             # La gloria che lo sponsor paga domani, se domani è il primo del mese: i conti la leggono prima delle mosse del computer.
@@ -427,16 +512,18 @@ def _corsa(seme, giorni, club, strategia, mesi, durata, cartella):
                 glorie.append(poli.gloria)
             # Chi domani esce dalla rosa ed entra in una del computer è venduto se era in vendita, ma non se il contratto
             # gli scade domani senza rinnovo: torna libero, e il computer può tesserarlo lo stesso giorno.
-            vendibili = {gid for gid in poli.in_vendita if not scade_entro(mondo.giocatori[gid], domani)}
+            vendibili = {gid: prezzo for gid, prezzo in poli.in_vendita.items() if not scade_entro(mondo.giocatori[gid], domani)}
             prima = set(poli.tesserati)
             ms.avanza_un_giorno(mondo)
             giorno += 1
             for gid in sorted(prima - set(poli.tesserati)):
                 g = mondo.giocatori.get(gid)
-                quando = firmato.pop(gid, 0)
+                quando, spesa = firmato.pop(gid, 0), pagato.pop(gid, 0)
                 if g is not None and gid in vendibili and g.appartenenza not in ("*", poli.nome):
                     conti["vendite"] += 1
                     conti["giorni_tenuti"] += giorno - quando
+                    conti["margini"] += vendibili[gid] - spesa
+                    conti["sotto_l_ingaggio"] += vendibili[gid] < spesa
                 else:
                     conti["usciti"] += 1
             if mondo.datetime_corrente_simulazione.day == 1:
@@ -452,6 +539,7 @@ def _corsa(seme, giorni, club, strategia, mesi, durata, cartella):
                 "saldo": saldo, "somma_delle_voci": somma, "voci": totali, **conti, "posti_giorno": posti_giorno,
                 "gloria_minima": min(glorie) if glorie else poli.gloria, "gloria_massima": max(glorie) if glorie else poli.gloria,
                 "tesserati_alla_fine": len(rosa), "valore_alla_fine": sum(economia.valore_di_mercato_pieno(g) for g in rosa),
+                "ingaggi_rosa_iniziale": rosa_iniziale, "ingaggi_rosa_finale": sum(pagato.get(gid, 0) for gid in poli.tesserati),
                 "secondi": time.perf_counter() - inizio}
 
 
@@ -472,8 +560,21 @@ def decimale(numero, cifre=1):
     return f"{numero:.{cifre}f}".replace(".", ",")
 
 
+def a_rosa_pari(r):
+    """
+    Il saldo della corsa con la rosa contata al suo costo, l'ingaggio da cui parte la rampa di ognuno: più la rosa della
+    fine, meno quella della partenza. Toglie l'effetto di una rosa che alla fine non è quella della partenza, come nella
+    vendita a 0 mesi, dove il computer compra più in fretta di quanto il commerciante tesseri e la rosa si svuota: i
+    quindici della partenza non sono costati niente nella corsa, quelli della fine sì.
+    """
+    return r["saldo"] + r["ingaggi_rosa_finale"] - r["ingaggi_rosa_iniziale"]
+
+
 def differenze(risultati, durata):
-    """Per mondo, club e mesi, la differenza fra la rivendita e il tieni di ogni seme, per posto e per anno, e le voci."""
+    """
+    Per mondo, club e mesi, la differenza fra la rivendita e il tieni di ogni seme, per posto e per anno, anche a rosa
+    pari, e le voci.
+    """
     tieni = {(r["seme"], r["giorni"], r["club"]): r for r in risultati if r["strategia"] == "tieni"}
     gruppi = {}
     for r in risultati:
@@ -485,26 +586,30 @@ def differenze(risultati, durata):
         voci = {voce: per_posto_e_anno(r["voci"][voce] - t["voci"][voce], durata) for voce in VOCI_CONTI}
         gruppi.setdefault((r["giorni"], r["club"], r["mesi"]), []).append({
             "seme": r["seme"], "differenza": per_posto_e_anno(r["saldo"] - t["saldo"], durata), "voci": voci,
+            "a_rosa_pari": per_posto_e_anno(a_rosa_pari(r) - a_rosa_pari(t), durata),
             "vendite_per_posto_e_anno": r["vendite"] / MAX_TESSERATI_POLISPORTIVA / (durata / 12),
             "giorni_tenuti": r["giorni_tenuti"] / r["vendite"] if r["vendite"] else None,
             "prezzo_medio": r["voci"]["vendite"] / r["vendite"] if r["vendite"] else None,
+            "margine_medio": r["margini"] / r["vendite"] if r["vendite"] else None, "sotto_l_ingaggio": r["sotto_l_ingaggio"],
             "ingaggio_medio": r["voci"]["ingaggi"] / r["firme"] if r["firme"] else None,
             "rosa_media": r["posti_giorno"] / max(1, r["giorni_corsi"]), "rosa_media_tieni": t["posti_giorno"] / max(1, t["giorni_corsi"]),
             "valore_alla_fine": r["valore_alla_fine"], "valore_alla_fine_tieni": t["valore_alla_fine"],
+            # Lo sponsor si paga il primo del mese, e una corsa di tanti mesi ne ha tanti primi.
+            "sponsor_al_mese_tieni": t["voci"]["sponsor"] / durata,
             "gloria": (min(r["gloria_minima"], t["gloria_minima"]), max(r["gloria_massima"], t["gloria_massima"]))})
     return gruppi
 
 
-def riassunto(righe):
-    """Media e scarto quadratico fra i semi della differenza; lo scarto è zero con un seme solo."""
-    valori = [r["differenza"] for r in righe]
+def riassunto(righe, chiave="differenza"):
+    """Media e scarto quadratico fra i semi della differenza, o di quella a rosa pari; lo scarto è zero con un seme solo."""
+    valori = [r[chiave] for r in righe]
     media = statistics.fmean(valori)
     scarto = statistics.stdev(valori) if len(valori) > 1 else 0.0
     return media, scarto
 
 
 def tabella(gruppi, partenze, durata):
-    """Le righe della tabella, una per mondo, club e mesi, e il verdetto per la gloriosa."""
+    """Le righe della tabella: per mondo e club la partenza, poi una riga per i mesi di firma della vendita."""
     righe = []
     for giorni in sorted({g for g, _c, _m in gruppi}):
         for club in ("gloriosa", "media"):
@@ -519,33 +624,63 @@ def tabella(gruppi, partenze, durata):
             for mesi in sorted({m for g, c, m in gruppi if g == giorni and c == club}):
                 gruppo = sorted(gruppi[(giorni, club, mesi)], key=lambda r: r["seme"])
                 media, scarto = riassunto(gruppo)
+                pari, scarto_pari = riassunto(gruppo, "a_rosa_pari")
                 semi = ", ".join(euro(r["differenza"]) for r in gruppo)
                 voci = {voce: statistics.fmean(r["voci"][voce] for r in gruppo) for voce in VOCI_CONTI}
                 resto = sum(v if voce in ENTRATE else -v for voce, v in voci.items() if voce not in VOCI_DETTE)
                 dette = "; ".join(f"{voce} {euro(voci[voce] if voce in ENTRATE else -voci[voce])}" for voce in VOCI_DETTE)
                 vendite = statistics.fmean(r["vendite_per_posto_e_anno"] for r in gruppo)
                 tenuti = [r["giorni_tenuti"] for r in gruppo if r["giorni_tenuti"] is not None]
-                testo = (f"{mesi} mesi: differenza {euro(media)} euro per posto e per anno, scarto fra i semi {euro(scarto)}; semi {semi}. "
+                testo = (f"Vendita a {testi.conta(mesi, 'mese', 'mesi')} dalla firma: differenza {euro(media)} euro per posto e per anno, "
+                         f"scarto fra i semi {euro(scarto)}; semi {semi}; a rosa pari {euro(pari)}, scarto {euro(scarto_pari)}. "
                          f"Voci, rivendita meno tieni, per posto e per anno: {dette}; tornei e resto {euro(resto)}.")
                 if tenuti:
-                    testo += f" Vendite per posto e per anno {decimale(vendite, 2)}, giorni in rosa {euro(statistics.fmean(tenuti))}."
+                    prezzi = [r["prezzo_medio"] for r in gruppo if r["prezzo_medio"] is not None]
+                    margini = [r["margine_medio"] for r in gruppo if r["margine_medio"] is not None]
+                    sotto = sum(r["sotto_l_ingaggio"] for r in gruppo)
+                    testo += (f" Vendite per posto e per anno {decimale(vendite, 2)}, giorni dalla firma alla vendita {euro(statistics.fmean(tenuti))}, "
+                              f"prezzo medio di una vendita {euro(statistics.fmean(prezzi))} euro, margine medio sull'ingaggio "
+                              f"{euro(statistics.fmean(margini))} euro, vendite sotto l'ingaggio {sotto}.")
                 else:
                     testo += " Nessuna vendita."
+                testo += (f" Tesserati in media {decimale(statistics.fmean(r['rosa_media'] for r in gruppo))}, nel tieni "
+                          f"{decimale(statistics.fmean(r['rosa_media_tieni'] for r in gruppo))}.")
                 righe.append(testo)
     return righe
 
 
-def verdetto(gruppi):
-    """Per ogni mondo il numero più piccolo di mesi che porta la differenza della gloriosa a zero entro lo scarto fra i semi, o None."""
+def piu_redditizio(gruppi, chiave="differenza"):
+    """
+    Per mondo e club i mesi di firma della vendita che rendono di più al commerciante, con la media e lo scarto fra i
+    semi della differenza, o di quella a rosa pari.
+    """
     esito = {}
-    for giorni in sorted({g for g, _c, _m in gruppi}):
-        esito[giorni] = None
-        for mesi in sorted({m for g, c, m in gruppi if g == giorni and c == "gloriosa"}):
-            media, scarto = riassunto(gruppi[(giorni, "gloriosa", mesi)])
-            if abs(media) <= scarto or media <= 0:
-                esito[giorni] = mesi
-                break
+    for giorni, club in sorted({(g, c) for g, c, _m in gruppi}):
+        provati = [(mesi, *riassunto(gruppi[(giorni, club, mesi)], chiave)) for mesi in sorted(m for g, c, m in gruppi if g == giorni and c == club)]
+        esito[(giorni, club)] = max(provati, key=lambda riga: riga[1])
     return esito
+
+
+def residuo(gruppi, chiave="differenza"):
+    """
+    Le righe del residuo: per mondo e club quanto rende la vendita ai mesi più redditizi, per posto e per anno, con la
+    rosa intera all'anno e al mese, e in percentuale dello sponsor della rosa onesta; e se la media sta entro lo scarto.
+    Con la chiave a_rosa_pari, la differenza a rosa pari.
+    """
+    righe = []
+    for (giorni, club), (mesi, media, scarto) in piu_redditizio(gruppi, chiave).items():
+        sponsor = statistics.fmean(r["sponsor_al_mese_tieni"] for r in gruppi[(giorni, club, mesi)])
+        al_mese = media * MAX_TESSERATI_POLISPORTIVA / 12
+        percentuale = testi.con_articolo("il", f"{round(100 * al_mese / sponsor)}%") if sponsor > 0 else ""
+        quota = f", {percentuale} dello sponsor della rosa onesta, {euro(sponsor)} euro al mese" if sponsor > 0 else ""
+        pari = " a rosa pari" if chiave == "a_rosa_pari" else ""
+        testo = (f"Mondo di {giorni} giorni, polisportiva {club}{pari}: rende di più la vendita a {testi.conta(mesi, 'mese', 'mesi')} dalla firma, "
+                 f"{euro(media)} euro per posto e per anno, scarto fra i semi {euro(scarto)}; con la rosa intera "
+                 f"{euro(media * MAX_TESSERATI_POLISPORTIVA)} euro all'anno, {euro(al_mese)} al mese{quota}.")
+        if abs(media) <= scarto:
+            testo += " La media sta entro lo scarto fra i semi."
+        righe.append(testo)
+    return righe
 
 
 def in_parallelo(esecutore, compiti, racconta):
@@ -560,10 +695,10 @@ def in_parallelo(esecutore, compiti, racconta):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Misura quanti mesi il computer deve aspettare prima di comprare un tesserato dell'utente.")
+    parser = argparse.ArgumentParser(description="Misura quanto rende ancora la rivendita al computer di un tesserato dell'utente, con la rampa del prezzo.")
     parser.add_argument("--semi", type=int, nargs="+", default=list(SEMI))
     parser.add_argument("--giorni-dei-mondi", type=int, nargs="+", default=list(GIORNI_DEI_MONDI))
-    parser.add_argument("--mesi", type=int, nargs="+", default=list(MESI_PROVATI))
+    parser.add_argument("--mesi", type=int, nargs="+", default=list(MESI_PROVATI), help="i mesi di firma dopo i quali il commerciante mette in vendita")
     parser.add_argument("--durata", type=int, default=DURATA_MESI, help="mesi di calendario di ogni corsa")
     parser.add_argument("--processi", type=int, default=PROCESSI)
     parser.add_argument("--gloria", type=int, default=GLORIA_GLORIOSA, help="la gloria della polisportiva gloriosa")
@@ -598,22 +733,21 @@ def main():
             # Prima le corse lunghe, nei mondi più vecchi e coi mesi più corti, che vendono di più.
             compiti.sort(key=lambda compito: (-compito[1][1], compito[1][4] if compito[1][4] is not None else -1))
             risultati = in_parallelo(esecutore, compiti, lambda r: racconta(
-                f"Corsa {r['strategia']}{'' if r['mesi'] is None else ' a ' + str(r['mesi']) + ' mesi'}, seme {r['seme']}, mondo di {r['giorni']} giorni, "
+                f"Corsa {r['strategia']}{'' if r['mesi'] is None else ' a ' + testi.conta(r['mesi'], 'mese', 'mesi')}, seme {r['seme']}, mondo di {r['giorni']} giorni, "
                 f"{r['club']}: saldo {euro(r['saldo'])} euro, vendite {r['vendite']}, firme {r['firme']}, in {r['secondi']:.0f} s."))
         sbagliate = [r for r in risultati if r["saldo"] != r["somma_delle_voci"]]
         for r in sbagliate:
             racconta(f"Attenzione: nella corsa {r['strategia']} {r['mesi']}, seme {r['seme']}, mondo di {r['giorni']}, {r['club']}, "
                      f"le voci fanno {euro(r['somma_delle_voci'])} e la cassa {euro(r['saldo'])}.")
         conto = differenze(risultati, args.durata)
-        for riga in tabella(conto, partenze, args.durata):
+        for riga in tabella(conto, partenze, args.durata) + residuo(conto) + residuo(conto, "a_rosa_pari"):
             print(riga, flush=True)
-        for giorni, mesi in verdetto(conto).items():
-            print(f"Mondo di {giorni} giorni: per la gloriosa basta {mesi} mesi." if mesi is not None else
-                  f"Mondo di {giorni} giorni: per la gloriosa nessun numero di mesi provato basta.", flush=True)
         if args.salva:
             gruppi_json = [{"giorni": g, "club": c, "mesi": m, "semi": righe} for (g, c, m), righe in sorted(conto.items())]
-            args.salva.write_text(json.dumps({"partenze": partenze, "corse": risultati, "differenze": gruppi_json}, ensure_ascii=False, indent=1),
-                                  encoding="utf-8")
+            migliori = [{"giorni": g, "club": c, "chiave": chiave, "mesi": m, "media": media, "scarto": scarto}
+                        for chiave in ("differenza", "a_rosa_pari") for (g, c), (m, media, scarto) in piu_redditizio(conto, chiave).items()]
+            args.salva.write_text(json.dumps({"partenze": partenze, "corse": risultati, "differenze": gruppi_json, "piu_redditizio": migliori},
+                                             ensure_ascii=False, indent=1), encoding="utf-8")
         racconta("Fine.")
     finally:
         if temporanea:
