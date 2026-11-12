@@ -40,9 +40,6 @@ from motore.eventi import Evento, Tappa
 from motore.regia import RITARDO_DELLA_RICADUTA
 from motore.tavolo import centro_porta, posizione_arbitro, vista
 
-# I messaggi del menu di collaudo_comune, che dopo di sé lascia una riga vuota.
-MESSAGGI_DEL_MENU = ("Annotato.", "Segnato come superato.", "Chiuso.")
-
 
 def _vietato(nome, chiamate):
     """Al posto di una funzione che suona: segna la chiamata e fa fallire la prova."""
@@ -549,10 +546,10 @@ def test_il_menu_di_fine_gruppo_scrive_una_riga_per_voce(gruppi, cassa, programm
     assert scritto.rstrip().endswith("Fine dell'ascolto.")
     # La spiegazione viene prima del via, e dice del gruppo dei timbri.
     assert ap.TITOLO_DEI_TIMBRI in scritto.split("\rInvio per cominciare")[0]
-    # Le sole righe vuote sono quelle che il menu di collaudo_comune lascia dopo i suoi messaggi.
+    # Nessuna riga vuota: da GBUtils V253 nemmeno il menu di collaudo_comune ne lascia dopo i suoi messaggi (issue 55).
     righe = scritto.split("\n")
     vuote = [i for i, riga in enumerate(righe[:-1]) if riga == ""]
-    assert vuote and all(righe[i - 1] in MESSAGGI_DEL_MENU for i in vuote), [righe[i - 1] for i in vuote]
+    assert vuote == [], [righe[i - 1] for i in vuote]
     assert suonati == []
 
 

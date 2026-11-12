@@ -220,10 +220,10 @@ def test_nessuna_onda_quadra_salvo_donazione():
 
 
 def test_la_firma_di_mess():
-    # Chi crea un suono lo firma nel nome, chi lo usa e basta nella descrizione: così Gabriele lo
-    # ritrova in Acu_Maker cercando mess.
-    firma = re.compile(r"Usato da: [^.]*\bmess\b")
-    senza = [p for p in suoni.EVENTI.values() if not p.startswith("mess_") and not firma.search(Acusticator.descrizione(p))]
+    # Ogni suono che MESS usa porta la sua firma, così Gabriele lo ritrova in Acu_Maker cercando @mess. Da GBUtils V265
+    # la firma è il campo usato_da del preset, e il prefisso mess_ non conta più: con la migrazione quei preset hanno
+    # ricevuto la firma (issue 60 di GBUtils).
+    senza = [p for p in suoni.EVENTI.values() if "mess" not in Acusticator.usato_da(p)]
     assert not senza, f"preset senza la firma di MESS: {senza}"
     for preset in suoni.EVENTI.values():
         if preset.startswith("mess_"):
@@ -410,23 +410,24 @@ def test_i_suoni_della_finestra_a_schede_perdono_la_firma_di_mess():
     assert len(ORFANI_DELLA_V232) == len(set(ORFANI_DELLA_V232)) == 42
     nomi = set(Acusticator.list())
     usati = set(suoni.EVENTI.values()) | set(partita_sonora.SUONI.values())
-    firma = re.compile(r"Usato da: [^.]*\bmess\b")
     for nome in ORFANI_DELLA_V232:
         assert nome in nomi and f"mess_{nome}" not in nomi and nome not in usati, nome
         descrizione = Acusticator.descrizione(nome)
-        assert descrizione and "MESS" not in descrizione and "Mercato e ricerca" not in descrizione and not firma.search(descrizione), nome
+        assert descrizione and "MESS" not in descrizione and "Mercato e ricerca" not in descrizione, nome
+        # Da GBUtils V265 la firma sta in usato_da, issue 60.
+        assert "mess" not in Acusticator.usato_da(nome), nome
     assert not {"mess_casella_allenatori_spuntata", "mess_casella_allenatori_tolta"} & nomi
 
 
 def test_la_firma_di_mess_esce_dai_suoni_della_ricerca_tolta():
     # I quattro suoni della ricerca che stampava nella vista e di Risultati della ricerca non sono più di MESS, e la
     # loro descrizione non lo dice più; gli altri programmi che li usano restano.
-    firma = re.compile(r"Usato da: [^.]*\bmess\b")
+    # Da GBUtils V265 la firma sta in usato_da, issue 60.
     for preset in ("meteora_marcatori_trovato", "meteora_marcatori_non_trovato", "apertura", "meditimer_allarme_zittito"):
         assert preset not in suoni.EVENTI.values() and preset not in partita_sonora.SUONI.values()
-        assert not firma.search(Acusticator.descrizione(preset)), preset
+        assert "mess" not in Acusticator.usato_da(preset), preset
     # Dalla verifica del mondo e dei suoni: la firma degli altri programmi resta, qualunque essa sia, perché la cambiano loro.
-    assert re.search(r"Usato da: [^.]+\.", Acusticator.descrizione("apertura"))
+    assert Acusticator.usato_da("apertura")
 
 
 def _tastiera(monkeypatch, tasti):

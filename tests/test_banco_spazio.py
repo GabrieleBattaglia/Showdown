@@ -35,8 +35,6 @@ from motore.tavolo import vista, volume
 
 FS = resa.FS
 SEME = 4127
-# I messaggi del menu di collaudo_comune, che dopo di sé lascia una riga vuota.
-MESSAGGI_DEL_MENU = ("Annotato.", "Segnato come superato.", "Chiuso.")
 
 
 def _vietato(nome, chiamate):
@@ -824,10 +822,10 @@ def test_la_sessione_intera(banco, prove, cassa, programma_di_prova, suonati, mo
     # A schermo non si dice mai quale lettera era quale, né che c'è un controllo, né un numero delle leggi.
     for vietata in (*nomi, "controllo", "ripetut", "decibel", "hertz", "per cento", "oggi"):
         assert vietata not in scritto, vietata
-    # Le sole righe vuote sono quelle che il menu di collaudo_comune lascia dopo i suoi messaggi.
+    # Nessuna riga vuota: da GBUtils V253 nemmeno il menu di collaudo_comune ne lascia dopo i suoi messaggi (issue 55).
     linee = scritto.split("\n")
     vuote = [i for i, riga in enumerate(linee[:-1]) if riga == ""]
-    assert vuote and all(linee[i - 1] in MESSAGGI_DEL_MENU for i in vuote), [linee[i - 1] for i in vuote]
+    assert vuote == [], [linee[i - 1] for i in vuote]
 
 
 def test_la_rivelazione_senza_preferenze_e_senza_voti(prove):
