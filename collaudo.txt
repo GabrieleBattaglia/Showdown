@@ -11,20 +11,13 @@ Passo 4: Ctrl+Maiusc+I, Sposta fondi: scegli chi paga e chi riceve, ascolta fino
 Domanda 4: il dialogo dice la cifra massima, e l'esito dice "Spostato 1 euro" con le due casse di adesso?:
 Passo 5: se una tua polisportiva protetta, che non è l'attiva, paga in Sposta fondi, dai prima una password sbagliata, poi quella giusta.
 Domanda 5: la password viene chiesta, con un suono suo, e quella sbagliata ferma lo spostamento con un suono diverso?:
-Passo 6: Vendite: metti in vendita al prezzo proposto un tuo tesserato di vecchia data.
-Domanda 6: la riga dice "il computer lo paga fino a" una cifra, senza una data, perché chi ha firmato prima del formato 11 vale subito il valore pieno?:
-Passo 7: cambia il prezzo di quel tesserato a molto sopra la cifra detta.
-Domanda 7: l'esito dice che a quel prezzo il computer non lo comprerà, e il suono è diverso da quello della messa in vendita?:
-Prima dei passi 8 e 9: servono due posti liberi fra le tue polisportive, che oggi hanno 15 tesserati ciascuna; liberali come preferisci, per esempio rimetti al prezzo proposto il tesserato del passo 6 e aspetta che il computer lo compri, oppure svincola chi vuoi lasciar andare.
-Passo 8: tessera un libero con un'offerta diversa dall'ingaggio che chiede, per esempio un quarto in più, e segnati le due cifre; poi mettilo in vendita al prezzo proposto, ascolta la riga e toglilo dalla vendita, Alt+G.
-Domanda 8: la riga dice che il computer oggi lo paga fino all'ingaggio che hai offerto e pagato, non a quello che chiedeva, e il valore pieno dallo stesso giorno fra 36 mesi?:
-Passo 9: compra un giocatore in vendita da una polisportiva del computer, o con un'offerta d'acquisto accettata; poi mettilo in vendita al prezzo proposto, ascolta la riga e toglilo dalla vendita, Alt+G.
-Domanda 9: se la riga ha la data del valore pieno, fra 36 mesi, la cifra di oggi è il prezzo che hai pagato? Se non ha la data, la cifra non supera il prezzo che hai pagato?:
-Passo 10: apri Chiudi polisportiva su una tua polisportiva e rispondi No alla domanda; se ti chiede la password di una sorella protetta, prova anche Annulla.
-Domanda 10: la domanda dice quanto costa la chiusura, quanta cassa si perde e chi paga i debiti; senza la password, dice che quella sorella resta fuori?:
-Passo 11: se hai una sfida accettata, prova a mettere in vendita uno dei convocati.
-Domanda 11: la vendita è rifiutata, con la sua frase e il suo suono?:
-Passo 12: iscrivi a mano un tesserato a un torneo e toglilo subito.
-Domanda 12: la quota torna, perché siamo nel mese dell'iscrizione? E se ti capita di toglierne una dal primo del mese seguente, la domanda ha il No già scelto e la quota non torna?:
-Domanda 13: i suoni nuovi che hai sentito si distinguono fra loro e da quelli di prima?:
+Passo 6: Vendite: metti in vendita un tuo tesserato a un prezzo molto sopra quello proposto.
+Domanda 6: l'esito dice che a quel prezzo il computer non lo comprerà, e il suono è diverso da quello della messa in vendita?:
+Passo 7: apri Chiudi polisportiva su una tua polisportiva e rispondi No alla domanda; se ti chiede la password di una sorella protetta, prova anche Annulla.
+Domanda 7: la domanda dice quanto costa la chiusura, quanta cassa si perde e chi paga i debiti; senza la password, dice che quella sorella resta fuori?:
+Passo 8: se hai una sfida accettata, prova a mettere in vendita uno dei convocati.
+Domanda 8: la vendita è rifiutata, con la sua frase e il suo suono?:
+Passo 9: iscrivi a mano un tesserato a un torneo e toglilo subito.
+Domanda 9: la quota torna, perché siamo nel mese dell'iscrizione? E se ti capita di toglierne una dal primo del mese seguente, la domanda ha il No già scelto e la quota non torna?:
+Domanda 10: i suoni nuovi che hai sentito si distinguono fra loro e da quelli di prima?:
 Esito:
